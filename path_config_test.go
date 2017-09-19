@@ -49,7 +49,9 @@ func TestConfig(t *testing.T) {
 	b, storage := getBackend(t)
 
 	// test no certificate
-	data := map[string]interface{}{}
+	data := map[string]interface{}{
+		"kubernetes_host": "host",
+	}
 
 	req := &logical.Request{
 		Operation: logical.CreateOperation,
@@ -62,7 +64,7 @@ func TestConfig(t *testing.T) {
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
-	if resp.Error().Error() != "no PEM provided" {
+	if resp.Error().Error() != "one of pem_keys or kubernetes_ca_cert must be set" {
 		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 
@@ -107,9 +109,8 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 
-	// Test success
+	// Test success with no certs
 	data = map[string]interface{}{
-		"pem_keys":           testRSACert,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
 	}
@@ -132,13 +133,53 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected := &kubeConfig{
+		PublicKeys: []interface{}{},
+		PEMKeys:    []string{},
+		Host:       "host",
+		CACert:     testCACert,
+	}
+
+	conf, err := b.(*kubeAuthBackend).config(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(expected, conf) {
+		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
+	}
+
+	// Test success with one cert
+	data = map[string]interface{}{
+		"pem_keys":           testRSACert,
+		"kubernetes_host":    "host",
+		"kubernetes_ca_cert": testCACert,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected = &kubeConfig{
 		PublicKeys: []interface{}{cert},
 		PEMKeys:    []string{testRSACert},
 		Host:       "host",
 		CACert:     testCACert,
 	}
 
-	conf, err := b.(*kubeAuthBackend).config(storage)
+	conf, err = b.(*kubeAuthBackend).config(storage)
 	if err != nil {
 		t.Fatal(err)
 	}

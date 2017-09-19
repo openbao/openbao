@@ -74,7 +74,7 @@ func (b *kubeAuthBackend) pathLogin() framework.OperationFunc {
 			return nil, err
 		}
 		if role == nil {
-			return logical.ErrorResponse(fmt.Sprintf("invalid role name \"%s\"", roleName)), logical.ErrInvalidRequest
+			return logical.ErrorResponse(fmt.Sprintf("invalid role name \"%s\"", roleName)), nil
 		}
 
 		config, err := b.config(req.Storage)
@@ -166,10 +166,54 @@ func (b *kubeAuthBackend) personaLookahead() framework.OperationFunc {
 
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
+	// Parse into JWT
+	parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
+	if err != nil {
+		return nil, err
+	}
+
+	sa := &serviceAccount{}
+	validator := &jwt.Validator{
+		Expected: jwt.Claims{
+			"iss": expectedJWTIssuer,
+		},
+		Fn: func(c jwt.Claims) error {
+			// Decode claims into a service account object
+			err := mapstructure.Decode(c, sa)
+			if err != nil {
+				return err
+			}
+
+			// verify the namespace is allowed
+			if len(role.ServiceAccountNamespaces) > 1 || role.ServiceAccountNamespaces[0] != "*" {
+				if !strutil.StrListContains(role.ServiceAccountNamespaces, sa.Namespace) {
+					return errors.New("namespace not authorized")
+				}
+			}
+
+			// verify the service account name is allowed
+			if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
+				if !strutil.StrListContains(role.ServiceAccountNames, sa.Name) {
+					return errors.New("service account name not authorized")
+				}
+			}
+
+			return nil
+		},
+	}
+
+	if err := validator.Validate(parsedJWT); err != nil {
+		return nil, err
+	}
+
+	// If we don't have any public keys to verify, return the sa and end early.
+	if len(config.PublicKeys) == 0 {
+		return sa, nil
+	}
 
 	// verifyFunc is called for each certificate that is configured in the
 	// backend until one of the certificates succeeds.
-	verifyFunc := func(cert interface{}) (*serviceAccount, error) {
+	verifyFunc := func(cert interface{}) error {
 		// Parse Headers and verify the signing method matches the public key type
 		// configured. This is done in its own scope since we don't need most of
 		// these variables later.
@@ -177,7 +221,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 		{
 			parsedJWS, err := jws.Parse([]byte(jwtStr))
 			if err != nil {
-				return nil, err
+				return err
 			}
 			headers := parsedJWS.Protected()
 
@@ -185,75 +229,39 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 			if headers.Has("alg") {
 				algStr = headers.Get("alg").(string)
 			} else {
-				return nil, errors.New("provided JWT must have 'alg' header value")
+				return errors.New("provided JWT must have 'alg' header value")
 			}
 
 			signingMethod = jws.GetSigningMethod(algStr)
 			switch signingMethod.(type) {
 			case *crypto.SigningMethodECDSA:
 				if _, ok := cert.(*ecdsa.PublicKey); !ok {
-					return nil, errMismatchedSigningMethod
+					return errMismatchedSigningMethod
 				}
 			case *crypto.SigningMethodRSA:
 				if _, ok := cert.(*rsa.PublicKey); !ok {
-					return nil, errMismatchedSigningMethod
+					return errMismatchedSigningMethod
 				}
 			default:
-				return nil, errors.New("unsupported JWT signing method")
+				return errors.New("unsupported JWT signing method")
 			}
 		}
 
-		// Parse into JWT
-		parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
-		if err != nil {
-			return nil, err
-		}
-
-		serviceAccount := &serviceAccount{}
-		validator := &jwt.Validator{
-			Expected: jwt.Claims{
-				"iss": expectedJWTIssuer,
-			},
-			Fn: func(c jwt.Claims) error {
-				// Decode claims into a service account object
-				err := mapstructure.Decode(c, serviceAccount)
-				if err != nil {
-					return err
-				}
-
-				// verify the namespace is allowed
-				if len(role.ServiceAccountNamespaces) > 1 || role.ServiceAccountNamespaces[0] != "*" {
-					if !strutil.StrListContains(role.ServiceAccountNamespaces, serviceAccount.Namespace) {
-						return errors.New("namespace not authorized")
-					}
-				}
-
-				// verify the service account name is allowed
-				if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
-					if !strutil.StrListContains(role.ServiceAccountNames, serviceAccount.Name) {
-						return errors.New("service account name not authorized")
-					}
-				}
-
-				return nil
-			},
-		}
-
 		// validates the signature and then runs the claim validation
-		if err := parsedJWT.Validate(cert, signingMethod, validator); err != nil {
-			return nil, err
+		if err := parsedJWT.Validate(cert, signingMethod); err != nil {
+			return err
 		}
 
-		return serviceAccount, nil
+		return nil
 	}
 
 	var validationErr error
 	// for each configured certificate run the verifyFunc
 	for _, cert := range config.PublicKeys {
-		serviceAccount, err := verifyFunc(cert)
+		err := verifyFunc(cert)
 		switch err {
 		case nil:
-			return serviceAccount, nil
+			return sa, nil
 		case rsa.ErrVerification, crypto.ErrECDSAVerification, errMismatchedSigningMethod:
 			// if the error is a failure to verify or a signing method mismatch
 			// continue onto the next cert, storing the error to be returned if

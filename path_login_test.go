@@ -14,12 +14,17 @@ var (
 	testUID       string = "d77f89bc-9055-11e7-a068-0800276d99bf"
 )
 
-func setupBackend(t *testing.T) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, noPEMs bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
+
+	pems := []string{testECCert, testRSACert}
+	if noPEMs {
+		pems = []string{}
+	}
 
 	// test no certificate
 	data := map[string]interface{}{
-		"pem_keys":           []string{testECCert, testRSACert},
+		"pem_keys":           pems,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
 	}
@@ -62,7 +67,7 @@ func setupBackend(t *testing.T) (logical.Backend, logical.Storage) {
 }
 
 func TestLogin(t *testing.T) {
-	b, storage := setupBackend(t)
+	b, storage := setupBackend(t, false)
 	b.(*kubeAuthBackend).reviewFactory = mockTokenReviewFactory(testName, testNamespace, testUID)
 
 	// Test bad inputs
@@ -185,8 +190,51 @@ func TestLogin(t *testing.T) {
 	}
 }
 
+func TestLogin_NoPEMs(t *testing.T) {
+	b, storage := setupBackend(t, true)
+	b.(*kubeAuthBackend).reviewFactory = mockTokenReviewFactory(testName, testNamespace, testUID)
+
+	// test bad jwt service account
+	data := map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtBadServiceAccount,
+	}
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != "service account name not authorized" {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// test successful login
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+}
+
 func TestPersonaLookAhead(t *testing.T) {
-	b, storage := setupBackend(t)
+	b, storage := setupBackend(t, false)
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -214,4 +262,4 @@ var jwtData string = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ld
 
 var jwtBadServiceAccount string = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWludmFsaWQtdG9rZW4tZ3ZxcHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtaW52YWxpZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjA0NGZkNGYxLTk3NGQtMTFlNy05YTE1LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWludmFsaWQifQ.BcoOdu5BrIchp66Zl8-dY7HcGHJrVXrUh4SNTlIHR6vDaNH29B7JuI_-B1pvW9GpzQnc-XjZyua_wfSssqe-KYJcq--Qh0yQfbbLE5rvEipBCHH341IqGaTHaBVip8zXqYE-bt-7J6vAH8Azvw46iatDC73tKxh46xDuxK0gKjdprW4cOklDx6ZSxEHpu63ftLYgAgk9c0MUJxKWhu9Jk0aye5pTj_iyBbBy8llZNGaw2gxvhPzFVUEHZUlTRiSIbmPmNqep48RiJoWrq6FM1lijvrtT5y-E7aFk6TpW2BH3VDHy8k10sMIxuRAYrGB3tpUKNyVDI3tJOi_xY7iJvw"
 
-var jwtWithBadSigningKey string = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWludmFsaWQtdG9rZW4tZ3ZxcHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtaW52YWxpZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjA0NGZkNGYxLTk3NGQtMTFlNy05YTE1LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWludmFsaWQifQ.QksgZ6da6-W_9lPZ0cdcZzz45MivigwdQnVbBrmPjCAfntkVlYhkPbKTBEuRK3WD6uBt_RJkhQnAF1xiy4rUqawbPqJzU_1i8mLMejc5FdDUrci7nJybKGVBLQe1UA_AMl3a97WqXuLOjav9aIG0f_blCTd9BfIvnfgquPwf23U"
+var jwtWithBadSigningKey string = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWludmFsaWQtdG9rZW4tZ3ZxcHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtYXV0aCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjA0NGZkNGYxLTk3NGQtMTFlNy05YTE1LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWF1dGgifQ.hv4O-T9XPtV3Smy55TrA2qCjRJJEQqeifqzbV1kyb8hr7o7kSqhBRy0fSWHi8rkrnBXjibB0yTDDHR1UvkHLWD2Ddi9tKeXZahaKLxGh5GJI8TSxZizX3ilZB9A5LBpW_VberSxcazhGA1u3VEPaL_nPsxWcdF9kxZR3hwSlyEA"

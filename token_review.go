@@ -104,10 +104,15 @@ func (t *tokenReviewAPI) Review(jwt string) (*tokenReviewResult, error) {
 		return nil, errors.New("lookup failed: service account jwt not valid")
 	}
 
-	// the username is of format: system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)
+	// The username is of format: system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)
 	parts := strings.Split(r.Status.User.Username, ":")
 	if len(parts) != 4 {
 		return nil, errors.New("lookup failed: unexpected username format")
+	}
+
+	// Validate the user that comes back from token review is a service account
+	if parts[0] != "system" || parts[1] != "serviceaccount" {
+		return nil, errors.New("lookup failed: username returned is not a service account")
 	}
 
 	return &tokenReviewResult{

@@ -78,8 +78,16 @@ func (t *tokenReviewAPI) Review(jwt string) (*tokenReviewResult, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// If we have a configured TokenReviewer JWT use it as the bearer, otherwise
+	// try to use the passed in JWT.
+	bearer := fmt.Sprintf("Bearer %s", jwt)
+	if len(t.config.TokenReviewerJWT) > 0 {
+		bearer = fmt.Sprintf("Bearer %s", t.config.TokenReviewerJWT)
+	}
+
 	// Set the JWT as the Bearer token
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwt))
+	req.Header.Set("Authorization", bearer)
 
 	resp, err := client.Do(req)
 	if err != nil {

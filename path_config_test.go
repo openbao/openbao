@@ -14,6 +14,7 @@ func TestConfig_Read(t *testing.T) {
 		"pem_keys":           []string{testRSACert, testECCert},
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
+		"token_reviewer_jwt": jwtData,
 	}
 
 	req := &logical.Request{
@@ -140,6 +141,47 @@ func TestConfig(t *testing.T) {
 	}
 
 	conf, err := b.(*kubeAuthBackend).config(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(expected, conf) {
+		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
+	}
+
+	// Test success TokenReviewer
+	data = map[string]interface{}{
+		"kubernetes_host":    "host",
+		"kubernetes_ca_cert": testCACert,
+		"token_reviewer_jwt": jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expected = &kubeConfig{
+		PublicKeys:       []interface{}{},
+		PEMKeys:          []string{},
+		Host:             "host",
+		CACert:           testCACert,
+		TokenReviewerJWT: jwtData,
+	}
+
+	conf, err = b.(*kubeAuthBackend).config(storage)
 	if err != nil {
 		t.Fatal(err)
 	}

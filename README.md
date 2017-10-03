@@ -25,7 +25,7 @@ To learn specifically about how plugins work, see documentation on [Vault plugin
 
 The current authentication model requires providing Vault with a Service Account token, which can be used to make authenticated calls to Kubernetes. This token should not typically be shared, but in order for Kubernetes to be treated as a trusted third party, Vault must validate something that Kubernetes has cryptographically signed and that conveys the identity of the token holder.
 
-We expect Kubernetes to support less sensitive mechanisms in the future, and the Vault integration will be updated to use those mechanisms when available.”
+We expect Kubernetes to support less sensitive mechanisms in the future, and the Vault integration will be updated to use those mechanisms when available.
 
 ## Usage
 

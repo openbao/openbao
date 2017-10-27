@@ -233,7 +233,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	}
 }
 
-func TestPersonaLookAhead(t *testing.T) {
+func TestAliasLookAhead(t *testing.T) {
 	b, storage := setupBackend(t, false)
 
 	// Test bad inputs
@@ -242,7 +242,7 @@ func TestPersonaLookAhead(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.PersonaLookaheadOperation,
+		Operation: logical.AliasLookaheadOperation,
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
@@ -253,8 +253,8 @@ func TestPersonaLookAhead(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	if resp.Auth.Persona.Name != testUID {
-		t.Fatalf("Unexpected UID: %s", resp.Auth.Persona.Name)
+	if resp.Auth.Alias.Name != testUID {
+		t.Fatalf("Unexpected UID: %s", resp.Auth.Alias.Name)
 	}
 }
 

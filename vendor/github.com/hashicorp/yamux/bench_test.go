@@ -1,6 +1,7 @@
 package yamux
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -78,4 +79,50 @@ func BenchmarkSendRecv(b *testing.B) {
 		}
 	}
 	<-doneCh
+}
+
+func BenchmarkSendRecvLarge(b *testing.B) {
+	client, server := testClientServer()
+	defer client.Close()
+	defer server.Close()
+
+	const sendSize = 512 * 1024 * 1024
+	const recvSize = 4 * 1024
+
+	sendBuf := make([]byte, sendSize)
+	recvBuf := make([]byte, recvSize)
+
+	b.ResetTimer()
+	recvDone := make(chan struct{})
+
+	go func() {
+		stream, err := server.AcceptStream()
+		if err != nil {
+			return
+		}
+		defer stream.Close()
+		for i := 0; i < b.N; i++ {
+			for j := 0; j < sendSize/recvSize; j++ {
+				if _, err := stream.Read(recvBuf); err != nil {
+					b.Fatalf("err: %v", err)
+				}
+			}
+
+			fmt.Printf("Capacity of rcv buffer = %v, length of rcv window = %v\n", stream.recvBuf.Cap(), stream.recvWindow)
+
+		}
+		close(recvDone)
+	}()
+
+	stream, err := client.Open()
+	if err != nil {
+		b.Fatalf("err: %v", err)
+	}
+	defer stream.Close()
+	for i := 0; i < b.N; i++ {
+		if _, err := stream.Write(sendBuf); err != nil {
+			b.Fatalf("err: %v", err)
+		}
+	}
+	<-recvDone
 }

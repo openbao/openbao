@@ -109,6 +109,30 @@ func TestLogger(t *testing.T) {
 		// This test will break if you move this around, it's line dependent, just fyi
 		assert.Equal(t, "[INFO ] go-hclog/logger_test.go:100: test: this is test: who=programmer why=\"testing is fun\"\n", rest)
 	})
+
+	t.Run("prefixes the name", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		logger := New(&LoggerOptions{
+			// No name!
+			Output: &buf,
+		})
+
+		logger.Info("this is test")
+		str := buf.String()
+		dataIdx := strings.IndexByte(str, ' ')
+		rest := str[dataIdx+1:]
+		assert.Equal(t, "[INFO ] this is test\n", rest)
+
+		buf.Reset()
+
+		another := logger.Named("sublogger")
+		another.Info("this is test")
+		str = buf.String()
+		dataIdx = strings.IndexByte(str, ' ')
+		rest = str[dataIdx+1:]
+		assert.Equal(t, "[INFO ] sublogger: this is test\n", rest)
+	})
 }
 
 func TestLogger_JSON(t *testing.T) {

@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"net/rpc"
 	"os"
@@ -38,10 +39,10 @@ func (b *backendPluginServer) HandleRequest(args *HandleRequestArgs, reply *Hand
 	storage := &StorageClient{client: b.storageClient}
 	args.Request.Storage = storage
 
-	resp, err := b.backend.HandleRequest(args.Request)
+	resp, err := b.backend.HandleRequest(context.TODO(), args.Request)
 	*reply = HandleRequestReply{
 		Response: resp,
-		Error:    plugin.NewBasicError(err),
+		Error:    wrapError(err),
 	}
 
 	return nil
@@ -62,11 +63,11 @@ func (b *backendPluginServer) HandleExistenceCheck(args *HandleExistenceCheckArg
 	storage := &StorageClient{client: b.storageClient}
 	args.Request.Storage = storage
 
-	checkFound, exists, err := b.backend.HandleExistenceCheck(args.Request)
+	checkFound, exists, err := b.backend.HandleExistenceCheck(context.TODO(), args.Request)
 	*reply = HandleExistenceCheckReply{
 		CheckFound: checkFound,
 		Exists:     exists,
-		Error:      plugin.NewBasicError(err),
+		Error:      wrapError(err),
 	}
 
 	return nil
@@ -108,7 +109,7 @@ func (b *backendPluginServer) Setup(args *SetupArgs, reply *SetupReply) error {
 	storageConn, err := b.broker.Dial(args.StorageID)
 	if err != nil {
 		*reply = SetupReply{
-			Error: plugin.NewBasicError(err),
+			Error: wrapError(err),
 		}
 		return nil
 	}
@@ -121,7 +122,7 @@ func (b *backendPluginServer) Setup(args *SetupArgs, reply *SetupReply) error {
 	loggerConn, err := b.broker.Dial(args.LoggerID)
 	if err != nil {
 		*reply = SetupReply{
-			Error: plugin.NewBasicError(err),
+			Error: wrapError(err),
 		}
 		return nil
 	}
@@ -134,7 +135,7 @@ func (b *backendPluginServer) Setup(args *SetupArgs, reply *SetupReply) error {
 	sysViewConn, err := b.broker.Dial(args.SysViewID)
 	if err != nil {
 		*reply = SetupReply{
-			Error: plugin.NewBasicError(err),
+			Error: wrapError(err),
 		}
 		return nil
 	}
@@ -155,7 +156,7 @@ func (b *backendPluginServer) Setup(args *SetupArgs, reply *SetupReply) error {
 	backend, err := b.factory(config)
 	if err != nil {
 		*reply = SetupReply{
-			Error: plugin.NewBasicError(err),
+			Error: wrapError(err),
 		}
 	}
 	b.backend = backend
@@ -179,7 +180,7 @@ func (b *backendPluginServer) RegisterLicense(args *RegisterLicenseArgs, reply *
 	err := b.backend.RegisterLicense(args.License)
 	if err != nil {
 		*reply = RegisterLicenseReply{
-			Error: plugin.NewBasicError(err),
+			Error: wrapError(err),
 		}
 	}
 

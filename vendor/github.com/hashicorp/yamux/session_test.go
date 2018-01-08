@@ -619,7 +619,7 @@ func TestHalfClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if _, err := stream.Write([]byte("a")); err != nil {
+	if _, err = stream.Write([]byte("a")); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -639,7 +639,7 @@ func TestHalfClose(t *testing.T) {
 	}
 
 	// Send more
-	if _, err := stream.Write([]byte("bcd")); err != nil {
+	if _, err = stream.Write([]byte("bcd")); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	stream.Close()

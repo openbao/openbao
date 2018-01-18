@@ -1,6 +1,7 @@
 package kerberosauth
 
 import (
+	"encoding/json"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
@@ -26,11 +27,11 @@ func Backend(c *logical.BackendConfig) *KerberosBackend {
 		Help:        backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{"login"},
-			//SealWrapStorage: []string{"config"},
+			SealWrapStorage: []string{"config"},
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
-				// pathConfig(b),
+				pathConfig(b),
 				pathLogin(b),
 			},
 			// pathsRole(b)
@@ -38,6 +39,25 @@ func Backend(c *logical.BackendConfig) *KerberosBackend {
 	}
 
 	return b
+}
+
+func (b *KerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
+	raw, err := s.Get("config")
+	if err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return nil, nil
+	}
+
+	conf := &kerberosConfig{}
+	if err := json.Unmarshal(raw.Value, conf); err != nil {
+		return nil, err
+	}
+
+	// TODO: extra parsing?
+
+	return conf, nil
 }
 
 var backendHelp string = `

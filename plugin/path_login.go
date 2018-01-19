@@ -18,9 +18,9 @@ func pathLogin(b *KerberosBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
 		Fields: map[string]*framework.FieldSchema{
-			"password": &framework.FieldSchema{
+			"authorization": &framework.FieldSchema{
 				Type:        framework.TypeString,
-				Description: `Password. Required.`,
+				Description: `SPNEGO Authorization header. Required.`,
 			},
 		},
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -54,10 +54,11 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 	}
 
 	// SPNEGOKRB5Authenticate
-	// TODO: move into function
-	password := d.Get("password").(string)
+	// TODO: move into function returning cred, err
+	authorization := d.Get("authorization").(string)
 	//s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-	s := strings.SplitN(password, " ", 2)
+	log.Println(authorization)
+	s := strings.SplitN(authorization, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
 		return nil, errors.New("Invalid Authorization header")
 	}
@@ -88,7 +89,7 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 		return nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
 	}
 
-	// TODO: get remote addr?
+	// TODO: get remote addr somehow? is it even important?
 	remoteAddr := "wint-dev-vm169"
 	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, config.ServiceAccount, remoteAddr)
 	if !ok {
@@ -117,6 +118,11 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 			Metadata: map[string]string{
 				"fruit": "banana",
 				"user":  creds.Username,
+				// TODO: think about which ones we want here
+				"realm":      creds.Realm,
+				"cname":      creds.CName.GetPrincipalNameString(),
+				"auth_time":  creds.AuthTime().String(),
+				"session_id": creds.SessionID(),
 			},
 			LeaseOptions: logical.LeaseOptions{
 				TTL:       ttl,

@@ -136,7 +136,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-plugin"
   packages = ["."]
-  revision = "e2fbc6864d18d3c37b6cde4297ec9fca266d28f1"
+  revision = "1fc09c47b843b73705f51ffb0520e3ac1bfecf99"
 
 [[projects]]
   branch = "master"
@@ -176,6 +176,7 @@
     "helper/consts",
     "helper/errutil",
     "helper/jsonutil",
+    "helper/logbridge",
     "helper/logformat",
     "helper/mlock",
     "helper/parseutil",
@@ -186,9 +187,10 @@
     "helper/wrapping",
     "logical",
     "logical/framework",
-    "logical/plugin"
+    "logical/plugin",
+    "logical/plugin/pb"
   ]
-  revision = "78adac0a24fbefa644fc775bae70b46482af0ea9"
+  revision = "13e0cd3f7fed0312934561542b4d5d08fe0d7e3a"
 
 [[projects]]
   branch = "master"
@@ -247,6 +249,12 @@
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   revision = "06020f85339e21b2478f756a78e295255ffa4d6a"
+
+[[projects]]
+  name = "github.com/oklog/run"
+  packages = ["."]
+  revision = "4dadeb3030eda0273a12382bb2348ffc7c9d1a39"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/ryanuber/go-glob"

@@ -1,6 +1,7 @@
 package kubeauth
 
 import (
+	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -23,7 +24,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	err := b.Setup(config)
+	err := b.Setup(context.Background(), config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
@@ -61,11 +62,11 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
-	actual, err := b.(*kubeAuthBackend).role(storage, "plugin-test")
+	actual, err := b.(*kubeAuthBackend).role(context.Background(), storage, "plugin-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +87,7 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -107,7 +108,7 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -129,7 +130,7 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -151,7 +152,7 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -172,7 +173,7 @@ func TestPath_Create(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -211,7 +212,7 @@ func TestPath_Read(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -223,7 +224,7 @@ func TestPath_Read(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -253,7 +254,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      configData,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -265,7 +266,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -281,7 +282,7 @@ func TestPath_Delete(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}

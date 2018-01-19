@@ -1,6 +1,7 @@
 package kubeauth
 
 import (
+	"context"
 	"crypto/rsa"
 	"testing"
 
@@ -36,7 +37,7 @@ func setupBackend(t *testing.T, noPEMs bool) (logical.Backend, logical.Storage) 
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -58,7 +59,7 @@ func setupBackend(t *testing.T, noPEMs bool) (logical.Backend, logical.Storage) 
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -82,7 +83,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -101,7 +102,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -121,7 +122,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -141,7 +142,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -161,7 +162,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -184,7 +185,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -206,7 +207,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -227,7 +228,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -248,7 +249,7 @@ func TestAliasLookAhead(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}

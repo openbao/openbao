@@ -172,6 +172,50 @@ func TestClient_testInterface(t *testing.T) {
 	}
 }
 
+func TestClient_grpc_servercrash(t *testing.T) {
+	process := helperProcess("test-grpc")
+	c := NewClient(&ClientConfig{
+		Cmd:              process,
+		HandshakeConfig:  testHandshake,
+		Plugins:          testPluginMap,
+		AllowedProtocols: []Protocol{ProtocolGRPC},
+	})
+	defer c.Kill()
+
+	if _, err := c.Start(); err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if v := c.Protocol(); v != ProtocolGRPC {
+		t.Fatalf("bad: %s", v)
+	}
+
+	// Grab the RPC client
+	client, err := c.Client()
+	if err != nil {
+		t.Fatalf("err should be nil, got %s", err)
+	}
+
+	// Grab the impl
+	raw, err := client.Dispense("test")
+	if err != nil {
+		t.Fatalf("err should be nil, got %s", err)
+	}
+
+	_, ok := raw.(testInterface)
+	if !ok {
+		t.Fatalf("bad: %#v", raw)
+	}
+
+	c.process.Kill()
+
+	select {
+	case <-c.doneCtx.Done():
+	case <-time.After(time.Second * 2):
+		t.Fatal("Context was not closed")
+	}
+}
+
 func TestClient_grpc(t *testing.T) {
 	process := helperProcess("test-grpc")
 	c := NewClient(&ClientConfig{

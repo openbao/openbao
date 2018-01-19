@@ -3,6 +3,7 @@ package plugin
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -32,6 +33,7 @@ var testHandshake = HandshakeConfig{
 type testInterface interface {
 	Double(int) int
 	PrintKV(string, interface{})
+	Bidirectional() error
 }
 
 // testInterfacePlugin is the implementation of Plugin to create
@@ -48,13 +50,13 @@ func (p *testInterfacePlugin) Client(b *MuxBroker, c *rpc.Client) (interface{}, 
 	return &testInterfaceClient{Client: c}, nil
 }
 
-func (p *testInterfacePlugin) GRPCServer(s *grpc.Server) error {
-	grpctest.RegisterTestServer(s, &testGRPCServer{Impl: p.impl()})
+func (p *testInterfacePlugin) GRPCServer(b *GRPCBroker, s *grpc.Server) error {
+	grpctest.RegisterTestServer(s, &testGRPCServer{broker: b, Impl: p.impl()})
 	return nil
 }
 
-func (p *testInterfacePlugin) GRPCClient(c *grpc.ClientConn) (interface{}, error) {
-	return &testGRPCClient{Client: grpctest.NewTestClient(c)}, nil
+func (p *testInterfacePlugin) GRPCClient(doneCtx context.Context, b *GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
+	return &testGRPCClient{broker: b, Client: grpctest.NewTestClient(c)}, nil
 }
 
 func (p *testInterfacePlugin) impl() testInterface {
@@ -82,6 +84,10 @@ func (i *testInterfaceImpl) PrintKV(key string, value interface{}) {
 	i.logger.Info("PrintKV called", key, value)
 }
 
+func (i *testInterfaceImpl) Bidirectional() error {
+	return nil
+}
+
 // testInterfaceClient implements testInterface to communicate over RPC
 type testInterfaceClient struct {
 	Client *rpc.Client
@@ -107,6 +113,10 @@ func (impl *testInterfaceClient) PrintKV(key string, value interface{}) {
 	}
 }
 
+func (impl *testInterfaceClient) Bidirectional() error {
+	return nil
+}
+
 // testInterfaceServer is the RPC server for testInterfaceClient
 type testInterfaceServer struct {
 	Broker *MuxBroker
@@ -130,7 +140,8 @@ var testPluginMap = map[string]Plugin{
 
 // testGRPCServer is the implementation of our GRPC service.
 type testGRPCServer struct {
-	Impl testInterface
+	Impl   testInterface
+	broker *GRPCBroker
 }
 
 func (s *testGRPCServer) Double(
@@ -160,10 +171,46 @@ func (s *testGRPCServer) PrintKV(
 	return &grpctest.PrintKVResponse{}, nil
 }
 
+func (s *testGRPCServer) Bidirectional(ctx context.Context, req *grpctest.BidirectionalRequest) (*grpctest.BidirectionalResponse, error) {
+	conn, err := s.broker.Dial(req.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	pingPongClient := grpctest.NewPingPongClient(conn)
+	resp, err := pingPongClient.Ping(ctx, &grpctest.PingRequest{})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Msg != "pong" {
+		return nil, errors.New("Bad PingPong")
+	}
+
+	nextID := s.broker.NextId()
+	go s.broker.AcceptAndServe(nextID, func(opts []grpc.ServerOption) *grpc.Server {
+		s := grpc.NewServer(opts...)
+		grpctest.RegisterPingPongServer(s, &pingPongServer{})
+		return s
+	})
+
+	return &grpctest.BidirectionalResponse{
+		Id: nextID,
+	}, nil
+}
+
+type pingPongServer struct{}
+
+func (p *pingPongServer) Ping(ctx context.Context, req *grpctest.PingRequest) (*grpctest.PongResponse, error) {
+	return &grpctest.PongResponse{
+		Msg: "pong",
+	}, nil
+}
+
 // testGRPCClient is an implementation of TestInterface that communicates
 // over gRPC.
 type testGRPCClient struct {
 	Client grpctest.TestClient
+	broker *GRPCBroker
 }
 
 func (c *testGRPCClient) Double(v int) int {
@@ -198,6 +245,37 @@ func (c *testGRPCClient) PrintKV(key string, value interface{}) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (c *testGRPCClient) Bidirectional() error {
+	nextID := c.broker.NextId()
+	go c.broker.AcceptAndServe(nextID, func(opts []grpc.ServerOption) *grpc.Server {
+		s := grpc.NewServer(opts...)
+		grpctest.RegisterPingPongServer(s, &pingPongServer{})
+		return s
+	})
+
+	resp, err := c.Client.Bidirectional(context.Background(), &grpctest.BidirectionalRequest{
+		Id: nextID,
+	})
+	if err != nil {
+		return err
+	}
+
+	conn, err := c.broker.Dial(resp.Id)
+	if err != nil {
+		return err
+	}
+
+	pingPongClient := grpctest.NewPingPongClient(conn)
+	pResp, err := pingPongClient.Ping(context.Background(), &grpctest.PingRequest{})
+	if err != nil {
+		return err
+	}
+	if pResp.Msg != "pong" {
+		return errors.New("Bad PingPong")
+	}
+	return nil
 }
 
 func helperProcess(s ...string) *exec.Cmd {

@@ -1,6 +1,7 @@
 package kubeauth
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestConfig_Read(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -36,7 +37,7 @@ func TestConfig_Read(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -61,7 +62,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -81,7 +82,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -102,7 +103,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if resp == nil || !resp.IsError() {
 		t.Fatal("expected error")
 	}
@@ -123,7 +124,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -140,7 +141,7 @@ func TestConfig(t *testing.T) {
 		CACert:     testCACert,
 	}
 
-	conf, err := b.(*kubeAuthBackend).config(storage)
+	conf, err := b.(*kubeAuthBackend).config(context.Background(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +164,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -181,7 +182,7 @@ func TestConfig(t *testing.T) {
 		TokenReviewerJWT: jwtData,
 	}
 
-	conf, err = b.(*kubeAuthBackend).config(storage)
+	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -221,7 +222,7 @@ func TestConfig(t *testing.T) {
 		CACert:     testCACert,
 	}
 
-	conf, err = b.(*kubeAuthBackend).config(storage)
+	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +245,7 @@ func TestConfig(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
@@ -266,7 +267,7 @@ func TestConfig(t *testing.T) {
 		CACert:     testCACert,
 	}
 
-	conf, err = b.(*kubeAuthBackend).config(storage)
+	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -72,6 +72,7 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 	err = spnego.Unmarshal(binToken)
 	if !spnego.Init {
 		//rejectSPNEGO(w, l, fmt.Sprintf("%v - SPNEGO negotiation token is not a NegTokenInit: %v", r.RemoteAddr, err))
+		log.Println(err)
 		return nil, errors.New("SPNEGO negotiation token is not a NegTokenInit")
 	}
 	if !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDKRB5) && !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDMSLegacyKRB5) {

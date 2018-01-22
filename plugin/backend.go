@@ -6,6 +6,10 @@ import (
 	"github.com/hashicorp/vault/logical/framework"
 )
 
+const (
+	configPath string = "config"
+)
+
 type KerberosBackend struct {
 	*framework.Backend
 }
@@ -27,14 +31,13 @@ func Backend(c *logical.BackendConfig) *KerberosBackend {
 		Help:        backendHelp,
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{"login"},
-			SealWrapStorage: []string{"config"},
+			SealWrapStorage: []string{configPath},
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				pathConfig(b),
 				pathLogin(b),
 			},
-			// pathsRole(b)
 		),
 	}
 
@@ -42,7 +45,7 @@ func Backend(c *logical.BackendConfig) *KerberosBackend {
 }
 
 func (b *KerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
-	raw, err := s.Get("config")
+	raw, err := s.Get(configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +57,6 @@ func (b *KerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
 	if err := json.Unmarshal(raw.Value, conf); err != nil {
 		return nil, err
 	}
-
-	// TODO: extra parsing?
 
 	return conf, nil
 }

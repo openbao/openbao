@@ -26,7 +26,6 @@ func Backend(c *logical.BackendConfig) *kerberosBackend {
 	b := &kerberosBackend{}
 
 	b.Backend = &framework.Backend{
-		AuthRenew:   b.pathRenew,
 		BackendType: logical.TypeCredential,
 		Help:        backendHelp,
 		PathsSpecial: &logical.Paths{

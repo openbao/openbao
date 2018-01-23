@@ -106,47 +106,19 @@ func (b *kerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 		}
 	}
 
-	// TODO: make this configurable?
-	ttl, _, err := b.SanitizeTTLStr("30s", "1h")
-	if err != nil {
-		return nil, err
-	}
-
 	return &logical.Response{
 		Auth: &logical.Auth{
-			// TODO: review which fields we want in here
+			InternalData: map[string]interface{}{},
 			// TODO: fetch policies from ldap?
-			InternalData: map[string]interface{}{
-				"secret_value": "abcd1234",
-			},
 			Policies: []string{"my-policy", "other-policy"},
 			Metadata: map[string]string{
 				"user":  creds.Username,
 				"realm": creds.Realm,
 			},
 			LeaseOptions: logical.LeaseOptions{
-				TTL:       ttl,
-				Renewable: true,
+				TTL:       0,
+				Renewable: false,
 			},
 		},
 	}, nil
-}
-
-// TODO: look at how other backends do renew
-func (b *kerberosBackend) pathRenew(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	if req.Auth == nil {
-		return nil, errors.New("request auth was nil")
-	}
-
-	secretValue := req.Auth.InternalData["secret_value"].(string)
-	if secretValue != "abcd1234" {
-		return nil, errors.New("internal data does not match")
-	}
-
-	ttl, maxTTL, err := b.SanitizeTTLStr("30s", "1h")
-	if err != nil {
-		return nil, err
-	}
-
-	return framework.LeaseExtend(ttl, maxTTL, b.System())(req, d)
 }

@@ -101,14 +101,14 @@ func (b *kerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 	return &logical.Response{
 		Auth: &logical.Auth{
 			InternalData: map[string]interface{}{},
-			// TODO: fetch policies from ldap?
-			Policies: []string{"my-policy", "other-policy"},
+			Policies:     []string{},
 			Metadata: map[string]string{
 				"user":  creds.Username,
 				"realm": creds.Realm,
 			},
+			DisplayName: creds.Username,
+			Alias:       &logical.Alias{Name: creds.Username},
 			LeaseOptions: logical.LeaseOptions{
-				TTL:       0,
 				Renewable: false,
 			},
 		},

@@ -40,14 +40,6 @@ func parseKeytab(stringKeytab string) (*keytab.Keytab, error) {
 		return nil, err
 	}
 	return &kt, nil
-	/*
-		log.Printf("Kt version: %d", kt.Version)
-		log.Printf("Kt len: %d", len(kt.Entries))
-		for i, v := range kt.Entries {
-			log.Printf("Kt entry %d: Principal realm %s components %s", i, v.Principal.Realm, v.Principal.Components)
-			log.Printf("Kt entry %d: TS %s KVNO %d, Key type %d", i, v.Timestamp, v.KVNO, v.Key.KeyType)
-		}
-	*/
 }
 
 func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, remoteAddr string) (bool, *credentials.Credentials, error) {

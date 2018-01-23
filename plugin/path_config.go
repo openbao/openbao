@@ -15,7 +15,7 @@ type kerberosConfig struct {
 	ServiceAccount string `json:"service_account"`
 }
 
-func pathConfig(b *KerberosBackend) *framework.Path {
+func pathConfig(b *kerberosBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "config$",
 		Fields: map[string]*framework.FieldSchema{
@@ -39,9 +39,7 @@ func pathConfig(b *KerberosBackend) *framework.Path {
 	}
 }
 
-// TODO: lowercase kerberosBackend?
-func (b *KerberosBackend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// TODO: might not want this to be readable?
+func (b *kerberosBackend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if config, err := b.config(req.Storage); err != nil {
 		return nil, err
 	} else if config == nil {
@@ -56,7 +54,7 @@ func (b *KerberosBackend) pathConfigRead(req *logical.Request, data *framework.F
 	}
 }
 
-func (b *KerberosBackend) pathConfigWrite(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *kerberosBackend) pathConfigWrite(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	serviceAccount := data.Get("service_account").(string)
 	if serviceAccount == "" {
 		return nil, errors.New("data does not contain service_account")
@@ -95,6 +93,5 @@ func (b *KerberosBackend) pathConfigWrite(req *logical.Request, data *framework.
 
 const confHelpSynopsis = `Configures the Kerberos keytab and service account.`
 const confHelpDescription = `
-The ... blah blah blah.
-Needs to be base64 encoded, use output of base64 <vault.keytab>.
+The keytab must be base64 encoded, use the output of base64 <vault.keytab>.
 `

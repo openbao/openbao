@@ -10,7 +10,7 @@ const (
 	configPath string = "config"
 )
 
-type KerberosBackend struct {
+type kerberosBackend struct {
 	*framework.Backend
 }
 
@@ -22,8 +22,8 @@ func Factory(c *logical.BackendConfig) (logical.Backend, error) {
 	return b, nil
 }
 
-func Backend(c *logical.BackendConfig) *KerberosBackend {
-	b := &KerberosBackend{}
+func Backend(c *logical.BackendConfig) *kerberosBackend {
+	b := &kerberosBackend{}
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathRenew,
@@ -44,7 +44,7 @@ func Backend(c *logical.BackendConfig) *KerberosBackend {
 	return b
 }
 
-func (b *KerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
+func (b *kerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
 	raw, err := s.Get(configPath)
 	if err != nil {
 		return nil, err

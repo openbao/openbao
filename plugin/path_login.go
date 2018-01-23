@@ -3,18 +3,19 @@ package kerberosauth
 import (
 	"encoding/base64"
 	"errors"
-	"log"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 
+	"gopkg.in/jcmturner/gokrb5.v3/credentials"
 	"gopkg.in/jcmturner/gokrb5.v3/gssapi"
 	"gopkg.in/jcmturner/gokrb5.v3/keytab"
 	"gopkg.in/jcmturner/gokrb5.v3/service"
 )
 
-func pathLogin(b *KerberosBackend) *framework.Path {
+func pathLogin(b *kerberosBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
 		Fields: map[string]*framework.FieldSchema{
@@ -29,16 +30,8 @@ func pathLogin(b *KerberosBackend) *framework.Path {
 	}
 }
 
-func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	// TODO: move this in a function return parsed keytab
-	config, err := b.config(req.Storage)
-	if err != nil {
-		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("Could not load backend configuration")
-	}
-	binary, err := base64.StdEncoding.DecodeString(config.Keytab)
+func parseKeytab(stringKeytab string) (*keytab.Keytab, error) {
+	binary, err := base64.StdEncoding.DecodeString(stringKeytab)
 	if err != nil {
 		return nil, err
 	}
@@ -46,64 +39,74 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Kt version: %d", kt.Version)
-	log.Printf("Kt len: %d", len(kt.Entries))
-	for i, v := range kt.Entries {
-		log.Printf("Kt entry %d: Principal realm %s components %s", i, v.Principal.Realm, v.Principal.Components)
-		log.Printf("Kt entry %d: TS %s KVNO %d, Key type %d", i, v.Timestamp, v.KVNO, v.Key.KeyType)
-	}
+	return &kt, nil
+	/*
+		log.Printf("Kt version: %d", kt.Version)
+		log.Printf("Kt len: %d", len(kt.Entries))
+		for i, v := range kt.Entries {
+			log.Printf("Kt entry %d: Principal realm %s components %s", i, v.Principal.Realm, v.Principal.Components)
+			log.Printf("Kt entry %d: TS %s KVNO %d, Key type %d", i, v.Timestamp, v.KVNO, v.Key.KeyType)
+		}
+	*/
+}
 
-	// SPNEGOKRB5Authenticate
-	// TODO: move into function returning cred, err
-	authorization := d.Get("authorization").(string)
-	//s := strings.SplitN(r.Header.Get("Authorization"), " ", 2)
-	log.Println(authorization)
-	s := strings.SplitN(authorization, " ", 2)
-	if len(s) != 2 || s[0] != "Negotiate" {
-		return nil, errors.New("Invalid Authorization header")
-	}
-	binToken, err := base64.StdEncoding.DecodeString(s[1])
-	if err != nil {
-		// TODO: better error? how to combine errors? "Could not decode Authorization header"
-		return nil, err
-	}
-
+func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, remoteAddr string) (bool, *credentials.Credentials, error) {
 	var spnego gssapi.SPNEGO
-	err = spnego.Unmarshal(binToken)
-	if !spnego.Init {
-		//rejectSPNEGO(w, l, fmt.Sprintf("%v - SPNEGO negotiation token is not a NegTokenInit: %v", r.RemoteAddr, err))
-		log.Println(err)
-		return nil, errors.New("SPNEGO negotiation token is not a NegTokenInit")
+	err := spnego.Unmarshal(authorization)
+	if err != nil || !spnego.Init {
+		return false, nil, fmt.Errorf("SPNEGO negotiation token is not a NegTokenInit: %v", err)
 	}
 	if !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDKRB5) && !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDMSLegacyKRB5) {
-		return nil, errors.New("SPNEGO OID of MechToken is not of type KRB5")
+		return false, nil, errors.New("SPNEGO OID of MechToken is not of type KRB5")
 	}
 
 	var mt gssapi.MechToken
 	err = mt.Unmarshal(spnego.NegTokenInit.MechToken)
 	if err != nil {
-		//rejectSPNEGO(w, l, fmt.Sprintf("%v - SPNEGO error unmarshaling MechToken: %v", r.RemoteAddr, err))
-		return nil, errors.New("SPNEGO error unmarshaling MechToken")
+		return false, nil, fmt.Errorf("SPNEGO error unmarshaling MechToken: %v", err)
 	}
 	if !mt.IsAPReq() {
-		//rejectSPNEGO(w, l, fmt.Sprintf("%v - MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE", r.RemoteAddr))
-		return nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
+		return false, nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
 	}
 
-	// TODO: get remote addr somehow? is it even important?
-	remoteAddr := "wint-dev-vm169"
-	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, config.ServiceAccount, remoteAddr)
+	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr)
+	return ok, &creds, err
+}
+
+func (b *kerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	config, err := b.config(req.Storage)
+	if err != nil {
+		return nil, err
+	}
+	if config == nil {
+		return nil, errors.New("Could not load backend configuration")
+	}
+
+	kt, err := parseKeytab(config.Keytab)
+	if err != nil {
+		return nil, fmt.Errorf("Could not load keytab: %v", err)
+	}
+
+	authorizationString := d.Get("authorization").(string)
+	s := strings.SplitN(authorizationString, " ", 2)
+	if len(s) != 2 || s[0] != "Negotiate" {
+		return logical.ErrorResponse("Missing or invalid authorization"), nil
+	}
+	authorization, err := base64.StdEncoding.DecodeString(s[1])
+	if err != nil {
+		return nil, fmt.Errorf("Could not base64 decode authorization: %v", err)
+	}
+
+	ok, creds, err := spnegoKrb5Authenticate(*kt, config.ServiceAccount, authorization, req.Connection.RemoteAddr)
 	if !ok {
 		if err != nil {
 			return nil, err
 		} else {
-			return nil, errors.New("Kerberos authentication failed")
+			return logical.ErrorResponse("Kerberos authentication failed"), nil
 		}
 	}
 
-	// Use nicer error codes?
-	//return nil, logical.ErrPermissionDenied
-
+	// TODO: make this configurable?
 	ttl, _, err := b.SanitizeTTLStr("30s", "1h")
 	if err != nil {
 		return nil, err
@@ -111,19 +114,15 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 
 	return &logical.Response{
 		Auth: &logical.Auth{
-			// TODO: extra fields?
+			// TODO: review which fields we want in here
+			// TODO: fetch policies from ldap?
 			InternalData: map[string]interface{}{
 				"secret_value": "abcd1234",
 			},
 			Policies: []string{"my-policy", "other-policy"},
 			Metadata: map[string]string{
-				"fruit": "banana",
 				"user":  creds.Username,
-				// TODO: think about which ones we want here
-				"realm":      creds.Realm,
-				"cname":      creds.CName.GetPrincipalNameString(),
-				"auth_time":  creds.AuthTime().String(),
-				"session_id": creds.SessionID(),
+				"realm": creds.Realm,
 			},
 			LeaseOptions: logical.LeaseOptions{
 				TTL:       ttl,
@@ -133,7 +132,8 @@ func (b *KerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData
 	}, nil
 }
 
-func (b *KerberosBackend) pathRenew(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+// TODO: look at how other backends do renew
+func (b *kerberosBackend) pathRenew(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	if req.Auth == nil {
 		return nil, errors.New("request auth was nil")
 	}

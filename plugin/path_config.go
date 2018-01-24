@@ -1,4 +1,4 @@
-package kerberosauth
+package kerberos
 
 import (
 	"encoding/base64"

@@ -10,7 +10,7 @@ const (
 	configPath string = "config"
 )
 
-type kerberosBackend struct {
+type backend struct {
 	*framework.Backend
 }
 
@@ -22,8 +22,8 @@ func Factory(c *logical.BackendConfig) (logical.Backend, error) {
 	return b, nil
 }
 
-func Backend(c *logical.BackendConfig) *kerberosBackend {
-	b := &kerberosBackend{}
+func Backend(c *logical.BackendConfig) *backend {
+	b := &backend{}
 
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeCredential,
@@ -43,7 +43,7 @@ func Backend(c *logical.BackendConfig) *kerberosBackend {
 	return b
 }
 
-func (b *kerberosBackend) config(s logical.Storage) (*kerberosConfig, error) {
+func (b *backend) config(s logical.Storage) (*kerberosConfig, error) {
 	raw, err := s.Get(configPath)
 	if err != nil {
 		return nil, err

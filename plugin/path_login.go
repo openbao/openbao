@@ -15,7 +15,7 @@ import (
 	"gopkg.in/jcmturner/gokrb5.v3/service"
 )
 
-func pathLogin(b *kerberosBackend) *framework.Path {
+func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
 		Fields: map[string]*framework.FieldSchema{
@@ -65,7 +65,7 @@ func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, r
 	return ok, &creds, err
 }
 
-func (b *kerberosBackend) pathLogin(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config, err := b.config(req.Storage)
 	if err != nil {
 		return nil, err

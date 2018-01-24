@@ -15,7 +15,7 @@ type kerberosConfig struct {
 	ServiceAccount string `json:"service_account"`
 }
 
-func pathConfig(b *kerberosBackend) *framework.Path {
+func pathConfig(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "config$",
 		Fields: map[string]*framework.FieldSchema{
@@ -39,7 +39,7 @@ func pathConfig(b *kerberosBackend) *framework.Path {
 	}
 }
 
-func (b *kerberosBackend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if config, err := b.config(req.Storage); err != nil {
 		return nil, err
 	} else if config == nil {
@@ -54,7 +54,7 @@ func (b *kerberosBackend) pathConfigRead(req *logical.Request, data *framework.F
 	}
 }
 
-func (b *kerberosBackend) pathConfigWrite(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigWrite(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	serviceAccount := data.Get("service_account").(string)
 	if serviceAccount == "" {
 		return nil, errors.New("data does not contain service_account")

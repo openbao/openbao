@@ -1,3 +1,7 @@
 [[constraint]]
   name = "github.com/hashicorp/vault"
   version = "0.9.1"
+
+[[constraint]]
+  name = "github.com/go-ldap/ldap"
+  revision = "23c4ee25d1434f2231f92afaeebfbfa7900ebbb0"

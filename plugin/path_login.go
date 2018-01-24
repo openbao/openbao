@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/vault/helper/strutil"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 
@@ -79,6 +80,25 @@ func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logi
 		return nil, fmt.Errorf("Could not load keytab: %v", err)
 	}
 
+	ldapConfig, err := b.ConfigLdap(req)
+	if err != nil {
+		return nil, err
+	}
+	if ldapConfig == nil {
+		return nil, errors.New("ldap backend not configured")
+	}
+
+	ldapConnection, err := ldapConfig.DialLDAP()
+	if err != nil {
+		return nil, fmt.Errorf("Could not connect to LDAP: %v", err)
+	}
+	if ldapConnection == nil {
+		return nil, errors.New("invalid connection returned from LDAP dial")
+	}
+
+	// Clean ldap connection
+	defer ldapConnection.Close()
+
 	authorizationString := d.Get("authorization").(string)
 	s := strings.SplitN(authorizationString, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
@@ -98,10 +118,56 @@ func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logi
 		}
 	}
 
+	if len(ldapConfig.BindPassword) > 0 {
+		err = ldapConnection.Bind(ldapConfig.BindDN, ldapConfig.BindPassword)
+	} else {
+		err = ldapConnection.UnauthenticatedBind(ldapConfig.BindDN)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("LDAP bind failed: %v", err)
+	}
+
+	userBindDN, err := b.getUserBindDN(ldapConfig, ldapConnection, creds.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	if b.Logger().IsDebug() {
+		b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
+	}
+
+	userDN, err := b.getUserDN(ldapConfig, ldapConnection, userBindDN)
+	if err != nil {
+		return nil, err
+	}
+
+	ldapGroups, err := b.getLdapGroups(ldapConfig, ldapConnection, userDN, creds.Username)
+	if err != nil {
+		return nil, err
+	}
+	if b.Logger().IsDebug() {
+		b.Logger().Debug("auth/ldap: Groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
+	}
+
+	var allGroups []string
+	// Merge local and LDAP groups
+	allGroups = append(allGroups, ldapGroups...)
+
+	// Retrieve policies
+	var policies []string
+	for _, groupName := range allGroups {
+		group, err := b.Group(req.Storage, groupName)
+		if err == nil && group != nil {
+			policies = append(policies, group.Policies...)
+		}
+	}
+	// Policies from each group may overlap
+	policies = strutil.RemoveDuplicates(policies, true)
+
 	return &logical.Response{
 		Auth: &logical.Auth{
 			InternalData: map[string]interface{}{},
-			Policies:     []string{},
+			Policies:     policies,
 			Metadata: map[string]string{
 				"user":  creds.Username,
 				"realm": creds.Realm,

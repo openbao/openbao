@@ -35,7 +35,9 @@ func Backend(c *logical.BackendConfig) *backend {
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				pathConfig(b),
+				pathConfigLdap(b),
 				pathLogin(b),
+				pathGroups(b),
 			},
 		),
 	}

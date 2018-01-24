@@ -20,6 +20,11 @@
   version = "v1.0"
 
 [[projects]]
+  name = "github.com/go-ldap/ldap"
+  packages = ["."]
+  revision = "23c4ee25d1434f2231f92afaeebfbfa7900ebbb0"
+
+[[projects]]
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto","ptypes","ptypes/any","ptypes/duration","ptypes/timestamp"]
@@ -81,7 +86,7 @@
 
 [[projects]]
   name = "github.com/hashicorp/vault"
-  packages = ["api","helper/certutil","helper/compressutil","helper/consts","helper/errutil","helper/jsonutil","helper/logformat","helper/mlock","helper/parseutil","helper/pluginutil","helper/salt","helper/strutil","helper/wrapping","logical","logical/framework","logical/plugin"]
+  packages = ["api","helper/certutil","helper/compressutil","helper/consts","helper/errutil","helper/jsonutil","helper/logformat","helper/mlock","helper/parseutil","helper/pluginutil","helper/policyutil","helper/salt","helper/strutil","helper/tlsutil","helper/wrapping","logical","logical/framework","logical/plugin"]
   revision = "87b6919dea55da61d7cd444b2442cabb8ede8ab1"
   version = "v0.9.1"
 
@@ -90,6 +95,12 @@
   name = "github.com/hashicorp/yamux"
   packages = ["."]
   revision = "683f49123a33db61abfb241b7ac5e4af4dc54d55"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/jcmturner/gofork"
+  packages = ["encoding/asn1","x/crypto/pbkdf2"]
+  revision = "2aebee971930cd0dd525873330952ab7df5ac95c"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -153,6 +164,12 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/crypto"
+  packages = ["md4","pbkdf2"]
+  revision = "3d37316aaa6bd9929127ac9a527abf408178ea7b"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = ["context","http2","http2/hpack","idna","internal/timeseries","lex/httplex","trace"]
   revision = "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec"
@@ -181,9 +198,39 @@
   revision = "7cea4cc846bcf00cbb27595b07da5de875ef7de9"
   version = "v1.9.1"
 
+[[projects]]
+  name = "gopkg.in/asn1-ber.v1"
+  packages = ["."]
+  revision = "379148ca0225df7a432012b8df0355c2a2063ac0"
+  version = "v1.2"
+
+[[projects]]
+  name = "gopkg.in/jcmturner/aescts.v1"
+  packages = ["."]
+  revision = "f6abebb3171c4c1b1fea279cb7c7325020a26290"
+  version = "v1.0.1"
+
+[[projects]]
+  name = "gopkg.in/jcmturner/dnsutils.v1"
+  packages = ["."]
+  revision = "13eeb8d49ffb74d7a75784c35e4d900607a3943c"
+  version = "v1.0.1"
+
+[[projects]]
+  name = "gopkg.in/jcmturner/goidentity.v1"
+  packages = ["."]
+  revision = "ed90c3201df765bb27c3fbbb4ed37c43d1111aa8"
+  version = "v1.0.0"
+
+[[projects]]
+  name = "gopkg.in/jcmturner/gokrb5.v3"
+  packages = ["asn1tools","client","config","credentials","crypto","crypto/common","crypto/etype","crypto/rfc3961","crypto/rfc3962","crypto/rfc4757","crypto/rfc8009","gssapi","iana","iana/adtype","iana/asnAppTag","iana/chksumtype","iana/errorcode","iana/etypeID","iana/flags","iana/keyusage","iana/msgtype","iana/nametype","iana/patype","keytab","krberror","messages","mstypes","ndr","pac","service","types"]
+  revision = "f083a8756c5f2ec45187c4c73f29fe848e589cf8"
+  version = "v3.0.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7ef04668bc4046b2c921ed4418a8d978f55deb25f08503c8ad363ddfaab04e36"
+  inputs-digest = "73f7c60a3c81d69b1ba624db64d9d0c86c791b86becc7e592b6a6b5650f40174"
   solver-name = "gps-cdcl"
   solver-version = 1

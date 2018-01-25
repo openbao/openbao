@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -107,7 +108,7 @@ func TestLogger(t *testing.T) {
 		rest := str[dataIdx+1:]
 
 		// This test will break if you move this around, it's line dependent, just fyi
-		assert.Equal(t, "[INFO ] go-hclog/logger_test.go:100: test: this is test: who=programmer why=\"testing is fun\"\n", rest)
+		assert.Equal(t, "[INFO ] go-hclog/logger_test.go:101: test: this is test: who=programmer why=\"testing is fun\"\n", rest)
 	})
 
 	t.Run("prefixes the name", func(t *testing.T) {
@@ -132,6 +133,24 @@ func TestLogger(t *testing.T) {
 		dataIdx = strings.IndexByte(str, ' ')
 		rest = str[dataIdx+1:]
 		assert.Equal(t, "[INFO ] sublogger: this is test\n", rest)
+	})
+
+	t.Run("use a different time format", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		logger := New(&LoggerOptions{
+			Name:       "test",
+			Output:     &buf,
+			TimeFormat: time.Kitchen,
+		})
+
+		logger.Info("this is test", "who", "programmer", "why", "testing is fun")
+
+		str := buf.String()
+
+		dataIdx := strings.IndexByte(str, ' ')
+
+		assert.Equal(t, str[:dataIdx], time.Now().Format(time.Kitchen))
 	})
 }
 

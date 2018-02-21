@@ -5,11 +5,82 @@ This plugin allows for users to authenticate with Vault via Kerberos.
 
 ## Usage
 
-TODO
+### Authentication
+
+You can authenticate by posting a valid SPNEGO Negotiate header to /auth/kerberos/login.
+
+```python
+try:
+    import kerberos
+except:
+    import winkerberos as kerberos
+import requests
+
+service = "HTTP/vault.domain@YOUR-REALM.COM"
+rc, vc = kerberos.authGSSClientInit(service=service, mech_oid=kerberos.GSS_MECH_OID_SPNEGO)
+kerberos.authGSSClientStep(vc, "")
+kerberos_token = kerberos.authGSSClientResponse(vc)
+
+r = requests.post("https://vault.domain:8200/v1/auth/kerberos/login",
+                  json={'authorization': 'Negotiate ' + kerberos_token})
+print('Vault token:', r.json()['auth']['client_token'])
+```
+
+### Configuration
+
+1. Install and register the plugin.
+
+Put the plugin binary (`vault-plugin-auth-kerberos`) into a location of your choice. This directory
+will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
+in the Vault config used to start the server.
+
+```json
+...
+plugin_directory = "path/to/plugin/directory"
+...
+```
 
 ```sh
-$ vault auth-enable kerberos
+$ vault write sys/plugins/catalog/kerberos-auth-plugin sha_256="$(shasum -a 256 "vault-plugin-auth-kerberos" | cut -d " " -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
+```
+
+2. Enable the Kerberos auth method:
+
+```sh
+$ vault auth-enable -path=kerberos -plugin-name=kerberos-auth-plugin plugin
 Successfully enabled 'kerberos' at 'kerberos'!
+```
+
+3. Use the /config endpoint to configure Kerberos.
+
+Create a keytab for the kerberos plugin:
+```sh
+$ ktutil
+ktutil:  addent -password -p your_service_account@REALM.COM -e aes256-cts -k 1
+Password for your_service_account@REALM.COM:
+ktutil:  list -e
+slot KVNO Principal
+---- ---- ---------------------------------------------------------------------
+   1    1            your_service_account@REALM.COM (aes256-cts-hmac-sha1-96)
+ktutil:  wkt vault.keytab
+```
+
+Then base64 encode it:
+```sh
+base64 vault.keytab > vault.keytab.base64
+```
+
+```sh
+vault write auth/kerberos/config keytab=@vault.keytab.base64 service_account="your_service_account"
+```
+
+4. Optionally configure LDAP backend to look up Vault policies.
+Configuration for LDAP is identical to the [LDAP](https://www.vaultproject.io/docs/auth/ldap.html)
+auth method, but writing to to the Kerberos endpoint:
+
+```sh
+vault write auth/kerberos/config/ldap @vault-config/auth/ldap/config
+vault write auth/kerberos/groups/example-role @vault-config/auth/ldap/groups/example-role
 ```
 
 ## Developing

@@ -7,7 +7,7 @@ This plugin allows for users to authenticate with Vault via Kerberos.
 
 ### Authentication
 
-You can authenticate by posting a valid SPNEGO Negotiate header to /auth/kerberos/login.
+You can authenticate by posting a valid SPNEGO Negotiate header to `/v1/auth/kerberos/login`.
 
 ```python
 try:
@@ -41,7 +41,7 @@ plugin_directory = "path/to/plugin/directory"
 ```
 
 ```sh
-$ vault write sys/plugins/catalog/kerberos-auth-plugin sha_256="$(shasum -a 256 "vault-plugin-auth-kerberos" | cut -d " " -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
+$ vault write sys/plugins/catalog/kerberos-auth-plugin sha_256="$(shasum -a 256 'vault-plugin-auth-kerberos' | cut -d ' ' -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
 ```
 
 2. Enable the Kerberos auth method:

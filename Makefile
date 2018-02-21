@@ -43,7 +43,7 @@ testacc: fmtcheck generate
 # generate runs `go generate` to build the dynamically generated
 # source files.
 generate:
-	cd plugin && go generate $(go list ./plugin/... | grep -v /vendor/)
+	go generate $(go list ./... | grep -v /vendor/)
 
 # bootstrap the build by downloading additional tools
 bootstrap:

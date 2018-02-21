@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/vault/helper/pluginutil"
 	"github.com/hashicorp/vault/logical/plugin"
 
-	kerberosauth "stash.wcm-london.com/tpa/vault-plugin-auth-kerberos/plugin"
+	kerberosauth "github.com/wintoncode/vault-plugin-auth-kerberos/plugin"
 )
 
 func main() {

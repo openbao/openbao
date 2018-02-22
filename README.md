@@ -1,4 +1,5 @@
 # Vault Plugin: Kerberos Auth Backend
+[![Travis Build Status](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos.svg?branch=master)](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos)
 
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
 This plugin allows for users to authenticate with Vault via Kerberos.

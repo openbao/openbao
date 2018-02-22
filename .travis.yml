@@ -2,5 +2,5 @@ language: go
 go:
   - "1.10"
 
-install:
+before_install:
   - make bootstrap

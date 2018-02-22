@@ -1,0 +1,4 @@
+testuser1@TEST.GOKRB5	*
+*/admin@TEST.GOKRB5	*
+*/*@TEST.GOKRB5		i
+*@TEST.GOKRB5		i

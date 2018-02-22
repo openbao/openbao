@@ -1,0 +1,4 @@
+__ADMIN_USER__@__REALM__	*
+*/admin@__REALM__	*
+*/*@__REALM__		i
+*@__REALM__		i

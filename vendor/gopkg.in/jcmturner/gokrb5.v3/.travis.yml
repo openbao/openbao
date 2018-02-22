@@ -1,0 +1,43 @@
+language: go
+
+go:
+  - 1.7.x
+  - 1.8.x
+  - 1.9.x
+  - master
+
+go_import_path: gopkg.in/jcmturner/gokrb5.v3
+
+gobuild_args: -tags=integration -race
+
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - docker pull jcmturner/gokrb5:http
+  - docker pull jcmturner/gokrb5:dns
+  - docker pull jcmturner/gokrb5:kdc-centos-default
+  - docker pull jcmturner/gokrb5:kdc-resdom
+  - docker pull jcmturner/gokrb5:kdc-older
+  - docker pull jcmturner/gokrb5:kdc-latest
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -e "TEST_KDC_ADDR=127.0.0.1" -p 53:53 -p 53:53/udp --name dns jcmturner/gokrb5:dns
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 88:88 -p 88:88/udp --name krb5kdc jcmturner/gokrb5:kdc-centos-default
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 78:88 -p 78:88/udp --name krb5kdc-old jcmturner/gokrb5:kdc-older
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 98:88 -p 98:88/udp --name krb5kdc-latest jcmturner/gokrb5:kdc-latest
+  - docker run -d -h kdc.resdom.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 188:88 -p 188:88/udp --name krb5kdc-resdom jcmturner/gokrb5:kdc-resdom
+  - docker run -d --add-host host.test.gokrb5:127.0.0.88 -v /etc/localtime:/etc/localtime:ro -p 80:80 -p 443:443 --name gokrb5-http jcmturner/gokrb5:http
+
+before_script:
+  - sudo sed -i 's/nameserver .*/nameserver 127.0.0.1/g' /etc/resolv.conf
+
+env:
+  - TEST_KDC_ADDR=127.0.0.1 TEST_HTTP_URL="http://host.test.gokrb5/index.html" DNSUTILS_OVERRIDE_NS="127.0.0.1:53"
+
+addons:
+  hosts:
+    - host.test.gokrb5
+    - kdc.test.gokrb5
+    - kdc.resdom.gokrb5
+

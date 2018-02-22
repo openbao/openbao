@@ -1,0 +1,19 @@
+[Unit]
+Description=HTTPD
+After=docker.service
+After=network.target
+Requires=docker.service
+
+[Service]
+Environment="DOCKER_IMAGE=jcmturner/gokrb5:http"
+TimeoutStartSec=0
+#Restart=always
+ExecStartPre=-/usr/bin/docker kill %n
+ExecStartPre=-/usr/bin/docker rm %n
+ExecStartPre=-/usr/bin/docker pull ${DOCKER_IMAGE}
+ExecStart=/usr/bin/docker run --add-host host.test.gokrb5:10.80.88.88 -v /etc/localtime:/etc/localtime:ro -p 80:80 -p 443:443 --rm --name gokrb5-http ${DOCKER_IMAGE}
+ExecStop=/usr/bin/docker stop --time=60 %n
+ExecStopPost=-/usr/bin/docker rm %n
+
+[Install]
+WantedBy=multi-user.target

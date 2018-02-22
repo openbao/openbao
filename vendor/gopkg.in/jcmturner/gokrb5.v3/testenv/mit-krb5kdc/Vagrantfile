@@ -1,0 +1,12 @@
+Vagrant.configure("2") do |config|
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+    v.cpus = 1
+  end
+  config.vm.define "mitkrb5kdc", primary: true do |mitkrb5kdc|
+    mitkrb5kdc.vm.hostname = "kdc.test.gokrb5"
+    mitkrb5kdc.vm.box = "centos/7"
+    mitkrb5kdc.vm.network "private_network", ip: "10.80.88.88", netmask: "255.255.0.0"
+    mitkrb5kdc.vm.provision :shell, path: "bootstrap.sh"
+  end
+end

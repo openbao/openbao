@@ -1,0 +1,10 @@
+[Unit]
+Description=Kerberos 5 KDC
+After=syslog.target network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/sbin/krb5kdc 
+
+[Install]
+WantedBy=multi-user.target

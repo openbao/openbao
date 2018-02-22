@@ -4,3 +4,12 @@ go:
 
 before_install:
   - make bootstrap
+
+deploy:
+  provider: releases
+  api_key:
+    secure: "hSYihrRGZNCwdZQkmQoIlPHsUYewhaKJpui45vR8vYyUg3S1l2lGPTkIffA5VILZ/ozZiB/uynYNJlRxGG0+ZyZzZRsHEUS8dY/GpYHEjEvAMVJE/JkG4gKcXD7q9Tvwdik7huzzilAjbw4wAdkY3IiIXMQhpoPc3Dele7RTUdilpWzi3UtZyvrs0k0f2Gfovu2yXkkpXsC5Pwm17Pe0sGa+ilB1OlZ1lWrCA8zHtSBH+V4IztgKf1c7kPr5nWG8uLvMYmlun9l0/ahymh8SJyAOm0EHkhfZYCX/EG2JG0NYTAQJ88Ags+xbDWaoGtNo+R+yzAUG5PfcaAXKAj6I10Rsg6/ckCSFlliDtKi6qrV2+YmbnXchy97PqlJM0zZKWzpvncXlhJ46O3DoMm4L5btj9hCahagqfJpNEZ8olnLlVhzFTGBGPyQVvMudPXcFSDMHLGejNPxua5lq+LOlEH2gSezDc9Qzm96tpiYu1lKt8Ousz7lAin9BS/7+ES7W2Fx2I5cQ7965kxARGzyhHCQXOkGPrj/M6tW6qlec3AS6yM+oxTvQnKJPhbERaClio46NukUbIG4CZ+Hwi2jtb8tLQ6g1J7fbA2ac3faiw3MmZDNmGSW0DGaOUkv/EGuoHc5sTNR6fITYTbkH2g24G1iYnsg3kLNiseSkODJxySo="
+  file: "pkg/linux_amd64.zip"
+  skip_cleanup: true
+  on:
+    tags: true

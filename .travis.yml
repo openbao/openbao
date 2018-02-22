@@ -9,7 +9,10 @@ deploy:
   provider: releases
   api_key:
     secure: "qiqs1/o4tlQlps914Yz4soR0wiZzZPKlBQVlxLiX+6r7MneQe7PIY665eeWo1Akxi7cDVuisvHn1PU+zRf4yDVYQUhrW55pjBw39jyP7Ed+Pq7rlL7ieAl95xEcR/Pbmzd+iaezyN/qnUwhL6fzGwsapFi0anwdCD+5C0GGOiU14r8xPbz9zMtQPbU1DuBESfFb4EavOtAObrERWCALX7MT9yFdQ137Q4q47/tQVFrIabUBgb2b0tF5D9dbWZO2vQQRiCh1lFBz6nxCEcG/s/gqFmkJyz49DxgyCsYm4DRetgKgS2fBYuO3pjJWXqCzIUps0aGq2NlByOjK/NjspZy+QHIq1xxJriRSNYN9/LryZJ/UBOSXnIUZyb3qpe0pY0rJjCfXnZyg9bJhHCiXv6BosPLfBSLqONKoNK5s1KGRoaccRgq3+2YBaEewAwXGR3xbxv0i2eqwuc6xuBYMB3Av8ubMjMjI/4alUo4o2bbnD4gtMmTM/h/MZml08fxMUpj7VT+rw7jh2AzhIsJE6o2f7tOhcuJp3PwbdoM5yNU08bwqux/BbZMNShv8XmPXyHjrDUa5AOZzC+HsjEXwSNQcKlDFA2fqfobov0jPyWrbunnFq0/WQ/I1Y8cFcZHm7F8U+6VZqI3UEABcKlfXOvHvSpoRanC3lNobIJIplvh8="
-  file: "pkg/linux_amd64.zip"
+  file:
+    - "pkg/linux_amd64.zip"
+    - "pkg/darwin_amd64.zip"
+    - "pkg/windows_amd64.zip"
   skip_cleanup: true
   on:
     tags: true

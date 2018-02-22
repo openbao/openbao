@@ -4,6 +4,8 @@
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
 This plugin allows for users to authenticate with Vault via Kerberos.
 
+You can find binaries on the [Release page](https://github.com/wintoncode/vault-plugin-auth-kerberos/releases).
+
 ## Usage
 
 ### Authentication

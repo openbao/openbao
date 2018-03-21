@@ -97,10 +97,10 @@ openssl dgst -sha256 $GOPATH/vault-plugin-secrets-kv
 SHA256(.../go/bin/vault-plugin-secrets-kv)= 896c13c0f5305daed381952a128322e02bc28a57d0c862a78cbc2ea66e8c6fa1
 ```
 
-Enable the auth plugin backend using the Kubernetes auth plugin:
+Enable the auth plugin backend using the secrets enable plugin command:
 
 ```sh
-$ vault auth-enable -plugin-name='kv' plugin
+$ vault secrets enable -plugin-name='kv' plugin
 ...
 
 Successfully enabled 'plugin' at 'kv'!

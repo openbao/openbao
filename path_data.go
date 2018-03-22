@@ -49,8 +49,8 @@ version matches the version specified in the cas parameter.`,
 			logical.DeleteOperation: b.upgradeCheck(b.pathDataDelete()),
 		},
 
-		HelpSynopsis:    confHelpSyn,
-		HelpDescription: confHelpDesc,
+		HelpSynopsis:    dataHelpSyn,
+		HelpDescription: dataHelpDesc,
 	}
 }
 
@@ -393,6 +393,21 @@ func max(a, b uint32) uint32 {
 	return a
 }
 
-const dataHelpSyn = ``
+const dataHelpSyn = `Write, Read, and Delete data in the Key-Value Store.`
 const dataHelpDesc = `
+This path takes a key name and based on the opperation stores, retreives or
+deletes versions of data.
+
+If a write operation is used the endpoint takes an options object and a data
+object. The options object is used to pass some options to the write command and
+the data object is encrypted and stored in the storage backend. Each write
+operation for a key creates a new version and does not overwrite the previous
+data.
+
+A read operation will return the latest version for a key unless the "version"
+parameter is set, then it returns the version at that number.
+
+Delete operations are a soft delete. They will mark the latest version as
+deleted, but the underlying data will not be fully removed. Delete operations
+can be undone.
 `

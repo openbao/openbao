@@ -142,10 +142,15 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 	}
 }
 
-const deleteHelpSyn = ``
+const deleteHelpSyn = `Marks one or more versions as deleted in the KV store.`
 const deleteHelpDesc = `
+Deletes the data for the provided version and path in the key-value store. The
+versioned data will not be fully removed, but marked as deleted and will no
+longer be returned in normal get requests. This operation can be undone.
 `
 
-const undeleteHelpSyn = ``
+const undeleteHelpSyn = `Undeletes one or more versions from the KV store.`
 const undeleteHelpDesc = `
+Undeletes the data for the provided version and path in the key-value store.
+This restores the data, allowing it to be returned on get requests.
 `

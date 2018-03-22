@@ -95,6 +95,14 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 	}
 }
 
-const confHelpSyn = ``
+const confHelpSyn = `Configures settings for the KV store`
 const confHelpDesc = `
+This path configures backend level settings that are applied to every key in the
+key-value store. This parameter accetps:
+
+	* max_versions (int) - The number of versions to keep for each key. Defaults
+	  to 10
+    
+	* cas_required (bool) - If true, the backend will require the cas parameter
+	  to be set for each write
 `

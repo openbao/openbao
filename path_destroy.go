@@ -84,6 +84,8 @@ func (b *versionedKVBackend) pathDestroyWrite() framework.OperationFunc {
 	}
 }
 
-const destroyHelpSyn = ``
+const destroyHelpSyn = `Permanently removes one or more versions in the KV store`
 const destroyHelpDesc = `
+Permanently removes the specified version data for the provided key and version
+numbers from the key-value store.
 `

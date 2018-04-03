@@ -593,8 +593,6 @@ func (t FieldType) Zero() interface{} {
 		return []interface{}{}
 	case TypeStringSlice, TypeCommaStringSlice:
 		return []string{}
-	case TypeCommaIntSlice:
-		return []int{}
 	default:
 		panic("unknown type: " + t.String())
 	}

@@ -36,7 +36,7 @@ func (d *FieldData) Validate() error {
 		switch schema.Type {
 		case TypeBool, TypeInt, TypeMap, TypeDurationSecond, TypeString,
 			TypeNameString, TypeSlice, TypeStringSlice, TypeCommaStringSlice,
-			TypeKVPairs, TypeCommaIntSlice:
+			TypeKVPairs:
 			_, _, err := d.getPrimitive(field, schema)
 			if err != nil {
 				return fmt.Errorf("Error converting input %v for field %s: %s", value, field, err)
@@ -113,7 +113,7 @@ func (d *FieldData) GetOkErr(k string) (interface{}, bool, error) {
 	switch schema.Type {
 	case TypeBool, TypeInt, TypeMap, TypeDurationSecond, TypeString,
 		TypeNameString, TypeSlice, TypeStringSlice, TypeCommaStringSlice,
-		TypeKVPairs, TypeCommaIntSlice:
+		TypeKVPairs:
 		return d.getPrimitive(k, schema)
 	default:
 		return nil, false,
@@ -121,7 +121,8 @@ func (d *FieldData) GetOkErr(k string) (interface{}, bool, error) {
 	}
 }
 
-func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (interface{}, bool, error) {
+func (d *FieldData) getPrimitive(
+	k string, schema *FieldSchema) (interface{}, bool, error) {
 	raw, ok := d.Raw[k]
 	if !ok {
 		return nil, false, nil
@@ -205,22 +206,6 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (interface{}, bo
 			result = int(valInt64)
 		default:
 			return nil, false, fmt.Errorf("invalid input '%v'", raw)
-		}
-		return result, true, nil
-
-	case TypeCommaIntSlice:
-		var result []int
-		config := &mapstructure.DecoderConfig{
-			Result:           &result,
-			WeaklyTypedInput: true,
-			DecodeHook:       mapstructure.StringToSliceHookFunc(","),
-		}
-		decoder, err := mapstructure.NewDecoder(config)
-		if err != nil {
-			return nil, true, err
-		}
-		if err := decoder.Decode(raw); err != nil {
-			return nil, true, err
 		}
 		return result, true, nil
 

@@ -10,6 +10,7 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -233,6 +234,7 @@ func CleanupClients() {
 	}
 	managedClientsLock.Unlock()
 
+	log.Println("[DEBUG] plugin: waiting for all plugin processes to complete...")
 	wg.Wait()
 }
 

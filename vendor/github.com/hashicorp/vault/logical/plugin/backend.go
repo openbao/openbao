@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"net/rpc"
-	"sync/atomic"
 
 	"google.golang.org/grpc"
 
@@ -43,17 +42,10 @@ func (b BackendPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) err
 }
 
 func (p *BackendPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	ret := &backendGRPCPluginClient{
+	return &backendGRPCPluginClient{
 		client:     pb.NewBackendClient(c),
 		clientConn: c,
 		broker:     broker,
-		cleanupCh:  make(chan struct{}),
 		doneCtx:    ctx,
-	}
-
-	// Create the value and set the type
-	ret.server = new(atomic.Value)
-	ret.server.Store((*grpc.Server)(nil))
-
-	return ret, nil
+	}, nil
 }

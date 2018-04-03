@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"errors"
-	"sync/atomic"
 
 	"google.golang.org/grpc"
 
@@ -29,13 +28,8 @@ type backendGRPCPluginClient struct {
 	system logical.SystemView
 	logger log.Logger
 
-	// This is used to signal to the Cleanup function that it can proceed
-	// because we have a defined server
-	cleanupCh chan struct{}
-
 	// server is the grpc server used for serving storage and sysview requests.
-	server *atomic.Value
-
+	server *grpc.Server
 	// clientConn is the underlying grpc connection to the server, we store it
 	// so it can be cleaned up.
 	clientConn *grpc.ClientConn
@@ -145,16 +139,8 @@ func (b *backendGRPCPluginClient) Cleanup(ctx context.Context) {
 	defer cancel()
 
 	b.client.Cleanup(ctx, &pb.Empty{})
-
-	// This will block until Setup has run the function to create a new server
-	// in b.server. If we stop here before it has a chance to actually start
-	// listening, when it starts listening it will immediatley error out and
-	// exit, which is fine. Overall this ensures that we do not miss stopping
-	// the server if it ends up being created after Cleanup is called.
-	<-b.cleanupCh
-	server := b.server.Load()
-	if server != nil {
-		server.(*grpc.Server).GracefulStop()
+	if b.server != nil {
+		b.server.GracefulStop()
 	}
 	b.clientConn.Close()
 }
@@ -198,8 +184,7 @@ func (b *backendGRPCPluginClient) Setup(ctx context.Context, config *logical.Bac
 		s := grpc.NewServer(opts...)
 		pb.RegisterSystemViewServer(s, sysView)
 		pb.RegisterStorageServer(s, storage)
-		b.server.Store(s)
-		close(b.cleanupCh)
+		b.server = s
 		return s
 	}
 	brokerID := b.broker.NextId()

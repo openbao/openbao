@@ -119,16 +119,9 @@ func (b *kubeAuthBackend) pathLogin() framework.OperationFunc {
 				LeaseOptions: logical.LeaseOptions{
 					Renewable: true,
 					TTL:       role.TTL,
+					MaxTTL:    role.MaxTTL,
 				},
 			},
-		}
-
-		// If 'Period' is set, use the value of 'Period' as the TTL.
-		// Otherwise, set the normal TTL.
-		if role.Period > time.Duration(0) {
-			resp.Auth.TTL = role.Period
-		} else {
-			resp.Auth.TTL = role.TTL
 		}
 
 		return resp, nil
@@ -338,7 +331,11 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 			return &logical.Response{Auth: req.Auth}, nil
 		}
 
-		return framework.LeaseExtend(role.TTL, role.MaxTTL, b.System())(ctx, req, data)
+		resp := &logical.Response{Auth: req.Auth}
+		resp.Auth.TTL = role.TTL
+		resp.Auth.MaxTTL = role.MaxTTL
+		resp.Auth.Period = role.Period
+		return resp, nil
 	}
 }
 

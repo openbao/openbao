@@ -227,30 +227,6 @@
   revision = "8b799c424f57fa123fc63a99d6383bc6e4c02578"
 
 [[projects]]
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
-  version = "v0.0.9"
-
-[[projects]]
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
-  version = "v0.0.3"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
-
-[[projects]]
-  name = "github.com/mgutz/logxi"
-  packages = ["v1"]
-  revision = "aebf8a7d67ab4625e0fd4a665766fef9a709161b"
-  version = "v1"
-
-[[projects]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
@@ -427,6 +403,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "12ad14951d7e43fc23cc523a225166536e8193004d76e7780560ae704f3e20ab"
+  inputs-digest = "a69af5a76c28ebbd0b1a9adcdad48149c12ee59f167992d6581fe9269ccec8f3"
   solver-name = "gps-cdcl"
   solver-version = 1

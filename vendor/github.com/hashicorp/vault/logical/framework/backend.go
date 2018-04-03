@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/mgutz/logxi/v1"
+	log "github.com/hashicorp/go-hclog"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/helper/errutil"
-	"github.com/hashicorp/vault/helper/logformat"
+	"github.com/hashicorp/vault/helper/logging"
 	"github.com/hashicorp/vault/helper/parseutil"
 	"github.com/hashicorp/vault/logical"
 )
@@ -95,7 +95,7 @@ type periodicFunc func(context.Context, *logical.Request) error
 // OperationFunc is the callback called for an operation on a path.
 type OperationFunc func(context.Context, *logical.Request, *FieldData) (*logical.Response, error)
 
-// ExistenceFunc is the callback called for an existenc check on a path.
+// ExistenceFunc is the callback called for an existence check on a path.
 type ExistenceFunc func(context.Context, *logical.Request, *FieldData) (bool, error)
 
 // WALRollbackFunc is the callback for rollbacks.
@@ -255,7 +255,7 @@ func (b *Backend) Logger() log.Logger {
 		return b.logger
 	}
 
-	return logformat.NewVaultLoggerWithWriter(ioutil.Discard, log.LevelOff)
+	return logging.NewVaultLoggerWithWriter(ioutil.Discard, log.NoLevel)
 }
 
 // System returns the backend's system view.
@@ -291,24 +291,6 @@ func (b *Backend) SanitizeTTLStr(ttlStr, maxTTLStr string) (ttl, maxTTL time.Dur
 		}
 	}
 
-	ttl, maxTTL, err = b.SanitizeTTL(ttl, maxTTL)
-
-	return
-}
-
-// SanitizeTTL caps the boundaries of ttl and max_ttl values to the
-// backend mount's max_ttl value.
-func (b *Backend) SanitizeTTL(ttl, maxTTL time.Duration) (time.Duration, time.Duration, error) {
-	sysMaxTTL := b.System().MaxLeaseTTL()
-	if ttl > sysMaxTTL {
-		return 0, 0, fmt.Errorf("\"ttl\" value must be less than allowed max lease TTL value '%s'", sysMaxTTL.String())
-	}
-	if maxTTL > sysMaxTTL {
-		return 0, 0, fmt.Errorf("\"max_ttl\" value must be less than allowed max lease TTL value '%s'", sysMaxTTL.String())
-	}
-	if ttl > maxTTL && maxTTL != 0 {
-		ttl = maxTTL
-	}
 	return ttl, maxTTL, nil
 }
 
@@ -593,6 +575,8 @@ func (t FieldType) Zero() interface{} {
 		return []interface{}{}
 	case TypeStringSlice, TypeCommaStringSlice:
 		return []string{}
+	case TypeCommaIntSlice:
+		return []int{}
 	default:
 		panic("unknown type: " + t.String())
 	}

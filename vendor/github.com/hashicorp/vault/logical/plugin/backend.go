@@ -3,12 +3,12 @@ package plugin
 import (
 	"context"
 	"net/rpc"
+	"sync/atomic"
 
 	"google.golang.org/grpc"
 
-	hclog "github.com/hashicorp/go-hclog"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/helper/logbridge"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/plugin/pb"
 )
@@ -17,12 +17,18 @@ import (
 type BackendPlugin struct {
 	Factory      logical.Factory
 	metadataMode bool
-	Logger       hclog.Logger
+	Logger       log.Logger
 }
 
 // Server gets called when on plugin.Serve()
 func (b *BackendPlugin) Server(broker *plugin.MuxBroker) (interface{}, error) {
-	return &backendPluginServer{factory: b.Factory, broker: broker}, nil
+	return &backendPluginServer{
+		factory: b.Factory,
+		broker:  broker,
+		// We pass the logger down into the backend so go-plugin will forward
+		// logs for us.
+		logger: b.Logger,
+	}, nil
 }
 
 // Client gets called on plugin.NewClient()
@@ -36,16 +42,23 @@ func (b BackendPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) err
 		factory: b.Factory,
 		// We pass the logger down into the backend so go-plugin will forward
 		// logs for us.
-		logger: logbridge.NewLogger(b.Logger).LogxiLogger(),
+		logger: b.Logger,
 	})
 	return nil
 }
 
 func (p *BackendPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &backendGRPCPluginClient{
+	ret := &backendGRPCPluginClient{
 		client:     pb.NewBackendClient(c),
 		clientConn: c,
 		broker:     broker,
+		cleanupCh:  make(chan struct{}),
 		doneCtx:    ctx,
-	}, nil
+	}
+
+	// Create the value and set the type
+	ret.server = new(atomic.Value)
+	ret.server.Store((*grpc.Server)(nil))
+
+	return ret, nil
 }

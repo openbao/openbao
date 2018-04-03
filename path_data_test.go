@@ -26,6 +26,9 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 
+	// Wait for the upgrade to finish
+	time.Sleep(time.Second)
+
 	return b, config.StorageView
 }
 

@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/SermoDigital/jose/crypto"
 	"github.com/SermoDigital/jose/jws"
@@ -320,15 +319,6 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 		}
 		if role == nil {
 			return nil, fmt.Errorf("role %s does not exist during renewal", roleName)
-		}
-
-		// If 'Period' is set on the Role, the token should never expire.
-		// Replenish the TTL with 'Period's value.
-		if role.Period > time.Duration(0) {
-			// If 'Period' was updated after the token was issued,
-			// token will bear the updated 'Period' value as its TTL.
-			req.Auth.TTL = role.Period
-			return &logical.Response{Auth: req.Auth}, nil
 		}
 
 		resp := &logical.Response{Auth: req.Auth}

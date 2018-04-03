@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/logformat"
+	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/helper/logging"
 	"github.com/hashicorp/vault/logical"
-	log "github.com/mgutz/logxi/v1"
 )
 
 func TestVersionedKV_Upgrade(t *testing.T) {
@@ -35,7 +35,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	config := &logical.BackendConfig{
-		Logger:      logformat.NewVaultLogger(log.LevelTrace),
+		Logger:      logging.NewVaultLogger(log.Trace),
 		System:      &logical.StaticSystemView{},
 		StorageView: storage,
 		BackendUUID: "test",

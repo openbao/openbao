@@ -3,8 +3,7 @@ package main
 import (
 	"os"
 
-	log "github.com/mgutz/logxi/v1"
-
+	hclog "github.com/hashicorp/go-hclog"
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/hashicorp/vault/helper/pluginutil"
 	"github.com/hashicorp/vault/logical/plugin"
@@ -23,7 +22,9 @@ func main() {
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		log.Error("plugin shutting down", "error", err)
+		logger := hclog.New(&hclog.LoggerOptions{})
+
+		logger.Error("plugin shutting down", "error", err)
 		os.Exit(1)
 	}
 }

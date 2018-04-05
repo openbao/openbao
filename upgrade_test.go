@@ -59,7 +59,7 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
-	if resp == nil || resp.Error().Error() != "Can not handle request while upgrade is in process" {
+	if resp == nil || resp.Error().Error() != "Uprading from non-versioned to versioned data. This backend will be unavailable for a brief period and will resume service shortly." {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 

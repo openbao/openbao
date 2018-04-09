@@ -40,8 +40,8 @@ func TestVersionedKV_Upgrade(t *testing.T) {
 		StorageView: storage,
 		BackendUUID: "test",
 		Config: map[string]string{
-			"versioned": "true",
-			"upgrade":   "true",
+			"version": "2",
+			"upgrade": "true",
 		},
 	}
 

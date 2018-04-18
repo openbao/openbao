@@ -38,6 +38,7 @@ func Backend(c *logical.BackendConfig) *backend {
 				pathConfigLdap(b),
 				pathLogin(b),
 				pathGroups(b),
+				pathGroupsList(b),
 			},
 		),
 	}

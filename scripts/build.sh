@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TOOL=vault-plugin-auth-kubernetes
+TOOL=vault-plugin-auth-kerberos
 #
 # This script builds the application from source for multiple platforms.
 set -e

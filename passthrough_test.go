@@ -11,6 +11,20 @@ import (
 	"github.com/hashicorp/vault/logical"
 )
 
+func testPassthroughBackendWithStorage() (logical.Backend, logical.Storage) {
+	storage := &logical.InmemStorage{}
+	b, _ := PassthroughBackendFactory(context.Background(), &logical.BackendConfig{
+		Logger: nil,
+		System: logical.StaticSystemView{
+			DefaultLeaseTTLVal: time.Hour * 24,
+			MaxLeaseTTLVal:     time.Hour * 24 * 32,
+		},
+		StorageView: storage,
+	})
+
+	return b, storage
+}
+
 func TestPassthroughBackend_RootPaths(t *testing.T) {
 	b := testPassthroughBackend()
 	test := func(b logical.Backend) {

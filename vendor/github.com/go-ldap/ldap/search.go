@@ -1,3 +1,7 @@
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+//
 // File contains Search functionality
 //
 // https://tools.ietf.org/html/rfc4511
@@ -375,7 +379,7 @@ func (l *Conn) Search(searchRequest *SearchRequest) (*SearchResult, error) {
 	}
 	packet.AppendChild(encodedSearchRequest)
 	// encode search controls
-	if len(searchRequest.Controls) > 0 {
+	if searchRequest.Controls != nil {
 		packet.AppendChild(encodeControls(searchRequest.Controls))
 	}
 

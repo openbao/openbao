@@ -1,7 +1,27 @@
 [[constraint]]
-  name = "github.com/hashicorp/vault"
-  version = "0.9.1"
+  name = "github.com/fatih/structs"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/go-ldap/ldap"
-  revision = "23c4ee25d1434f2231f92afaeebfbfa7900ebbb0"
+  version = "2.5.1"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-multierror"
+
+[[constraint]]
+  name = "github.com/hashicorp/vault"
+  version = "0.10.0"
+
+[[constraint]]
+  name = "github.com/mgutz/logxi"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "gopkg.in/jcmturner/gokrb5.v4"
+  version = "4.1.2"
+
+[prune]
+  go-tests = true
+  unused-packages = true

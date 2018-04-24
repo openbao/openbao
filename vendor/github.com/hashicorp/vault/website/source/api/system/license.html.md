@@ -27,7 +27,7 @@ This endpoint returns information about the currently installed license.
 ```
 $ curl \
     --header "X-Vault-Token: ..." \
-    https://vault.rocks/v1/sys/license
+    http://127.0.0.1:8200/v1/sys/license
 ```
 
 ### Sample Response
@@ -59,6 +59,15 @@ This endpoint is used to install a license into Vault.
 | :------- | :--------------------------- | :--------------------- |
 | `PUT`    | `/sys/license`                | `204 (empty body)` |
 
+### Parameters
+
+- `text` `(string: <required>)` – The text of the license.
+
+*DR Secondary Specific Parameters*
+
+  - `dr_operation_token` `(string: <required>)` - DR operation token used to authorize this request.
+
+
 ### Sample Payload
 
 ```json
@@ -74,5 +83,5 @@ $ curl \
     --header "X-Vault-Token: ..." \
     --request PUT \
     --data @payload.json \
-    https://vault.rocks/v1/sys/license
+    http://127.0.0.1:8200/v1/sys/license
 ```

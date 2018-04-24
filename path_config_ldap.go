@@ -1,6 +1,7 @@
 package kerberos
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -12,11 +13,11 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/go-ldap/ldap"
+	log "github.com/hashicorp/go-hclog"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/helper/tlsutil"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
-	log "github.com/mgutz/logxi/v1"
 )
 
 func pathConfigLdap(b *backend) *framework.Path {
@@ -129,7 +130,7 @@ Default: cn`,
 /*
  * Construct ConfigEntry struct using stored configuration.
  */
-func (b *backend) ConfigLdap(req *logical.Request) (*ConfigEntry, error) {
+func (b *backend) ConfigLdap(ctx context.Context, req *logical.Request) (*ConfigEntry, error) {
 	// Schema for ConfigEntry
 	fd, err := b.getConfigFieldData()
 	if err != nil {
@@ -142,7 +143,7 @@ func (b *backend) ConfigLdap(req *logical.Request) (*ConfigEntry, error) {
 		return nil, err
 	}
 
-	storedConfig, err := req.Storage.Get("config/ldap")
+	storedConfig, err := req.Storage.Get(ctx, "config/ldap")
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +164,8 @@ func (b *backend) ConfigLdap(req *logical.Request) (*ConfigEntry, error) {
 	return result, nil
 }
 
-func (b *backend) pathConfigLdapRead( /*ctx context.Context, */ req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	cfg, err := b.ConfigLdap(req)
+func (b *backend) pathConfigLdapRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	cfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +288,7 @@ func (b *backend) newConfigEntry(d *framework.FieldData) (*ConfigEntry, error) {
 	return cfg, nil
 }
 
-func (b *backend) pathConfigLdapWrite( /*ctx context.Context, */ req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	// Build a ConfigEntry struct out of the supplied FieldData
 	cfg, err := b.newConfigEntry(d)
 	if err != nil {
@@ -298,7 +299,7 @@ func (b *backend) pathConfigLdapWrite( /*ctx context.Context, */ req *logical.Re
 	if err != nil {
 		return nil, err
 	}
-	if err := req.Storage.Put(entry); err != nil {
+	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
 

@@ -26,8 +26,7 @@
 [[projects]]
   name = "github.com/go-ldap/ldap"
   packages = ["."]
-  revision = "bb7a9ca6e4fbc2129e3db588a34bc970ffe811a9"
-  version = "v2.5.1"
+  revision = "0776dae456c9f852c74287dfa8475c16401ac9a9"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -158,30 +157,6 @@
     "x/crypto/pbkdf2"
   ]
   revision = "2aebee971930cd0dd525873330952ab7df5ac95c"
-
-[[projects]]
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
-  version = "v0.0.9"
-
-[[projects]]
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
-  version = "v0.0.3"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
-
-[[projects]]
-  name = "github.com/mgutz/logxi"
-  packages = ["v1"]
-  revision = "aebf8a7d67ab4625e0fd4a665766fef9a709161b"
-  version = "v1"
 
 [[projects]]
   branch = "master"
@@ -370,6 +345,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4b2958c3616d678ecf5e2212414ab5c02cfe6cfd8e9f1a3428c99fe568ecb526"
+  inputs-digest = "ce5dc9dd3785b790858c412ce66e0c313b6dec9f2c7f9e704bae39c6ca2f6efb"
   solver-name = "gps-cdcl"
   solver-version = 1

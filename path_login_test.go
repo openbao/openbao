@@ -1,6 +1,7 @@
 package kerberos
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -22,7 +23,7 @@ func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
@@ -44,7 +45,7 @@ func TestLogin(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || resp == nil {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}

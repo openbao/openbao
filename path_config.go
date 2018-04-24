@@ -1,6 +1,7 @@
 package kerberos
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -39,8 +40,8 @@ func pathConfig(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if config, err := b.config(req.Storage); err != nil {
+func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	if config, err := b.config(ctx, req.Storage); err != nil {
 		return nil, err
 	} else if config == nil {
 		return nil, nil
@@ -54,7 +55,7 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 	}
 }
 
-func (b *backend) pathConfigWrite(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	serviceAccount := data.Get("service_account").(string)
 	if serviceAccount == "" {
 		return nil, errors.New("data does not contain service_account")
@@ -85,7 +86,7 @@ func (b *backend) pathConfigWrite(req *logical.Request, data *framework.FieldDat
 		return nil, err
 	}
 
-	if err := req.Storage.Put(entry); err != nil {
+	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
 	return nil, nil

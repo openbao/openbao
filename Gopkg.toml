@@ -4,7 +4,7 @@
 
 [[constraint]]
   name = "github.com/go-ldap/ldap"
-  version = "2.5.1"
+  revision = "0776dae456c9f852c74287dfa8475c16401ac9a9"
 
 [[constraint]]
   branch = "master"
@@ -13,10 +13,6 @@
 [[constraint]]
   name = "github.com/hashicorp/vault"
   version = "0.10.0"
-
-[[constraint]]
-  name = "github.com/mgutz/logxi"
-  version = "1.0.0"
 
 [[constraint]]
   name = "gopkg.in/jcmturner/gokrb5.v4"

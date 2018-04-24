@@ -1,14 +1,13 @@
 package kerberos
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/logformat"
 	"github.com/hashicorp/vault/logical"
-	"github.com/mgutz/logxi/v1"
 )
 
 func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
@@ -16,7 +15,7 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	maxLeaseTTLVal := time.Hour * 24
 
 	config := &logical.BackendConfig{
-		Logger: logformat.NewVaultLogger(log.LevelTrace),
+		Logger: nil,
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: defaultLeaseTTLVal,
 			MaxLeaseTTLVal:     maxLeaseTTLVal,
@@ -24,8 +23,8 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		StorageView: &logical.InmemStorage{},
 	}
 
-	b := Backend(config)
-	err := b.Setup(config)
+	b := Backend()
+	err := b.Setup(context.Background(), config)
 	if err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
@@ -48,7 +47,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
@@ -60,7 +59,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		Data:      nil,
 	}
 
-	resp, err = b.HandleRequest(req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
@@ -102,7 +101,7 @@ func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Stora
 		Data:      data,
 	}
 
-	_, err := b.HandleRequest(req)
+	_, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -1,10 +1,11 @@
 package physical
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
-	log "github.com/mgutz/logxi/v1"
+	log "github.com/hashicorp/go-hclog"
 )
 
 const (
@@ -27,12 +28,16 @@ type TransactionalLatencyInjector struct {
 	Transactional
 }
 
+// Verify LatencyInjector satisfies the correct interfaces
+var _ Backend = (*LatencyInjector)(nil)
+var _ Transactional = (*TransactionalLatencyInjector)(nil)
+
 // NewLatencyInjector returns a wrapped physical backend to simulate latency
 func NewLatencyInjector(b Backend, latency time.Duration, jitter int, logger log.Logger) *LatencyInjector {
 	if jitter < 0 || jitter > 100 {
 		jitter = DefaultJitterPercent
 	}
-	logger.Info("physical/latency: creating latency injector")
+	logger.Info("creating latency injector")
 
 	return &LatencyInjector{
 		backend:       b,
@@ -60,31 +65,31 @@ func (l *LatencyInjector) addLatency() {
 }
 
 // Put is a latent put request
-func (l *LatencyInjector) Put(entry *Entry) error {
+func (l *LatencyInjector) Put(ctx context.Context, entry *Entry) error {
 	l.addLatency()
-	return l.backend.Put(entry)
+	return l.backend.Put(ctx, entry)
 }
 
 // Get is a latent get request
-func (l *LatencyInjector) Get(key string) (*Entry, error) {
+func (l *LatencyInjector) Get(ctx context.Context, key string) (*Entry, error) {
 	l.addLatency()
-	return l.backend.Get(key)
+	return l.backend.Get(ctx, key)
 }
 
 // Delete is a latent delete request
-func (l *LatencyInjector) Delete(key string) error {
+func (l *LatencyInjector) Delete(ctx context.Context, key string) error {
 	l.addLatency()
-	return l.backend.Delete(key)
+	return l.backend.Delete(ctx, key)
 }
 
 // List is a latent list request
-func (l *LatencyInjector) List(prefix string) ([]string, error) {
+func (l *LatencyInjector) List(ctx context.Context, prefix string) ([]string, error) {
 	l.addLatency()
-	return l.backend.List(prefix)
+	return l.backend.List(ctx, prefix)
 }
 
 // Transaction is a latent transaction request
-func (l *TransactionalLatencyInjector) Transaction(txns []*TxnEntry) error {
+func (l *TransactionalLatencyInjector) Transaction(ctx context.Context, txns []*TxnEntry) error {
 	l.addLatency()
-	return l.Transactional.Transaction(txns)
+	return l.Transactional.Transaction(ctx, txns)
 }

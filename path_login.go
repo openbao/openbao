@@ -1,6 +1,7 @@
 package kerberos
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -10,10 +11,10 @@ import (
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 
-	"gopkg.in/jcmturner/gokrb5.v3/credentials"
-	"gopkg.in/jcmturner/gokrb5.v3/gssapi"
-	"gopkg.in/jcmturner/gokrb5.v3/keytab"
-	"gopkg.in/jcmturner/gokrb5.v3/service"
+	"gopkg.in/jcmturner/gokrb5.v4/credentials"
+	"gopkg.in/jcmturner/gokrb5.v4/gssapi"
+	"gopkg.in/jcmturner/gokrb5.v4/keytab"
+	"gopkg.in/jcmturner/gokrb5.v4/service"
 )
 
 func pathLogin(b *backend) *framework.Path {
@@ -62,12 +63,12 @@ func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, r
 		return false, nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
 	}
 
-	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr)
+	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr, false)
 	return ok, &creds, err
 }
 
-func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	config, err := b.config(req.Storage)
+func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	config, err := b.config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logi
 		return nil, fmt.Errorf("Could not load keytab: %v", err)
 	}
 
-	ldapConfig, err := b.ConfigLdap(req)
+	ldapConfig, err := b.ConfigLdap(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +157,7 @@ func (b *backend) pathLogin(req *logical.Request, d *framework.FieldData) (*logi
 	// Retrieve policies
 	var policies []string
 	for _, groupName := range allGroups {
-		group, err := b.Group(req.Storage, groupName)
+		group, err := b.Group(ctx, req.Storage, groupName)
 		if err == nil && group != nil {
 			policies = append(policies, group.Policies...)
 		}

@@ -1,6 +1,7 @@
 package kerberos
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
@@ -14,15 +15,15 @@ type backend struct {
 	*framework.Backend
 }
 
-func Factory(c *logical.BackendConfig) (logical.Backend, error) {
-	b := Backend(c)
-	if err := b.Setup(c); err != nil {
+func Factory(ctx context.Context, c *logical.BackendConfig) (logical.Backend, error) {
+	b := Backend()
+	if err := b.Setup(ctx, c); err != nil {
 		return nil, err
 	}
 	return b, nil
 }
 
-func Backend(c *logical.BackendConfig) *backend {
+func Backend() *backend {
 	b := &backend{}
 
 	b.Backend = &framework.Backend{
@@ -46,8 +47,8 @@ func Backend(c *logical.BackendConfig) *backend {
 	return b
 }
 
-func (b *backend) config(s logical.Storage) (*kerberosConfig, error) {
-	raw, err := s.Get(configPath)
+func (b *backend) config(ctx context.Context, s logical.Storage) (*kerberosConfig, error) {
+	raw, err := s.Get(ctx, configPath)
 	if err != nil {
 		return nil, err
 	}

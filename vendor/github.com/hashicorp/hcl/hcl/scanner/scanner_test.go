@@ -531,6 +531,9 @@ func TestError(t *testing.T) {
 	testError(t, `"${abc`+"\n", "2:1", "literal not terminated", token.STRING)
 	testError(t, `/*/`, "1:4", "comment not terminated", token.COMMENT)
 	testError(t, `/foo`, "1:1", "expected '/' for comment", token.COMMENT)
+
+	testError(t, "<<\nfoo\n\n", "1:3", "zero-length heredoc anchor", token.HEREDOC)
+	testError(t, "<<-\nfoo\n\n", "1:4", "zero-length heredoc anchor", token.HEREDOC)
 }
 
 func testError(t *testing.T, src, pos, msg string, tok token.Type) {
@@ -593,6 +596,33 @@ func countNewlines(s string) int {
 	return n
 }
 
+func TestScanDigitsUnread(t *testing.T) {
+	cases := []string{
+		"M=0\"\\00",
+		"M=\"\\00",
+		"\"\\00",
+		"M=[\"\\00",
+		"U{\"\\00",
+		"\"\n{}#\n\"\\00",
+		"M=[[\"\\00",
+		"U{d=0\"\\U00",
+		"#\n\"\\x00",
+		"m=[[[\"\\00",
+	}
+
+	for _, c := range cases {
+		s := New([]byte(c))
+
+		for {
+			tok := s.Scan()
+			if tok.Type == token.EOF {
+				break
+			}
+			t.Logf("s.Scan() = %s", tok)
+		}
+	}
+}
+
 func TestScanHeredocRegexpCompile(t *testing.T) {
 	cases := []string{
 		"0\xe1\n<<ȸ\nhello\nworld\nȸ",
@@ -600,7 +630,6 @@ func TestScanHeredocRegexpCompile(t *testing.T) {
 
 	for _, c := range cases {
 		s := New([]byte(c))
-		fmt.Printf("START %q\n", c)
 
 		for {
 			tok := s.Scan()

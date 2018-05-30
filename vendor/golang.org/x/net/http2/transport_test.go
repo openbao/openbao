@@ -145,9 +145,10 @@ func TestTransport(t *testing.T) {
 		t.Errorf("Status = %q; want %q", g, w)
 	}
 	wantHeader := http.Header{
-		"Content-Length": []string{"3"},
-		"Content-Type":   []string{"text/plain; charset=utf-8"},
-		"Date":           []string{"XXX"}, // see cleanDate
+		"Content-Length":         []string{"3"},
+		"X-Content-Type-Options": []string{"nosniff"},
+		"Content-Type":           []string{"text/plain; charset=utf-8"},
+		"Date":                   []string{"XXX"}, // see cleanDate
 	}
 	cleanDate(res)
 	if !reflect.DeepEqual(res.Header, wantHeader) {
@@ -2394,11 +2395,12 @@ func TestTransportHandlerBodyClose(t *testing.T) {
 	}
 	tr.CloseIdleConnections()
 
-	gd := runtime.NumGoroutine() - g0
-	if gd > numReq/2 {
+	if !waitCondition(5*time.Second, 100*time.Millisecond, func() bool {
+		gd := runtime.NumGoroutine() - g0
+		return gd < numReq/2
+	}) {
 		t.Errorf("appeared to leak goroutines")
 	}
-
 }
 
 // https://golang.org/issue/15930

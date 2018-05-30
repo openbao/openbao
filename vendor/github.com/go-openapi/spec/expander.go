@@ -491,7 +491,7 @@ func ExpandSpec(spec *Swagger, options *ExpandOptions) error {
 		for key, definition := range spec.Definitions {
 			var def *Schema
 			var err error
-			if def, err = expandSchema(definition, []string{fmt.Sprintf("#/defintions/%s", key)}, resolver, specBasePath); shouldStopOnError(err, resolver.options) {
+			if def, err = expandSchema(definition, []string{fmt.Sprintf("#/definitions/%s", key)}, resolver, specBasePath); shouldStopOnError(err, resolver.options) {
 				return err
 			}
 			if def != nil {

@@ -433,7 +433,7 @@ func (s *Scanner) scanHeredoc() {
 
 	// Read the identifier
 	identBytes := s.src[offs : s.srcPos.Offset-s.lastCharLen]
-	if len(identBytes) == 0 {
+	if len(identBytes) == 0 || (len(identBytes) == 1 && identBytes[0] == '-') {
 		s.err("zero-length heredoc anchor")
 		return
 	}

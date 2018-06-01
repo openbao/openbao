@@ -66,6 +66,7 @@ func (b *kubeAuthBackend) pathConfigRead() framework.OperationFunc {
 					"kubernetes_host":    config.Host,
 					"kubernetes_ca_cert": config.CACert,
 					"pem_keys":           config.PEMKeys,
+					"token_reviewer_jwt": config.TokenReviewerJWT,
 				},
 			}
 

@@ -199,6 +199,7 @@
   packages = [
     "api",
     "helper/certutil",
+    "helper/cidrutil",
     "helper/compressutil",
     "helper/consts",
     "helper/errutil",
@@ -417,6 +418,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2960eddfc4173670edc561e40b75f99f865fdc7a43dbbf1873e74f798a865472"
+  inputs-digest = "39d822e147bf9ecb75a1f555283d058805001e89f606b736a08c4c1040cae677"
   solver-name = "gps-cdcl"
   solver-version = 1

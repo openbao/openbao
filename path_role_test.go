@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/helper/logging"
 	"github.com/hashicorp/vault/logical"
 )
@@ -51,9 +52,10 @@ func TestPath_Create(t *testing.T) {
 		Period:                   3 * time.Second,
 		ServiceAccountNames:      []string{"name"},
 		ServiceAccountNamespaces: []string{"namespace"},
-		TTL:     1 * time.Second,
-		MaxTTL:  5 * time.Second,
-		NumUses: 12,
+		TTL:        1 * time.Second,
+		MaxTTL:     5 * time.Second,
+		NumUses:    12,
+		BoundCIDRs: []*sockaddr.SockAddrMarshaler{},
 	}
 
 	req := &logical.Request{
@@ -204,6 +206,7 @@ func TestPath_Read(t *testing.T) {
 		"ttl":                              time.Duration(1),
 		"num_uses":                         12,
 		"max_ttl":                          time.Duration(5),
+		"bound_cidrs":                      []*sockaddr.SockAddrMarshaler{},
 	}
 
 	req := &logical.Request{

@@ -23,7 +23,7 @@ JWE is currently unimplemented.
 The docs can be found at [godoc.org] [docs], as usual.
 
 A gopkg.in mirror can be found at https://gopkg.in/jose.v1, thanks to
-@zia-newversion. (For context, see #30.) 
+@zia-newversion. (For context, see issue #30.) 
 
 ### [JWS RFC][jws]
 ### [JWE RFC][jwe]

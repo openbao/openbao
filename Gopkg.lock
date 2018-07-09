@@ -25,6 +25,12 @@
   version = "v2.0.0"
 
 [[projects]]
+  name = "github.com/go-test/deep"
+  packages = ["."]
+  revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
+  version = "v1.0.1"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -58,7 +64,7 @@
   branch = "master"
   name = "github.com/hashicorp/go-hclog"
   packages = ["."]
-  revision = "69ff559dc25f3b435631604f573a5fa1efdb6433"
+  revision = "ff2cf002a8dd750586d91dddd4470c341f981fe1"
 
 [[projects]]
   branch = "master"
@@ -163,7 +169,7 @@
     "physical/inmem",
     "version"
   ]
-  revision = "c8ab530f8a42bd89debfa7e186ff079afcbe3a5f"
+  revision = "8ac73469a380d78cd690d4ce137a8820c2b49a41"
 
 [[projects]]
   branch = "master"
@@ -232,7 +238,7 @@
     "internal/timeseries",
     "trace"
   ]
-  revision = "32a936f46389aa10549d60bd7833e54b01685d09"
+  revision = "c21de06aaf072cea07f3a65d6970e5c7d8b6cd6d"
 
 [[projects]]
   branch = "master"
@@ -247,7 +253,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "ce36f3865eeb42541ce3f87f32f8462c5687befa"
+  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -294,7 +300,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "ff3583edef7de132f219f0efc00e097cabcc0ec0"
+  revision = "8b2cc369ab52e0003a878865c9372afdd6ca5c5a"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -344,6 +350,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "47057edc379f07a417edfad21ef2166bb700582b6c837987b205d0deabbd1fd6"
+  inputs-digest = "1df54eedb307685c78614117603a3cf7a9dffaf2ce9cdbbd49a4398761eb2cc3"
   solver-name = "gps-cdcl"
   solver-version = 1

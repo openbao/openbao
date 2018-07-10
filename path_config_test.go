@@ -15,8 +15,8 @@ func TestConfig_JWT_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
-		"oidc_issuer_url":        "",
-		"oidc_issuer_ca_pem":     "",
+		"oidc_discovery_url":     "",
+		"oidc_discovery_ca_pem":  "",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
 		"bound_issuer":           "http://vault.example.com/",
 	}
@@ -54,7 +54,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
-		"oidc_issuer_url":        "http://fake.example.com",
+		"oidc_discovery_url":     "http://fake.example.com",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
 		"bound_issuer":           "http://vault.example.com/",
 	}
@@ -74,7 +74,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 
-	delete(data, "oidc_issuer_url")
+	delete(data, "oidc_discovery_url")
 
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -115,8 +115,8 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	// First we provide an invalid CA cert to verify that it is in fact paying
 	// attention to the value we specify
 	data := map[string]interface{}{
-		"oidc_issuer_url":    "https://team-vault.auth0.com/",
-		"oidc_issuer_ca_pem": oidcBadCACerts,
+		"oidc_discovery_url":    "https://team-vault.auth0.com/",
+		"oidc_discovery_ca_pem": oidcBadCACerts,
 	}
 
 	req := &logical.Request{
@@ -133,7 +133,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
-	delete(data, "oidc_issuer_ca_pem")
+	delete(data, "oidc_discovery_ca_pem")
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
@@ -142,7 +142,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 
 	expected := &jwtConfig{
 		JWTValidationPubKeys: []string{},
-		OIDCIssuerURL:        "https://team-vault.auth0.com/",
+		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)

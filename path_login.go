@@ -125,7 +125,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(errwrap.Wrapf("error validating claims: {{err}}", err).Error()), nil
 		}
 
-	case config.OIDCIssuerURL != "":
+	case config.OIDCDiscoveryURL != "":
 		provider, err := b.getProvider(ctx, config)
 		if err != nil {
 			return nil, errwrap.Wrapf("error getting provider for login operation: {{err}}", err)

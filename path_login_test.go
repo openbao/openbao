@@ -24,8 +24,8 @@ func setupBackend(t *testing.T, oidc bool) (logical.Backend, logical.Storage) {
 	var data map[string]interface{}
 	if oidc {
 		data = map[string]interface{}{
-			"bound_issuer":    "https://team-vault.auth0.com/",
-			"oidc_issuer_url": "https://team-vault.auth0.com/",
+			"bound_issuer":       "https://team-vault.auth0.com/",
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
 		}
 	} else {
 		data = map[string]interface{}{

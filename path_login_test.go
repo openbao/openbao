@@ -154,8 +154,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -213,8 +213,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, badPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -256,8 +256,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -299,8 +299,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -342,8 +342,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -385,8 +385,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -428,8 +428,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -472,8 +472,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -507,8 +507,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, struct{}{})
 
 		data := map[string]interface{}{
-			"role":  "plugin-test",
-			"token": jwtData,
+			"role": "plugin-test",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -534,8 +534,8 @@ func TestLogin_JWT(t *testing.T) {
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, jwt.Claims{}, struct{}{})
 
 		data := map[string]interface{}{
-			"role":  "plugin-test-bad",
-			"token": jwtData,
+			"role": "plugin-test-bad",
+			"jwt":  jwtData,
 		}
 
 		req := &logical.Request{
@@ -564,8 +564,8 @@ func TestLogin_OIDC(t *testing.T) {
 	jwtData := getTestOIDC(t)
 
 	data := map[string]interface{}{
-		"role":  "plugin-test",
-		"token": jwtData,
+		"role": "plugin-test",
+		"jwt":  jwtData,
 	}
 
 	req := &logical.Request{

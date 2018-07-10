@@ -31,7 +31,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"jwt_validation_pubkeys": &framework.FieldSchema{
 				Type:        framework.TypeCommaStringSlice,
-				Description: `When performing local validation on a JWT, a list of PEM-encoded public keys to use to authenticate the JWT's signature. Cannot be used with "oidc_discovery_url".`,
+				Description: `A list of PEM-encoded public keys to use to authenticate signatures locally. Cannot be used with "oidc_discovery_url".`,
 			},
 			"bound_issuer": &framework.FieldSchema{
 				Type:        framework.TypeString,

@@ -23,7 +23,7 @@ func pathLogin(b *jwtAuthBackend) *framework.Path {
 				Type:        framework.TypeLowerCaseString,
 				Description: "The role to log in against.",
 			},
-			"token": &framework.FieldSchema{
+			"jwt": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "The signed JWT to validate.",
 			},
@@ -40,7 +40,7 @@ func pathLogin(b *jwtAuthBackend) *framework.Path {
 }
 
 func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	token := d.Get("token").(string)
+	token := d.Get("jwt").(string)
 	if len(token) == 0 {
 		return logical.ErrorResponse("missing token"), nil
 	}

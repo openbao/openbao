@@ -70,7 +70,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
 
-	// Here is where things diverge. If it is using OIDC discovery, validate
+	// Here is where things diverge. If it is using OIDC Discovery, validate
 	// that way; otherwise validate against the locally configured keys. Once
 	// things are validated, we re-unify the request path when evaluating the
 	// claims.

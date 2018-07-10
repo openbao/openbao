@@ -23,11 +23,11 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": &framework.FieldSchema{
 				Type:        framework.TypeString,
-				Description: `OIDC discovery URL, without any .well-known component (base path). Cannot be used with "jwt_validation_pubkeys".`,
+				Description: `OIDC Discovery URL, without any .well-known component (base path). Cannot be used with "jwt_validation_pubkeys".`,
 			},
 			"oidc_discovery_ca_pem": &framework.FieldSchema{
 				Type:        framework.TypeString,
-				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate conections to the OIDC discovery URL. If not set, system certificates are used.",
+				Description: "The CA certificate or chain of certificates, in PEM format, to use to validate conections to the OIDC Discovery URL. If not set, system certificates are used.",
 			},
 			"jwt_validation_pubkeys": &framework.FieldSchema{
 				Type:        framework.TypeCommaStringSlice,
@@ -193,7 +193,7 @@ Configures the JWT authentication backend.
 `
 	confHelpDesc = `
 The JWT authentication backend validates JWTs (or OIDC) using the configured
-credentials. If using OIDC discovery, the URL must be provided, along
+credentials. If using OIDC Discovery, the URL must be provided, along
 with (optionally) the CA cert to use for the connection. If performing JWT
 validation locally, a set of public keys must be provided.
 `

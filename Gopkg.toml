@@ -14,10 +14,6 @@
   name = "github.com/hashicorp/vault"
   version = "0.10.0"
 
-[[constraint]]
-  name = "gopkg.in/jcmturner/gokrb5.v4"
-  version = "4.1.2"
-
 [prune]
   go-tests = true
   unused-packages = true

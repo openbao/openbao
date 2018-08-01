@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 
-	"gopkg.in/jcmturner/gokrb5.v4/credentials"
-	"gopkg.in/jcmturner/gokrb5.v4/gssapi"
-	"gopkg.in/jcmturner/gokrb5.v4/keytab"
-	"gopkg.in/jcmturner/gokrb5.v4/service"
+	"gopkg.in/jcmturner/gokrb5.v5/credentials"
+	"gopkg.in/jcmturner/gokrb5.v5/gssapi"
+	"gopkg.in/jcmturner/gokrb5.v5/keytab"
+	"gopkg.in/jcmturner/gokrb5.v5/service"
 )
 
 func pathLogin(b *backend) *framework.Path {

@@ -50,7 +50,7 @@ $ vault write sys/plugins/catalog/kerberos-auth-plugin sha_256="$(shasum -a 256 
 2. Enable the Kerberos auth method:
 
 ```sh
-$ vault auth-enable -path=kerberos -plugin-name=kerberos-auth-plugin plugin
+$ vault auth-enable -path=kerberos -plugin-name=kerberos-auth-plugin -passthrough-request-headers=Authorization plugin
 Successfully enabled 'kerberos' at 'kerberos'!
 ```
 
@@ -77,7 +77,7 @@ base64 vault.keytab > vault.keytab.base64
 vault write auth/kerberos/config keytab=@vault.keytab.base64 service_account="your_service_account"
 ```
 
-4. Optionally configure LDAP backend to look up Vault policies.
+4. Configure LDAP backend to look up Vault policies.
 Configuration for LDAP is identical to the [LDAP](https://www.vaultproject.io/docs/auth/ldap.html)
 auth method, but writing to to the Kerberos endpoint:
 
@@ -85,6 +85,9 @@ auth method, but writing to to the Kerberos endpoint:
 vault write auth/kerberos/config/ldap @vault-config/auth/ldap/config
 vault write auth/kerberos/groups/example-role @vault-config/auth/ldap/groups/example-role
 ```
+
+In non-kerberos mode, the LDAP bind and lookup works via the user that is currently trying to authenticate.
+If you're running LDAP together with Kerberos you might want to set a binddn/bindpass in the ldap config.
 
 ## Developing
 

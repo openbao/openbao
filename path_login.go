@@ -100,7 +100,14 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	// Clean ldap connection
 	defer ldapConnection.Close()
 
-	authorizationString := d.Get("authorization").(string)
+	authorizationString := ""
+	authorizationHeaders := req.Headers["Authorization"]
+	if len(authorizationHeaders) > 0 {
+		authorizationString = authorizationHeaders[0]
+	} else {
+		authorizationString = d.Get("authorization").(string)
+	}
+
 	s := strings.SplitN(authorizationString, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
 		return logical.ErrorResponse("Missing or invalid authorization"), nil

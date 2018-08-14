@@ -107,8 +107,7 @@ func (b *backend) getUserDN(cfg *ConfigEntry, c *ldap.Conn, bindDN string) (stri
  */
 func (b *backend) getUserBindDN(cfg *ConfigEntry, c *ldap.Conn, username string) (string, error) {
 	bindDN := ""
-	// TODO: fix this and remove && false. should probably work but some config is wrong
-	if cfg.DiscoverDN || (cfg.BindDN != "" && cfg.BindPassword != "") && false {
+	if cfg.DiscoverDN || (cfg.BindDN != "" && cfg.BindPassword != "") {
 		var err error
 		if cfg.BindPassword != "" {
 			err = c.Bind(cfg.BindDN, cfg.BindPassword)

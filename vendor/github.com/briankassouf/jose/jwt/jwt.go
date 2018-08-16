@@ -3,7 +3,7 @@ package jwt
 import (
 	"time"
 
-	"github.com/briankassouf/jose/crypto"
+	"github.com/SermoDigital/jose/crypto"
 )
 
 // JWT represents a JWT per RFC 7519.

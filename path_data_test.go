@@ -200,7 +200,7 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 	}
 
 	var httpResp logical.HTTPResponse
-	err = json.Unmarshal(resp.Data["http_raw_body"].([]byte), &httpResp)
+	err = json.Unmarshal([]byte(resp.Data["http_raw_body"].(string)), &httpResp)
 	if err != nil {
 		t.Fatal(err)
 	}

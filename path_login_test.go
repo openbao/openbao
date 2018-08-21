@@ -18,7 +18,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, audience bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -47,15 +47,17 @@ func setupBackend(t *testing.T, oidc bool) (logical.Backend, logical.Storage) {
 	}
 
 	data = map[string]interface{}{
-		"bound_subject":   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-		"bound_audiences": "https://vault.plugin.auth.jwt.test",
-		"user_claim":      "https://vault/user",
-		"groups_claim":    "https://vault/groups",
-		"policies":        "test",
-		"period":          "3s",
-		"ttl":             "1s",
-		"num_uses":        12,
-		"max_ttl":         "5s",
+		"bound_subject": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		"user_claim":    "https://vault/user",
+		"groups_claim":  "https://vault/groups",
+		"policies":      "test",
+		"period":        "3s",
+		"ttl":           "1s",
+		"num_uses":      12,
+		"max_ttl":       "5s",
+	}
+	if audience {
+		data["bound_audiences"] = "https://vault.plugin.auth.jwt.test"
 	}
 
 	req = &logical.Request{
@@ -132,7 +134,54 @@ func getTestOIDC(t *testing.T) string {
 }
 
 func TestLogin_JWT(t *testing.T) {
-	b, storage := setupBackend(t, false)
+	// Test missing audience
+	{
+		b, storage := setupBackend(t, false, false)
+		cl := jwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		privateCl := struct {
+			User   string   `json:"https://vault/user"`
+			Groups []string `json:"https://vault/groups"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+		if !resp.IsError() {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(resp.Error().Error(), "no audiences bound to the role") {
+			t.Fatalf("unexpected error: %v", resp.Error())
+		}
+	}
+
+	b, storage := setupBackend(t, false, true)
 
 	// test valid inputs
 	{
@@ -559,7 +608,7 @@ func TestLogin_JWT(t *testing.T) {
 }
 
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true)
+	b, storage := setupBackend(t, true, true)
 
 	jwtData := getTestOIDC(t)
 

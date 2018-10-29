@@ -30,52 +30,52 @@ func pathRole(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "role/" + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{
-			"name": &framework.FieldSchema{
+			"name": {
 				Type:        framework.TypeLowerCaseString,
 				Description: "Name of the role.",
 			},
-			"policies": &framework.FieldSchema{
+			"policies": {
 				Type:        framework.TypeCommaStringSlice,
 				Description: "List of policies on the role.",
 			},
-			"num_uses": &framework.FieldSchema{
+			"num_uses": {
 				Type:        framework.TypeInt,
 				Description: `Number of times issued tokens can be used`,
 			},
-			"ttl": &framework.FieldSchema{
+			"ttl": {
 				Type: framework.TypeDurationSecond,
 				Description: `Duration in seconds after which the issued token should expire. Defaults
 to 0, in which case the value will fall back to the system/mount defaults.`,
 			},
-			"max_ttl": &framework.FieldSchema{
+			"max_ttl": {
 				Type: framework.TypeDurationSecond,
 				Description: `Duration in seconds after which the issued token should not be allowed to
 be renewed. Defaults to 0, in which case the value will fall back to the system/mount defaults.`,
 			},
-			"period": &framework.FieldSchema{
+			"period": {
 				Type: framework.TypeDurationSecond,
 				Description: `If set, indicates that the token generated using this role
 should never expire. The token should be renewed within the
 duration specified by this value. At each renewal, the token's
 TTL will be set to the value of this parameter.`,
 			},
-			"bound_subject": &framework.FieldSchema{
+			"bound_subject": {
 				Type:        framework.TypeString,
 				Description: `The 'sub' claim that is valid for login. Optional.`,
 			},
-			"bound_audiences": &framework.FieldSchema{
+			"bound_audiences": {
 				Type:        framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of 'aud' claims that are valid for login; any match is sufficient`,
 			},
-			"user_claim": &framework.FieldSchema{
+			"user_claim": {
 				Type:        framework.TypeString,
 				Description: `The claim to use for the Identity entity alias name`,
 			},
-			"groups_claim": &framework.FieldSchema{
+			"groups_claim": {
 				Type:        framework.TypeString,
 				Description: `The claim to use for the Identity group alias names`,
 			},
-			"bound_cidrs": &framework.FieldSchema{
+			"bound_cidrs": {
 				Type: framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of IP CIDRS that are allowed to 
 authenticate against this role`,

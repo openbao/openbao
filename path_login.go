@@ -19,11 +19,11 @@ func pathLogin(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `login$`,
 		Fields: map[string]*framework.FieldSchema{
-			"role": &framework.FieldSchema{
+			"role": {
 				Type:        framework.TypeLowerCaseString,
 				Description: "The role to log in against.",
 			},
-			"jwt": &framework.FieldSchema{
+			"jwt": {
 				Type:        framework.TypeString,
 				Description: "The signed JWT to validate.",
 			},

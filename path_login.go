@@ -119,7 +119,7 @@ func (b *kubeAuthBackend) pathLogin() framework.OperationFunc {
 					"service_account_name":        serviceAccount.Name,
 					"service_account_namespace":   serviceAccount.Namespace,
 					"service_account_secret_name": serviceAccount.SecretName,
-					"role": roleName,
+					"role":                        roleName,
 				},
 				DisplayName: fmt.Sprintf("%s-%s", serviceAccount.Namespace, serviceAccount.Name),
 				LeaseOptions: logical.LeaseOptions{

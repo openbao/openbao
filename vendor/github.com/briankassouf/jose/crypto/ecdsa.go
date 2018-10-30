@@ -54,12 +54,32 @@ func (m *SigningMethodECDSA) Alg() string { return m.Name }
 // Verify implements the Verify method from SigningMethod.
 // For this verify method, key must be an *ecdsa.PublicKey.
 func (m *SigningMethodECDSA) Verify(raw []byte, signature Signature, key interface{}) error {
-
 	ecdsaKey, ok := key.(*ecdsa.PublicKey)
 	if !ok {
 		return ErrInvalidKey
 	}
 
+	var keySize int
+	switch m.Name {
+	case "ES256":
+		keySize = 32
+	case "ES384":
+		keySize = 48
+	case "ES512":
+		keySize = 66
+	}
+
+	if len(signature) == 2*keySize {
+		r := big.NewInt(0).SetBytes(signature[:keySize])
+		s := big.NewInt(0).SetBytes(signature[keySize:])
+
+		// If verification succeeds return
+		if ecdsa.Verify(ecdsaKey, m.sum(raw), r, s) {
+			return nil
+		}
+	}
+
+	// Fall back to the old method
 	// Unmarshal asn1 ECPoint
 	var ecpoint ECPoint
 	if _, err := asn1.Unmarshal(signature, &ecpoint); err != nil {
@@ -70,6 +90,7 @@ func (m *SigningMethodECDSA) Verify(raw []byte, signature Signature, key interfa
 	if !ecdsa.Verify(ecdsaKey, m.sum(raw), ecpoint.R, ecpoint.S) {
 		return ErrECDSAVerification
 	}
+
 	return nil
 }
 

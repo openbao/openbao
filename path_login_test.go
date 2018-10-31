@@ -652,6 +652,118 @@ func TestLogin_OIDC(t *testing.T) {
 	}
 }
 
+func TestLogin_NestedGroups(t *testing.T) {
+	b, storage := getBackend(t)
+
+	data := map[string]interface{}{
+		"bound_issuer":           "https://team-vault.auth0.com/",
+		"jwt_validation_pubkeys": ecdsaPubKey,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	data = map[string]interface{}{
+		"bound_audiences":                "https://vault.plugin.auth.jwt.test",
+		"bound_subject":                  "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		"user_claim":                     "https://vault/user",
+		"groups_claim":                   "https://vault/groups.testing",
+		"groups_claim_delimiter_pattern": ":.",
+		"policies":                       "test",
+		"period":                         "3s",
+		"ttl":                            "1s",
+		"num_uses":                       12,
+		"max_ttl":                        "5s",
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/plugin-test",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	cl := jwt.Claims{
+		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		Issuer:    "https://team-vault.auth0.com/",
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+	}
+
+	type GroupsLevel2 struct {
+		Groups []string `json:"testing"`
+	}
+	type GroupsLevel1 struct {
+		Level2 GroupsLevel2 `json:"//vault/groups"`
+	}
+	privateCl := struct {
+		User   string       `json:"https://vault/user"`
+		Level1 GroupsLevel1 `json:"https"`
+	}{
+		"jeff",
+		GroupsLevel1{
+			GroupsLevel2{
+				[]string{"foo", "bar"},
+			},
+		},
+	}
+
+	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp == nil {
+		t.Fatal("got nil response")
+	}
+	if resp.IsError() {
+		t.Fatalf("got error: %v", resp.Error())
+	}
+
+	auth := resp.Auth
+	switch {
+	case len(auth.Policies) != 1 || auth.Policies[0] != "test":
+		t.Fatal(auth.Policies)
+	case auth.Alias.Name != "jeff":
+		t.Fatal(auth.Alias.Name)
+	case len(auth.GroupAliases) != 2 || auth.GroupAliases[0].Name != "foo" || auth.GroupAliases[1].Name != "bar":
+		t.Fatal(auth.GroupAliases)
+	case auth.Period != 3*time.Second:
+		t.Fatal(auth.Period)
+	case auth.TTL != time.Second:
+		t.Fatal(auth.TTL)
+	case auth.MaxTTL != 5*time.Second:
+		t.Fatal(auth.MaxTTL)
+	}
+}
+
 const (
 	ecdsaPrivKey string = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIKfldwWLPYsHjRL9EVTsjSbzTtcGRu6icohNfIqcb6A+oAoGCCqGSM49

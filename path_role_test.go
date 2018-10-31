@@ -2,11 +2,13 @@ package jwtauth
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/helper/logging"
@@ -147,15 +149,16 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"bound_subject":   "testsub",
-		"bound_audiences": []string{"vault"},
-		"user_claim":      "user",
-		"groups_claim":    "groups",
-		"policies":        []string{"test"},
-		"period":          int64(3),
-		"ttl":             int64(1),
-		"num_uses":        12,
-		"max_ttl":         int64(5),
+		"bound_subject":                  "testsub",
+		"bound_audiences":                []string{"vault"},
+		"user_claim":                     "user",
+		"groups_claim":                   "groups",
+		"groups_claim_delimiter_pattern": "",
+		"policies":                       []string{"test"},
+		"period":                         int64(3),
+		"ttl":                            int64(1),
+		"num_uses":                       12,
+		"max_ttl":                        int64(5),
 	}
 
 	req := &logical.Request{
@@ -246,5 +249,69 @@ func TestPath_Delete(t *testing.T) {
 
 	if resp != nil {
 		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
+	}
+}
+
+func TestParseClaimWithDelimiters(t *testing.T) {
+	type tc struct {
+		name string
+		c    string
+		d    string
+		res  []string
+		err  error
+	}
+
+	testCases := []tc{
+		{
+			name: "nodelim",
+			c:    "groups",
+			res:  []string{"groups"},
+		},
+		{
+			name: "multi",
+			c:    "gr.o/u.ps",
+			d:    "./.",
+			res:  []string{"gr", "o", "u", "ps"},
+		},
+		{
+			name: "multiextradelims",
+			c:    "gr.o/u.ps",
+			d:    "./..",
+			err:  errors.New(`could not find instance of "." delimiter in claim`),
+		},
+		{
+			name: "delimnotfound",
+			c:    "groups",
+			d:    ".",
+			err:  errors.New(`could not find instance of "." delimiter in claim`),
+		},
+		{
+			name: "delimatend",
+			c:    "groups.",
+			d:    ".",
+			err:  errors.New(`instance of "." delimiter in claim is at end of claim string`),
+		},
+		{
+			name: "delimatbeginning",
+			c:    ".groups",
+			d:    ".",
+			err:  errors.New(`instance of "." delimiter in claim is at beginning of claim string`),
+		},
+		{
+			name: "backtoback",
+			c:    "gro/.ups",
+			d:    "/.",
+			err:  errors.New(`instance of "." delimiter in claim is at beginning of claim string`),
+		},
+	}
+
+	for _, testCase := range testCases {
+		ret, err := parseClaimWithDelimiters(testCase.c, testCase.d)
+		if diff := deep.Equal(testCase.err, err); diff != nil {
+			t.Fatalf("%s: %v", testCase.name, diff)
+		}
+		if diff := deep.Equal(testCase.res, ret); diff != nil {
+			t.Fatalf("%s: %v", testCase.name, diff)
+		}
 	}
 }

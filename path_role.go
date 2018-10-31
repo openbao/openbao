@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/errwrap"
 	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/helper/parseutil"
 	"github.com/hashicorp/vault/helper/policyutil"
@@ -75,6 +76,10 @@ TTL will be set to the value of this parameter.`,
 				Type:        framework.TypeString,
 				Description: `The claim to use for the Identity group alias names`,
 			},
+			"groups_claim_delimiter_pattern": {
+				Type:        framework.TypeString,
+				Description: `A pattern of delimiters used to allow the groups_claim to live outside of the top-level JWT structure. For instance, a "groups_claim" of "meta/user.name/groups" with this field set to "//" will expect nested structures named "meta", "user.name", and "groups". If this field was set to "/./" the groups information would expect to be via nested structures of "meta", "user", "name", and "groups".`,
+			},
 			"bound_cidrs": {
 				Type: framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of IP CIDRS that are allowed to 
@@ -114,11 +119,12 @@ type jwtRole struct {
 	Period time.Duration `json:"period"`
 
 	// Role binding properties
-	BoundAudiences []string                      `json:"bound_audiences"`
-	BoundSubject   string                        `json:"bound_subject"`
-	BoundCIDRs     []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
-	UserClaim      string                        `json:"user_claim"`
-	GroupsClaim    string                        `json:"groups_claim"`
+	BoundAudiences              []string                      `json:"bound_audiences"`
+	BoundSubject                string                        `json:"bound_subject"`
+	BoundCIDRs                  []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
+	UserClaim                   string                        `json:"user_claim"`
+	GroupsClaim                 string                        `json:"groups_claim"`
+	GroupsClaimDelimiterPattern string                        `json:"groups_claim_delimiter_pattern"`
 }
 
 // role takes a storage backend and the name and returns the role's storage
@@ -176,16 +182,17 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 	// Create a map of data to be returned
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"policies":        role.Policies,
-			"num_uses":        role.NumUses,
-			"period":          int64(role.Period.Seconds()),
-			"ttl":             int64(role.TTL.Seconds()),
-			"max_ttl":         int64(role.MaxTTL.Seconds()),
-			"bound_audiences": role.BoundAudiences,
-			"bound_subject":   role.BoundSubject,
-			"bound_cidrs":     role.BoundCIDRs,
-			"user_claim":      role.UserClaim,
-			"groups_claim":    role.GroupsClaim,
+			"policies":                       role.Policies,
+			"num_uses":                       role.NumUses,
+			"period":                         int64(role.Period.Seconds()),
+			"ttl":                            int64(role.TTL.Seconds()),
+			"max_ttl":                        int64(role.MaxTTL.Seconds()),
+			"bound_audiences":                role.BoundAudiences,
+			"bound_subject":                  role.BoundSubject,
+			"bound_cidrs":                    role.BoundCIDRs,
+			"user_claim":                     role.UserClaim,
+			"groups_claim":                   role.GroupsClaim,
+			"groups_claim_delimiter_pattern": role.GroupsClaimDelimiterPattern,
 		},
 	}
 
@@ -291,6 +298,17 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		role.GroupsClaim = groupsClaim.(string)
 	}
 
+	if groupsClaimDelimiterPattern, ok := data.GetOk("groups_claim_delimiter_pattern"); ok {
+		role.GroupsClaimDelimiterPattern = groupsClaimDelimiterPattern.(string)
+	}
+
+	// Validate claim/delims
+	if role.GroupsClaim != "" {
+		if _, err := parseClaimWithDelimiters(role.GroupsClaim, role.GroupsClaimDelimiterPattern); err != nil {
+			return logical.ErrorResponse(errwrap.Wrapf("error validating delimiters for groups claim: {{err}}", err).Error()), nil
+		}
+	}
+
 	if len(role.BoundAudiences) == 0 &&
 		len(role.BoundCIDRs) == 0 &&
 		role.BoundSubject == "" {
@@ -320,6 +338,32 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 
 	return resp, nil
+}
+
+// parseClaimWithDelimiters parses a given claim string and ensures that we can
+// separate it out into a "map path"
+func parseClaimWithDelimiters(claim, delimiters string) ([]string, error) {
+	if delimiters == "" {
+		return []string{claim}, nil
+	}
+	var ret []string
+	for _, runeVal := range delimiters {
+		idx := strings.IndexRune(claim, runeVal)
+		switch idx {
+		case -1:
+			return nil, fmt.Errorf("could not find instance of %q delimiter in claim", string(runeVal))
+		case 0:
+			return nil, fmt.Errorf("instance of %q delimiter in claim is at beginning of claim string", string(runeVal))
+		case len(claim) - 1:
+			return nil, fmt.Errorf("instance of %q delimiter in claim is at end of claim string", string(runeVal))
+		default:
+			ret = append(ret, claim[:idx])
+			claim = claim[idx+1:]
+		}
+	}
+	ret = append(ret, claim)
+
+	return ret, nil
 }
 
 // roleStorageEntry stores all the options that are set on an role

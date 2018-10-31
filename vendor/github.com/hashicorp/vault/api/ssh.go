@@ -1,9 +1,6 @@
 package api
 
-import (
-	"context"
-	"fmt"
-)
+import "fmt"
 
 // SSH is used to return a client to invoke operations on SSH backend.
 type SSH struct {
@@ -31,9 +28,7 @@ func (c *SSH) Credential(role string, data map[string]interface{}) (*Secret, err
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +45,7 @@ func (c *SSH) SignKey(role string, data map[string]interface{}) (*Secret, error)
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}

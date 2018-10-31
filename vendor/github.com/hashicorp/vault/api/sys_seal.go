@@ -1,7 +1,5 @@
 package api
 
-import "context"
-
 func (c *Sys) SealStatus() (*SealStatusResponse, error) {
 	r := c.c.NewRequest("GET", "/v1/sys/seal-status")
 	return sealStatusRequest(c, r)
@@ -9,10 +7,7 @@ func (c *Sys) SealStatus() (*SealStatusResponse, error) {
 
 func (c *Sys) Seal() error {
 	r := c.c.NewRequest("PUT", "/v1/sys/seal")
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err == nil {
 		defer resp.Body.Close()
 	}
@@ -42,9 +37,7 @@ func (c *Sys) Unseal(shard string) (*SealStatusResponse, error) {
 }
 
 func sealStatusRequest(c *Sys, r *Request) (*SealStatusResponse, error) {
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}

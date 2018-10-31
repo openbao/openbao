@@ -1,7 +1,5 @@
 package api
 
-import "context"
-
 // TokenAuth is used to perform token backend operations on Vault
 type TokenAuth struct {
 	c *Client
@@ -18,9 +16,7 @@ func (c *TokenAuth) Create(opts *TokenCreateRequest) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -35,9 +31,7 @@ func (c *TokenAuth) CreateOrphan(opts *TokenCreateRequest) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -52,9 +46,7 @@ func (c *TokenAuth) CreateWithRole(opts *TokenCreateRequest, roleName string) (*
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -71,9 +63,7 @@ func (c *TokenAuth) Lookup(token string) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -89,10 +79,7 @@ func (c *TokenAuth) LookupAccessor(accessor string) (*Secret, error) {
 	}); err != nil {
 		return nil, err
 	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,9 +91,7 @@ func (c *TokenAuth) LookupAccessor(accessor string) (*Secret, error) {
 func (c *TokenAuth) LookupSelf() (*Secret, error) {
 	r := c.c.NewRequest("GET", "/v1/auth/token/lookup-self")
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -124,9 +109,7 @@ func (c *TokenAuth) Renew(token string, increment int) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -143,9 +126,7 @@ func (c *TokenAuth) RenewSelf(increment int) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -165,9 +146,7 @@ func (c *TokenAuth) RenewTokenAsSelf(token string, increment int) (*Secret, erro
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
@@ -185,10 +164,7 @@ func (c *TokenAuth) RevokeAccessor(accessor string) error {
 	}); err != nil {
 		return err
 	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return err
 	}
@@ -207,9 +183,7 @@ func (c *TokenAuth) RevokeOrphan(token string) error {
 		return err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return err
 	}
@@ -223,10 +197,7 @@ func (c *TokenAuth) RevokeOrphan(token string) error {
 // an effect.
 func (c *TokenAuth) RevokeSelf(token string) error {
 	r := c.c.NewRequest("PUT", "/v1/auth/token/revoke-self")
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return err
 	}
@@ -246,9 +217,7 @@ func (c *TokenAuth) RevokeTree(token string) error {
 		return err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return err
 	}

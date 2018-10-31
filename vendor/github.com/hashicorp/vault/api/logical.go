@@ -2,10 +2,8 @@ package api
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 
 	"github.com/hashicorp/errwrap"
@@ -47,29 +45,8 @@ func (c *Client) Logical() *Logical {
 }
 
 func (c *Logical) Read(path string) (*Secret, error) {
-	return c.ReadWithData(path, nil)
-}
-
-func (c *Logical) ReadWithData(path string, data map[string][]string) (*Secret, error) {
 	r := c.c.NewRequest("GET", "/v1/"+path)
-
-	var values url.Values
-	for k, v := range data {
-		if values == nil {
-			values = make(url.Values)
-		}
-		for _, val := range v {
-			values.Add(k, val)
-		}
-	}
-
-	if values != nil {
-		r.Params = values
-	}
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -100,10 +77,7 @@ func (c *Logical) List(path string) (*Secret, error) {
 	// handle the wrapping lookup function
 	r.Method = "GET"
 	r.Params.Set("list", "true")
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -134,9 +108,7 @@ func (c *Logical) Write(path string, data map[string]interface{}) (*Secret, erro
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -157,15 +129,16 @@ func (c *Logical) Write(path string, data map[string]interface{}) (*Secret, erro
 		return nil, err
 	}
 
-	return ParseSecret(resp.Body)
+	if resp.StatusCode == 200 {
+		return ParseSecret(resp.Body)
+	}
+
+	return nil, nil
 }
 
 func (c *Logical) Delete(path string) (*Secret, error) {
 	r := c.c.NewRequest("DELETE", "/v1/"+path)
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -186,7 +159,11 @@ func (c *Logical) Delete(path string) (*Secret, error) {
 		return nil, err
 	}
 
-	return ParseSecret(resp.Body)
+	if resp.StatusCode == 200 {
+		return ParseSecret(resp.Body)
+	}
+
+	return nil, nil
 }
 
 func (c *Logical) Unwrap(wrappingToken string) (*Secret, error) {
@@ -206,9 +183,7 @@ func (c *Logical) Unwrap(wrappingToken string) (*Secret, error) {
 		return nil, err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

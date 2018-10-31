@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 )
@@ -12,7 +11,7 @@ type ListPluginsInput struct{}
 // ListPluginsResponse is the response from the ListPlugins call.
 type ListPluginsResponse struct {
 	// Names is the list of names of the plugins.
-	Names []string `json:"names"`
+	Names []string
 }
 
 // ListPlugins lists all plugins in the catalog and returns their names as a
@@ -20,10 +19,7 @@ type ListPluginsResponse struct {
 func (c *Sys) ListPlugins(i *ListPluginsInput) (*ListPluginsResponse, error) {
 	path := "/v1/sys/plugins/catalog"
 	req := c.c.NewRequest("LIST", path)
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, req)
+	resp, err := c.c.RawRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -58,23 +54,18 @@ type GetPluginResponse struct {
 func (c *Sys) GetPlugin(i *GetPluginInput) (*GetPluginResponse, error) {
 	path := fmt.Sprintf("/v1/sys/plugins/catalog/%s", i.Name)
 	req := c.c.NewRequest(http.MethodGet, path)
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, req)
+	resp, err := c.c.RawRequest(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var result struct {
-		Data GetPluginResponse
-	}
+	var result GetPluginResponse
 	err = resp.DecodeJSON(&result)
 	if err != nil {
 		return nil, err
 	}
-	return &result.Data, err
+	return &result, err
 }
 
 // RegisterPluginInput is used as input to the RegisterPlugin function.
@@ -100,9 +91,7 @@ func (c *Sys) RegisterPlugin(i *RegisterPluginInput) error {
 		return err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, req)
+	resp, err := c.c.RawRequest(req)
 	if err == nil {
 		defer resp.Body.Close()
 	}
@@ -120,10 +109,7 @@ type DeregisterPluginInput struct {
 func (c *Sys) DeregisterPlugin(i *DeregisterPluginInput) error {
 	path := fmt.Sprintf("/v1/sys/plugins/catalog/%s", i.Name)
 	req := c.c.NewRequest(http.MethodDelete, path)
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, req)
+	resp, err := c.c.RawRequest(req)
 	if err == nil {
 		defer resp.Body.Close()
 	}

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
@@ -10,27 +8,35 @@ import (
 
 func (c *Sys) ListAuth() (map[string]*AuthMount, error) {
 	r := c.c.NewRequest("GET", "/v1/sys/auth")
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	secret, err := ParseSecret(resp.Body)
+	var result map[string]interface{}
+	err = resp.DecodeJSON(&result)
 	if err != nil {
 		return nil, err
-	}
-	if secret == nil || secret.Data == nil {
-		return nil, errors.New("data from server response is empty")
 	}
 
 	mounts := map[string]*AuthMount{}
-	err = mapstructure.Decode(secret.Data, &mounts)
-	if err != nil {
-		return nil, err
+	for k, v := range result {
+		switch v.(type) {
+		case map[string]interface{}:
+		default:
+			continue
+		}
+		var res AuthMount
+		err = mapstructure.Decode(v, &res)
+		if err != nil {
+			return nil, err
+		}
+		// Not a mount, some other api.Secret data
+		if res.Type == "" {
+			continue
+		}
+		mounts[k] = &res
 	}
 
 	return mounts, nil
@@ -50,9 +56,7 @@ func (c *Sys) EnableAuthWithOptions(path string, options *EnableAuthOptions) err
 		return err
 	}
 
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return err
 	}
@@ -63,10 +67,7 @@ func (c *Sys) EnableAuthWithOptions(path string, options *EnableAuthOptions) err
 
 func (c *Sys) DisableAuth(path string) error {
 	r := c.c.NewRequest("DELETE", fmt.Sprintf("/v1/sys/auth/%s", path))
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err == nil {
 		defer resp.Body.Close()
 	}

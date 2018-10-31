@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"regexp"
 	"sort"
 	"strings"
@@ -549,8 +548,6 @@ func (t FieldType) Zero() interface{} {
 		return []string{}
 	case TypeCommaIntSlice:
 		return []int{}
-	case TypeHeader:
-		return http.Header{}
 	default:
 		panic("unknown type: " + t.String())
 	}

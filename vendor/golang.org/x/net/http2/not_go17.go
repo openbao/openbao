@@ -8,7 +8,6 @@ package http2
 
 import (
 	"crypto/tls"
-	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -18,8 +17,6 @@ type contextContext interface {
 	Done() <-chan struct{}
 	Err() error
 }
-
-var errCanceled = errors.New("canceled")
 
 type fakeContext struct{}
 
@@ -37,7 +34,6 @@ func setResponseUncompressed(res *http.Response) {
 type clientTrace struct{}
 
 func requestTrace(*http.Request) *clientTrace { return nil }
-func traceGetConn(*http.Request, string)      {}
 func traceGotConn(*http.Request, *ClientConn) {}
 func traceFirstResponseByte(*clientTrace)     {}
 func traceWroteHeaders(*clientTrace)          {}
@@ -86,10 +82,6 @@ func cloneTLSConfig(c *tls.Config) *tls.Config {
 
 func (cc *ClientConn) Ping(ctx contextContext) error {
 	return cc.ping(ctx)
-}
-
-func (cc *ClientConn) Shutdown(ctx contextContext) error {
-	return cc.shutdown(ctx)
 }
 
 func (t *Transport) idleConnTimeout() time.Duration { return 0 }

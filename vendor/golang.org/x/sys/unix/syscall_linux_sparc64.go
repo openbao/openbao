@@ -68,7 +68,6 @@ func Iopl(level int) (err error) {
 	return ENOSYS
 }
 
-//sys	futimesat(dirfd int, path string, times *[2]Timeval) (err error)
 //sysnb	Gettimeofday(tv *Timeval) (err error)
 
 func Time(t *Time_t) (tt Time_t, err error) {
@@ -84,7 +83,6 @@ func Time(t *Time_t) (tt Time_t, err error) {
 }
 
 //sys	Utime(path string, buf *Utimbuf) (err error)
-//sys	utimes(path string, times *[2]Timeval) (err error)
 
 func setTimespec(sec, nsec int64) Timespec {
 	return Timespec{Sec: sec, Nsec: nsec}

@@ -1,27 +1,5 @@
 package logical
 
-import "errors"
-
-var (
-	// ErrUnsupportedOperation is returned if the operation is not supported
-	// by the logical backend.
-	ErrUnsupportedOperation = errors.New("unsupported operation")
-
-	// ErrUnsupportedPath is returned if the path is not supported
-	// by the logical backend.
-	ErrUnsupportedPath = errors.New("unsupported path")
-
-	// ErrInvalidRequest is returned if the request is invalid
-	ErrInvalidRequest = errors.New("invalid request")
-
-	// ErrPermissionDenied is returned if the client is not authorized
-	ErrPermissionDenied = errors.New("permission denied")
-
-	// ErrMultiAuthzPending is returned if the the request needs more
-	// authorizations
-	ErrMultiAuthzPending = errors.New("request needs further approval")
-)
-
 type HTTPCodedError interface {
 	Error() string
 	Code() int
@@ -33,8 +11,6 @@ func CodedError(status int, msg string) HTTPCodedError {
 		Message: msg,
 	}
 }
-
-var _ HTTPCodedError = (*codedError)(nil)
 
 type codedError struct {
 	Status  int

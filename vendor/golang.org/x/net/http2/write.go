@@ -186,6 +186,7 @@ type writeResHeaders struct {
 	date          string
 	contentType   string
 	contentLength string
+	noSniff       bool
 }
 
 func encKV(enc *hpack.Encoder, k, v string) {
@@ -221,6 +222,9 @@ func (w *writeResHeaders) writeFrame(ctx writeContext) error {
 	}
 	if w.contentLength != "" {
 		encKV(enc, "content-length", w.contentLength)
+	}
+	if w.noSniff {
+		encKV(enc, "x-content-type-options", "nosniff")
 	}
 	if w.date != "" {
 		encKV(enc, "date", w.date)

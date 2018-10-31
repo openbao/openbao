@@ -1,7 +1,5 @@
 package api
 
-import "context"
-
 func (c *Sys) Health() (*HealthResponse, error) {
 	r := c.c.NewRequest("GET", "/v1/sys/health")
 	// If the code is 400 or above it will automatically turn into an error,
@@ -11,10 +9,7 @@ func (c *Sys) Health() (*HealthResponse, error) {
 	r.Params.Add("sealedcode", "299")
 	r.Params.Add("standbycode", "299")
 	r.Params.Add("drsecondarycode", "299")
-
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	defer cancelFunc()
-	resp, err := c.c.RawRequestWithContext(ctx, r)
+	resp, err := c.c.RawRequest(r)
 	if err != nil {
 		return nil, err
 	}

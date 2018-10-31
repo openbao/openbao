@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"errors"
-	"math"
 	"sync/atomic"
 
 	"google.golang.org/grpc"
@@ -196,9 +195,6 @@ func (b *backendGRPCPluginClient) Setup(ctx context.Context, config *logical.Bac
 
 	// Register the server in this closure.
 	serverFunc := func(opts []grpc.ServerOption) *grpc.Server {
-		opts = append(opts, grpc.MaxRecvMsgSize(math.MaxInt32))
-		opts = append(opts, grpc.MaxSendMsgSize(math.MaxInt32))
-
 		s := grpc.NewServer(opts...)
 		pb.RegisterSystemViewServer(s, sysView)
 		pb.RegisterStorageServer(s, storage)

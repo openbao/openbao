@@ -464,19 +464,6 @@ func (c *Client) SetMFACreds(creds []string) {
 	c.mfaCreds = creds
 }
 
-// SetNamespace sets the namespace supplied either via the environment
-// variable or via the command line.
-func (c *Client) SetNamespace(namespace string) {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-
-	if c.headers == nil {
-		c.headers = make(http.Header)
-	}
-
-	c.headers.Set("X-Vault-Namespace", namespace)
-}
-
 // Token returns the access token being used by this client. It will
 // return the empty string if there is no token set.
 func (c *Client) Token() string {
@@ -501,26 +488,6 @@ func (c *Client) ClearToken() {
 	defer c.modifyLock.Unlock()
 
 	c.token = ""
-}
-
-// Headers gets the current set of headers used for requests. This returns a
-// copy; to modify it make modifications locally and use SetHeaders.
-func (c *Client) Headers() http.Header {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-
-	if c.headers == nil {
-		return nil
-	}
-
-	ret := make(http.Header)
-	for k, v := range c.headers {
-		for _, val := range v {
-			ret[k] = append(ret[k], val)
-		}
-	}
-
-	return ret
 }
 
 // SetHeaders sets the headers to be used for future requests.
@@ -641,13 +608,6 @@ func (c *Client) NewRequest(method, requestPath string) *Request {
 // a Vault server not configured with this client. This is an advanced operation
 // that generally won't need to be called externally.
 func (c *Client) RawRequest(r *Request) (*Response, error) {
-	return c.RawRequestWithContext(context.Background(), r)
-}
-
-// RawRequestWithContext performs the raw request given. This request may be against
-// a Vault server not configured with this client. This is an advanced operation
-// that generally won't need to be called externally.
-func (c *Client) RawRequestWithContext(ctx context.Context, r *Request) (*Response, error) {
 	c.modifyLock.RLock()
 	token := c.token
 
@@ -662,7 +622,7 @@ func (c *Client) RawRequestWithContext(ctx context.Context, r *Request) (*Respon
 	c.modifyLock.RUnlock()
 
 	if limiter != nil {
-		limiter.Wait(ctx)
+		limiter.Wait(context.Background())
 	}
 
 	// Sanity check the token before potentially erroring from the API
@@ -683,10 +643,13 @@ START:
 		return nil, fmt.Errorf("nil request created")
 	}
 
+	// Set the timeout, if any
+	var cancelFunc context.CancelFunc
 	if timeout != 0 {
-		ctx, _ = context.WithTimeout(ctx, timeout)
+		var ctx context.Context
+		ctx, cancelFunc = context.WithTimeout(context.Background(), timeout)
+		req.Request = req.Request.WithContext(ctx)
 	}
-	req.Request = req.Request.WithContext(ctx)
 
 	if backoff == nil {
 		backoff = retryablehttp.LinearJitterBackoff
@@ -704,6 +667,9 @@ START:
 
 	var result *Response
 	resp, err := client.Do(req)
+	if cancelFunc != nil {
+		cancelFunc()
+	}
 	if resp != nil {
 		result = &Response{Response: resp}
 	}

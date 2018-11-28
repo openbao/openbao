@@ -52,10 +52,10 @@ func TestPath_Create(t *testing.T) {
 		Period:                   3 * time.Second,
 		ServiceAccountNames:      []string{"name"},
 		ServiceAccountNamespaces: []string{"namespace"},
-		TTL:                      1 * time.Second,
-		MaxTTL:                   5 * time.Second,
-		NumUses:                  12,
-		BoundCIDRs:               []*sockaddr.SockAddrMarshaler{},
+		TTL:        1 * time.Second,
+		MaxTTL:     5 * time.Second,
+		NumUses:    12,
+		BoundCIDRs: []*sockaddr.SockAddrMarshaler{},
 	}
 
 	req := &logical.Request{

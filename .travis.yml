@@ -4,4 +4,4 @@ go:
   - "1.11"
 
 script:
-  - go test
+  - make test

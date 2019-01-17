@@ -18,6 +18,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_discovery_url":     "",
 		"oidc_discovery_ca_pem":  "",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
+		"jwt_supported_algs":     []string{},
 		"bound_issuer":           "http://vault.example.com/",
 	}
 
@@ -96,6 +97,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	expected := &jwtConfig{
 		ParsedJWTPubKeys:     []interface{}{pubkey},
 		JWTValidationPubKeys: []string{testJWTPubKey},
+		JWTSupportedAlgs:     []string{},
 		BoundIssuer:          "http://vault.example.com/",
 	}
 
@@ -142,6 +144,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 
 	expected := &jwtConfig{
 		JWTValidationPubKeys: []string{},
+		JWTSupportedAlgs:     []string{},
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 	}
 

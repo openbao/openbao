@@ -50,7 +50,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), ldapReq)
-	if err != nil || (resp == nil && resp.IsError()) {
+	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
 

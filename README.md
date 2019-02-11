@@ -44,14 +44,14 @@ plugin_directory = "path/to/plugin/directory"
 ```
 
 ```sh
-$ vault write sys/plugins/catalog/kerberos-auth-plugin sha_256="$(shasum -a 256 'vault-plugin-auth-kerberos' | cut -d ' ' -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
+$ vault write sys/plugins/catalog/auth/kerberos sha_256="$(shasum -a 256 'vault-plugin-auth-kerberos' | cut -d ' ' -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
 ```
 
 2. Enable the Kerberos auth method:
 
 ```sh
-$ vault auth-enable -path=kerberos -plugin-name=kerberos-auth-plugin -passthrough-request-headers=Authorization plugin
-Successfully enabled 'kerberos' at 'kerberos'!
+$ vault auth enable -passthrough-request-headers=Authorization kerberos
+Success! Enabled kerberos auth method at: kerberos/
 ```
 
 3. Use the /config endpoint to configure Kerberos.

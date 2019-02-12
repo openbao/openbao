@@ -1,3 +1,6 @@
 /vault-plugin-auth-kerberos
 bin/
 pkg/
+
+# JetBrains IDE
+.idea*

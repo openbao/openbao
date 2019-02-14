@@ -2,7 +2,7 @@ package jwtauth
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-sockaddr"
+	sockaddr "github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/helper/logging"
 	"github.com/hashicorp/vault/logical"
 )
@@ -40,6 +40,7 @@ func TestPath_Create(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
+		"role_type":       "jwt",
 		"bound_subject":   "testsub",
 		"bound_audiences": "vault",
 		"user_claim":      "user",
@@ -58,16 +59,18 @@ func TestPath_Create(t *testing.T) {
 	}
 
 	expected := &jwtRole{
-		Policies:       []string{"test"},
-		Period:         3 * time.Second,
-		BoundSubject:   "testsub",
-		BoundAudiences: []string{"vault"},
-		UserClaim:      "user",
-		GroupsClaim:    "groups",
-		TTL:            1 * time.Second,
-		MaxTTL:         5 * time.Second,
-		NumUses:        12,
-		BoundCIDRs:     []*sockaddr.SockAddrMarshaler{&sockaddr.SockAddrMarshaler{expectedSockAddr}},
+		RoleType:            "jwt",
+		Policies:            []string{"test"},
+		Period:              3 * time.Second,
+		BoundSubject:        "testsub",
+		BoundAudiences:      []string{"vault"},
+		UserClaim:           "user",
+		GroupsClaim:         "groups",
+		TTL:                 1 * time.Second,
+		MaxTTL:              5 * time.Second,
+		NumUses:             12,
+		BoundCIDRs:          []*sockaddr.SockAddrMarshaler{{expectedSockAddr}},
+		AllowedRedirectURIs: []string{},
 	}
 
 	req := &logical.Request{
@@ -103,6 +106,9 @@ func TestPath_Create(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -112,6 +118,7 @@ func TestPath_Create(t *testing.T) {
 
 	// Test no binding
 	data = map[string]interface{}{
+		"role_type":  "jwt",
 		"user_claim": "user",
 		"policies":   "test",
 	}
@@ -124,6 +131,9 @@ func TestPath_Create(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
@@ -132,10 +142,130 @@ func TestPath_Create(t *testing.T) {
 	}
 }
 
+func TestPath_OIDCCreate(t *testing.T) {
+	b, storage := getBackend(t)
+
+	data := map[string]interface{}{
+		"bound_audiences": "vault",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+		"oidc_scopes":           []string{"email", "profile"},
+		"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8300"},
+		"claim_mappings": map[string]string{
+			"foo": "a",
+			"bar": "b",
+		},
+		"user_claim":   "user",
+		"groups_claim": "groups",
+		"policies":     "test",
+		"period":       "3s",
+		"ttl":          "1s",
+		"num_uses":     12,
+		"max_ttl":      "5s",
+	}
+
+	expected := &jwtRole{
+		RoleType:       "oidc",
+		Policies:       []string{"test"},
+		Period:         3 * time.Second,
+		BoundAudiences: []string{"vault"},
+		BoundClaims: map[string]interface{}{
+			"foo": json.Number("10"),
+			"bar": "baz",
+		},
+		AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8300"},
+		ClaimMappings: map[string]string{
+			"foo": "a",
+			"bar": "b",
+		},
+		OIDCScopes:  []string{"email", "profile"},
+		UserClaim:   "user",
+		GroupsClaim: "groups",
+		TTL:         1 * time.Second,
+		MaxTTL:      5 * time.Second,
+		NumUses:     12,
+	}
+
+	// test both explicit and default role_type
+	for _, roleType := range []string{"", "oidc"} {
+		data["role_type"] = roleType
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      "role/plugin-test",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+		actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "plugin-test")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := deep.Equal(expected, actual); diff != nil {
+			t.Fatal(diff)
+		}
+	}
+
+	// Test invalid reserved metadata key 'role'
+	data["claim_mappings"] = map[string]string{
+		"foo":        "a",
+		"some_claim": "role",
+	}
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test2",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && !resp.IsError() {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(resp.Error().Error(), "metadata key 'role' is reserved") {
+		t.Fatalf("unexpected err: %v", resp)
+	}
+
+	// Test invalid duplicate metadata destination
+	data["claim_mappings"] = map[string]string{
+		"foo": "a",
+		"bar": "a",
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test2",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && !resp.IsError() {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(resp.Error().Error(), "multiple keys are mapped to metadata key 'a'") {
+		t.Fatalf("unexpected err: %v", resp)
+	}
+}
+
 func TestPath_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
+		"role_type":       "jwt",
 		"bound_subject":   "testsub",
 		"bound_audiences": "vault",
 		"user_claim":      "user",
@@ -149,16 +279,19 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"bound_subject":                  "testsub",
-		"bound_audiences":                []string{"vault"},
-		"user_claim":                     "user",
-		"groups_claim":                   "groups",
-		"groups_claim_delimiter_pattern": "",
-		"policies":                       []string{"test"},
-		"period":                         int64(3),
-		"ttl":                            int64(1),
-		"num_uses":                       12,
-		"max_ttl":                        int64(5),
+		"role_type":             "jwt",
+		"bound_claims":          map[string]interface{}(nil),
+		"claim_mappings":        map[string]string(nil),
+		"bound_subject":         "testsub",
+		"bound_audiences":       []string{"vault"},
+		"allowed_redirect_uris": []string{},
+		"user_claim":            "user",
+		"groups_claim":          "groups",
+		"policies":              []string{"test"},
+		"period":                int64(3),
+		"ttl":                   int64(1),
+		"num_uses":              12,
+		"max_ttl":               int64(5),
 	}
 
 	req := &logical.Request{
@@ -188,8 +321,8 @@ func TestPath_Read(t *testing.T) {
 		t.Fatal("unexpected bound cidrs")
 	}
 	delete(resp.Data, "bound_cidrs")
-	if !reflect.DeepEqual(expected, resp.Data) {
-		t.Fatalf("Unexpected role data: expected \n%#v\n got \n%#v\n", expected, resp.Data)
+	if diff := deep.Equal(expected, resp.Data); diff != nil {
+		t.Fatal(diff)
 	}
 }
 
@@ -197,6 +330,7 @@ func TestPath_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
+		"role_type":       "jwt",
 		"bound_subject":   "testsub",
 		"bound_audiences": "vault",
 		"user_claim":      "user",
@@ -249,69 +383,5 @@ func TestPath_Delete(t *testing.T) {
 
 	if resp != nil {
 		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
-	}
-}
-
-func TestParseClaimWithDelimiters(t *testing.T) {
-	type tc struct {
-		name string
-		c    string
-		d    string
-		res  []string
-		err  error
-	}
-
-	testCases := []tc{
-		{
-			name: "nodelim",
-			c:    "groups",
-			res:  []string{"groups"},
-		},
-		{
-			name: "multi",
-			c:    "gr.o/u.ps",
-			d:    "./.",
-			res:  []string{"gr", "o", "u", "ps"},
-		},
-		{
-			name: "multiextradelims",
-			c:    "gr.o/u.ps",
-			d:    "./..",
-			err:  errors.New(`could not find instance of "." delimiter in claim`),
-		},
-		{
-			name: "delimnotfound",
-			c:    "groups",
-			d:    ".",
-			err:  errors.New(`could not find instance of "." delimiter in claim`),
-		},
-		{
-			name: "delimatend",
-			c:    "groups.",
-			d:    ".",
-			err:  errors.New(`instance of "." delimiter in claim is at end of claim string`),
-		},
-		{
-			name: "delimatbeginning",
-			c:    ".groups",
-			d:    ".",
-			err:  errors.New(`instance of "." delimiter in claim is at beginning of claim string`),
-		},
-		{
-			name: "backtoback",
-			c:    "gro/.ups",
-			d:    "/.",
-			err:  errors.New(`instance of "." delimiter in claim is at beginning of claim string`),
-		},
-	}
-
-	for _, testCase := range testCases {
-		ret, err := parseClaimWithDelimiters(testCase.c, testCase.d)
-		if diff := deep.Equal(testCase.err, err); diff != nil {
-			t.Fatalf("%s: %v", testCase.name, diff)
-		}
-		if diff := deep.Equal(testCase.res, ret); diff != nil {
-			t.Fatalf("%s: %v", testCase.name, diff)
-		}
 	}
 }

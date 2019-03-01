@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
-	sockaddr "github.com/hashicorp/go-sockaddr"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/helper/logging"
 	"github.com/hashicorp/vault/logical"
 )
@@ -70,7 +70,7 @@ func TestPath_Create(t *testing.T) {
 		MaxTTL:              5 * time.Second,
 		NumUses:             12,
 		BoundCIDRs:          []*sockaddr.SockAddrMarshaler{{expectedSockAddr}},
-		AllowedRedirectURIs: []string{},
+		AllowedRedirectURIs: []string(nil),
 	}
 
 	req := &logical.Request{
@@ -284,7 +284,7 @@ func TestPath_Read(t *testing.T) {
 		"claim_mappings":        map[string]string(nil),
 		"bound_subject":         "testsub",
 		"bound_audiences":       []string{"vault"},
-		"allowed_redirect_uris": []string{},
+		"allowed_redirect_uris": []string(nil),
 		"user_claim":            "user",
 		"groups_claim":          "groups",
 		"policies":              []string{"test"},
@@ -306,24 +306,51 @@ func TestPath_Read(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	req = &logical.Request{
-		Operation: logical.ReadOperation,
-		Path:      "role/plugin-test",
-		Storage:   storage,
+	readTest := func() {
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "role/plugin-test",
+			Storage:   storage,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		if resp.Data["bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
+			t.Fatal("unexpected bound cidrs")
+		}
+		delete(resp.Data, "bound_cidrs")
+		if diff := deep.Equal(expected, resp.Data); diff != nil {
+			t.Fatal(diff)
+		}
 	}
 
-	resp, err = b.HandleRequest(context.Background(), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	// Run read test for normal case
+	readTest()
+
+	// Remove the 'role_type' parameter in stored role to simulate a legacy role
+	rolePath := rolePrefix + "plugin-test"
+	raw, err := storage.Get(context.Background(), rolePath)
+
+	var role map[string]interface{}
+	if err := raw.DecodeJSON(&role); err != nil {
+		t.Fatal(err)
+	}
+	delete(role, "role_type")
+	entry, err := logical.StorageEntryJSON(rolePath, role)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if resp.Data["bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
-		t.Fatal("unexpected bound cidrs")
+	if err = req.Storage.Put(context.Background(), entry); err != nil {
+		t.Fatal(err)
 	}
-	delete(resp.Data, "bound_cidrs")
-	if diff := deep.Equal(expected, resp.Data); diff != nil {
-		t.Fatal(diff)
-	}
+
+	// Run read test for "upgrade" case. The legacy role is not changed in storage, but
+	// reads will populate the `role_type` with "jwt".
+	readTest()
 }
 
 func TestPath_Delete(t *testing.T) {

@@ -152,7 +152,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			"bar": "baz",
 		},
 		"oidc_scopes":           []string{"email", "profile"},
-		"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8300"},
+		"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
 		"claim_mappings": map[string]string{
 			"foo": "a",
 			"bar": "b",
@@ -175,7 +175,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			"foo": json.Number("10"),
 			"bar": "baz",
 		},
-		AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8300"},
+		AllowedRedirectURIs: []string{"https://example.com", "http://localhost:8250"},
 		ClaimMappings: map[string]string{
 			"foo": "a",
 			"bar": "b",

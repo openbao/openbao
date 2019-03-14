@@ -16,7 +16,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/logical"
-	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
@@ -254,6 +254,7 @@ func TestOIDC_Callback(t *testing.T) {
 				"password":            "foo",
 				"sk":                  "42",
 				"/nested/secret_code": "bar",
+				"temperature":         "76",
 			},
 		}
 
@@ -362,6 +363,134 @@ func TestOIDC_Callback(t *testing.T) {
 		auth := resp.Auth
 		if diff := deep.Equal(auth, expected); diff != nil {
 			t.Fatal(diff)
+		}
+	})
+
+	t.Run("failed login - bad nonce", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t)
+		defer s.server.Close()
+
+		// get auth_url
+		data := map[string]interface{}{
+			"role":         "test",
+			"redirect_uri": "https://example.com",
+		}
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+
+		state := getQueryParam(t, authURL, "state")
+
+		// set provider claims that will be returned by the mock server
+		s.customClaims = map[string]interface{}{
+			"nonce": "notgonnamatch",
+			"email": "bob@example.com",
+			"COLOR": "green",
+			"sk":    "42",
+			"nested": map[string]interface{}{
+				"Size":        "medium",
+				"Groups":      []string{"a", "b"},
+				"secret_code": "bar",
+			},
+			"password": "foo",
+		}
+
+		// set mock provider's expected code
+		s.code = "abc"
+
+		// invoke the callback, which will in to try to exchange the code
+		// with the mock provider.
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state": state,
+				"code":  "abc",
+			},
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !resp.IsError() {
+			t.Fatalf("expected error response, got: %v", resp.Data)
+		}
+	})
+
+	t.Run("failed login - bound claim mismatch", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t)
+		defer s.server.Close()
+
+		// get auth_url
+		data := map[string]interface{}{
+			"role":         "test",
+			"redirect_uri": "https://example.com",
+		}
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+
+		state := getQueryParam(t, authURL, "state")
+		nonce := getQueryParam(t, authURL, "nonce")
+
+		// set provider claims that will be returned by the mock server
+		s.customClaims = map[string]interface{}{
+			"nonce": nonce,
+			"email": "bob@example.com",
+			"COLOR": "green",
+			"sk":    "43", // the pre-configured role has a bound claim of "sk"=="42"
+			"nested": map[string]interface{}{
+				"Size":        "medium",
+				"Groups":      []string{"a", "b"},
+				"secret_code": "bar",
+			},
+			"password": "foo",
+		}
+
+		// set mock provider's expected code
+		s.code = "abc"
+
+		// invoke the callback, which will in to try to exchange the code
+		// with the mock provider.
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state": state,
+				"code":  "abc",
+			},
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !resp.IsError() {
+			t.Fatalf("expected error response, got: %v", resp.Data)
 		}
 	})
 
@@ -565,18 +694,14 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/.well-known/openid-configuration":
-		w.Write([]byte(fmt.Sprintf(`
+		w.Write([]byte(strings.Replace(`
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
 				"token_endpoint": "%s/token",
-				"jwks_uri": "%s/certs"
-			}`,
-			o.server.URL,
-			o.server.URL,
-			o.server.URL,
-			o.server.URL,
-		)))
+				"jwks_uri": "%s/certs",
+				"userinfo_endpoint": "%s/userinfo"
+			}`, "%s", o.server.URL, -1)))
 	case "/certs":
 		a := getTestJWKS(o.t, ecdsaPubKey)
 		w.Write(a)
@@ -605,6 +730,12 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			jwtData,
 			jwtData,
 		)))
+	case "/userinfo":
+		w.Write([]byte(`
+			{
+				"color":"red",
+				"temperature":"76"
+			}`))
 
 	default:
 		o.t.Fatalf("unexpected path: %q", r.URL.Path)

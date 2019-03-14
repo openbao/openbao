@@ -2,10 +2,10 @@ package jwtauth
 
 import (
 	"encoding/json"
-	"github.com/hashicorp/go-hclog"
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-hclog"
 )
 
 func TestGetClaim(t *testing.T) {
@@ -147,6 +147,138 @@ func TestExtractMetadata(t *testing.T) {
 		}
 		if diff := deep.Equal(actual, test.expected); diff != nil {
 			t.Fatalf("case '%s': expected results: %v", test.testCase, diff)
+		}
+	}
+}
+
+func TestValidateAudience(t *testing.T) {
+	tests := []struct {
+		boundAudiences []string
+		audience       []string
+		strict         bool
+		errExpected    bool
+	}{
+		{[]string{"a"}, []string{"a"}, false, false},
+		{[]string{"a"}, []string{"b"}, false, true},
+		{[]string{"a"}, []string{""}, false, true},
+		{[]string{}, []string{"a"}, false, false},
+		{[]string{}, []string{"a"}, true, true},
+		{[]string{"a", "b"}, []string{"a"}, false, false},
+		{[]string{"a", "b"}, []string{"b"}, false, false},
+		{[]string{"a", "b"}, []string{"a", "b", "c"}, false, false},
+		{[]string{"a", "b"}, []string{"c", "d"}, false, true},
+	}
+
+	for _, test := range tests {
+		err := validateAudience(test.boundAudiences, test.audience, test.strict)
+		if test.errExpected != (err != nil) {
+			t.Fatalf("unexpected error result: boundAudiences %v, audience %v, strict %t, err: %v",
+				test.boundAudiences, test.audience, test.strict, err)
+		}
+	}
+}
+
+func TestValidateBoundClaims(t *testing.T) {
+	tests := []struct {
+		name        string
+		boundClaims map[string]interface{}
+		allClaims   map[string]interface{}
+		errExpected bool
+	}{
+		{
+			name: "valid",
+			boundClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "b",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "b",
+			},
+			errExpected: false,
+		},
+		{
+			name: "valid - extra data",
+			boundClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "b",
+			},
+			allClaims: map[string]interface{}{
+				"foo":   "a",
+				"bar":   "b",
+				"color": "green",
+			},
+			errExpected: false,
+		},
+		{
+			name: "mismatched value",
+			boundClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "b",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "wrong",
+			},
+			errExpected: true,
+		},
+		{
+			name: "missing claim",
+			boundClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": "b",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+			},
+			errExpected: true,
+		},
+		{
+			name: "valid - JSONPointer",
+			boundClaims: map[string]interface{}{
+				"foo":        "a",
+				"/bar/baz/1": "y",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": map[string]interface{}{
+					"baz": []string{"x", "y", "z"},
+				},
+			},
+			errExpected: false,
+		},
+		{
+			name: "invalid - JSONPointer value mismatch",
+			boundClaims: map[string]interface{}{
+				"foo":        "a",
+				"/bar/baz/1": "q",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": map[string]interface{}{
+					"baz": []string{"x", "y", "z"},
+				},
+			},
+			errExpected: true,
+		},
+		{
+			name: "invalid - JSONPointer not found",
+			boundClaims: map[string]interface{}{
+				"foo":           "a",
+				"/bar/XXX/1243": "q",
+			},
+			allClaims: map[string]interface{}{
+				"foo": "a",
+				"bar": map[string]interface{}{
+					"baz": []string{"x", "y", "z"},
+				},
+			},
+			errExpected: true,
+		},
+	}
+	for _, tt := range tests {
+		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
+			t.Errorf("validateBoundClaims(%s) error = %v, wantErr %v", tt.name, err, tt.errExpected)
 		}
 	}
 }

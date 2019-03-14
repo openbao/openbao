@@ -19,7 +19,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc, audience bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -63,7 +63,12 @@ func setupBackend(t *testing.T, oidc, audience bool) (logical.Backend, logical.S
 		},
 	}
 	if audience {
-		data["bound_audiences"] = "https://vault.plugin.auth.jwt.test"
+		data["bound_audiences"] = []string{"https://vault.plugin.auth.jwt.test", "another_audience"}
+	}
+	if boundClaims {
+		data["bound_claims"] = map[string]interface{}{
+			"color": "green",
+		}
 	}
 
 	req = &logical.Request{
@@ -141,7 +146,7 @@ func getTestOIDC(t *testing.T) string {
 func TestLogin_JWT(t *testing.T) {
 	// Test missing audience
 	{
-		b, storage := setupBackend(t, false, false)
+		b, storage := setupBackend(t, false, false, false)
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
@@ -186,7 +191,7 @@ func TestLogin_JWT(t *testing.T) {
 		}
 	}
 
-	b, storage := setupBackend(t, false, true)
+	b, storage := setupBackend(t, false, true, true)
 
 	// test valid inputs
 	{
@@ -206,11 +211,13 @@ func TestLogin_JWT(t *testing.T) {
 			Groups    []string `json:"https://vault/groups"`
 			FirstName string   `json:"first_name"`
 			Org       orgs     `json:"org"`
+			Color     string   `json:"color"`
 		}{
 			"jeff",
 			[]string{"foo", "bar"},
 			"jeff2",
 			orgs{"engineering"},
+			"green",
 		}
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
@@ -270,6 +277,54 @@ func TestLogin_JWT(t *testing.T) {
 			t.Fatal(diff)
 		}
 
+	}
+
+	// test invalid bound claim
+	{
+		cl := jwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		type orgs struct {
+			Primary string `json:"primary"`
+		}
+
+		privateCl := struct {
+			User      string   `json:"https://vault/user"`
+			Groups    []string `json:"https://vault/groups"`
+			FirstName string   `json:"first_name"`
+			Org       orgs     `json:"org"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+			"jeff2",
+			orgs{"engineering"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !resp.IsError() {
+			t.Fatalf("expected error, got: %v", resp.Data)
+		}
 	}
 
 	// test bad signature
@@ -543,9 +598,11 @@ func TestLogin_JWT(t *testing.T) {
 		privateCl := struct {
 			User   string   `json:"https://vault/user"`
 			Groups []string `json:"https://vault/groups"`
+			Color  string   `json:"color"`
 		}{
 			"jeff",
 			[]string{"foo", "bar"},
+			"green",
 		}
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
@@ -638,7 +695,7 @@ func TestLogin_JWT(t *testing.T) {
 }
 
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true, true)
+	b, storage := setupBackend(t, true, true, false)
 
 	jwtData := getTestOIDC(t)
 

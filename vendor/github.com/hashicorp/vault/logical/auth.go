@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-sockaddr"
+	sockaddr "github.com/hashicorp/go-sockaddr"
 )
 
 // Auth is the resulting authentication information that is part of
@@ -92,6 +92,9 @@ type Auth struct {
 
 	// TokenType is the type of token being requested
 	TokenType TokenType `json:"token_type"`
+
+	// Orphan is set if the token does not have a parent
+	Orphan bool `json:"orphan"`
 }
 
 func (a *Auth) GoString() string {

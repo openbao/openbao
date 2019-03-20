@@ -11,7 +11,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/physical"
 
-	"github.com/armon/go-radix"
+	radix "github.com/armon/go-radix"
 )
 
 // Verify interfaces are satisfied
@@ -196,7 +196,7 @@ func (i *InmemBackend) FailDelete(fail bool) {
 	atomic.StoreUint32(i.failDelete, val)
 }
 
-// List is used ot list all the keys under a given
+// List is used to list all the keys under a given
 // prefix, up to the next prefix.
 func (i *InmemBackend) List(ctx context.Context, prefix string) ([]string, error) {
 	i.permitPool.Acquire()

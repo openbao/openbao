@@ -102,7 +102,7 @@ type OASPathItem struct {
 	Parameters      []OASParameter `json:"parameters,omitempty"`
 	Sudo            bool           `json:"x-vault-sudo,omitempty" mapstructure:"x-vault-sudo"`
 	Unauthenticated bool           `json:"x-vault-unauthenticated,omitempty" mapstructure:"x-vault-unauthenticated"`
-	CreateSupported bool           `json:"x-vault-create-supported,omitempty" mapstructure:"x-vault-create-supported"`
+	CreateSupported bool           `json:"x-vault-createSupported,omitempty" mapstructure:"x-vault-createSupported"`
 
 	Get    *OASOperation `json:"get,omitempty"`
 	Post   *OASOperation `json:"post,omitempty"`
@@ -119,6 +119,7 @@ func NewOASOperation() *OASOperation {
 type OASOperation struct {
 	Summary     string               `json:"summary,omitempty"`
 	Description string               `json:"description,omitempty"`
+	OperationID string               `json:"operationId,omitempty"`
 	Tags        []string             `json:"tags,omitempty"`
 	Parameters  []OASParameter       `json:"parameters,omitempty"`
 	RequestBody *OASRequestBody      `json:"requestBody,omitempty"`
@@ -147,14 +148,20 @@ type OASMediaTypeObject struct {
 }
 
 type OASSchema struct {
-	Type        string                `json:"type,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Properties  map[string]*OASSchema `json:"properties,omitempty"`
-	Items       *OASSchema            `json:"items,omitempty"`
-	Format      string                `json:"format,omitempty"`
-	Pattern     string                `json:"pattern,omitempty"`
-	Example     interface{}           `json:"example,omitempty"`
-	Deprecated  bool                  `json:"deprecated,omitempty"`
+	Type             string                `json:"type,omitempty"`
+	Description      string                `json:"description,omitempty"`
+	Properties       map[string]*OASSchema `json:"properties,omitempty"`
+	Items            *OASSchema            `json:"items,omitempty"`
+	Format           string                `json:"format,omitempty"`
+	Pattern          string                `json:"pattern,omitempty"`
+	Enum             []interface{}         `json:"enum,omitempty"`
+	Default          interface{}           `json:"default,omitempty"`
+	Example          interface{}           `json:"example,omitempty"`
+	Deprecated       bool                  `json:"deprecated,omitempty"`
+	Required         bool                  `json:"required,omitempty"`
+	DisplayName      string                `json:"x-vault-displayName,omitempty" mapstructure:"x-vault-displayName,omitempty"`
+	DisplayValue     interface{}           `json:"x-vault-displayValue,omitempty" mapstructure:"x-vault-displayValue,omitempty"`
+	DisplaySensitive bool                  `json:"x-vault-displaySensitive,omitempty" mapstructure:"x-vault-displaySensitive,omitempty"`
 }
 
 type OASResponse struct {
@@ -177,12 +184,15 @@ var OASStdRespNoContent = &OASResponse{
 // Both "(leases/)?renew" and "(/(?P<name>.+))?" formats are detected
 var optRe = regexp.MustCompile(`(?U)\([^(]*\)\?|\(/\(\?P<[^(]*\)\)\?`)
 
-var reqdRe = regexp.MustCompile(`\(?\?P<(\w+)>[^)]*\)?`) // Capture required parameters, e.g. "(?P<name>regex)"
-var altRe = regexp.MustCompile(`\((.*)\|(.*)\)`)         // Capture alternation elements, e.g. "(raw/?$|raw/(?P<path>.+))"
-var pathFieldsRe = regexp.MustCompile(`{(\w+)}`)         // Capture OpenAPI-style named parameters, e.g. "lookup/{urltoken}",
-var cleanCharsRe = regexp.MustCompile("[()^$?]")         // Set of regex characters that will be stripped during cleaning
-var cleanSuffixRe = regexp.MustCompile(`/\?\$?$`)        // Path suffix patterns that will be stripped during cleaning
-var wsRe = regexp.MustCompile(`\s+`)                     // Match whitespace, to be compressed during cleaning
+var reqdRe = regexp.MustCompile(`\(?\?P<(\w+)>[^)]*\)?`)             // Capture required parameters, e.g. "(?P<name>regex)"
+var altRe = regexp.MustCompile(`\((.*)\|(.*)\)`)                     // Capture alternation elements, e.g. "(raw/?$|raw/(?P<path>.+))"
+var pathFieldsRe = regexp.MustCompile(`{(\w+)}`)                     // Capture OpenAPI-style named parameters, e.g. "lookup/{urltoken}",
+var cleanCharsRe = regexp.MustCompile("[()^$?]")                     // Set of regex characters that will be stripped during cleaning
+var cleanSuffixRe = regexp.MustCompile(`/\?\$?$`)                    // Path suffix patterns that will be stripped during cleaning
+var wsRe = regexp.MustCompile(`\s+`)                                 // Match whitespace, to be compressed during cleaning
+var altFieldsGroupRe = regexp.MustCompile(`\(\?P<\w+>\w+(\|\w+)+\)`) // Match named groups that limit options, e.g. "(?<foo>a|b|c)"
+var altFieldsRe = regexp.MustCompile(`\w+(\|\w+)+`)                  // Match an options set, e.g. "a|b|c"
+var nonWordRe = regexp.MustCompile(`[^\w]+`)                         // Match a sequence of non-word characters
 
 // documentPaths parses all paths in a framework.Backend into OpenAPI paths.
 func documentPaths(backend *Backend, doc *OASDocument) error {
@@ -251,8 +261,13 @@ func documentPath(p *Path, specialPaths *logical.Paths, backendType logical.Back
 				Description: cleanString(field.Description),
 				In:          location,
 				Schema: &OASSchema{
-					Type:    t.baseType,
-					Pattern: t.pattern,
+					Type:             t.baseType,
+					Pattern:          t.pattern,
+					Enum:             field.AllowedValues,
+					Default:          field.Default,
+					DisplayName:      field.DisplayName,
+					DisplayValue:     field.DisplayValue,
+					DisplaySensitive: field.DisplaySensitive,
 				},
 				Required:   required,
 				Deprecated: field.Deprecated,
@@ -303,11 +318,17 @@ func documentPath(p *Path, specialPaths *logical.Paths, backendType logical.Back
 				for name, field := range bodyFields {
 					openapiField := convertType(field.Type)
 					p := OASSchema{
-						Type:        openapiField.baseType,
-						Description: cleanString(field.Description),
-						Format:      openapiField.format,
-						Pattern:     openapiField.pattern,
-						Deprecated:  field.Deprecated,
+						Type:             openapiField.baseType,
+						Description:      cleanString(field.Description),
+						Format:           openapiField.format,
+						Pattern:          openapiField.pattern,
+						Enum:             field.AllowedValues,
+						Default:          field.Default,
+						Required:         field.Required,
+						Deprecated:       field.Deprecated,
+						DisplayName:      field.DisplayName,
+						DisplayValue:     field.DisplayValue,
+						DisplaySensitive: field.DisplaySensitive,
 					}
 					if openapiField.baseType == "array" {
 						p.Items = &OASSchema{
@@ -446,8 +467,12 @@ func expandPattern(pattern string) []string {
 	if start != -1 && end != -1 && end > start {
 		regexToRemove = base[start+1 : end]
 	}
-
 	pattern = strings.Replace(pattern, regexToRemove, "", -1)
+
+	// Simplify named fields that have limited options, e.g. (?P<foo>a|b|c) -> (<P<foo>.+)
+	pattern = altFieldsGroupRe.ReplaceAllStringFunc(pattern, func(s string) string {
+		return altFieldsRe.ReplaceAllString(s, ".+")
+	})
 
 	// Initialize paths with the original pattern or the halves of an
 	// alternation, which is also present in some patterns.
@@ -522,9 +547,9 @@ func convertType(t FieldType) schemaType {
 		ret.baseType = "string"
 		ret.format = "lowercase"
 	case TypeInt:
-		ret.baseType = "number"
+		ret.baseType = "integer"
 	case TypeDurationSecond:
-		ret.baseType = "number"
+		ret.baseType = "integer"
 		ret.format = "seconds"
 	case TypeBool:
 		ret.baseType = "boolean"
@@ -542,7 +567,7 @@ func convertType(t FieldType) schemaType {
 		ret.items = "string"
 	case TypeCommaIntSlice:
 		ret.baseType = "array"
-		ret.items = "number"
+		ret.items = "integer"
 	default:
 		log.L().Warn("error parsing field type", "type", t)
 		ret.format = "unknown"
@@ -604,4 +629,61 @@ func cleanResponse(resp *logical.Response) (*cleanedResponse, error) {
 	}
 
 	return &r, nil
+}
+
+// CreateOperationIDs generates unique operationIds for all paths/methods.
+// The transform will convert path/method into camelcase. e.g.:
+//
+// /sys/tools/random/{urlbytes} -> postSysToolsRandomUrlbytes
+//
+// In the unlikely case of a duplicate ids, a numeric suffix is added:
+//   postSysToolsRandomUrlbytes_2
+//
+// An optional user-provided suffix ("context") may also be appended.
+func (d *OASDocument) CreateOperationIDs(context string) {
+	opIDCount := make(map[string]int)
+	var paths []string
+
+	// traverse paths in a stable order to ensure stable output
+	for path := range d.Paths {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+
+	for _, path := range paths {
+		pi := d.Paths[path]
+		for _, method := range []string{"get", "post", "delete"} {
+			var oasOperation *OASOperation
+			switch method {
+			case "get":
+				oasOperation = pi.Get
+			case "post":
+				oasOperation = pi.Post
+			case "delete":
+				oasOperation = pi.Delete
+			}
+
+			if oasOperation == nil {
+				continue
+			}
+
+			// Space-split on non-words, title case everything, recombine
+			opID := nonWordRe.ReplaceAllString(strings.ToLower(path), " ")
+			opID = strings.Title(opID)
+			opID = method + strings.Replace(opID, " ", "", -1)
+
+			// deduplicate operationIds. This is a safeguard, since generated IDs should
+			// already be unique given our current path naming conventions.
+			opIDCount[opID]++
+			if opIDCount[opID] > 1 {
+				opID = fmt.Sprintf("%s_%d", opID, opIDCount[opID])
+			}
+
+			if context != "" {
+				opID += "_" + context
+			}
+
+			oasOperation.OperationID = opID
+		}
+	}
 }

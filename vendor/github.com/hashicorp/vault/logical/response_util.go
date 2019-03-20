@@ -1,6 +1,7 @@
 package logical
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,7 +24,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 
 		// Basically: if we have empty "keys" or no keys at all, 404. This
 		// provides consistency with GET.
-		case req.Operation == ListOperation && resp.WrapInfo == nil:
+		case req.Operation == ListOperation && (resp == nil || resp.WrapInfo == nil):
 			if resp == nil {
 				return http.StatusNotFound, nil
 			}
@@ -144,4 +145,22 @@ func AdjustErrorStatusCode(status *int, err error) {
 	if t, ok := err.(HTTPCodedError); ok {
 		*status = t.Code()
 	}
+}
+
+func RespondError(w http.ResponseWriter, status int, err error) {
+	AdjustErrorStatusCode(&status, err)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	type ErrorResponse struct {
+		Errors []string `json:"errors"`
+	}
+	resp := &ErrorResponse{Errors: make([]string, 0, 1)}
+	if err != nil {
+		resp.Errors = append(resp.Errors, err.Error())
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(resp)
 }

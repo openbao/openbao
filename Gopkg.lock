@@ -120,12 +120,12 @@
   revision = "a4620f9913d19f03a6bf19b2f304daaaf83ea130"
 
 [[projects]]
-  branch = "master"
-  digest = "1:183f00c472fb9b2446659618eebf4899872fa267b92f926539411abdc8b941df"
+  digest = "1:d260503602063d71718eb21f85c02133ad5eac894c2a6f0e0546b7dc017dc97e"
   name = "github.com/hashicorp/go-retryablehttp"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e651d75abec6fbd4f2c09508f72ae7af8a8b7171"
+  revision = "73489d0a1476f0c9e6fb03f9c39241523a496dfd"
+  version = "v0.5.2"
 
 [[projects]]
   branch = "master"

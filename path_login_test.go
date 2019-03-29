@@ -15,11 +15,11 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/logical"
-	jose "gopkg.in/square/go-jose.v2"
+	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool, boundCIDRs bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -69,6 +69,9 @@ func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool) (logical.
 		data["bound_claims"] = map[string]interface{}{
 			"color": "green",
 		}
+	}
+	if boundCIDRs {
+		data["bound_cidrs"] = "127.0.0.42"
 	}
 
 	req = &logical.Request{
@@ -146,7 +149,7 @@ func getTestOIDC(t *testing.T) string {
 func TestLogin_JWT(t *testing.T) {
 	// Test missing audience
 	{
-		b, storage := setupBackend(t, false, false, false)
+		b, storage := setupBackend(t, false, false, false, false)
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
@@ -191,93 +194,100 @@ func TestLogin_JWT(t *testing.T) {
 		}
 	}
 
-	b, storage := setupBackend(t, false, true, true)
-
 	// test valid inputs
 	{
-		cl := jwt.Claims{
-			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
-		}
+		// run test with and without bound_cidrs configured
+		for _, useBoundCIDRs := range []bool{false, true} {
+			b, storage := setupBackend(t, false, true, true, useBoundCIDRs)
 
-		type orgs struct {
-			Primary string `json:"primary"`
-		}
+			cl := jwt.Claims{
+				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			}
 
-		privateCl := struct {
-			User      string   `json:"https://vault/user"`
-			Groups    []string `json:"https://vault/groups"`
-			FirstName string   `json:"first_name"`
-			Org       orgs     `json:"org"`
-			Color     string   `json:"color"`
-		}{
-			"jeff",
-			[]string{"foo", "bar"},
-			"jeff2",
-			orgs{"engineering"},
-			"green",
-		}
+			type orgs struct {
+				Primary string `json:"primary"`
+			}
 
-		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+			privateCl := struct {
+				User      string   `json:"https://vault/user"`
+				Groups    []string `json:"https://vault/groups"`
+				FirstName string   `json:"first_name"`
+				Org       orgs     `json:"org"`
+				Color     string   `json:"color"`
+			}{
+				"jeff",
+				[]string{"foo", "bar"},
+				"jeff2",
+				orgs{"engineering"},
+				"green",
+			}
 
-		data := map[string]interface{}{
-			"role": "plugin-test",
-			"jwt":  jwtData,
-		}
+			jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
 
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "login",
-			Storage:   storage,
-			Data:      data,
-		}
+			data := map[string]interface{}{
+				"role": "plugin-test",
+				"jwt":  jwtData,
+			}
 
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp == nil {
-			t.Fatal("got nil response")
-		}
-		if resp.IsError() {
-			t.Fatalf("got error: %v", resp.Error())
-		}
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "login",
+				Storage:   storage,
+				Data:      data,
+				Connection: &logical.Connection{
+					RemoteAddr: "127.0.0.42",
+				},
+			}
 
-		auth := resp.Auth
-		switch {
-		case len(auth.Policies) != 1 || auth.Policies[0] != "test":
-			t.Fatal(auth.Policies)
-		case auth.Alias.Name != "jeff":
-			t.Fatal(auth.Alias.Name)
-		case len(auth.GroupAliases) != 2 || auth.GroupAliases[0].Name != "foo" || auth.GroupAliases[1].Name != "bar":
-			t.Fatal(auth.GroupAliases)
-		case auth.Period != 3*time.Second:
-			t.Fatal(auth.Period)
-		case auth.TTL != time.Second:
-			t.Fatal(auth.TTL)
-		case auth.MaxTTL != 5*time.Second:
-			t.Fatal(auth.MaxTTL)
-		}
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if resp == nil {
+				t.Fatal("got nil response")
+			}
+			if resp.IsError() {
+				t.Fatalf("got error: %v", resp.Error())
+			}
 
-		// check alias metadata
-		metadata := map[string]string{
-			"name":        "jeff2",
-			"primary_org": "engineering",
-		}
+			auth := resp.Auth
+			switch {
+			case len(auth.Policies) != 1 || auth.Policies[0] != "test":
+				t.Fatal(auth.Policies)
+			case auth.Alias.Name != "jeff":
+				t.Fatal(auth.Alias.Name)
+			case len(auth.GroupAliases) != 2 || auth.GroupAliases[0].Name != "foo" || auth.GroupAliases[1].Name != "bar":
+				t.Fatal(auth.GroupAliases)
+			case auth.Period != 3*time.Second:
+				t.Fatal(auth.Period)
+			case auth.TTL != time.Second:
+				t.Fatal(auth.TTL)
+			case auth.MaxTTL != 5*time.Second:
+				t.Fatal(auth.MaxTTL)
+			}
 
-		if diff := deep.Equal(auth.Alias.Metadata, metadata); diff != nil {
-			t.Fatal(diff)
-		}
+			// check alias metadata
+			metadata := map[string]string{
+				"name":        "jeff2",
+				"primary_org": "engineering",
+			}
 
-		// check token metadata
-		metadata["role"] = "plugin-test"
-		if diff := deep.Equal(auth.Metadata, metadata); diff != nil {
-			t.Fatal(diff)
-		}
+			if diff := deep.Equal(auth.Alias.Metadata, metadata); diff != nil {
+				t.Fatal(diff)
+			}
 
+			// check token metadata
+			metadata["role"] = "plugin-test"
+			if diff := deep.Equal(auth.Metadata, metadata); diff != nil {
+				t.Fatal(diff)
+			}
+		}
 	}
+
+	b, storage := setupBackend(t, false, true, true, false)
 
 	// test invalid bound claim
 	{
@@ -665,6 +675,55 @@ func TestLogin_JWT(t *testing.T) {
 			t.Fatalf("expected error: %v", *resp)
 		}
 	}
+
+	// test invalid address
+	{
+		b, storage := setupBackend(t, false, false, false, true)
+
+		cl := jwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		}
+
+		privateCl := struct {
+			User   string   `json:"https://vault/user"`
+			Groups []string `json:"https://vault/groups"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.99",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+
+		if !resp.IsError() || !strings.Contains(resp.Error().Error(), "invalid CIDR") {
+			t.Fatalf("expected invalid CIDR error, got : %v", *resp)
+		}
+	}
+
 	// test bad role name
 	{
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, jwt.Claims{}, struct{}{})
@@ -695,7 +754,7 @@ func TestLogin_JWT(t *testing.T) {
 }
 
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true, true, false)
+	b, storage := setupBackend(t, true, true, false, false)
 
 	jwtData := getTestOIDC(t)
 

@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-test/deep"
+	"github.com/hashicorp/go-sockaddr"
+
 	"github.com/hashicorp/vault/logical"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -209,7 +211,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 }
 
 func TestOIDC_Callback(t *testing.T) {
-	getBackendAndServer := func(t *testing.T) (logical.Backend, logical.Storage, *oidcProvider) {
+	getBackendAndServer := func(t *testing.T, boundCIDRs bool) (logical.Backend, logical.Storage, *oidcProvider) {
 		b, storage := getBackend(t)
 		s := newOIDCProvider(t)
 		s.clientID = "abc"
@@ -258,6 +260,10 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 
+		if boundCIDRs {
+			data["bound_cidrs"] = "127.0.0.42"
+		}
+
 		req = &logical.Request{
 			Operation: logical.CreateOperation,
 			Path:      "role/test",
@@ -274,100 +280,116 @@ func TestOIDC_Callback(t *testing.T) {
 	}
 
 	t.Run("successful login", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
-		defer s.server.Close()
 
-		// get auth_url
-		data := map[string]interface{}{
-			"role":         "test",
-			"redirect_uri": "https://example.com",
-		}
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "oidc/auth_url",
-			Storage:   storage,
-			Data:      data,
-		}
+		// run test with and without bound_cidrs configured
+		for _, useBoundCIDRs := range []bool{false, true} {
+			b, storage, s := getBackendAndServer(t, useBoundCIDRs)
+			defer s.server.Close()
 
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
+			// get auth_url
+			data := map[string]interface{}{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+			}
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "oidc/auth_url",
+				Storage:   storage,
+				Data:      data,
+			}
 
-		authURL := resp.Data["auth_url"].(string)
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%v resp:%#v\n", err, resp)
+			}
 
-		state := getQueryParam(t, authURL, "state")
-		nonce := getQueryParam(t, authURL, "nonce")
+			authURL := resp.Data["auth_url"].(string)
 
-		// set provider claims that will be returned by the mock server
-		s.customClaims = map[string]interface{}{
-			"nonce": nonce,
-			"email": "bob@example.com",
-			"COLOR": "green",
-			"sk":    "42",
-			"nested": map[string]interface{}{
-				"Size":        "medium",
-				"Groups":      []string{"a", "b"},
-				"secret_code": "bar",
-			},
-			"password": "foo",
-		}
+			state := getQueryParam(t, authURL, "state")
+			nonce := getQueryParam(t, authURL, "nonce")
 
-		// set mock provider's expected code
-		s.code = "abc"
+			// set provider claims that will be returned by the mock server
+			s.customClaims = map[string]interface{}{
+				"nonce": nonce,
+				"email": "bob@example.com",
+				"COLOR": "green",
+				"sk":    "42",
+				"nested": map[string]interface{}{
+					"Size":        "medium",
+					"Groups":      []string{"a", "b"},
+					"secret_code": "bar",
+				},
+				"password": "foo",
+			}
 
-		// invoke the callback, which will in to try to exchange the code
-		// with the mock provider.
-		req = &logical.Request{
-			Operation: logical.ReadOperation,
-			Path:      "oidc/callback",
-			Storage:   storage,
-			Data: map[string]interface{}{
-				"state": state,
-				"code":  "abc",
-			},
-		}
+			// set mock provider's expected code
+			s.code = "abc"
 
-		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
+			// invoke the callback, which will in to try to exchange the code
+			// with the mock provider.
+			req = &logical.Request{
+				Operation: logical.ReadOperation,
+				Path:      "oidc/callback",
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"state": state,
+					"code":  "abc",
+				},
+				Connection: &logical.Connection{
+					RemoteAddr: "127.0.0.42",
+				},
+			}
 
-		expected := &logical.Auth{
-			LeaseOptions: logical.LeaseOptions{
-				Renewable: true,
-				TTL:       3 * time.Minute,
-				MaxTTL:    5 * time.Minute,
-			},
-			InternalData: map[string]interface{}{
-				"role": "test",
-			},
-			DisplayName: "bob@example.com",
-			Alias: &logical.Alias{
-				Name: "bob@example.com",
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			expected := &logical.Auth{
+				LeaseOptions: logical.LeaseOptions{
+					Renewable: true,
+					TTL:       3 * time.Minute,
+					MaxTTL:    5 * time.Minute,
+				},
+				InternalData: map[string]interface{}{
+					"role": "test",
+				},
+				DisplayName: "bob@example.com",
+				Alias: &logical.Alias{
+					Name: "bob@example.com",
+					Metadata: map[string]string{
+						"color": "green",
+						"size":  "medium",
+					},
+				},
+				GroupAliases: []*logical.Alias{
+					{Name: "a"},
+					{Name: "b"},
+				},
 				Metadata: map[string]string{
+					"role":  "test",
 					"color": "green",
 					"size":  "medium",
 				},
-			},
-			GroupAliases: []*logical.Alias{
-				{Name: "a"},
-				{Name: "b"},
-			},
-			Metadata: map[string]string{
-				"role":  "test",
-				"color": "green",
-				"size":  "medium",
-			},
-		}
-		auth := resp.Auth
-		if diff := deep.Equal(auth, expected); diff != nil {
-			t.Fatal(diff)
+			}
+			if useBoundCIDRs {
+				sock, err := sockaddr.NewSockAddr("127.0.0.42")
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected.BoundCIDRs = []*sockaddr.SockAddrMarshaler{{SockAddr: sock}}
+			}
+
+			auth := resp.Auth
+
+			if !reflect.DeepEqual(auth, expected) {
+				t.Fatalf("expected: %v, auth: %v", expected, auth)
+			}
 		}
 	})
 
 	t.Run("failed login - bad nonce", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		// get auth_url
@@ -431,7 +453,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed login - bound claim mismatch", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		// get auth_url
@@ -495,7 +517,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("missing state", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		req := &logical.Request{
@@ -514,7 +536,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("unknown state", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		req := &logical.Request{
@@ -536,7 +558,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("valid state, missing code", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		// get auth_url
@@ -578,7 +600,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed code exchange", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 		defer s.server.Close()
 
 		// get auth_url
@@ -624,7 +646,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("no response from provider", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t)
+		b, storage, s := getBackendAndServer(t, false)
 
 		// get auth_url
 		data := map[string]interface{}{
@@ -666,6 +688,58 @@ func TestOIDC_Callback(t *testing.T) {
 
 		if resp == nil || !strings.Contains(resp.Error().Error(), "connection refused") {
 			t.Fatalf("expected code exchange error response, got: %#v", resp)
+		}
+	})
+
+	t.Run("test bad address", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t, true)
+		defer s.server.Close()
+
+		s.code = "abc"
+
+		// get auth_url
+		data := map[string]interface{}{
+			"role":         "test",
+			"redirect_uri": "https://example.com",
+		}
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+		state := getQueryParam(t, authURL, "state")
+
+		// request with invalid CIDR, which should fail
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state": state,
+				"code":  "abc",
+			},
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.99",
+			},
+		}
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("nil response")
+		}
+
+		if !resp.IsError() || !strings.Contains(resp.Error().Error(), "invalid CIDR") {
+			t.Fatalf("expected invalid CIDR error, got : %v", *resp)
 		}
 	})
 }

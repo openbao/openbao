@@ -265,17 +265,19 @@ func TestPath_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
-		"role_type":       "jwt",
-		"bound_subject":   "testsub",
-		"bound_audiences": "vault",
-		"user_claim":      "user",
-		"groups_claim":    "groups",
-		"bound_cidrs":     "127.0.0.1/8",
-		"policies":        "test",
-		"period":          "3s",
-		"ttl":             "1s",
-		"num_uses":        12,
-		"max_ttl":         "5s",
+		"role_type":             "jwt",
+		"bound_subject":         "testsub",
+		"bound_audiences":       "vault",
+		"allowed_redirect_uris": []string{"http://127.0.0.1"},
+		"oidc_scopes":           []string{"email", "profile"},
+		"user_claim":            "user",
+		"groups_claim":          "groups",
+		"bound_cidrs":           "127.0.0.1/8",
+		"policies":              "test",
+		"period":                "3s",
+		"ttl":                   "1s",
+		"num_uses":              12,
+		"max_ttl":               "5s",
 	}
 
 	expected := map[string]interface{}{
@@ -284,7 +286,8 @@ func TestPath_Read(t *testing.T) {
 		"claim_mappings":        map[string]string(nil),
 		"bound_subject":         "testsub",
 		"bound_audiences":       []string{"vault"},
-		"allowed_redirect_uris": []string(nil),
+		"allowed_redirect_uris": []string{"http://127.0.0.1"},
+		"oidc_scopes":           []string{"email", "profile"},
 		"user_claim":            "user",
 		"groups_claim":          "groups",
 		"policies":              []string{"test"},

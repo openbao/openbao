@@ -19,7 +19,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool, boundCIDRs bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims bool, boundCIDRs bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -61,6 +61,10 @@ func setupBackend(t *testing.T, oidc, audience bool, boundClaims bool, boundCIDR
 			"first_name":   "name",
 			"/org/primary": "primary_org",
 		},
+	}
+	if role_type_oidc {
+		data["role_type"] = "oidc"
+		data["allowed_redirect_uris"] = "http://127.0.0.1"
 	}
 	if audience {
 		data["bound_audiences"] = []string{"https://vault.plugin.auth.jwt.test", "another_audience"}
@@ -147,9 +151,56 @@ func getTestOIDC(t *testing.T) string {
 }
 
 func TestLogin_JWT(t *testing.T) {
+	// Test role_type oidc
+	{
+		b, storage := setupBackend(t, false, true, true, false, false)
+		cl := jwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		privateCl := struct {
+			User   string   `json:"https://vault/user"`
+			Groups []string `json:"https://vault/groups"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+		if !resp.IsError() {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(resp.Error().Error(), "role with oidc role_type is not allowed") {
+			t.Fatalf("unexpected error: %v", resp.Error())
+		}
+	}
+
 	// Test missing audience
 	{
-		b, storage := setupBackend(t, false, false, false, false)
+		b, storage := setupBackend(t, false, false, false, false, false)
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
@@ -198,7 +249,7 @@ func TestLogin_JWT(t *testing.T) {
 	{
 		// run test with and without bound_cidrs configured
 		for _, useBoundCIDRs := range []bool{false, true} {
-			b, storage := setupBackend(t, false, true, true, useBoundCIDRs)
+			b, storage := setupBackend(t, false, false, true, true, useBoundCIDRs)
 
 			cl := jwt.Claims{
 				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -287,7 +338,7 @@ func TestLogin_JWT(t *testing.T) {
 		}
 	}
 
-	b, storage := setupBackend(t, false, true, true, false)
+	b, storage := setupBackend(t, false, false, true, true, false)
 
 	// test invalid bound claim
 	{
@@ -678,7 +729,7 @@ func TestLogin_JWT(t *testing.T) {
 
 	// test invalid address
 	{
-		b, storage := setupBackend(t, false, false, false, true)
+		b, storage := setupBackend(t, false, false, false, false, true)
 
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -754,7 +805,7 @@ func TestLogin_JWT(t *testing.T) {
 }
 
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true, true, false, false)
+	b, storage := setupBackend(t, true, false, true, false, false)
 
 	jwtData := getTestOIDC(t)
 

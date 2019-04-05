@@ -1,6 +1,7 @@
 package jwtauth
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
@@ -217,14 +218,27 @@ func TestOIDC_Callback(t *testing.T) {
 		s.clientID = "abc"
 		s.clientSecret = "def"
 
+		// save test server root cert to config in PEM format
+		cert := s.server.Certificate()
+		block := &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: cert.Raw,
+		}
+
+		pemBuf := new(bytes.Buffer)
+		if err := pem.Encode(pemBuf, block); err != nil {
+			t.Fatal(err)
+		}
+
 		// Configure backend
 		data := map[string]interface{}{
-			"oidc_discovery_url": s.server.URL,
-			"oidc_client_id":     "abc",
-			"oidc_client_secret": "def",
-			"default_role":       "test",
-			"bound_issuer":       "http://vault.example.com/",
-			"jwt_supported_algs": []string{"ES256"},
+			"oidc_discovery_url":    s.server.URL,
+			"oidc_client_id":        "abc",
+			"oidc_client_secret":    "def",
+			"oidc_discovery_ca_pem": pemBuf.String(),
+			"default_role":          "test",
+			"bound_issuer":          "http://vault.example.com/",
+			"jwt_supported_algs":    []string{"ES256"},
 		}
 
 		// basic configuration
@@ -758,7 +772,7 @@ type oidcProvider struct {
 func newOIDCProvider(t *testing.T) *oidcProvider {
 	o := new(oidcProvider)
 	o.t = t
-	o.server = httptest.NewServer(o)
+	o.server = httptest.NewTLSServer(o)
 
 	return o
 }

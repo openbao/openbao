@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-MNT_PATH="jwt"
+MNT_PATH="oidc"
 PLUGIN_NAME="vault-plugin-auth-jwt"
-PLUGIN_CATALOG_NAME="jwt"
+PLUGIN_CATALOG_NAME="oidc"
 
 #
 # Helper script for local development. Automatically builds and registers the

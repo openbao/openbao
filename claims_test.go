@@ -275,6 +275,40 @@ func TestValidateBoundClaims(t *testing.T) {
 			},
 			errExpected: true,
 		},
+		{
+			name: "valid - match alternates",
+			boundClaims: map[string]interface{}{
+				"email": []interface{}{"a", "b", "c"},
+				"color": "green",
+			},
+			allClaims: map[string]interface{}{
+				"email": "c",
+				"color": "green",
+			},
+			errExpected: false,
+		},
+		{
+			name: "invalid - no match alternates",
+			boundClaims: map[string]interface{}{
+				"email": []interface{}{"a", "b", "c"},
+				"color": "green",
+			},
+			allClaims: map[string]interface{}{
+				"email": "d",
+				"color": "green",
+			},
+			errExpected: true,
+		},
+		{
+			name: "invalid bound claim expected value",
+			boundClaims: map[string]interface{}{
+				"email": 42,
+			},
+			allClaims: map[string]interface{}{
+				"email": "d",
+			},
+			errExpected: true,
+		},
 	}
 	for _, tt := range tests {
 		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {

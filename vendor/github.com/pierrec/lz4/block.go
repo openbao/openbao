@@ -61,7 +61,7 @@ func UncompressBlock(src, dst []byte) (si int, err error) {
 			}
 			i := si
 			si += lLen
-			di += copy(dst[di:di+si-i], src[i:si])
+			di += copy(dst[di:], src[i:si])
 
 			if si >= sn {
 				return di, nil
@@ -97,7 +97,7 @@ func UncompressBlock(src, dst []byte) (si int, err error) {
 			di += bytesToCopy
 			mLen -= bytesToCopy
 		}
-		di += copy(dst[di:di+mLen], dst[i:i+mLen])
+		di += copy(dst[di:], dst[i:i+mLen])
 	}
 }
 
@@ -186,7 +186,7 @@ func CompressBlock(src, dst []byte, hashTable []int) (di int, err error) {
 		di++
 
 		// Literals.
-		copy(dst[di:di+lLen], src[anchor:anchor+lLen])
+		copy(dst[di:], src[anchor:anchor+lLen])
 		di += lLen + 2
 		anchor = si
 
@@ -230,7 +230,7 @@ func CompressBlock(src, dst []byte, hashTable []int) (di int, err error) {
 		// Incompressible.
 		return 0, nil
 	}
-	di += copy(dst[di:di+len(src)-anchor], src[anchor:])
+	di += copy(dst[di:], src[anchor:])
 	return di, nil
 }
 
@@ -286,7 +286,7 @@ func CompressBlockHC(src, dst []byte, depth int) (di int, err error) {
 			for ml < sn-si && src[next+ml] == src[si+ml] {
 				ml++
 			}
-			if ml < minMatch || ml <= mLen {
+			if ml+1 < minMatch || ml <= mLen {
 				// Match too small (<minMath) or smaller than the current match.
 				continue
 			}
@@ -347,7 +347,7 @@ func CompressBlockHC(src, dst []byte, depth int) (di int, err error) {
 		di++
 
 		// Literals.
-		copy(dst[di:di+lLen], src[anchor:anchor+lLen])
+		copy(dst[di:], src[anchor:anchor+lLen])
 		di += lLen
 		anchor = si
 
@@ -392,6 +392,6 @@ func CompressBlockHC(src, dst []byte, depth int) (di int, err error) {
 		// Incompressible.
 		return 0, nil
 	}
-	di += copy(dst[di:di+len(src)-anchor], src[anchor:])
+	di += copy(dst[di:], src[anchor:])
 	return di, nil
 }

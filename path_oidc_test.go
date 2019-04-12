@@ -18,7 +18,7 @@ import (
 
 	"github.com/hashicorp/go-sockaddr"
 
-	"github.com/hashicorp/vault/logical"
+	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )

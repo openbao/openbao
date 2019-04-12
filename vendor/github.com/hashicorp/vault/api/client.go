@@ -19,8 +19,8 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/hashicorp/vault/helper/consts"
-	"github.com/hashicorp/vault/helper/parseutil"
+	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 )
@@ -422,6 +422,10 @@ func NewClient(c *Config) (*Client, error) {
 		client.token = token
 	}
 
+	if namespace := os.Getenv(EnvVaultNamespace); namespace != "" {
+		client.setNamespace(namespace)
+	}
+
 	return client, nil
 }
 
@@ -531,7 +535,10 @@ func (c *Client) SetMFACreds(creds []string) {
 func (c *Client) SetNamespace(namespace string) {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()
+	c.setNamespace(namespace)
+}
 
+func (c *Client) setNamespace(namespace string) {
 	if c.headers == nil {
 		c.headers = make(http.Header)
 	}

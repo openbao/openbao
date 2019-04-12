@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/helper/certutil"
-	"github.com/hashicorp/vault/logical"
+	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/hashicorp/vault/sdk/logical"
 )
 
 func TestConfig_JWT_Read(t *testing.T) {

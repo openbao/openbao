@@ -4,18 +4,18 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/vault-plugin-auth-jwt"
-	"github.com/hashicorp/vault/helper/pluginutil"
-	"github.com/hashicorp/vault/logical/plugin"
+	jwtauth "github.com/hashicorp/vault-plugin-auth-jwt"
+	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/sdk/plugin"
 )
 
 func main() {
-	apiClientMeta := &pluginutil.APIClientMeta{}
+	apiClientMeta := &api.APIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:]) // Ignore command, strictly parse flags
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := pluginutil.VaultPluginTLSProvider(tlsConfig)
+	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
 	err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: jwtauth.Factory,

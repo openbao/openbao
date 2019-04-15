@@ -110,7 +110,12 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	s := strings.SplitN(authorizationString, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
-		return logical.ErrorResponse("Missing or invalid authorization"), nil
+		return &logical.Response{
+			Auth: &logical.Auth{},
+			Headers: map[string][]string{
+				"www-authenticate": {"Negotiate"},
+			},
+		}, logical.CodedError(401, "authentication required")
 	}
 	authorization, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {

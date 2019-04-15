@@ -20,7 +20,7 @@ func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -66,11 +66,20 @@ func TestLogin(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
-	if err != nil || resp == nil {
+	if err == nil || resp == nil || resp.IsError() {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
-	if !resp.IsError() && !strings.HasPrefix(resp.Error().Error(), "Missing or invalid authorization") {
-		t.Fatalf("err: %s resp: %#v\n", err, resp)
+
+	if e, ok := err.(logical.HTTPCodedError); !ok || e.Code() != 401 {
+		t.Fatalf("no 401 thrown. err: %s resp: %#v\n", err, resp)
+	}
+
+	if headerVal, ok := resp.Headers["www-authenticate"]; ok {
+		if strings.Compare(headerVal[0], "Negotiate") != 0 {
+			t.Fatalf("www-authenticate not set to Negotiate. err: %s resp: %#v\n", err, resp)
+		}
+	} else {
+		t.Fatalf("no www-authenticate header. err: %s resp: %#v\n", err, resp)
 	}
 }
 

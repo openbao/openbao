@@ -41,7 +41,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -95,7 +95,7 @@ func TestConfig_RejectsBadWrites(t *testing.T) {
 func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Storage,
 	data map[string]interface{}, e string) {
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,

@@ -3,6 +3,7 @@ package logical
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/hashicorp/vault/helper/wrapping"
 )
@@ -24,6 +25,12 @@ const (
 	// This can only be specified for non-secrets, and should should be similarly
 	// avoided like the HTTPContentType. The value must be an integer.
 	HTTPStatusCode = "http_status_code"
+
+	// For unwrapping we may need to know whether the value contained in the
+	// raw body is already JSON-unmarshaled. The presence of this key indicates
+	// that it has already been unmarshaled. That way we don't need to simply
+	// ignore errors.
+	HTTPRawBodyAlreadyJSONDecoded = "http_raw_body_already_json_decoded"
 )
 
 // Response is a struct that stores the response of a request.
@@ -54,6 +61,10 @@ type Response struct {
 
 	// Information for wrapping the response in a cubbyhole
 	WrapInfo *wrapping.ResponseWrapInfo `json:"wrap_info" structs:"wrap_info" mapstructure:"wrap_info"`
+
+	// Headers will contain the http headers from the plugin that it wishes to
+	// have as part of the output
+	Headers map[string][]string `json:"headers" structs:"headers" mapstructure:"headers"`
 }
 
 // AddWarning adds a warning into the response's warning list
@@ -83,17 +94,21 @@ func (r *Response) Error() error {
 }
 
 // HelpResponse is used to format a help response
-func HelpResponse(text string, seeAlso []string) *Response {
+func HelpResponse(text string, seeAlso []string, oapiDoc interface{}) *Response {
 	return &Response{
 		Data: map[string]interface{}{
 			"help":     text,
 			"see_also": seeAlso,
+			"openapi":  oapiDoc,
 		},
 	}
 }
 
 // ErrorResponse is used to format an error response
-func ErrorResponse(text string) *Response {
+func ErrorResponse(text string, vargs ...interface{}) *Response {
+	if len(vargs) > 0 {
+		text = fmt.Sprintf(text, vargs...)
+	}
 	return &Response{
 		Data: map[string]interface{}{
 			"error": text,
@@ -135,19 +150,30 @@ func ListResponseWithInfo(keys []string, keyInfo map[string]interface{}) *Respon
 // RespondWithStatusCode takes a response and converts it to a raw response with
 // the provided Status Code.
 func RespondWithStatusCode(resp *Response, req *Request, code int) (*Response, error) {
-	httpResp := LogicalResponseToHTTPResponse(resp)
-	httpResp.RequestID = req.ID
-
-	body, err := json.Marshal(httpResp)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Response{
+	ret := &Response{
 		Data: map[string]interface{}{
 			HTTPContentType: "application/json",
-			HTTPRawBody:     body,
 			HTTPStatusCode:  code,
 		},
-	}, nil
+	}
+
+	if resp != nil {
+		httpResp := LogicalResponseToHTTPResponse(resp)
+
+		if req != nil {
+			httpResp.RequestID = req.ID
+		}
+
+		body, err := json.Marshal(httpResp)
+		if err != nil {
+			return nil, err
+		}
+
+		// We default to string here so that the value is HMAC'd via audit.
+		// Since this function is always marshaling to JSON, this is
+		// appropriate.
+		ret.Data[HTTPRawBody] = string(body)
+	}
+
+	return ret, nil
 }

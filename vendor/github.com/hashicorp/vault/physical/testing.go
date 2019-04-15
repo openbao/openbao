@@ -103,6 +103,15 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("nested put failed: %v", err)
 	}
 
+	// Get should work
+	out, err = b.Get(context.Background(), "foo/bar")
+	if err != nil {
+		t.Fatalf("get failed: %v", err)
+	}
+	if !reflect.DeepEqual(out, e) {
+		t.Errorf("bad: %v expected: %v", out, e)
+	}
+
 	keys, err = b.List(context.Background(), "")
 	if err != nil {
 		t.Fatalf("list multi failed: %v", err)
@@ -177,6 +186,54 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	keys, err = b.List(context.Background(), "")
 	if err != nil {
 		t.Fatalf("listing after second delete failed: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Errorf("should be empty at end: %v", keys)
+	}
+
+	// When the root path is empty, adding and removing deep nested values should not break listing
+	e = &Entry{Key: "foo/nested1/nested2/value1", Value: []byte("baz")}
+	err = b.Put(context.Background(), e)
+	if err != nil {
+		t.Fatalf("deep nest: %v", err)
+	}
+
+	e = &Entry{Key: "foo/nested1/nested2/value2", Value: []byte("baz")}
+	err = b.Put(context.Background(), e)
+	if err != nil {
+		t.Fatalf("deep nest: %v", err)
+	}
+
+	err = b.Delete(context.Background(), "foo/nested1/nested2/value2")
+	if err != nil {
+		t.Fatalf("failed to remove deep nest: %v", err)
+	}
+
+	keys, err = b.List(context.Background(), "")
+	if err != nil {
+		t.Fatalf("listing of root failed after deletion: %v", err)
+	}
+	if len(keys) == 0 {
+		t.Errorf("root is returning empty after deleting a single nested value, expected nested1/: %v", keys)
+		keys, err = b.List(context.Background(), "foo/nested1")
+		if err != nil {
+			t.Fatalf("listing of expected nested path 'foo/nested1' failed: %v", err)
+		}
+		// prove that the root should not be empty and that foo/nested1 exists
+		if len(keys) != 0 {
+			t.Logf("  keys can still be listed from nested1/ so it's not empty, expected nested2/: %v", keys)
+		}
+	}
+
+	// cleanup left over listing bug test value
+	err = b.Delete(context.Background(), "foo/nested1/nested2/value1")
+	if err != nil {
+		t.Fatalf("failed to remove deep nest: %v", err)
+	}
+
+	keys, err = b.List(context.Background(), "")
+	if err != nil {
+		t.Fatalf("listing of root failed after delete of deep nest: %v", err)
 	}
 	if len(keys) != 0 {
 		t.Errorf("should be empty at end: %v", keys)
@@ -288,7 +345,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Fatalf("stop lock 2: %v", err)
 	}
 	if leaderCh2 != nil {
-		t.Errorf("should not have gotten leaderCh: %v", leaderCh)
+		t.Errorf("should not have gotten leaderCh: %v", leaderCh2)
 	}
 
 	// Release the first lock
@@ -304,7 +361,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 	}
 
 	// Check the value
-	held, val, err = lock.Value()
+	held, val, err = lock2.Value()
 	if err != nil {
 		t.Fatalf("value: %v", err)
 	}
@@ -312,7 +369,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Errorf("should still be held")
 	}
 	if val != "baz" {
-		t.Errorf("expected value baz: %v", err)
+		t.Errorf("expected: baz, got: %v", val)
 	}
 
 	// Cleanup

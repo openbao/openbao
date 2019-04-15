@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	apiClientMeta := &api.APIClientMeta{}
+	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:])
 

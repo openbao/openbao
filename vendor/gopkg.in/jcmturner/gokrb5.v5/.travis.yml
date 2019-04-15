@@ -1,0 +1,49 @@
+language: go
+
+go:
+  - 1.7.x
+  - 1.8.x
+  - 1.9.x
+  - 1.10.x
+  - master
+
+go_import_path: gopkg.in/jcmturner/gokrb5.v5
+
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - sudo apt-get install -yq krb5-user
+  - sudo chmod 666 /etc/krb5.conf
+  - go get github.com/golang/lint/golint
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -e "TEST_KDC_ADDR=127.0.0.1" -p 53:53 -p 53:53/udp --name dns jcmturner/gokrb5:dns
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 88:88 -p 88:88/udp -p 464:464 -p 464:464/udp --name krb5kdc jcmturner/gokrb5:kdc-centos-default
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 78:88 -p 78:88/udp --name krb5kdc-old jcmturner/gokrb5:kdc-older
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 98:88 -p 98:88/udp --name krb5kdc-latest jcmturner/gokrb5:kdc-latest
+  - docker run -d -h kdc.resdom.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 188:88 -p 188:88/udp --name krb5kdc-resdom jcmturner/gokrb5:kdc-resdom
+  - docker run -d -h kdc.test.gokrb5 -v /etc/localtime:/etc/localtime:ro -p 58:88 -p 58:88/udp --name krb5kdc-shorttickets jcmturner/gokrb5:kdc-shorttickets
+  - docker run -d --add-host host.test.gokrb5:127.0.0.88 -v /etc/localtime:/etc/localtime:ro -p 80:80 -p 443:443 --name gokrb5-http jcmturner/gokrb5:http
+
+before_script:
+  - GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
+  - sudo sed -i 's/nameserver .*/nameserver 127.0.0.1/g' /etc/resolv.conf
+
+env:
+  - TEST_KDC_ADDR=127.0.0.1 TEST_HTTP_URL="http://host.test.gokrb5/index.html" DNSUTILS_OVERRIDE_NS="127.0.0.1:53" DEBIAN_FRONTEND=noninteractive
+
+script:
+  - test -z $(gofmt -s -d -l -e $GO_FILES | tee /dev/fd/2 | xargs | sed 's/\s//g') # Fail if a .go file hasn't been formatted with gofmt
+  - go vet ./...                             # go vet is the official Go static analyzer
+  #- golint -set_exit_status $(go list ./...) # golint to be added
+  - go test -v -race -tags="integration dns" ./... # Run all the tests with the race detector enabled and integration tests
+  - GOARCH=386 go test -v -tags="integration dns" ./... # 32bit tests
+  - go run -tags="examples" examples/example.go
+
+addons:
+  hosts:
+    - host.test.gokrb5
+    - kdc.test.gokrb5
+    - kdc.resdom.gokrb5
+

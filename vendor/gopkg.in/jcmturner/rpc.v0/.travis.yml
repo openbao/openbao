@@ -1,0 +1,22 @@
+language: go
+
+go:
+- 1.7.x
+- 1.8.x
+- 1.9.x
+- 1.10.x
+- master
+
+go_import_path: gopkg.in/jcmturner/rpc.v0
+
+before_script:
+- GO_FILES=$(find . -iname '*.go' -type f | grep -v /vendor/)
+
+script:
+- test -z $(gofmt -s -d -l -e $GO_FILES | tee /dev/fd/2 | xargs | sed 's/\s//g') # Fail if a .go file hasn't been formatted with gofmt
+- go vet ./...                             # go vet is the official Go static analyzer
+#- golint -set_exit_status $(go list ./...) # golint to be added
+- go test -v -race -tags="integration" ./... # Run all the tests with the race detector enabled and integration tests
+- GOARCH=386 go test -v -tags="integration" ./... # 32bit testing
+
+

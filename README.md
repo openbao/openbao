@@ -2,7 +2,7 @@
 [![Travis Build Status](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos.svg?branch=master)](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos)
 
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
-This plugin allows for users to authenticate with Vault via Kerberos.
+This plugin allows for users to authenticate with Vault via Kerberos/SPNEGO.
 
 You can find binaries on the [Release page](https://github.com/wintoncode/vault-plugin-auth-kerberos/releases).
 
@@ -19,7 +19,7 @@ except:
     import winkerberos as kerberos
 import requests
 
-service = "HTTP/vault.domain@YOUR-REALM.COM"
+service = "HTTP/vault.domain"
 rc, vc = kerberos.authGSSClientInit(service=service, mech_oid=kerberos.GSS_MECH_OID_SPNEGO)
 kerberos.authGSSClientStep(vc, "")
 kerberos_token = kerberos.authGSSClientResponse(vc)
@@ -50,7 +50,7 @@ $ vault write sys/plugins/catalog/auth/kerberos sha_256="$(shasum -a 256 'vault-
 2. Enable the Kerberos auth method:
 
 ```sh
-$ vault auth enable -passthrough-request-headers=Authorization kerberos
+$ vault auth enable -passthrough-request-headers=Authorization -allowed-response-headers=www-authenticate kerberos
 Success! Enabled kerberos auth method at: kerberos/
 ```
 
@@ -68,6 +68,10 @@ slot KVNO Principal
 ktutil:  wkt vault.keytab
 ```
 
+The KVNO should match the KVNO of the service account. An error will show in the vault logs if this is incorrect.
+
+Different encryption types can also be added to the keytab, for example `rc4-hmac` with additional `addent` commands.
+
 Then base64 encode it:
 ```sh
 base64 vault.keytab > vault.keytab.base64
@@ -77,7 +81,14 @@ base64 vault.keytab > vault.keytab.base64
 vault write auth/kerberos/config keytab=@vault.keytab.base64 service_account="your_service_account"
 ```
 
-4. Configure LDAP backend to look up Vault policies.
+4. Add a SPNs (Service Principal Names) to your KDC for your service and service account. This should map the vault service to the account it is running as:
+```sh
+# for Windows/Active Directory
+setspn.exe -U -S HTTP/vault.domain:8200 your_service_account
+setspn.exe -U -S HTTP/vault.domain your_service_account
+```
+
+5. Configure LDAP backend to look up Vault policies.
 Configuration for LDAP is identical to the [LDAP](https://www.vaultproject.io/docs/auth/ldap.html)
 auth method, but writing to to the Kerberos endpoint:
 
@@ -175,4 +186,3 @@ You can also specify a `TESTARGS` variable to filter tests like so:
 ```sh
 $ make test TESTARGS='--run=TestConfig'
 ```
-

@@ -71,7 +71,7 @@ func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, r
 func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	return &logical.Response{
 		Auth: &logical.Auth{},
-		Headers: map[string][]string {
+		Headers: map[string][]string{
 			"www-authenticate": {"Negotiate"},
 		},
 	}, logical.CodedError(401, "authentication required")

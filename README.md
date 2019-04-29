@@ -189,12 +189,18 @@ $ make test TESTARGS='--run=TestConfig'
 
 ## Contributors
 
-With thanks to the original creators of this plugin.:
-  - [wintoncode](https://github.com/wintoncode)
-  - @ah-
-  - @sambott
-  - @roederja2
-  - @tyrannosaurus-becks
-  - @jcmturner
-  - @kristian-lesko
+  1. Clone the repo
+  2. Make changes on a branch
+  3. Test changes
+  4. Submit a Pull Request to GitHub
 
+Maintained with :heart: by Hashicorp.
+
+With thanks to the original creators of this plugin:
+  - [wintoncode](https://github.com/wintoncode)
+  - @ah-
+  - @sambott
+  - @roederja2
+  - @tyrannosaurus-becks
+  - @jcmturner
+  - @kristian-lesko

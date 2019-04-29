@@ -68,9 +68,9 @@ slot KVNO Principal
 ktutil:  wkt vault.keytab
 ```
 
-The KVNO should match the KVNO of the service account. An error will show in the vault logs if this is incorrect.
+The KVNO (`-k 1`) should match the KVNO of the service account. An error will show in the vault logs if this is incorrect.
 
-Different encryption types can also be added to the keytab, for example `rc4-hmac` with additional `addent` commands.
+Different encryption types can also be added to the keytab, for example `-e rc4-hmac` with additional `addent` commands.
 
 Then base64 encode it:
 ```sh

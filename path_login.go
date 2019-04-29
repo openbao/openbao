@@ -27,6 +27,7 @@ func pathLogin(b *backend) *framework.Path {
 			},
 		},
 		Callbacks: map[logical.Operation]framework.OperationFunc{
+			logical.ReadOperation:   b.pathLoginGet,
 			logical.UpdateOperation: b.pathLogin,
 		},
 	}
@@ -65,6 +66,15 @@ func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, r
 
 	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr, false)
 	return ok, &creds, err
+}
+
+func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	return &logical.Response{
+		Auth: &logical.Auth{},
+		Headers: map[string][]string{
+			"www-authenticate": {"Negotiate"},
+		},
+	}, logical.CodedError(401, "authentication required")
 }
 
 func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -110,7 +120,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	s := strings.SplitN(authorizationString, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
-		return logical.ErrorResponse("Missing or invalid authorization"), nil
+		return b.pathLoginGet(ctx, req, d)
 	}
 	authorization, err := base64.StdEncoding.DecodeString(s[1])
 	if err != nil {

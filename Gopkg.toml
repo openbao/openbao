@@ -3,16 +3,12 @@
   version = "1.0.0"
 
 [[constraint]]
-  name = "github.com/go-ldap/ldap"
-  revision = "0776dae456c9f852c74287dfa8475c16401ac9a9"
-
-[[constraint]]
   branch = "master"
   name = "github.com/hashicorp/go-multierror"
 
 [[constraint]]
   name = "github.com/hashicorp/vault"
-  version = "0.10.0"
+  version = "1.1.1"
 
 [prune]
   go-tests = true

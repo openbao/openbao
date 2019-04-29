@@ -8,6 +8,8 @@ import (
 	"io"
 	"net"
 
+	hclog "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-plugin/internal/plugin"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
@@ -52,6 +54,8 @@ type GRPCServer struct {
 	config GRPCServerConfig
 	server *grpc.Server
 	broker *GRPCBroker
+
+	logger hclog.Logger
 }
 
 // ServerProtocol impl.
@@ -71,9 +75,15 @@ func (s *GRPCServer) Init() error {
 
 	// Register the broker service
 	brokerServer := newGRPCBrokerServer()
-	RegisterGRPCBrokerServer(s.server, brokerServer)
+	plugin.RegisterGRPCBrokerServer(s.server, brokerServer)
 	s.broker = newGRPCBroker(brokerServer, s.TLS)
 	go s.broker.Run()
+
+	// Register the controller
+	controllerServer := &grpcControllerServer{
+		server: s,
+	}
+	plugin.RegisterGRPCControllerServer(s.server, controllerServer)
 
 	// Register all our plugins onto the gRPC server.
 	for k, raw := range s.Plugins {
@@ -83,11 +93,21 @@ func (s *GRPCServer) Init() error {
 		}
 
 		if err := p.GRPCServer(s.broker, s.server); err != nil {
-			return fmt.Errorf("error registring %q: %s", k, err)
+			return fmt.Errorf("error registering %q: %s", k, err)
 		}
 	}
 
 	return nil
+}
+
+// Stop calls Stop on the underlying grpc.Server
+func (s *GRPCServer) Stop() {
+	s.server.Stop()
+}
+
+// GracefulStop calls GracefulStop on the underlying grpc.Server
+func (s *GRPCServer) GracefulStop() {
+	s.server.GracefulStop()
 }
 
 // Config is the GRPCServerConfig encoded as JSON then base64.
@@ -107,11 +127,11 @@ func (s *GRPCServer) Config() string {
 }
 
 func (s *GRPCServer) Serve(lis net.Listener) {
-	// Start serving in a goroutine
-	go s.server.Serve(lis)
-
-	// Wait until graceful completion
-	<-s.DoneCh
+	defer close(s.DoneCh)
+	err := s.server.Serve(lis)
+	if err != nil {
+		s.logger.Error("grpc server", "error", err)
+	}
 }
 
 // GRPCServerConfig is the extra configuration passed along for consumers

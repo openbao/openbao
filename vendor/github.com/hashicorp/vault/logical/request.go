@@ -1,7 +1,6 @@
 package logical
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -43,6 +42,14 @@ func (r *RequestWrapInfo) SentinelKeys() []string {
 		"ttl_seconds",
 	}
 }
+
+type ClientTokenSource uint32
+
+const (
+	NoClientToken ClientTokenSource = iota
+	ClientTokenFromVaultHeader
+	ClientTokenFromAuthzHeader
+)
 
 // Request is a struct that stores the parameters and context of a request
 // being made to Vault. It is used to abstract the details of the higher level
@@ -141,9 +148,29 @@ type Request struct {
 	// accessible.
 	Unauthenticated bool `json:"unauthenticated" structs:"unauthenticated" mapstructure:"unauthenticated"`
 
+	// MFACreds holds the parsed MFA information supplied over the API as part of
+	// X-Vault-MFA header
+	MFACreds MFACreds `json:"mfa_creds" structs:"mfa_creds" mapstructure:"mfa_creds" sentinel:""`
+
+	// Cached token entry. This avoids another lookup in request handling when
+	// we've already looked it up at http handling time. Note that this token
+	// has not been "used", as in it will not properly take into account use
+	// count limitations. As a result this field should only ever be used for
+	// transport to a function that would otherwise do a lookup and then
+	// properly use the token.
+	tokenEntry *TokenEntry
+
 	// For replication, contains the last WAL on the remote side after handling
 	// the request, used for best-effort avoidance of stale read-after-write
-	lastRemoteWAL uint64 `sentinel:""`
+	lastRemoteWAL uint64
+
+	// ControlGroup holds the authorizations that have happened on this
+	// request
+	ControlGroup *ControlGroup `json:"control_group" structs:"control_group" mapstructure:"control_group" sentinel:""`
+
+	// ClientTokenSource tells us where the client token was sourced from, so
+	// we can delete it before sending off to plugins
+	ClientTokenSource ClientTokenSource
 }
 
 // Get returns a data field and guards for nil Data
@@ -197,6 +224,14 @@ func (r *Request) LastRemoteWAL() uint64 {
 
 func (r *Request) SetLastRemoteWAL(last uint64) {
 	r.lastRemoteWAL = last
+}
+
+func (r *Request) TokenEntry() *TokenEntry {
+	return r.tokenEntry
+}
+
+func (r *Request) SetTokenEntry(te *TokenEntry) {
+	r.tokenEntry = te
 }
 
 // RenewRequest creates the structure of the renew request.
@@ -258,22 +293,4 @@ const (
 	RollbackOperation           = "rollback"
 )
 
-var (
-	// ErrUnsupportedOperation is returned if the operation is not supported
-	// by the logical backend.
-	ErrUnsupportedOperation = errors.New("unsupported operation")
-
-	// ErrUnsupportedPath is returned if the path is not supported
-	// by the logical backend.
-	ErrUnsupportedPath = errors.New("unsupported path")
-
-	// ErrInvalidRequest is returned if the request is invalid
-	ErrInvalidRequest = errors.New("invalid request")
-
-	// ErrPermissionDenied is returned if the client is not authorized
-	ErrPermissionDenied = errors.New("permission denied")
-
-	// ErrMultiAuthzPending is returned if the the request needs more
-	// authorizations
-	ErrMultiAuthzPending = errors.New("request needs further approval")
-)
+type MFACreds map[string][]string

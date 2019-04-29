@@ -29,8 +29,12 @@ var (
 
 // TODO(bar) install dns resolver in init(){}.
 
-// Register registers the resolver builder to the resolver map.
-// b.Scheme will be used as the scheme registered with this builder.
+// Register registers the resolver builder to the resolver map. b.Scheme will be
+// used as the scheme registered with this builder.
+//
+// NOTE: this function must only be called during initialization time (i.e. in
+// an init() function), and is not thread-safe. If multiple Resolvers are
+// registered with the same name, the one registered last will take effect.
 func Register(b Builder) {
 	m[b.Scheme()] = b
 }
@@ -45,8 +49,12 @@ func Get(scheme string) Builder {
 	return nil
 }
 
-// SetDefaultScheme sets the default scheme that will be used.
-// The default default scheme is "passthrough".
+// SetDefaultScheme sets the default scheme that will be used. The default
+// default scheme is "passthrough".
+//
+// NOTE: this function must only be called during initialization time (i.e. in
+// an init() function), and is not thread-safe. The scheme set last overrides
+// previously set values.
 func SetDefaultScheme(scheme string) {
 	defaultScheme = scheme
 }
@@ -86,6 +94,17 @@ type Address struct {
 // BuildOption includes additional information for the builder to create
 // the resolver.
 type BuildOption struct {
+	// DisableServiceConfig indicates whether resolver should fetch service config data.
+	DisableServiceConfig bool
+}
+
+// State contains the current Resolver state relevant to the ClientConn.
+type State struct {
+	Addresses     []Address // Resolved addresses for the target
+	ServiceConfig string    // JSON representation of the service config
+
+	// TODO: add Err error
+	// TODO: add ParsedServiceConfig interface{}
 }
 
 // ClientConn contains the callbacks for resolver to notify any updates
@@ -96,12 +115,18 @@ type BuildOption struct {
 // testing, the new implementation should embed this interface. This allows
 // gRPC to add new methods to this interface.
 type ClientConn interface {
+	// UpdateState updates the state of the ClientConn appropriately.
+	UpdateState(State)
 	// NewAddress is called by resolver to notify ClientConn a new list
 	// of resolved addresses.
 	// The address list should be the complete list of resolved addresses.
+	//
+	// Deprecated: Use UpdateState instead.
 	NewAddress(addresses []Address)
 	// NewServiceConfig is called by resolver to notify ClientConn a new
 	// service config. The service config should be provided as a json string.
+	//
+	// Deprecated: Use UpdateState instead.
 	NewServiceConfig(serviceConfig string)
 }
 

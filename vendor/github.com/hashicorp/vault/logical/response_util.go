@@ -1,6 +1,7 @@
 package logical
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,7 +24,7 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 
 		// Basically: if we have empty "keys" or no keys at all, 404. This
 		// provides consistency with GET.
-		case req.Operation == ListOperation && resp.WrapInfo == nil:
+		case req.Operation == ListOperation && (resp == nil || resp.WrapInfo == nil):
 			if resp == nil {
 				return http.StatusNotFound, nil
 			}
@@ -70,11 +71,13 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 
 	if errwrap.ContainsType(err, new(ReplicationCodedError)) {
 		var allErrors error
-		codedErr := errwrap.GetType(err, new(ReplicationCodedError)).(*ReplicationCodedError)
+		var codedErr *ReplicationCodedError
 		errwrap.Walk(err, func(inErr error) {
 			newErr, ok := inErr.(*ReplicationCodedError)
-			if !ok {
-				allErrors = multierror.Append(allErrors, newErr)
+			if ok {
+				codedErr = newErr
+			} else {
+				allErrors = multierror.Append(allErrors, inErr)
 			}
 		})
 		if allErrors != nil {
@@ -105,6 +108,8 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			statusCode = http.StatusNotFound
 		case errwrap.Contains(err, ErrInvalidRequest.Error()):
 			statusCode = http.StatusBadRequest
+		case errwrap.Contains(err, ErrUpstreamRateLimited.Error()):
+			statusCode = http.StatusBadGateway
 		}
 	}
 
@@ -119,6 +124,13 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 // conditions in a way that can be shared across http's respondError and other
 // locations.
 func AdjustErrorStatusCode(status *int, err error) {
+	// Handle nested errors
+	if t, ok := err.(*multierror.Error); ok {
+		for _, e := range t.Errors {
+			AdjustErrorStatusCode(status, e)
+		}
+	}
+
 	// Adjust status code when sealed
 	if errwrap.Contains(err, consts.ErrSealed.Error()) {
 		*status = http.StatusServiceUnavailable
@@ -133,4 +145,22 @@ func AdjustErrorStatusCode(status *int, err error) {
 	if t, ok := err.(HTTPCodedError); ok {
 		*status = t.Code()
 	}
+}
+
+func RespondError(w http.ResponseWriter, status int, err error) {
+	AdjustErrorStatusCode(&status, err)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	type ErrorResponse struct {
+		Errors []string `json:"errors"`
+	}
+	resp := &ErrorResponse{Errors: make([]string, 0, 1)}
+	if err != nil {
+		resp.Errors = append(resp.Errors, err.Error())
+	}
+
+	enc := json.NewEncoder(w)
+	enc.Encode(resp)
 }

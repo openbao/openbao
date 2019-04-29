@@ -191,10 +191,9 @@ $ make test TESTARGS='--run=TestConfig'
 
 With thanks to the original creators of this plugin.:
   - [wintoncode](https://github.com/wintoncode)
-  - @ah-
-  - @sambott
-  - @roederja2
-  - @tyrannosaurus-becks
-  - @jcmturner
-  - @kristian-lesko
-
+  - @ah-
+  - @sambott
+  - @roederja2
+  - @tyrannosaurus-becks
+  - @jcmturner
+  - @kristian-lesko

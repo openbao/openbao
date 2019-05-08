@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/hashicorp/vault/api v1.0.1
 	github.com/hashicorp/vault/sdk v0.1.8
-	github.com/mitchellh/pointerstructure v0.0.0-20190323210102-2db4bb651397
+	github.com/mitchellh/pointerstructure v0.0.0-20190430161007-f252a8fd71c8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a

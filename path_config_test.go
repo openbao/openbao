@@ -21,6 +21,8 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"default_role":           "",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
 		"jwt_supported_algs":     []string{},
+		"jwks_url":               "",
+		"jwks_ca_pem":            "",
 		"bound_issuer":           "http://vault.example.com/",
 	}
 
@@ -56,9 +58,11 @@ func TestConfig_JWT_Read(t *testing.T) {
 func TestConfig_JWT_Write(t *testing.T) {
 	b, storage := getBackend(t)
 
+	// Create a config with too many token verification schemes
 	data := map[string]interface{}{
 		"oidc_discovery_url":     "http://fake.example.com",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
+		"jwks_url":               "http://fake.anotherexample.com",
 		"bound_issuer":           "http://vault.example.com/",
 	}
 
@@ -80,7 +84,29 @@ func TestConfig_JWT_Write(t *testing.T) {
 		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 
+	// remove oidc_discovery_url, but this still leaves too many
 	delete(data, "oidc_discovery_url")
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if !strings.HasPrefix(resp.Error().Error(), "exactly one of") {
+		t.Fatalf("got unexpected error: %v", resp.Error())
+	}
+
+	// remove jwks_url so the config is now valid
+	delete(data, "jwks_url")
 
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -113,6 +139,120 @@ func TestConfig_JWT_Write(t *testing.T) {
 
 	if !reflect.DeepEqual(expected, conf) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
+	}
+}
+
+func TestConfig_JWKS_Update(t *testing.T) {
+	b, storage := getBackend(t)
+
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := map[string]interface{}{
+		"jwks_url":               s.server.URL + "/certs",
+		"jwks_ca_pem":            cert,
+		"oidc_discovery_url":     "",
+		"oidc_discovery_ca_pem":  "",
+		"oidc_client_id":         "",
+		"default_role":           "",
+		"jwt_validation_pubkeys": []string{},
+		"jwt_supported_algs":     []string{},
+		"bound_issuer":           "",
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      nil,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if diff := deep.Equal(resp.Data, data); diff != nil {
+		t.Fatalf("Expected did not equal actual: %v", diff)
+	}
+}
+
+func TestConfig_JWKS_Update_Invalid(t *testing.T) {
+	b, storage := getBackend(t)
+
+	s := newOIDCProvider(t)
+	defer s.server.Close()
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := map[string]interface{}{
+		"jwks_url":               s.server.URL + "/certs_missing",
+		"jwks_ca_pem":            cert,
+		"oidc_discovery_url":     "",
+		"oidc_discovery_ca_pem":  "",
+		"oidc_client_id":         "",
+		"default_role":           "",
+		"jwt_validation_pubkeys": []string{},
+		"jwt_supported_algs":     []string{},
+		"bound_issuer":           "",
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(resp.Error().Error(), "get keys failed") {
+		t.Fatalf("got unexpected error: %v", resp.Error())
+	}
+
+	data["jwks_url"] = s.server.URL + "/certs_invalid"
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(resp.Error().Error(), "failed to decode keys") {
+		t.Fatalf("got unexpected error: %v", resp.Error())
 	}
 }
 

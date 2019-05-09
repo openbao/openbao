@@ -360,11 +360,11 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		targets := make(map[string]bool)
 		for _, metadataKey := range claimMappings {
 			if strutil.StrListContains(reservedMetadata, metadataKey) {
-				return logical.ErrorResponse("metadata key '%s' is reserved and may not be a mapping destination", metadataKey), nil
+				return logical.ErrorResponse("metadata key %q is reserved and may not be a mapping destination", metadataKey), nil
 			}
 
 			if targets[metadataKey] {
-				return logical.ErrorResponse("multiple keys are mapped to metadata key '%s'", metadataKey), nil
+				return logical.ErrorResponse("multiple keys are mapped to metadata key %q", metadataKey), nil
 			}
 			targets[metadataKey] = true
 		}

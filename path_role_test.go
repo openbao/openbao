@@ -232,7 +232,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
-	if !strings.Contains(resp.Error().Error(), "metadata key 'role' is reserved") {
+	if !strings.Contains(resp.Error().Error(), `metadata key "role" is reserved`) {
 		t.Fatalf("unexpected err: %v", resp)
 	}
 
@@ -256,7 +256,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 	if resp != nil && !resp.IsError() {
 		t.Fatalf("expected error")
 	}
-	if !strings.Contains(resp.Error().Error(), "multiple keys are mapped to metadata key 'a'") {
+	if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
 		t.Fatalf("unexpected err: %v", resp)
 	}
 }

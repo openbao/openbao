@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -81,29 +82,51 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("request originated from invalid CIDR"), nil
 	}
 
-	// Here is where things diverge. If it is using OIDC Discovery, validate
-	// that way; otherwise validate against the locally configured keys. Once
-	// things are validated, we re-unify the request path when evaluating the
-	// claims.
+	// Here is where things diverge. If it is using OIDC Discovery, validate that way;
+	// otherwise validate against the locally configured or JWKS keys. Once things are
+	// validated, we re-unify the request path when evaluating the claims.
 	allClaims := map[string]interface{}{}
+	configType := config.authType()
+
 	switch {
-	case len(config.ParsedJWTPubKeys) != 0:
-		parsedJWT, err := jwt.ParseSigned(token)
-		if err != nil {
-			return logical.ErrorResponse(errwrap.Wrapf("error parsing token: {{err}}", err).Error()), nil
-		}
-
+	case configType == StaticKeys || configType == JWKS:
 		claims := jwt.Claims{}
-
-		var valid bool
-		for _, key := range config.ParsedJWTPubKeys {
-			if err := parsedJWT.Claims(key, &claims, &allClaims); err == nil {
-				valid = true
-				break
+		if configType == JWKS {
+			keySet, err := b.getKeySet(config)
+			if err != nil {
+				return logical.ErrorResponse(errwrap.Wrapf("error fetching jwks keyset: {{err}}", err).Error()), nil
 			}
-		}
-		if !valid {
-			return logical.ErrorResponse("no known key successfully validated the token signature"), nil
+
+			// Verify signature (and only signature... other elements are checked later)
+			payload, err := keySet.VerifySignature(ctx, token)
+			if err != nil {
+				return logical.ErrorResponse(errwrap.Wrapf("error verifying token: {{err}}", err).Error()), nil
+			}
+
+			// Unmarshal payload into two copies: public claims for library verification, and a set
+			// of all received claims.
+			if err := json.Unmarshal(payload, &claims); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal claims: %v", err)
+			}
+			if err := json.Unmarshal(payload, &allClaims); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal claims: %v", err)
+			}
+		} else {
+			parsedJWT, err := jwt.ParseSigned(token)
+			if err != nil {
+				return logical.ErrorResponse(errwrap.Wrapf("error parsing token: {{err}}", err).Error()), nil
+			}
+
+			var valid bool
+			for _, key := range config.ParsedJWTPubKeys {
+				if err := parsedJWT.Claims(key, &claims, &allClaims); err == nil {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return logical.ErrorResponse("no known key successfully validated the token signature"), nil
+			}
 		}
 
 		// We require notbefore or expiry; if only one is provided, we allow 5 minutes of leeway.
@@ -152,7 +175,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(errwrap.Wrapf("error validating claims: {{err}}", err).Error()), nil
 		}
 
-	case config.OIDCDiscoveryURL != "":
+	case configType == OIDCDiscovery:
 		allClaims, err = b.verifyOIDCToken(ctx, config, role, token)
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil

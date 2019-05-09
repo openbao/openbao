@@ -51,7 +51,6 @@ func TestOIDC_AuthURL(t *testing.T) {
 
 	// set up test role
 	data = map[string]interface{}{
-		"role_type":             "oidc",
 		"user_claim":            "email",
 		"bound_audiences":       "vault",
 		"allowed_redirect_uris": []string{"https://example.com"},
@@ -130,15 +129,13 @@ func TestOIDC_AuthURL(t *testing.T) {
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		if err != nil {
+			t.Fatal(err)
 		}
 
-		authURL := resp.Data["auth_url"].(string)
-		if authURL != "" {
-			t.Fatalf(`expected: "", actual: %s\n`, authURL)
+		if !resp.IsError() {
+			t.Fatalf("expected error response, got: %v", resp)
 		}
-
 	})
 
 	// create limited role with restricted redirect_uris
@@ -173,7 +170,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			Data:      data,
 		}
 
-		resp, err = b.HandleRequest(context.Background(), req)
+		resp, err := b.HandleRequest(context.Background(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%#v\n", err, resp)
 		}
@@ -192,7 +189,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 			"role":         "limited_uris",
 			"redirect_uri": "http://bitc0in-4-less.cx",
 		}
-		req = &logical.Request{
+		req := &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "oidc/auth_url",
 			Storage:   storage,
@@ -212,87 +209,6 @@ func TestOIDC_AuthURL(t *testing.T) {
 }
 
 func TestOIDC_Callback(t *testing.T) {
-	getBackendAndServer := func(t *testing.T, boundCIDRs bool) (logical.Backend, logical.Storage, *oidcProvider) {
-		b, storage := getBackend(t)
-		s := newOIDCProvider(t)
-		s.clientID = "abc"
-		s.clientSecret = "def"
-
-		// save test server root cert to config in PEM format
-		cert := s.server.Certificate()
-		block := &pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: cert.Raw,
-		}
-
-		pemBuf := new(bytes.Buffer)
-		if err := pem.Encode(pemBuf, block); err != nil {
-			t.Fatal(err)
-		}
-
-		// Configure backend
-		data := map[string]interface{}{
-			"oidc_discovery_url":    s.server.URL,
-			"oidc_client_id":        "abc",
-			"oidc_client_secret":    "def",
-			"oidc_discovery_ca_pem": pemBuf.String(),
-			"default_role":          "test",
-			"bound_issuer":          "http://vault.example.com/",
-			"jwt_supported_algs":    []string{"ES256"},
-		}
-
-		// basic configuration
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
-
-		// set up test role
-		data = map[string]interface{}{
-			"role_type":             "oidc",
-			"user_claim":            "email",
-			"allowed_redirect_uris": []string{"https://example.com"},
-			"claim_mappings": map[string]string{
-				"COLOR":        "color",
-				"/nested/Size": "size",
-			},
-			"groups_claim": "/nested/Groups",
-			"ttl":          "3m",
-			"max_ttl":      "5m",
-			"bound_claims": map[string]interface{}{
-				"password":            "foo",
-				"sk":                  "42",
-				"/nested/secret_code": "bar",
-				"temperature":         "76",
-			},
-		}
-
-		if boundCIDRs {
-			data["bound_cidrs"] = "127.0.0.42"
-		}
-
-		req = &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      "role/test",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%v resp:%#v\n", err, resp)
-		}
-
-		return b, storage, s
-	}
-
 	t.Run("successful login", func(t *testing.T) {
 
 		// run test with and without bound_cidrs configured
@@ -793,7 +709,10 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/certs":
 		a := getTestJWKS(o.t, ecdsaPubKey)
 		w.Write(a)
-
+	case "/certs_missing":
+		w.WriteHeader(404)
+	case "/certs_invalid":
+		w.Write([]byte("It's not a keyset!"))
 	case "/token":
 		code := r.FormValue("code")
 
@@ -828,6 +747,22 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		o.t.Fatalf("unexpected path: %q", r.URL.Path)
 	}
+}
+
+// getTLSCert returns the certificate for this provider in PEM format
+func (o *oidcProvider) getTLSCert() (string, error) {
+	cert := o.server.Certificate()
+	block := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}
+
+	pemBuf := new(bytes.Buffer)
+	if err := pem.Encode(pemBuf, block); err != nil {
+		return "", err
+	}
+
+	return pemBuf.String(), nil
 }
 
 func getQueryParam(t *testing.T, inputURL, param string) string {
@@ -904,4 +839,77 @@ func TestOIDC_ValidRedirect(t *testing.T) {
 			t.Fatalf("Fail on %s/%v. Expected: %t", test.uri, test.allowed, test.expected)
 		}
 	}
+}
+
+func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logical.Storage, *oidcProvider) {
+	b, storage := getBackend(t)
+	s := newOIDCProvider(t)
+	s.clientID = "abc"
+	s.clientSecret = "def"
+
+	cert, err := s.getTLSCert()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Configure backend
+	data := map[string]interface{}{
+		"oidc_discovery_url":    s.server.URL,
+		"oidc_client_id":        "abc",
+		"oidc_client_secret":    "def",
+		"oidc_discovery_ca_pem": cert,
+		"default_role":          "test",
+		"bound_issuer":          "http://vault.example.com/",
+		"jwt_supported_algs":    []string{"ES256"},
+	}
+
+	// basic configuration
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%v resp:%#v\n", err, resp)
+	}
+
+	// set up test role
+	data = map[string]interface{}{
+		"user_claim":            "email",
+		"allowed_redirect_uris": []string{"https://example.com"},
+		"claim_mappings": map[string]string{
+			"COLOR":        "color",
+			"/nested/Size": "size",
+		},
+		"groups_claim": "/nested/Groups",
+		"ttl":          "3m",
+		"max_ttl":      "5m",
+		"bound_claims": map[string]interface{}{
+			"password":            "foo",
+			"sk":                  "42",
+			"/nested/secret_code": "bar",
+			"temperature":         "76",
+		},
+	}
+
+	if boundCIDRs {
+		data["bound_cidrs"] = "127.0.0.42"
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%v resp:%#v\n", err, resp)
+	}
+
+	return b, storage, s
 }

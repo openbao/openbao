@@ -19,7 +19,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims bool, boundCIDRs bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims bool, boundCIDRs bool, jwks bool) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -29,9 +29,22 @@ func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 		}
 	} else {
-		data = map[string]interface{}{
-			"bound_issuer":           "https://team-vault.auth0.com/",
-			"jwt_validation_pubkeys": ecdsaPubKey,
+		if !jwks {
+			data = map[string]interface{}{
+				"bound_issuer":           "https://team-vault.auth0.com/",
+				"jwt_validation_pubkeys": ecdsaPubKey,
+			}
+		} else {
+			p := newOIDCProvider(t)
+			cert, err := p.getTLSCert()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			data = map[string]interface{}{
+				"jwks_url":    p.server.URL + "/certs",
+				"jwks_ca_pem": cert,
+			}
 		}
 	}
 
@@ -151,9 +164,15 @@ func getTestOIDC(t *testing.T) string {
 }
 
 func TestLogin_JWT(t *testing.T) {
+	testLogin_JWT(t, false)
+	testLogin_JWT(t, true)
+}
+
+func testLogin_JWT(t *testing.T, jwks bool) {
 	// Test role_type oidc
 	{
-		b, storage := setupBackend(t, false, true, true, false, false)
+		b, storage := setupBackend(t, false, true, true, false, false, jwks)
+
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
@@ -200,7 +219,8 @@ func TestLogin_JWT(t *testing.T) {
 
 	// Test missing audience
 	{
-		b, storage := setupBackend(t, false, false, false, false, false)
+		b, storage := setupBackend(t, false, false, false, false, false, jwks)
+
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
@@ -249,7 +269,7 @@ func TestLogin_JWT(t *testing.T) {
 	{
 		// run test with and without bound_cidrs configured
 		for _, useBoundCIDRs := range []bool{false, true} {
-			b, storage := setupBackend(t, false, false, true, true, useBoundCIDRs)
+			b, storage := setupBackend(t, false, false, true, true, useBoundCIDRs, jwks)
 
 			cl := jwt.Claims{
 				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -338,7 +358,7 @@ func TestLogin_JWT(t *testing.T) {
 		}
 	}
 
-	b, storage := setupBackend(t, false, false, true, true, false)
+	b, storage := setupBackend(t, false, false, true, true, false, jwks)
 
 	// test invalid bound claim
 	{
@@ -729,7 +749,7 @@ func TestLogin_JWT(t *testing.T) {
 
 	// test invalid address
 	{
-		b, storage := setupBackend(t, false, false, false, false, true)
+		b, storage := setupBackend(t, false, false, false, false, true, jwks)
 
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -805,7 +825,7 @@ func TestLogin_JWT(t *testing.T) {
 }
 
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true, false, true, false, false)
+	b, storage := setupBackend(t, true, false, true, false, false, false)
 
 	jwtData := getTestOIDC(t)
 
@@ -958,6 +978,58 @@ func TestLogin_NestedGroups(t *testing.T) {
 		t.Fatal(auth.TTL)
 	case auth.MaxTTL != 5*time.Second:
 		t.Fatal(auth.MaxTTL)
+	}
+}
+
+func TestLogin_JWKS_Concurrent(t *testing.T) {
+	b, storage := setupBackend(t, false, false, true, false, false, true)
+
+	cl := jwt.Claims{
+		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		Issuer:    "https://team-vault.auth0.com/",
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+	}
+
+	privateCl := struct {
+		User   string   `json:"https://vault/user"`
+		Groups []string `json:"https://vault/groups"`
+	}{
+		"jeff",
+		[]string{"foo", "bar"},
+	}
+
+	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+	data := map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	for i := 0; i < 100; i++ {
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+
+			for i := 0; i < 100; i++ {
+				resp, err := b.HandleRequest(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if resp == nil {
+					t.Fatal("got nil response")
+				}
+				if resp.IsError() {
+					t.Fatalf("got error: %v", resp.Error())
+				}
+			}
+		})
 	}
 }
 

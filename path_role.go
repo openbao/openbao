@@ -401,7 +401,8 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	if roleType != "oidc" {
 		if len(role.BoundAudiences) == 0 &&
 			len(role.BoundCIDRs) == 0 &&
-			role.BoundSubject == "" {
+			role.BoundSubject == "" &&
+			len(role.BoundClaims) == 0 {
 			return logical.ErrorResponse("must have at least one bound constraint when creating/updating a role"), nil
 		}
 	}

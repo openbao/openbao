@@ -125,7 +125,7 @@ func TestPath_Create(t *testing.T) {
 
 	req = &logical.Request{
 		Operation: logical.CreateOperation,
-		Path:      "role/test2",
+		Path:      "role/test3",
 		Storage:   storage,
 		Data:      data,
 	}
@@ -139,6 +139,101 @@ func TestPath_Create(t *testing.T) {
 	}
 	if !strings.HasPrefix(resp.Error().Error(), "must have at least one bound constraint") {
 		t.Fatalf("unexpected err: %v", resp)
+	}
+
+	// Test has bound subject
+	data = map[string]interface{}{
+		"role_type":     "jwt",
+		"user_claim":    "user",
+		"policies":      "test",
+		"bound_subject": "testsub",
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test4",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error")
+	}
+
+	// Test has audience
+	data = map[string]interface{}{
+		"role_type":       "jwt",
+		"user_claim":      "user",
+		"policies":        "test",
+		"bound_audiences": "vault",
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test5",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error")
+	}
+
+	// Test has cidr
+	data = map[string]interface{}{
+		"role_type":   "jwt",
+		"user_claim":  "user",
+		"policies":    "test",
+		"bound_cidrs": "127.0.0.1/8",
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test6",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error")
+	}
+
+	// Test has bound claims
+	data = map[string]interface{}{
+		"role_type":  "jwt",
+		"user_claim": "user",
+		"policies":   "test",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test7",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error")
 	}
 }
 

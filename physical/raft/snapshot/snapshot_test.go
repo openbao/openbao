@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/consul/sdk/testutil"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-msgpack/codec"
 	"github.com/hashicorp/raft"
 )
@@ -150,7 +150,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// Take a snapshot.
-	logger := log.New(os.Stdout, "", 0)
+	logger := log.Default()
 	snap, err := New(logger, before)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -253,7 +253,7 @@ func TestSnapshot_BadRestore(t *testing.T) {
 	}
 
 	// Take a snapshot.
-	logger := log.New(os.Stdout, "", 0)
+	logger := log.Default()
 	snap, err := New(logger, before)
 	if err != nil {
 		t.Fatalf("err: %v", err)

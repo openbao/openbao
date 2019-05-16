@@ -14,6 +14,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/locksutil"
+	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
@@ -34,12 +35,17 @@ func pathData(b *versionedKVBackend) *framework.Path {
 			},
 			"options": {
 				Type: framework.TypeMap,
-				Description: `Options for writing a KV entry. 
+				Description: `Options for writing a KV entry.
 
 Set the "cas" value to use a Check-And-Set operation. If not set the write will
 be allowed. If set to 0 a write will only be allowed if the key doesn’t exist.
 If the index is non-zero the write will only be allowed if the key’s current
-version matches the version specified in the cas parameter.`,
+version matches the version specified in the cas parameter.
+
+Set the "delete_version_after" value to a duration to specify the deletion_time for this
+version. If not set, the metadata's delete_version_after is used. Cannot be greater than
+the metadata delete_version_after. A negative duration will cause an error.
+`,
 			},
 			"data": {
 				Type:        framework.TypeMap,
@@ -211,16 +217,18 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			}
 		}
 
+		var dva time.Duration
 		// Parse options
 		{
-			var casRaw interface{}
-			var casOk bool
+			var casRaw, dvaRaw interface{}
+			var casOk, dvaOk bool
 			optionsRaw, ok := data.GetOk("options")
 			if ok {
 				options := optionsRaw.(map[string]interface{})
 
 				// Verify the CAS parameter is valid.
 				casRaw, casOk = options["cas"]
+				dvaRaw, dvaOk = options["delete_version_after"]
 			}
 
 			switch {
@@ -235,6 +243,13 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			case config.CasRequired, meta.CasRequired:
 				return logical.ErrorResponse("check-and-set parameter required for this call"), logical.ErrInvalidRequest
 			}
+
+			if dvaOk {
+				dva, err = parseutil.ParseDurationSecond(dvaRaw)
+				if err != nil {
+					return logical.ErrorResponse("error parsing delete_version_after parameter: %v", err), logical.ErrInvalidRequest
+				}
+			}
 		}
 
 		// Create a version key for the new version
@@ -245,6 +260,21 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 		version := &Version{
 			Data:        marshaledData,
 			CreatedTime: ptypes.TimestampNow(),
+		}
+
+		ctime, err := ptypes.Timestamp(version.CreatedTime)
+		if err != nil {
+			return logical.ErrorResponse("unexpected error converting %T(%v) to time.Time: %v", version.CreatedTime, version.CreatedTime, err), logical.ErrInvalidRequest
+		}
+
+		if !config.IsDeleteVersionAfterDisabled() {
+			if dtime, ok := deletionTime(ctime, deleteVersionAfter(config), deleteVersionAfter(meta), dva); ok {
+				dt, err := ptypes.TimestampProto(dtime)
+				if err != nil {
+					return logical.ErrorResponse("error setting deletion_time: converting %v to protobuf: %v", dtime, err), logical.ErrInvalidRequest
+				}
+				version.DeletionTime = dt
+			}
 		}
 
 		buf, err := proto.Marshal(version)
@@ -260,7 +290,7 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			return nil, err
 		}
 
-		vm, versionToDelete := meta.AddVersion(version.CreatedTime, nil, config.MaxVersions)
+		vm, versionToDelete := meta.AddVersion(version.CreatedTime, version.DeletionTime, config.MaxVersions)
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
 		if err != nil {
 			return nil, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -11,9 +12,11 @@ import (
 func TestVersionedKV_Metadata_Put(t *testing.T) {
 	b, storage := getBackend(t)
 
+	d := 5 * time.Minute
 	data := map[string]interface{}{
-		"max_versions": 2,
-		"cas_required": true,
+		"max_versions":         2,
+		"cas_required":         true,
+		"delete_version_after": d.String(),
 	}
 
 	req := &logical.Request{
@@ -26,6 +29,28 @@ func TestVersionedKV_Metadata_Put(t *testing.T) {
 	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if resp.Data["max_versions"] != uint32(2) {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+
+	if resp.Data["cas_required"] != true {
+		t.Fatalf("Bad response: %#v", resp)
+	}
+	if resp.Data["delete_version_after"] != d.String() {
+		t.Fatalf("Bad response: %#v", resp)
 	}
 
 	data = map[string]interface{}{

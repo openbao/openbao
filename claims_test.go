@@ -198,6 +198,56 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
+			name: "valid - non-string claim",
+			boundClaims: map[string]interface{}{
+				"foo": []interface{}{42},
+			},
+			allClaims: map[string]interface{}{
+				"foo": []interface{}{42},
+			},
+			errExpected: false,
+		},
+		{
+			name: "valid - match within list",
+			boundClaims: map[string]interface{}{
+				"foo": "a",
+			},
+			allClaims: map[string]interface{}{
+				"foo": []interface{}{"a", "b"},
+			},
+			errExpected: false,
+		},
+		{
+			name: "valid - match list against list",
+			boundClaims: map[string]interface{}{
+				"foo": []interface{}{"a", "b", "c"},
+			},
+			allClaims: map[string]interface{}{
+				"foo": []interface{}{"c", "d"},
+			},
+			errExpected: false,
+		},
+		{
+			name: "invalid - no match within list",
+			boundClaims: map[string]interface{}{
+				"foo": "c",
+			},
+			allClaims: map[string]interface{}{
+				"foo": []interface{}{"a", "b"},
+			},
+			errExpected: true,
+		},
+		{
+			name: "invalid - no match list against list",
+			boundClaims: map[string]interface{}{
+				"foo": []interface{}{"a", "b", "c"},
+			},
+			allClaims: map[string]interface{}{
+				"foo": []interface{}{"d", "e"},
+			},
+			errExpected: true,
+		},
+		{
 			name: "valid - extra data",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
@@ -306,6 +356,16 @@ func TestValidateBoundClaims(t *testing.T) {
 			},
 			allClaims: map[string]interface{}{
 				"email": "d",
+			},
+			errExpected: true,
+		},
+		{
+			name: "invalid received claim expected value",
+			boundClaims: map[string]interface{}{
+				"email": "d",
+			},
+			allClaims: map[string]interface{}{
+				"email": 42,
 			},
 			errExpected: true,
 		},

@@ -39,14 +39,14 @@ func TestArchive(t *testing.T) {
 
 	// Write out the snapshot.
 	var archive bytes.Buffer
-	if err := write(&archive, &metadata, &snap); err != nil {
+	if err := write(&archive, &metadata, &snap, nil); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Read the snapshot back.
 	var newMeta raft.SnapshotMeta
 	var newSnap bytes.Buffer
-	if err := read(&archive, &newMeta, &newSnap); err != nil {
+	if err := read(&archive, &newMeta, &newSnap, nil); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
@@ -75,7 +75,7 @@ func TestArchive_GoodData(t *testing.T) {
 		defer f.Close()
 
 		var metadata raft.SnapshotMeta
-		err = read(f, &metadata, ioutil.Discard)
+		err = read(f, &metadata, ioutil.Discard, nil)
 		if err != nil {
 			t.Fatalf("case %d: should've read the snapshot, but didn't: %v", i, err)
 		}
@@ -104,7 +104,7 @@ func TestArchive_BadData(t *testing.T) {
 		defer f.Close()
 
 		var metadata raft.SnapshotMeta
-		err = read(f, &metadata, ioutil.Discard)
+		err = read(f, &metadata, ioutil.Discard, nil)
 		if err == nil || !strings.Contains(err.Error(), c.Error) {
 			t.Fatalf("case %d (%s): %v", i, c.Name, err)
 		}

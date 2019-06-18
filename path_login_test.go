@@ -991,12 +991,18 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
 	}
 
+	type orgs struct {
+		Primary string `json:"primary"`
+	}
+
 	privateCl := struct {
 		User   string   `json:"https://vault/user"`
 		Groups []string `json:"https://vault/groups"`
+		Org    orgs     `json:"org"`
 	}{
 		"jeff",
 		[]string{"foo", "bar"},
+		orgs{"engineering"},
 	}
 
 	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)

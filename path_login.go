@@ -255,7 +255,12 @@ func (b *jwtAuthBackend) verifyOIDCToken(ctx context.Context, config *jwtConfig,
 
 	oidcConfig := &oidc.Config{
 		SupportedSigningAlgs: config.JWTSupportedAlgs,
-		SkipClientIDCheck:    true,
+	}
+
+	if role.RoleType == "oidc" {
+		oidcConfig.ClientID = config.OIDCClientID
+	} else {
+		oidcConfig.SkipClientIDCheck = true
 	}
 
 	verifier := provider.Verifier(oidcConfig)

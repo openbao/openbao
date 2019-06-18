@@ -239,18 +239,7 @@ func TestOIDC_Callback(t *testing.T) {
 			nonce := getQueryParam(t, authURL, "nonce")
 
 			// set provider claims that will be returned by the mock server
-			s.customClaims = map[string]interface{}{
-				"nonce": nonce,
-				"email": "bob@example.com",
-				"COLOR": "green",
-				"sk":    "42",
-				"nested": map[string]interface{}{
-					"Size":        "medium",
-					"Groups":      []string{"a", "b"},
-					"secret_code": "bar",
-				},
-				"password": "foo",
-			}
+			s.customClaims = sampleClaims(nonce)
 
 			// set mock provider's expected code
 			s.code = "abc"
@@ -313,7 +302,7 @@ func TestOIDC_Callback(t *testing.T) {
 			auth := resp.Auth
 
 			if !reflect.DeepEqual(auth, expected) {
-				t.Fatalf("expected: %v, auth: %v", expected, auth)
+				t.Fatalf("expected: %v, auth: %v", expected, resp)
 			}
 		}
 	})
@@ -343,19 +332,7 @@ func TestOIDC_Callback(t *testing.T) {
 
 		state := getQueryParam(t, authURL, "state")
 
-		// set provider claims that will be returned by the mock server
-		s.customClaims = map[string]interface{}{
-			"nonce": "notgonnamatch",
-			"email": "bob@example.com",
-			"COLOR": "green",
-			"sk":    "42",
-			"nested": map[string]interface{}{
-				"Size":        "medium",
-				"Groups":      []string{"a", "b"},
-				"secret_code": "bar",
-			},
-			"password": "foo",
-		}
+		s.customClaims = sampleClaims("bad nonce")
 
 		// set mock provider's expected code
 		s.code = "abc"
@@ -408,19 +385,8 @@ func TestOIDC_Callback(t *testing.T) {
 		state := getQueryParam(t, authURL, "state")
 		nonce := getQueryParam(t, authURL, "nonce")
 
-		// set provider claims that will be returned by the mock server
-		s.customClaims = map[string]interface{}{
-			"nonce": nonce,
-			"email": "bob@example.com",
-			"COLOR": "green",
-			"sk":    "43", // the pre-configured role has a bound claim of "sk"=="42"
-			"nested": map[string]interface{}{
-				"Size":        "medium",
-				"Groups":      []string{"a", "b"},
-				"secret_code": "bar",
-			},
-			"password": "foo",
-		}
+		s.customClaims = sampleClaims(nonce)
+		s.customClaims["sk"] = "43" // the pre-configured role has a bound claim of "sk"=="42"
 
 		// set mock provider's expected code
 		s.code = "abc"
@@ -672,6 +638,59 @@ func TestOIDC_Callback(t *testing.T) {
 			t.Fatalf("expected invalid CIDR error, got : %v", *resp)
 		}
 	})
+
+	t.Run("test invalid client_id", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t, false)
+		defer s.server.Close()
+
+		s.code = "abc"
+		s.clientID = "not_gonna_match"
+
+		// get auth_url
+		data := map[string]interface{}{
+			"role":         "test",
+			"redirect_uri": "https://example.com",
+		}
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+		state := getQueryParam(t, authURL, "state")
+		nonce := getQueryParam(t, authURL, "nonce")
+
+		// set provider claims that will be returned by the mock server
+		s.customClaims = sampleClaims(nonce)
+
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state": state,
+				"code":  "abc",
+			},
+		}
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("nil response")
+		}
+
+		if !resp.IsError() || !strings.Contains(resp.Error().Error(), `error validating signature: oidc: expected audience "abc"`) {
+			t.Fatalf("expected invalid client_id error, got : %v", *resp)
+		}
+	})
 }
 
 // oidcProvider is local server the mocks the basis endpoints used by the
@@ -912,4 +931,19 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 	}
 
 	return b, storage, s
+}
+
+func sampleClaims(nonce string) map[string]interface{} {
+	return map[string]interface{}{
+		"nonce": nonce,
+		"email": "bob@example.com",
+		"COLOR": "green",
+		"sk":    "42",
+		"nested": map[string]interface{}{
+			"Size":        "medium",
+			"Groups":      []string{"a", "b"},
+			"secret_code": "bar",
+		},
+		"password": "foo",
+	}
 }

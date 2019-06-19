@@ -14,7 +14,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
@@ -40,12 +39,7 @@ func pathData(b *versionedKVBackend) *framework.Path {
 Set the "cas" value to use a Check-And-Set operation. If not set the write will
 be allowed. If set to 0 a write will only be allowed if the key doesn’t exist.
 If the index is non-zero the write will only be allowed if the key’s current
-version matches the version specified in the cas parameter.
-
-Set the "delete_version_after" value to a duration to specify the deletion_time for this
-version. If not set, the metadata's delete_version_after is used. Cannot be greater than
-the metadata delete_version_after. A negative duration will cause an error.
-`,
+version matches the version specified in the cas parameter.`,
 			},
 			"data": {
 				Type:        framework.TypeMap,
@@ -217,18 +211,16 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			}
 		}
 
-		var dva time.Duration
 		// Parse options
 		{
-			var casRaw, dvaRaw interface{}
-			var casOk, dvaOk bool
+			var casRaw interface{}
+			var casOk bool
 			optionsRaw, ok := data.GetOk("options")
 			if ok {
 				options := optionsRaw.(map[string]interface{})
 
 				// Verify the CAS parameter is valid.
 				casRaw, casOk = options["cas"]
-				dvaRaw, dvaOk = options["delete_version_after"]
 			}
 
 			switch {
@@ -242,13 +234,6 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 				}
 			case config.CasRequired, meta.CasRequired:
 				return logical.ErrorResponse("check-and-set parameter required for this call"), logical.ErrInvalidRequest
-			}
-
-			if dvaOk {
-				dva, err = parseutil.ParseDurationSecond(dvaRaw)
-				if err != nil {
-					return logical.ErrorResponse("error parsing delete_version_after parameter: %v", err), logical.ErrInvalidRequest
-				}
 			}
 		}
 
@@ -268,7 +253,7 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 		}
 
 		if !config.IsDeleteVersionAfterDisabled() {
-			if dtime, ok := deletionTime(ctime, deleteVersionAfter(config), deleteVersionAfter(meta), dva); ok {
+			if dtime, ok := deletionTime(ctime, deleteVersionAfter(config), deleteVersionAfter(meta)); ok {
 				dt, err := ptypes.TimestampProto(dtime)
 				if err != nil {
 					return logical.ErrorResponse("error setting deletion_time: converting %v to protobuf: %v", dtime, err), logical.ErrInvalidRequest

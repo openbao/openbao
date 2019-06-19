@@ -8,20 +8,17 @@ import (
 )
 
 // deletionTime returns the time of creation plus the duration of the
-// minimum non-zero value of mount, meta, or data. If mount, meta, and data
-// are zero, false is returned.
-func deletionTime(creation time.Time, mount, meta, data time.Duration) (time.Time, bool) {
-	if mount == 0 && meta == 0 && data == 0 {
+// minimum non-zero value of mount or meta. If mount and meta are zero,
+// false is returned.
+func deletionTime(creation time.Time, mount, meta time.Duration) (time.Time, bool) {
+	if mount == 0 && meta == 0 {
 		return time.Time{}, false
 	}
 	var min time.Duration
-	if data != 0 {
-		min = data
-	}
-	if meta != 0 && meta < min || min == 0 {
+	if meta != 0 {
 		min = meta
 	}
-	if mount != 0 && mount < min || min == 0 {
+	if (mount != 0 && mount < min) || min == 0 {
 		min = mount
 	}
 	return creation.Add(min), true

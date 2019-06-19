@@ -106,6 +106,8 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 }
 
 func fetchAuthURL(c *api.Client, role, mount, port string) (string, error) {
+	var authURL string
+
 	data := map[string]interface{}{
 		"role":         role,
 		"redirect_uri": fmt.Sprintf("http://localhost:%s/oidc/callback", port),
@@ -116,7 +118,10 @@ func fetchAuthURL(c *api.Client, role, mount, port string) (string, error) {
 		return "", err
 	}
 
-	authURL := secret.Data["auth_url"].(string)
+	if secret != nil {
+		authURL = secret.Data["auth_url"].(string)
+	}
+
 	if authURL == "" {
 		return "", errors.New(fmt.Sprintf("Unable to authorize role %q. Check Vault logs for more information.", role))
 	}

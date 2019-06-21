@@ -18,6 +18,9 @@ var (
 	testUID         = "d77f89bc-9055-11e7-a068-0800276d99bf"
 	testMockFactory = mockTokenReviewFactory(testName, testNamespace, testUID)
 
+	testGlobbedNamespace = "def*"
+	testGlobbedName      = "vault-*"
+
 	// Projected ServiceAccount tokens have name "default", and require a
 	// different mock token reviewer
 	testProjectedName        = "default"
@@ -28,7 +31,7 @@ var (
 	testNoPEMs      = []string{testECCert, testRSACert}
 )
 
-func setupBackend(t *testing.T, pems []string) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, pems []string, saName string, saNamespace string) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	// pems := []string{testECCert, testRSACert, testMinikubePubKey}
@@ -57,8 +60,8 @@ func setupBackend(t *testing.T, pems []string) (logical.Backend, logical.Storage
 	}
 
 	data = map[string]interface{}{
-		"bound_service_account_names":      testName,
-		"bound_service_account_namespaces": testNamespace,
+		"bound_service_account_names":      saName,
+		"bound_service_account_namespaces": saNamespace,
 		"policies":                         "test",
 		"period":                           "3s",
 		"ttl":                              "1s",
@@ -83,7 +86,7 @@ func setupBackend(t *testing.T, pems []string) (logical.Backend, logical.Storage
 }
 
 func TestLogin(t *testing.T) {
-	b, storage := setupBackend(t, testDefaultPEMs)
+	b, storage := setupBackend(t, testDefaultPEMs, testName, testNamespace)
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -203,10 +206,50 @@ func TestLogin(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
+
+	// test successful login for globbed name
+	b, storage = setupBackend(t, testDefaultPEMs, testGlobbedName, testNamespace)
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	// test successful login for globbed namespace
+	b, storage = setupBackend(t, testDefaultPEMs, testName, testGlobbedNamespace)
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
 }
 
 func TestLogin_ECDSA_PEM(t *testing.T) {
-	b, storage := setupBackend(t, testNoPEMs)
+	b, storage := setupBackend(t, testNoPEMs, testName, testNamespace)
 
 	// test no certificate
 	data := map[string]interface{}{
@@ -247,7 +290,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 }
 
 func TestLogin_NoPEMs(t *testing.T) {
-	b, storage := setupBackend(t, testNoPEMs)
+	b, storage := setupBackend(t, testNoPEMs, testName, testNamespace)
 
 	// test bad jwt service account
 	data := map[string]interface{}{
@@ -289,7 +332,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 }
 
 func TestAliasLookAhead(t *testing.T) {
-	b, storage := setupBackend(t, testDefaultPEMs)
+	b, storage := setupBackend(t, testDefaultPEMs, testName, testNamespace)
 
 	// Test bad inputs
 	data := map[string]interface{}{
@@ -328,7 +371,7 @@ Pk9Yf9rIf374m5XP1U8q79dBhLSIuaojsvOT39UUcPJROSD1FqYLued0rXiooIii
 -----END PUBLIC KEY-----`
 
 func TestLoginProjectedToken(t *testing.T) {
-	b, storage := setupBackend(t, append(testDefaultPEMs, testMinikubePubKey))
+	b, storage := setupBackend(t, append(testDefaultPEMs, testMinikubePubKey), testName, testNamespace)
 
 	// update backend to accept "default" bound account name
 	data := map[string]interface{}{

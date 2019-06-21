@@ -129,7 +129,8 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 			}
 		}
 
-		// We require notbefore or expiry; if only one is provided, we allow 5 minutes of leeway.
+		// We require notbefore or expiry; if only one is provided, we allow 5 minutes of leeway by default.
+		// Configurable by ExpirationLeeway and NotBeforeLeeway
 		if claims.IssuedAt == nil {
 			claims.IssuedAt = new(jwt.NumericDate)
 		}
@@ -142,18 +143,28 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		if *claims.IssuedAt == 0 && *claims.Expiry == 0 && *claims.NotBefore == 0 {
 			return logical.ErrorResponse("no issue time, notbefore, or expiration time encoded in token"), nil
 		}
+
 		if *claims.Expiry == 0 {
 			latestStart := *claims.IssuedAt
 			if *claims.NotBefore > *claims.IssuedAt {
 				latestStart = *claims.NotBefore
 			}
-			*claims.Expiry = latestStart + 300
+			leeway := role.ExpirationLeeway.Seconds()
+			if role.ExpirationLeeway.Seconds() == 0 {
+				leeway = claimDefaultLeeway
+			}
+			*claims.Expiry = jwt.NumericDate(int64(latestStart) + int64(leeway))
 		}
+
 		if *claims.NotBefore == 0 {
 			if *claims.IssuedAt != 0 {
 				*claims.NotBefore = *claims.IssuedAt
 			} else {
-				*claims.NotBefore = *claims.Expiry - 300
+				leeway := role.NotBeforeLeeway.Seconds()
+				if role.NotBeforeLeeway.Seconds() == 0 {
+					leeway = claimDefaultLeeway
+				}
+				*claims.NotBefore = jwt.NumericDate(int64(*claims.Expiry) - int64(leeway))
 			}
 		}
 
@@ -167,7 +178,12 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 			Time:    time.Now(),
 		}
 
-		if err := claims.Validate(expected); err != nil {
+		cksLeeway := role.ClockSkewLeeway
+		if role.ClockSkewLeeway.Seconds() == 0 {
+			cksLeeway = jwt.DefaultLeeway
+		}
+
+		if err := claims.ValidateWithLeeway(expected, cksLeeway); err != nil {
 			return logical.ErrorResponse(errwrap.Wrapf("error validating claims: {{err}}", err).Error()), nil
 		}
 

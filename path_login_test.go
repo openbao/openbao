@@ -19,7 +19,7 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
-func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims bool, boundCIDRs bool, jwks bool) (logical.Backend, logical.Storage) {
+func setupBackend(t *testing.T, oidc, role_type_oidc, audience, boundClaims, boundCIDRs, jwks bool, defaultLeeway, expLeeway, nbfLeeway int) (logical.Backend, logical.Storage) {
 	b, storage := getBackend(t)
 
 	var data map[string]interface{}
@@ -90,6 +90,13 @@ func setupBackend(t *testing.T, oidc, role_type_oidc, audience bool, boundClaims
 	if boundCIDRs {
 		data["bound_cidrs"] = "127.0.0.42"
 	}
+
+	if defaultLeeway >= 0 {
+		data["clock_skew_leeway"] = defaultLeeway
+	}
+
+	data["expiration_leeway"] = expLeeway
+	data["not_before_leeway"] = nbfLeeway
 
 	req = &logical.Request{
 		Operation: logical.CreateOperation,
@@ -171,7 +178,7 @@ func TestLogin_JWT(t *testing.T) {
 func testLogin_JWT(t *testing.T, jwks bool) {
 	// Test role_type oidc
 	{
-		b, storage := setupBackend(t, false, true, true, false, false, jwks)
+		b, storage := setupBackend(t, false, true, true, false, false, jwks, 0, 0, 0)
 
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -219,7 +226,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// Test missing audience
 	{
-		b, storage := setupBackend(t, false, false, false, false, false, jwks)
+		b, storage := setupBackend(t, false, false, false, false, false, jwks, 0, 0, 0)
 
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -269,7 +276,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 	{
 		// run test with and without bound_cidrs configured
 		for _, useBoundCIDRs := range []bool{false, true} {
-			b, storage := setupBackend(t, false, false, true, true, useBoundCIDRs, jwks)
+			b, storage := setupBackend(t, false, false, true, true, useBoundCIDRs, jwks, 0, 0, 0)
 
 			cl := jwt.Claims{
 				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -358,7 +365,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 	}
 
-	b, storage := setupBackend(t, false, false, true, true, false, jwks)
+	b, storage := setupBackend(t, false, false, true, true, false, jwks, 0, 0, 0)
 
 	// test invalid bound claim
 	{
@@ -580,138 +587,6 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 	}
 
-	// test bad expiry (using auto expiry)
-	{
-		cl := jwt.Claims{
-			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Hour)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
-		}
-
-		privateCl := struct {
-			User   string   `json:"https://vault/user"`
-			Groups []string `json:"https://vault/groups"`
-		}{
-			"jeff",
-			[]string{"foo", "bar"},
-		}
-
-		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
-
-		data := map[string]interface{}{
-			"role": "plugin-test",
-			"jwt":  jwtData,
-		}
-
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "login",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp == nil {
-			t.Fatal("got nil response")
-		}
-		if !resp.IsError() {
-			t.Fatalf("expected error: %v", *resp)
-		}
-	}
-
-	// test bad notbefore (using auto)
-	{
-		cl := jwt.Claims{
-			Subject:  "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-			Issuer:   "https://team-vault.auth0.com/",
-			Expiry:   jwt.NewNumericDate(time.Now().Add(5 * time.Hour)),
-			Audience: jwt.Audience{"https://vault.plugin.auth.jwt.test"},
-		}
-
-		privateCl := struct {
-			User   string   `json:"https://vault/user"`
-			Groups []string `json:"https://vault/groups"`
-		}{
-			"jeff",
-			[]string{"foo", "bar"},
-		}
-
-		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
-
-		data := map[string]interface{}{
-			"role": "plugin-test",
-			"jwt":  jwtData,
-		}
-
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "login",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp == nil {
-			t.Fatal("got nil response")
-		}
-		if !resp.IsError() {
-			t.Fatalf("expected error: %v", *resp)
-		}
-	}
-
-	// test auto notbefore from issue time
-	{
-		cl := jwt.Claims{
-			Subject:  "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-			Issuer:   "https://team-vault.auth0.com/",
-			Expiry:   jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
-			IssuedAt: jwt.NewNumericDate(time.Now().Add(-5 * time.Hour)),
-			Audience: jwt.Audience{"https://vault.plugin.auth.jwt.test"},
-		}
-
-		privateCl := struct {
-			User   string   `json:"https://vault/user"`
-			Groups []string `json:"https://vault/groups"`
-			Color  string   `json:"color"`
-		}{
-			"jeff",
-			[]string{"foo", "bar"},
-			"green",
-		}
-
-		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
-
-		data := map[string]interface{}{
-			"role": "plugin-test",
-			"jwt":  jwtData,
-		}
-
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "login",
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if resp == nil {
-			t.Fatal("got nil response")
-		}
-		if resp.IsError() {
-			t.Fatalf("unexpected error: %v", resp.Error())
-		}
-	}
-
 	// test missing user value
 	{
 		cl := jwt.Claims{
@@ -749,7 +624,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test invalid address
 	{
-		b, storage := setupBackend(t, false, false, false, false, true, jwks)
+		b, storage := setupBackend(t, false, false, false, false, true, jwks, 0, 0, 0)
 
 		cl := jwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
@@ -824,8 +699,199 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 	}
 }
 
+func TestLogin_Leeways(t *testing.T) {
+	testLogin_ExpiryClaims(t, true)
+	testLogin_ExpiryClaims(t, false)
+	testLogin_NotBeforeClaims(t, true)
+	testLogin_NotBeforeClaims(t, false)
+}
+
+func testLogin_ExpiryClaims(t *testing.T, jwks bool) {
+	tests := []struct {
+		Context       string
+		Valid         bool
+		JWKS          bool
+		IssuedAt      time.Time
+		NotBefore     time.Time
+		Expiration    time.Time
+		DefaultLeeway int
+		ExpLeeway     int
+	}{
+		// iat, default clock_skew_leeway (60s), auto expiration leeway (150s)
+		{"auto expire leeway using iat with clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Time{}, -1, 0},
+		{"auto expire leeway using iat with clock_skew_leeway", true, jwks, time.Now().Add(-205 * time.Second), time.Time{}, time.Time{}, -1, 0},
+		{"expired auto expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-215 * time.Second), time.Time{}, time.Time{}, -1, 0},
+		{"expired auto expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-500 * time.Second), time.Time{}, time.Time{}, -1, 0},
+
+		// iat, clock_skew_leeway (10s), auto expiration leeway (150s)
+		{"auto expire leeway using iat with clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Time{}, 10, 0},
+		{"auto expire leeway using iat with clock_skew_leeway", true, jwks, time.Now().Add(-150 * time.Second), time.Time{}, time.Time{}, 10, 0},
+		{"expired auto expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-165 * time.Second), time.Time{}, time.Time{}, 10, 0},
+		{"expired auto expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-500 * time.Second), time.Time{}, time.Time{}, 10, 0},
+
+		// nbf, default clock_skew_leeway (60s), auto expiration leeway (150s)
+		{"auto expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now(), time.Time{}, -1, 0},
+		{"auto expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now().Add(-205 * time.Second), time.Time{}, -1, 0},
+		{"expired auto expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-215 * time.Second), time.Time{}, -1, 0},
+		{"expired auto expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-500 * time.Second), time.Time{}, -1, 0},
+
+		// nbf, clock_skew_leeway (10s), auto expiration leeway (150s)
+		{"auto expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now(), time.Time{}, 10, 0},
+		{"auto expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now().Add(-145 * time.Second), time.Time{}, 10, 0},
+		{"expired auto expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-165 * time.Second), time.Time{}, 10, 0},
+		{"expired auto expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-210 * time.Second), time.Time{}, 10, 0},
+
+		// iat, default clock_skew_leeway (60s), custom expiration leeway (10s)
+		{"custom expire leeway using iat with clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Time{}, -1, 10},
+		{"custom expire leeway using iat with clock_skew_leeway", true, jwks, time.Now().Add(-65 * time.Second), time.Time{}, time.Time{}, -1, 10},
+		{"expired custom expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-75 * time.Second), time.Time{}, time.Time{}, -1, 10},
+		{"expired custom expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-500 * time.Second), time.Time{}, time.Time{}, -1, 10},
+
+		// iat, clock_skew_leeway (10s), custom expiration leeway (10s)
+		{"custom expire leeway using iat with clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Time{}, 10, 10},
+		{"custom expire leeway using iat with clock_skew_leeway", true, jwks, time.Now().Add(-5 * time.Second), time.Time{}, time.Time{}, 10, 10},
+		{"expired custom expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-25 * time.Second), time.Time{}, time.Time{}, 10, 10},
+		{"expired custom expire leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(-100 * time.Second), time.Time{}, time.Time{}, 10, 10},
+
+		// nbf, default clock_skew_leeway (60s), custom expiration leeway (10s)
+		{"custom expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now(), time.Time{}, -1, 10},
+		{"custom expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now().Add(-65 * time.Second), time.Time{}, -1, 10},
+		{"expired custom expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-75 * time.Second), time.Time{}, -1, 10},
+		{"expired custom expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-100 * time.Second), time.Time{}, -1, 10},
+
+		// nbf, clock_skew_leeway (10s), custom custom expiration leeway (10)
+		{"custom expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now(), time.Time{}, 10, 10},
+		{"custom expire leeway using nbf with clock_skew_leeway", true, jwks, time.Time{}, time.Now().Add(-5 * time.Second), time.Time{}, 10, 10},
+		{"expired custom expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-25 * time.Second), time.Time{}, 10, 10},
+		{"expired custom expire leeway using nbf with clock_skew_leeway", false, jwks, time.Time{}, time.Now().Add(-100 * time.Second), time.Time{}, 10, 10},
+	}
+
+	for i, tt := range tests {
+		b, storage := setupBackend(t, false, false, true, false, false, tt.JWKS, tt.DefaultLeeway, tt.ExpLeeway, 0)
+		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+
+		if tt.Valid && resp.IsError() {
+			t.Fatalf("[test %d: %s jws: %v] unexpected error: %s", i, tt.Context, tt.JWKS, resp.Error())
+		} else if !tt.Valid && !resp.IsError() {
+			t.Fatalf("[test %d: %s jws: %v] expected token expired error, got : %v", i, tt.Context, tt.JWKS, *resp)
+		}
+	}
+}
+
+func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
+	tests := []struct {
+		Context       string
+		Valid         bool
+		JWKS          bool
+		IssuedAt      time.Time
+		NotBefore     time.Time
+		Expiration    time.Time
+		DefaultLeeway int
+		NBFLeeway     int
+	}{
+		// iat, auto clock_skew_leeway (60s), no nbf leeway (0)
+		{"no nbf leeway using exp with clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Now(), -1, 0},
+		{"no nbf leeway using iat with clock_skew_leeway", true, jwks, time.Now().Add(55 * time.Second), time.Time{}, time.Now(), -1, 0},
+		{"not yet valid no nbf leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(65 * time.Second), time.Time{}, time.Now(), -1, 0},
+		{"not yet valid no nbf leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(100 * time.Second), time.Time{}, time.Now(), -1, 0},
+
+		// iat, clock_skew_leeway (10s), no nbf leeway (0s)
+		{"no nbf leeway using iat with no clock_skew_leeway", true, jwks, time.Now(), time.Time{}, time.Time{}, 10, 0},
+		{"not yet valid no nbf leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(15 * time.Second), time.Time{}, time.Time{}, 10, 0},
+		{"not yet valid no nbf leeway using iat with clock_skew_leeway", false, jwks, time.Now().Add(60 * time.Second), time.Time{}, time.Time{}, 10, 0},
+
+		// exp, auto clock_skew_leeway (60s), auto nbf leeway (150s)
+		{"auto nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now(), -1, 0},
+		{"auto nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(205 * time.Second), -1, 0},
+		{"not yet valid auto nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(215 * time.Second), -1, 0},
+		{"not yet valid auto nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(500 * time.Second), -1, 0},
+
+		// exp, clock_skew_leeway (10s), auto nbf leeway (150s)
+		{"auto nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now(), 10, 0},
+		{"auto nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(150 * time.Second), 10, 0},
+		{"not yet valid auto nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(165 * time.Second), 10, 0},
+		{"not yet valid auto nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(500 * time.Second), 10, 0},
+
+		// exp, auto clock_skew_leeway (60s), custom nbf leeway (10s)
+		{"custom nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now(), -1, 10},
+		{"custom nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(65 * time.Second), -1, 10},
+		{"not yet valid custom nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(75 * time.Second), -1, 10},
+		{"not yet valid custom nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(500 * time.Second), -1, 10},
+
+		// exp, clock_skew_leeway (10s), custom nbf leeway (10s)
+		{"custom nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(1 * time.Second), 10, 10},
+		{"custom nbf leeway using exp with clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(15 * time.Second), 10, 10},
+		{"not yet valid custom nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(25 * time.Second), 10, 10},
+		{"not yet valid custom nbf leeway using exp with clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(100 * time.Second), 10, 10},
+	}
+
+	for i, tt := range tests {
+		b, storage := setupBackend(t, false, false, true, false, false, tt.JWKS, tt.DefaultLeeway, 0, tt.NBFLeeway)
+		req := setupLogin(t, tt.IssuedAt, tt.Expiration, tt.NotBefore, b, storage)
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+
+		if tt.Valid && resp.IsError() {
+			t.Fatalf("[test %d: %s] unexpected error: %s", i, tt.Context, resp.Error())
+		} else if !tt.Valid && !resp.IsError() {
+			t.Fatalf("[test %d: %s jws: %v] expected token not valid yet error, got : %v", i, tt.Context, *resp, tt.JWKS)
+		}
+	}
+}
+
+func setupLogin(t *testing.T, iat, exp, nbf time.Time, b logical.Backend, storage logical.Storage) *logical.Request {
+	cl := jwt.Claims{
+		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		Issuer:    "https://team-vault.auth0.com/",
+		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		IssuedAt:  jwt.NewNumericDate(iat),
+		Expiry:    jwt.NewNumericDate(exp),
+		NotBefore: jwt.NewNumericDate(nbf),
+	}
+
+	privateCl := struct {
+		User   string   `json:"https://vault/user"`
+		Groups []string `json:"https://vault/groups"`
+		Color  string   `json:"color"`
+	}{
+		"foobar",
+		[]string{"foo", "bar"},
+		"green",
+	}
+
+	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+	data := map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	return req
+}
+
 func TestLogin_OIDC(t *testing.T) {
-	b, storage := setupBackend(t, true, false, true, false, false, false)
+	b, storage := setupBackend(t, true, false, true, false, false, false, -1, 0, 0)
 
 	jwtData := getTestOIDC(t)
 
@@ -982,7 +1048,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 }
 
 func TestLogin_JWKS_Concurrent(t *testing.T) {
-	b, storage := setupBackend(t, false, false, true, false, false, true)
+	b, storage := setupBackend(t, false, false, true, false, false, true, -1, 0, 0)
 
 	cl := jwt.Claims{
 		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",

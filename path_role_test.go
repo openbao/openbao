@@ -68,6 +68,9 @@ func TestPath_Create(t *testing.T) {
 		GroupsClaim:         "groups",
 		TTL:                 1 * time.Second,
 		MaxTTL:              5 * time.Second,
+		ExpirationLeeway:    0,
+		NotBeforeLeeway:     0,
+		ClockSkewLeeway:     0,
 		NumUses:             12,
 		BoundCIDRs:          []*sockaddr.SockAddrMarshaler{{SockAddr: expectedSockAddr}},
 		AllowedRedirectURIs: []string(nil),
@@ -235,6 +238,89 @@ func TestPath_Create(t *testing.T) {
 	if resp != nil && resp.IsError() {
 		t.Fatalf("did not expect error")
 	}
+
+	// Test has expiration, not before custom leeways
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"expiration_leeway": "5s",
+		"not_before_leeway": "5s",
+		"clock_skew_leeway": "5s",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test8",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error:%s", resp.Error().Error())
+	}
+
+	actual, err = b.(*jwtAuthBackend).role(context.Background(), storage, "test8")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedDuration := "5s"
+	if actual.ExpirationLeeway.String() != expectedDuration {
+		t.Fatalf("expiration_leeway - expected: %s, got: %s", expectedDuration, actual.ExpirationLeeway)
+	}
+
+	if actual.NotBeforeLeeway.String() != expectedDuration {
+		t.Fatalf("not_before_leeway - expected: %s, got: %s", expectedDuration, actual.NotBeforeLeeway)
+	}
+
+	if actual.ClockSkewLeeway.String() != expectedDuration {
+		t.Fatalf("clock_skew_leeway - expected: %s, got: %s", expectedDuration, actual.ClockSkewLeeway)
+	}
+
+	// Test disabling clock skew leeway default
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"clock_skew_leeway": "0",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test9",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error:%s", resp.Error().Error())
+	}
+
+	actual, err = b.(*jwtAuthBackend).role(context.Background(), storage, "test9")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if actual.ClockSkewLeeway != 0 {
+		t.Fatalf("clock_skew_leeway - expected: 0, got: %v", actual.ClockSkewLeeway)
+	}
 }
 
 func TestPath_OIDCCreate(t *testing.T) {
@@ -252,13 +338,16 @@ func TestPath_OIDCCreate(t *testing.T) {
 			"foo": "a",
 			"bar": "b",
 		},
-		"user_claim":   "user",
-		"groups_claim": "groups",
-		"policies":     "test",
-		"period":       "3s",
-		"ttl":          "1s",
-		"num_uses":     12,
-		"max_ttl":      "5s",
+		"user_claim":        "user",
+		"groups_claim":      "groups",
+		"policies":          "test",
+		"period":            "3s",
+		"ttl":               "1s",
+		"num_uses":          12,
+		"max_ttl":           "5s",
+		"expiration_leeway": "300s",
+		"not_before_leeway": "300s",
+		"clock_skew_leeway": "1s",
 	}
 
 	expected := &jwtRole{
@@ -275,12 +364,15 @@ func TestPath_OIDCCreate(t *testing.T) {
 			"foo": "a",
 			"bar": "b",
 		},
-		OIDCScopes:  []string{"email", "profile"},
-		UserClaim:   "user",
-		GroupsClaim: "groups",
-		TTL:         1 * time.Second,
-		MaxTTL:      5 * time.Second,
-		NumUses:     12,
+		OIDCScopes:       []string{"email", "profile"},
+		UserClaim:        "user",
+		GroupsClaim:      "groups",
+		TTL:              1 * time.Second,
+		MaxTTL:           5 * time.Second,
+		ExpirationLeeway: 300 * time.Second,
+		NotBeforeLeeway:  300 * time.Second,
+		ClockSkewLeeway:  1 * time.Second,
+		NumUses:          12,
 	}
 
 	// test both explicit and default role_type
@@ -354,6 +446,48 @@ func TestPath_OIDCCreate(t *testing.T) {
 	if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
 		t.Fatalf("unexpected err: %v", resp)
 	}
+
+	// Test custom expiration_leeway and not_before_leeway values
+	delete(data, "some_claim")
+	data = map[string]interface{}{
+		"user_claim":        "user",
+		"expiration_leeway": "5s",
+		"not_before_leeway": "5s",
+		"bound_claims": map[string]interface{}{
+			"foo": "a",
+			"bar": "b",
+		},
+		"allowed_redirect_uris": []string{"https://example.com", "http://localhost:8250"},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test3",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("unexpected error: %s", resp.Error().Error())
+	}
+
+	actual, err := b.(*jwtAuthBackend).role(context.Background(), storage, "test3")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedDuration := "5s"
+	if actual.ExpirationLeeway.String() != expectedDuration {
+		t.Fatalf("expiration_leeway - expected: %s, got: %s", expectedDuration, actual.ExpirationLeeway)
+	}
+
+	if actual.NotBeforeLeeway.String() != expectedDuration {
+		t.Fatalf("not_before_leeway - expected: %s, got: %s", expectedDuration, actual.NotBeforeLeeway)
+	}
 }
 
 func TestPath_Read(t *testing.T) {
@@ -373,6 +507,9 @@ func TestPath_Read(t *testing.T) {
 		"ttl":                   "1s",
 		"num_uses":              12,
 		"max_ttl":               "5s",
+		"expiration_leeway":     "500s",
+		"not_before_leeway":     "500s",
+		"clock_skew_leeway":     "100s",
 	}
 
 	expected := map[string]interface{}{
@@ -390,6 +527,9 @@ func TestPath_Read(t *testing.T) {
 		"ttl":                   int64(1),
 		"num_uses":              12,
 		"max_ttl":               int64(5),
+		"expiration_leeway":     int64(500),
+		"not_before_leeway":     int64(500),
+		"clock_skew_leeway":     int64(100),
 	}
 
 	req := &logical.Request{
@@ -455,17 +595,19 @@ func TestPath_Delete(t *testing.T) {
 	b, storage := getBackend(t)
 
 	data := map[string]interface{}{
-		"role_type":       "jwt",
-		"bound_subject":   "testsub",
-		"bound_audiences": "vault",
-		"user_claim":      "user",
-		"groups_claim":    "groups",
-		"bound_cidrs":     "127.0.0.1/8",
-		"policies":        "test",
-		"period":          "3s",
-		"ttl":             "1s",
-		"num_uses":        12,
-		"max_ttl":         "5s",
+		"role_type":         "jwt",
+		"bound_subject":     "testsub",
+		"bound_audiences":   "vault",
+		"user_claim":        "user",
+		"groups_claim":      "groups",
+		"bound_cidrs":       "127.0.0.1/8",
+		"policies":          "test",
+		"period":            "3s",
+		"ttl":               "1s",
+		"num_uses":          12,
+		"max_ttl":           "5s",
+		"expiration_leeway": "300s",
+		"not_before_leeway": "300s",
 	}
 
 	req := &logical.Request{

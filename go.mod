@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/hashicorp/vault/api v1.0.1
-	github.com/hashicorp/vault/sdk v0.1.12-0.20190619234858-76b551f81856
+	github.com/hashicorp/vault/sdk v0.1.12-0.20190620182832-11e0ec8bf58f
 	github.com/mitchellh/pointerstructure v0.0.0-20190430161007-f252a8fd71c8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect

@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -27,9 +26,7 @@ func pathConfig(b *versionedKVBackend) *framework.Path {
 				Description: "If true, the backend will require the cas parameter to be set for each write",
 			},
 			"delete_version_after": {
-				// TypeString instead of TypeDuration because TypeDuration
-				// does not allow negative durations.
-				Type: framework.TypeString,
+				Type: framework.TypeSignedDurationSecond,
 				Description: `
 If set, the length of time before a version is deleted. A negative duration
 disables the use of delete_version_after on all keys. A zero duration
@@ -88,7 +85,7 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		maxRaw, mOk := data.GetOk("max_versions")
 		casRaw, cOk := data.GetOk("cas_required")
-		dvaRaw, dvaOk := data.Raw["delete_version_after"]
+		dvaRaw, dvaOk := data.GetOk("delete_version_after")
 
 		// Fast path validation
 		if !mOk && !cOk && !dvaOk {
@@ -108,17 +105,14 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 		}
 
 		if dvaOk {
-			dva, err := parseutil.ParseDurationSecond(dvaRaw)
-			if err != nil {
-				return nil, err
-			}
+			dva := dvaRaw.(int)
 			switch {
 			case dva < 0:
 				config.DisableDeleteVersionAfter()
 			case dva == 0:
 				config.ResetDeleteVersionAfter()
 			default:
-				config.DeleteVersionAfter = ptypes.DurationProto(dva)
+				config.DeleteVersionAfter = ptypes.DurationProto(time.Duration(dva) * time.Second)
 			}
 		}
 

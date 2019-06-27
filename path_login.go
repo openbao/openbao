@@ -150,7 +150,9 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 				latestStart = *claims.NotBefore
 			}
 			leeway := role.ExpirationLeeway.Seconds()
-			if role.ExpirationLeeway.Seconds() == 0 {
+			if role.ExpirationLeeway.Seconds() < 0 {
+				leeway = 0
+			} else if role.ExpirationLeeway.Seconds() == 0 {
 				leeway = claimDefaultLeeway
 			}
 			*claims.Expiry = jwt.NumericDate(int64(latestStart) + int64(leeway))
@@ -161,7 +163,9 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 				*claims.NotBefore = *claims.IssuedAt
 			} else {
 				leeway := role.NotBeforeLeeway.Seconds()
-				if role.NotBeforeLeeway.Seconds() == 0 {
+				if role.NotBeforeLeeway.Seconds() < 0 {
+					leeway = 0
+				} else if role.NotBeforeLeeway.Seconds() == 0 {
 					leeway = claimDefaultLeeway
 				}
 				*claims.NotBefore = jwt.NumericDate(int64(*claims.Expiry) - int64(leeway))
@@ -179,7 +183,9 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		}
 
 		cksLeeway := role.ClockSkewLeeway
-		if role.ClockSkewLeeway.Seconds() == 0 {
+		if role.ClockSkewLeeway.Seconds() < 0 {
+			cksLeeway = 0
+		} else if role.ClockSkewLeeway.Seconds() == 0 {
 			cksLeeway = jwt.DefaultLeeway
 		}
 

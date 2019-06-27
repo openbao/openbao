@@ -74,21 +74,21 @@ duration specified by this value. At each renewal, the token's
 TTL will be set to the value of this parameter.`,
 			},
 			"expiration_leeway": {
-				Type: framework.TypeDurationSecond,
+				Type: framework.TypeSignedDurationSecond,
 				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes), minimum of 1 second.`,
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},
 			"not_before_leeway": {
-				Type: framework.TypeDurationSecond,
+				Type: framework.TypeSignedDurationSecond,
 				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
-Defaults to 150 (2.5 minutes), minimum of 1 second..`,
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
 				Default: claimDefaultLeeway,
 			},
 			"clock_skew_leeway": {
-				Type: framework.TypeDurationSecond,
+				Type: framework.TypeSignedDurationSecond,
 				Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
-Defaults to 60 (1 minute), minimum of 1 second.`,
+Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Default: jwt.DefaultLeeway,
 			},
 			"bound_subject": {

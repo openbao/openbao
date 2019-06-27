@@ -286,12 +286,14 @@ func TestPath_Create(t *testing.T) {
 		t.Fatalf("clock_skew_leeway - expected: %s, got: %s", expectedDuration, actual.ClockSkewLeeway)
 	}
 
-	// Test disabling clock skew leeway default
+	// Test storing zero leeways
 	data = map[string]interface{}{
 		"role_type":         "jwt",
 		"user_claim":        "user",
 		"policies":          "test",
 		"clock_skew_leeway": "0",
+		"expiration_leeway": "0",
+		"not_before_leeway": "0",
 		"bound_claims": map[string]interface{}{
 			"foo": 10,
 			"bar": "baz",
@@ -318,8 +320,58 @@ func TestPath_Create(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if actual.ClockSkewLeeway != 0 {
-		t.Fatalf("clock_skew_leeway - expected: 0, got: %v", actual.ClockSkewLeeway)
+	if actual.ClockSkewLeeway.Seconds() != 0 {
+		t.Fatalf("clock_skew_leeway - expected: 0, got: %v", actual.ClockSkewLeeway.Seconds())
+	}
+	if actual.ExpirationLeeway.Seconds() != 0 {
+		t.Fatalf("expiration_leeway - expected: 0, got: %v", actual.ExpirationLeeway.Seconds())
+	}
+	if actual.NotBeforeLeeway.Seconds() != 0 {
+		t.Fatalf("not_before_leeway - expected: 0, got: %v", actual.NotBeforeLeeway.Seconds())
+	}
+
+	// Test storing negative leeways
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"clock_skew_leeway": "-1",
+		"expiration_leeway": "-1",
+		"not_before_leeway": "-1",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test9",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("did not expect error:%s", resp.Error().Error())
+	}
+
+	actual, err = b.(*jwtAuthBackend).role(context.Background(), storage, "test9")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if actual.ClockSkewLeeway.Seconds() != -1 {
+		t.Fatalf("clock_skew_leeway - expected: -1, got: %v", actual.ClockSkewLeeway.Seconds())
+	}
+	if actual.ExpirationLeeway.Seconds() != -1 {
+		t.Fatalf("expiration_leeway - expected: -1, got: %v", actual.ExpirationLeeway.Seconds())
+	}
+	if actual.NotBeforeLeeway.Seconds() != -1 {
+		t.Fatalf("not_before_leeway - expected: -1, got: %v", actual.NotBeforeLeeway.Seconds())
 	}
 }
 

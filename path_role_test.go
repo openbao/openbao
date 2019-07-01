@@ -582,6 +582,7 @@ func TestPath_Read(t *testing.T) {
 		"expiration_leeway":     int64(500),
 		"not_before_leeway":     int64(500),
 		"clock_skew_leeway":     int64(100),
+		"verbose_oidc_logging":  false,
 	}
 
 	req := &logical.Request{

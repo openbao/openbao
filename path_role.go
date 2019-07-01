@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gopkg.in/square/go-jose.v2/jwt"
 	"strings"
 	"time"
+
+	"gopkg.in/square/go-jose.v2/jwt"
 
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -128,6 +129,12 @@ authenticate against this role`,
 				Type:        framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of allowed values for redirect_uri`,
 			},
+			"verbose_oidc_logging": {
+				Type: framework.TypeBool,
+				Description: `Log received OIDC tokens and claims when debug-level logging is active. 
+Not recommended in production since sensitive information may be present 
+in OIDC responses.`,
+			},
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -199,6 +206,7 @@ type jwtRole struct {
 	GroupsClaim         string                        `json:"groups_claim"`
 	OIDCScopes          []string                      `json:"oidc_scopes"`
 	AllowedRedirectURIs []string                      `json:"allowed_redirect_uris"`
+	VerboseOIDCLogging  bool                          `json:"verbose_oidc_logging"`
 }
 
 // role takes a storage backend and the name and returns the role's storage
@@ -279,6 +287,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 			"groups_claim":          role.GroupsClaim,
 			"allowed_redirect_uris": role.AllowedRedirectURIs,
 			"oidc_scopes":           role.OIDCScopes,
+			"verbose_oidc_logging":  role.VerboseOIDCLogging,
 		},
 	}
 
@@ -386,6 +395,10 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		role.BoundSubject = boundSubject.(string)
 	}
 
+	if verboseOIDCLoggingRaw, ok := data.GetOk("verbose_oidc_logging"); ok {
+		role.VerboseOIDCLogging = verboseOIDCLoggingRaw.(bool)
+	}
+
 	if boundCIDRs, ok := data.GetOk("bound_cidrs"); ok {
 		parsedCIDRs, err := parseutil.ParseAddrs(boundCIDRs)
 		if err != nil {
@@ -459,10 +472,15 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		return logical.ErrorResponse("ttl should not be greater than max_ttl"), nil
 	}
 
-	var resp *logical.Response
+	resp := &logical.Response{}
 	if role.MaxTTL > b.System().MaxLeaseTTL() {
-		resp = &logical.Response{}
 		resp.AddWarning("max_ttl is greater than the system or backend mount's maximum TTL value; issued tokens' max TTL value will be truncated")
+	}
+
+	if role.VerboseOIDCLogging {
+		resp.AddWarning(`verbose_oidc_logging has been enabled for this role. ` +
+			`This is not recommended in production since sensitive information ` +
+			`may be present in OIDC responses.`)
 	}
 
 	// Store the entry.

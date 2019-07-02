@@ -12,6 +12,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -59,6 +60,14 @@ func TestPath_Create(t *testing.T) {
 	}
 
 	expected := &jwtRole{
+		TokenParams: tokenutil.TokenParams{
+			TokenPolicies:   []string{"test"},
+			TokenPeriod:     3 * time.Second,
+			TokenTTL:        1 * time.Second,
+			TokenMaxTTL:     5 * time.Second,
+			TokenNumUses:    12,
+			TokenBoundCIDRs: []*sockaddr.SockAddrMarshaler{{SockAddr: expectedSockAddr}},
+		},
 		RoleType:            "jwt",
 		Policies:            []string{"test"},
 		Period:              3 * time.Second,
@@ -403,6 +412,13 @@ func TestPath_OIDCCreate(t *testing.T) {
 	}
 
 	expected := &jwtRole{
+		TokenParams: tokenutil.TokenParams{
+			TokenPolicies: []string{"test"},
+			TokenPeriod:   3 * time.Second,
+			TokenTTL:      1 * time.Second,
+			TokenMaxTTL:   5 * time.Second,
+			TokenNumUses:  12,
+		},
 		RoleType:       "oidc",
 		Policies:       []string{"test"},
 		Period:         3 * time.Second,
@@ -565,24 +581,32 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"role_type":             "jwt",
-		"bound_claims":          map[string]interface{}(nil),
-		"claim_mappings":        map[string]string(nil),
-		"bound_subject":         "testsub",
-		"bound_audiences":       []string{"vault"},
-		"allowed_redirect_uris": []string{"http://127.0.0.1"},
-		"oidc_scopes":           []string{"email", "profile"},
-		"user_claim":            "user",
-		"groups_claim":          "groups",
-		"policies":              []string{"test"},
-		"period":                int64(3),
-		"ttl":                   int64(1),
-		"num_uses":              12,
-		"max_ttl":               int64(5),
-		"expiration_leeway":     int64(500),
-		"not_before_leeway":     int64(500),
-		"clock_skew_leeway":     int64(100),
-		"verbose_oidc_logging":  false,
+		"role_type":               "jwt",
+		"bound_claims":            map[string]interface{}(nil),
+		"claim_mappings":          map[string]string(nil),
+		"bound_subject":           "testsub",
+		"bound_audiences":         []string{"vault"},
+		"allowed_redirect_uris":   []string{"http://127.0.0.1"},
+		"oidc_scopes":             []string{"email", "profile"},
+		"user_claim":              "user",
+		"groups_claim":            "groups",
+		"token_policies":          []string{"test"},
+		"policies":                []string{"test"},
+		"token_period":            int64(3),
+		"period":                  int64(3),
+		"token_ttl":               int64(1),
+		"ttl":                     int64(1),
+		"token_num_uses":          12,
+		"num_uses":                12,
+		"token_max_ttl":           int64(5),
+		"max_ttl":                 int64(5),
+		"expiration_leeway":       int64(500),
+		"not_before_leeway":       int64(500),
+		"clock_skew_leeway":       int64(100),
+		"verbose_oidc_logging":    false,
+		"token_type":              logical.TokenTypeDefault.String(),
+		"token_no_default_policy": false,
+		"token_explicit_max_ttl":  int64(0),
 	}
 
 	req := &logical.Request{
@@ -613,6 +637,10 @@ func TestPath_Read(t *testing.T) {
 			t.Fatal("unexpected bound cidrs")
 		}
 		delete(resp.Data, "bound_cidrs")
+		if resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)[0].String() != "127.0.0.1/8" {
+			t.Fatal("unexpected token bound cidrs")
+		}
+		delete(resp.Data, "token_bound_cidrs")
 		if diff := deep.Equal(expected, resp.Data); diff != nil {
 			t.Fatal(diff)
 		}

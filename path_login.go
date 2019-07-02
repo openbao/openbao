@@ -79,7 +79,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 	}
 
 	if req.Connection != nil && !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, role.TokenBoundCIDRs) {
-		return logical.ErrorResponse("request originated from invalid CIDR"), nil
+		return nil, logical.ErrPermissionDenied
 	}
 
 	// Here is where things diverge. If it is using OIDC Discovery, validate that way;

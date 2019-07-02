@@ -204,6 +204,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -252,6 +255,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -401,6 +407,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -441,6 +450,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -484,6 +496,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -527,6 +542,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -570,6 +588,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -605,6 +626,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -655,15 +679,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil {
+		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
 		}
-		if resp == nil {
-			t.Fatal("got nil response")
-		}
-
-		if !resp.IsError() || !strings.Contains(resp.Error().Error(), "invalid CIDR") {
-			t.Fatalf("expected invalid CIDR error, got : %v", *resp)
+		if resp != nil {
+			t.Fatal("expected nil response")
 		}
 	}
 
@@ -681,6 +701,9 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Path:      "login",
 			Storage:   storage,
 			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
 		}
 
 		resp, err := b.HandleRequest(context.Background(), req)
@@ -887,6 +910,9 @@ func setupLogin(t *testing.T, iat, exp, nbf time.Time, b logical.Backend, storag
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	return req
@@ -907,6 +933,9 @@ func TestLogin_OIDC(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -1019,6 +1048,9 @@ func TestLogin_NestedGroups(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -1085,6 +1117,9 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	for i := 0; i < 100; i++ {

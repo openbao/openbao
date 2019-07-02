@@ -157,6 +157,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -177,6 +180,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -200,6 +206,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -220,6 +229,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -240,6 +252,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -281,6 +296,9 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -302,6 +320,9 @@ func TestLogin_NoPEMs(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -323,6 +344,9 @@ func TestLogin_NoPEMs(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
@@ -344,6 +368,9 @@ func TestAliasLookAhead(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
@@ -447,6 +474,9 @@ func TestLoginProjectedToken(t *testing.T) {
 				Path:      "login",
 				Storage:   storage,
 				Data:      data,
+				Connection: &logical.Connection{
+					RemoteAddr: "127.0.0.1",
+				},
 			}
 
 			b.(*kubeAuthBackend).reviewFactory = tc.tokenReview

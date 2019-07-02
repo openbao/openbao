@@ -2,13 +2,13 @@ package kubeauth
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
+	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/hashicorp/vault/sdk/helper/tokenutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -48,6 +48,14 @@ func TestPath_Create(t *testing.T) {
 	}
 
 	expected := &roleStorageEntry{
+		TokenParams: tokenutil.TokenParams{
+			TokenPolicies:   []string{"test"},
+			TokenPeriod:     3 * time.Second,
+			TokenTTL:        1 * time.Second,
+			TokenMaxTTL:     5 * time.Second,
+			TokenNumUses:    12,
+			TokenBoundCIDRs: nil,
+		},
 		Policies:                 []string{"test"},
 		Period:                   3 * time.Second,
 		ServiceAccountNames:      []string{"name"},
@@ -55,7 +63,7 @@ func TestPath_Create(t *testing.T) {
 		TTL:                      1 * time.Second,
 		MaxTTL:                   5 * time.Second,
 		NumUses:                  12,
-		BoundCIDRs:               []*sockaddr.SockAddrMarshaler{},
+		BoundCIDRs:               nil,
 	}
 
 	req := &logical.Request{
@@ -74,8 +82,8 @@ func TestPath_Create(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(expected, actual) {
-		t.Fatalf("Unexpected role data: expected %#v\n got %#v\n", expected, actual)
+	if diff := deep.Equal(expected, actual); diff != nil {
+		t.Fatal(diff)
 	}
 
 	// Test no service account info
@@ -201,12 +209,20 @@ func TestPath_Read(t *testing.T) {
 	expected := map[string]interface{}{
 		"bound_service_account_names":      []string{"name"},
 		"bound_service_account_namespaces": []string{"namespace"},
+		"token_policies":                   []string{"test"},
 		"policies":                         []string{"test"},
-		"period":                           time.Duration(3),
-		"ttl":                              time.Duration(1),
+		"token_period":                     int64(3),
+		"period":                           int64(3),
+		"token_ttl":                        int64(1),
+		"ttl":                              int64(1),
+		"token_num_uses":                   12,
 		"num_uses":                         12,
-		"max_ttl":                          time.Duration(5),
-		"bound_cidrs":                      []*sockaddr.SockAddrMarshaler{},
+		"token_max_ttl":                    int64(5),
+		"max_ttl":                          int64(5),
+		"token_bound_cidrs":                []string{},
+		"token_type":                       logical.TokenTypeDefault.String(),
+		"token_explicit_max_ttl":           int64(0),
+		"token_no_default_policy":          false,
 	}
 
 	req := &logical.Request{
@@ -233,8 +249,8 @@ func TestPath_Read(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	if !reflect.DeepEqual(expected, resp.Data) {
-		t.Fatalf("Unexpected role data: expected %#v\n got %#v\n", expected, resp.Data)
+	if diff := deep.Equal(expected, resp.Data); diff != nil {
+		t.Fatal(diff)
 	}
 }
 

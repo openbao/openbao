@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/briankassouf/jose v0.9.2-0.20180619214549-d2569464773f
+	github.com/go-test/deep v1.0.2-0.20181118220953-042da051cf31
 	github.com/gogo/protobuf v1.2.1 // indirect
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-cleanhttp v0.5.1

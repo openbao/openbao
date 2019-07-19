@@ -56,9 +56,9 @@ github.com/hashicorp/hcl/hcl/scanner
 github.com/hashicorp/hcl/hcl/strconv
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault/api v1.0.3-0.20190703041405-a2810eb6965d
+# github.com/hashicorp/vault/api v1.0.3-0.20190719145648-41d3939b1ff9
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.1.12-0.20190703041405-a2810eb6965d
+# github.com/hashicorp/vault/sdk v0.1.12-0.20190719011625-af0b660abb36
 github.com/hashicorp/vault/sdk/framework
 github.com/hashicorp/vault/sdk/helper/cidrutil
 github.com/hashicorp/vault/sdk/helper/strutil
@@ -130,11 +130,11 @@ golang.org/x/time/rate
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.19.1
 google.golang.org/grpc
+google.golang.org/grpc/codes
+google.golang.org/grpc/status
 google.golang.org/grpc/credentials
 google.golang.org/grpc/health
 google.golang.org/grpc/health/grpc_health_v1
-google.golang.org/grpc/codes
-google.golang.org/grpc/status
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/roundrobin
 google.golang.org/grpc/connectivity

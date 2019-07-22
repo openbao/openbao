@@ -627,15 +627,8 @@ func TestOIDC_Callback(t *testing.T) {
 			},
 		}
 		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil {
+		if err != logical.ErrPermissionDenied {
 			t.Fatal(err)
-		}
-		if resp == nil {
-			t.Fatal("nil response")
-		}
-
-		if !resp.IsError() || !strings.Contains(resp.Error().Error(), "invalid CIDR") {
-			t.Fatalf("expected invalid CIDR error, got : %v", *resp)
 		}
 	})
 

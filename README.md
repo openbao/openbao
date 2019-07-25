@@ -2,7 +2,7 @@
 
 ## Pre-Alpha, Not Yet Supported
 
-This plugin has recently been transitioned to Hashicorp's care and has not yet been fully tested, nor has it been incorporated into Vault. Please use under advisement that it's currently considered to be in a pre-alpha, and is not yet supported by Hashicorp. It is currently in transition.
+This plugin has recently been transitioned to Hashicorp's care and has not yet been fully tested, nor has it been incorporated into Vault. Please use under advisement that it's currently considered to be in a pre-alpha state, and is not yet supported by Hashicorp. It is currently in transition.
 
 ## Details
 

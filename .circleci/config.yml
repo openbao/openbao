@@ -1,0 +1,34 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    working_directory: ~/src/github.com/hashicorp/vault-plugin-auth-kerberos
+    steps:
+      - checkout
+      - run:
+          name: "Update Go"
+          command: |
+            sudo rm -rf /usr/local/go
+            wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+            sudo tar -xvf go1.12.7.linux-amd64.tar.gz
+            sudo mv go /usr/local
+      - run:
+          name: "Set Env Vars"
+          command: |
+            echo 'GO111MODULE=on' >> $BASH_ENV
+            echo 'export GOBIN=$GOPATH/bin' >> $BASH_ENV
+      - run:
+          name: "Move to GOPATH"
+          command: |
+            mkdir -p $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
+            mv /home/circleci/src/github.com/hashicorp/vault-plugin-auth-kerberos/* $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
+      - run:
+          name: "Run Tests"
+          command: |
+            cd $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
+            go test -v ./...
+      - run:
+          name: "Run Build"
+          command: |
+            cd $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
+            go build

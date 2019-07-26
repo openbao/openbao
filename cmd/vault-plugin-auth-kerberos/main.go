@@ -1,27 +1,29 @@
 package main
 
 import (
-	"log"
 	"os"
 
-	"github.com/hashicorp/vault/helper/pluginutil"
-	"github.com/hashicorp/vault/logical/plugin"
-
-	kerberosauth "github.com/wintoncode/vault-plugin-auth-kerberos"
+	"github.com/hashicorp/go-hclog"
+	kerberosauth "github.com/hashicorp/vault-plugin-auth-kerberos"
+	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/vault/sdk/plugin"
 )
 
 func main() {
-	apiClientMeta := &pluginutil.APIClientMeta{}
+	apiClientMeta := &api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()
 	flags.Parse(os.Args[1:])
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
-	tlsProviderFunc := pluginutil.VaultPluginTLSProvider(tlsConfig)
+	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
 	if err := plugin.Serve(&plugin.ServeOpts{
 		BackendFactoryFunc: kerberosauth.Factory,
 		TLSProviderFunc:    tlsProviderFunc,
 	}); err != nil {
-		log.Fatal(err)
+		logger := hclog.New(&hclog.LoggerOptions{})
+
+		logger.Error("plugin shutting down", "error", err)
+		os.Exit(1)
 	}
 }

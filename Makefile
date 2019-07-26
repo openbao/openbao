@@ -2,8 +2,7 @@ TOOL?=vault-plugin-auth-kerberos
 TEST?=$$(go list ./... | grep -v /vendor/)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox \
-	github.com/golang/dep/cmd/dep
+	github.com/mitchellh/gox
 BUILD_TAGS?=${TOOL}
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 
@@ -25,7 +24,7 @@ dev-dynamic: generate
 
 # test runs the unit tests and vets the code
 test: fmtcheck generate
-	CGO_ENABLED=0 VAULT_TOKEN= VAULT_ACC= go test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=4
+	CGO_ENABLED=0 VAULT_TOKEN= VAULT_ACC= go test -v -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=4
 
 testcompile: fmtcheck generate
 	@for pkg in $(TEST) ; do \

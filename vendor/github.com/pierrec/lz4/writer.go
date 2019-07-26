@@ -213,11 +213,7 @@ func (z *Writer) Flush() error {
 		return nil
 	}
 
-	if err := z.compressBlock(z.data[:z.idx]); err != nil {
-		return err
-	}
-	z.idx = 0
-	return nil
+	return z.compressBlock(z.data[:z.idx])
 }
 
 // Close closes the Writer, flushing any unwritten data to the underlying io.Writer, but does not close the underlying io.Writer.

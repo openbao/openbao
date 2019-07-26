@@ -6,12 +6,8 @@ This plugin has recently been transitioned to Hashicorp's care and has not yet b
 
 ## Details
 
-[![Travis Build Status](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos.svg?branch=master)](https://travis-ci.org/wintoncode/vault-plugin-auth-kerberos)
-
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
 This plugin allows for users to authenticate with Vault via Kerberos/SPNEGO.
-
-You can find binaries on the [Release page](https://github.com/wintoncode/vault-plugin-auth-kerberos/releases).
 
 ## Usage
 
@@ -115,7 +111,7 @@ If you wish to work on this plugin, you'll first need
 For local dev first make sure Go is properly installed, including
 setting up a [GOPATH](https://golang.org/doc/code.html#GOPATH).
 Next, clone this repository into
-`$GOPATH/src/github.com/wintoncode/vault-plugin-auth-kerberos`.
+`$GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos`.
 You can then download any required build tools by bootstrapping your
 environment:
 

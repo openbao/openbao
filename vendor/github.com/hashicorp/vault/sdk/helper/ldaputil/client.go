@@ -357,12 +357,12 @@ func (c *Client) GetLdapGroups(cfg *ConfigEntry, conn Connection, userDN string,
 		values := e.GetAttributeValues(cfg.GroupAttr)
 		if len(values) > 0 {
 			for _, val := range values {
-				groupCN := getCN(cfg, val)
+				groupCN := getCN(val)
 				ldapMap[groupCN] = true
 			}
 		} else {
 			// If groupattr didn't resolve, use self (enumerating group objects)
-			groupCN := getCN(cfg, e.DN)
+			groupCN := getCN(e.DN)
 			ldapMap[groupCN] = true
 		}
 	}
@@ -419,7 +419,7 @@ func EscapeLDAPValue(input string) string {
  * Given a non-conforming string (such as an already-extracted CN),
  * it will be returned as-is.
  */
-func getCN(cfg *ConfigEntry, dn string) string {
+func getCN(dn string) string {
 	parsedDN, err := ldap.ParseDN(dn)
 	if err != nil || len(parsedDN.RDNs) == 0 {
 		// It was already a CN, return as-is
@@ -428,14 +428,8 @@ func getCN(cfg *ConfigEntry, dn string) string {
 
 	for _, rdn := range parsedDN.RDNs {
 		for _, rdnAttr := range rdn.Attributes {
-			if cfg.UsePre111GroupCNBehavior == nil || *cfg.UsePre111GroupCNBehavior {
-				if rdnAttr.Type == "CN" {
-					return rdnAttr.Value
-				}
-			} else {
-				if strings.EqualFold(rdnAttr.Type, "CN") {
-					return rdnAttr.Value
-				}
+			if strings.EqualFold(rdnAttr.Type, "CN") {
+				return rdnAttr.Value
 			}
 		}
 	}

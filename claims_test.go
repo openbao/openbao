@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -373,6 +374,59 @@ func TestValidateBoundClaims(t *testing.T) {
 	for _, tt := range tests {
 		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
 			t.Errorf("validateBoundClaims(%s) error = %v, wantErr %v", tt.name, err, tt.errExpected)
+		}
+	}
+}
+
+func Test_normalizeList(t *testing.T) {
+	tests := []struct {
+		raw        interface{}
+		normalized []interface{}
+		ok         bool
+	}{
+		{
+			raw:        []interface{}{"green", 42},
+			normalized: []interface{}{"green", 42},
+			ok:         true,
+		},
+		{
+			raw:        []interface{}{"green"},
+			normalized: []interface{}{"green"},
+			ok:         true,
+		},
+		{
+			raw:        []interface{}{},
+			normalized: []interface{}{},
+			ok:         true,
+		},
+		{
+			raw:        "green",
+			normalized: []interface{}{"green"},
+			ok:         true,
+		},
+		{
+			raw:        "",
+			normalized: []interface{}{""},
+			ok:         true,
+		},
+		{
+			raw:        42,
+			normalized: nil,
+			ok:         false,
+		},
+		{
+			raw:        nil,
+			normalized: nil,
+			ok:         false,
+		},
+	}
+	for _, tt := range tests {
+		normalized, ok := normalizeList(tt.raw)
+		if !reflect.DeepEqual(normalized, tt.normalized) {
+			t.Errorf("normalizeList() got normalized = %v, want %v", normalized, tt.normalized)
+		}
+		if ok != tt.ok {
+			t.Errorf("normalizeList() got ok = %v, want %v", ok, tt.ok)
 		}
 	}
 }

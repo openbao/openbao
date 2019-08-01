@@ -42,7 +42,7 @@ func TestLogin(t *testing.T) {
 
 	ldapReq := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Path:      "config/ldap",
+		Path:      ldapConfPath,
 		Storage:   storage,
 		Data: map[string]interface{}{
 			"url": connURL,

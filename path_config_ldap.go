@@ -7,9 +7,11 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+const ldapConfPath = "config/ldap"
+
 func pathConfigLdap(b *backend) *framework.Path {
 	return &framework.Path{
-		Pattern: `config/ldap`,
+		Pattern: ldapConfPath,
 		Fields:  ldaputil.ConfigFields(),
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -24,7 +26,7 @@ func pathConfigLdap(b *backend) *framework.Path {
 
 // ConfigLDAP reads the present ldap config.
 func (b *backend) ConfigLdap(ctx context.Context, req *logical.Request) (*ldaputil.ConfigEntry, error) {
-	entry, err := req.Storage.Get(ctx, "config/ldap")
+	entry, err := req.Storage.Get(ctx, ldapConfPath)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +66,7 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	entry, err := logical.StorageEntryJSON("config/ldap", newCfg)
+	entry, err := logical.StorageEntryJSON(ldapConfPath, newCfg)
 	if err != nil {
 		return nil, err
 	}

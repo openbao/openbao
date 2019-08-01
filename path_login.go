@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 
@@ -99,7 +100,12 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		return nil, errors.New("ldap backend not configured")
 	}
 
-	ldapConnection, err := ldapConfig.DialLDAP()
+	ldapClient := ldaputil.Client{
+		Logger: b.Logger(),
+		LDAP:   ldaputil.NewLDAP(),
+	}
+
+	ldapConnection, err := ldapClient.DialLDAP(ldapConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to LDAP: %v", err)
 	}
@@ -145,7 +151,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		return nil, fmt.Errorf("LDAP bind failed: %v", err)
 	}
 
-	userBindDN, err := b.getUserBindDN(ldapConfig, ldapConnection, creds.Username)
+	userBindDN, err := ldapClient.GetUserBindDN(ldapConfig, ldapConnection, creds.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +160,12 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
 	}
 
-	userDN, err := b.getUserDN(ldapConfig, ldapConnection, userBindDN)
+	userDN, err := ldapClient.GetUserDN(ldapConfig, ldapConnection, userBindDN)
 	if err != nil {
 		return nil, err
 	}
 
-	ldapGroups, err := b.getLdapGroups(ldapConfig, ldapConnection, userDN, creds.Username)
+	ldapGroups, err := ldapClient.GetLdapGroups(ldapConfig, ldapConnection, userDN, creds.Username)
 	if err != nil {
 		return nil, err
 	}

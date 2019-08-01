@@ -6,7 +6,7 @@ github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
 # github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5
 github.com/Nvveen/Gotty
-# github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310
+# github.com/armon/go-radix v1.0.0
 github.com/armon/go-radix
 # github.com/cenkalti/backoff v2.2.1+incompatible
 github.com/cenkalti/backoff
@@ -16,8 +16,6 @@ github.com/containerd/continuity/pathdriver
 github.com/docker/go-connections/nat
 # github.com/docker/go-units v0.4.0
 github.com/docker/go-units
-# github.com/fatih/structs v1.1.0
-github.com/fatih/structs
 # github.com/go-ldap/ldap v3.0.3+incompatible
 github.com/go-ldap/ldap
 # github.com/golang/protobuf v1.3.1
@@ -49,7 +47,7 @@ github.com/hashicorp/go-rootcerts
 github.com/hashicorp/go-sockaddr
 # github.com/hashicorp/go-uuid v1.0.1
 github.com/hashicorp/go-uuid
-# github.com/hashicorp/go-version v1.1.0
+# github.com/hashicorp/go-version v1.2.0
 github.com/hashicorp/go-version
 # github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
@@ -64,13 +62,13 @@ github.com/hashicorp/hcl/hcl/scanner
 github.com/hashicorp/hcl/hcl/strconv
 github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
-# github.com/hashicorp/vault/api v1.0.4
+# github.com/hashicorp/vault/api v1.0.5-0.20190730042357-746c0b111519
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.1.13
+# github.com/hashicorp/vault/sdk v0.1.14-0.20190730042320-0dc007d98cc8
 github.com/hashicorp/vault/sdk/framework
+github.com/hashicorp/vault/sdk/helper/ldaputil
 github.com/hashicorp/vault/sdk/helper/policyutil
 github.com/hashicorp/vault/sdk/helper/strutil
-github.com/hashicorp/vault/sdk/helper/tlsutil
 github.com/hashicorp/vault/sdk/logical
 github.com/hashicorp/vault/sdk/plugin
 github.com/hashicorp/vault/sdk/helper/errutil
@@ -81,6 +79,7 @@ github.com/hashicorp/vault/sdk/helper/parseutil
 github.com/hashicorp/vault/sdk/helper/salt
 github.com/hashicorp/vault/sdk/helper/wrapping
 github.com/hashicorp/vault/sdk/version
+github.com/hashicorp/vault/sdk/helper/tlsutil
 github.com/hashicorp/vault/sdk/helper/consts
 github.com/hashicorp/vault/sdk/helper/pluginutil
 github.com/hashicorp/vault/sdk/physical
@@ -150,7 +149,7 @@ github.com/pkg/errors
 github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
+# golang.org/x/crypto v0.0.0-20190513172903-22d7a77e9e5f
 golang.org/x/crypto/md4
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
@@ -166,18 +165,18 @@ golang.org/x/net/idna
 golang.org/x/net/context
 golang.org/x/net/trace
 golang.org/x/net/internal/timeseries
-# golang.org/x/sys v0.0.0-20190507160741-ecd444e8653b
+# golang.org/x/sys v0.0.0-20190523142557-0e01d883c5c5
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/cpu
-# golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
+# golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 golang.org/x/text/transform
 # golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 golang.org/x/time/rate
-# google.golang.org/genproto v0.0.0-20190404172233-64821d5d2107
+# google.golang.org/genproto v0.0.0-20190513181449-d00d292a067c
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.22.0
 google.golang.org/grpc

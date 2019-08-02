@@ -18,11 +18,11 @@ import (
 	"gopkg.in/jcmturner/gokrb5.v5/service"
 )
 
-func pathLogin(b *backend) *framework.Path {
+func (b *backend) pathLogin() *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
 		Fields: map[string]*framework.FieldSchema{
-			"authorization": &framework.FieldSchema{
+			"authorization": {
 				Type:        framework.TypeString,
 				Description: `SPNEGO Authorization header. Required.`,
 			},
@@ -32,7 +32,7 @@ func pathLogin(b *backend) *framework.Path {
 				Callback: b.pathLoginGet,
 			},
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathLogin,
+				Callback: b.pathLoginUpdate,
 			},
 		},
 	}
@@ -88,7 +88,7 @@ func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *fra
 	}, logical.CodedError(401, "authentication required")
 }
 
-func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	kerbCfg, err := b.config(ctx, req.Storage)
 	if err != nil {
 		return nil, err

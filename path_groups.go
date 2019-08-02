@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func pathGroupsList(b *backend) *framework.Path {
+func (b *backend) pathGroupsList() *framework.Path {
 	return &framework.Path{
 		Pattern: "groups/?$",
 
@@ -23,7 +23,7 @@ func pathGroupsList(b *backend) *framework.Path {
 	}
 }
 
-func pathGroups(b *backend) *framework.Path {
+func (b *backend) pathGroups() *framework.Path {
 	return &framework.Path{
 		Pattern: `groups/(?P<name>.+)`,
 		Fields: map[string]*framework.FieldSchema{

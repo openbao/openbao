@@ -11,7 +11,7 @@ import (
 
 const ldapConfPath = "config/ldap"
 
-func pathConfigLdap(b *backend) *framework.Path {
+func (b *backend) pathConfigLdap() *framework.Path {
 	p := &framework.Path{
 		Pattern: ldapConfPath,
 		Fields:  ldaputil.ConfigFields(),

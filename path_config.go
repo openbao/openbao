@@ -16,7 +16,7 @@ type kerberosConfig struct {
 	ServiceAccount string `json:"service_account"`
 }
 
-func pathConfig(b *backend) *framework.Path {
+func (b *backend) pathConfig() *framework.Path {
 	return &framework.Path{
 		Pattern: "config$",
 		Fields: map[string]*framework.FieldSchema{

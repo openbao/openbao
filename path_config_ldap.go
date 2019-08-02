@@ -16,9 +16,13 @@ func pathConfigLdap(b *backend) *framework.Path {
 		Pattern: ldapConfPath,
 		Fields:  ldaputil.ConfigFields(),
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   b.pathConfigLdapRead,
-			logical.UpdateOperation: b.pathConfigLdapWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathConfigLdapRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathConfigLdapWrite,
+			},
 		},
 
 		HelpSynopsis:    pathConfigLdapHelpSyn,

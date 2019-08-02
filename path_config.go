@@ -29,10 +29,16 @@ func pathConfig(b *backend) *framework.Path {
 				Description: `Service Account`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathConfigWrite,
-			logical.CreateOperation: b.pathConfigWrite,
-			logical.ReadOperation:   b.pathConfigRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathConfigWrite,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathConfigWrite,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathConfigRead,
+			},
 		},
 
 		HelpSynopsis:    confHelpSynopsis,

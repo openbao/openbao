@@ -27,9 +27,13 @@ func pathLogin(b *backend) *framework.Path {
 				Description: `SPNEGO Authorization header. Required.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   b.pathLoginGet,
-			logical.UpdateOperation: b.pathLogin,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathLoginGet,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLogin,
+			},
 		},
 	}
 }

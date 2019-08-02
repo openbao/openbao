@@ -66,9 +66,11 @@ github.com/hashicorp/hcl/json/token
 github.com/hashicorp/vault/api
 # github.com/hashicorp/vault/sdk v0.1.13
 github.com/hashicorp/vault/sdk/framework
+github.com/hashicorp/vault/sdk/helper/cidrutil
 github.com/hashicorp/vault/sdk/helper/ldaputil
 github.com/hashicorp/vault/sdk/helper/policyutil
 github.com/hashicorp/vault/sdk/helper/strutil
+github.com/hashicorp/vault/sdk/helper/tokenutil
 github.com/hashicorp/vault/sdk/logical
 github.com/hashicorp/vault/sdk/plugin
 github.com/hashicorp/vault/sdk/helper/errutil

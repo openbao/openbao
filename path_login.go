@@ -46,27 +46,33 @@ func parseKeytab(stringKeytab string) (*keytab.Keytab, error) {
 	return &kt, nil
 }
 
-func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, remoteAddr string) (bool, *credentials.Credentials, error) {
+func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, remoteAddr string) (*credentials.Credentials, error) {
 	var spnego gssapi.SPNEGO
-	err := spnego.Unmarshal(authorization)
-	if err != nil || !spnego.Init {
-		return false, nil, fmt.Errorf("SPNEGO negotiation token is not a NegTokenInit: %v", err)
+	if err := spnego.Unmarshal(authorization); err != nil || !spnego.Init {
+		return nil, fmt.Errorf("SPNEGO negotiation token is not a NegTokenInit: %v", err)
 	}
 	if !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDKRB5) && !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDMSLegacyKRB5) {
-		return false, nil, errors.New("SPNEGO OID of MechToken is not of type KRB5")
+		return nil, errors.New("SPNEGO OID of MechToken is not of type KRB5")
 	}
 
 	var mt gssapi.MechToken
-	err = mt.Unmarshal(spnego.NegTokenInit.MechToken)
-	if err != nil {
-		return false, nil, fmt.Errorf("SPNEGO error unmarshaling MechToken: %v", err)
+	if err := mt.Unmarshal(spnego.NegTokenInit.MechToken); err != nil {
+		return nil, fmt.Errorf("SPNEGO error unmarshaling MechToken: %v", err)
 	}
 	if !mt.IsAPReq() {
-		return false, nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
+		return nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
 	}
 
-	ok, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr, false)
-	return ok, &creds, err
+	// The first return value here is a boolean reflecting whether the request is valid;
+	// however, this value is redundant because if the error is nil, the request is valid,
+	// but if it's populated, the request is invalid. Hence, it's ignored here because we
+	// only need to error if the error is populated, and that knowledge can be encapsulated
+	// here.
+	_, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr, false)
+	if err != nil {
+		return nil, err
+	}
+	return &creds, nil
 }
 
 func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -144,13 +150,9 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		return nil, fmt.Errorf("Could not base64 decode authorization: %v", err)
 	}
 
-	ok, creds, err := spnegoKrb5Authenticate(*kt, kerbCfg.ServiceAccount, authorization, req.Connection.RemoteAddr)
-	if !ok {
-		if err != nil {
-			return nil, err
-		} else {
-			return logical.ErrorResponse("Kerberos authentication failed"), nil
-		}
+	creds, err := spnegoKrb5Authenticate(*kt, kerbCfg.ServiceAccount, authorization, req.Connection.RemoteAddr)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(ldapCfg.BindPassword) > 0 {
@@ -166,10 +168,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	if err != nil {
 		return nil, err
 	}
-
-	if b.Logger().IsDebug() {
-		b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
-	}
+	b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
 
 	userDN, err := ldapClient.GetUserDN(ldapCfg.ConfigEntry, ldapConnection, userBindDN)
 	if err != nil {
@@ -180,9 +179,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	if err != nil {
 		return nil, err
 	}
-	if b.Logger().IsDebug() {
-		b.Logger().Debug("auth/ldap: Groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
-	}
+	b.Logger().Debug("auth/ldap: Groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
 
 	var allGroups []string
 	// Merge local and LDAP groups
@@ -192,9 +189,15 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	var policies []string
 	for _, groupName := range allGroups {
 		group, err := b.Group(ctx, req.Storage, groupName)
-		if err == nil && group != nil {
-			policies = append(policies, group.Policies...)
+		if err != nil {
+			b.Logger().Warn(fmt.Sprintf("unable to retrieve %s: %s", groupName, err.Error()))
+			continue
 		}
+		if group == nil {
+			b.Logger().Warn(fmt.Sprintf("unable to find %s, does not currently exist", groupName))
+			continue
+		}
+		policies = append(policies, group.Policies...)
 	}
 	// Policies from each group may overlap
 	policies = strutil.RemoveDuplicates(policies, true)

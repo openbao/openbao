@@ -24,8 +24,7 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	}
 
 	b := Backend()
-	err := b.Setup(context.Background(), config)
-	if err != nil {
+	if err := b.Setup(context.Background(), config); err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 

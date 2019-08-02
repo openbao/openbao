@@ -71,8 +71,7 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 	if err != nil {
 		return nil, fmt.Errorf("could not base64 decode keytab: %v", err)
 	}
-	_, err = keytab.Parse(binary)
-	if err != nil {
+	if _, err = keytab.Parse(binary); err != nil {
 		return nil, fmt.Errorf("invalid keytab: %v", err)
 	}
 

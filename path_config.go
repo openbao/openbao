@@ -3,7 +3,6 @@ package kerberos
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -64,21 +63,21 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	serviceAccount := data.Get("service_account").(string)
 	if serviceAccount == "" {
-		return nil, errors.New("data does not contain service_account")
+		return logical.ErrorResponse("data does not contain service_account"), logical.ErrInvalidRequest
 	}
 
 	kt := data.Get("keytab").(string)
 	if kt == "" {
-		return nil, errors.New("data does not contain keytab")
+		return logical.ErrorResponse("data does not contain keytab"), logical.ErrInvalidRequest
 	}
 
 	// Check that the keytab is valid by parsing with krb5go
 	binary, err := base64.StdEncoding.DecodeString(kt)
 	if err != nil {
-		return nil, fmt.Errorf("could not base64 decode keytab: %v", err)
+		return logical.ErrorResponse(fmt.Sprintf("could not base64 decode keytab: %v", err)), logical.ErrInvalidRequest
 	}
 	if _, err = keytab.Parse(binary); err != nil {
-		return nil, fmt.Errorf("invalid keytab: %v", err)
+		return logical.ErrorResponse(fmt.Sprintf("invalid keytab: %v", err)), logical.ErrInvalidRequest
 	}
 
 	config := &kerberosConfig{

@@ -69,7 +69,7 @@ func (b *backend) pathConfigLdapRead(ctx context.Context, req *logical.Request, 
 func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	cfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
-		return logical.ErrorResponse(err.Error()), nil
+		return nil, err
 	}
 
 	var prevLDAPCfg *ldaputil.ConfigEntry
@@ -79,7 +79,7 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 
 	newLdapCfg, err := ldaputil.NewConfigEntry(prevLDAPCfg, d)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 	if cfg == nil {
 		cfg = &ldapConfigEntry{}

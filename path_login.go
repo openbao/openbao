@@ -94,12 +94,12 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		return nil, err
 	}
 	if kerbCfg == nil {
-		return nil, errors.New("could not load backend configuration")
+		return nil, errors.New("backend kerberos not configured")
 	}
 
 	kt, err := parseKeytab(kerbCfg.Keytab)
 	if err != nil {
-		return nil, fmt.Errorf("could not load keytab: %v", err)
+		return nil, err
 	}
 
 	ldapCfg, err := b.ConfigLdap(ctx, req)

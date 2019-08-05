@@ -8,14 +8,12 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func (b *backend) pathGroupsList() *framework.Path {
+func pathGroupsList(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "groups/?$",
 
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.ListOperation: &framework.PathOperation{
-				Callback: b.pathGroupList,
-			},
+		Callbacks: map[logical.Operation]framework.OperationFunc{
+			logical.ListOperation: b.pathGroupList,
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,
@@ -23,31 +21,25 @@ func (b *backend) pathGroupsList() *framework.Path {
 	}
 }
 
-func (b *backend) pathGroups() *framework.Path {
+func pathGroups(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: `groups/(?P<name>.+)`,
 		Fields: map[string]*framework.FieldSchema{
-			"name": {
+			"name": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "Name of the LDAP group.",
 			},
 
-			"policies": {
+			"policies": &framework.FieldSchema{
 				Type:        framework.TypeCommaStringSlice,
 				Description: "Comma-separated list of policies associated to the group.",
 			},
 		},
 
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.pathGroupDelete,
-			},
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathGroupRead,
-			},
-			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathGroupWrite,
-			},
+		Callbacks: map[logical.Operation]framework.OperationFunc{
+			logical.DeleteOperation: b.pathGroupDelete,
+			logical.ReadOperation:   b.pathGroupRead,
+			logical.UpdateOperation: b.pathGroupWrite,
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,

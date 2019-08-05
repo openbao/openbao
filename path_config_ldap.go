@@ -2,7 +2,6 @@ package kerberos
 
 import (
 	"context"
-
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/helper/tokenutil"
@@ -11,18 +10,14 @@ import (
 
 const ldapConfPath = "config/ldap"
 
-func (b *backend) pathConfigLdap() *framework.Path {
+func pathConfigLdap(b *backend) *framework.Path {
 	p := &framework.Path{
 		Pattern: ldapConfPath,
 		Fields:  ldaputil.ConfigFields(),
 
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathConfigLdapRead,
-			},
-			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathConfigLdapWrite,
-			},
+		Callbacks: map[logical.Operation]framework.OperationFunc{
+			logical.ReadOperation:   b.pathConfigLdapRead,
+			logical.UpdateOperation: b.pathConfigLdapWrite,
 		},
 
 		HelpSynopsis:    pathConfigLdapHelpSyn,
@@ -69,7 +64,7 @@ func (b *backend) pathConfigLdapRead(ctx context.Context, req *logical.Request, 
 func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	cfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
-		return nil, err
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	var prevLDAPCfg *ldaputil.ConfigEntry
@@ -79,7 +74,7 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 
 	newLdapCfg, err := ldaputil.NewConfigEntry(prevLDAPCfg, d)
 	if err != nil {
-		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
+		return nil, err
 	}
 	if cfg == nil {
 		cfg = &ldapConfigEntry{}

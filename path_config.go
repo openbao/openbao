@@ -3,6 +3,7 @@ package kerberos
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -15,7 +16,7 @@ type kerberosConfig struct {
 	ServiceAccount string `json:"service_account"`
 }
 
-func (b *backend) pathConfig() *framework.Path {
+func pathConfig(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "config$",
 		Fields: map[string]*framework.FieldSchema{
@@ -28,16 +29,10 @@ func (b *backend) pathConfig() *framework.Path {
 				Description: `Service Account`,
 			},
 		},
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathConfigWrite,
-			},
-			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.pathConfigWrite,
-			},
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathConfigRead,
-			},
+		Callbacks: map[logical.Operation]framework.OperationFunc{
+			logical.UpdateOperation: b.pathConfigWrite,
+			logical.CreateOperation: b.pathConfigWrite,
+			logical.ReadOperation:   b.pathConfigRead,
 		},
 
 		HelpSynopsis:    confHelpSynopsis,
@@ -63,21 +58,22 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	serviceAccount := data.Get("service_account").(string)
 	if serviceAccount == "" {
-		return logical.ErrorResponse("data does not contain service_account"), logical.ErrInvalidRequest
+		return nil, errors.New("data does not contain service_account")
 	}
 
 	kt := data.Get("keytab").(string)
 	if kt == "" {
-		return logical.ErrorResponse("data does not contain keytab"), logical.ErrInvalidRequest
+		return nil, errors.New("data does not contain keytab")
 	}
 
 	// Check that the keytab is valid by parsing with krb5go
 	binary, err := base64.StdEncoding.DecodeString(kt)
 	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("could not base64 decode keytab: %v", err)), logical.ErrInvalidRequest
+		return nil, fmt.Errorf("could not base64 decode keytab: %v", err)
 	}
-	if _, err = keytab.Parse(binary); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid keytab: %v", err)), logical.ErrInvalidRequest
+	_, err = keytab.Parse(binary)
+	if err != nil {
+		return nil, fmt.Errorf("invalid keytab: %v", err)
 	}
 
 	config := &kerberosConfig{

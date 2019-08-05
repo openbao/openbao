@@ -24,8 +24,7 @@ func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	}
 
 	b := Backend()
-	err := b.Setup(context.Background(), config)
-	if err != nil {
+	if err := b.Setup(context.Background(), config); err != nil {
 		t.Fatalf("unable to create backend: %v", err)
 	}
 
@@ -101,11 +100,14 @@ func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Stora
 		Data:      data,
 	}
 
-	_, err := b.HandleRequest(context.Background(), req)
+	resp, err := b.HandleRequest(context.Background(), req)
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.HasPrefix(err.Error(), e) {
+	if err.Error() != "invalid request" {
+		t.Fatal("expected invalid request")
+	}
+	if !strings.HasPrefix(resp.Error().Error(), e) {
 		t.Fatalf("got unexpected error: %v, expected %v", err.Error(), e)
 	}
 }

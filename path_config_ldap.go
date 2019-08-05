@@ -69,15 +69,16 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 
 	var prevLDAPCfg *ldaputil.ConfigEntry
 	if cfg != nil && cfg.ConfigEntry != nil {
+		// Use the previous ConfigEntry.
 		prevLDAPCfg = cfg.ConfigEntry
+	} else if cfg == nil {
+		// Prevent nil pointer exceptions.
+		cfg = &ldapConfigEntry{}
 	}
 
 	newLdapCfg, err := ldaputil.NewConfigEntry(prevLDAPCfg, d)
 	if err != nil {
 		return nil, err
-	}
-	if cfg == nil {
-		cfg = &ldapConfigEntry{}
 	}
 	cfg.ConfigEntry = newLdapCfg
 

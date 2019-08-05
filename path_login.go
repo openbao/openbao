@@ -202,19 +202,27 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	auth := &logical.Auth{
 		InternalData: map[string]interface{}{},
-		Policies:     policies,
 		Metadata: map[string]string{
 			"user":  creds.Username,
 			"realm": creds.Realm,
 		},
 		DisplayName: creds.Username,
 		Alias:       &logical.Alias{Name: creds.Username},
-		LeaseOptions: logical.LeaseOptions{
-			Renewable: false,
-		},
 	}
 
 	ldapCfg.PopulateTokenAuth(auth)
+
+	// This is done after PopulateTokenAuth because it forces Renewable to be true.
+	// Renewable was always false at the time of the code's introduction, and we would
+	// like to keep it the same until we have a concrete reason to change its behavior.
+	auth.LeaseOptions = logical.LeaseOptions{
+		Renewable: false,
+	}
+
+	// Combine our policies with the ones parsed from PopulateTokenAuth.
+	if len(policies) > 0 {
+		auth.Policies = append(auth.Policies, policies...)
+	}
 
 	return &logical.Response{
 		Auth: auth,

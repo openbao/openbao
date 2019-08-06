@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -79,25 +80,36 @@ func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	config, err := b.config(ctx, req.Storage)
+	kerbCfg, err := b.config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
-	if config == nil {
+	if kerbCfg == nil {
 		return nil, errors.New("Could not load backend configuration")
 	}
 
-	kt, err := parseKeytab(config.Keytab)
+	kt, err := parseKeytab(kerbCfg.Keytab)
 	if err != nil {
 		return nil, fmt.Errorf("Could not load keytab: %v", err)
 	}
 
-	ldapConfig, err := b.ConfigLdap(ctx, req)
+	ldapCfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	if ldapConfig == nil {
+	if ldapCfg == nil {
 		return nil, errors.New("ldap backend not configured")
+	}
+
+	// Check for a CIDR match.
+	if len(ldapCfg.TokenBoundCIDRs) > 0 {
+		if req.Connection == nil {
+			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
+			return nil, logical.ErrPermissionDenied
+		}
+		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, ldapCfg.TokenBoundCIDRs) {
+			return nil, logical.ErrPermissionDenied
+		}
 	}
 
 	ldapClient := ldaputil.Client{
@@ -105,7 +117,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		LDAP:   ldaputil.NewLDAP(),
 	}
 
-	ldapConnection, err := ldapClient.DialLDAP(ldapConfig)
+	ldapConnection, err := ldapClient.DialLDAP(ldapCfg.ConfigEntry)
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to LDAP: %v", err)
 	}
@@ -133,7 +145,7 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		return nil, fmt.Errorf("Could not base64 decode authorization: %v", err)
 	}
 
-	ok, creds, err := spnegoKrb5Authenticate(*kt, config.ServiceAccount, authorization, req.Connection.RemoteAddr)
+	ok, creds, err := spnegoKrb5Authenticate(*kt, kerbCfg.ServiceAccount, authorization, req.Connection.RemoteAddr)
 	if !ok {
 		if err != nil {
 			return nil, err
@@ -142,16 +154,16 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		}
 	}
 
-	if len(ldapConfig.BindPassword) > 0 {
-		err = ldapConnection.Bind(ldapConfig.BindDN, ldapConfig.BindPassword)
+	if len(ldapCfg.BindPassword) > 0 {
+		err = ldapConnection.Bind(ldapCfg.BindDN, ldapCfg.BindPassword)
 	} else {
-		err = ldapConnection.UnauthenticatedBind(ldapConfig.BindDN)
+		err = ldapConnection.UnauthenticatedBind(ldapCfg.BindDN)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("LDAP bind failed: %v", err)
 	}
 
-	userBindDN, err := ldapClient.GetUserBindDN(ldapConfig, ldapConnection, creds.Username)
+	userBindDN, err := ldapClient.GetUserBindDN(ldapCfg.ConfigEntry, ldapConnection, creds.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -160,12 +172,12 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
 	}
 
-	userDN, err := ldapClient.GetUserDN(ldapConfig, ldapConnection, userBindDN)
+	userDN, err := ldapClient.GetUserDN(ldapCfg.ConfigEntry, ldapConnection, userBindDN)
 	if err != nil {
 		return nil, err
 	}
 
-	ldapGroups, err := ldapClient.GetLdapGroups(ldapConfig, ldapConnection, userDN, creds.Username)
+	ldapGroups, err := ldapClient.GetLdapGroups(ldapCfg.ConfigEntry, ldapConnection, userDN, creds.Username)
 	if err != nil {
 		return nil, err
 	}
@@ -188,19 +200,31 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	// Policies from each group may overlap
 	policies = strutil.RemoveDuplicates(policies, true)
 
-	return &logical.Response{
-		Auth: &logical.Auth{
-			InternalData: map[string]interface{}{},
-			Policies:     policies,
-			Metadata: map[string]string{
-				"user":  creds.Username,
-				"realm": creds.Realm,
-			},
-			DisplayName: creds.Username,
-			Alias:       &logical.Alias{Name: creds.Username},
-			LeaseOptions: logical.LeaseOptions{
-				Renewable: false,
-			},
+	auth := &logical.Auth{
+		InternalData: map[string]interface{}{},
+		Metadata: map[string]string{
+			"user":  creds.Username,
+			"realm": creds.Realm,
 		},
+		DisplayName: creds.Username,
+		Alias:       &logical.Alias{Name: creds.Username},
+	}
+
+	ldapCfg.PopulateTokenAuth(auth)
+
+	// This is done after PopulateTokenAuth because it forces Renewable to be true.
+	// Renewable was always false at the time of the code's introduction, and we would
+	// like to keep it the same until we have a concrete reason to change its behavior.
+	auth.LeaseOptions = logical.LeaseOptions{
+		Renewable: false,
+	}
+
+	// Combine our policies with the ones parsed from PopulateTokenAuth.
+	if len(policies) > 0 {
+		auth.Policies = append(auth.Policies, policies...)
+	}
+
+	return &logical.Response{
+		Auth: auth,
 	}, nil
 }

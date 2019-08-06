@@ -36,11 +36,11 @@ func Backend() *backend {
 		},
 		Paths: framework.PathAppend(
 			[]*framework.Path{
-				pathConfig(b),
-				pathConfigLdap(b),
-				pathLogin(b),
-				pathGroups(b),
-				pathGroupsList(b),
+				b.pathConfig(),
+				b.pathConfigLdap(),
+				b.pathLogin(),
+				b.pathGroups(),
+				b.pathGroupsList(),
 			},
 		),
 	}

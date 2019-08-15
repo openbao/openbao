@@ -173,15 +173,21 @@ func (b *kubeAuthBackend) aliasLookahead() framework.OperationFunc {
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
 	// Parse into JWT
+	var issuer string
 	parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
 	if err != nil {
 		return nil, err
 	}
 
 	sa := &serviceAccount{}
+	if config.Issuer != "" {
+		issuer = config.Issuer
+	} else {
+		issuer = expectedJWTIssuer
+	}
 	validator := &jwt.Validator{
 		Expected: jwt.Claims{
-			"iss": expectedJWTIssuer,
+			"iss": issuer,
 		},
 		Fn: func(c jwt.Claims) error {
 			// Decode claims into a service account object

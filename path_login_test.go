@@ -32,7 +32,17 @@ type testConfig struct {
 	groupsClaim    string
 }
 
-func setupBackend(t *testing.T, cfg testConfig) (logical.Backend, logical.Storage) {
+type closeableBackend struct {
+	logical.Backend
+
+	closeServerFunc func()
+}
+
+func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Storage) {
+	cb := closeableBackend{
+		closeServerFunc: func() {},
+	}
+
 	b, storage := getBackend(t)
 
 	if cfg.groupsClaim == "" {
@@ -53,6 +63,8 @@ func setupBackend(t *testing.T, cfg testConfig) (logical.Backend, logical.Storag
 			}
 		} else {
 			p := newOIDCProvider(t)
+			cb.closeServerFunc = p.server.Close
+
 			cert, err := p.getTLSCert()
 			if err != nil {
 				t.Fatal(err)
@@ -124,7 +136,9 @@ func setupBackend(t *testing.T, cfg testConfig) (logical.Backend, logical.Storag
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	return b, storage
+	cb.Backend = b
+
+	return cb, storage
 }
 
 func getTestJWT(t *testing.T, privKey string, cl jwt.Claims, privateCl interface{}) (string, *ecdsa.PrivateKey) {
@@ -852,6 +866,7 @@ func testLogin_ExpiryClaims(t *testing.T, jwks bool) {
 		} else if !tt.Valid && !resp.IsError() {
 			t.Fatalf("[test %d: %s jws: %v] expected token expired error, got : %v", i, tt.Context, tt.JWKS, *resp)
 		}
+		b.closeServerFunc()
 	}
 }
 
@@ -929,6 +944,7 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 		} else if !tt.Valid && !resp.IsError() {
 			t.Fatalf("[test %d: %s jws: %v] expected token not valid yet error, got : %v", i, tt.Context, *resp, tt.JWKS)
 		}
+		b.closeServerFunc()
 	}
 }
 

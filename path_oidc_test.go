@@ -290,6 +290,7 @@ func TestOIDC_Callback(t *testing.T) {
 					"color": "green",
 					"size":  "medium",
 				},
+				NumUses: 10,
 			}
 			if useBoundCIDRs {
 				sock, err := sockaddr.NewSockAddr("127.0.0.42")
@@ -896,9 +897,10 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 			"COLOR":        "color",
 			"/nested/Size": "size",
 		},
-		"groups_claim": "/nested/Groups",
-		"ttl":          "3m",
-		"max_ttl":      "5m",
+		"groups_claim":   "/nested/Groups",
+		"token_ttl":      "3m",
+		"token_num_uses": 10,
+		"max_ttl":        "5m",
 		"bound_claims": map[string]interface{}{
 			"password":            "foo",
 			"sk":                  "42",

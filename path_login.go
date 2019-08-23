@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	// expectedJWTIssuer is used to verify the iss header on the JWT.
-	expectedJWTIssuer = "kubernetes/serviceaccount"
+	// defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.
+	defaultJWTIssuer = "kubernetes/serviceaccount"
 
 	uidJWTClaimKey = "kubernetes.io/serviceaccount/service-account.uid"
 
@@ -173,22 +173,14 @@ func (b *kubeAuthBackend) aliasLookahead() framework.OperationFunc {
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
 	// Parse into JWT
-	var issuer string
 	parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
 	if err != nil {
 		return nil, err
 	}
 
 	sa := &serviceAccount{}
-	if config.Issuer != "" {
-		issuer = config.Issuer
-	} else {
-		issuer = expectedJWTIssuer
-	}
+
 	validator := &jwt.Validator{
-		Expected: jwt.Claims{
-			"iss": issuer,
-		},
 		Fn: func(c jwt.Claims) error {
 			// Decode claims into a service account object
 			err := mapstructure.Decode(c, sa)
@@ -212,6 +204,18 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 
 			return nil
 		},
+	}
+
+	// set the expected issuer to the default kubernetes issuer if the config doesn't specify it
+	if config.Issuer != "" {
+		validator.SetIssuer(config.Issuer)
+	} else {
+		validator.SetIssuer(defaultJWTIssuer)
+	}
+
+	// validate the audience if the role expects it
+	if role.Audience != "" {
+		validator.SetAudience(role.Audience)
 	}
 
 	if err := validator.Validate(parsedJWT); err != nil {
@@ -295,7 +299,7 @@ type serviceAccount struct {
 	UID        string   `mapstructure:"kubernetes.io/serviceaccount/service-account.uid"`
 	SecretName string   `mapstructure:"kubernetes.io/serviceaccount/secret.name"`
 	Namespace  string   `mapstructure:"kubernetes.io/serviceaccount/namespace"`
-	Aud        []string `mapstructure:"aud"`
+	Audience   []string `mapstructure:"aud"`
 
 	// the JSON returned from reviewing a Projected Service account has a
 	// different structure, where the information is in a sub-structure instead of

@@ -15,6 +15,7 @@ func TestConfig_Read(t *testing.T) {
 		"pem_keys":           []string{testRSACert, testECCert},
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
+		"issuer":             "",
 	}
 
 	req := &logical.Request{

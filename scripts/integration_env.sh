@@ -39,7 +39,7 @@ function delete_network() {
 }
 
 function start_vault() {
-  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_VER} server -dev -dev-plugin-dir=/plugins) # shouldn't need to publish all these ports as they are only used within the docker network, but figured it may be useful for debugging
+  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_VER} server -dev -dev-plugin-dir=/plugins)
   export VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 }
 
@@ -48,7 +48,8 @@ function stop_vault() {
 }
 
 function start_domain() {
-  SAMBA_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --privileged -p 135:135 -p 137:137 -p 138:138 -p 139:139 -p 389:389 -p 445:445 -p 464:464 -p 636:636 -p 3268:3268 -p 3269:3269 -e "SAMBA_DC_ADMIN_PASSWD=${DOMAIN_ADMIN_PASS}" -e "KERBEROS_PASSWORD=${DOMAIN_ADMIN_PASS}" -e SAMBA_DC_DOMAIN=${DOMAIN_NAME} -e SAMBA_DC_REALM=${REALM_NAME} "bodsch/docker-samba4:${SAMBA_VER}") # shouldn't need to publish all these ports as they are only used within the docker network, but figured it may be useful for debugging
+  SAMBA_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --privileged -p 135:135 -p 137:137 -p 138:138 -p 139:139 -p 389:389 -p 445:445 -p 464:464 -p 636:636 -p 3268:3268 -p 3269:3269 -e "SAMBA_DC_ADMIN_PASSWD=${DOMAIN_ADMIN_PASS}" -e "KERBEROS_PASSWORD=${DOMAIN_ADMIN_PASS}" -e SAMBA_DC_DOMAIN=${DOMAIN_NAME} -e SAMBA_DC_REALM=${REALM_NAME} "bodsch/docker-samba4:${SAMBA_VER}")
+  # shouldn't need to publish all these ports as they are only used within the docker network, but figured it may be useful for debugging
 }
 
 function stop_domain() {
@@ -120,7 +121,7 @@ function add_vault_spn() {
 }
 
 function enable_plugin() {
-  VAULT_PLUGIN_SHA=$(openssl dgst -sha256 bin/vault-plugin-auth-kerberos|cut -d ' ' -f2)
+  VAULT_PLUGIN_SHA=$(openssl dgst -sha256 pkg/linux_amd64/vault-plugin-auth-kerberos|cut -d ' ' -f2)
   vault write sys/plugins/catalog/auth/kerberos sha_256=${VAULT_PLUGIN_SHA} command="vault-plugin-auth-kerberos"
   vault auth enable -passthrough-request-headers=Authorization -allowed-response-headers=www-authenticate kerberos
   vault write auth/kerberos/config keytab=@vault_svc.keytab.base64 service_account="vault_svc"

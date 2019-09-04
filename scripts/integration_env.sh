@@ -140,7 +140,7 @@ kerberos.authGSSClientStep(vc, \"\")
 kerberos_token = kerberos.authGSSClientResponse(vc)
 
 r = requests.post(\"http://{}/v1/auth/kerberos/login\".format(host),
-                  json={'authorization': 'Negotiate ' + kerberos_token})
+                  headers={'Authorization': 'Negotiate ' + kerberos_token})
 print('Vault token:', r.json()['auth']['client_token'])
 " > manual_test.py
 }
@@ -212,3 +212,4 @@ function main() {
   stop_infrastructure
   return $result
 }
+main

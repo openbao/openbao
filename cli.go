@@ -17,6 +17,7 @@ import (
 
 const defaultMount = "oidc"
 const defaultPort = "8250"
+const defaultCallbackHost = "localhost"
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
 
@@ -45,9 +46,14 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		port = defaultPort
 	}
 
+	callbackHost, ok := m["callbackhost"]
+	if !ok {
+		callbackHost = defaultCallbackHost
+	}
+
 	role := m["role"]
 
-	authURL, err := fetchAuthURL(c, role, mount, port)
+	authURL, err := fetchAuthURL(c, role, mount, port, callbackHost)
 	if err != nil {
 		return nil, err
 	}
@@ -105,12 +111,12 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	}
 }
 
-func fetchAuthURL(c *api.Client, role, mount, port string) (string, error) {
+func fetchAuthURL(c *api.Client, role, mount, port string, callbackHost string) (string, error) {
 	var authURL string
 
 	data := map[string]interface{}{
 		"role":         role,
-		"redirect_uri": fmt.Sprintf("http://localhost:%s/oidc/callback", port),
+		"redirect_uri": fmt.Sprintf("http://%s:%s/oidc/callback", callbackHost, port),
 	}
 
 	secret, err := c.Logical().Write(fmt.Sprintf("auth/%s/oidc/auth_url", mount), data)

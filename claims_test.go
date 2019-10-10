@@ -209,6 +209,16 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
+			name: "valid - boolean claim",
+			boundClaims: map[string]interface{}{
+				"email_verified": []interface{}{false},
+			},
+			allClaims: map[string]interface{}{
+				"email_verified": []interface{}{false},
+			},
+			errExpected: false,
+		},
+		{
 			name: "valid - match within list",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
@@ -360,6 +370,17 @@ func TestValidateBoundClaims(t *testing.T) {
 			},
 			errExpected: true,
 		},
+		{
+			name: "invalid bound claim expected boolean value",
+			boundClaims: map[string]interface{}{
+				"email_verified": true,
+			},
+			allClaims: map[string]interface{}{
+				"email_verified": "true",
+			},
+			errExpected: true,
+		},
+
 		{
 			name: "invalid received claim expected value",
 			boundClaims: map[string]interface{}{

@@ -129,6 +129,7 @@ function enable_plugin() {
 }
 
 function write_python_test() {
+  sleep 10 # this is a naive way to wait until the containers are up
   echo "
 import kerberos
 import requests

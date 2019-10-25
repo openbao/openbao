@@ -57,5 +57,8 @@ fmtcheck:
 fmt:
 	gofmt -w $(GOFMT_FILES)
 
+dev-env: dev
+	./scripts/dev_env.sh
+
 
 .PHONY: bin default generate test vet bootstrap fmt fmtcheck

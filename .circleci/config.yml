@@ -16,11 +16,12 @@ jobs:
       - run:
           name: "Install Vault CLI"
           command: |
-            wget https://releases.hashicorp.com/vault/1.2.2/vault_1.2.2_linux_amd64.zip
-            unzip vault_1.2.2_linux_amd64.zip
+            export VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
+            wget https://releases.hashicorp.com/vault/${VAULT_VER}/vault_${VAULT_VER}_linux_amd64.zip
+            unzip vault_${VAULT_VER}_linux_amd64.zip
             mkdir -p /home/circleci/.go_workspace/bin
             mv vault /home/circleci/.go_workspace/bin/
-            rm vault_1.2.2_linux_amd64.zip
+            rm vault_${VAULT_VER}_linux_amd64.zip
       - run:
           name: "Run Go Tests"
           command: |

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VAULT_VER=1.2.2
+VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=8200
 SAMBA_VER=4.8.12
 

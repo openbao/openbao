@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     machine: true
-    working_directory: ~/src/github.com/hashicorp/vault-plugin-auth-kerberos
+    working_directory: /home/circleci/.go_workspace/src/github.com/hashicorp/vault-plugin-auth-kerberos
     steps:
       - checkout
       - run:
@@ -12,23 +12,26 @@ jobs:
             wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
             sudo tar -xvf go1.12.7.linux-amd64.tar.gz
             sudo mv go /usr/local
+            rm go1.12.7.linux-amd64.tar.gz
       - run:
-          name: "Set Env Vars"
+          name: "Install Vault CLI"
           command: |
-            echo 'GO111MODULE=on' >> $BASH_ENV
-            echo 'export GOBIN=$GOPATH/bin' >> $BASH_ENV
+            export VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
+            wget https://releases.hashicorp.com/vault/${VAULT_VER}/vault_${VAULT_VER}_linux_amd64.zip
+            unzip vault_${VAULT_VER}_linux_amd64.zip
+            mkdir -p /home/circleci/.go_workspace/bin
+            mv vault /home/circleci/.go_workspace/bin/
+            rm vault_${VAULT_VER}_linux_amd64.zip
       - run:
-          name: "Move to GOPATH"
+          name: "Run Go Tests"
           command: |
-            mkdir -p $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
-            mv /home/circleci/src/github.com/hashicorp/vault-plugin-auth-kerberos/* $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
-      - run:
-          name: "Run Tests"
-          command: |
-            cd $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
-            go test -v ./...
+            make test
       - run:
           name: "Run Build"
           command: |
-            cd $GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos
-            go build
+            go get github.com/mitchellh/gox
+            make dev
+      - run:
+          name: "Run Docker Tests"
+          command: |
+            ./scripts/integration_env.sh

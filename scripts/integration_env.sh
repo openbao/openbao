@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VAULT_VER=1.2.2
+VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=18200
 SAMBA_VER=4.8.12
 
@@ -129,6 +129,7 @@ function enable_plugin() {
 }
 
 function write_python_test() {
+  sleep 10 # this is a naive way to wait until the containers are up
   echo "
 import kerberos
 import requests

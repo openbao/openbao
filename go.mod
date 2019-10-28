@@ -17,11 +17,10 @@ require (
 	github.com/hashicorp/vault/sdk v0.1.13
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/lib/pq v1.2.0 // indirect
-	github.com/mitchellh/gox v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v0.1.1 // indirect
-	github.com/ory/dockertest v3.3.4+incompatible
+	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	gopkg.in/jcmturner/aescts.v1 v1.0.1 // indirect
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1 // indirect

@@ -105,71 +105,72 @@ If you're running LDAP together with Kerberos you might want to set a binddn/bin
 
 ## Developing
 
-If you wish to work on this plugin, you'll first need
-[Go](https://www.golang.org) installed on your machine.
-
-For local dev first make sure Go is properly installed, including
-setting up a [GOPATH](https://golang.org/doc/code.html#GOPATH).
-Next, clone this repository into
-`$GOPATH/src/github.com/hashicorp/vault-plugin-auth-kerberos`.
-You can then download any required build tools by bootstrapping your
-environment:
+To run a development environment through Docker, use:
 
 ```sh
-$ make bootstrap
+make dev-env
 ```
 
-To compile a development version of this plugin, run `make` or `make dev`.
-This will put the plugin binary in the `bin` and `$GOPATH/bin` folders. `dev`
-mode will only generate the binary for your platform and is faster:
+This will:
+- Build the current local plugin code
+- Start Vault in a Docker container
+- Start a local Samba container to function as the domain server
+- Start a local joined container that can be used for login testing
+- Output a number of variables for you to export in your working terminal
+
+Note: Press CTRL+C in your `make dev-env` window when you'd like to stop and tear down your 
+dev environment.
+
+To begin testing in a separate window, after exporting the variables given in `make dev-env`:
 
 ```sh
-$ make
-$ make dev
+VAULT_PLUGIN_SHA=$(openssl dgst -sha256 pkg/linux_amd64/vault-plugin-auth-kerberos|cut -d ' ' -f2)
+vault write sys/plugins/catalog/auth/kerberos sha_256=${VAULT_PLUGIN_SHA} command="vault-plugin-auth-kerberos"
+vault auth enable \
+    -path=kerberos \
+    -passthrough-request-headers=Authorization \
+    -allowed-response-headers=www-authenticate \
+    vault-plugin-auth-kerberos
+vault write auth/kerberos/config \
+    keytab=@vault_svc.keytab.base64 \
+    service_account="vault_svc"
+vault write auth/kerberos/config/ldap \
+    binddn=${DOMAIN_VAULT_ACCOUNT}@${REALM_NAME} \
+    bindpass=${DOMAIN_VAULT_PASS} \
+    groupattr=sAMAccountName \
+    groupdn="${DOMAIN_DN}" \
+    groupfilter="(&(objectClass=group)(member:1.2.840.113556.1.4.1941:={{.UserDN}}))" \
+    insecure_tls=true \
+    starttls=true \
+    userdn="CN=Users,${DOMAIN_DN}" \
+    userattr=sAMAccountName \
+    upndomain=${REALM_NAME} \
+    url=ldaps://${SAMBA_CONTAINER:0:12}.${DNS_NAME}
 ```
 
-Put the plugin binary into a location of your choice. This directory
-will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
-in the Vault config used to start the server.
-
-```json
-...
-plugin_directory = "path/to/plugin/directory"
-...
-```
-
-Start a Vault server with this config file:
-```sh
-$ vault server -config=path/to/config.json ...
-...
-```
-
-Once the server is started, register the plugin in the Vault server's [plugin catalog](https://www.vaultproject.io/docs/internals/plugins.html#plugin-catalog):
-
-```sh
-$ vault write sys/plugins/catalog/kerberos \
-        sha_256=<expected SHA256 Hex value of the plugin binary> \
-        command="vault-plugin-auth-kerberos"
-...
-Success! Data written to: sys/plugins/catalog/kerberos
-```
-
-Note you should generate a new sha256 checksum if you have made changes
-to the plugin. Example using openssl:
+To authenticate, first drop into a Docker container, then its Python shell:
 
 ```sh
-openssl dgst -sha256 $GOPATH/vault-plugin-auth-kerberos
-...
-SHA256(.../go/bin/vault-plugin-auth-kerberos)= 896c13c0f5305daed381952a128322e02bc28a57d0c862a78cbc2ea66e8c6fa1
+docker exec -it $DOMAIN_JOINED_CONTAINER /bin/bash
+python
 ```
 
-Enable the auth plugin backend using the Kerberos auth plugin:
+Revisit the VAULT_CONTAINER_PREFIX outputted earlier, as you'll need it below:
 
-```sh
-$ vault auth-enable -plugin-name='kerberos' plugin
-...
+```
+prefix = '<insert VAULT_CONTAINER_PREFIX here>'
+import kerberos
+import requests
 
-Successfully enabled 'plugin' at 'kerberos'!
+host = prefix + ".matrix.lan:8200"
+service = "HTTP@{}".format(host)
+rc, vc = kerberos.authGSSClientInit(service=service, mech_oid=kerberos.GSS_MECH_OID_SPNEGO)
+kerberos.authGSSClientStep(vc, "")
+kerberos_token = kerberos.authGSSClientResponse(vc)
+
+r = requests.post("http://{}/v1/auth/kerberos/login".format(host),
+                  headers={'Authorization': 'Negotiate ' + kerberos_token})
+print('Vault token:', r.json()['auth']['client_token'])
 ```
 
 #### Tests

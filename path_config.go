@@ -71,7 +71,7 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 
 	// Check that the keytab is valid by parsing with krb5go
 	if _, err := parseKeytab(kt); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid keytab: %v", err)), logical.ErrInvalidRequest
+		return logical.ErrorResponse("invalid keytab: %v", err), logical.ErrInvalidRequest
 	}
 
 	config := &kerberosConfig{

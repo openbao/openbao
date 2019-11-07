@@ -63,6 +63,9 @@ func TestLogin(t *testing.T) {
 		Path:      "login",
 		Storage:   storage,
 		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: connURL,
+		},
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)

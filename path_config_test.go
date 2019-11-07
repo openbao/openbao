@@ -63,7 +63,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		t.Fatalf("err: %s resp: %#v\n", err, resp)
 	}
 
-	// TODO: do we really want to return the keytab?
+	delete(data, "keytab")
 	if !reflect.DeepEqual(resp.Data, data) {
 		t.Fatalf("Expected did not equal actual: expected %#v\n got %#v\n", data, resp.Data)
 	}
@@ -83,7 +83,7 @@ func TestConfig_RejectsBadWrites(t *testing.T) {
 	testConfigWriteError(t, b, storage, map[string]interface{}{
 		"service_account": "testuser",
 		"keytab":          testNotBase64Keytab,
-	}, "could not base64 decode keytab")
+	}, "invalid keytab: illegal base64 data at input byte 3")
 
 	testConfigWriteError(t, b, storage, map[string]interface{}{
 		"service_account": "testuser",
@@ -108,7 +108,7 @@ func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Stora
 		t.Fatal("expected invalid request")
 	}
 	if !strings.HasPrefix(resp.Error().Error(), e) {
-		t.Fatalf("got unexpected error: %v, expected %v", err.Error(), e)
+		t.Fatalf("got unexpected error: %q, expected %q", resp.Error().Error(), e)
 	}
 }
 

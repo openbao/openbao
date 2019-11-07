@@ -5,17 +5,20 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/jcmturner/gokrb5.v5/credentials"
-	"gopkg.in/jcmturner/gokrb5.v5/gssapi"
-	"gopkg.in/jcmturner/gokrb5.v5/keytab"
-	"gopkg.in/jcmturner/gokrb5.v5/service"
+	"github.com/tyrannosaurus-becks/gokrb5/keytab"
+	"github.com/tyrannosaurus-becks/gokrb5/service"
+	"github.com/tyrannosaurus-becks/gokrb5/spnego"
+	"gopkg.in/jcmturner/goidentity.v3"
 )
 
 func (b *backend) pathLogin() *framework.Path {
@@ -38,45 +41,16 @@ func (b *backend) pathLogin() *framework.Path {
 	}
 }
 
-func parseKeytab(stringKeytab string) (*keytab.Keytab, error) {
-	binary, err := base64.StdEncoding.DecodeString(stringKeytab)
+func parseKeytab(b64EncodedKt string) (*keytab.Keytab, error) {
+	decodedKt, err := base64.StdEncoding.DecodeString(b64EncodedKt)
 	if err != nil {
 		return nil, err
 	}
-	kt, err := keytab.Parse(binary)
-	if err != nil {
+	parsedKt := new(keytab.Keytab)
+	if err := parsedKt.Unmarshal(decodedKt); err != nil {
 		return nil, err
 	}
-	return &kt, nil
-}
-
-func spnegoKrb5Authenticate(kt keytab.Keytab, sa string, authorization []byte, remoteAddr string) (*credentials.Credentials, error) {
-	var spnego gssapi.SPNEGO
-	if err := spnego.Unmarshal(authorization); err != nil || !spnego.Init {
-		return nil, fmt.Errorf("SPNEGO negotiation token is not a NegTokenInit: %v", err)
-	}
-	if !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDKRB5) && !spnego.NegTokenInit.MechTypes[0].Equal(gssapi.MechTypeOIDMSLegacyKRB5) {
-		return nil, errors.New("SPNEGO OID of MechToken is not of type KRB5")
-	}
-
-	var mt gssapi.MechToken
-	if err := mt.Unmarshal(spnego.NegTokenInit.MechToken); err != nil {
-		return nil, fmt.Errorf("SPNEGO error unmarshaling MechToken: %v", err)
-	}
-	if !mt.IsAPReq() {
-		return nil, errors.New("MechToken does not contain an AP_REQ - KRB_AP_ERR_MSG_TYPE")
-	}
-
-	// The first return value here is a boolean reflecting whether the request is valid;
-	// however, this value is redundant because if the error is nil, the request is valid,
-	// but if it's populated, the request is invalid. Hence, it's ignored here because we
-	// only need to error if the error is populated, and that knowledge can be encapsulated
-	// here.
-	_, creds, err := service.ValidateAPREQ(mt.APReq, kt, sa, remoteAddr, false)
-	if err != nil {
-		return nil, err
-	}
-	return &creds, nil
+	return parsedKt, nil
 }
 
 func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -91,20 +65,15 @@ func (b *backend) pathLoginGet(ctx context.Context, req *logical.Request, d *fra
 func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	kerbCfg, err := b.config(ctx, req.Storage)
 	if err != nil {
-		return nil, err
+		return nil, errwrap.Wrap(errors.New("unable to get kerberos config"), err)
 	}
 	if kerbCfg == nil {
 		return nil, errors.New("backend kerberos not configured")
 	}
 
-	kt, err := parseKeytab(kerbCfg.Keytab)
-	if err != nil {
-		return nil, err
-	}
-
 	ldapCfg, err := b.ConfigLdap(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, errwrap.Wrap(errors.New("unable to get ldap config"), err)
 	}
 	if ldapCfg == nil {
 		return nil, errors.New("ldap backend not configured")
@@ -128,7 +97,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 
 	ldapConnection, err := ldapClient.DialLDAP(ldapCfg.ConfigEntry)
 	if err != nil {
-		return nil, fmt.Errorf("could not connect to LDAP: %v", err)
+		return nil, errwrap.Wrap(errors.New("could not connect to LDAP"), err)
 	}
 	if ldapConnection == nil {
 		return nil, errors.New("invalid connection returned from LDAP dial")
@@ -145,18 +114,66 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		authorizationString = d.Get("authorization").(string)
 	}
 
+	kt, err := parseKeytab(kerbCfg.Keytab)
+	if err != nil {
+		return nil, errwrap.Wrap(errors.New("could not parse keytab"), err)
+	}
+
 	s := strings.SplitN(authorizationString, " ", 2)
 	if len(s) != 2 || s[0] != "Negotiate" {
 		return b.pathLoginGet(ctx, req, d)
 	}
-	authorization, err := base64.StdEncoding.DecodeString(s[1])
-	if err != nil {
-		return nil, fmt.Errorf("could not base64 decode authorization: %v", err)
+
+	// The SPNEGOKRB5Authenticate method only calls an inner function if it's
+	// successful. Let's use it to record success, and to retrieve the caller's
+	// identity.
+	authenticated := false
+	var identity goidentity.Identity
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw := r.Context().Value(spnego.CTXKeyCredentials)
+		if raw == nil {
+			b.Logger().Debug("identity is nil")
+			w.Write([]byte("identity credentials are not included"))
+			return
+		}
+		ok := false
+		identity, ok = raw.(goidentity.Identity)
+		if !ok {
+			b.Logger().Debug(fmt.Sprintf("identity credentials are malformed: %+v", raw))
+			w.Write([]byte(fmt.Sprintf("identity credentials are malformed: %+v", raw)))
+			return
+		}
+		b.Logger().Debug(fmt.Sprintf("identity: %+v", identity))
+		authenticated = true
+	})
+
+	// Let's pass in a logger so we can get debugging information if anything
+	// goes wrong.
+	l := b.Logger().StandardLogger(&hclog.StandardLoggerOptions{
+		InferLevels: true,
+	})
+
+	// Now let's use our inner handler to compose the overall function.
+	authHTTPHandler := spnego.SPNEGOKRB5Authenticate(inner, kt, service.Logger(l), service.KeytabPrincipal(kerbCfg.ServiceAccount))
+
+	// Because the outer application strips off the raw request, we need to
+	// re-compose it to use this authentication handler. Only the request
+	// remote addr and headers are used anyways. We use an arbitrary port
+	// of 8080 because it's not used for anything but logging, but is required
+	// by an underlying parser.
+	rebuiltReq := &http.Request{
+		Header:     req.Headers,
+		RemoteAddr: req.Connection.RemoteAddr + ":8080",
 	}
 
-	creds, err := spnegoKrb5Authenticate(*kt, kerbCfg.ServiceAccount, authorization, req.Connection.RemoteAddr)
-	if err != nil {
-		return nil, err
+	// Finally, execute the SPNEGO authentication check.
+	w := &simpleResponseWriter{}
+	authHTTPHandler.ServeHTTP(w, rebuiltReq)
+	if !authenticated {
+		resp := &logical.Response{
+			Warnings: []string{string(w.body)},
+		}
+		return logical.RespondWithStatusCode(resp, req, w.statusCode)
 	}
 
 	if len(ldapCfg.BindPassword) > 0 {
@@ -168,20 +185,20 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		return nil, fmt.Errorf("LDAP bind failed: %v", err)
 	}
 
-	userBindDN, err := ldapClient.GetUserBindDN(ldapCfg.ConfigEntry, ldapConnection, creds.Username)
+	userBindDN, err := ldapClient.GetUserBindDN(ldapCfg.ConfigEntry, ldapConnection, identity.UserName())
 	if err != nil {
-		return nil, err
+		return nil, errwrap.Wrap(errors.New("unable to get user binddn"), err)
 	}
-	b.Logger().Debug("auth/ldap: User BindDN fetched", "username", creds.Username, "binddn", userBindDN)
+	b.Logger().Debug("auth/ldap: User BindDN fetched", "username", identity.UserName(), "binddn", userBindDN)
 
 	userDN, err := ldapClient.GetUserDN(ldapCfg.ConfigEntry, ldapConnection, userBindDN)
 	if err != nil {
-		return nil, err
+		return nil, errwrap.Wrap(errors.New("unable to get user dn"), err)
 	}
 
-	ldapGroups, err := ldapClient.GetLdapGroups(ldapCfg.ConfigEntry, ldapConnection, userDN, creds.Username)
+	ldapGroups, err := ldapClient.GetLdapGroups(ldapCfg.ConfigEntry, ldapConnection, userDN, identity.UserName())
 	if err != nil {
-		return nil, err
+		return nil, errwrap.Wrap(errors.New("unable to get ldap groups"), err)
 	}
 	b.Logger().Debug("auth/ldap: Groups fetched from server", "num_server_groups", len(ldapGroups), "server_groups", ldapGroups)
 
@@ -205,15 +222,14 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	}
 	// Policies from each group may overlap
 	policies = strutil.RemoveDuplicates(policies, true)
-
 	auth := &logical.Auth{
 		InternalData: map[string]interface{}{},
 		Metadata: map[string]string{
-			"user":  creds.Username,
-			"realm": creds.Realm,
+			"user":   identity.UserName(),
+			"domain": identity.Domain(),
 		},
-		DisplayName: creds.Username,
-		Alias:       &logical.Alias{Name: creds.Username},
+		DisplayName: identity.UserName(),
+		Alias:       &logical.Alias{Name: identity.UserName()},
 	}
 
 	ldapCfg.PopulateTokenAuth(auth)
@@ -233,4 +249,26 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	return &logical.Response{
 		Auth: auth,
 	}, nil
+}
+
+type simpleResponseWriter struct {
+	body       []byte
+	statusCode int
+}
+
+func (w *simpleResponseWriter) Header() http.Header {
+	return make(map[string][]string)
+}
+
+func (w *simpleResponseWriter) Write(b []byte) (int, error) {
+	w.body = b
+	return 0, nil
+}
+
+func (w *simpleResponseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+}
+
+type simpleServiceSettings struct {
+	logger hclog.Logger
 }

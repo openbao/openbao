@@ -2,12 +2,9 @@ package kerberos
 
 import (
 	"context"
-	"encoding/base64"
-	"fmt"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"gopkg.in/jcmturner/gokrb5.v5/keytab"
 )
 
 type kerberosConfig struct {
@@ -53,7 +50,7 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 	} else {
 		return &logical.Response{
 			Data: map[string]interface{}{
-				"keytab":          config.Keytab,
+				// keytab is intentionally not returned here because it's sensitive
 				"service_account": config.ServiceAccount,
 			},
 		}, nil
@@ -72,12 +69,8 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 	}
 
 	// Check that the keytab is valid by parsing with krb5go
-	binary, err := base64.StdEncoding.DecodeString(kt)
-	if err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("could not base64 decode keytab: %v", err)), logical.ErrInvalidRequest
-	}
-	if _, err = keytab.Parse(binary); err != nil {
-		return logical.ErrorResponse(fmt.Sprintf("invalid keytab: %v", err)), logical.ErrInvalidRequest
+	if _, err := parseKeytab(kt); err != nil {
+		return logical.ErrorResponse("invalid keytab: %v", err), logical.ErrInvalidRequest
 	}
 
 	config := &kerberosConfig{

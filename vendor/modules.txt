@@ -151,12 +151,45 @@ github.com/pkg/errors
 github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
-golang.org/x/crypto/md4
+# github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191106230247-ec421b4296c6
+github.com/tyrannosaurus-becks/gokrb5/keytab
+github.com/tyrannosaurus-becks/gokrb5/service
+github.com/tyrannosaurus-becks/gokrb5/spnego
+github.com/tyrannosaurus-becks/gokrb5/types
+github.com/tyrannosaurus-becks/gokrb5/client
+github.com/tyrannosaurus-becks/gokrb5/config
+github.com/tyrannosaurus-becks/gokrb5/credentials
+github.com/tyrannosaurus-becks/gokrb5/iana/errorcode
+github.com/tyrannosaurus-becks/gokrb5/messages
+github.com/tyrannosaurus-becks/gokrb5/asn1tools
+github.com/tyrannosaurus-becks/gokrb5/gssapi
+github.com/tyrannosaurus-becks/gokrb5/iana/chksumtype
+github.com/tyrannosaurus-becks/gokrb5/iana/msgtype
+github.com/tyrannosaurus-becks/gokrb5/krberror
+github.com/tyrannosaurus-becks/gokrb5/iana
+github.com/tyrannosaurus-becks/gokrb5/iana/addrtype
+github.com/tyrannosaurus-becks/gokrb5/iana/asnAppTag
+github.com/tyrannosaurus-becks/gokrb5/iana/nametype
+github.com/tyrannosaurus-becks/gokrb5/iana/patype
+github.com/tyrannosaurus-becks/gokrb5/crypto
+github.com/tyrannosaurus-becks/gokrb5/crypto/etype
+github.com/tyrannosaurus-becks/gokrb5/iana/flags
+github.com/tyrannosaurus-becks/gokrb5/iana/keyusage
+github.com/tyrannosaurus-becks/gokrb5/kadmin
+github.com/tyrannosaurus-becks/gokrb5/iana/etypeID
+github.com/tyrannosaurus-becks/gokrb5/iana/adtype
+github.com/tyrannosaurus-becks/gokrb5/pac
+github.com/tyrannosaurus-becks/gokrb5/crypto/common
+github.com/tyrannosaurus-becks/gokrb5/crypto/rfc3961
+github.com/tyrannosaurus-becks/gokrb5/crypto/rfc3962
+github.com/tyrannosaurus-becks/gokrb5/crypto/rfc4757
+github.com/tyrannosaurus-becks/gokrb5/crypto/rfc8009
+# golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
-golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/md4
 golang.org/x/crypto/ed25519
+golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/ed25519/internal/edwards25519
 # golang.org/x/net v0.0.0-20190620200207-3b0461eec859
@@ -222,43 +255,11 @@ gopkg.in/asn1-ber.v1
 gopkg.in/jcmturner/aescts.v1
 # gopkg.in/jcmturner/dnsutils.v1 v1.0.1
 gopkg.in/jcmturner/dnsutils.v1
-# gopkg.in/jcmturner/goidentity.v2 v2.0.0
-gopkg.in/jcmturner/goidentity.v2
-# gopkg.in/jcmturner/gokrb5.v5 v5.3.0
-gopkg.in/jcmturner/gokrb5.v5/credentials
-gopkg.in/jcmturner/gokrb5.v5/gssapi
-gopkg.in/jcmturner/gokrb5.v5/keytab
-gopkg.in/jcmturner/gokrb5.v5/service
-gopkg.in/jcmturner/gokrb5.v5/iana/nametype
-gopkg.in/jcmturner/gokrb5.v5/types
-gopkg.in/jcmturner/gokrb5.v5/asn1tools
-gopkg.in/jcmturner/gokrb5.v5/crypto
-gopkg.in/jcmturner/gokrb5.v5/iana/chksumtype
-gopkg.in/jcmturner/gokrb5.v5/iana/keyusage
-gopkg.in/jcmturner/gokrb5.v5/krberror
-gopkg.in/jcmturner/gokrb5.v5/messages
-gopkg.in/jcmturner/gokrb5.v5/client
-gopkg.in/jcmturner/gokrb5.v5/config
-gopkg.in/jcmturner/gokrb5.v5/iana/errorcode
-gopkg.in/jcmturner/gokrb5.v5/iana/flags
-gopkg.in/jcmturner/gokrb5.v5/iana
-gopkg.in/jcmturner/gokrb5.v5/iana/addrtype
-gopkg.in/jcmturner/gokrb5.v5/iana/asnAppTag
-gopkg.in/jcmturner/gokrb5.v5/iana/patype
-gopkg.in/jcmturner/gokrb5.v5/crypto/common
-gopkg.in/jcmturner/gokrb5.v5/crypto/etype
-gopkg.in/jcmturner/gokrb5.v5/crypto/rfc3961
-gopkg.in/jcmturner/gokrb5.v5/crypto/rfc3962
-gopkg.in/jcmturner/gokrb5.v5/crypto/rfc4757
-gopkg.in/jcmturner/gokrb5.v5/crypto/rfc8009
-gopkg.in/jcmturner/gokrb5.v5/iana/etypeID
-gopkg.in/jcmturner/gokrb5.v5/iana/adtype
-gopkg.in/jcmturner/gokrb5.v5/iana/msgtype
-gopkg.in/jcmturner/gokrb5.v5/pac
-gopkg.in/jcmturner/gokrb5.v5/kadmin
-gopkg.in/jcmturner/gokrb5.v5/mstypes
-# gopkg.in/jcmturner/rpc.v0 v0.0.2
-gopkg.in/jcmturner/rpc.v0/ndr
+# gopkg.in/jcmturner/goidentity.v3 v3.0.0
+gopkg.in/jcmturner/goidentity.v3
+# gopkg.in/jcmturner/rpc.v1 v1.1.0
+gopkg.in/jcmturner/rpc.v1/mstypes
+gopkg.in/jcmturner/rpc.v1/ndr
 # gopkg.in/ldap.v3 v3.0.3
 gopkg.in/ldap.v3
 # gopkg.in/square/go-jose.v2 v2.3.1

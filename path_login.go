@@ -257,7 +257,7 @@ type simpleResponseWriter struct {
 }
 
 func (w *simpleResponseWriter) Header() http.Header {
-	return make(map[string][]string)
+	return make(http.Header)
 }
 
 func (w *simpleResponseWriter) Write(b []byte) (int, error) {
@@ -267,8 +267,4 @@ func (w *simpleResponseWriter) Write(b []byte) (int, error) {
 
 func (w *simpleResponseWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
-}
-
-type simpleServiceSettings struct {
-	logger hclog.Logger
 }

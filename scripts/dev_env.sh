@@ -133,6 +133,7 @@ function write_kerb_config() {
     renew_lifetime = 7d
     forwardable = true
     rdns = false
+  preferred_preauth_types = 23
 [realms]
   ${REALM_NAME} = {
     kdc = ${SAMBA_CONTAINER:0:12}.${DNS_NAME}
@@ -164,7 +165,8 @@ function stop_domain_joined_container() {
 
 function test_joined_container() {
   docker exec $DOMAIN_JOINED_CONTAINER \
-    pip install requests-kerberos
+    pip install --quiet requests-kerberos
+  docker cp bin/login-kerb $DOMAIN_JOINED_CONTAINER:/usr/local/bin/login-kerb
 }
 
 function prepare_outer_environment() {
@@ -185,6 +187,7 @@ function output_dev_vars() {
   echo "export DOMAIN_JOINED_CONTAINER=${DOMAIN_JOINED_CONTAINER}"
   echo "export DOMAIN_VAULT_ACCOUNT=${DOMAIN_VAULT_ACCOUNT}"
   echo "export DOMAIN_VAULT_PASS=${DOMAIN_VAULT_PASS}"
+  echo "export DOMAIN_USER_ACCOUNT=${DOMAIN_USER_ACCOUNT}"
   echo "export DNS_NAME=${DNS_NAME}"
   echo "export REALM_NAME=${REALM_NAME}"
   echo "export SAMBA_CONTAINER=${SAMBA_CONTAINER}"

@@ -12,6 +12,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/errwrap v1.0.0
+	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.9.2
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/vault/api v1.0.4
@@ -22,9 +23,8 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/sirupsen/logrus v1.4.2 // indirect
-	github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191106230247-ec421b4296c6
+	github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191111224307-01cf50c9a364
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
-	gopkg.in/jcmturner/gokrb5.v7 v7.3.0 // indirect
 	gopkg.in/ldap.v3 v3.0.3
 	gotest.tools v2.2.0+incompatible // indirect
 )

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
-VAULT_PORT=18200
+VAULT_PORT=8200
 SAMBA_VER=4.8.12
 
 export VAULT_TOKEN=${VAULT_TOKEN:-myroot}
@@ -25,6 +25,7 @@ function start_infrastructure() {
 }
 
 function stop_infrastructure() {
+  stop_domain_joined_container
   stop_vault
   stop_domain
   delete_network
@@ -142,7 +143,7 @@ kerberos_token = kerberos.authGSSClientResponse(vc)
 
 r = requests.post(\"http://{}/v1/auth/kerberos/login\".format(host),
                   headers={'Authorization': 'Negotiate ' + kerberos_token})
-print('Vault token:', r.json()['auth']['client_token'])
+print('Vault token through Python:', r.json()['auth']['client_token'])
 " > manual_test.py
 }
 
@@ -156,6 +157,7 @@ function write_kerb_config() {
     renew_lifetime = 7d
     forwardable = true
     rdns = false
+  preferred_preauth_types = 23
 [realms]
   ${REALM_NAME} = {
     kdc = ${SAMBA_CONTAINER:0:12}.${DNS_NAME}
@@ -188,11 +190,25 @@ function stop_domain_joined_container() {
 }
 
 function run_test_script() {
+  # execute a login from go and record result
+  docker cp bin/login-kerb $DOMAIN_JOINED_CONTAINER:/usr/local/bin/login-kerb
+  VAULT_CONTAINER_PREFIX=${VAULT_CONTAINER:0:12}
   docker exec $DOMAIN_JOINED_CONTAINER \
-    pip install requests-kerberos
+    login-kerb \
+      -username=$DOMAIN_USER_ACCOUNT \
+      -service="HTTP/$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200" \
+      -realm=$REALM_NAME \
+      -keytab_path="/tests/grace.keytab" \
+      -krb5conf_path="/tests/krb5.conf" \
+      -vault_addr="http://$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200"
+  go_login_result=$?
+
+  # execute a login from python and record result
+  docker exec $DOMAIN_JOINED_CONTAINER \
+    pip install --quiet requests-kerberos
   docker exec $DOMAIN_JOINED_CONTAINER \
     python /tests/manual_test.py
-  result=$?
+  python_login_result=$?
 }
 
 function run_tests() {
@@ -200,7 +216,6 @@ function run_tests() {
   prepare_files
   start_domain_joined_container
   run_test_script
-  stop_domain_joined_container
 }
 
 function main() {
@@ -211,6 +226,14 @@ function main() {
   enable_plugin
   run_tests
   stop_infrastructure
-  return $result
+  if [ ! $python_login_result = 0 ]; then
+    echo "python login failed"
+    return $python_login_result
+  fi
+  if [ ! $go_login_result = 0 ]; then
+    echo "go login failed"
+    return $go_login_result
+  fi
+  return 0
 }
 main

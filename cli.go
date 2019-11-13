@@ -19,6 +19,7 @@ import (
 const defaultMount = "oidc"
 const defaultPort = "8250"
 const defaultCallbackHost = "localhost"
+const defaultCallbackMethod = "http"
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
 
@@ -52,9 +53,19 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		callbackHost = defaultCallbackHost
 	}
 
+	callbackMethod, ok := m["callbackmethod"]
+	if !ok {
+		callbackMethod = defaultCallbackMethod
+	}
+
+	callbackPort, ok := m["callbackport"]
+	if !ok {
+		callbackPort = port
+	}
+
 	role := m["role"]
 
-	authURL, err := fetchAuthURL(c, role, mount, port, callbackHost)
+	authURL, err := fetchAuthURL(c, role, mount, callbackPort, callbackMethod, callbackHost)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +123,12 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	}
 }
 
-func fetchAuthURL(c *api.Client, role, mount, port string, callbackHost string) (string, error) {
+func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMethod string, callbackHost string) (string, error) {
 	var authURL string
 
 	data := map[string]interface{}{
 		"role":         role,
-		"redirect_uri": fmt.Sprintf("http://%s:%s/oidc/callback", callbackHost, port),
+		"redirect_uri": fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackport),
 	}
 
 	secret, err := c.Logical().Write(fmt.Sprintf("auth/%s/oidc/auth_url", mount), data)
@@ -229,7 +240,16 @@ Configuration:
       Vault role of type "OIDC" to use for authentication.
 
   port=<string>
-      Optional localhost port to use for OIDC callback (default: 8250).
+	  Optional localhost port to use for OIDC callback (default: 8250).
+
+  callbackmethod=<string>
+	  Optional method to to use in OIDC redirect_uri (default: http).
+
+  callbackhost=<string>
+	  Optional callback host adddress to use in OIDC redirect_uri (default: localhost).
+
+  callbackport=<string>
+      Optional port to to use in OIDC redirect_uri (default: the value set for port).
 `
 
 	return strings.TrimSpace(help)

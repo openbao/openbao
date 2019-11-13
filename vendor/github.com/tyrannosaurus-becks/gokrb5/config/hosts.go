@@ -18,8 +18,22 @@ func (c *Config) GetKDCs(realm string, tcp bool) (int, map[int]string, error) {
 	kdcs := make(map[int]string)
 	var count int
 
-	// Use DNS to resolve kerberos SRV records if configured to do so in krb5.conf.
-	if c.LibDefaults.DNSLookupKDC {
+	// Get the KDCs from the krb5.conf.
+	var ks []string
+	for _, r := range c.Realms {
+		if r.Realm == realm {
+			ks = r.KDC
+			break
+		}
+	}
+	count = len(ks)
+
+	if count < 1 {
+		if !c.LibDefaults.DNSLookupKDC {
+			return count, kdcs, fmt.Errorf("no KDCs defined in configuration for realm %s", realm)
+		}
+
+		// Use DNS to resolve kerberos SRV records.
 		proto := "udp"
 		if tcp {
 			proto = "tcp"
@@ -35,21 +49,9 @@ func (c *Config) GetKDCs(realm string, tcp bool) (int, map[int]string, error) {
 		for k, v := range addrs {
 			kdcs[k] = strings.TrimRight(v.Target, ".") + ":" + strconv.Itoa(int(v.Port))
 		}
-	} else {
-		// Get the KDCs from the krb5.conf an order them randomly for preference.
-		var ks []string
-		for _, r := range c.Realms {
-			if r.Realm == realm {
-				ks = r.KDC
-				break
-			}
-		}
-		count = len(ks)
-		if count < 1 {
-			return count, kdcs, fmt.Errorf("no KDCs defined in configuration for realm %s", realm)
-		}
-		kdcs = randServOrder(ks)
 	}
+	// Order the kdcs randomly for preference.
+	kdcs = randServOrder(ks)
 	return count, kdcs, nil
 }
 

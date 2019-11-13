@@ -19,6 +19,7 @@ quickdev: generate
 	@CGO_ENABLED=0 go build -i -tags='$(BUILD_TAGS)' -o bin/vault-plugin-auth-kerberos
 dev: fmtcheck generate
 	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	cd cmd/login-kerb && go build && cd - && mv cmd/login-kerb/login-kerb bin/
 dev-dynamic: generate
 	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
@@ -60,5 +61,7 @@ fmt:
 dev-env: dev
 	./scripts/dev_env.sh
 
+integration: dev
+	./scripts/integration_env.sh
 
 .PHONY: bin default generate test vet bootstrap fmt fmtcheck

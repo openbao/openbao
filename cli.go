@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/api"
@@ -14,9 +15,11 @@ import (
 	"github.com/tyrannosaurus-becks/gokrb5/spnego"
 )
 
-// Auth fulfills the CLI handler interface in Vault and is intended to
-// be used there.
-func Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+// CLIHandler fulfills Vault's LoginHandler interface.
+type CLIHandler struct{}
+
+// Auth takes a client and a config map, and returns a secret if appropriate.
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
 	mount, ok := m["mount"]
 	if !ok {
 		mount = "kerberos"
@@ -68,6 +71,43 @@ func Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
 		return nil, errors.New("empty response from credential provider")
 	}
 	return secret, nil
+}
+
+func (h *CLIHandler) Help() string {
+	help := `
+Usage: vault login -method=kerberos [CONFIG K=V...]
+
+  The Kerberos auth method allows users to authenticate using Kerberos
+  combined with LDAP.
+
+  Example authentication:
+
+      $ vault login -method=kerberos \
+            -username=grace \
+            -service="HTTP/ab10dfy3be7v.matrix.lan:8200" \
+            -realm=MATRIX.LAN \
+	        -keytab_path=/etc/krb5/krb5.keytab \
+	        -krb5conf_path=/etc/krb5.conf
+
+Configuration:
+
+  krb5conf_path=<string>
+      The path to a valid krb5.conf file describing how to communicate with the Kerberos environment.
+
+  keytab_path=<string>
+      The path to the keytab in which the entry lives for the entity authenticating to Vault.
+
+  username=<string>
+      The username for the entry _within_ the keytab to use for logging into Kerberos.
+
+  service=<string>
+      The service principal name to use in obtaining a service ticket for gaining a SPNEGO token.
+
+  realm=<string>
+      The name of the Kerberos realm.
+`
+
+	return strings.TrimSpace(help)
 }
 
 // LoginCfg is a struct with explicitly-named string fields to prevent

@@ -19,6 +19,9 @@ func (b *backend) pathConfig() *framework.Path {
 			"keytab": {
 				Type:        framework.TypeString,
 				Description: `Base64 encoded keytab`,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Sensitive: true,
+				},
 			},
 			"service_account": {
 				Type:        framework.TypeString,

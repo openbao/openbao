@@ -20,6 +20,9 @@ quickdev: generate
 dev: fmtcheck generate
 	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 	go build -o bin/login-kerb ./cmd/login-kerb
+dev-linux-only: fmtcheck generate
+	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEVENV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	GOOS=linux GOARCH=amd64 go build -o bin/login-kerb ./cmd/login-kerb
 dev-dynamic: generate
 	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
@@ -58,10 +61,11 @@ fmtcheck:
 fmt:
 	gofmt -w $(GOFMT_FILES)
 
-dev-env: dev
+# builds for linux/amd64, then spins up a few containers for testing
+dev-env: dev-linux-only
 	./scripts/dev_env.sh
 
-integration: dev
+integration: dev-linux-only
 	./scripts/integration_env.sh
 
 .PHONY: bin default generate test vet bootstrap fmt fmtcheck

@@ -205,6 +205,5 @@ With thanks to the original creators of this plugin:
   - @ah-
   - @sambott
   - @roederja2
-  - @tyrannosaurus-becks
   - @jcmturner
   - @kristian-lesko

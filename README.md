@@ -22,7 +22,7 @@ except:
     import winkerberos as kerberos
 import requests
 
-service = "HTTP/vault.domain"
+service = "HTTP@vault.domain"
 rc, vc = kerberos.authGSSClientInit(service=service, mech_oid=kerberos.GSS_MECH_OID_SPNEGO)
 kerberos.authGSSClientStep(vc, "")
 kerberos_token = kerberos.authGSSClientResponse(vc)

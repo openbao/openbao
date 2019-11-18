@@ -2,6 +2,7 @@
 
 VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=8200
+VAULT_TOKEN=root
 SAMBA_VER=4.8.12
 
 DOMAIN_ADMIN_PASS=Pa55word!

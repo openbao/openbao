@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  base64cmd="base64 -D"
+else
+  base64cmd="base64 -d"
+fi
+
 VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=8200
 SAMBA_VER=4.8.12
@@ -174,7 +180,7 @@ function prepare_files() {
   write_kerb_config
   write_python_test
   popd
-  base64 -d grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
+  eval "$base64cmd" grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
 }
 
 function remove_files() {

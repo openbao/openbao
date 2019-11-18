@@ -58,7 +58,10 @@ fmtcheck:
 fmt:
 	gofmt -w $(GOFMT_FILES)
 
-dev-env: dev
+# builds for linux/amd64, then spins up a few containers for testing
+dev-env:
+	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEVENV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	GOOS=linux GOARCH=amd64 go build -o bin/login-kerb ./cmd/login-kerb
 	./scripts/dev_env.sh
 
 integration: dev

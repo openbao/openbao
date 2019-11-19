@@ -1,7 +1,16 @@
 #!/bin/bash
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  base64cmd="base64 -D"
+  sleepcmd="while true; do sleep 86400; done"
+else
+  base64cmd="base64 -d"
+  sleepcmd="sleep infinity"
+fi
+
 VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=8200
+VAULT_TOKEN=root
 SAMBA_VER=4.8.12
 
 DOMAIN_ADMIN_PASS=Pa55word!
@@ -31,6 +40,7 @@ function stop_infrastructure() {
   stop_domain
   delete_network
   echo 'Dev environment stopped'
+  exit 0
 }
 
 function create_network() {
@@ -148,7 +158,8 @@ function prepare_files() {
   mkdir -p ${TESTS_DIR}/integration
   pushd ${TESTS_DIR}/integration
   write_kerb_config
-  base64 -d $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
+  # base64 -d $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
+  eval "$base64cmd" $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
 }
 
 function remove_files() {
@@ -166,7 +177,7 @@ function stop_domain_joined_container() {
 function test_joined_container() {
   docker exec $DOMAIN_JOINED_CONTAINER \
     pip install --quiet requests-kerberos
-  docker cp bin/login-kerb $DOMAIN_JOINED_CONTAINER:/usr/local/bin/login-kerb
+  docker cp $WD/bin/login-kerb $DOMAIN_JOINED_CONTAINER:/usr/local/bin/login-kerb
 }
 
 function prepare_outer_environment() {
@@ -181,7 +192,7 @@ function output_dev_vars() {
   echo ''
   echo 'Copy and paste the following variables into your working shell:'
   echo ''
-  echo "export VAULT_TOKEN=root"
+  echo "export VAULT_TOKEN=${VAULT_TOKEN}"
   echo "export VAULT_ADDR=http://localhost:8200"
   echo "export DOMAIN_DN=${DOMAIN_DN}"
   echo "export DOMAIN_JOINED_CONTAINER=${DOMAIN_JOINED_CONTAINER}"
@@ -214,7 +225,8 @@ function main() {
 
   # Now we'll hang until the user hits CTRL+C to tear everything down.
   echo 'To stop and cleanup, press CTRL+C'
-  sleep infinity
+  # sleep infinity
+  eval "$sleepcmd"
   return 0
 }
 main

@@ -23,7 +23,7 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/sirupsen/logrus v1.4.2 // indirect
-	github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191111224307-01cf50c9a364
+	github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191120183833-5a54eb5fa77c
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
 	gopkg.in/ldap.v3 v3.0.3
 	gotest.tools v2.2.0+incompatible // indirect

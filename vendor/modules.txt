@@ -151,7 +151,7 @@ github.com/pkg/errors
 github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191111224307-01cf50c9a364
+# github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191120183833-5a54eb5fa77c
 github.com/tyrannosaurus-becks/gokrb5/client
 github.com/tyrannosaurus-becks/gokrb5/config
 github.com/tyrannosaurus-becks/gokrb5/keytab

@@ -178,12 +178,16 @@ func (kt *Keytab) Unmarshal(b []byte) error {
 			ke := newKeytabEntry()
 			// p keeps track as to where we are in the byte stream
 			var p int
+			var err error
 			parsePrincipal(eb, &p, kt, &ke, &endian)
 			ke.Timestamp = readTimestamp(eb, &p, &endian)
 			ke.KVNO8 = uint8(readInt8(eb, &p, &endian))
 			ke.Key.KeyType = int32(readInt16(eb, &p, &endian))
 			kl := int(readInt16(eb, &p, &endian))
-			ke.Key.KeyValue = readBytes(eb, &p, kl, &endian)
+			ke.Key.KeyValue, err = readBytes(eb, &p, kl, &endian)
+			if err != nil {
+				return err
+			}
 			//The 32-bit key version overrides the 8-bit key version.
 			// To determine if it is present, the implementation must check that at least 4 bytes remain in the record after the other fields are read,
 			// and that the value of the 32-bit integer contained in those bytes is non-zero.
@@ -255,10 +259,18 @@ func parsePrincipal(b []byte, p *int, kt *Keytab, ke *entry, e *binary.ByteOrder
 		ke.Principal.NumComponents--
 	}
 	lenRealm := readInt16(b, p, e)
-	ke.Principal.Realm = string(readBytes(b, p, int(lenRealm), e))
+	realmB, err := readBytes(b, p, int(lenRealm), e)
+	if err != nil {
+		return err
+	}
+	ke.Principal.Realm = string(realmB)
 	for i := 0; i < int(ke.Principal.NumComponents); i++ {
 		l := readInt16(b, p, e)
-		ke.Principal.Components = append(ke.Principal.Components, string(readBytes(b, p, int(l), e)))
+		compB, err := readBytes(b, p, int(l), e)
+		if err != nil {
+			return err
+		}
+		ke.Principal.Components = append(ke.Principal.Components, string(compB))
 	}
 	if kt.version != 1 {
 		//Name Type is omitted in version 1
@@ -343,12 +355,21 @@ func readInt32(b []byte, p *int, e *binary.ByteOrder) (i int32) {
 	return
 }
 
-func readBytes(b []byte, p *int, s int, e *binary.ByteOrder) []byte {
-	buf := bytes.NewBuffer(b[*p : *p+s])
+func readBytes(b []byte, p *int, s int, e *binary.ByteOrder) ([]byte, error) {
+	if s < 0 {
+		return nil, fmt.Errorf("%d cannot be less than zero", s)
+	}
+	i := *p+s
+	if i > len(b) {
+		return nil, fmt.Errorf("%s's length is less than %d", b, i)
+	}
+	buf := bytes.NewBuffer(b[*p : i])
 	r := make([]byte, s)
-	binary.Read(buf, *e, &r)
+	if err := binary.Read(buf, *e, &r); err != nil {
+		return nil, err
+	}
 	*p += s
-	return r
+	return r, nil
 }
 
 func isNativeEndianLittle() bool {

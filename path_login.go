@@ -90,22 +90,6 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		}
 	}
 
-	ldapClient := ldaputil.Client{
-		Logger: b.Logger(),
-		LDAP:   ldaputil.NewLDAP(),
-	}
-
-	ldapConnection, err := ldapClient.DialLDAP(ldapCfg.ConfigEntry)
-	if err != nil {
-		return nil, errwrap.Wrapf("could not connect to LDAP: {{err}}", err)
-	}
-	if ldapConnection == nil {
-		return nil, errors.New("invalid connection returned from LDAP dial")
-	}
-
-	// Clean ldap connection
-	defer ldapConnection.Close()
-
 	authorizationString := ""
 	authorizationHeaders := req.Headers["Authorization"]
 	if len(authorizationHeaders) > 0 {
@@ -175,6 +159,25 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		}
 		return logical.RespondWithStatusCode(resp, req, w.statusCode)
 	}
+
+	// Now that they've passed the Kerb authentication, begin checking if
+	// they're a member of an LDAP group that should have additional policies
+	// attached.
+	ldapClient := ldaputil.Client{
+		Logger: b.Logger(),
+		LDAP:   ldaputil.NewLDAP(),
+	}
+
+	ldapConnection, err := ldapClient.DialLDAP(ldapCfg.ConfigEntry)
+	if err != nil {
+		return nil, errwrap.Wrapf("could not connect to LDAP: {{err}}", err)
+	}
+	if ldapConnection == nil {
+		return nil, errors.New("invalid connection returned from LDAP dial")
+	}
+
+	// Clean ldap connection
+	defer ldapConnection.Close()
 
 	if len(ldapCfg.BindPassword) > 0 {
 		err = ldapConnection.Bind(ldapCfg.BindDN, ldapCfg.BindPassword)

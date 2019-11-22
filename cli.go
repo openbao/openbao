@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/client"
+	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/config"
+	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/keytab"
+	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/spnego"
 	"github.com/hashicorp/vault/api"
-	"github.com/tyrannosaurus-becks/gokrb5/client"
-	"github.com/tyrannosaurus-becks/gokrb5/config"
-	"github.com/tyrannosaurus-becks/gokrb5/keytab"
-	"github.com/tyrannosaurus-becks/gokrb5/spnego"
 )
 
 // CLIHandler fulfills Vault's LoginHandler interface.

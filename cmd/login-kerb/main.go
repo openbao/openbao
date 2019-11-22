@@ -15,7 +15,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	kerberos "github.com/hashicorp/vault-plugin-auth-kerberos"
-	"github.com/tyrannosaurus-becks/gokrb5/spnego"
+	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/spnego"
 )
 
 var (

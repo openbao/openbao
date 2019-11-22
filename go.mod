@@ -25,7 +25,7 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/sirupsen/logrus v1.4.2 // indirect
-	github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191122175457-b808bc93a898
+	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4
 	gopkg.in/jcmturner/aescts.v1 v1.0.1
 	gopkg.in/jcmturner/dnsutils.v1 v1.0.1

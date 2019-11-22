@@ -136,6 +136,10 @@ github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191111224307-01cf50c9a364 h1:bNdV
 github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191111224307-01cf50c9a364/go.mod h1:L/yrz48GUgsVj/Q+vGgSE0+U8PGSuqj2eEMjaESszAw=
 github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191120183833-5a54eb5fa77c h1:ifJ/HypUU29Tbvl+JQffHQQV4Ayvuv+3Z1ZuBuwsL08=
 github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191120183833-5a54eb5fa77c/go.mod h1:L/yrz48GUgsVj/Q+vGgSE0+U8PGSuqj2eEMjaESszAw=
+github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191122175457-b808bc93a898 h1:jDXIs102s8li6QHcJhkiTszDg3Hw/ekEnFQLAxVcFoA=
+github.com/tyrannosaurus-becks/gokrb5 v0.0.0-20191122175457-b808bc93a898/go.mod h1:L/yrz48GUgsVj/Q+vGgSE0+U8PGSuqj2eEMjaESszAw=
+github.com/tyrannosaurus-becks/gokrb5 v7.3.0+incompatible h1:lld7bW1+Vy7vlMfmyEzEfNqK+2wFFgpXVzDOOoaJS14=
+github.com/tyrannosaurus-becks/gokrb5 v7.3.0+incompatible/go.mod h1:H700r3AYOL0HIOlDPFdrDQoNVRxZlvZDz+QdYAoPtkw=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2 h1:VklqNMn3ovrHsnt90PveolxSbWFaJdECFbxSq0Mqo2M=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4 h1:PDpCLFAH/YIX0QpHPf2eO7L4rC2OOirBrKtXTLLiNTY=

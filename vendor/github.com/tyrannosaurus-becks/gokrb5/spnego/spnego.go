@@ -132,6 +132,10 @@ func (s *SPNEGOToken) Marshal() ([]byte, error) {
 func (s *SPNEGOToken) Unmarshal(b []byte) error {
 	var r []byte
 	var err error
+	// We need some data in the array
+	if len(b) < 1 {
+		return fmt.Errorf("provided byte array is empty")
+	}
 	if b[0] != byte(161) {
 		// Not a NegTokenResp/Targ could be a NegTokenInit
 		var oid asn1.ObjectIdentifier

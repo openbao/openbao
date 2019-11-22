@@ -13,8 +13,7 @@ place the library into an internal folder to flag that it's not intended for
 wider consumption.
 
 This has the downside of making it more difficult to pull in changes to the
-upstream gokrb5 library. However, we don't anticipate many at this time due
-to it being under low or no maintenance.
+upstream gokrb5 library.
 
 In the future if our PRs are ever merged and the library has valuable fixes
 or seems more actively maintained, we may wish to switch back to using it

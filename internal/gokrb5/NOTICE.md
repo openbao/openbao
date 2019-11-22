@@ -2,11 +2,10 @@
 
 This directory is essentially a fork of https://github.com/jcmturner/gokrb5.
 
-As of when this was written (Nov. 2019), gokrb5 was the most fully-featured
-Kerberos client written in Go. We, however, needed some bug fixes merged before
-we would be able to take advantage of the library for use in our CLI handler.
-The gokrb5 library appeared to not have received any maintenance since June
-of 2019.
+As of when this was written (Nov. 2019), gokrb5 is the most fully-featured
+Kerberos client written in Go. We've needed some bug fixes merged before
+the upstream library can integrate them, so for now these changes will live
+as an internal package.
 
 We considered maintaining a fork of the library, but didn't want to become the
 keepers of the Go Kerberos client for the public at large. Thus, we decided to
@@ -23,6 +22,13 @@ directly. At that time, we should carefully diff our two libraries to see
 if ours has any fixes the other doesn't have, and resolve those differences
 if so.
 
-The gokrb5 Apache 2 license appears to find this usage permissible. Also, we
-are grateful to the authors of that library for the incredible ground they
+We are grateful to the authors of that library for the incredible ground they
 have cut on the Kerberos client for Go.
+
+## All Files Should Be Presumed Modified
+
+No files in this version of the gokrb5 library should be assumed to be the
+same as those in https://github.com/jcmturner/gokrb5. Not only has this
+library received multiple modifications, but the original library may receive
+additional modifications that are not present here. All files here should be
+presumed to be changed unless proven otherwise.

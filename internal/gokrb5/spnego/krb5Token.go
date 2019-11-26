@@ -71,6 +71,9 @@ func (m *KRB5Token) Unmarshal(b []byte) error {
 		return fmt.Errorf("error unmarshalling KRB5Token OID: %v", err)
 	}
 	m.OID = oid
+	if len(r) < 2 {
+		return fmt.Errorf("krb5token too short")
+	}
 	m.tokID = r[0:2]
 	switch hex.EncodeToString(m.tokID) {
 	case TOK_ID_KRB_AP_REQ:

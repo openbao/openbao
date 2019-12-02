@@ -17,6 +17,7 @@ import (
 )
 
 const defaultMount = "oidc"
+const defaultListenAddress = "localhost"
 const defaultPort = "8250"
 const defaultCallbackHost = "localhost"
 const defaultCallbackMethod = "http"
@@ -41,6 +42,11 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	mount, ok := m["mount"]
 	if !ok {
 		mount = defaultMount
+	}
+
+	listenAddress, ok := m["listenaddress"]
+	if !ok {
+		listenAddress = defaultListenAddress
 	}
 
 	port, ok := m["port"]
@@ -94,7 +100,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		doneCh <- loginResp{secret, err}
 	})
 
-	listener, err := net.Listen("tcp", ":"+port)
+	listener, err := net.Listen("tcp", listenAddress+":"+port)
 	if err != nil {
 		return nil, err
 	}
@@ -239,14 +245,17 @@ Configuration:
   role=<string>
       Vault role of type "OIDC" to use for authentication.
 
+  listenaddress=<string>
+    Optional address to bind the OIDC callback listener to (default: localhost).
+
   port=<string>
-	  Optional localhost port to use for OIDC callback (default: 8250).
+    Optional localhost port to use for OIDC callback (default: 8250).
 
   callbackmethod=<string>
-	  Optional method to to use in OIDC redirect_uri (default: http).
+    Optional method to to use in OIDC redirect_uri (default: http).
 
   callbackhost=<string>
-	  Optional callback host adddress to use in OIDC redirect_uri (default: localhost).
+    Optional callback host address to use in OIDC redirect_uri (default: localhost).
 
   callbackport=<string>
       Optional port to to use in OIDC redirect_uri (default: the value set for port).

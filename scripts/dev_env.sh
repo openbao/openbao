@@ -34,7 +34,7 @@ function start_infrastructure() {
 }
 
 function stop_infrastructure() {
-  echo 'Stopping Docker container and removing network, please wait...'
+  echo 'Stopping Docker containers and removing network, please wait...'
   stop_domain_joined_container
   stop_vault
   stop_domain

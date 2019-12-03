@@ -23,6 +23,10 @@ func pathsRole(b *kubeAuthBackend) []*framework.Path {
 			},
 			HelpSynopsis:    strings.TrimSpace(roleHelp["role-list"][0]),
 			HelpDescription: strings.TrimSpace(roleHelp["role-list"][1]),
+			DisplayAttrs: &framework.DisplayAttributes{
+				Navigation: true,
+				ItemType:   "Role",
+			},
 		},
 		&framework.Path{
 			Pattern: "role/" + framework.GenericNameRegex("name"),
@@ -85,6 +89,10 @@ are allowed, both this and bound_service_account_names can not be set to "*"`,
 			},
 			HelpSynopsis:    strings.TrimSpace(roleHelp["role"][0]),
 			HelpDescription: strings.TrimSpace(roleHelp["role"][1]),
+			DisplayAttrs: &framework.DisplayAttributes{
+				ItemType: "Role",
+				Action:   "Create",
+			},
 		},
 	}
 

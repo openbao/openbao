@@ -116,15 +116,15 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw := r.Context().Value(spnego.CTXKeyCredentials)
 		if raw == nil {
-			_, _ = w.Write([]byte("identity credentials are not included"))
 			w.WriteHeader(400)
+			_, _ = w.Write([]byte("identity credentials are not included"))
 			return
 		}
 		ok := false
 		identity, ok = raw.(goidentity.Identity)
 		if !ok {
-			_, _ = w.Write([]byte(fmt.Sprintf("identity credentials are malformed: %+v", raw)))
 			w.WriteHeader(400)
+			_, _ = w.Write([]byte(fmt.Sprintf("identity credentials are malformed: %+v", raw)))
 			return
 		}
 		b.Logger().Debug(fmt.Sprintf("identity: %+v", identity))
@@ -137,8 +137,8 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		// passing Kerberos authentication, and then extracting group membership, and
 		// therefore policies, from a separate directory.
 		if identity.Domain() != ldapCfg.ConfigEntry.UPNDomain {
-			_, _ = w.Write([]byte(fmt.Sprintf("identity domain of %q doesn't match LDAP upndomain of %q", identity.Domain(), ldapCfg.ConfigEntry.UPNDomain)))
 			w.WriteHeader(400)
+			_, _ = w.Write([]byte(fmt.Sprintf("identity domain of %q doesn't match LDAP upndomain of %q", identity.Domain(), ldapCfg.ConfigEntry.UPNDomain)))
 			return
 		}
 		authenticated = true

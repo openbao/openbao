@@ -181,13 +181,15 @@ func TestValidateAudience(t *testing.T) {
 
 func TestValidateBoundClaims(t *testing.T) {
 	tests := []struct {
-		name        string
-		boundClaims map[string]interface{}
-		allClaims   map[string]interface{}
-		errExpected bool
+		name            string
+		boundClaimsType string
+		boundClaims     map[string]interface{}
+		allClaims       map[string]interface{}
+		errExpected     bool
 	}{
 		{
-			name: "valid",
+			name:            "valid",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
 				"bar": "b",
@@ -199,7 +201,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "valid - non-string claim",
+			name:            "valid - non-string claim",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": []interface{}{42},
 			},
@@ -209,7 +212,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "valid - boolean claim",
+			name:            "valid - boolean claim",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email_verified": []interface{}{false},
 			},
@@ -219,7 +223,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "valid - match within list",
+			name:            "valid - match within list",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
 			},
@@ -229,7 +234,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "valid - match list against list",
+			name:            "valid - match list against list",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": []interface{}{"a", "b", "c"},
 			},
@@ -239,7 +245,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "invalid - no match within list",
+			name:            "invalid - no match within list",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "c",
 			},
@@ -249,7 +256,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "invalid - no match list against list",
+			name:            "invalid - no match list against list",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": []interface{}{"a", "b", "c"},
 			},
@@ -259,7 +267,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "valid - extra data",
+			name:            "valid - extra data",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
 				"bar": "b",
@@ -272,7 +281,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "mismatched value",
+			name:            "mismatched value",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
 				"bar": "b",
@@ -284,7 +294,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "missing claim",
+			name:            "missing claim",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo": "a",
 				"bar": "b",
@@ -295,7 +306,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "valid - JSONPointer",
+			name:            "valid - JSONPointer",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo":        "a",
 				"/bar/baz/1": "y",
@@ -309,7 +321,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "invalid - JSONPointer value mismatch",
+			name:            "invalid - JSONPointer value mismatch",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo":        "a",
 				"/bar/baz/1": "q",
@@ -323,7 +336,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "invalid - JSONPointer not found",
+			name:            "invalid - JSONPointer not found",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"foo":           "a",
 				"/bar/XXX/1243": "q",
@@ -337,7 +351,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "valid - match alternates",
+			name:            "valid - match alternates",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email": []interface{}{"a", "b", "c"},
 				"color": "green",
@@ -349,7 +364,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name: "invalid - no match alternates",
+			name:            "invalid - no match alternates",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email": []interface{}{"a", "b", "c"},
 				"color": "green",
@@ -361,7 +377,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "invalid bound claim expected value",
+			name:            "invalid bound claim expected value",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email": 42,
 			},
@@ -371,7 +388,8 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: true,
 		},
 		{
-			name: "invalid bound claim expected boolean value",
+			name:            "invalid bound claim expected boolean value",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email_verified": true,
 			},
@@ -382,7 +400,8 @@ func TestValidateBoundClaims(t *testing.T) {
 		},
 
 		{
-			name: "invalid received claim expected value",
+			name:            "invalid received claim expected value",
+			boundClaimsType: "string",
 			boundClaims: map[string]interface{}{
 				"email": "d",
 			},
@@ -391,9 +410,97 @@ func TestValidateBoundClaims(t *testing.T) {
 			},
 			errExpected: true,
 		},
+
+		{
+			name:            "matching glob",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": "4*",
+			},
+			allClaims: map[string]interface{}{
+				"email": "42",
+			},
+			errExpected: false,
+		},
+		{
+			name:            "invalid string value",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": "4*",
+			},
+			allClaims: map[string]interface{}{
+				"email": 42,
+			},
+			errExpected: true,
+		},
+		{
+			name:            "not matching glob",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": "4*",
+			},
+			allClaims: map[string]interface{}{
+				"email": "d42",
+			},
+			errExpected: true,
+		},
+		{
+			name:            "not matching glob",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": "*2",
+			},
+			allClaims: map[string]interface{}{
+				"email": "42x",
+			},
+			errExpected: true,
+		},
+		{
+			name:            "matching glob in list",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": []interface{}{"4*d", "42*"},
+			},
+			allClaims: map[string]interface{}{
+				"email": "42x",
+			},
+			errExpected: false,
+		},
+		{
+			name:            "non matching integer glob",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": 42,
+			},
+			allClaims: map[string]interface{}{
+				"email": "42x",
+			},
+			errExpected: true,
+		},
+		{
+			name:            "valid complex glob",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": `*@*.com`,
+			},
+			allClaims: map[string]interface{}{
+				"email": "test@example.com",
+			},
+			errExpected: false,
+		},
+		{
+			name: "non matching complex glob",
+			boundClaims: map[string]interface{}{
+				"email": `r*@*.com`,
+			},
+			allClaims: map[string]interface{}{
+				"email": "test@example.com",
+			},
+			errExpected: true,
+		},
 	}
 	for _, tt := range tests {
-		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
+		if err := validateBoundClaims(hclog.NewNullLogger(), tt.boundClaimsType, tt.boundClaims, tt.allClaims); (err != nil) != tt.errExpected {
 			t.Errorf("validateBoundClaims(%s) error = %v, wantErr %v", tt.name, err, tt.errExpected)
 		}
 	}

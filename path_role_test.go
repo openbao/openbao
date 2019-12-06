@@ -73,6 +73,7 @@ func TestPath_Create(t *testing.T) {
 		Period:              3 * time.Second,
 		BoundSubject:        "testsub",
 		BoundAudiences:      []string{"vault"},
+		BoundClaimsType:     "string",
 		UserClaim:           "user",
 		GroupsClaim:         "groups",
 		TTL:                 1 * time.Second,
@@ -419,10 +420,11 @@ func TestPath_OIDCCreate(t *testing.T) {
 			TokenMaxTTL:   5 * time.Second,
 			TokenNumUses:  12,
 		},
-		RoleType:       "oidc",
-		Policies:       []string{"test"},
-		Period:         3 * time.Second,
-		BoundAudiences: []string{"vault"},
+		RoleType:        "oidc",
+		Policies:        []string{"test"},
+		Period:          3 * time.Second,
+		BoundAudiences:  []string{"vault"},
+		BoundClaimsType: "string",
 		BoundClaims: map[string]interface{}{
 			"foo": json.Number("10"),
 			"bar": "baz",
@@ -582,6 +584,7 @@ func TestPath_Read(t *testing.T) {
 
 	expected := map[string]interface{}{
 		"role_type":               "jwt",
+		"bound_claims_type":       "string",
 		"bound_claims":            map[string]interface{}(nil),
 		"claim_mappings":          map[string]string(nil),
 		"bound_subject":           "testsub",

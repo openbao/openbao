@@ -51,6 +51,39 @@ github.com/hashicorp/go-sockaddr
 github.com/hashicorp/go-uuid
 # github.com/hashicorp/go-version v1.2.0
 github.com/hashicorp/go-version
+# github.com/hashicorp/gokrb5 v7.3.1-0.20191209171754-1a6fa9886ec3+incompatible
+github.com/hashicorp/gokrb5/client
+github.com/hashicorp/gokrb5/config
+github.com/hashicorp/gokrb5/keytab
+github.com/hashicorp/gokrb5/service
+github.com/hashicorp/gokrb5/spnego
+github.com/hashicorp/gokrb5/credentials
+github.com/hashicorp/gokrb5/crypto
+github.com/hashicorp/gokrb5/crypto/etype
+github.com/hashicorp/gokrb5/iana/errorcode
+github.com/hashicorp/gokrb5/iana/flags
+github.com/hashicorp/gokrb5/iana/keyusage
+github.com/hashicorp/gokrb5/iana/nametype
+github.com/hashicorp/gokrb5/iana/patype
+github.com/hashicorp/gokrb5/kadmin
+github.com/hashicorp/gokrb5/krberror
+github.com/hashicorp/gokrb5/messages
+github.com/hashicorp/gokrb5/types
+github.com/hashicorp/gokrb5/iana/etypeID
+github.com/hashicorp/gokrb5/asn1tools
+github.com/hashicorp/gokrb5/gssapi
+github.com/hashicorp/gokrb5/iana/chksumtype
+github.com/hashicorp/gokrb5/iana/msgtype
+github.com/hashicorp/gokrb5/crypto/common
+github.com/hashicorp/gokrb5/crypto/rfc3961
+github.com/hashicorp/gokrb5/crypto/rfc3962
+github.com/hashicorp/gokrb5/crypto/rfc4757
+github.com/hashicorp/gokrb5/crypto/rfc8009
+github.com/hashicorp/gokrb5/iana
+github.com/hashicorp/gokrb5/iana/adtype
+github.com/hashicorp/gokrb5/iana/asnAppTag
+github.com/hashicorp/gokrb5/pac
+github.com/hashicorp/gokrb5/iana/addrtype
 # github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru

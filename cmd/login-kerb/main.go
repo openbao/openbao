@@ -14,8 +14,8 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/hashicorp/gokrb5/spnego"
 	kerberos "github.com/hashicorp/vault-plugin-auth-kerberos"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/spnego"
 )
 
 var (

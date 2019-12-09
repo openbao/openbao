@@ -1,8 +1,8 @@
 # Vault Plugin: Kerberos Auth Backend
 
-## Pre-Alpha, Not Yet Supported
+## This Plugin is in Beta
 
-This plugin has recently been transitioned to Hashicorp's care and has not yet been fully tested, nor has it been incorporated into Vault. Please use under advisement that it's currently considered to be in a pre-alpha state, and is not yet supported by Hashicorp. It is currently in transition.
+This plugin is currently being incorporated into Vault and documentation is in the process of being written. Beta usage is welcome. Please report any issues you encounter. Thank you!
 
 ## Details
 

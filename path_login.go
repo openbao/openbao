@@ -10,9 +10,9 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/keytab"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/service"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/spnego"
+	"github.com/hashicorp/gokrb5/keytab"
+	"github.com/hashicorp/gokrb5/service"
+	"github.com/hashicorp/gokrb5/spnego"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"

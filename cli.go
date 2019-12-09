@@ -8,10 +8,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/client"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/config"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/keytab"
-	"github.com/hashicorp/vault-plugin-auth-kerberos/internal/gokrb5/spnego"
+	"github.com/hashicorp/gokrb5/client"
+	"github.com/hashicorp/gokrb5/config"
+	"github.com/hashicorp/gokrb5/keytab"
+	"github.com/hashicorp/gokrb5/spnego"
 	"github.com/hashicorp/vault/api"
 )
 

@@ -122,8 +122,6 @@ func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims,
 
 func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 	for _, expVal := range expVals {
-
-	innerLoop:
 		for _, actVal := range actVals {
 			if useGlobs {
 				// Only string globbing is supported.
@@ -133,14 +131,14 @@ func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 				}
 				actValStr, ok := actVal.(string)
 				if !ok {
-					continue innerLoop
+					continue
 				}
 				if !glob.Glob(expValStr, actValStr) {
-					continue innerLoop
+					continue
 				}
 			} else {
 				if actVal != expVal {
-					continue innerLoop
+					continue
 				}
 			}
 			return true, nil

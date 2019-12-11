@@ -113,28 +113,31 @@ func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims,
 
 		found := false
 
-	scan:
-		for _, v := range expVals {
-			if useGlobs {
-				vs, ok := v.(string)
-				if !ok {
-					return fmt.Errorf("received claim is not a glob string: %v", v)
-				}
-				for _, av := range actVals {
-					if avs, ok := av.(string); ok {
-						if glob.Glob(vs, avs) {
-							found = true
-							break scan
-						}
+	outerLoop:
+		for _, expVal := range expVals {
+
+		innerLoop:
+			for _, actVal := range actVals {
+				if useGlobs {
+					// Only string globbing is supported.
+					expValStr, ok := expVal.(string)
+					if !ok {
+						return fmt.Errorf("received claim is not a glob string: %expVal", expVal)
+					}
+					actValStr, ok := actVal.(string)
+					if !ok {
+						continue innerLoop
+					}
+					if !glob.Glob(expValStr, actValStr) {
+						continue innerLoop
+					}
+				} else {
+					if actVal != expVal {
+						continue innerLoop
 					}
 				}
-			} else {
-				for _, av := range actVals {
-					if av == v {
-						found = true
-						break scan
-					}
-				}
+				found = true
+				break outerLoop
 			}
 		}
 

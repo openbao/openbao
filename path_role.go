@@ -18,10 +18,11 @@ import (
 
 var reservedMetadata = []string{"role"}
 
-const claimDefaultLeeway = 150
-
-const boundClaimsTypeString = "string"
-const boundClaimsTypeGlob = "glob"
+const (
+	claimDefaultLeeway = 150
+	boundClaimsTypeString = "string"
+	boundClaimsTypeGlob = "glob"
+)
 
 func pathRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
@@ -52,27 +53,27 @@ func pathRole(b *jwtAuthBackend) *framework.Path {
 				Description: "Type of the role, either 'jwt' or 'oidc'.",
 			},
 
-			"policies": &framework.FieldSchema{
+			"policies": {
 				Type:        framework.TypeCommaStringSlice,
 				Description: tokenutil.DeprecationText("token_policies"),
 				Deprecated:  true,
 			},
-			"num_uses": &framework.FieldSchema{
+			"num_uses": {
 				Type:        framework.TypeInt,
 				Description: tokenutil.DeprecationText("token_num_uses"),
 				Deprecated:  true,
 			},
-			"ttl": &framework.FieldSchema{
+			"ttl": {
 				Type:        framework.TypeDurationSecond,
 				Description: tokenutil.DeprecationText("token_ttl"),
 				Deprecated:  true,
 			},
-			"max_ttl": &framework.FieldSchema{
+			"max_ttl": {
 				Type:        framework.TypeDurationSecond,
 				Description: tokenutil.DeprecationText("token_max_ttl"),
 				Deprecated:  true,
 			},
-			"period": &framework.FieldSchema{
+			"period": {
 				Type:        framework.TypeDurationSecond,
 				Description: tokenutil.DeprecationText("token_period"),
 				Deprecated:  true,

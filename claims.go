@@ -99,54 +99,54 @@ func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims,
 			return fmt.Errorf("claim %q is missing", claim)
 		}
 
-		var actVals, expVals []interface{}
-
 		actVals, ok := normalizeList(actValue)
 		if !ok {
 			return fmt.Errorf("received claim is not a string or list: %v", actValue)
 		}
 
-		expVals, ok = normalizeList(expValue)
+		expVals, ok := normalizeList(expValue)
 		if !ok {
 			return fmt.Errorf("bound claim is not a string or list: %v", expValue)
 		}
 
-		found := false
-
-	outerLoop:
-		for _, expVal := range expVals {
-
-		innerLoop:
-			for _, actVal := range actVals {
-				if useGlobs {
-					// Only string globbing is supported.
-					expValStr, ok := expVal.(string)
-					if !ok {
-						return fmt.Errorf("received claim is not a glob string: %expVal", expVal)
-					}
-					actValStr, ok := actVal.(string)
-					if !ok {
-						continue innerLoop
-					}
-					if !glob.Glob(expValStr, actValStr) {
-						continue innerLoop
-					}
-				} else {
-					if actVal != expVal {
-						continue innerLoop
-					}
-				}
-				found = true
-				break outerLoop
-			}
+		found, err := matchFound(expVals, actVals, useGlobs)
+		if err != nil {
+			return err
 		}
-
 		if !found {
 			return fmt.Errorf("claim %q does not match any associated bound claim values", claim)
 		}
 	}
-
 	return nil
+}
+
+func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
+	for _, expVal := range expVals {
+
+	innerLoop:
+		for _, actVal := range actVals {
+			if useGlobs {
+				// Only string globbing is supported.
+				expValStr, ok := expVal.(string)
+				if !ok {
+					return false, fmt.Errorf("received claim is not a glob string: %expVal", expVal)
+				}
+				actValStr, ok := actVal.(string)
+				if !ok {
+					continue innerLoop
+				}
+				if !glob.Glob(expValStr, actValStr) {
+					continue innerLoop
+				}
+			} else {
+				if actVal != expVal {
+					continue innerLoop
+				}
+			}
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // normalizeList takes a string, bool or list and returns a list. This is useful when

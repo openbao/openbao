@@ -19,9 +19,9 @@ import (
 var reservedMetadata = []string{"role"}
 
 const (
-	claimDefaultLeeway = 150
+	claimDefaultLeeway    = 150
 	boundClaimsTypeString = "string"
-	boundClaimsTypeGlob = "glob"
+	boundClaimsTypeGlob   = "glob"
 )
 
 func pathRoleList(b *jwtAuthBackend) *framework.Path {

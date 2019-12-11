@@ -91,10 +91,6 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 // validateBoundClaims checks that all of the claim:value requirements in boundClaims are
 // met in allClaims.
 func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
-	if boundClaimsType != boundClaimsTypeString && boundClaimsType != boundClaimsTypeGlob {
-		return fmt.Errorf("claim type %s is not valid", boundClaimsType)
-	}
-
 	useGlobs := boundClaimsType == boundClaimsTypeGlob
 
 	for claim, expValue := range boundClaims {

@@ -110,7 +110,7 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 			},
 			"bound_claims_type": {
 				Type:        framework.TypeString,
-				Description: `How to interpret values in the map of claims/values (which must match for login): allowed values are string or glob`,
+				Description: `How to interpret values in the map of claims/values (which must match for login): allowed values are 'string' or 'glob'`,
 				Default:     boundClaimsTypeString,
 			},
 			"bound_claims": {
@@ -230,6 +230,10 @@ func (b *jwtAuthBackend) role(ctx context.Context, s logical.Storage, name strin
 	// Report legacy roles as type "jwt"
 	if role.RoleType == "" {
 		role.RoleType = "jwt"
+	}
+
+	if role.BoundClaimsType == "" {
+		role.BoundClaimsType = boundClaimsTypeString
 	}
 
 	if role.TokenTTL == 0 && role.TTL > 0 {
@@ -437,10 +441,12 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	}
 
 	boundClaimsType := data.Get("bound_claims_type").(string)
-	if boundClaimsType != boundClaimsTypeString && boundClaimsType != boundClaimsTypeGlob {
+	switch boundClaimsType {
+	case boundClaimsTypeString, boundClaimsTypeGlob:
+		role.BoundClaimsType = boundClaimsType
+	default:
 		return logical.ErrorResponse("invalid 'bound_claims_type': %s", boundClaimsType), nil
 	}
-	role.BoundClaimsType = boundClaimsType
 
 	if boundClaimsRaw, ok := data.GetOk("bound_claims"); ok {
 		role.BoundClaims = boundClaimsRaw.(map[string]interface{})
@@ -451,12 +457,12 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 				claimsValuesList, ok := normalizeList(claimValues)
 
 				if !ok {
-					return logical.ErrorResponse("received claim is not a string or list: %v", claimValues), nil
+					return logical.ErrorResponse("claim is not a string or list: %v", claimValues), nil
 				}
 
 				for _, claimValue := range claimsValuesList {
 					if _, ok := claimValue.(string); !ok {
-						return logical.ErrorResponse("received claim is not a string: %v", claimValue), nil
+						return logical.ErrorResponse("claim is not a string: %v", claimValue), nil
 					}
 				}
 			}

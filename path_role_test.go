@@ -691,7 +691,7 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	// Run read test for "upgrade" case. The legacy role is not changed in storage, but
-	// reads will populate the `bound_claims_type` with "jwt".
+	// reads will populate the `bound_claims_type` with "string".
 	readTest()
 }
 

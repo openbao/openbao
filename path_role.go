@@ -16,7 +16,7 @@ import (
 // pathsRole returns the path configurations for the CRUD operations on roles
 func pathsRole(b *kubeAuthBackend) []*framework.Path {
 	p := []*framework.Path{
-		&framework.Path{
+		{
 			Pattern: "role/?",
 			Callbacks: map[logical.Operation]framework.OperationFunc{
 				logical.ListOperation: b.pathRoleList,
@@ -295,11 +295,6 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	// Verify * was not set with other data
 	if len(role.ServiceAccountNamespaces) > 1 && strutil.StrListContains(role.ServiceAccountNamespaces, "*") {
 		return logical.ErrorResponse("can not mix \"*\" with values"), nil
-	}
-
-	// Verify that both names and namespaces are not set to "*"
-	if strutil.StrListContains(role.ServiceAccountNames, "*") && strutil.StrListContains(role.ServiceAccountNamespaces, "*") {
-		return logical.ErrorResponse("service_account_names and service_account_namespaces can not both be \"*\""), nil
 	}
 
 	// optional audience field

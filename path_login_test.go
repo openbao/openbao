@@ -355,6 +355,184 @@ func TestLogin_NoPEMs(t *testing.T) {
 	}
 }
 
+func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
+	b, storage := setupBackend(t, testDefaultPEMs, "*", "*")
+
+	// Test bad inputs
+	data := map[string]interface{}{
+		"jwt": jwtData,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if resp.Error().Error() != "missing role" {
+		t.Fatalf("unexpected error: %s", resp.Error())
+	}
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if resp.Error().Error() != "missing jwt" {
+		t.Fatalf("unexpected error: %s", resp.Error())
+	}
+
+	// test bad role name
+	data = map[string]interface{}{
+		"role": "plugin-test-bad",
+		"jwt":  jwtData,
+	}
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if resp == nil || !resp.IsError() {
+		t.Fatal("expected error")
+	}
+	if resp.Error().Error() != "invalid role name \"plugin-test-bad\"" {
+		t.Fatalf("unexpected error: %s", resp.Error())
+	}
+
+	// test bad jwt service account
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtBadServiceAccount,
+	}
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if err.Error() != "permission denied" {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// test bad jwt key
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtWithBadSigningKey,
+	}
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var expectedErr error
+	expectedErr = multierror.Append(expectedErr, errwrap.Wrapf("failed to validate JWT: {{err}}", errMismatchedSigningMethod), errwrap.Wrapf("failed to validate JWT: {{err}}", rsa.ErrVerification))
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	// test successful login
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	// test successful login for globbed name
+	b, storage = setupBackend(t, testDefaultPEMs, testGlobbedName, testNamespace)
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	// test successful login for globbed namespace
+	b, storage = setupBackend(t, testDefaultPEMs, testName, testGlobbedNamespace)
+
+	data = map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+}
+
 func TestAliasLookAhead(t *testing.T) {
 	b, storage := setupBackend(t, testDefaultPEMs, testName, testNamespace)
 

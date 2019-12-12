@@ -1,0 +1,16 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12
+    working_directory: /go/src/github.com/hashicorp/vault-plugin-auth-kubernetes
+    steps:
+      - checkout
+      - run:
+          name: "Setup Environment"
+          command: |
+            echo 'export GO111MODULE=on' >> $BASH_ENV
+      - run:
+          name: "Run Tests"
+          command: |
+            make test

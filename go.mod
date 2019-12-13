@@ -15,6 +15,7 @@ require (
 	github.com/mitchellh/pointerstructure v0.0.0-20190430161007-f252a8fd71c8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
+	github.com/ryanuber/go-glob v1.0.0
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
 	gopkg.in/square/go-jose.v2 v2.3.1
 )

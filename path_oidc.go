@@ -185,7 +185,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		}
 	}
 
-	if err := validateBoundClaims(b.Logger(), role.BoundClaims, allClaims); err != nil {
+	if err := validateBoundClaims(b.Logger(), role.BoundClaimsType, role.BoundClaims, allClaims); err != nil {
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 

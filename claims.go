@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/ryanuber/go-glob"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/pointerstructure"
@@ -89,7 +90,9 @@ func validateAudience(boundAudiences, audClaim []string, strict bool) error {
 
 // validateBoundClaims checks that all of the claim:value requirements in boundClaims are
 // met in allClaims.
-func validateBoundClaims(logger log.Logger, boundClaims, allClaims map[string]interface{}) error {
+func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims, allClaims map[string]interface{}) error {
+	useGlobs := boundClaimsType == boundClaimsTypeGlob
+
 	for claim, expValue := range boundClaims {
 		actValue := getClaim(logger, allClaims, claim)
 		if actValue == nil {
@@ -112,10 +115,22 @@ func validateBoundClaims(logger log.Logger, boundClaims, allClaims map[string]in
 
 	scan:
 		for _, v := range expVals {
-			for _, av := range actVals {
-				if av == v {
-					found = true
-					break scan
+			if useGlobs {
+				vs := v.(string)
+				for _, av := range actVals {
+					if avs, ok := av.(string); ok {
+						if glob.Glob(vs, avs) {
+							found = true
+							break scan
+						}
+					}
+				}
+			} else {
+				for _, av := range actVals {
+					if av == v {
+						found = true
+						break scan
+					}
 				}
 			}
 		}

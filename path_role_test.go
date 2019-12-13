@@ -383,6 +383,104 @@ func TestPath_Create(t *testing.T) {
 	if actual.NotBeforeLeeway.Seconds() != -1 {
 		t.Fatalf("not_before_leeway - expected: -1, got: %v", actual.NotBeforeLeeway.Seconds())
 	}
+
+	// Test storing an invalid bound_claim_type
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"clock_skew_leeway": "-1",
+		"expiration_leeway": "-1",
+		"not_before_leeway": "-1",
+		"bound_claims_type": "invalid",
+		"bound_claims": map[string]interface{}{
+			"foo": 10,
+			"bar": "baz",
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test10",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && !resp.IsError() {
+		t.Fatalf("expected error")
+	}
+	if resp.Error().Error() != "invalid 'bound_claims_type': invalid" {
+		t.Fatalf("unexpected err: %v", resp)
+	}
+
+	// Test a role with an invalid glob in a claim
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"clock_skew_leeway": "-1",
+		"expiration_leeway": "-1",
+		"not_before_leeway": "-1",
+		"bound_claims_type": "glob",
+		"bound_claims": map[string]interface{}{
+			"bar": "baz",
+			"foo": 25,
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test11",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && !resp.IsError() {
+		t.Fatalf("expected error")
+	}
+	if resp.Error().Error() != "claim is not a string or list: 25" {
+		t.Fatalf("unexpected err: %v", resp)
+	}
+
+	// Test a role with an invalid glob in a claim array
+	data = map[string]interface{}{
+		"role_type":         "jwt",
+		"user_claim":        "user",
+		"policies":          "test",
+		"clock_skew_leeway": "-1",
+		"expiration_leeway": "-1",
+		"not_before_leeway": "-1",
+		"bound_claims_type": "glob",
+		"bound_claims": map[string]interface{}{
+			"foo": []interface{}{"baz", 10},
+		},
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test12",
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && !resp.IsError() {
+		t.Fatalf("expected error")
+	}
+	if resp.Error().Error() != "claim is not a string: 10" {
+		t.Fatalf("unexpected err: %v", resp)
+	}
 }
 
 func TestPath_OIDCCreate(t *testing.T) {
@@ -691,7 +789,7 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	// Run read test for "upgrade" case. The legacy role is not changed in storage, but
-	// reads will populate the `bound_claims_type` with "jwt".
+	// reads will populate the `bound_claims_type` with "string".
 	readTest()
 }
 

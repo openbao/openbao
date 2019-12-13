@@ -467,6 +467,17 @@ func TestValidateBoundClaims(t *testing.T) {
 			errExpected: false,
 		},
 		{
+			name:            "not matching glob in list",
+			boundClaimsType: "glob",
+			boundClaims: map[string]interface{}{
+				"email": []interface{}{"4*d", "42*"},
+			},
+			allClaims: map[string]interface{}{
+				"email": "43x",
+			},
+			errExpected: true,
+		},
+		{
 			name:            "non matching integer glob",
 			boundClaimsType: "glob",
 			boundClaims: map[string]interface{}{

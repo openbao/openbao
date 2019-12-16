@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/ryanuber/go-glob"
-
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/mitchellh/pointerstructure"
+	"github.com/ryanuber/go-glob"
 )
 
 // getClaim returns a claim value from allClaims given a provided claim string.

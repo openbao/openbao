@@ -38,7 +38,7 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 }
 
 func TestPath_Create(t *testing.T) {
-	t.Run("", func(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(t)
 
 		data := map[string]interface{}{

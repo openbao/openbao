@@ -127,28 +127,6 @@ func TestPath_Create(t *testing.T) {
 		t.Fatalf("unexpected err: %v", resp)
 	}
 
-	// Test both "*"
-	data = map[string]interface{}{
-		"bound_service_account_names":      "*",
-		"bound_service_account_namespaces": "*",
-		"policies":                         "test",
-	}
-
-	req = &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      "role/test2",
-		Storage:   storage,
-		Data:      data,
-	}
-
-	resp, err = b.HandleRequest(context.Background(), req)
-	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected error")
-	}
-	if resp.Error().Error() != "service_account_names and service_account_namespaces can not both be \"*\"" {
-		t.Fatalf("unexpected err: %v", resp)
-	}
-
 	// Test mixed "*" and values
 	data = map[string]interface{}{
 		"bound_service_account_names":      "*, test",

@@ -10,7 +10,6 @@ require (
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/go-ldap/ldap v3.0.2+incompatible // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
@@ -18,7 +17,7 @@ require (
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/gokrb5 v7.3.1-0.20191209171754-1a6fa9886ec3+incompatible
 	github.com/hashicorp/vault/api v1.0.5-0.20191208020111-805a0bc9b460
-	github.com/hashicorp/vault/sdk v0.1.14-0.20191208020111-805a0bc9b460
+	github.com/hashicorp/vault/sdk v0.1.14-0.20191218174015-a912eb5f02e8
 	github.com/jcmturner/gofork v1.0.0 // indirect
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

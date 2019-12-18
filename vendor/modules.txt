@@ -99,7 +99,7 @@ github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.0.5-0.20191208020111-805a0bc9b460
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.1.14-0.20191208020111-805a0bc9b460
+# github.com/hashicorp/vault/sdk v0.1.14-0.20191218174015-a912eb5f02e8
 github.com/hashicorp/vault/sdk/framework
 github.com/hashicorp/vault/sdk/helper/cidrutil
 github.com/hashicorp/vault/sdk/helper/ldaputil

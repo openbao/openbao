@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -120,12 +121,14 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		}
 	}()
 
-	// Wait for either the callback to finish or SIGINT to be received
+	// Wait for either the callback to finish, SIGINT to be received or up to 2 minutes
 	select {
 	case s := <-doneCh:
 		return s.secret, s.err
 	case <-sigintCh:
 		return nil, errors.New("Interrupted")
+	case <-time.After(2 * time.Minute):
+		return nil, errors.New("Timed out waiting for response from provider")
 	}
 }
 

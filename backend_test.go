@@ -39,7 +39,7 @@ func getBackend(throwsErr bool) (logical.Backend, logical.Storage) {
 	b.cancelQueue = cancel
 
 	// Load queue and kickoff new periodic ticker
-	go b.initQueue(ictx, config)
+	go b.initQueue(ictx, &logical.InitializationRequest{config.StorageView})
 
 	return b, config.StorageView
 }

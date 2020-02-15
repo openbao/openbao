@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"regexp"
 	"runtime"
 	"strings"
@@ -78,28 +79,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	}
 
 	// Set up callback handler
-	http.HandleFunc("/oidc/callback", func(w http.ResponseWriter, req *http.Request) {
-		var response string
-
-		query := req.URL.Query()
-		code := query.Get("code")
-		state := query.Get("state")
-		data := map[string][]string{
-			"code":  {code},
-			"state": {state},
-		}
-
-		secret, err := c.Logical().ReadWithData(fmt.Sprintf("auth/%s/oidc/callback", mount), data)
-		if err != nil {
-			summary, detail := parseError(err)
-			response = errorHTML(summary, detail)
-		} else {
-			response = successHTML
-		}
-
-		w.Write([]byte(response))
-		doneCh <- loginResp{secret, err}
-	})
+	http.HandleFunc("/oidc/callback", callbackHandler(c, mount, doneCh))
 
 	listener, err := net.Listen("tcp", listenAddress+":"+port)
 	if err != nil {
@@ -132,6 +112,52 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	}
 }
 
+func callbackHandler(c *api.Client, mount string, doneCh chan<- loginResp) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		var response string
+		var secret *api.Secret
+		var err error
+
+		defer func() {
+			w.Write([]byte(response))
+			doneCh <- loginResp{secret, err}
+		}()
+
+		// Pull any parameters from either the body or query parameters.
+		// FormValue prioritizes body values, if found.
+		data := map[string][]string{
+			"state":    {req.FormValue("state")},
+			"code":     {req.FormValue("code")},
+			"id_token": {req.FormValue("id_token")},
+		}
+
+		// If this is a POST, then the form_post response_mode is being used and the flow
+		// involves an extra step. First POST the data to Vault, and then issue a GET with
+		// the same state/code to complete the auth as normal.
+		if req.Method == http.MethodPost {
+			url := c.Address() + path.Join("/v1/auth", mount, "oidc/callback")
+			resp, err := http.PostForm(url, data)
+			if err != nil {
+				summary, detail := parseError(err)
+				response = errorHTML(summary, detail)
+				return
+			}
+			defer resp.Body.Close()
+
+			// An id_token will never be part of a redirect GET, so remove it here too.
+			delete(data, "id_token")
+		}
+
+		secret, err = c.Logical().ReadWithData(fmt.Sprintf("auth/%s/oidc/callback", mount), data)
+		if err != nil {
+			summary, detail := parseError(err)
+			response = errorHTML(summary, detail)
+		} else {
+			response = successHTML
+		}
+	}
+}
+
 func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMethod string, callbackHost string) (string, error) {
 	var authURL string
 
@@ -150,7 +176,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMetho
 	}
 
 	if authURL == "" {
-		return "", errors.New(fmt.Sprintf("Unable to authorize role %q. Check Vault logs for more information.", role))
+		return "", fmt.Errorf("Unable to authorize role %q. Check Vault logs for more information.", role)
 	}
 
 	return authURL, nil

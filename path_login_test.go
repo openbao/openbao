@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/sdk/logical"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -958,13 +960,18 @@ func setupLogin(t *testing.T, iat, exp, nbf time.Time, b logical.Backend, storag
 		NotBefore: jwt.NewNumericDate(nbf),
 	}
 
+	type orgs struct {
+		Primary string `json:"primary"`
+	}
 	privateCl := struct {
 		User   string   `json:"https://vault/user"`
 		Groups []string `json:"https://vault/groups"`
+		Org    orgs     `json:"org"`
 		Color  string   `json:"color"`
 	}{
 		"foobar",
 		[]string{"foo", "bar"},
+		orgs{"engineering"},
 		"green",
 	}
 
@@ -1247,23 +1254,25 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 		},
 	}
 
-	for i := 0; i < 100; i++ {
-		t.Run("", func(t *testing.T) {
-			t.Parallel()
+	var g errgroup.Group
 
+	for i := 0; i < 100; i++ {
+		g.Go(func() error {
 			for i := 0; i < 100; i++ {
 				resp, err := b.HandleRequest(context.Background(), req)
 				if err != nil {
-					t.Fatal(err)
-				}
-				if resp == nil {
-					t.Fatal("got nil response")
+					return err
 				}
 				if resp.IsError() {
-					t.Fatalf("got error: %v", resp.Error())
+					return fmt.Errorf("got error: %v", resp.Error())
 				}
 			}
+			return nil
 		})
+	}
+
+	if err := g.Wait(); err != nil {
+		t.Fatal(err)
 	}
 }
 

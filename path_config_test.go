@@ -18,6 +18,8 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"oidc_discovery_url":     "",
 		"oidc_discovery_ca_pem":  "",
 		"oidc_client_id":         "",
+		"oidc_response_mode":     "",
+		"oidc_response_types":    []string{},
 		"default_role":           "",
 		"jwt_validation_pubkeys": []string{testJWTPubKey},
 		"jwt_supported_algs":     []string{},
@@ -129,6 +131,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		ParsedJWTPubKeys:     []interface{}{pubkey},
 		JWTValidationPubKeys: []string{testJWTPubKey},
 		JWTSupportedAlgs:     []string{},
+		OIDCResponseTypes:    []string{},
 		BoundIssuer:          "http://vault.example.com/",
 	}
 
@@ -159,6 +162,8 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"oidc_discovery_url":     "",
 		"oidc_discovery_ca_pem":  "",
 		"oidc_client_id":         "",
+		"oidc_response_mode":     "form_post",
+		"oidc_response_types":    []string{},
 		"default_role":           "",
 		"jwt_validation_pubkeys": []string{},
 		"jwt_supported_algs":     []string{},
@@ -256,6 +261,46 @@ func TestConfig_JWKS_Update_Invalid(t *testing.T) {
 	}
 }
 
+func TestConfig_ResponseMode(t *testing.T) {
+	b, storage := getBackend(t)
+
+	tests := []struct {
+		mode        string
+		errExpected bool
+	}{
+		{"", false},
+		{"form_post", false},
+		{"query", false},
+		{"QUERY", true},
+		{"abc", true},
+	}
+
+	for _, test := range tests {
+		data := map[string]interface{}{
+			"oidc_response_mode":     test.mode,
+			"jwt_validation_pubkeys": []string{testJWTPubKey},
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if test.errExpected {
+			if err == nil && (resp == nil || !resp.IsError()) {
+				t.Fatalf("expected error, got none for %q", test.mode)
+			}
+		} else {
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+		}
+	}
+}
+
 func TestConfig_OIDC_Write(t *testing.T) {
 	b, storage := getBackend(t)
 
@@ -290,6 +335,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	expected := &jwtConfig{
 		JWTValidationPubKeys: []string{},
 		JWTSupportedAlgs:     []string{},
+		OIDCResponseTypes:    []string{},
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 	}
 

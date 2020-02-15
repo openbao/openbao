@@ -491,7 +491,7 @@ func TestOIDC_Callback(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if resp == nil || !strings.Contains(resp.Error().Error(), "code parameter not provided") {
+		if resp == nil || !strings.Contains(resp.Error().Error(), "No code or id_token received") {
 			t.Fatalf("expected OAuth core error response, got: %#v", resp)
 		}
 	})
@@ -940,5 +940,17 @@ func sampleClaims(nonce string) map[string]interface{} {
 			"secret_code": "bar",
 		},
 		"password": "foo",
+	}
+}
+
+func TestParseMount(t *testing.T) {
+	if result := parseMount("https://example.com/v1/auth/oidc"); result != "oidc" {
+		t.Fatalf("unexpected result: %s", result)
+	}
+	if result := parseMount("https://example.com/v1/auth/oidc/foo"); result != "oidc" {
+		t.Fatalf("unexpected result: %s", result)
+	}
+	if result := parseMount("https://example.com/v1/auth/oidc/foo/a/b/c"); result != "oidc" {
+		t.Fatalf("unexpected result: %s", result)
 	}
 }

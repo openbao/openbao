@@ -2,8 +2,6 @@ package entropy
 
 import (
 	"fmt"
-
-	"github.com/hashicorp/errwrap"
 )
 
 type Sourcer interface {
@@ -28,7 +26,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	delivered := copy(p, randBytes)
 	if delivered != requested {
 		if err != nil {
-			return delivered, errwrap.Wrapf("unable to fill provided buffer with entropy: {{err}}", err)
+			return delivered, fmt.Errorf("unable to fill provided buffer with entropy: %w", err)
 		}
 		return delivered, fmt.Errorf("unable to fill provided buffer with entropy")
 	}

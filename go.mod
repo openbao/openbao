@@ -16,7 +16,7 @@ require (
 	github.com/hashicorp/go-hclog v0.12.0
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/vault/api v1.0.5-0.20191208020111-805a0bc9b460
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200214182630-348b04ecb4e1
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200215224050-f6547fa8e820
 	github.com/jcmturner/gokrb5/v8 v8.0.0
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

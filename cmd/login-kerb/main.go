@@ -19,12 +19,13 @@ import (
 )
 
 var (
-	username     string
-	service      string
-	realm        string
-	keytabPath   string
-	krb5ConfPath string
-	vaultAddr    string
+	username               string
+	service                string
+	realm                  string
+	keytabPath             string
+	krb5ConfPath           string
+	vaultAddr              string
+	disableFASTNegotiation bool
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	flag.StringVar(&keytabPath, "keytab_path", "", `ex: '/etc/krb5/krb5.keytab'`)
 	flag.StringVar(&krb5ConfPath, "krb5conf_path", "", `ex: '/etc/krb5/krb5.conf'`)
 	flag.StringVar(&vaultAddr, "vault_addr", "", `ex: 'http://localhost:8200'`)
+	flag.BoolVar(&disableFASTNegotiation, "disable_fast_negotiation", false, `ex: '-disable_fast_negotiation'`)
 }
 
 /*
@@ -45,7 +47,8 @@ login-kerb \
 	-realm=$REALM_NAME \
 	-keytab_path=$KRB5_CLIENT_KTNAME \
 	-krb5conf_path=$KRB5_CONFIG \
-	-vault_addr="http://$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200"
+	-vault_addr="http://$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200" \
+	-disable_fast_negotiation
 */
 
 func main() {
@@ -79,11 +82,12 @@ func main() {
 	}
 
 	loginCfg := &kerberos.LoginCfg{
-		Username:     username,
-		Service:      service,
-		Realm:        realm,
-		KeytabPath:   keytabPath,
-		Krb5ConfPath: krb5ConfPath,
+		Username:               username,
+		Service:                service,
+		Realm:                  realm,
+		KeytabPath:             keytabPath,
+		Krb5ConfPath:           krb5ConfPath,
+		DisableFASTNegotiation: disableFASTNegotiation,
 	}
 
 	authHeaderVal, err := kerberos.GetAuthHeaderVal(loginCfg)

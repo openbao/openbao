@@ -207,7 +207,17 @@ function run_test_script() {
       -keytab_path="/tests/grace.keytab" \
       -krb5conf_path="/tests/krb5.conf" \
       -vault_addr="http://$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200"
-  go_login_result=$?
+  normal_login_result=$?
+  docker exec $DOMAIN_JOINED_CONTAINER \
+    login-kerb \
+      -username=$DOMAIN_USER_ACCOUNT \
+      -service="HTTP/$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200" \
+      -realm=$REALM_NAME \
+      -keytab_path="/tests/grace.keytab" \
+      -krb5conf_path="/tests/krb5.conf" \
+      -vault_addr="http://$VAULT_CONTAINER_PREFIX.$DNS_NAME:8200" \
+      -disable_fast_negotiation
+  active_dir_login_result=$?
 
   # execute a login from python and record result
   docker exec $DOMAIN_JOINED_CONTAINER \
@@ -236,9 +246,13 @@ function main() {
     echo "python login failed"
     return $python_login_result
   fi
-  if [ ! $go_login_result = 0 ]; then
-    echo "go login failed"
-    return $go_login_result
+  if [ ! $normal_login_result = 0 ]; then
+    echo "normal go login failed"
+    return $normal_login_result
+  fi
+  if [ ! $active_dir_login_result = 0 ]; then
+    echo "active directory go login failed"
+    return $active_dir_login_result
   fi
   return 0
 }

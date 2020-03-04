@@ -88,7 +88,7 @@ func TestUpdateEntry(t *testing.T) {
 	}
 }
 
-func TestUpdatePassword(t *testing.T) {
+func TestUpdatePasswordOpenLDAP(t *testing.T) {
 	testPass := "hell0$catz*"
 
 	config := emptyConfig()
@@ -116,7 +116,52 @@ func TestUpdatePassword(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	if err := client.UpdatePassword(config, dn, filters, testPass); err != nil {
+	newValues, err := GetSchemaFieldRegistry("openldap", testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUpdatePasswordRACF(t *testing.T) {
+	testPass := "hell0$catz*"
+
+	config := emptyConfig()
+	config.BindDN = "cats"
+	config.BindPassword = "dogs"
+
+	conn := &ldapifc.FakeLDAPConnection{
+		SearchRequestToExpect: testSearchRequest(),
+		SearchResultToReturn:  testSearchResult(),
+	}
+
+	dn := "CN=Jim H.. Jones,OU=Vault,OU=Engineering,DC=example,DC=com"
+	conn.ModifyRequestToExpect = &ldap.ModifyRequest{
+		DN: dn,
+	}
+	conn.ModifyRequestToExpect.Replace("racfPassword", []string{testPass})
+	conn.ModifyRequestToExpect.Replace("racfAttributes", []string{"noexpire"})
+
+	ldapClient := &ldaputil.Client{
+		Logger: hclog.NewNullLogger(),
+		LDAP:   &ldapifc.FakeLDAPClient{conn},
+	}
+
+	client := &Client{ldapClient}
+
+	filters := map[*Field][]string{
+		FieldRegistry.ObjectClass: {"*"},
+	}
+
+	newValues, err := GetSchemaFieldRegistry("racf", testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -154,7 +199,12 @@ func TestUpdateRootPassword(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	if err := client.UpdatePassword(config, config.BindDN, filters, testPass); err != nil {
+	newValues, err := GetSchemaFieldRegistry("openldap", testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := client.UpdatePassword(config, config.BindDN, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }

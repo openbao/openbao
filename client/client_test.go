@@ -143,7 +143,7 @@ func TestUpdatePasswordRACF(t *testing.T) {
 		DN: dn,
 	}
 	conn.ModifyRequestToExpect.Replace("racfPassword", []string{testPass})
-	conn.ModifyRequestToExpect.Replace("racfAttributes", []string{"noexpire"})
+	conn.ModifyRequestToExpect.Replace("racfAttributes", []string{"noexpired"})
 
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),

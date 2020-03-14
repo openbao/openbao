@@ -685,6 +685,95 @@ func TestOIDC_Callback(t *testing.T) {
 			t.Fatalf("expected invalid client_id error, got : %v", *resp)
 		}
 	})
+
+	t.Run("client_nonce", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t, false)
+		defer s.server.Close()
+
+		// General behavior is that if a client_nonce is provided during the authURL phase
+		// it must be provided during the callback phase.
+		tests := map[string]struct {
+			authURLNonce  string
+			callbackNonce string
+			errExpected   bool
+		}{
+			"default, no nonces": {
+				errExpected: false,
+			},
+			"matching nonces": {
+				authURLNonce:  "abc123",
+				callbackNonce: "abc123",
+				errExpected:   false,
+			},
+			"mismatched nonces": {
+				authURLNonce:  "abc123",
+				callbackNonce: "abc123xyz",
+				errExpected:   true,
+			},
+			"missing nonce": {
+				authURLNonce: "abc123",
+				errExpected:  true,
+			},
+			"ignore unexpected callback nonce": {
+				callbackNonce: "abc123",
+				errExpected:   false,
+			},
+		}
+
+		for name, test := range tests {
+			// get auth_url
+			data := map[string]interface{}{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+				"client_nonce": test.authURLNonce,
+			}
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "oidc/auth_url",
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%v resp:%#v\n", err, resp)
+			}
+
+			authURL := resp.Data["auth_url"].(string)
+
+			state := getQueryParam(t, authURL, "state")
+			nonce := getQueryParam(t, authURL, "nonce")
+
+			// set provider claims that will be returned by the mock server
+			s.customClaims = sampleClaims(nonce)
+
+			// set mock provider's expected code
+			s.code = "abc"
+
+			// invoke the callback, which will try to exchange the code
+			// with the mock provider.
+			req = &logical.Request{
+				Operation: logical.ReadOperation,
+				Path:      "oidc/callback",
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"state":        state,
+					"code":         "abc",
+					"client_nonce": test.callbackNonce,
+				},
+			}
+
+			resp, err = b.HandleRequest(context.Background(), req)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if test.errExpected != resp.IsError() {
+				t.Fatalf("%s: unexpected error response, expected: %v,  got: %v", name, test.errExpected, resp.Data)
+			}
+		}
+	})
 }
 
 // oidcProvider is local server the mocks the basis endpoints used by the

@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200215224050-f6547fa8e820
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
-	github.com/mitchellh/pointerstructure v0.0.0-20190430161007-f252a8fd71c8
+	github.com/mitchellh/pointerstructure v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/ryanuber/go-glob v1.0.0

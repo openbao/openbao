@@ -239,6 +239,9 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return nil, errors.New("unknown condition")
 	}
 
+	// NOTE: the OIDC lib states that if nothing is passed into its config, it
+	// defaults to "RS256". So in the case of a zero value here it won't
+	// default to e.g. "none".
 	for _, a := range config.JWTSupportedAlgs {
 		switch a {
 		case oidc.RS256, oidc.RS384, oidc.RS512, oidc.ES256, oidc.ES384, oidc.ES512, oidc.PS256, oidc.PS384, oidc.PS512:

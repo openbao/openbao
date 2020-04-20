@@ -70,17 +70,16 @@ func getDuration(t *testing.T, in string) time.Duration {
 
 func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 	var tests = []struct {
-		ds1, ds2               string
-		want                   time.Duration
-		wantDeleteVersionAfter bool
+		ds1, ds2 string
+		want     time.Duration
 	}{
-		{"0s", "0s", 0, false},
-		{"10s", "0s", 0, false},
-		{"10s", "20s", 20 * time.Second, true},
-		{"10s", "-1h", disabled, true},
-		{"-1h", "3h", 3 * time.Hour, true},
-		{"-1h", "-1h", disabled, true},
-		{"-1h", "0h", 0, false},
+		{"0s", "0s", 0},
+		{"10s", "0s", 0},
+		{"10s", "20s", 20 * time.Second},
+		{"10s", "-1h", disabled},
+		{"-1h", "3h", 3 * time.Hour},
+		{"-1h", "-1h", disabled},
+		{"-1h", "0h", 0},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -98,9 +97,9 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			resp, err := b.HandleRequest(context.Background(), req)
 			wantResponse(t, resp, err)
 			got := resp.Data["delete_version_after"]
-			if got != nil {
+			if got == nil {
 				t.Logf("resp: %#v", resp)
-				t.Fatalf("default value: delete_version_after %#v, want no delete_version_after", got)
+				t.Fatal("delete_version_after missing, want the default")
 			}
 
 			// set first value
@@ -125,18 +124,10 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			wantResponse(t, resp, err)
 
 			d1 := getDuration(t, tt.ds1)
-			if d1 == 0 {
-				got := resp.Data["delete_version_after"]
-				if got != nil {
-					t.Logf("resp: %#v", resp)
-					t.Fatalf("first value: delete_version_after %#v, want no delete_version_after", got)
-				}
-			} else {
-				want, got := d1.String(), resp.Data["delete_version_after"]
-				if want != got {
-					t.Logf("resp: %#v", resp)
-					t.Fatalf("first value: want delete_version_after: %v, got %v", want, got)
-				}
+			want, got := d1.String(), resp.Data["delete_version_after"]
+			if want != got {
+				t.Logf("resp: %#v", resp)
+				t.Fatalf("first value: want delete_version_after: %v, got %v", want, got)
 			}
 
 			// set second value
@@ -159,18 +150,10 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			}
 			resp, err = b.HandleRequest(context.Background(), req)
 			wantResponse(t, resp, err)
-			if tt.wantDeleteVersionAfter {
-				want, got := tt.want.String(), resp.Data["delete_version_after"]
-				if want != got {
-					t.Logf("resp: %#v", resp)
-					t.Fatalf("second value: want delete_version_after: %v, got %v", want, got)
-				}
-			} else {
-				got := resp.Data["delete_version_after"]
-				if got != nil {
-					t.Logf("resp: %#v", resp)
-					t.Fatalf("second value: delete_version_after %#v, want no delete_version_after", got)
-				}
+			want, got = tt.want.String(), resp.Data["delete_version_after"]
+			if want != got {
+				t.Logf("resp: %#v", resp)
+				t.Fatalf("second value: want delete_version_after: %v, got %v", want, got)
 			}
 		})
 	}

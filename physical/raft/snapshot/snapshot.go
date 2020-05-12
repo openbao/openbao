@@ -161,6 +161,24 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 	return &metadata, nil
 }
 
+// Parse reads the snapshot from the input reader, decompresses it, and pipes
+// the binary data to the output writer.
+func Parse(in io.Reader, out io.Writer) (*raft.SnapshotMeta, error) {
+	// Wrap the reader in a gzip decompressor.
+	decomp, err := gzip.NewReader(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decompress snapshot: %v", err)
+	}
+	defer decomp.Close()
+
+	// Read the archive, and write the snapshot data to out.
+	var metadata raft.SnapshotMeta
+	if err := read(decomp, &metadata, out, nil); err != nil {
+		return nil, fmt.Errorf("failed to read snapshot file: %v", err)
+	}
+	return &metadata, nil
+}
+
 // Restore takes the snapshot from the reader and attempts to apply it to the
 // given Raft instance.
 func Restore(logger log.Logger, in io.Reader, r *raft.Raft) error {

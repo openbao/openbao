@@ -3,77 +3,144 @@ package openldap
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
+	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func TestConfig(t *testing.T) {
-	t.Run("happy path with defaults", func(t *testing.T) {
-		b, storage := getBackend(false)
-		defer b.Cleanup(context.Background())
+func TestConfig_Create(t *testing.T) {
+	type testCase struct {
+		createData      *framework.FieldData
+		createExpectErr bool
 
-		data := map[string]interface{}{
-			"binddn":      "tester",
-			"bindpass":    "pa$$w0rd",
-			"url":         "ldap://138.91.247.105",
-			"certificate": validCertificate,
-		}
+		expectedReadResp *logical.Response
+	}
 
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      data,
-		}
+	tests := map[string]testCase{
+		"happy path with defaults": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":      "tester",
+				"bindpass":    "pa$$w0rd",
+				"url":         "ldap://138.91.247.105",
+				"certificate": validCertificate,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"certificate", validCertificate,
+				),
+			},
+		},
+		"minimum config": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":   "tester",
+				"bindpass": "pa$$w0rd",
+				"url":      "ldap://138.91.247.105",
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+				),
+			},
+		},
+		"missing binddn": {
+			createData: fieldData(map[string]interface{}{
+				"bindpass": "pa$$w0rd",
+				"url":      "ldap://138.91.247.105",
+			}),
+			createExpectErr:  true,
+			expectedReadResp: nil,
+		},
+		"password policy": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"password_policy": "testpolicy",
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"password_policy", "testpolicy",
+				),
+			},
+		},
+		"password length": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":   "tester",
+				"bindpass": "pa$$w0rd",
+				"url":      "ldap://138.91.247.105",
+				"length":   30,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"length", 30,
+				),
+			},
+		},
+		"both password policy and password length": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"password_policy": "testpolicy",
+				"length":          30,
+			}),
+			createExpectErr:  true,
+			expectedReadResp: nil,
+		},
+	}
 
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(false)
+			defer b.Cleanup(context.Background())
 
-		req = &logical.Request{
-			Operation: logical.ReadOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      nil,
-		}
+			req := &logical.Request{
+				Storage: storage,
+			}
 
-		resp, err = b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
+			resp, err := b.configCreateUpdateOperation(context.Background(), req, test.createData)
+			if test.createExpectErr && err == nil {
+				t.Fatalf("err expected, got nil")
+			}
+			if !test.createExpectErr && err != nil {
+				t.Fatalf("no error expected, got: %s", err)
+			}
+			if resp != nil {
+				t.Fatalf("no response expected, got: %#v", resp)
+			}
 
-		if resp.Data["insecure_tls"].(bool) {
-			t.Fatalf("expected insecure_tls to be false but received true")
-		}
+			readReq := &logical.Request{
+				Storage: storage,
+			}
 
-		if fmt.Sprintf("%s", resp.Data["url"]) != `ldap://138.91.247.105` {
-			t.Fatalf("expected url to be \"ldap://138.91.247.105\" but received %q", fmt.Sprintf("%s", resp.Data["url"]))
-		}
+			resp, err = b.configReadOperation(context.Background(), readReq, nil)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
 
-		if resp.Data["tls_min_version"].(string) != defaultTLSVersion {
-			t.Fatalf("expected tlsminversion to be \""+defaultTLSVersion+"\" but received %q", resp.Data["tlsminversion"])
-		}
+			if !reflect.DeepEqual(resp, test.expectedReadResp) {
+				t.Fatalf("Actual: %#v\nExpected: %#v", resp, test.expectedReadResp)
+			}
+		})
+	}
+}
 
-		if resp.Data["tls_max_version"].(string) != defaultTLSVersion {
-			t.Fatalf("expected tlsmaxversion to be \""+defaultTLSVersion+"\" but received %q", resp.Data["tlsmaxversion"])
-		}
-
-		if resp.Data["binddn"] != "tester" {
-			t.Fatalf("expected username to be \"tester\" but received %q", resp.Data["binddn"])
-		}
-
-		if resp.Data["length"] != defaultPasswordLength {
-			t.Fatalf("received unexpected length of \"%d\"", resp.Data["length"])
-		}
-
-		if _, ok := resp.Data["bindpass"]; ok {
-			t.Fatal("bindpass found in config output, it shouldn't be")
-		}
-	})
-
-	t.Run("update config", func(t *testing.T) {
+func TestConfig_Update(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(false)
 		defer b.Cleanup(context.Background())
 
@@ -132,7 +199,34 @@ func TestConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("delete config", func(t *testing.T) {
+	t.Run("missing bindpass", func(t *testing.T) {
+		b, storage := getBackend(false)
+		defer b.Cleanup(context.Background())
+
+		data := map[string]interface{}{
+			"binddn": "tester",
+			"url":    "ldap://138.91.247.105",
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err == nil {
+			t.Fatal("should have got error, didn't")
+		}
+		if resp != nil {
+			t.Fatalf("no response expected, got: %#v", resp)
+		}
+	})
+}
+
+func TestConfig_Delete(t *testing.T) {
+	t.Run("happy path", func(t *testing.T) {
 		b, storage := getBackend(false)
 		defer b.Cleanup(context.Background())
 
@@ -167,71 +261,77 @@ func TestConfig(t *testing.T) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
 		}
 	})
+}
 
-	t.Run("minimum config", func(t *testing.T) {
-		b, storage := getBackend(false)
-		defer b.Cleanup(context.Background())
+func fieldData(raw map[string]interface{}) *framework.FieldData {
+	fields := ldaputil.ConfigFields()
+	fields["ttl"] = &framework.FieldSchema{
+		Type:        framework.TypeDurationSecond,
+		Description: "The default password time-to-live.",
+	}
+	fields["max_ttl"] = &framework.FieldSchema{
+		Type:        framework.TypeDurationSecond,
+		Description: "The maximum password time-to-live.",
+	}
+	fields["schema"] = &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Default:     defaultSchema,
+		Description: "The desired OpenLDAP schema used when modifying user account passwords.",
+	}
+	fields["password_policy"] = &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Description: "Password policy to use to generate passwords",
+	}
 
-		data := map[string]interface{}{
-			"binddn":   "tester",
-			"bindpass": "pa$$w0rd",
-			"url":      "ldap://138.91.247.105",
+	// Deprecated
+	fields["length"] = &framework.FieldSchema{
+		Type:        framework.TypeInt,
+		Default:     defaultPasswordLength,
+		Description: "The desired length of passwords that Vault generates.",
+		Deprecated:  true,
+	}
+
+	return &framework.FieldData{
+		Raw:    raw,
+		Schema: fields,
+	}
+}
+
+func ldapResponseData(vals ...interface{}) map[string]interface{} {
+	if len(vals)%2 != 0 {
+		panic("must specify values as a multiple of two: key and value")
+	}
+
+	m := map[string]interface{}{
+		"anonymous_group_search": false,
+		"binddn":                 "",
+		"case_sensitive_names":   false,
+		"certificate":            "",
+		"deny_null_bind":         true,
+		"discoverdn":             false,
+		"groupattr":              "cn",
+		"groupdn":                "",
+		"groupfilter":            "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))",
+		"insecure_tls":           false,
+		"starttls":               false,
+		"tls_max_version":        defaultTLSVersion,
+		"tls_min_version":        defaultTLSVersion,
+		"upndomain":              "",
+		"url":                    "",
+		"use_token_groups":       false,
+		"userattr":               "cn",
+		"userdn":                 "",
+	}
+
+	for i := 0; i < len(vals); i += 2 {
+		k := vals[i]
+		v := vals[i+1]
+
+		ks, ok := k.(string)
+		if !ok {
+			panic(fmt.Errorf("key at index %d is not a string", i))
 		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      data,
-		}
-
-		resp, err := b.HandleRequest(context.Background(), req)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("err:%s resp:%#v\n", err, resp)
-		}
-	})
-
-	t.Run("missing binddn", func(t *testing.T) {
-		b, storage := getBackend(false)
-		defer b.Cleanup(context.Background())
-
-		data := map[string]interface{}{
-			"bindpass": "pa$$w0rd",
-			"url":      "ldap://138.91.247.105",
-		}
-
-		req := &logical.Request{
-			Operation: logical.CreateOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      data,
-		}
-
-		_, err := b.HandleRequest(context.Background(), req)
-		if err == nil {
-			t.Fatal("should have got error, didn't")
-		}
-	})
-
-	t.Run("missing bindpass", func(t *testing.T) {
-		b, storage := getBackend(false)
-		defer b.Cleanup(context.Background())
-
-		data := map[string]interface{}{
-			"binddn": "tester",
-			"url":    "ldap://138.91.247.105",
-		}
-
-		req := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      configPath,
-			Storage:   storage,
-			Data:      data,
-		}
-
-		_, err := b.HandleRequest(context.Background(), req)
-		if err == nil {
-			t.Fatal("should have got error, didn't")
-		}
-	})
+		m[ks] = v
+	}
+	return m
 }

@@ -18,7 +18,7 @@ var (
 	maxLeaseTTLVal     = time.Hour * 24
 )
 
-func getBackend(throwsErr bool) (logical.Backend, logical.Storage) {
+func getBackend(throwsErr bool) (*backend, logical.Storage) {
 	config := &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(log.Error),
 
@@ -28,7 +28,8 @@ func getBackend(throwsErr bool) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	b := Backend(&fakeClient{throwErrs: throwsErr})
+
+	b := Backend(&fakeLdapClient{throwErrs: throwsErr})
 	b.Setup(context.Background(), config)
 
 	b.credRotationQueue = queue.New()
@@ -44,11 +45,11 @@ func getBackend(throwsErr bool) (logical.Backend, logical.Storage) {
 	return b, config.StorageView
 }
 
-type fakeClient struct {
+type fakeLdapClient struct {
 	throwErrs bool
 }
 
-func (f *fakeClient) Get(conf *client.Config, dn string) (*client.Entry, error) {
+func (f *fakeLdapClient) Get(_ *client.Config, _ string) (*client.Entry, error) {
 	entry := &ldap.Entry{}
 	entry.Attributes = append(entry.Attributes, &ldap.EntryAttribute{
 		Name:   client.FieldRegistry.PasswordLastSet.String(),
@@ -56,23 +57,23 @@ func (f *fakeClient) Get(conf *client.Config, dn string) (*client.Entry, error) 
 	})
 	var err error
 	if f.throwErrs {
-		err = errors.New("nope")
+		err = errors.New("forced error")
 	}
 	return client.NewEntry(entry), err
 }
 
-func (f *fakeClient) UpdatePassword(conf *client.Config, dn string, newPassword string) error {
+func (f *fakeLdapClient) UpdatePassword(conf *client.Config, dn string, newPassword string) error {
 	var err error
 	if f.throwErrs {
-		err = errors.New("nope")
+		err = errors.New("forced error")
 	}
 	return err
 }
 
-func (f *fakeClient) UpdateRootPassword(conf *client.Config, newPassword string) error {
+func (f *fakeLdapClient) UpdateRootPassword(conf *client.Config, newPassword string) error {
 	var err error
 	if f.throwErrs {
-		err = errors.New("nope")
+		err = errors.New("forced error")
 	}
 	return err
 }

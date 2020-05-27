@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
@@ -37,8 +38,16 @@ func (f *FakeLDAPConnection) Bind(username, password string) error {
 func (f *FakeLDAPConnection) Close() {}
 
 func (f *FakeLDAPConnection) Modify(modifyRequest *ldap.ModifyRequest) error {
+	// Sort the change slices before comparison because they are added in a random order
+	sort.Slice(f.ModifyRequestToExpect.Changes, func(i, j int) bool {
+		return f.ModifyRequestToExpect.Changes[i].Modification.Type < f.ModifyRequestToExpect.Changes[j].Modification.Type
+	})
+	sort.Slice(modifyRequest.Changes, func(i, j int) bool {
+		return modifyRequest.Changes[i].Modification.Type < modifyRequest.Changes[j].Modification.Type
+	})
+
 	if !reflect.DeepEqual(f.ModifyRequestToExpect, modifyRequest) {
-		return fmt.Errorf("expected modifyRequest of %#v, but received %#v", f.ModifyRequestToExpect, modifyRequest)
+		return fmt.Errorf("Actual modify request: %#v\nExpected: %#v", modifyRequest, f.ModifyRequestToExpect)
 	}
 	return nil
 }

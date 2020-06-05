@@ -65,7 +65,7 @@ func TestArchive(t *testing.T) {
 
 func TestArchive_GoodData(t *testing.T) {
 	paths := []string{
-		"test/spaces-meta.tar",
+		"testdata/spaces-meta.tar",
 	}
 	for i, p := range paths {
 		f, err := os.Open(p)
@@ -87,14 +87,14 @@ func TestArchive_BadData(t *testing.T) {
 		Name  string
 		Error string
 	}{
-		{"test/empty.tar", "failed checking integrity of snapshot"},
-		{"test/extra.tar", "unexpected file \"nope\""},
-		{"test/missing-meta.tar", "hash check failed for \"meta.json\""},
-		{"test/missing-state.tar", "hash check failed for \"state.bin\""},
-		{"test/missing-sha.tar", "file missing"},
-		{"test/corrupt-meta.tar", "hash check failed for \"meta.json\""},
-		{"test/corrupt-state.tar", "hash check failed for \"state.bin\""},
-		{"test/corrupt-sha.tar", "list missing hash for \"nope\""},
+		{"testdata/empty.tar", "failed checking integrity of snapshot"},
+		{"testdata/extra.tar", "unexpected file \"nope\""},
+		{"testdata/missing-meta.tar", "hash check failed for \"meta.json\""},
+		{"testdata/missing-state.tar", "hash check failed for \"state.bin\""},
+		{"testdata/missing-sha.tar", "file missing"},
+		{"testdata/corrupt-meta.tar", "hash check failed for \"meta.json\""},
+		{"testdata/corrupt-state.tar", "hash check failed for \"state.bin\""},
+		{"testdata/corrupt-sha.tar", "list missing hash for \"nope\""},
 	}
 	for i, c := range cases {
 		f, err := os.Open(c.Name)

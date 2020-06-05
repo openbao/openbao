@@ -11,7 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 )
 
@@ -43,11 +43,11 @@ type Sealer interface {
 // and returns an object that gives access to the file as an io.Reader. You must
 // arrange to call Close() on the returned object or else you will leak a
 // temporary file.
-func New(logger log.Logger, r *raft.Raft) (*Snapshot, error) {
+func New(logger hclog.Logger, r *raft.Raft) (*Snapshot, error) {
 	return NewWithSealer(logger, r, nil)
 }
 
-func NewWithSealer(logger log.Logger, r *raft.Raft, sealer Sealer) (*Snapshot, error) {
+func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot, error) {
 	// Take the snapshot.
 	future := r.Snapshot()
 	if err := future.Error(); err != nil {
@@ -158,7 +158,27 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 	if err := read(decomp, &metadata, ioutil.Discard, nil); err != nil {
 		return nil, fmt.Errorf("failed to read snapshot file: %v", err)
 	}
+
+	if err := concludeGzipRead(decomp); err != nil {
+		return nil, err
+	}
+
 	return &metadata, nil
+}
+
+// concludeGzipRead should be invoked after you think you've consumed all of
+// the data from the gzip stream. It will error if the stream was corrupt.
+//
+// The docs for gzip.Reader say: "Clients should treat data returned by Read as
+// tentative until they receive the io.EOF marking the end of the data."
+func concludeGzipRead(decomp *gzip.Reader) error {
+	extra, err := io.Copy(ioutil.Discard, decomp) // Copy consumes the EOF
+	if err != nil {
+		return err
+	} else if extra != 0 {
+		return fmt.Errorf("%d unread uncompressed bytes remain", extra)
+	}
+	return nil
 }
 
 // Parse reads the snapshot from the input reader, decompresses it, and pipes
@@ -181,11 +201,11 @@ func Parse(in io.Reader, out io.Writer) (*raft.SnapshotMeta, error) {
 
 // Restore takes the snapshot from the reader and attempts to apply it to the
 // given Raft instance.
-func Restore(logger log.Logger, in io.Reader, r *raft.Raft) error {
+func Restore(logger hclog.Logger, in io.Reader, r *raft.Raft) error {
 	return RestoreWithSealer(logger, in, r, nil)
 }
 
-func RestoreWithSealer(logger log.Logger, in io.Reader, r *raft.Raft, sealer Sealer) error {
+func RestoreWithSealer(logger hclog.Logger, in io.Reader, r *raft.Raft, sealer Sealer) error {
 	var metadata raft.SnapshotMeta
 	snap, cleanupFunc, err := WriteToTempFileWithSealer(logger, in, &metadata, sealer)
 	if err != nil {
@@ -201,11 +221,11 @@ func RestoreWithSealer(logger log.Logger, in io.Reader, r *raft.Raft, sealer Sea
 	return nil
 }
 
-func WriteToTempFile(logger log.Logger, in io.Reader, metadata *raft.SnapshotMeta) (*os.File, func(), error) {
+func WriteToTempFile(logger hclog.Logger, in io.Reader, metadata *raft.SnapshotMeta) (*os.File, func(), error) {
 	return WriteToTempFileWithSealer(logger, in, metadata, nil)
 }
 
-func WriteToTempFileWithSealer(logger log.Logger, in io.Reader, metadata *raft.SnapshotMeta, sealer Sealer) (*os.File, func(), error) {
+func WriteToTempFileWithSealer(logger hclog.Logger, in io.Reader, metadata *raft.SnapshotMeta, sealer Sealer) (*os.File, func(), error) {
 	// Wrap the reader in a gzip decompressor.
 	decomp, err := gzip.NewReader(in)
 	if err != nil {

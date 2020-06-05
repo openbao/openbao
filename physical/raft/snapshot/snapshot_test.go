@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/consul/sdk/testutil"
-	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-msgpack/codec"
 	"github.com/hashicorp/raft"
 )
@@ -133,7 +133,7 @@ func TestSnapshot(t *testing.T) {
 	// apply off to a buffer for checking post-snapshot.
 	var expected []bytes.Buffer
 	entries := 64 * 1024
-	before, _ := makeRaft(t, path.Join(dir, "before"))
+	before, _ := makeRaft(t, filepath.Join(dir, "before"))
 	defer before.Shutdown()
 	for i := 0; i < entries; i++ {
 		var log bytes.Buffer
@@ -150,7 +150,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// Take a snapshot.
-	logger := log.Default()
+	logger := hclog.Default()
 	snap, err := New(logger, before)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -176,7 +176,7 @@ func TestSnapshot(t *testing.T) {
 	}
 
 	// Make a new, independent Raft.
-	after, fsm := makeRaft(t, path.Join(dir, "after"))
+	after, fsm := makeRaft(t, filepath.Join(dir, "after"))
 	defer after.Shutdown()
 
 	// Put some initial data in there that the snapshot should overwrite.
@@ -234,12 +234,68 @@ func TestSnapshot_BadVerify(t *testing.T) {
 	}
 }
 
+func TestSnapshot_TruncatedVerify(t *testing.T) {
+	dir := testutil.TempDir(t, "snapshot")
+	defer os.RemoveAll(dir)
+
+	// Make a Raft and populate it with some data. We tee everything we
+	// apply off to a buffer for checking post-snapshot.
+	entries := 64 * 1024
+	before, _ := makeRaft(t, filepath.Join(dir, "before"))
+	defer before.Shutdown()
+	for i := 0; i < entries; i++ {
+		var log bytes.Buffer
+		var copy bytes.Buffer
+		both := io.MultiWriter(&log, &copy)
+
+		_, err := io.CopyN(both, rand.Reader, 256)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		future := before.Apply(log.Bytes(), time.Second)
+		if future.Error() != nil {
+			t.Fatalf("err: %v", future.Error())
+		}
+	}
+
+	// Take a snapshot.
+	logger := hclog.Default()
+	snap, err := New(logger, before)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer snap.Close()
+
+	var data []byte
+	{
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, snap)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		data = buf.Bytes()
+	}
+
+	for _, removeBytes := range []int{200, 16, 8, 4, 2, 1} {
+		t.Run(fmt.Sprintf("truncate %d bytes from end", removeBytes), func(t *testing.T) {
+			// Lop off part of the end.
+			buf := bytes.NewReader(data[0 : len(data)-removeBytes])
+
+			_, err = Verify(buf)
+			if err == nil {
+				t.Fatalf("expected snapshot to fail validation, but did not")
+			}
+		})
+	}
+}
+
 func TestSnapshot_BadRestore(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer os.RemoveAll(dir)
 
 	// Make a Raft and populate it with some data.
-	before, _ := makeRaft(t, path.Join(dir, "before"))
+	before, _ := makeRaft(t, filepath.Join(dir, "before"))
 	defer before.Shutdown()
 	for i := 0; i < 16*1024; i++ {
 		var log bytes.Buffer
@@ -253,14 +309,14 @@ func TestSnapshot_BadRestore(t *testing.T) {
 	}
 
 	// Take a snapshot.
-	logger := log.Default()
+	logger := hclog.Default()
 	snap, err := New(logger, before)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Make a new, independent Raft.
-	after, fsm := makeRaft(t, path.Join(dir, "after"))
+	after, fsm := makeRaft(t, filepath.Join(dir, "after"))
 	defer after.Shutdown()
 
 	// Put some initial data in there that should not be harmed by the

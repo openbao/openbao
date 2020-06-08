@@ -3,6 +3,8 @@ package snapshot
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -125,6 +127,27 @@ func makeRaft(t *testing.T, dir string) (*raft.Raft, *MockFSM) {
 	return raft, fsm
 }
 
+func fileSha256(t *testing.T, f *os.File) string {
+	t.Helper()
+
+	hash := sha256.New()
+	origPos, err := f.Seek(0, 0)
+	if err != nil {
+		t.Fatalf("failed to seek file: %v", err)
+	}
+	_, err = io.Copy(hash, f)
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+
+	_, err = f.Seek(origPos, 0)
+	if err != nil {
+		t.Fatalf("failed to restore seek file pos: %v", err)
+	}
+
+	return "sha-256=" + base64.StdEncoding.EncodeToString(hash.Sum(nil))
+}
+
 func TestSnapshot(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer os.RemoveAll(dir)
@@ -156,6 +179,13 @@ func TestSnapshot(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	defer snap.Close()
+
+	// Verify checksum is populated
+	snapChecksum := snap.Checksum()
+	fileChecksum := fileSha256(t, snap.file)
+	if snapChecksum != fileChecksum {
+		t.Fatalf("checksum mismatch snap=%v file=%v", snapChecksum, fileChecksum)
+	}
 
 	// Verify the snapshot. We have to rewind it after for the restore.
 	metadata, err := Verify(snap)

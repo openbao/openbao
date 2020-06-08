@@ -6,6 +6,8 @@ package snapshot
 import (
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,8 +21,9 @@ import (
 // to hold a snapshot. By using an intermediate file we avoid holding everything
 // in memory.
 type Snapshot struct {
-	file  *os.File
-	index uint64
+	file     *os.File
+	index    uint64
+	checksum string
 }
 
 // Size returns the file size of the snapshot archive.
@@ -86,8 +89,11 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 		}
 	}()
 
+	hash := sha256.New()
+	out := io.MultiWriter(hash, archive)
+
 	// Wrap the file writer in a gzip compressor.
-	compressor := gzip.NewWriter(archive)
+	compressor := gzip.NewWriter(out)
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {
@@ -107,9 +113,10 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 	if _, err := archive.Seek(0, 0); err != nil {
 		return nil, fmt.Errorf("failed to rewind snapshot: %v", err)
 	}
+	checksum := "sha-256=" + base64.StdEncoding.EncodeToString(hash.Sum(nil))
 
 	keep = true
-	return &Snapshot{archive, metadata.Index}, nil
+	return &Snapshot{archive, metadata.Index, checksum}, nil
 }
 
 // Index returns the index of the snapshot. This is safe to call on a nil
@@ -119,6 +126,15 @@ func (s *Snapshot) Index() uint64 {
 		return 0
 	}
 	return s.index
+}
+
+// Checksum returns the checksum for the snapshot in the <algo>=<base64 of hash> format
+// e.g. "sha-256=gPelGB7..."
+func (s *Snapshot) Checksum() string {
+	if s == nil {
+		return ""
+	}
+	return s.checksum
 }
 
 // Read passes through to the underlying snapshot file. This is safe to call on

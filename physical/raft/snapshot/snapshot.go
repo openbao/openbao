@@ -105,11 +105,7 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 		return nil, fmt.Errorf("failed to compress snapshot file: %v", err)
 	}
 
-	// Sync the compressed file and rewind it so it's ready to be streamed
-	// out by the caller.
-	if err := archive.Sync(); err != nil {
-		return nil, fmt.Errorf("failed to sync snapshot: %v", err)
-	}
+	// rewind it so it's ready to be streamed out by the caller.
 	if _, err := archive.Seek(0, 0); err != nil {
 		return nil, fmt.Errorf("failed to rewind snapshot: %v", err)
 	}
@@ -274,11 +270,7 @@ func WriteToTempFileWithSealer(logger hclog.Logger, in io.Reader, metadata *raft
 		return nil, nil, fmt.Errorf("failed to read snapshot file: %v", err)
 	}
 
-	// Sync and rewind the file so it's ready to be read again.
-	if err := snap.Sync(); err != nil {
-		cleanupFunc()
-		return nil, nil, fmt.Errorf("failed to sync temp snapshot: %v", err)
-	}
+	// Rewind the file so it's ready to be read again.
 	if _, err := snap.Seek(0, 0); err != nil {
 		cleanupFunc()
 		return nil, nil, fmt.Errorf("failed to rewind temp snapshot: %v", err)

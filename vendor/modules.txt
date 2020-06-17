@@ -2,6 +2,8 @@
 github.com/armon/go-radix
 # github.com/coreos/go-oidc v2.1.0+incompatible
 github.com/coreos/go-oidc
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
 # github.com/go-test/deep v1.0.2-0.20181118220953-042da051cf31
@@ -37,7 +39,7 @@ github.com/hashicorp/go-rootcerts
 github.com/hashicorp/go-sockaddr
 # github.com/hashicorp/go-uuid v1.0.2
 github.com/hashicorp/go-uuid
-# github.com/hashicorp/go-version v1.1.0
+# github.com/hashicorp/go-version v1.2.0
 github.com/hashicorp/go-version
 # github.com/hashicorp/golang-lru v0.5.1
 github.com/hashicorp/golang-lru
@@ -105,11 +107,15 @@ github.com/patrickmn/go-cache
 # github.com/pierrec/lz4 v2.0.5+incompatible
 github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35
 github.com/pquerna/cachecontrol
 github.com/pquerna/cachecontrol/cacheobject
 # github.com/ryanuber/go-glob v1.0.0
 github.com/ryanuber/go-glob
+# github.com/stretchr/testify v1.3.0
+github.com/stretchr/testify/assert
 # golang.org/x/crypto v0.0.0-20190418165655-df01cb2cc480
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/cryptobyte

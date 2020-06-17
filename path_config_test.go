@@ -9,6 +9,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/vault/sdk/helper/certutil"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConfig_JWT_Read(t *testing.T) {
@@ -26,6 +27,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"jwks_url":               "",
 		"jwks_ca_pem":            "",
 		"bound_issuer":           "http://vault.example.com/",
+		"provider_config":        map[string]interface{}{},
 	}
 
 	req := &logical.Request{
@@ -133,6 +135,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
 		BoundIssuer:          "http://vault.example.com/",
+		ProviderConfig:       map[string]interface{}{},
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -168,6 +171,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"jwt_validation_pubkeys": []string{},
 		"jwt_supported_algs":     []string{},
 		"bound_issuer":           "",
+		"provider_config":        map[string]interface{}{},
 	}
 
 	req := &logical.Request{
@@ -337,6 +341,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+		ProviderConfig:       map[string]interface{}{},
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -394,6 +399,107 @@ func TestConfig_OIDC_Write(t *testing.T) {
 			t.Fatalf("test '%s', expected error", test.id)
 		}
 	}
+}
+
+func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
+	b, storage := getBackend(t)
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      nil,
+	}
+
+	t.Run("valid provider_config", func(t *testing.T) {
+		req.Data = map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"provider_config": map[string]interface{}{
+				"provider":     "empty",
+				"extraOptions": "abound",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		expected := &jwtConfig{
+			JWTValidationPubKeys: []string{},
+			JWTSupportedAlgs:     []string{},
+			OIDCResponseTypes:    []string{},
+			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+			ProviderConfig: map[string]interface{}{
+				"provider":     "empty",
+				"extraOptions": "abound",
+			},
+		}
+
+		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := deep.Equal(expected, conf); diff != nil {
+			t.Fatal(diff)
+		}
+	})
+
+	t.Run("unknown provider in provider_config", func(t *testing.T) {
+		req.Data = map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"provider_config": map[string]interface{}{
+				"provider": "unknown",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		assert.NoError(t, err)
+		assert.True(t, resp.IsError())
+		assert.EqualError(t, resp.Error(), "invalid provider_config: provider \"unknown\" not found in custom providers")
+	})
+
+	t.Run("provider_config missing provider", func(t *testing.T) {
+		req.Data = map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"provider_config": map[string]interface{}{
+				"not-provider": "oops",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		assert.NoError(t, err)
+		assert.True(t, resp.IsError())
+		assert.EqualError(t, resp.Error(), "invalid provider_config: 'provider' field not found in provider_config")
+	})
+
+	t.Run("provider_config not set", func(t *testing.T) {
+		req.Data = map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		expected := &jwtConfig{
+			JWTValidationPubKeys: []string{},
+			JWTSupportedAlgs:     []string{},
+			OIDCResponseTypes:    []string{},
+			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+			ProviderConfig:       map[string]interface{}{},
+		}
+
+		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if diff := deep.Equal(expected, conf); diff != nil {
+			t.Fatal(diff)
+		}
+	})
 }
 
 const (

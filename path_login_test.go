@@ -21,6 +21,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+type H map[string]interface{}
+
 type testConfig struct {
 	oidc           bool
 	role_type_oidc bool

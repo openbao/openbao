@@ -1,6 +1,6 @@
 module github.com/hashicorp/vault-plugin-auth-jwt
 
-go 1.13
+go 1.14
 
 require (
 	github.com/coreos/go-oidc v2.1.0+incompatible
@@ -19,7 +19,7 @@ require (
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.3.0
-	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/text v0.3.2 // indirect
 	google.golang.org/appengine v1.5.0 // indirect

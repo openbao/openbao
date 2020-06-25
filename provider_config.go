@@ -11,8 +11,7 @@ import (
 // ProviderMap returns a map of provider names to custom types
 func ProviderMap() map[string]CustomProvider {
 	return map[string]CustomProvider{
-		// TODO: remove "empty" provider when actual providers are added
-		"empty": &EmptyProvider{},
+		"azure": &AzureProvider{},
 	}
 }
 
@@ -49,13 +48,8 @@ func NewProviderConfig(jc *jwtConfig, providerMap map[string]CustomProvider) (Cu
 	return newCustomProvider, nil
 }
 
-// Example interfaces that are implemented by one or more provider types
-// // UserInfoFetcher - Optional support for custom UserInfo handling
-// type UserInfoFetcher interface {
-// 	FetchUserInfo(context.Context, *oidc.Provider, *oauth2.Token, claims) error
-// }
-
-// // GroupsFetcher - Optional support for custom groups handling
-// type GroupsFetcher interface {
-// 	FetchGroups(context.Context, *oauth2.Token, claims) error
-// }
+// GroupsFetcher - Optional support for custom groups handling
+type GroupsFetcher interface {
+	// FetchGroups queries for groups claims during login
+	FetchGroups(*jwtAuthBackend, map[string]interface{}, *jwtRole) (interface{}, error)
+}

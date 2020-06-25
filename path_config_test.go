@@ -414,7 +414,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 		req.Data = map[string]interface{}{
 			"oidc_discovery_url": "https://team-vault.auth0.com/",
 			"provider_config": map[string]interface{}{
-				"provider":     "empty",
+				"provider":     "azure",
 				"extraOptions": "abound",
 			},
 		}
@@ -430,7 +430,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			OIDCResponseTypes:    []string{},
 			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 			ProviderConfig: map[string]interface{}{
-				"provider":     "empty",
+				"provider":     "azure",
 				"extraOptions": "abound",
 			},
 		}

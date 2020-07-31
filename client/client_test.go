@@ -166,6 +166,56 @@ func TestUpdatePasswordRACF(t *testing.T) {
 	}
 }
 
+func TestUpdatePasswordAD(t *testing.T) {
+	testPass := "hell0$catz*"
+	encodedTestPass, err := formatPassword(testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config := emptyConfig()
+	config.BindDN = "cats"
+	config.BindPassword = "dogs"
+
+	conn := &ldapifc.FakeLDAPConnection{
+		SearchRequestToExpect: testSearchRequest(),
+		SearchResultToReturn:  testSearchResult(),
+	}
+
+	dn := "CN=Jim H.. Jones,OU=Vault,OU=Engineering,DC=example,DC=com"
+	conn.ModifyRequestToExpect = &ldap.ModifyRequest{
+		DN: dn,
+	}
+	conn.ModifyRequestToExpect.Replace("unicodePwd", []string{encodedTestPass})
+
+	ldapClient := &ldaputil.Client{
+		Logger: hclog.NewNullLogger(),
+		LDAP:   &ldapifc.FakeLDAPClient{conn},
+	}
+
+	client := &Client{ldapClient}
+
+	filters := map[*Field][]string{
+		FieldRegistry.ObjectClass: {"*"},
+	}
+
+	newValues, err := GetSchemaFieldRegistry("ad", testPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, ok := newValues[FieldRegistry.UnicodePassword]; !ok {
+		t.Fatal("Expected unicodePwd field to be populated")
+	} else if len(p) != 1 {
+		t.Fatalf("Expected exactly one entry for unicodePwd but got %d", len(p))
+	} else if p[0] != encodedTestPass {
+		t.Fatalf("Expected unicodePwd field equal to %q but got %q", encodedTestPass, p[0])
+	}
+
+	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // TestUpdateRootPassword mimics the UpdateRootPassword in the SecretsClient.
 // However, this test must be located within this package because when the
 // "client" is instantiated below, the "ldapClient" is being added to an

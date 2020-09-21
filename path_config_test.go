@@ -2,6 +2,8 @@ package kubeauth
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
@@ -17,6 +19,7 @@ func TestConfig_Read(t *testing.T) {
 		"kubernetes_ca_cert":     testCACert,
 		"issuer":                 "",
 		"disable_iss_validation": false,
+		"disable_local_ca_jwt":   false,
 	}
 
 	req := &logical.Request{
@@ -183,6 +186,7 @@ func TestConfig(t *testing.T) {
 		CACert:               testCACert,
 		TokenReviewerJWT:     jwtData,
 		DisableISSValidation: false,
+		DisableLocalCAJwt:    false,
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
@@ -224,6 +228,7 @@ func TestConfig(t *testing.T) {
 		Host:                 "host",
 		CACert:               testCACert,
 		DisableISSValidation: false,
+		DisableLocalCAJwt:    false,
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
@@ -270,6 +275,7 @@ func TestConfig(t *testing.T) {
 		Host:                 "host",
 		CACert:               testCACert,
 		DisableISSValidation: false,
+		DisableLocalCAJwt:    false,
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
@@ -311,6 +317,7 @@ func TestConfig(t *testing.T) {
 		Host:                 "host",
 		CACert:               testCACert,
 		DisableISSValidation: true,
+		DisableLocalCAJwt:    false,
 	}
 
 	conf, err = b.(*kubeAuthBackend).config(context.Background(), storage)
@@ -322,6 +329,146 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", expected, conf)
 	}
 }
+
+func TestConfig_LocalCaJWT(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// write "local" CA and JWT, and override local path vars
+	caFile := writeToTempFile(t, testLocalCACert)
+	localCACertPath = caFile
+	defer os.Remove(caFile)
+	jwtFile := writeToTempFile(t, testLocalJWT)
+	localJWTPath = jwtFile
+	defer os.Remove(jwtFile)
+
+	testCases := map[string]struct {
+		config   map[string]interface{}
+		expected *kubeConfig
+	}{
+		"no CA or JWT, default to local": {
+			config: map[string]interface{}{
+				"kubernetes_host": "host",
+			},
+			expected: &kubeConfig{
+				PublicKeys:           []interface{}{},
+				PEMKeys:              []string{},
+				Host:                 "host",
+				CACert:               testLocalCACert,
+				TokenReviewerJWT:     testLocalJWT,
+				DisableISSValidation: false,
+				DisableLocalCAJwt:    false,
+			},
+		},
+		"CA set, default to local JWT": {
+			config: map[string]interface{}{
+				"kubernetes_host":    "host",
+				"kubernetes_ca_cert": testCACert,
+			},
+			expected: &kubeConfig{
+				PublicKeys:           []interface{}{},
+				PEMKeys:              []string{},
+				Host:                 "host",
+				CACert:               testCACert,
+				TokenReviewerJWT:     testLocalJWT,
+				DisableISSValidation: false,
+				DisableLocalCAJwt:    false,
+			},
+		},
+		"JWT set, default to local CA": {
+			config: map[string]interface{}{
+				"kubernetes_host":    "host",
+				"token_reviewer_jwt": jwtData,
+			},
+			expected: &kubeConfig{
+				PublicKeys:           []interface{}{},
+				PEMKeys:              []string{},
+				Host:                 "host",
+				CACert:               testLocalCACert,
+				TokenReviewerJWT:     jwtData,
+				DisableISSValidation: false,
+				DisableLocalCAJwt:    false,
+			},
+		},
+		"CA and disable local default": {
+			config: map[string]interface{}{
+				"kubernetes_host":      "host",
+				"kubernetes_ca_cert":   testCACert,
+				"disable_local_ca_jwt": true,
+			},
+			expected: &kubeConfig{
+				PublicKeys:           []interface{}{},
+				PEMKeys:              []string{},
+				Host:                 "host",
+				CACert:               testCACert,
+				TokenReviewerJWT:     "",
+				DisableISSValidation: false,
+				DisableLocalCAJwt:    true,
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      tc.config,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			conf, err := b.(*kubeAuthBackend).config(context.Background(), storage)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !reflect.DeepEqual(tc.expected, conf) {
+				t.Fatalf("expected did not match actual: expected %#v\n got %#v\n", tc.expected, conf)
+			}
+		})
+	}
+}
+
+func writeToTempFile(t *testing.T, contents string) string {
+	t.Helper()
+
+	f, err := ioutil.TempFile("", "test")
+	if err != nil {
+		t.Fatalf("Failure to create test file: %s", err)
+	}
+	_, err = f.WriteString(contents)
+	if err != nil {
+		t.Fatalf("Failure to write test file: %s", err)
+	}
+	return f.Name()
+}
+
+var testLocalCACert string = `-----BEGIN CERTIFICATE-----
+MIIDVDCCAjwCCQDFiyFY1M6afTANBgkqhkiG9w0BAQsFADBsMQswCQYDVQQGEwJV
+UzETMBEGA1UECAwKV2FzaGluZ3RvbjEQMA4GA1UEBwwHU2VhdHRsZTEgMB4GA1UE
+CgwXVmF1bHQgVGVzdGluZyBBdXRob3JpdHkxFDASBgNVBAMMC2V4YW1wbGUubmV0
+MB4XDTIwMDkxODAxMjkxM1oXDTQ1MDkxODAxMjkxM1owbDELMAkGA1UEBhMCVVMx
+EzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcMB1NlYXR0bGUxIDAeBgNVBAoM
+F1ZhdWx0IFRlc3RpbmcgQXV0aG9yaXR5MRQwEgYDVQQDDAtleGFtcGxlLm5ldDCC
+ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALCA9oKv+ESRHX2e/iq1PlGr
+zD23/MBS0V+fWQDY0hyEqY98CGwRtF6pEcLEYsreArj5/zznsIevLkNOD+beg43y
+WpEJlCPgDhGXI/Oima6ooHVEIMaIKLjK7GrSzAb3rNRGACwrR/u/IKaFl+XJG0qx
+g8mOZ3fByaAlIk+shVLUcIedNN1tNR+6/4ZpHg7PDjrZXP4XKrmKPTh4yqfu+BtZ
+9IY2oyregqEsGW1/3h1NM+LHGVakTV2d/mwMYHhwoq9Y8BD+PemT5z8TmhH/cIk5
+P8Q8ud5/q6YTIJg9TELKebLAeNtRNnNoHeUoRTjiW1MBwNHtgyTTY+H3W/9Dne0C
+AwEAATANBgkqhkiG9w0BAQsFAAOCAQEAXmygFkGIBnXxKlsTDiV8RW2iHLgFdZFJ
+hcU8UpxZhhaL5JbQl6byfbHjrX31q7ii8uC8FcbW0AEdnEQAb9Ui6a+if7HwXNmI
+DTlYl+lMlk9RtWvExw6AEEbg5nCpGaKexm7wJgzYGP9by9pQ7wX/CS7ofCzCK+Al
+uSIqjPkMC201ZXH39n1lxxq6BacdYjv8wo4mMzi8iTSQGVWPdjHZVYOClFgN6hoj
+8SkrrSe888a0H+i7EknRxC4sLRaMUK/FAvwtXaSZi2djruAtQzQGQ56m1phC2C/k
+k9aL00AQ9Y4KTfiJD7LK8YIZDnFKLOCJhYgKCLCOVwOHb7836SNCxA==
+-----END CERTIFICATE-----`
+
+var testLocalJWT string = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IlZhdWx0IFRlc3QiLCJpYXQiOjExMjM1OH0.GOC8w-MyhorgojB20SPNyH_ECsBjYJH89hjntOxSywA`
 
 var testRSACert string = `-----BEGIN CERTIFICATE-----
 MIIDcjCCAlqgAwIBAgIBAjANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwptaW5p

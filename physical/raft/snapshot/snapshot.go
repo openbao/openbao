@@ -115,6 +115,49 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 	return &Snapshot{archive, metadata.Index, checksum}, nil
 }
 
+// Write takes a state snapshot of the given Raft instance into w.
+func Write(logger hclog.Logger, r *raft.Raft, sealer Sealer, w io.Writer) error {
+	// Take the snapshot.
+	future := r.Snapshot()
+	if err := future.Error(); err != nil {
+		return fmt.Errorf("Raft error when taking snapshot: %v", err)
+	}
+
+	// Open up the snapshot.
+	metadata, snap, err := future.Open()
+	if err != nil {
+		return fmt.Errorf("failed to open snapshot: %w", err)
+	}
+	var closed bool
+	defer func() {
+		if !closed {
+			if err := snap.Close(); err != nil {
+				logger.Error("failed to close Raft snapshot", "error", err)
+			}
+		}
+	}()
+
+	// Wrap the file writer in a gzip compressor.
+	compressor := gzip.NewWriter(w)
+
+	// Write the archive.
+	if err := write(compressor, metadata, snap, sealer); err != nil {
+		return fmt.Errorf("failed to write snapshot file: %v", err)
+	}
+
+	// Finish the compressed stream.
+	if err := compressor.Close(); err != nil {
+		return fmt.Errorf("failed to compress snapshot file: %v", err)
+	}
+
+	if err := snap.Close(); err != nil {
+		return fmt.Errorf("failed to close Raft snapshot: %w", err)
+	}
+	closed = true
+
+	return nil
+}
+
 // Index returns the index of the snapshot. This is safe to call on a nil
 // snapshot, it will just return 0.
 func (s *Snapshot) Index() uint64 {

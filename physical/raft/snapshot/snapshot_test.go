@@ -239,6 +239,99 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
+func TestSnapshotWrite(t *testing.T) {
+	dir := testutil.TempDir(t, "snapshot")
+	defer os.RemoveAll(dir)
+
+	// Make a Raft and populate it with some data. We tee everything we
+	// apply off to a buffer for checking post-snapshot.
+	var expected []bytes.Buffer
+	entries := 64 * 1024
+	before, _ := makeRaft(t, filepath.Join(dir, "before"))
+	defer before.Shutdown()
+	for i := 0; i < entries; i++ {
+		var log bytes.Buffer
+		var copy bytes.Buffer
+		both := io.MultiWriter(&log, &copy)
+		if _, err := io.CopyN(both, rand.Reader, 256); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		future := before.Apply(log.Bytes(), time.Second)
+		if err := future.Error(); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		expected = append(expected, copy)
+	}
+
+	// Take a snapshot.
+	logger := hclog.Default()
+	snap, err := os.Create(filepath.Join(dir, "snapfile"))
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	Write(logger, before, nil, snap)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	defer snap.Close()
+
+	if _, err := snap.Seek(0, 0); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	metadata, err := Verify(snap)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if int(metadata.Index) != entries+2 {
+		t.Fatalf("bad: %d", metadata.Index)
+	}
+	if metadata.Term != 2 {
+		t.Fatalf("bad: %d", metadata.Index)
+	}
+	if metadata.Version != raft.SnapshotVersionMax {
+		t.Fatalf("bad: %d", metadata.Version)
+	}
+
+	if _, err := snap.Seek(0, 0); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Make a new, independent Raft.
+	after, fsm := makeRaft(t, filepath.Join(dir, "after"))
+	defer after.Shutdown()
+
+	// Put some initial data in there that the snapshot should overwrite.
+	for i := 0; i < 16; i++ {
+		var log bytes.Buffer
+		if _, err := io.CopyN(&log, rand.Reader, 256); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		future := after.Apply(log.Bytes(), time.Second)
+		if err := future.Error(); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+	}
+
+	// Restore the snapshot.
+	if err := Restore(logger, snap, after); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Compare the contents.
+	fsm.Lock()
+	defer fsm.Unlock()
+	if len(fsm.logs) != len(expected) {
+		t.Fatalf("bad: %d vs. %d", len(fsm.logs), len(expected))
+	}
+	for i := range fsm.logs {
+		if !bytes.Equal(fsm.logs[i], expected[i].Bytes()) {
+			t.Fatalf("bad: log %d doesn't match", i)
+		}
+	}
+}
+
 func TestSnapshot_Nil(t *testing.T) {
 	var snap *Snapshot
 

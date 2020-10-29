@@ -28,6 +28,7 @@ func TestConfig_JWT_Read(t *testing.T) {
 		"jwks_ca_pem":            "",
 		"bound_issuer":           "http://vault.example.com/",
 		"provider_config":        map[string]interface{}{},
+		"namespace_in_state":     false,
 	}
 
 	req := &logical.Request{
@@ -136,6 +137,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 		OIDCResponseTypes:    []string{},
 		BoundIssuer:          "http://vault.example.com/",
 		ProviderConfig:       map[string]interface{}{},
+		NamespaceInState:     true,
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -172,6 +174,7 @@ func TestConfig_JWKS_Update(t *testing.T) {
 		"jwt_supported_algs":     []string{},
 		"bound_issuer":           "",
 		"provider_config":        map[string]interface{}{},
+		"namespace_in_state":     false,
 	}
 
 	req := &logical.Request{
@@ -342,6 +345,7 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		OIDCResponseTypes:    []string{},
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 		ProviderConfig:       map[string]interface{}{},
+		NamespaceInState:     true,
 	}
 
 	conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -433,6 +437,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 				"provider":     "azure",
 				"extraOptions": "abound",
 			},
+			NamespaceInState: true,
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -489,6 +494,7 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			OIDCResponseTypes:    []string{},
 			OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
 			ProviderConfig:       map[string]interface{}{},
+			NamespaceInState:     true,
 		}
 
 		conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
@@ -500,6 +506,188 @@ func TestConfig_OIDC_Write_ProviderConfig(t *testing.T) {
 			t.Fatal(diff)
 		}
 	})
+}
+
+func TestConfig_OIDC_Create_Namespace(t *testing.T) {
+	type testCase struct {
+		create   map[string]interface{}
+		expected jwtConfig
+	}
+	tests := map[string]testCase{
+		"namespace_in_state not specified": {
+			create: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     true,
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+		"namespace_in_state true": {
+			create: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": true,
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     true,
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+		"namespace_in_state false": {
+			create: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": false,
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     false,
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      test.create,
+			}
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+			assert.NoError(t, err)
+			assert.Equal(t, &test.expected, conf)
+		})
+	}
+
+}
+
+func TestConfig_OIDC_Update_Namespace(t *testing.T) {
+	type testCase struct {
+		existing map[string]interface{}
+		update   map[string]interface{}
+		expected jwtConfig
+	}
+	tests := map[string]testCase{
+		"existing false, update to true": {
+			existing: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": false,
+			},
+			update: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": true,
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     true,
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+		"existing false, update something else": {
+			existing: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": false,
+			},
+			update: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"default_role":       "ui",
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     false,
+				DefaultRole:          "ui",
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+		"existing true, update to false": {
+			existing: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": true,
+			},
+			update: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": false,
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     false,
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+		"existing true, update something else": {
+			existing: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"namespace_in_state": true,
+			},
+			update: map[string]interface{}{
+				"oidc_discovery_url": "https://team-vault.auth0.com/",
+				"default_role":       "ui",
+			},
+			expected: jwtConfig{
+				OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+				NamespaceInState:     true,
+				DefaultRole:          "ui",
+				OIDCResponseTypes:    []string{},
+				JWTSupportedAlgs:     []string{},
+				JWTValidationPubKeys: []string{},
+				ProviderConfig:       map[string]interface{}{},
+			},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      test.existing,
+			}
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			req.Data = test.update
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
+
+			conf, err := b.(*jwtAuthBackend).config(context.Background(), storage)
+			assert.NoError(t, err)
+			assert.Equal(t, &test.expected, conf)
+		})
+	}
+
 }
 
 const (

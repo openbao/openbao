@@ -208,6 +208,163 @@ func TestOIDC_AuthURL(t *testing.T) {
 	})
 }
 
+func TestOIDC_AuthURL_namespace(t *testing.T) {
+
+	type testCase struct {
+		namespaceInState    string
+		allowedRedirectURIs []string
+		incomingRedirectURI string
+		expectedStateRegEx  string
+		expectedRedirectURI string
+		expectFail          bool
+	}
+
+	tests := map[string]testCase{
+		"namespace as query parameter": {
+			namespaceInState:    "false",
+			allowedRedirectURIs: []string{"https://example.com?namespace=test"},
+			incomingRedirectURI: "https://example.com?namespace=test",
+			expectedStateRegEx:  `\w{27}`,
+			expectedRedirectURI: `https://example.com?namespace=test`,
+		},
+		"namespace as query parameter, bad allowed redirect": {
+			namespaceInState:    "false",
+			allowedRedirectURIs: []string{"https://example.com"},
+			incomingRedirectURI: "https://example.com?namespace=test",
+			expectedStateRegEx:  `\w{27}`,
+			expectedRedirectURI: `https://example.com?namespace=test`,
+			expectFail:          true,
+		},
+		"namespace in state": {
+			namespaceInState:    "true",
+			allowedRedirectURIs: []string{"https://example.com"},
+			incomingRedirectURI: "https://example.com?namespace=test",
+			expectedStateRegEx:  `\w{27},ns=test`,
+			expectedRedirectURI: `https://example.com`,
+		},
+		"namespace in state, bad allowed redirect": {
+			namespaceInState:    "true",
+			allowedRedirectURIs: []string{"https://example.com?namespace=test"},
+			incomingRedirectURI: "https://example.com?namespace=test",
+			expectFail:          true,
+		},
+		"nested namespace in state": {
+			namespaceInState:    "true",
+			allowedRedirectURIs: []string{"https://example.com"},
+			incomingRedirectURI: "https://example.com?namespace=org4321/dev",
+			expectedStateRegEx:  `\w{27},ns=org4321/dev`,
+			expectedRedirectURI: `https://example.com`,
+		},
+		"namespace as query parameter, no namespaces": {
+			namespaceInState:    "false",
+			allowedRedirectURIs: []string{"https://example.com"},
+			incomingRedirectURI: "https://example.com",
+			expectedStateRegEx:  `\w{27}`,
+			expectedRedirectURI: `https://example.com`,
+		},
+		"namespace in state, no namespaces": {
+			namespaceInState:    "true",
+			allowedRedirectURIs: []string{"https://example.com"},
+			incomingRedirectURI: "https://example.com",
+			expectedStateRegEx:  `\w{27}`,
+			expectedRedirectURI: `https://example.com`,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			// Configure backend
+			data := map[string]interface{}{
+				"oidc_discovery_url":    "https://team-vault.auth0.com/",
+				"oidc_discovery_ca_pem": "",
+				"oidc_client_id":        "abc",
+				"oidc_client_secret":    "def",
+				"default_role":          "test",
+				"bound_issuer":          "http://vault.example.com/",
+				"namespace_in_state":    test.namespaceInState,
+			}
+
+			// basic configuration
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      data,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%v resp:%#v\n", err, resp)
+			}
+
+			// set up test role
+			rolePayload := map[string]interface{}{
+				"user_claim":            "email",
+				"bound_audiences":       "vault",
+				"allowed_redirect_uris": test.allowedRedirectURIs,
+			}
+
+			req = &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "role/test",
+				Storage:   storage,
+				Data:      rolePayload,
+			}
+
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%v resp:%#v\n", err, resp)
+			}
+
+			authURLPayload := map[string]interface{}{
+				"role":         "test",
+				"redirect_uri": test.incomingRedirectURI,
+			}
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "oidc/auth_url",
+				Storage:   storage,
+				Data:      authURLPayload,
+			}
+
+			resp, err = b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%v resp:%#v\n", err, resp)
+			}
+
+			rawAuthURL := resp.Data["auth_url"].(string)
+			if test.expectFail && len(rawAuthURL) > 0 {
+				t.Fatalf("Expected auth_url to fail (empty), but got %s", rawAuthURL)
+			}
+			if test.expectFail && len(rawAuthURL) == 0 {
+				return
+			}
+
+			authURL, err := url.Parse(rawAuthURL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			qParams := authURL.Query()
+			redirectURI := qParams.Get("redirect_uri")
+			if test.expectedRedirectURI != redirectURI {
+				t.Fatalf("expected redirect_uri to match: %s, %s", test.expectedRedirectURI, redirectURI)
+			}
+
+			state := qParams.Get("state")
+			matchState, err := regexp.MatchString(test.expectedStateRegEx, state)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !matchState {
+				t.Fatalf("expected state to match regex: %s, %s", test.expectedStateRegEx, state)
+			}
+
+		})
+	}
+}
+
 func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
 

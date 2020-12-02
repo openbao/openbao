@@ -1,6 +1,7 @@
 package jwtauth
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ type testProviderConfig struct {
 	throwError  bool
 }
 
-func (t *testProviderConfig) Initialize(jc *jwtConfig) error {
+func (t *testProviderConfig) Initialize(_ context.Context, jc *jwtConfig) error {
 	if t.throwError {
 		return fmt.Errorf("i'm throwing an error")
 	}
@@ -37,7 +38,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.NoError(t, err)
 		assert.Equal(t, "yes", theProvider.(*testProviderConfig).initialized)
 
@@ -51,7 +52,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.NoError(t, err)
 		assert.Nil(t, theProvider)
 	})
@@ -66,7 +67,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.EqualError(t, err, "'provider' field not found in provider_config")
 		assert.Nil(t, theProvider)
 	})
@@ -82,7 +83,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"not-test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.EqualError(t, err, "provider \"test\" not found in custom providers")
 		assert.Nil(t, theProvider)
 	})
@@ -97,7 +98,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.EqualError(t, err, "'provider' field not found in provider_config")
 		assert.Nil(t, theProvider)
 	})
@@ -113,7 +114,7 @@ func TestNewProviderConfig(t *testing.T) {
 			"test": &testProviderConfig{throwError: true},
 		}
 
-		theProvider, err := NewProviderConfig(jc, pMap)
+		theProvider, err := NewProviderConfig(context.Background(), jc, pMap)
 		assert.EqualError(t, err, "error initializing \"test\" provider_config: i'm throwing an error")
 		assert.Nil(t, theProvider)
 	})

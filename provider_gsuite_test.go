@@ -96,10 +96,11 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, _ := getBackend(t)
+			ctx := context.Background()
 
 			// Configure the provider
 			gProvider := new(GSuiteProvider)
-			err := gProvider.Initialize(tt.args.config)
+			err := gProvider.Initialize(ctx, tt.args.config)
 			assert.NoError(t, err)
 
 			// Fetch groups from G Suite
@@ -110,7 +111,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 				UserClaim:   "sub",
 				GroupsClaim: "groups",
 			}
-			groupsRaw, err := gProvider.FetchGroups(b.(*jwtAuthBackend), allClaims, role)
+			groupsRaw, err := gProvider.FetchGroups(ctx, b.(*jwtAuthBackend), allClaims, role)
 			assert.NoError(t, err)
 
 			// Assert that groups are as expected
@@ -166,10 +167,11 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b, _ := getBackend(t)
+			ctx := context.Background()
 
 			// Configure the provider
 			gProvider := new(GSuiteProvider)
-			err := gProvider.Initialize(tt.args.config)
+			err := gProvider.Initialize(ctx, tt.args.config)
 			assert.NoError(t, err)
 
 			// Fetch user info from G Suite
@@ -180,7 +182,7 @@ func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 				UserClaim:   "sub",
 				GroupsClaim: "groups",
 			}
-			err = gProvider.FetchUserInfo(b.(*jwtAuthBackend), allClaims, role)
+			err = gProvider.FetchUserInfo(ctx, b.(*jwtAuthBackend), allClaims, role)
 			assert.NoError(t, err)
 
 			// Assert that expected user info is added to the JWT claims
@@ -367,12 +369,13 @@ func TestGSuiteProvider_search(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
 			// Initialize the provider
 			gProvider := new(GSuiteProvider)
-			assert.NoError(t, gProvider.initialize(tt.args.config))
+			assert.NoError(t, gProvider.initialize(ctx, tt.args.config))
 
 			// Fetch groups from the groupsServer
-			ctx := context.Background()
 			gProvider.adminSvc, _ = admin.NewService(ctx, option.WithHTTPClient(&http.Client{}))
 			gProvider.adminSvc.BasePath = groupsServer.URL
 			groups := make(map[string]bool)
@@ -490,10 +493,88 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &GSuiteProvider{}
 			if tt.wantErr {
-				assert.Error(t, g.initialize(tt.args.config))
+				assert.Error(t, g.initialize(context.Background(), tt.args.config))
 			} else {
-				assert.NoError(t, g.initialize(tt.args.config))
+				assert.NoError(t, g.initialize(context.Background(), tt.args.config))
 			}
 		})
 	}
+}
+
+// Tests that bound claims set on a role can be validated after
+// provider-specific group and user info fetching has occurred.
+func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
+	b, _ := getBackend(t)
+	ctx := context.Background()
+
+	// Mock the G Suite groups and users APIs
+	gServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/groups":
+			w.Write([]byte(`{
+				"kind": "admin#directory#groups",
+				"groups": [{
+					"kind": "admin#directory#group",
+					"email": "group1@example.com"
+				}]
+			}`))
+		case "/users/user1@example.com":
+			w.Write([]byte(`{
+				"kind": "admin#directory#user",
+				"customSchemas": {
+					"Preferences": {
+						"shirt_size": "medium"
+					}
+				}
+			}`))
+		}
+	}))
+	defer gServer.Close()
+
+	// Set up claims
+	allClaims := map[string]interface{}{
+		"email": "user1@example.com",
+	}
+
+	// The bound claims set of the role will be validated
+	// after provider-specific groups and user info fetching
+	jwtRole := &jwtRole{
+		AllowedRedirectURIs: []string{"http://example.com"},
+		UserClaim:           "email",
+		GroupsClaim:         "groups",
+		BoundClaims: map[string]interface{}{
+			"groups":                  "group1@example.com",
+			"/Preferences/shirt_size": "medium",
+		},
+	}
+
+	// Configure the provider
+	config := GSuiteProviderConfig{
+		ServiceAccountFilePath: "/path/to/google-service-account.json",
+		AdminImpersonateEmail:  "admin@example.com",
+		FetchGroups:            true,
+		FetchUserInfo:          true,
+		GroupsRecurseMaxDepth:  5,
+		UserCustomSchemas:      "Preferences",
+		serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+	}
+	provider := &GSuiteProvider{}
+	err := provider.initialize(ctx, config)
+	assert.NoError(t, err)
+
+	// Swap the base URL to make requests to gServer
+	provider.adminSvc, _ = admin.NewService(ctx, option.WithHTTPClient(&http.Client{}))
+	provider.adminSvc.BasePath = gServer.URL
+
+	// Fetch the groups
+	_, err = b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, jwtRole)
+	assert.NoError(t, err)
+
+	// Fetch the user info
+	err = b.(*jwtAuthBackend).fetchUserInfo(ctx, provider, allClaims, jwtRole)
+	assert.NoError(t, err)
+
+	// Ensure that bound_claims defined on the role are properly validated
+	err = validateBoundClaims(b.Logger(), jwtRole.BoundClaimsType, jwtRole.BoundClaims, allClaims)
+	assert.NoError(t, err)
 }

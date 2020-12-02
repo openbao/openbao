@@ -96,6 +96,7 @@ func TestLogin_fetchGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	b, storage := getBackend(t)
+	ctx := context.Background()
 
 	data := map[string]interface{}{
 		"oidc_discovery_url":    aServer.server.URL,
@@ -156,12 +157,19 @@ func TestLogin_fetchGroups(t *testing.T) {
 	}
 
 	// Ensure b.cachedConfig is populated
-	_, err = b.(*jwtAuthBackend).config(context.Background(), storage)
+	config, err := b.(*jwtAuthBackend).config(ctx, storage)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	groupsResp, err := b.(*jwtAuthBackend).fetchGroups(allClaims, role)
+	// Initialize the azure provider
+	provider, err := NewProviderConfig(ctx, config, ProviderMap())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure groups are as expected
+	groupsResp, err := b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, role)
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{"group1", "group2"}, groupsResp)
 }

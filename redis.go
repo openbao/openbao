@@ -135,6 +135,12 @@ func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.
 		statements = append(statements, defaultRedisUserRole)
 	}
 
+	var response string
+	
+	err := db.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + req.Password))
+
+	fmt.Printf("Response in newUser: %s\n", response)
+	
 	/* mgr := db.Users()
 
 	user := gocb.User{
@@ -149,10 +155,10 @@ func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.
 		&gocb.UpsertUserOptions{
 			Timeout:    computeTimeout(ctx),
 			DomainName: "local",
-		})
+		})*/
 	if err != nil {
 		return err
-	}*/
+	}
 
 	return nil
 }

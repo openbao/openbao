@@ -27,10 +27,10 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 	if os.Getenv("REDIS_HOST") != "" {
 		return func() {}, os.Getenv("REDIS_HOST"), 6379
 	}
-	// cbver should match a redis/server-sandbox docker repository tag. Default to 6.5.0
-	cbver := os.Getenv("REDIS_VERSION")
-	if cbver == "" {
-		cbver = "6.5.0"
+	// redver should match a redis repository tag. Default to latest.
+	redver := os.Getenv("REDIS_VERSION")
+	if redver == "" {
+		redver = "latest"
 	}
 
 	pool, err := dockertest.NewPool("")
@@ -39,39 +39,12 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 	}
 
 	ro := &dockertest.RunOptions{
-		Repository:   "docker.io/redis/server-sandbox",
-		Tag:          cbver,
-		ExposedPorts: []string{"8091", "8092", "8093", "8094", "11207", "11210", "18091", "18092", "18093", "18094"},
+		Repository:   "docker.io/redis",
+		Tag:          redver,
+		ExposedPorts: []string{"6379"},
 		PortBindings: map[dc.Port][]dc.PortBinding{
-			"8091": {
-				{HostIP: "0.0.0.0", HostPort: "8091"},
-			},
-			"8092": {
-				{HostIP: "0.0.0.0", HostPort: "8092"},
-			},
-			"8093": {
-				{HostIP: "0.0.0.0", HostPort: "8093"},
-			},
-			"8094": {
-				{HostIP: "0.0.0.0", HostPort: "8094"},
-			},
-			"11207": {
-				{HostIP: "0.0.0.0", HostPort: "11207"},
-			},
-			"11210": {
-				{HostIP: "0.0.0.0", HostPort: "11210"},
-			},
-			"18091": {
-				{HostIP: "0.0.0.0", HostPort: "18091"},
-			},
-			"18092": {
-				{HostIP: "0.0.0.0", HostPort: "18092"},
-			},
-			"18093": {
-				{HostIP: "0.0.0.0", HostPort: "18093"},
-			},
-			"18094": {
-				{HostIP: "0.0.0.0", HostPort: "18094"},
+			"6379": {
+				{HostIP: "0.0.0.0", HostPort: "6379"},
 			},
 		},
 	}
@@ -92,7 +65,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 		}
 	}
 
-	address := "http://127.0.0.1:8091/"
+	address := "http://127.0.0.1:6379/"
 
 	if err = pool.Retry(func() error {
 		t.Log("Waiting for the database to start...")
@@ -322,13 +295,10 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 	t.Log("Testing CreateUser()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":     address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,
-	}
-	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -384,13 +354,10 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	t.Log("Testing checkCredsExist()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":     address,
 		"port":     port,
 		"username": username,
 		"password": password,
-	}
-	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
 	}
 
 	time.Sleep(1 * time.Second) // a brief pause to let redis finish creating the account

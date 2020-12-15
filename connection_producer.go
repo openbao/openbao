@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/mediocregopher/radix/v3"
 	"github.com/hashicorp/errwrap"
@@ -100,7 +101,7 @@ func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[str
 			c.close()
 			return nil, errwrap.Wrapf("error verifying connection: PING failed: {{err}}", err)
 		}
-	}
+}
 
 	return initConfig, nil
 }
@@ -122,7 +123,14 @@ func (c *redisDBConnectionProducer) Connection(ctx context.Context) (interface{}
 	}
 	var err error
 
-	c.pool, err = radix.NewPool("tcp", c.Addr, 1) // [TODO] poolopts for timeout from ctx??
+	customConnFunc := func(network, addr string) (radix.Conn, error) {
+		return radix.Dial(network, addr,
+			radix.DialTimeout(1 * time.Minute),
+			radix.DialAuthUser(c.Username, c.Password),
+		)
+	}
+
+	c.pool, err = radix.NewPool("tcp", c.Addr, 1, radix.PoolConnFunc(customConnFunc)) // [TODO] poolopts for timeout from ctx??
 	if err != nil {
 		return nil, errwrap.Wrapf("error in Connection: {{err}}", err)
 	}

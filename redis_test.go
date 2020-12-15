@@ -387,7 +387,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	t.Log("Testing RevokeUser()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":    address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,
@@ -427,7 +427,7 @@ func testRedisDBCreateUser_DefaultRole(t *testing.T, address string, port int) {
 	t.Log("Testing CreateUser_DefaultRole()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":     address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,
@@ -490,7 +490,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	t.Log("Testing CreateUser_plusRole()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":            address,
+		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
 		"password":         adminPassword,
@@ -558,7 +558,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	t.Log("Testing CreateUser_groupOnly()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":            address,
+		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
 		"password":         adminPassword,
@@ -624,7 +624,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 	t.Log("Testing CreateUser_roleAndGroup()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":            address,
+		"host":             address,
 		"port":             port,
 		"username":         adminUsername,
 		"password":         adminPassword,
@@ -686,7 +686,7 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 	t.Log("Testing RotateRootCredentials()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":     address,
 		"port":     port,
 		"username": "rotate-root",
 		"password": "rotate-rootpassword",

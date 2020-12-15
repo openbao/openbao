@@ -104,7 +104,7 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 	c.Lock()
 	defer c.Unlock()
 
-	_, err := c.getConnection(ctx) //db 
+	db, err := c.getConnection(ctx) 
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, fmt.Errorf("failed to make connection: %w", err)
 	}
@@ -117,14 +117,15 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 		}
 	}()
 
-	// Get the UserManager
-	/*mgr := db.Users()
+	var response string
+	
+	err = db.Do(radix.Cmd(&response, "ACL", "DELUSER", req.Username))
 
-	err = mgr.DropUser(req.Username, nil)
-
+	fmt.Printf("Response in DeleteUser: %s\n", response)
+	
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
-	}*/
+	}
 
 	return dbplugin.DeleteUserResponse{}, nil
 }

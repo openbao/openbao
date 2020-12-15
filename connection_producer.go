@@ -96,12 +96,12 @@ func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[str
 			c.close()
 			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
 		}
-		var pong string
+		/*var pong string
 		if err = c.pool.Do(radix.Cmd(&pong, "PING", "PONG")); err != nil {
 			c.close()
-			return nil, errwrap.Wrapf("error verifying connection: PING failed: {{err}}", err)
-		}
-}
+			return nil, errwrap.Wrapf("error verifying connection: PONG failed: {{err}}", err)
+		}*/
+	}
 
 	return initConfig, nil
 }

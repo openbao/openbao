@@ -91,18 +91,18 @@ func TestDriver(t *testing.T) {
 
 	defer cleanup()
 
-	/* err := createUser(address, port, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+	err := createUser(host, port, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		"rotate root user", "admin")
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)
 	}
-	err = createUser(address, port, adminUsername, adminPassword, "vault-edu", "password",
+	err = createUser(host, port, adminUsername, adminPassword, "vault-edu", "password",
 		"Vault education user", "admin")
 	if err != nil {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
 	}
 
-	t.Run("Version", func(t *testing.T) { testGetRedisVersion(t, address) })
+	/*t.Run("Version", func(t *testing.T) { testGetRedisVersion(t, address) })
 
 	if !pre6dot5 {
 		err = createGroup(address, port, adminUsername, adminPassword, "g1", "replication_admin")
@@ -737,7 +737,7 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 	t.Log("Testing SetCredentials()")
 
 	connectionDetails := map[string]interface{}{
-		"hosts":    address,
+		"host":     address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,

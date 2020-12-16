@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
+	"errors"
+	
 	"github.com/mediocregopher/radix/v3"
+	"github.com/mediocregopher/radix/v3/resp/resp2"
 //	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
@@ -168,7 +170,7 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 	c.Lock()
 	defer c.Unlock()
 
-	_, err := c.getConnection(ctx) // db
+	db, err := c.getConnection(ctx)
 	if err != nil {
 		return err
 	}
@@ -180,6 +182,31 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 			logger.Error("defer close failed", "error", err)
 		}
 	}()
+
+	var response resp2.Array
+	mn := radix.MaybeNil{Rcv: &response}
+	
+
+	var redisErr resp2.Error
+	err = db.Do(radix.Cmd(&mn, "ACL", "GETUSER", username))
+	if errors.As(err, &redisErr) {
+		fmt.Printf("redis error returned: %s", redisErr.E)
+	}
+
+	fmt.Printf("Response in changeUserPassword: %#v for %s %T\n", response, username, response)
+
+	if err != nil {
+		return fmt.Errorf("reset of passwords for user %s failed in changeUserPassword: %w", username, err)
+	}
+
+	if mn.Nil {
+		return fmt.Errorf("changeUserPassword for user %s failed, user not found!", username);
+	}
+	
+	var sresponse string
+	err = db.Do(radix.Cmd(&sresponse, "ACL", "SETUSER", username, ">" + password))
+
+	fmt.Printf("Response in changeUserPassword2: %s\n", sresponse)
 
 	// Get the UserManager
 	/*mgr := db.Users()
@@ -194,11 +221,11 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 		&gocb.UpsertUserOptions{
 			Timeout:    computeTimeout(ctx),
 			DomainName: "local",
-		})
+		}) */
 
 	if err != nil {
 		return err
-	}*/
+	}
 
 	return nil
 }

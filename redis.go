@@ -2,7 +2,7 @@ package redis
 
 import (
 	"context"
-//	"encoding/json"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +10,7 @@ import (
 	
 	"github.com/mediocregopher/radix/v3"
 	"github.com/mediocregopher/radix/v3/resp/resp2"
-//	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
@@ -18,9 +18,9 @@ import (
 
 const (
 	redisTypeName        = "redis"
-	defaultRedisUserRole = `{"Roles": [{"role":"ro_admin"}]}`
-	defaultTimeout           = 20000 * time.Millisecond
-	maxKeyLength             = 64
+	defaultRedisUserACL  = `["+@read"]`
+	defaultTimeout       = 20000 * time.Millisecond
+	maxKeyLength         = 64
 )
 
 var (
@@ -135,12 +135,26 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.NewUserRequest) error {
 	statements := removeEmpty(req.Statements.Commands)
 	if len(statements) == 0 {
-		statements = append(statements, defaultRedisUserRole)
+		statements = append(statements, defaultRedisUserACL)
 	}
 
+	aclargs := []string{"SETUSER", username, "ON", ">" + req.Password}
+
+	var args []string
+	err := json.Unmarshal([]byte(statements[0]), &args)
+	if err != nil {
+		return errwrap.Wrapf("error unmarshalling REDIS rules in the creation statement JSON: {{err}}", err)
+	}
+
+	fmt.Printf("Unmarshaled: %v\n", args)
+	fmt.Printf("statements %#v %s\n", statements, statements)
+
+	aclargs = append(aclargs, args...)
+	fmt.Printf("Appended args: %v\n", aclargs)
 	var response string
 	
-	err := db.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + req.Password))
+	//	err = db.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + req.Password, args...))
+	err = db.Do(radix.Cmd(&response, "ACL", aclargs...))
 
 	fmt.Printf("Response in newUser: %s\n", response)
 	
@@ -204,7 +218,7 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 	}
 	
 	var sresponse string
-	err = db.Do(radix.Cmd(&sresponse, "ACL", "SETUSER", username, ">" + password))
+	err = db.Do(radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">" + password))
 
 	fmt.Printf("Response in changeUserPassword2: %s\n", sresponse)
 

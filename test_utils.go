@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/mediocregopher/radix/v3"
+	"github.com/hashicorp/errwrap"
 	"github.com/cenkalti/backoff"
 	"github.com/hashicorp/go-version"
 )
@@ -62,27 +65,39 @@ func getRootCAfromRedis(url string) (Base64pemCA string, err error) {
 	return base64.StdEncoding.EncodeToString(body), nil
 }
 
-func createUser(hostname string, port int, adminuser, adminpassword, username, password, rbacName, roles string) (err error) {
-	v := url.Values{}
+func createUser(hostname string, port int, adminuser, adminpassword, username, password, aclCats string) (err error) {
+	
+	customConnFunc := func(network, addr string) (radix.Conn, error) {
+		return radix.Dial(network, addr,
+			radix.DialTimeout(1 * time.Minute),
+			radix.DialAuthUser(adminuser, adminpassword),
+		)
+	}
 
-	v.Set("password", password)
-	v.Add("roles", roles)
-	v.Add("name", rbacName)
+	addr := fmt.Sprintf("%s:%d", hostname, port)
+	
+	pool, err := radix.NewPool("tcp", addr, 1, radix.PoolConnFunc(customConnFunc)) // [TODO] poolopts for timeout from ctx??
+	if err != nil {
+		return errwrap.Wrapf("error in Connection: {{err}}", err)
+	}
 
-	req, err := http.NewRequest(http.MethodPut,
-		fmt.Sprintf("http://%s:%s@%s:%d/settings/rbac/users/local/%s",
-			adminuser, adminpassword, hostname, port, username),
-		strings.NewReader(v.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	var response string
+	
+	err = pool.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + password, aclCats))
+
+	fmt.Printf("Response in createUser: %s\n", response)
+
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	if resp.Status != "200 OK" {
-		return fmt.Errorf("createUser returned %s", resp.Status)
+
+	if pool != nil {
+		if err = pool.Close(); err != nil {
+			return err
+		}
 	}
+
+
 	return nil
 }
 

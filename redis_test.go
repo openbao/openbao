@@ -20,7 +20,7 @@ var pre6dot5 = false // check for Pre 6.5.0 Redis
 const (
 	adminUsername = "Administrator"
 	adminPassword = "password"
-	bucketName    = "travel-sample"
+	aclCat        = "+@admin"
 )
 
 func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
@@ -92,12 +92,12 @@ func TestDriver(t *testing.T) {
 	defer cleanup()
 
 	err := createUser(host, port, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
-		"rotate root user", "admin")
+		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)
 	}
 	err = createUser(host, port, adminUsername, adminPassword, "vault-edu", "password",
-		"Vault education user", "admin")
+		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
 	}
@@ -137,22 +137,22 @@ func TestDriver(t *testing.T) {
 	/* if err = backoff.Retry(func() error {
 		t.Log("Waiting for the bucket to be installed.")
 
-		bucketFound, bucketInstalled, err := waitForBucketInstalled(address, adminUsername, adminPassword, bucketName)
+		bucketFound, bucketInstalled, err := waitForBucketInstalled(address, adminUsername, adminPassword, aclCat)
 		if err != nil {
 			return err
 		}
 		if bucketFound == false {
 			err := backoff.PermanentError{
-				Err: fmt.Errorf("bucket %s was not found..", bucketName),
+				Err: fmt.Errorf("bucket %s was not found..", aclCat),
 			}
 			return &err
 		}
 		if bucketInstalled == false {
-			return fmt.Errorf("waiting for bucket %s to be installed...", bucketName)
+			return fmt.Errorf("waiting for bucket %s to be installed...", aclCat)
 		}
 		return nil
 	}, backoff.NewExponentialBackOff()); err != nil {
-		t.Fatalf("bucket %s installed check failed: %s", bucketName, err)
+		t.Fatalf("bucket %s installed check failed: %s", aclCat, err)
 	} */
 
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser(t, host, port) })
@@ -269,7 +269,7 @@ func testRedisDBInitialize_Pre6dot5TLS(t *testing.T, address string, port int) {
 		"tls":          true,
 		"insecure_tls": false,
 		"base64pem":    base64pemRootCA,
-		"bucket_name":  bucketName,
+		"bucket_name":  aclCat,
 	}
 	setupRedisDBInitialize(t, connectionDetails)
 }
@@ -283,7 +283,7 @@ func testRedisDBInitialize_Pre6dot5NoTLS(t *testing.T, address string, port int)
 		"port":        port,
 		"username":    adminUsername,
 		"password":    adminPassword,
-		"bucket_name": bucketName,
+		"bucket_name": aclCat,
 	}
 	setupRedisDBInitialize(t, connectionDetails)
 }
@@ -324,7 +324,7 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRole, bucketName)},
+			Commands: []string{fmt.Sprintf(testRedisRole, aclCat)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -393,7 +393,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 		"password": adminPassword,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -433,7 +433,7 @@ func testRedisDBCreateUser_DefaultRole(t *testing.T, address string, port int) {
 		"password": adminPassword,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -497,7 +497,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 		"protocol_version": 4,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -523,7 +523,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRole, bucketName)},
+			Commands: []string{fmt.Sprintf(testRedisRole, aclCat)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -565,7 +565,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 		"protocol_version": 4,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -631,7 +631,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 		"protocol_version": 4,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -657,7 +657,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRoleAndGroup, bucketName)},
+			Commands: []string{fmt.Sprintf(testRedisRoleAndGroup, aclCat)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -692,7 +692,7 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 		"password": "rotate-rootpassword",
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -743,7 +743,7 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 		"password": adminPassword,
 	}
 	if pre6dot5 {
-		connectionDetails["bucket_name"] = bucketName
+		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -829,6 +829,6 @@ func testComputeTimeout(t *testing.T) {
 	}
 }
 
-const testRedisRole = `{"roles":[{"role":"ro_admin"},{"role":"bucket_admin","bucket_name":"%s"}]}`
-const testRedisGroup = `{"groups":["g1", "g2"]}`
-const testRedisRoleAndGroup = `{"roles":[{"role":"ro_admin"},{"role":"bucket_admin","bucket_name":"%s"}],"groups":["g1", "g2"]}`
+const testRedisRole = `["%s"]`
+const testRedisGroup = `["+@all"]`
+const testRedisRoleAndGroup = `["%s"]`

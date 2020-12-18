@@ -18,7 +18,7 @@ import (
 
 const (
 	redisTypeName        = "redis"
-	defaultRedisUserACL  = `["+@read"]`
+	defaultRedisUserRule  = `["~*", "+@read"]`
 	defaultTimeout       = 20000 * time.Millisecond
 	maxKeyLength         = 64
 )
@@ -135,7 +135,7 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.NewUserRequest) error {
 	statements := removeEmpty(req.Statements.Commands)
 	if len(statements) == 0 {
-		statements = append(statements, defaultRedisUserACL)
+		statements = append(statements, defaultRedisUserRule)
 	}
 
 	aclargs := []string{"SETUSER", username, "ON", ">" + req.Password}
@@ -158,21 +158,6 @@ func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.
 
 	fmt.Printf("Response in newUser: %s\n", response)
 	
-	/* mgr := db.Users()
-
-	user := gocb.User{
-		Username:    username,
-		DisplayName: req.UsernameConfig.DisplayName,
-		Password:    req.Password,
-		Roles:       rag.Roles,
-		Groups:      rag.Groups,
-	}
-
-	err = mgr.UpsertUser(user,
-		&gocb.UpsertUserOptions{
-			Timeout:    computeTimeout(ctx),
-			DomainName: "local",
-		})*/
 	if err != nil {
 		return err
 	}
@@ -221,21 +206,6 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 	err = db.Do(radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">" + password))
 
 	fmt.Printf("Response in changeUserPassword2: %s\n", sresponse)
-
-	// Get the UserManager
-	/*mgr := db.Users()
-	user, err := mgr.GetUser(username, nil)
-
-	if err != nil {
-		return fmt.Errorf("unable to retrieve user %s: %w", username, err)
-	}
-	user.User.Password = password
-
-	err = mgr.UpsertUser(user.User,
-		&gocb.UpsertUserOptions{
-			Timeout:    computeTimeout(ctx),
-			DomainName: "local",
-		}) */
 
 	if err != nil {
 		return err

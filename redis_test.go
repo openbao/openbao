@@ -9,7 +9,8 @@ import (
 	"testing"
 	"time"
 
-//	"github.com/cenkalti/backoff"
+	//	"github.com/cenkalti/backoff"
+	"github.com/mediocregopher/radix/v3"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/ory/dockertest"
 	dc "github.com/ory/dockertest/docker"
@@ -102,25 +103,7 @@ func TestDriver(t *testing.T) {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
 	}
 
-	/*t.Run("Version", func(t *testing.T) { testGetRedisVersion(t, address) })
-
-	if !pre6dot5 {
-		err = createGroup(address, port, adminUsername, adminPassword, "g1", "replication_admin")
-		if err != nil {
-			t.Fatalf("Failed to create group g1: %s", err)
-		}
-		err = createGroup(address, port, adminUsername, adminPassword, "g2", "query_external_access")
-		if err != nil {
-			t.Fatalf("Failed to create group g1: %s", err)
-		}
-	} else {
-		t.Log("Skipping group creation as the Redis DB does not support groups")
-	} */
-
-	/* t.Run("Init", func(t *testing.T) { testRedisDBInitialize_TLS(t, address, port) }) */
 	t.Run("Init", func(t *testing.T) { testRedisDBInitialize_NoTLS(t, host, port) })
-	/*t.Run("Init", func(t *testing.T) { testRedisDBInitialize_Pre6dot5TLS(t, address, port) })
-	t.Run("Init", func(t *testing.T) { testRedisDBInitialize_Pre6dot5NoTLS(t, address, port) })*/
 
 	/* Need to pause here as sometimes the travel-sample bucket is not ready and you get strange errors like this...
 		   err: {"errors":{"roles":"Cannot assign roles to user because the following roles are unknown, malformed or role
@@ -156,7 +139,7 @@ func TestDriver(t *testing.T) {
 	} */
 
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_DefaultRole(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_DefaultRule(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_plusRole(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_groupOnly(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_roleAndGroup(t, host, port) })
@@ -164,16 +147,6 @@ func TestDriver(t *testing.T) {
 	t.Run("Creds", func(t *testing.T) { testRedisDBSetCredentials(t, host, port) })
 	t.Run("Secret", func(t *testing.T) { testConnectionProducerSecretValues(t) })
 	t.Run("TimeoutCalc", func(t *testing.T) { testComputeTimeout(t) })
-}
-
-func testGetRedisVersion(t *testing.T, address string) {
-
-	var err error
-	pre6dot5, err = CheckForOldRedisVersion(address, adminUsername, adminPassword)
-	if err != nil {
-		t.Fatalf("Failed to detect Redis Version: %s", err)
-	}
-	t.Logf("Redis pre 6.5.0 is %t", pre6dot5)
 }
 
 func setupRedisDBInitialize(t *testing.T, connectionDetails map[string]interface{}) (err error) {
@@ -199,35 +172,7 @@ func setupRedisDBInitialize(t *testing.T, connectionDetails map[string]interface
 	}
 	return nil
 }
-func testRedisDBInitialize_TLS(t *testing.T, address string, port int) {
-	t.Log("Testing TLS Init()")
 
-	base64pemRootCA, err := getRootCAfromRedis(fmt.Sprintf("http://%s:%d/pools/default/certificate", address, port))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-
-	// redis[s] for TLS, also using insecure_tls false
-	// Test will fail if we do not use 127.0.0.1 as that is the CN in the self signed server certificate
-	// localhost will return an "unambiguous timeout" error. Look in the Redis memcached log to see the real error,
-	// WARNING 43: SSL_accept() returned -1 with error 1: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate
-
-	address = fmt.Sprintf("redis://%s:%d", address, port)
-
-	connectionDetails := map[string]interface{}{
-		"hosts":        address,
-		"port":         port,
-		"username":     adminUsername,
-		"password":     adminPassword,
-		"tls":          true,
-		"insecure_tls": false,
-		"base64pem":    base64pemRootCA,
-	}
-	err = setupRedisDBInitialize(t, connectionDetails)
-	if err != nil && pre6dot5 {
-		t.Log("Testing TLS Init() failed as expected (no BucketName set)")
-	}
-}
 func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
 	t.Log("Testing plain text Init()")
 
@@ -245,47 +190,6 @@ func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
 		t.Fatalf("Testing Init() failed: error: %s", err)
 	}
 
-}
-func testRedisDBInitialize_Pre6dot5TLS(t *testing.T, address string, port int) {
-	t.Log("Testing TLS Pre 6.5 Init()")
-
-	base64pemRootCA, err := getRootCAfromRedis(fmt.Sprintf("http://%s:%d/pools/default/certificate", address, port))
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-
-	// redis[s] for TLS, also using insecure_tls false
-	// Test will fail if we do not use 127.0.0.1 as that is the CN in the self signed server certificate
-	// localhost will return an "unambiguous timeout" error. Look in the Redis memcached log to see the real error,
-	// WARNING 43: SSL_accept() returned -1 with error 1: error:14094412:SSL routines:ssl3_read_bytes:sslv3 alert bad certificate
-
-	address = fmt.Sprintf("rediss://%s", "127.0.0.1")
-
-	connectionDetails := map[string]interface{}{
-		"hosts":        address,
-		"port":         port,
-		"username":     adminUsername,
-		"password":     adminPassword,
-		"tls":          true,
-		"insecure_tls": false,
-		"base64pem":    base64pemRootCA,
-		"bucket_name":  aclCat,
-	}
-	setupRedisDBInitialize(t, connectionDetails)
-}
-func testRedisDBInitialize_Pre6dot5NoTLS(t *testing.T, address string, port int) {
-	t.Log("Testing Pre 6.5 Init()")
-
-	address = fmt.Sprintf("redis://%s:%d", address, port)
-
-	connectionDetails := map[string]interface{}{
-		"hosts":       address,
-		"port":        port,
-		"username":    adminUsername,
-		"password":    adminPassword,
-		"bucket_name": aclCat,
-	}
-	setupRedisDBInitialize(t, connectionDetails)
 }
 
 func testRedisDBCreateUser(t *testing.T, address string, port int) {
@@ -324,7 +228,7 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRole, aclCat)},
+			Commands: []string{},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -360,7 +264,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 		"password": password,
 	}
 
-	time.Sleep(1 * time.Second) // a brief pause to let redis finish creating the account
+	// time.Sleep(1 * time.Second) // a brief pause to let redis finish creating the account
 
 	initReq := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
@@ -376,6 +280,42 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	if !db.Initialized {
 		t.Fatal("Database should be initialized")
 	}
+
+	return nil
+}
+
+func checkRuleAllowed(t *testing.T, username, password, address string, port int, cmd string, rules []string) error {
+	if os.Getenv("VAULT_ACC") == "" {
+		t.SkipNow()
+	}
+	t.Log("Testing checkRuleAllowed()")
+
+	connectionDetails := map[string]interface{}{
+		"host":     address,
+		"port":     port,
+		"username": username,
+		"password": password,
+	}
+
+	initReq := dbplugin.InitializeRequest{
+		Config:           connectionDetails,
+		VerifyConnection: true,
+	}
+
+	db := new()
+	_, err := db.Initialize(context.Background(), initReq)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	if !db.Initialized {
+		t.Fatal("Database should be initialized")
+	}
+	var response string
+	err = db.pool.Do(radix.Cmd(&response, cmd, rules...))
+	if err != nil {
+		t.Fatalf("put should have failed err: %s", err)
+	}	
 
 	return nil
 }
@@ -420,20 +360,17 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	return nil
 }
 
-func testRedisDBCreateUser_DefaultRole(t *testing.T, address string, port int) {
+func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	t.Log("Testing CreateUser_DefaultRole()")
+	t.Log("Testing CreateUser_DefaultRule()")
 
 	connectionDetails := map[string]interface{}{
 		"host":     address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,
-	}
-	if pre6dot5 {
-		connectionDetails["bucket_name"] = aclCat
 	}
 
 	initReq := dbplugin.InitializeRequest{
@@ -474,6 +411,12 @@ func testRedisDBCreateUser_DefaultRole(t *testing.T, address string, port int) {
 	if err := checkCredsExist(t, userResp.Username, password, address, port); err != nil {
 		t.Fatalf("Could not connect with new credentials: %s", err)
 	}
+	rules := []string{"foo"}
+	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", rules); err != nil {
+		t.Fatalf("Could no connect with new credentials: %s", err)
+	}
+
+	
 
 	err = revokeUser(t, userResp.Username, address, port)
 	if err != nil {

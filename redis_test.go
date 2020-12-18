@@ -313,11 +313,8 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	}
 	var response string
 	err = db.pool.Do(radix.Cmd(&response, cmd, rules...))
-	if err != nil {
-		t.Fatalf("put should have failed err: %s", err)
-	}	
 
-	return nil
+	return err
 }
 
 func revokeUser(t *testing.T, username, address string, port int) error {
@@ -413,10 +410,13 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	}
 	rules := []string{"foo"}
 	if err := checkRuleAllowed(t, userResp.Username, password, address, port, "get", rules); err != nil {
-		t.Fatalf("Could no connect with new credentials: %s", err)
+		t.Fatalf("get failed with +@read rule: %s", err)
 	}
 
-	
+	rules = []string{"foo", "bar"}
+	if err = checkRuleAllowed(t, userResp.Username, password, address, port, "set", rules); err == nil {
+		t.Fatalf("set did not fail with +@read rule: %s", err)
+	}
 
 	err = revokeUser(t, userResp.Username, address, port)
 	if err != nil {

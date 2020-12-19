@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -66,23 +65,20 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 		}
 	}
 
-	address := "http://127.0.0.1:6379/"
+	address := "127.0.0.1:6379"
 
 	if err = pool.Retry(func() error {
 		t.Log("Waiting for the database to start...")
-		resp, err := http.Get(address)
+		_, err := radix.NewPool("tcp", address, 1) 
 		if err != nil {
 			return err
-		}
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("Got a %d status code from redis's Web Console", resp.StatusCode)
 		}
 		return nil
 	}); err != nil {
 		t.Fatalf("Could not connect to redis: %s", err)
 		cleanup()
 	}
-
+	time.Sleep(3 * time.Second)
 	return cleanup, "0.0.0.0", 6379
 }
 
@@ -92,7 +88,12 @@ func TestDriver(t *testing.T) {
 
 	defer cleanup()
 
-	err := createUser(host, port, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+	err := createUser(host, port, "default", "", "Administrator", "password",
+		aclCat)
+	if err != nil {
+		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
+	}
+	err = createUser(host, port, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)

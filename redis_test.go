@@ -18,6 +18,8 @@ import (
 var pre6dot5 = false // check for Pre 6.5.0 Redis
 
 const (
+	defaultUsername = "default"
+	defaultPassword = ""
 	adminUsername = "Administrator"
 	adminPassword = "password"
 	aclCat        = "+@admin"
@@ -88,7 +90,7 @@ func TestDriver(t *testing.T) {
 
 	defer cleanup()
 
-	err := createUser(host, port, "default", "", "Administrator", "password",
+	err := createUser(host, port, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)

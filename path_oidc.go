@@ -243,7 +243,15 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 	}
 
 	if role.VerboseOIDCLogging {
-		b.Logger().Debug("OIDC provider response", "ID token", rawToken)
+		loggedToken := "invalid token format"
+
+		parts := strings.Split(rawToken, ".")
+		if len(parts) == 3 {
+			// strip signature from logged token
+			loggedToken = fmt.Sprintf("%s.%s.xxxxxxxxxxx", parts[0], parts[1])
+		}
+
+		b.Logger().Debug("OIDC provider response", "id_token", loggedToken)
 	}
 
 	// Parse and verify ID Token payload.

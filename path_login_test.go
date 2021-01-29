@@ -15,10 +15,11 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/vault/sdk/logical"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
+	sqjwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 type H map[string]interface{}
@@ -64,6 +65,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			data = map[string]interface{}{
 				"bound_issuer":           "https://team-vault.auth0.com/",
 				"jwt_validation_pubkeys": ecdsaPubKey,
+				"jwt_supported_algs":     []string{string(jwt.ES256)},
 			}
 		} else {
 			p := newOIDCProvider(t)
@@ -75,8 +77,9 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			}
 
 			data = map[string]interface{}{
-				"jwks_url":    p.server.URL + "/certs",
-				"jwks_ca_pem": cert,
+				"jwks_url":           p.server.URL + "/certs",
+				"jwks_ca_pem":        cert,
+				"jwt_supported_algs": []string{string(jwt.ES256)},
 			}
 		}
 	}
@@ -145,7 +148,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 	return cb, storage
 }
 
-func getTestJWT(t *testing.T, privKey string, cl jwt.Claims, privateCl interface{}) (string, *ecdsa.PrivateKey) {
+func getTestJWT(t *testing.T, privKey string, cl sqjwt.Claims, privateCl interface{}) (string, *ecdsa.PrivateKey) {
 	t.Helper()
 	var key *ecdsa.PrivateKey
 	block, _ := pem.Decode([]byte(privKey))
@@ -162,7 +165,7 @@ func getTestJWT(t *testing.T, privKey string, cl jwt.Claims, privateCl interface
 		t.Fatal(err)
 	}
 
-	raw, err := jwt.Signed(sig).Claims(cl).Claims(privateCl).CompactSerialize()
+	raw, err := sqjwt.Signed(sig).Claims(cl).Claims(privateCl).CompactSerialize()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,11 +220,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 		b, storage := setupBackend(t, cfg)
 
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -272,11 +275,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 		b, storage := setupBackend(t, cfg)
 
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -331,11 +334,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			}
 			b, storage := setupBackend(t, cfg)
 
-			cl := jwt.Claims{
+			cl := sqjwt.Claims{
 				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 				Issuer:    "https://team-vault.auth0.com/",
-				NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-				Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 			}
 
 			type orgs struct {
@@ -427,11 +430,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test invalid bound claim
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		type orgs struct {
@@ -478,11 +481,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test bad signature
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -524,11 +527,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test bad issuer
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-fault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -570,11 +573,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test bad audience
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://fault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://fault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -616,11 +619,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test bad subject
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "p3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {
@@ -662,11 +665,11 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test missing user value
 	{
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:  "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:   "https://team-vault.auth0.com/",
-			Expiry:   jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
-			Audience: jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			Expiry:   sqjwt.NewNumericDate(time.Now().Add(5 * time.Second)),
+			Audience: sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		}
 
 		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, struct{}{})
@@ -706,10 +709,10 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 		b, storage := setupBackend(t, cfg)
 
-		cl := jwt.Claims{
+		cl := sqjwt.Claims{
 			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 			Issuer:    "https://team-vault.auth0.com/",
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
 		}
 
 		privateCl := struct {
@@ -748,7 +751,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 
 	// test bad role name
 	{
-		jwtData, _ := getTestJWT(t, ecdsaPrivKey, jwt.Claims{}, struct{}{})
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, sqjwt.Claims{}, struct{}{})
 
 		data := map[string]interface{}{
 			"role": "plugin-test-bad",
@@ -953,13 +956,13 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 }
 
 func setupLogin(t *testing.T, iat, exp, nbf time.Time, b logical.Backend, storage logical.Storage) *logical.Request {
-	cl := jwt.Claims{
-		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+	cl := sqjwt.Claims{
+		Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 		Issuer:    "https://team-vault.auth0.com/",
 		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-		IssuedAt:  jwt.NewNumericDate(iat),
-		Expiry:    jwt.NewNumericDate(exp),
-		NotBefore: jwt.NewNumericDate(nbf),
+		IssuedAt:  sqjwt.NewNumericDate(iat),
+		Expiry:    sqjwt.NewNumericDate(exp),
+		NotBefore: sqjwt.NewNumericDate(nbf),
 	}
 
 	type orgs struct {
@@ -1056,6 +1059,7 @@ func TestLogin_NestedGroups(t *testing.T) {
 	data := map[string]interface{}{
 		"bound_issuer":           "https://team-vault.auth0.com/",
 		"jwt_validation_pubkeys": ecdsaPubKey,
+		"jwt_supported_algs":     string(jwt.ES256),
 	}
 
 	req := &logical.Request{
@@ -1095,11 +1099,11 @@ func TestLogin_NestedGroups(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cl := jwt.Claims{
+	cl := sqjwt.Claims{
 		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		Issuer:    "https://team-vault.auth0.com/",
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 	}
 
 	type GroupsLevel2 struct {
@@ -1218,11 +1222,11 @@ func TestLogin_JWKS_Concurrent(t *testing.T) {
 	}
 	b, storage := setupBackend(t, cfg)
 
-	cl := jwt.Claims{
+	cl := sqjwt.Claims{
 		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 		Issuer:    "https://team-vault.auth0.com/",
-		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-		Audience:  jwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
 	}
 
 	type orgs struct {

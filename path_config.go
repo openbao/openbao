@@ -2,14 +2,15 @@ package jwtauth
 
 import (
 	"context"
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/coreos/go-oidc"
+	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -17,7 +18,6 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/strutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"golang.org/x/oauth2"
-	jose "gopkg.in/square/go-jose.v2"
 )
 
 const (
@@ -245,12 +245,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("'oidc_discovery_url' must be set for OIDC"), nil
 
 	case config.JWKSURL != "":
-		ctx, err := b.createCAContext(context.Background(), config.JWKSCAPEM)
+		keyset, err := jwt.NewJSONWebKeySet(ctx, config.JWKSURL, config.JWKSCAPEM)
 		if err != nil {
 			return logical.ErrorResponse(errwrap.Wrapf("error checking jwks_ca_pem: {{err}}", err).Error()), nil
 		}
-
-		keyset := oidc.NewRemoteKeySet(ctx, config.JWKSURL)
 
 		// Try to verify a correctly formatted JWT. The signature will fail to match, but other
 		// errors with fetching the remote keyset should be reported.
@@ -278,12 +276,8 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	// NOTE: the OIDC lib states that if nothing is passed into its config, it
 	// defaults to "RS256". So in the case of a zero value here it won't
 	// default to e.g. "none".
-	for _, a := range config.JWTSupportedAlgs {
-		switch a {
-		case oidc.RS256, oidc.RS384, oidc.RS512, oidc.ES256, oidc.ES384, oidc.ES512, oidc.PS256, oidc.PS384, oidc.PS512, string(jose.EdDSA):
-		default:
-			return logical.ErrorResponse(fmt.Sprintf("Invalid supported algorithm: %s", a)), nil
-		}
+	if err := jwt.SupportedSigningAlgorithm(toAlg(config.JWTSupportedAlgs)...); err != nil {
+		return logical.ErrorResponse("invalid jwt_supported_algs: %s", err), nil
 	}
 
 	// Validate response_types
@@ -377,7 +371,7 @@ type jwtConfig struct {
 	ProviderConfig       map[string]interface{} `json:"provider_config"`
 	NamespaceInState     bool                   `json:"namespace_in_state"`
 
-	ParsedJWTPubKeys []interface{} `json:"-"`
+	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
 }
 
 const (

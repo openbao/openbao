@@ -3,11 +3,12 @@ package jwtauth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/coreos/go-oidc"
-	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
@@ -32,7 +33,7 @@ type jwtAuthBackend struct {
 
 	l            sync.RWMutex
 	provider     *oidc.Provider
-	keySet       oidc.KeySet
+	validator    *jwt.Validator
 	cachedConfig *jwtConfig
 	oidcStates   *cache.Cache
 
@@ -100,6 +101,7 @@ func (b *jwtAuthBackend) reset() {
 	b.l.Lock()
 	b.provider = nil
 	b.cachedConfig = nil
+	b.validator = nil
 	b.l.Unlock()
 }
 
@@ -129,27 +131,42 @@ func (b *jwtAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) 
 	return provider, nil
 }
 
-// getKeySet returns a new JWKS KeySet based on the provided config.
-func (b *jwtAuthBackend) getKeySet(config *jwtConfig) (oidc.KeySet, error) {
+// jwtValidator returns a new JWT validator based on the provided config.
+func (b *jwtAuthBackend) jwtValidator(config *jwtConfig) (*jwt.Validator, error) {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	if b.keySet != nil {
-		return b.keySet, nil
+	if b.validator != nil {
+		return b.validator, nil
 	}
 
-	if config.JWKSURL == "" {
-		return nil, errors.New("keyset error: jwks_url not configured")
+	var err error
+	var keySet jwt.KeySet
+
+	// Configure the key set for the validator
+	switch config.authType() {
+	case JWKS:
+		keySet, err = jwt.NewJSONWebKeySet(b.providerCtx, config.JWKSURL, config.JWKSCAPEM)
+	case StaticKeys:
+		keySet, err = jwt.NewStaticKeySet(config.ParsedJWTPubKeys)
+	case OIDCDiscovery:
+		keySet, err = jwt.NewOIDCDiscoveryKeySet(b.providerCtx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+	default:
+		return nil, errors.New("unsupported config type")
 	}
 
-	ctx, err := b.createCAContext(b.providerCtx, config.JWKSCAPEM)
 	if err != nil {
-		return nil, errwrap.Wrapf("error parsing jwks_ca_pem: {{err}}", err)
+		return nil, fmt.Errorf("keyset configuration error: %w", err)
 	}
 
-	b.keySet = oidc.NewRemoteKeySet(ctx, config.JWKSURL)
+	validator, err := jwt.NewValidator(keySet)
+	if err != nil {
+		return nil, fmt.Errorf("JWT validator configuration error: %w", err)
+	}
 
-	return b.keySet, nil
+	b.validator = validator
+
+	return b.validator, nil
 }
 
 const (

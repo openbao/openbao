@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+	"crypto"
 	"reflect"
 	"strings"
 	"testing"
@@ -131,7 +132,7 @@ func TestConfig_JWT_Write(t *testing.T) {
 	}
 
 	expected := &jwtConfig{
-		ParsedJWTPubKeys:     []interface{}{pubkey},
+		ParsedJWTPubKeys:     []crypto.PublicKey{pubkey},
 		JWTValidationPubKeys: []string{testJWTPubKey},
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},

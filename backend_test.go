@@ -3,9 +3,11 @@ package openldap
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
+	"github.com/go-ldap/ldif"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 	"github.com/hashicorp/vault/sdk/helper/logging"
@@ -45,6 +47,8 @@ func getBackend(throwsErr bool) (*backend, logical.Storage) {
 	return b, config.StorageView
 }
 
+var _ ldapClient = (*fakeLdapClient)(nil)
+
 type fakeLdapClient struct {
 	throwErrs bool
 }
@@ -76,6 +80,18 @@ func (f *fakeLdapClient) UpdateRootPassword(conf *client.Config, newPassword str
 		err = errors.New("forced error")
 	}
 	return err
+}
+
+func (f *fakeLdapClient) Add(_ *client.Config, _ *ldap.AddRequest) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (f *fakeLdapClient) Del(_ *client.Config, _ *ldap.DelRequest) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (f *fakeLdapClient) Execute(conf *client.Config, entries []*ldif.Entry, continueOnError bool) (err error) {
+	return fmt.Errorf("not implemented")
 }
 
 const validCertificate = `

@@ -74,3 +74,11 @@ func (f *FakeLDAPConnection) SetTimeout(timeout time.Duration) {}
 func (f *FakeLDAPConnection) UnauthenticatedBind(username string) error {
 	return nil
 }
+
+func (f *FakeLDAPConnection) Add(request *ldap.AddRequest) error {
+	return nil
+}
+
+func (f *FakeLDAPConnection) Del(request *ldap.DelRequest) error {
+	return nil
+}

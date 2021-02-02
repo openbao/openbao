@@ -265,61 +265,6 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 	}
 }
 
-// func TestDynamicRole_missingRole(t *testing.T) {
-// 	type testCase struct {
-// 		operation logical.Operation
-// 		expectErr bool
-// 	}
-//
-// 	tests := map[string]testCase{
-// 		"create operation": {
-// 			operation: logical.CreateOperation,
-// 			expectErr: false,
-// 		},
-// 		"update operation": {
-// 			operation: logical.UpdateOperation,
-// 			expectErr: true,
-// 		},
-// 	}
-//
-// 	for name, test := range tests {
-// 		t.Run(name, func(t *testing.T) {
-// 			client := new(mockLDAPClient)
-// 			defer client.AssertExpectations(t) // No expectations
-//
-// 			b := Backend(client)
-//
-// 			storage := new(mockStorage)
-// 			storage.On("Get", mock.Anything, mock.Anything).
-// 				Return((*logical.StorageEntry)(nil), (error)(nil)).Once()
-// 			storage.On("Put", mock.Anything, mock.Anything).
-// 				Return(nil).Maybe()
-// 			defer storage.AssertExpectations(t)
-//
-// 			req := &logical.Request{
-// 				Storage:   storage,
-// 				Operation: test.operation,
-// 			}
-//
-// 			ctx := context.Background()
-//
-// 			data := dynamicRoleFieldData(map[string]interface{}{
-// 				"name":          "testrole",
-// 				"creation_ldif": ldifCreationTemplate,
-// 				"deletion_ldif": ldifDeleteTemplate,
-// 			})
-//
-// 			_, err := b.pathDynamicRoleCreateUpdate(ctx, req, data)
-// 			if test.expectErr && err == nil {
-// 				t.Fatalf("err expected, got nil")
-// 			}
-// 			if !test.expectErr && err != nil {
-// 				t.Fatalf("no error expected, got: %s", err)
-// 			}
-// 		})
-// 	}
-// }
-
 func TestDynamicRole_partialUpdate(t *testing.T) {
 	type testCase struct {
 		initialData map[string]interface{}

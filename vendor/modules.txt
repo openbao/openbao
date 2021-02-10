@@ -3,7 +3,6 @@ cloud.google.com/go/compute/metadata
 # github.com/armon/go-radix v0.0.0-20180808171621-7fddfc383310
 github.com/armon/go-radix
 # github.com/coreos/go-oidc v2.2.1+incompatible
-## explicit
 github.com/coreos/go-oidc
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -24,9 +23,12 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/googleapis/gax-go/v2 v2.0.5
 github.com/googleapis/gax-go/v2
-# github.com/hashicorp/cap v0.0.0-20210122190810-1e160503dd74
+# github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 ## explicit
 github.com/hashicorp/cap/jwt
+github.com/hashicorp/cap/oidc
+github.com/hashicorp/cap/oidc/internal/base62
+github.com/hashicorp/cap/oidc/internal/strutils
 # github.com/hashicorp/errwrap v1.0.0
 ## explicit
 github.com/hashicorp/errwrap
@@ -53,7 +55,6 @@ github.com/hashicorp/go-rootcerts
 ## explicit
 github.com/hashicorp/go-sockaddr
 # github.com/hashicorp/go-uuid v1.0.2
-## explicit
 github.com/hashicorp/go-uuid
 # github.com/hashicorp/go-version v1.2.0
 ## explicit
@@ -178,7 +179,6 @@ golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 ## explicit
 golang.org/x/oauth2
-golang.org/x/oauth2/clientcredentials
 golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
@@ -190,6 +190,10 @@ golang.org/x/sync/errgroup
 golang.org/x/sys/cpu
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.3
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

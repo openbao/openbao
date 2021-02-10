@@ -214,11 +214,13 @@ func validateSigningAlgorithm(token string, expectedAlgorithms []Alg) error {
 		return err
 	}
 
-	switch len(jws.Signatures) {
-	case 0:
+	if len(jws.Signatures) == 0 {
 		return fmt.Errorf("token must be signed")
-	case 1:
-	default:
+	}
+	if len(jws.Signatures) == 1 && len(jws.Signatures[0].Signature) == 0 {
+		return fmt.Errorf("token must be signed")
+	}
+	if len(jws.Signatures) > 1 {
 		return fmt.Errorf("token with multiple signatures not supported")
 	}
 

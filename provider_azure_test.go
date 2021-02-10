@@ -5,18 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/square/go-jose.v2/jwt"
+	"golang.org/x/oauth2"
 )
 
 type azureServer struct {
@@ -51,23 +49,6 @@ func (a *azureServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		gBytes, _ := json.Marshal(groups)
 		w.Write(gBytes)
-	case "/oauth2/v2.0/token":
-		stdClaims := jwt.Claims{
-			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-			Issuer:    a.server.URL,
-			NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-			Expiry:    jwt.NewNumericDate(time.Now().Add(5 * time.Second)),
-			Audience:  jwt.Audience{"test"},
-		}
-		jwtData, _ := getTestJWT(a.t, ecdsaPrivKey, stdClaims, sampleClaims("test"))
-		w.Write([]byte(fmt.Sprintf(`
-			{
-				"access_token":"%s",
-				"id_token":"%s"
-			}`,
-			jwtData,
-			jwtData,
-		)))
 	default:
 		a.t.Fatalf("unexpected path: %q", r.URL.Path)
 	}
@@ -169,7 +150,8 @@ func TestLogin_fetchGroups(t *testing.T) {
 	}
 
 	// Ensure groups are as expected
-	groupsResp, err := b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, role)
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test.access.token"})
+	groupsResp, err := b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, role, tokenSource)
 	assert.NoError(t, err)
 	assert.Equal(t, []interface{}{"group1", "group2"}, groupsResp)
 }

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-sockaddr"
-
 	"github.com/hashicorp/vault/sdk/logical"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
@@ -95,8 +95,8 @@ func TestOIDC_AuthURL(t *testing.T) {
 				`client_id=abc`,
 				`https://team-vault\.auth0\.com/authorize`,
 				`scope=openid`,
-				`nonce=\w{27}`,
-				`state=\w{27}`,
+				`nonce=n_\w{20}`,
+				`state=st_\w{20}`,
 				`redirect_uri=https%3A%2F%2Fexample.com`,
 				`response_type=code`,
 				`scope=openid`,
@@ -224,14 +224,14 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			namespaceInState:    "false",
 			allowedRedirectURIs: []string{"https://example.com?namespace=test"},
 			incomingRedirectURI: "https://example.com?namespace=test",
-			expectedStateRegEx:  `\w{27}`,
+			expectedStateRegEx:  `st_\w{20}`,
 			expectedRedirectURI: `https://example.com?namespace=test`,
 		},
 		"namespace as query parameter, bad allowed redirect": {
 			namespaceInState:    "false",
 			allowedRedirectURIs: []string{"https://example.com"},
 			incomingRedirectURI: "https://example.com?namespace=test",
-			expectedStateRegEx:  `\w{27}`,
+			expectedStateRegEx:  `st_\w{20}`,
 			expectedRedirectURI: `https://example.com?namespace=test`,
 			expectFail:          true,
 		},
@@ -239,7 +239,7 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			namespaceInState:    "true",
 			allowedRedirectURIs: []string{"https://example.com"},
 			incomingRedirectURI: "https://example.com?namespace=test",
-			expectedStateRegEx:  `\w{27},ns=test`,
+			expectedStateRegEx:  `st_\w{20},ns=test`,
 			expectedRedirectURI: `https://example.com`,
 		},
 		"namespace in state, bad allowed redirect": {
@@ -252,21 +252,21 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			namespaceInState:    "true",
 			allowedRedirectURIs: []string{"https://example.com"},
 			incomingRedirectURI: "https://example.com?namespace=org4321/dev",
-			expectedStateRegEx:  `\w{27},ns=org4321/dev`,
+			expectedStateRegEx:  `st_\w{20},ns=org4321/dev`,
 			expectedRedirectURI: `https://example.com`,
 		},
 		"namespace as query parameter, no namespaces": {
 			namespaceInState:    "false",
 			allowedRedirectURIs: []string{"https://example.com"},
 			incomingRedirectURI: "https://example.com",
-			expectedStateRegEx:  `\w{27}`,
+			expectedStateRegEx:  `st_\w{20}`,
 			expectedRedirectURI: `https://example.com`,
 		},
 		"namespace in state, no namespaces": {
 			namespaceInState:    "true",
 			allowedRedirectURIs: []string{"https://example.com"},
 			incomingRedirectURI: "https://example.com",
-			expectedStateRegEx:  `\w{27}`,
+			expectedStateRegEx:  `st_\w{20}`,
 			expectedRedirectURI: `https://example.com`,
 		},
 	}
@@ -838,7 +838,7 @@ func TestOIDC_Callback(t *testing.T) {
 			t.Fatal("nil response")
 		}
 
-		if !resp.IsError() || !strings.Contains(resp.Error().Error(), `error validating signature: oidc: expected audience "abc"`) {
+		if !resp.IsError() || !strings.Contains(resp.Error().Error(), oidc.ErrInvalidAuthorizedParty.Error()) {
 			t.Fatalf("expected invalid client_id error, got : %v", *resp)
 		}
 	})
@@ -999,6 +999,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "/userinfo":
 		w.Write([]byte(`
 			{
+				"sub": "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
 				"color":"red",
 				"temperature":"76"
 			}`))

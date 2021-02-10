@@ -111,7 +111,7 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 				UserClaim:   "sub",
 				GroupsClaim: "groups",
 			}
-			groupsRaw, err := gProvider.FetchGroups(ctx, b.(*jwtAuthBackend), allClaims, role)
+			groupsRaw, err := gProvider.FetchGroups(ctx, b.(*jwtAuthBackend), allClaims, role, nil)
 			assert.NoError(t, err)
 
 			// Assert that groups are as expected
@@ -567,7 +567,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 	provider.adminSvc.BasePath = gServer.URL
 
 	// Fetch the groups
-	_, err = b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, jwtRole)
+	_, err = b.(*jwtAuthBackend).fetchGroups(ctx, provider, allClaims, jwtRole, nil)
 	assert.NoError(t, err)
 
 	// Fetch the user info

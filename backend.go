@@ -5,10 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/coreos/go-oidc"
 	"github.com/hashicorp/cap/jwt"
+	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/patrickmn/go-cache"
@@ -35,7 +34,7 @@ type jwtAuthBackend struct {
 	provider     *oidc.Provider
 	validator    *jwt.Validator
 	cachedConfig *jwtConfig
-	oidcStates   *cache.Cache
+	oidcRequests *cache.Cache
 
 	providerCtx       context.Context
 	providerCtxCancel context.CancelFunc
@@ -44,7 +43,7 @@ type jwtAuthBackend struct {
 func backend() *jwtAuthBackend {
 	b := new(jwtAuthBackend)
 	b.providerCtx, b.providerCtxCancel = context.WithCancel(context.Background())
-	b.oidcStates = cache.New(oidcStateTimeout, 1*time.Minute)
+	b.oidcRequests = cache.New(oidcRequestTimeout, oidcRequestCleanupInterval)
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew,
@@ -87,6 +86,9 @@ func (b *jwtAuthBackend) cleanup(_ context.Context) {
 	if b.providerCtxCancel != nil {
 		b.providerCtxCancel()
 	}
+	if b.provider != nil {
+		b.provider.Done()
+	}
 	b.l.Unlock()
 }
 
@@ -99,6 +101,9 @@ func (b *jwtAuthBackend) invalidate(ctx context.Context, key string) {
 
 func (b *jwtAuthBackend) reset() {
 	b.l.Lock()
+	if b.provider != nil {
+		b.provider.Done()
+	}
 	b.provider = nil
 	b.cachedConfig = nil
 	b.validator = nil
@@ -106,17 +111,8 @@ func (b *jwtAuthBackend) reset() {
 }
 
 func (b *jwtAuthBackend) getProvider(config *jwtConfig) (*oidc.Provider, error) {
-	b.l.RLock()
-	unlockFunc := b.l.RUnlock
-	defer func() { unlockFunc() }()
-
-	if b.provider != nil {
-		return b.provider, nil
-	}
-
-	b.l.RUnlock()
 	b.l.Lock()
-	unlockFunc = b.l.Unlock
+	defer b.l.Unlock()
 
 	if b.provider != nil {
 		return b.provider, nil

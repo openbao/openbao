@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/coreos/go-oidc"
 	"github.com/hashicorp/cap/jwt"
+	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -236,9 +236,14 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse("both 'oidc_client_id' and 'oidc_client_secret' must be set for OIDC"), nil
 
 	case config.OIDCDiscoveryURL != "":
-		_, err := b.createProvider(config)
+		var err error
+		if config.OIDCClientID != "" && config.OIDCClientSecret != "" {
+			_, err = b.createProvider(config)
+		} else {
+			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
+		}
 		if err != nil {
-			return logical.ErrorResponse(errwrap.Wrapf("error checking oidc discovery URL: {{err}}", err).Error()), nil
+			return logical.ErrorResponse("error checking oidc discovery URL: %s", err.Error()), nil
 		}
 
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
@@ -315,12 +320,23 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 }
 
 func (b *jwtAuthBackend) createProvider(config *jwtConfig) (*oidc.Provider, error) {
-	oidcCtx, err := b.createCAContext(b.providerCtx, config.OIDCDiscoveryCAPEM)
+	supportedSigAlgs := make([]oidc.Alg, len(config.JWTSupportedAlgs))
+	for i, a := range config.JWTSupportedAlgs {
+		supportedSigAlgs[i] = oidc.Alg(a)
+	}
+
+	if len(supportedSigAlgs) == 0 {
+		supportedSigAlgs = []oidc.Alg{oidc.RS256}
+	}
+
+	c, err := oidc.NewConfig(config.OIDCDiscoveryURL, config.OIDCClientID,
+		oidc.ClientSecret(config.OIDCClientSecret), supportedSigAlgs, []string{},
+		oidc.WithProviderCA(config.OIDCDiscoveryCAPEM))
 	if err != nil {
 		return nil, errwrap.Wrapf("error creating provider: {{err}}", err)
 	}
 
-	provider, err := oidc.NewProvider(oidcCtx, config.OIDCDiscoveryURL)
+	provider, err := oidc.NewProvider(c)
 	if err != nil {
 		return nil, errwrap.Wrapf("error creating provider with given values: {{err}}", err)
 	}

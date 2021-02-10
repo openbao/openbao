@@ -3,14 +3,12 @@ module github.com/hashicorp/vault-plugin-auth-jwt
 go 1.14
 
 require (
-	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/go-test/deep v1.0.2-0.20181118220953-042da051cf31
-	github.com/hashicorp/cap v0.0.0-20210122190810-1e160503dd74
+	github.com/hashicorp/cap v0.0.0-20210204173447-5fcddadbf7c7
 	github.com/hashicorp/errwrap v1.0.0
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.12.0
 	github.com/hashicorp/go-sockaddr v1.0.2
-	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/go-version v1.2.0 // indirect
 	github.com/hashicorp/vault/api v1.0.5-0.20200215224050-f6547fa8e820
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200215224050-f6547fa8e820

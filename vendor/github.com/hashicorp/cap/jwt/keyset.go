@@ -140,6 +140,10 @@ func (ks *jsonWebKeySet) VerifySignature(ctx context.Context, token string) (map
 
 // NewStaticKeySet returns a KeySet that verifies JWT signatures using the given publicKeys.
 func NewStaticKeySet(publicKeys []crypto.PublicKey) (KeySet, error) {
+	if len(publicKeys) == 0 {
+		return nil, errors.New("publicKeys must not be empty")
+	}
+
 	return &staticKeySet{
 		publicKeys: publicKeys,
 	}, nil

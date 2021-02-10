@@ -317,6 +317,8 @@ func TestConfig_OIDC_Write(t *testing.T) {
 	data := map[string]interface{}{
 		"oidc_discovery_url":    "https://team-vault.auth0.com/",
 		"oidc_discovery_ca_pem": oidcBadCACerts,
+		"oidc_client_id":        "abc",
+		"oidc_client_secret":    "def",
 	}
 
 	req := &logical.Request{
@@ -345,6 +347,8 @@ func TestConfig_OIDC_Write(t *testing.T) {
 		JWTSupportedAlgs:     []string{},
 		OIDCResponseTypes:    []string{},
 		OIDCDiscoveryURL:     "https://team-vault.auth0.com/",
+		OIDCClientID:         "abc",
+		OIDCClientSecret:     "def",
 		ProviderConfig:       map[string]interface{}{},
 		NamespaceInState:     true,
 	}

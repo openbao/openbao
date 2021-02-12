@@ -53,6 +53,7 @@ func TestPath_Create(t *testing.T) {
 			"ttl":             "1s",
 			"num_uses":        12,
 			"max_ttl":         "5s",
+			"max_age":         "60s",
 		}
 
 		expectedSockAddr, err := sockaddr.NewSockAddr("127.0.0.1/8")
@@ -85,6 +86,7 @@ func TestPath_Create(t *testing.T) {
 			NumUses:             12,
 			BoundCIDRs:          []*sockaddr.SockAddrMarshaler{{SockAddr: expectedSockAddr}},
 			AllowedRedirectURIs: []string(nil),
+			MaxAge:              60 * time.Second,
 		}
 
 		req := &logical.Request{
@@ -783,6 +785,7 @@ func TestPath_Read(t *testing.T) {
 		"token_type":              logical.TokenTypeDefault.String(),
 		"token_no_default_policy": false,
 		"token_explicit_max_ttl":  int64(0),
+		"max_age":                 int64(0),
 	}
 
 	req := &logical.Request{

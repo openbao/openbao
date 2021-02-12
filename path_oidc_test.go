@@ -19,6 +19,8 @@ import (
 	"github.com/hashicorp/cap/oidc"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/square/go-jose.v2"
 	"gopkg.in/square/go-jose.v2/jwt"
 )
@@ -361,6 +363,106 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 				t.Fatalf("expected state to match regex: %s, %s", test.expectedStateRegEx, state)
 			}
 
+		})
+	}
+}
+
+func TestOIDC_AuthURL_max_age(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// Configure the backend
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"oidc_discovery_url": "https://team-vault.auth0.com/",
+			"oidc_client_id":     "abc",
+			"oidc_client_secret": "def",
+		},
+	}
+	resp, err := b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	tests := map[string]struct {
+		maxAge         string
+		expectedMaxAge string
+		expectErr      bool
+	}{
+		"auth URL for role with integer max_age of 60": {
+			maxAge:         "60",
+			expectedMaxAge: "60",
+		},
+		"auth URL for role with integer max_age of 180": {
+			maxAge:         "180",
+			expectedMaxAge: "180",
+		},
+		"auth URL for role with empty max_age": {
+			maxAge:         "",
+			expectedMaxAge: "",
+		},
+		"auth URL for role with duration string max_age of 30s": {
+			maxAge:         "30s",
+			expectedMaxAge: "30",
+		},
+		"auth URL for role with duration string max_age of 2m": {
+			maxAge:         "2m",
+			expectedMaxAge: "120",
+		},
+		"auth URL for role with duration string max_age of 1hr": {
+			maxAge:         "1h",
+			expectedMaxAge: "3600",
+		},
+		"auth URL for role with invalid duration string": {
+			maxAge:    "1hr",
+			expectErr: true,
+		},
+		"auth URL for role with invalid signed integer": {
+			maxAge:    "-1",
+			expectErr: true,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			// Write the role with the given max age
+			req = &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "role/test",
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"user_claim":            "email",
+					"allowed_redirect_uris": []string{"https://example.com"},
+					"max_age":               tt.maxAge,
+				},
+			}
+			resp, err = b.HandleRequest(context.Background(), req)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Request for generation of an auth URL
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "oidc/auth_url",
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"role":         "test",
+					"redirect_uri": "https://example.com",
+				},
+			}
+			resp, err = b.HandleRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Parse the auth URL and assert the expected max_age query parameter
+			parsedAuthURL, err := url.Parse(resp.Data["auth_url"].(string))
+			require.NoError(t, err)
+			queryParams := parsedAuthURL.Query()
+			assert.Equal(t, tt.expectedMaxAge, queryParams.Get("max_age"))
 		})
 	}
 }

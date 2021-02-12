@@ -439,6 +439,10 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		options = append(options, oidc.WithImplicitFlow())
 	}
 
+	if role.MaxAge > 0 {
+		options = append(options, oidc.WithMaxAge(uint(role.MaxAge.Seconds())))
+	}
+
 	request, err := oidc.NewRequest(oidcRequestTimeout, redirectURI, options...)
 	if err != nil {
 		return nil, err

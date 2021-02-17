@@ -263,6 +263,33 @@ func TestLogin(t *testing.T) {
 	}
 }
 
+func TestLogin_ContextError(t *testing.T) {
+	b, storage := setupBackend(t, testDefaultPEMs, testName, testNamespace)
+
+	data := map[string]interface{}{
+		"role": "plugin-test",
+		"jwt":  jwtData,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := b.HandleRequest(ctx, req)
+	if err != context.Canceled {
+		t.Fatalf("expected context canceled error, got: %v", err)
+	}
+}
+
 func TestLogin_ECDSA_PEM(t *testing.T) {
 	b, storage := setupBackend(t, testNoPEMs, testName, testNamespace)
 

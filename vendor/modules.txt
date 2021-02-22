@@ -1,6 +1,8 @@
 # github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
+# github.com/Azure/go-ntlmssp v0.0.0-20200615164410-66371956d46c
+github.com/Azure/go-ntlmssp
 # github.com/Microsoft/go-winio v0.4.13
 github.com/Microsoft/go-winio
 github.com/Microsoft/go-winio/pkg/guid
@@ -18,9 +20,9 @@ github.com/docker/go-connections/nat
 github.com/docker/go-units
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
-# github.com/go-asn1-ber/asn1-ber v1.3.1
+# github.com/go-asn1-ber/asn1-ber v1.5.1
 github.com/go-asn1-ber/asn1-ber
-# github.com/go-ldap/ldap/v3 v3.1.3
+# github.com/go-ldap/ldap/v3 v3.2.4
 github.com/go-ldap/ldap/v3
 # github.com/golang/protobuf v1.3.2
 github.com/golang/protobuf/proto
@@ -204,7 +206,7 @@ github.com/pkg/errors
 github.com/ryanuber/go-glob
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
-# golang.org/x/crypto v0.0.0-20200117160349-530e935923ad
+# golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/cryptobyte
 golang.org/x/crypto/cryptobyte/asn1
@@ -269,12 +271,8 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# gopkg.in/asn1-ber.v1 v1.0.0-20181015200546-f715ec2f112d
-gopkg.in/asn1-ber.v1
 # gopkg.in/jcmturner/goidentity.v3 v3.0.0
 gopkg.in/jcmturner/goidentity.v3
-# gopkg.in/ldap.v3 v3.0.3
-gopkg.in/ldap.v3
 # gopkg.in/square/go-jose.v2 v2.3.1
 gopkg.in/square/go-jose.v2
 gopkg.in/square/go-jose.v2/cipher

@@ -17,6 +17,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/square/go-jose.v2"
 	sqjwt "gopkg.in/square/go-jose.v2/jwt"
@@ -65,7 +66,6 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			data = map[string]interface{}{
 				"bound_issuer":           "https://team-vault.auth0.com/",
 				"jwt_validation_pubkeys": ecdsaPubKey,
-				"jwt_supported_algs":     []string{string(jwt.ES256)},
 			}
 		} else {
 			p := newOIDCProvider(t)
@@ -77,9 +77,8 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 			}
 
 			data = map[string]interface{}{
-				"jwks_url":           p.server.URL + "/certs",
-				"jwks_ca_pem":        cert,
-				"jwt_supported_algs": []string{string(jwt.ES256)},
+				"jwks_url":    p.server.URL + "/certs",
+				"jwks_ca_pem": cert,
 			}
 		}
 	}
@@ -952,6 +951,106 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 			t.Fatalf("[test %d: %s jws: %v] expected token not valid yet error, got : %v", i, tt.Context, *resp, tt.JWKS)
 		}
 		b.closeServerFunc()
+	}
+}
+
+func TestLogin_JWTSupportedAlgs(t *testing.T) {
+	tests := []struct {
+		name             string
+		jwtSupportedAlgs []string
+		wantErr          bool
+	}{
+		{
+			name: "JWT auth with empty signing algorithms",
+		},
+		{
+			name:             "JWT auth with valid signing algorithm",
+			jwtSupportedAlgs: []string{string(jwt.ES256)},
+		},
+		{
+			name:             "JWT auth with valid signing algorithms",
+			jwtSupportedAlgs: []string{string(jwt.RS256), string(jwt.ES256), string(jwt.EdDSA)},
+		},
+		{
+			name:             "JWT auth with invalid signing algorithm",
+			jwtSupportedAlgs: []string{string(jwt.RS256)},
+			wantErr:          true,
+		},
+		{
+			name:             "JWT auth with invalid signing algorithms",
+			jwtSupportedAlgs: []string{string(jwt.RS256), string(jwt.ES512), string(jwt.EdDSA)},
+			wantErr:          true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			// Configure the backend with an ES256 public key
+			data := map[string]interface{}{
+				"jwt_validation_pubkeys": ecdsaPubKey,
+				"jwt_supported_algs":     tt.jwtSupportedAlgs,
+			}
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      configPath,
+				Storage:   storage,
+				Data:      data,
+			}
+			resp, err := b.HandleRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Configure a JWT role
+			data = map[string]interface{}{
+				"role_type":       "jwt",
+				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
+				"user_claim":      "email",
+			}
+			req = &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "role/plugin-test",
+				Storage:   storage,
+				Data:      data,
+			}
+			resp, err = b.HandleRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Sign a JWT with the related ES256 private key
+			cl := sqjwt.Claims{
+				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			}
+			privateCl := struct {
+				Email string `json:"email"`
+			}{
+				"vault@hashicorp.com",
+			}
+			jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+			// Authenticate using the signed JWT
+			data = map[string]interface{}{
+				"role": "plugin-test",
+				"jwt":  jwtData,
+			}
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "login",
+				Storage:   storage,
+				Data:      data,
+			}
+			resp, err = b.HandleRequest(context.Background(), req)
+			if tt.wantErr {
+				require.True(t, resp.IsError())
+				return
+			}
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+		})
 	}
 }
 

@@ -467,6 +467,119 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 	}
 }
 
+// TestOIDC_ResponseTypeIDToken tests authentication using an implicit flow
+// by setting oidc_response_types=id_token and oidc_response_mode=form_post.
+// This means that there is no exchange of an authorization code for tokens.
+// Instead, the OIDC provider's authorization endpoint responds with an ID
+// token, which will be verified to complete the authentication request.
+func TestOIDC_ResponseTypeIDToken(t *testing.T) {
+	b, storage := getBackend(t)
+
+	// Start the test OIDC provider
+	s := newOIDCProvider(t)
+	t.Cleanup(s.server.Close)
+	s.clientID = "abc"
+	s.clientSecret = "def"
+	cert, err := s.getTLSCert()
+	require.NoError(t, err)
+
+	// Configure the backend
+	data := map[string]interface{}{
+		"oidc_discovery_url":    s.server.URL,
+		"oidc_client_id":        s.clientID,
+		"oidc_client_secret":    s.clientSecret,
+		"oidc_discovery_ca_pem": cert,
+		"default_role":          "test",
+		"bound_issuer":          "http://vault.example.com/",
+		"jwt_supported_algs":    []string{"ES256"},
+		"oidc_response_mode":    "form_post",
+		"oidc_response_types":   "id_token",
+	}
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err := b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Configure a role
+	data = map[string]interface{}{
+		"user_claim":            "email",
+		"bound_subject":         "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		"allowed_redirect_uris": []string{"https://example.com"},
+	}
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "role/test",
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Generate an auth URL
+	data = map[string]interface{}{
+		"role":         "test",
+		"redirect_uri": "https://example.com",
+	}
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "oidc/auth_url",
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err = b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Parse the state and nonce from the auth URL
+	authURL := resp.Data["auth_url"].(string)
+	state := getQueryParam(t, authURL, "state")
+	nonce := getQueryParam(t, authURL, "nonce")
+
+	// Create a signed JWT which will act as the ID token that would be
+	// returned directly from the OIDC provider's authorization endpoint
+	stdClaims := jwt.Claims{
+		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+		Issuer:    s.server.URL,
+		NotBefore: jwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+		Expiry:    jwt.NewNumericDate(time.Now().Add(2 * time.Minute)),
+		Audience:  jwt.Audience{s.clientID},
+	}
+	idToken, _ := getTestJWT(t, ecdsaPrivKey, stdClaims, sampleClaims(nonce))
+
+	// Invoke the POST callback handler with the ID token and state
+	req = &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "oidc/callback",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"id_token": idToken,
+			"state":    state,
+		},
+	}
+	resp, err = b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+
+	// Complete authentication by invoking the callback handler with the state
+	req = &logical.Request{
+		Operation: logical.ReadOperation,
+		Path:      "oidc/callback",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"state": state,
+		},
+	}
+	resp, err = b.HandleRequest(context.Background(), req)
+	require.NoError(t, err)
+	require.False(t, resp.IsError())
+}
+
 func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
 

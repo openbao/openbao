@@ -233,7 +233,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 
 	type args struct {
 		user   string
-		config GSuiteProviderConfig
+		config *jwtConfig
 	}
 	tests := []struct {
 		name     string
@@ -244,11 +244,12 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for user that's in no groups",
 			args: args{
 				user: "noGroupUser",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+					},
 				},
 			},
 			expected: []string{},
@@ -257,11 +258,12 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for group that's in no groups",
 			args: args{
 				user: "group3@group.com",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+					},
 				},
 			},
 			expected: []string{},
@@ -270,11 +272,12 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for user with default recursion max depth 0",
 			args: args{
 				user: "user1",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+					},
 				},
 			},
 			expected: []string{
@@ -285,12 +288,13 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for user with recursion max depth 1",
 			args: args{
 				user: "user1",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
-					GroupsRecurseMaxDepth:  1,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+						"groups_recurse_max_depth": 1,
+					},
 				},
 			},
 			expected: []string{
@@ -302,12 +306,13 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for user with recursion max depth 10",
 			args: args{
 				user: "user1",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
-					GroupsRecurseMaxDepth:  10,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+						"groups_recurse_max_depth": 10,
+					},
 				},
 			},
 			expected: []string{
@@ -320,11 +325,12 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for group with default recursion max depth 0",
 			args: args{
 				user: "group1@group.com",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+					},
 				},
 			},
 			expected: []string{
@@ -335,12 +341,13 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for group with recursion max depth 1",
 			args: args{
 				user: "group1@group.com",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
-					GroupsRecurseMaxDepth:  1,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+						"groups_recurse_max_depth": 1,
+					},
 				},
 			},
 			expected: []string{
@@ -352,12 +359,13 @@ func TestGSuiteProvider_search(t *testing.T) {
 			name: "fetch groups for group with recursion max depth 10",
 			args: args{
 				user: "group1@group.com",
-				config: GSuiteProviderConfig{
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					FetchGroups:            true,
-					GroupsRecurseMaxDepth:  10,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"fetch_groups":             true,
+						"groups_recurse_max_depth": 10,
+					},
 				},
 			},
 			expected: []string{
@@ -373,7 +381,7 @@ func TestGSuiteProvider_search(t *testing.T) {
 
 			// Initialize the provider
 			gProvider := new(GSuiteProvider)
-			assert.NoError(t, gProvider.initialize(ctx, tt.args.config))
+			assert.NoError(t, gProvider.Initialize(ctx, tt.args.config))
 
 			// Fetch groups from the groupsServer
 			gProvider.adminSvc, _ = admin.NewService(ctx, option.WithHTTPClient(&http.Client{}))
@@ -391,9 +399,9 @@ func TestGSuiteProvider_search(t *testing.T) {
 	}
 }
 
-func TestGSuiteProvider_initialize(t *testing.T) {
+func TestGSuiteProvider_Initialize(t *testing.T) {
 	type args struct {
-		config GSuiteProviderConfig
+		config *jwtConfig
 	}
 	tests := []struct {
 		name    string
@@ -403,11 +411,12 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "invalid config: required service account key is empty",
 			args: args{
-				config: GSuiteProviderConfig{
-					AdminImpersonateEmail: "test@example.com",
-					GroupsRecurseMaxDepth: -1,
-					UserCustomSchemas:     "Custom",
-					serviceAccountKeyJSON: []byte(`{"type": "service_account"}`),
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_admin_impersonate": "test@example.com",
+						"groups_recurse_max_depth": -1,
+						"user_custom_schemas":      "Custom",
+					},
 				},
 			},
 			wantErr: true,
@@ -415,11 +424,12 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "invalid config: required admin impersonate email is empty",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					GroupsRecurseMaxDepth:  -1,
-					UserCustomSchemas:      "Custom",
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"groups_recurse_max_depth": -1,
+						"user_custom_schemas":      "Custom",
+					},
 				},
 			},
 			wantErr: true,
@@ -427,12 +437,13 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "invalid config: recurse max depth negative number",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					GroupsRecurseMaxDepth:  -1,
-					UserCustomSchemas:      "Custom",
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"groups_recurse_max_depth": -1,
+						"user_custom_schemas":      "Custom",
+					},
 				},
 			},
 			wantErr: true,
@@ -440,12 +451,13 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "valid config: all options",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					GroupsRecurseMaxDepth:  5,
-					UserCustomSchemas:      "Custom",
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"groups_recurse_max_depth": 5,
+						"user_custom_schemas":      "Custom",
+					},
 				},
 			},
 			wantErr: false,
@@ -453,11 +465,12 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "valid config: no custom schemas",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					GroupsRecurseMaxDepth:  5,
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"groups_recurse_max_depth": 5,
+					},
 				},
 			},
 			wantErr: false,
@@ -465,11 +478,12 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "valid config: no recurse max depth",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					UserCustomSchemas:      "Custom",
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"user_custom_schemas":      "Custom",
+					},
 				},
 			},
 			wantErr: false,
@@ -477,13 +491,14 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 		{
 			name: "valid config: fetch groups and user info",
 			args: args{
-				config: GSuiteProviderConfig{
-					ServiceAccountFilePath: "/path/to/google-service-account.json",
-					AdminImpersonateEmail:  "test@example.com",
-					serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
-					UserCustomSchemas:      "Custom",
-					FetchGroups:            true,
-					FetchUserInfo:          true,
+				config: &jwtConfig{
+					ProviderConfig: map[string]interface{}{
+						"gsuite_service_account":   `{"type": "service_account"}`,
+						"gsuite_admin_impersonate": "test@example.com",
+						"user_custom_schemas":      "Custom",
+						"fetch_groups":             true,
+						"fetch_user_info":          true,
+					},
 				},
 			},
 			wantErr: false,
@@ -492,11 +507,12 @@ func TestGSuiteProvider_initialize(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := &GSuiteProvider{}
+			err := g.Initialize(context.Background(), tt.args.config)
 			if tt.wantErr {
-				assert.Error(t, g.initialize(context.Background(), tt.args.config))
-			} else {
-				assert.NoError(t, g.initialize(context.Background(), tt.args.config))
+				assert.Error(t, err)
+				return
 			}
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -549,17 +565,18 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 	}
 
 	// Configure the provider
-	config := GSuiteProviderConfig{
-		ServiceAccountFilePath: "/path/to/google-service-account.json",
-		AdminImpersonateEmail:  "admin@example.com",
-		FetchGroups:            true,
-		FetchUserInfo:          true,
-		GroupsRecurseMaxDepth:  5,
-		UserCustomSchemas:      "Preferences",
-		serviceAccountKeyJSON:  []byte(`{"type": "service_account"}`),
+	config := &jwtConfig{
+		ProviderConfig: map[string]interface{}{
+			"gsuite_service_account":   `{"type": "service_account"}`,
+			"gsuite_admin_impersonate": "admin@example.com",
+			"fetch_groups":             true,
+			"fetch_user_info":          true,
+			"groups_recurse_max_depth": 5,
+			"user_custom_schemas":      "Preferences",
+		},
 	}
 	provider := &GSuiteProvider{}
-	err := provider.initialize(ctx, config)
+	err := provider.Initialize(ctx, config)
 	assert.NoError(t, err)
 
 	// Swap the base URL to make requests to gServer

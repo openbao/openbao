@@ -107,6 +107,7 @@ func VersionedKVFactory(ctx context.Context, conf *logical.BackendConfig) (logic
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        backendHelp,
+		Invalidate:  b.Invalidate,
 
 		PathsSpecial: &logical.Paths{
 			SealWrapStorage: []string{

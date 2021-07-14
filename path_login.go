@@ -23,8 +23,6 @@ var (
 	// defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.
 	defaultJWTIssuer = "kubernetes/serviceaccount"
 
-	uidJWTClaimKey = "kubernetes.io/serviceaccount/service-account.uid"
-
 	// errMismatchedSigningMethod is used if the certificate doesn't match the
 	// JWT's expected signing method.
 	errMismatchedSigningMethod = errors.New("invalid signing method")
@@ -141,7 +139,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 
 // aliasLookahead returns the alias object with the SA UID from the JWT
 // Claims.
-func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *kubeAuthBackend) aliasLookahead(_ context.Context, _ *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	jwtStr := data.Get("jwt").(string)
 	if len(jwtStr) == 0 {
 		return logical.ErrorResponse("missing jwt"), nil
@@ -153,8 +151,15 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
-	saUID, ok := parsedJWT.Claims().Get(uidJWTClaimKey).(string)
-	if !ok || saUID == "" {
+	// Decode claims into a service account object
+	sa := &serviceAccount{}
+	err = mapstructure.Decode(parsedJWT.Claims(), sa)
+	if err != nil {
+		return nil, err
+	}
+
+	saUID := sa.uid()
+	if saUID == "" {
 		return nil, errors.New("could not parse UID from claims")
 	}
 
@@ -338,12 +343,12 @@ func (s *serviceAccount) namespace() string {
 }
 
 type projectedServiceToken struct {
-	Namespace      string                      `mapstructure:"namespace"`
-	Pod            *projectedServiceAccountPod `mapstructure:"pod"`
-	ServiceAccount *projectedServiceAccountPod `mapstructure:"serviceaccount"`
+	Namespace      string        `mapstructure:"namespace"`
+	Pod            *k8sObjectRef `mapstructure:"pod"`
+	ServiceAccount *k8sObjectRef `mapstructure:"serviceaccount"`
 }
 
-type projectedServiceAccountPod struct {
+type k8sObjectRef struct {
 	Name string `mapstructure:"name"`
 	UID  string `mapstructure:"uid"`
 }

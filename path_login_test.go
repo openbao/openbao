@@ -878,6 +878,33 @@ func TestLoginProjectedToken(t *testing.T) {
 	}
 }
 
+func TestAliasLookAheadProjectedToken(t *testing.T) {
+	b, storage := setupBackend(t, append(testDefaultPEMs, testMinikubePubKey), "default", testNamespace)
+
+	data := map[string]interface{}{
+		"jwt": jwtProjectedData,
+	}
+
+	req := &logical.Request{
+		Operation: logical.AliasLookaheadOperation,
+		Path:      "login",
+		Storage:   storage,
+		Data:      data,
+		Connection: &logical.Connection{
+			RemoteAddr: "127.0.0.1",
+		},
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if resp.Auth.Alias.Name != "77c81ad7-1bea-4d94-9ca5-f5d7f3632331" {
+		t.Fatalf("Unexpected UID: %s", resp.Auth.Alias.Name)
+	}
+}
+
 // jwtProjectedData is a Projected Service Account jwt with expiration set to
 // 05 Nov 2030 04:19:57 (UTC)
 //

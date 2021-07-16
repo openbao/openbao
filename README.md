@@ -6,7 +6,7 @@ A [Vault](https://www.vaultproject.io) plugin for Redis
 
 This project uses the database plugin interface introduced in Vault version 0.7.1.
 
-The plugin supports the generation of static and dynamic user roles and root credential rotation.
+The plugin supports the generation of static and dynamic user roles and root credential rotation on a stand alone redis server.
 
 ## Build
 
@@ -58,18 +58,6 @@ $ vault write database/config/my-redis plugin_name="redis-database-plugin" \
 $ vault write -force database/rotate-root/my-redis
 
  ```
-#### Cluster of REDIS servers using TLS
-```bash
-$ CACRT=$(cat ca.crt| base64 -w 0)
-$ vault write database/config/my-redis-cluster plugin_name="redis-database-plugin" \
-  cluster="host1:7000,host2:7000,host3:7000" username=Administrator password=password \
-  allowed_roles=* persistence_mode="ACLFILE" \
-  CACRT=$(cat ca.crt| base64 -w 0)
-# You should consider rotating the admin password. Note that if you do, the new password will never be made available
-# through Vault, so you should create a vault-specific database admin user for this.
-$ vault write -force database/rotate-root/my-redis-cluster  
-  
-```
 
 ### Dynamic Role Creation
 

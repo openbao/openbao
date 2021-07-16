@@ -46,6 +46,8 @@ Prior to initializing the plugin, ensure that you have created an administration
 
 ### Plugin initialization
 
+#### Standalone REDIS Server.
+
 ```bash
 $ vault write database/config/my-redis plugin_name="redis-database-plugin" \
         host="localhost" port=6379 username="Administrator" password="password" \
@@ -56,6 +58,18 @@ $ vault write database/config/my-redis plugin_name="redis-database-plugin" \
 $ vault write -force database/rotate-root/my-redis
 
  ```
+#### Cluster of REDIS servers using TLS
+```bash
+$ CACRT=$(cat ca.crt| base64 -w 0)
+$ vault write database/config/my-redis-cluster plugin_name="redis-database-plugin" \
+  cluster="host1:7000,host2:7000,host3:7000" username=Administrator password=password \
+  allowed_roles=* persistence_mode="ACLFILE" \
+  CACRT=$(cat ca.crt| base64 -w 0)
+# You should consider rotating the admin password. Note that if you do, the new password will never be made available
+# through Vault, so you should create a vault-specific database admin user for this.
+$ vault write -force database/rotate-root/my-redis-cluster  
+  
+```
 
 ### Dynamic Role Creation
 

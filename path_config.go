@@ -51,7 +51,7 @@ the JWT used for login will be used to access the API.`,
 				Description: `Optional list of PEM-formated public keys or certificates
 used to verify the signatures of kubernetes service account
 JWTs. If a certificate is given, its public key will be
-extracted. Not every installation of Kuberentes exposes these keys.`,
+extracted. Not every installation of Kubernetes exposes these keys.`,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Service account verification keys",
 				},

@@ -12,8 +12,20 @@ import (
 )
 
 const (
-	configPath string = "config"
-	rolePrefix string = "role/"
+	configPath = "config"
+	rolePrefix = "role/"
+
+	// aliasNameSourceUnset provides backwards compatibility with preexisting roles.
+	aliasNameSourceUnset   = ""
+	aliasNameSourceSAToken = "sa_token"
+	aliasNameSourceSAPath  = "sa_path"
+	aliasNameSourceDefault = aliasNameSourceSAToken
+)
+
+var (
+	// when adding new alias name sources make sure to update the corresponding FieldSchema description in path_role.go
+	aliasNameSources          = []string{aliasNameSourceSAToken, aliasNameSourceSAPath}
+	errInvalidAliasNameSource = fmt.Errorf(`invalid alias_name_source, must be one of: %s`, strings.Join(aliasNameSources, ", "))
 )
 
 // kubeAuthBackend implements logical.Backend
@@ -130,6 +142,15 @@ func (b *kubeAuthBackend) role(ctx context.Context, s logical.Storage, name stri
 	}
 
 	return role, nil
+}
+
+func validateAliasNameSource(source string) error {
+	for _, s := range aliasNameSources {
+		if s == source {
+			return nil
+		}
+	}
+	return errInvalidAliasNameSource
 }
 
 var backendHelp string = `

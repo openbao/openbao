@@ -156,13 +156,13 @@ func (b *kubeAuthBackend) getFieldValueStr(data *framework.FieldData, param stri
 
 func (b *kubeAuthBackend) getAliasName(role *roleStorageEntry, serviceAccount *serviceAccount) (string, error) {
 	switch role.AliasNameSource {
-	case aliasNameSourceSAToken, aliasNameSourceUnset:
+	case aliasNameSourceSAUid, aliasNameSourceUnset:
 		uid, err := serviceAccount.uid()
 		if err != nil {
 			return "", err
 		}
 		return uid, nil
-	case aliasNameSourceSAPath:
+	case aliasNameSourceSAName:
 		return fmt.Sprintf("%s/%s", serviceAccount.Namespace, serviceAccount.Name), nil
 	default:
 		return "", fmt.Errorf("unknown alias_name_source %q", role.AliasNameSource)

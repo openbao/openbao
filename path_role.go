@@ -56,7 +56,7 @@ valid choices:
 	%q : <token.uid> e.g. 474b11b5-0f20-4f9d-8ca5-65715ab325e0 (most secure choice)
 	%q : <namespace>/<serviceaccount> e.g. vault/vault-agent
 default: %q
-`, aliasNameSourceSAToken, aliasNameSourceSAPath, aliasNameSourceDefault),
+`, aliasNameSourceSAUid, aliasNameSourceSAName, aliasNameSourceDefault),
 					Default: aliasNameSourceDefault,
 				},
 				"policies": {

@@ -73,7 +73,7 @@ func TestPath_Create(t *testing.T) {
 				AliasNameSource:          aliasNameSourceDefault,
 			},
 		},
-		"alias_name_source_sa_path": {
+		"alias_name_source_serviceaccount_name": {
 			data: map[string]interface{}{
 				"bound_service_account_names":      "name",
 				"bound_service_account_namespaces": "namespace",
@@ -82,7 +82,7 @@ func TestPath_Create(t *testing.T) {
 				"ttl":                              "1s",
 				"num_uses":                         12,
 				"max_ttl":                          "5s",
-				"alias_name_source":                aliasNameSourceSAPath,
+				"alias_name_source":                aliasNameSourceSAName,
 			},
 			expected: &roleStorageEntry{
 				TokenParams: tokenutil.TokenParams{
@@ -101,7 +101,7 @@ func TestPath_Create(t *testing.T) {
 				MaxTTL:                   5 * time.Second,
 				NumUses:                  12,
 				BoundCIDRs:               nil,
-				AliasNameSource:          aliasNameSourceSAPath,
+				AliasNameSource:          aliasNameSourceSAName,
 			},
 		},
 		"invalid_alias_name_source": {

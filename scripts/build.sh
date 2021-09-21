@@ -21,10 +21,6 @@ SCRATCH="$DIR/tmp"
 mkdir -p "$SCRATCH/plugins"
 
 echo "--> Vault server"
-echo "    Writing config"
-tee "$SCRATCH/vault.hcl" > /dev/null <<EOF
-plugin_directory = "$SCRATCH/plugins"
-EOF
 
 echo "    Envvars"
 export VAULT_DEV_ROOT_TOKEN_ID="root"
@@ -33,17 +29,18 @@ export VAULT_ADDR="http://127.0.0.1:8200"
 echo "    Starting"
 vault server \
   -dev \
+  -dev-root-token-id=root \
+  -dev-plugin-dir="$SCRATCH/plugins" \
   -log-level="debug" \
-  -config="$SCRATCH/vault.hcl" \
-  -dev-ha -dev-transactional -dev-root-token-id=root \
   &
-sleep 2
 VAULT_PID=$!
+sleep 2
 
 function cleanup {
   echo ""
   echo "==> Cleaning up"
   kill -INT "$VAULT_PID"
+  wait $VAULT_PID
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT

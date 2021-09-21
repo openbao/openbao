@@ -2,6 +2,7 @@ package openldap
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/vault/sdk/logical"
@@ -451,4 +452,151 @@ func TestListRoles(t *testing.T) {
 			t.Fatalf("expected list with %d keys, got %d", 2, len(resp.Data["keys"].([]string)))
 		}
 	})
+}
+
+func TestWALsStillTrackedAfterUpdate(t *testing.T) {
+	ctx := context.Background()
+	b, storage := getBackend(false)
+	defer b.Cleanup(ctx)
+	configureOpenLDAPMount(t, b, storage)
+
+	createRole(t, b, storage, "hashicorp")
+
+	generateWALFromFailedRotation(t, b, storage, "hashicorp")
+	requireWALs(t, storage, 1)
+
+	_, err := b.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      staticRolePath + "hashicorp",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"username":        "hashicorp",
+			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
+			"rotation_period": "600s",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	walIDs := requireWALs(t, storage, 1)
+
+	// Now when we trigger a manual rotate, it should use the WAL's new password
+	// which will tell us that the in-memory structure still kept track of the
+	// WAL in addition to it still being in storage.
+	wal, err := b.findStaticWAL(ctx, storage, walIDs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "rotate-role/hashicorp",
+		Storage:   storage,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	role, err := b.staticRole(ctx, storage, "hashicorp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if role.StaticAccount.Password != wal.NewPassword {
+		t.Fatal()
+	}
+	requireWALs(t, storage, 0)
+}
+
+func TestWALsDeletedOnRoleCreationFailed(t *testing.T) {
+	ctx := context.Background()
+	b, storage := getBackend(true)
+	defer b.Cleanup(ctx)
+	configureOpenLDAPMount(t, b, storage)
+
+	for i := 0; i < 3; i++ {
+		resp, err := b.HandleRequest(ctx, &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      staticRolePath + "hashicorp",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"username":        "hashicorp",
+				"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": "5s",
+			},
+		})
+		if err == nil {
+			t.Fatal("expected error from OpenLDAP")
+		}
+		if !strings.Contains(err.Error(), "forced error") {
+			t.Fatal("expected forced error message", resp, err)
+		}
+	}
+
+	requireWALs(t, storage, 0)
+}
+
+func TestWALsDeletedOnRoleDeletion(t *testing.T) {
+	ctx := context.Background()
+	b, storage := getBackend(false)
+	defer b.Cleanup(ctx)
+	configureOpenLDAPMount(t, b, storage)
+
+	// Create the roles
+	roleNames := []string{"hashicorp", "2"}
+	for _, roleName := range roleNames {
+		createRole(t, b, storage, roleName)
+	}
+
+	// Fail to rotate the roles
+	for _, roleName := range roleNames {
+		generateWALFromFailedRotation(t, b, storage, roleName)
+	}
+
+	// Should have 2 WALs hanging around
+	requireWALs(t, storage, 2)
+
+	// Delete one of the static roles
+	_, err := b.HandleRequest(ctx, &logical.Request{
+		Operation: logical.DeleteOperation,
+		Path:      "static-role/hashicorp",
+		Storage:   storage,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 1 WAL should be cleared by the delete
+	requireWALs(t, storage, 1)
+}
+
+func configureOpenLDAPMount(t *testing.T, b *backend, storage logical.Storage) {
+	t.Helper()
+	resp, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"binddn":      "tester",
+			"bindpass":    "pa$$w0rd",
+			"url":         "ldap://138.91.247.105",
+			"certificate": validCertificate,
+		},
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+}
+
+func createRole(t *testing.T, b *backend, storage logical.Storage, roleName string) {
+	_, err := b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "static-role/" + roleName,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"username":        roleName,
+			"dn":              "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
+			"rotation_period": "86400s",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }

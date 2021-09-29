@@ -1,11 +1,11 @@
 TOOL?=vault-plugin-auth-kubernetes
-TEST?=$$(go list ./... | grep -v /vendor/)
+TEST?=$$(go list ./...)
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
 EXTERNAL_TOOLS=\
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep
 BUILD_TAGS?=${TOOL}
-GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
+GOFMT_FILES?=$$(find . -name '*.go')
 
 # bin generates the releaseable binaries for this plugin
 bin: fmtcheck generate
@@ -43,7 +43,7 @@ testacc: fmtcheck generate
 # generate runs `go generate` to build the dynamically generated
 # source files.
 generate:
-	go generate $(go list ./... | grep -v /vendor/)
+	go generate $(go list ./...)
 
 # bootstrap the build by downloading additional tools
 bootstrap:

@@ -3,6 +3,7 @@ package kubeauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -104,6 +105,17 @@ func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeC
 	}
 
 	return conf, nil
+}
+
+func (b *kubeAuthBackend) loadConfig(ctx context.Context, s logical.Storage) (*kubeConfig, error) {
+	config, err := b.config(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+	if config == nil {
+		return nil, errors.New("could not load backend configuration")
+	}
+	return config, nil
 }
 
 // role takes a storage backend and the name and returns the role's storage

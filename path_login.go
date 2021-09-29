@@ -87,12 +87,9 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	config, err := b.config(ctx, req.Storage)
+	config, err := b.loadConfig(ctx, req.Storage)
 	if err != nil {
 		return nil, err
-	}
-	if config == nil {
-		return nil, errors.New("could not load backend configuration")
 	}
 
 	serviceAccount, err := b.parseAndValidateJWT(jwtStr, role, config)
@@ -171,6 +168,7 @@ func (b *kubeAuthBackend) getAliasName(role *roleStorageEntry, serviceAccount *s
 
 // aliasLookahead returns the alias object with the SA UID from the JWT
 // Claims.
+// Only JWTs matching the specified role's configuration will be accepted as valid.
 func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName, resp := b.getFieldValueStr(data, "role")
 	if resp != nil {
@@ -190,15 +188,14 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 		return logical.ErrorResponse(fmt.Sprintf("invalid role name %q", roleName)), nil
 	}
 
-	// Parse into JWT
-	parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
+	config, err := b.loadConfig(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
 
-	// Decode claims into a service account object
-	sa := &serviceAccount{}
-	err = mapstructure.Decode(parsedJWT.Claims(), sa)
+	// validation of the JWT against the provided role ensures alias look ahead requests
+	// are authentic.
+	sa, err := b.parseAndValidateJWT(jwtStr, role, config)
 	if err != nil {
 		return nil, err
 	}

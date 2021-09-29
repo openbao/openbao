@@ -610,6 +610,12 @@ func TestAliasLookAhead(t *testing.T) {
 			config:  defaultTestBackendConfig(),
 			wantErr: errors.New("missing jwt"),
 		},
+		"invalid_jwt": {
+			role:    "plugin-test",
+			config:  defaultTestBackendConfig(),
+			jwt:     jwtBadServiceAccount,
+			wantErr: errors.New("service account name not authorized"),
+		},
 		"serviceaccount_uid": {
 			role: "plugin-test",
 			jwt:  jwtData,

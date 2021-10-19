@@ -12,6 +12,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,17 +21,20 @@ import (
 )
 
 const (
-	defaultMount          = "oidc"
-	defaultListenAddress  = "localhost"
-	defaultPort           = "8250"
-	defaultCallbackHost   = "localhost"
-	defaultCallbackMethod = "http"
+	defaultMount             = "oidc"
+	defaultListenAddress     = "localhost"
+	defaultPort              = "8250"
+	defaultCallbackHost      = "localhost"
+	defaultCallbackMethod    = "http"
+	defaultSkipBrowserLaunch = false
 )
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
 
 type CLIHandler struct{}
 
+// loginResp implements vault's command.LoginHandler interface, but we do not check
+// the implementation as that'd cause an import loop.
 type loginResp struct {
 	secret *api.Secret
 	err    error
@@ -74,6 +78,15 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		callbackPort = port
 	}
 
+	skipBrowserLaunch := defaultSkipBrowserLaunch
+	if x, ok := m["skip_browser"]; ok {
+		parsed, err := strconv.ParseBool(x)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse \"skip_browser\" as a boolean: %w", err)
+		}
+		skipBrowserLaunch = parsed
+	}
+
 	role := m["role"]
 
 	authURL, clientNonce, err := fetchAuthURL(c, role, mount, callbackPort, callbackMethod, callbackHost)
@@ -91,10 +104,15 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	defer listener.Close()
 
 	// Open the default browser to the callback URL.
-	fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Launching browser to:\n\n    %s\n\n\n", authURL)
-	if err := openURL(authURL); err != nil {
-		fmt.Fprintf(os.Stderr, "Error attempting to automatically open browser: '%s'.\nPlease visit the authorization URL manually.", err)
+	if !skipBrowserLaunch {
+		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Launching browser to:\n\n    %s\n\n\n", authURL)
+		if err := openURL(authURL); err != nil {
+			fmt.Fprintf(os.Stderr, "Error attempting to automatically open browser: '%s'.\nPlease visit the authorization URL manually.", err)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Open the following link in your browser:\n\n    %s\n\n\n", authURL)
 	}
+	fmt.Fprintf(os.Stderr, "Waiting for OIDC authentication to complete...\n")
 
 	// Start local server
 	go func() {
@@ -283,7 +301,7 @@ Usage: vault login -method=oidc [CONFIG K=V...]
 Configuration:
 
   role=<string>
-      Vault role of type "OIDC" to use for authentication.
+    Vault role of type "OIDC" to use for authentication.
 
   listenaddress=<string>
     Optional address to bind the OIDC callback listener to (default: localhost).
@@ -298,7 +316,10 @@ Configuration:
     Optional callback host address to use in OIDC redirect_uri (default: localhost).
 
   callbackport=<string>
-      Optional port to to use in OIDC redirect_uri (default: the value set for port).
+    Optional port to to use in OIDC redirect_uri (default: the value set for port).
+
+  skip_browser=<bool>
+    Toggle the automatic launching of the default browser to the login URL. (default: false).
 `
 
 	return strings.TrimSpace(help)

@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: docker.mirror.hashicorp.services/circleci/golang:1.16.7
+      - image: docker.mirror.hashicorp.services/circleci/golang:1.17.2
     working_directory: /go/src/github.com/hashicorp/vault-plugin-auth-kubernetes
     steps:
       - checkout

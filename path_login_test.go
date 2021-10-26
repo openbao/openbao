@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/ory/dockertest"
+	"github.com/ory/dockertest/v3"
 )
 
 func setupTestBackend(t *testing.T) (logical.Backend, logical.Storage) {

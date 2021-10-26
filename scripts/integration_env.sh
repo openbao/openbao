@@ -1,12 +1,15 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
   base64cmd="base64 -D"
 else
   base64cmd="base64 -d"
 fi
 
-VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
+REPO_ROOT="$(readlink -f $(git rev-parse --show-toplevel || echo .))"
+VAULT_VER="$(curl -fsSL 'https://api.github.com/repos/hashicorp/vault/tags?page=1' | jq -r '.[0].name' | sed -e 's/^v//')"
 VAULT_PORT=8200
 SAMBA_VER=4.8.12
 
@@ -22,7 +25,7 @@ DOMAIN_NAME=matrix
 DNS_NAME=matrix.lan
 REALM_NAME=MATRIX.LAN
 DOMAIN_DN=DC=MATRIX,DC=LAN
-TESTS_DIR=/tmp/vault_plugin_tests
+TESTS_DIR="$(mktemp -d -t tests-XXXXXXXX)"
 
 function start_infrastructure() {
   create_network
@@ -30,11 +33,23 @@ function start_infrastructure() {
   start_vault
 }
 
+function stop_container() {
+    local name="$1"
+    if [ -n "${name}" ]; then
+        docker rm -f "${name}"
+    fi
+}
+
 function stop_infrastructure() {
   stop_domain_joined_container
   stop_vault
   stop_domain
   delete_network
+}
+
+function tear_down() {
+  rm -rf "${TESTS_DIR}"
+  stop_infrastructure
 }
 
 function create_network() {
@@ -46,21 +61,31 @@ function delete_network() {
 }
 
 function start_vault() {
-  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_VER} server -dev -dev-plugin-dir=/plugins)
+  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK \
+    -v "${REPO_ROOT}:/tmp/repo-root:Z" \
+    -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" \
+    -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" \
+    -p ${VAULT_PORT}:${VAULT_PORT} \
+    hashicorp/vault:${VAULT_VER} server -dev -dev-plugin-dir=/tmp/repo-root/pkg/linux_amd64)
   export VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 }
 
 function stop_vault() {
-  docker rm -f ${VAULT_CONTAINER}
+  stop_container ${VAULT_CONTAINER}
 }
 
 function start_domain() {
-  SAMBA_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --privileged -p 135:135 -p 137:137 -p 138:138 -p 139:139 -p 389:389 -p 445:445 -p 464:464 -p 636:636 -p 3268:3268 -p 3269:3269 -e "SAMBA_DC_ADMIN_PASSWD=${DOMAIN_ADMIN_PASS}" -e "KERBEROS_PASSWORD=${DOMAIN_ADMIN_PASS}" -e SAMBA_DC_DOMAIN=${DOMAIN_NAME} -e SAMBA_DC_REALM=${REALM_NAME} "bodsch/docker-samba4:${SAMBA_VER}")
+  SAMBA_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --privileged \
+    -p 135:135 -p 137:137 -p 138:138 -p 139:139 -p 389:389 -p 445:445 -p 464:464 -p 636:636 -p 3268:3268 -p 3269:3269 \
+    -e "SAMBA_DC_ADMIN_PASSWD=${DOMAIN_ADMIN_PASS}" \
+    -e "KERBEROS_PASSWORD=${DOMAIN_ADMIN_PASS}" \
+    -e SAMBA_DC_DOMAIN=${DOMAIN_NAME} \
+    -e SAMBA_DC_REALM=${REALM_NAME} "bodsch/docker-samba4:${SAMBA_VER}")
   # shouldn't need to publish all these ports as they are only used within the docker network, but figured it may be useful for debugging
 }
 
 function stop_domain() {
-  docker rm -f ${SAMBA_CONTAINER}
+  stop_container ${SAMBA_CONTAINER}
 }
 
 function setup_users() {
@@ -99,7 +124,6 @@ function check_user() {
 }
 
 function create_keytab() {
-  
   username="${1}"
   password="${2}"
 
@@ -127,17 +151,31 @@ function add_vault_spn() {
     samba-tool spn add HTTP/${VAULT_CONTAINER:0:12}.${DNS_NAME}:${VAULT_PORT} ${DOMAIN_VAULT_ACCOUNT} --configfile=${SAMBA_CONF_FILE}
 }
 
+function exec_vault() {
+    docker exec -e VAULT_ADDR="http://127.0.0.1:8200" -e VAULT_TOKEN="${VAULT_TOKEN}" "${VAULT_CONTAINER}" vault "$@"
+}
+
 function enable_plugin() {
   VAULT_PLUGIN_SHA=$(openssl dgst -sha256 pkg/linux_amd64/vault-plugin-auth-kerberos|cut -d ' ' -f2)
-  vault write sys/plugins/catalog/auth/kerberos sha_256=${VAULT_PLUGIN_SHA} command="vault-plugin-auth-kerberos"
-  vault auth enable -passthrough-request-headers=Authorization -allowed-response-headers=www-authenticate kerberos
-  vault write auth/kerberos/config keytab=@vault_svc.keytab.base64 service_account="vault_svc"
-  vault write auth/kerberos/config/ldap binddn=${DOMAIN_VAULT_ACCOUNT}@${REALM_NAME} bindpass=${DOMAIN_VAULT_PASS} groupattr=sAMAccountName groupdn="${DOMAIN_DN}" groupfilter="(&(objectClass=group)(member:1.2.840.113556.1.4.1941:={{.UserDN}}))" insecure_tls=true starttls=true userdn="CN=Users,${DOMAIN_DN}" userattr=sAMAccountName upndomain=${REALM_NAME} url=ldaps://${SAMBA_CONTAINER:0:12}.${DNS_NAME}
+  exec_vault write sys/plugins/catalog/auth/kerberos sha_256=${VAULT_PLUGIN_SHA} command="vault-plugin-auth-kerberos"
+  exec_vault auth enable -passthrough-request-headers=Authorization -allowed-response-headers=www-authenticate kerberos
+  exec_vault write auth/kerberos/config keytab=@/tmp/repo-root/vault_svc.keytab.base64 service_account="vault_svc"
+  exec_vault write auth/kerberos/config/ldap \
+    binddn=${DOMAIN_VAULT_ACCOUNT}@${REALM_NAME} bindpass=${DOMAIN_VAULT_PASS} \
+    groupattr=sAMAccountName \
+    groupdn="${DOMAIN_DN}" \
+    groupfilter="(&(objectClass=group)(member:1.2.840.113556.1.4.1941:={{.UserDN}}))" \
+    insecure_tls=true starttls=true \
+    userdn="CN=Users,${DOMAIN_DN}" userattr=sAMAccountName \
+    upndomain=${REALM_NAME} \
+    url=ldaps://${SAMBA_CONTAINER:0:12}.${DNS_NAME}
 }
 
 function write_python_test() {
   sleep 10 # this is a naive way to wait until the containers are up
   echo "
+import sys
+
 import kerberos
 import requests
 
@@ -149,7 +187,14 @@ kerberos_token = kerberos.authGSSClientResponse(vc)
 
 r = requests.post(\"http://{}/v1/auth/kerberos/login\".format(host),
                   headers={'Authorization': 'Negotiate ' + kerberos_token})
-print('Vault token through Python:', r.json()['auth']['client_token'])
+if r.status_code != 200:
+    sys.exit('Python test: Expected Vault login success, response={}'.format(r))
+
+token = r.json().get('auth', dict()).get('client_token')
+if token is None:
+    sys.exit('Python test: Expected client token, got {}'.format(token))
+
+print('Python test: Vault login succeeded, got token {}'.format(token))
 " > manual_test.py
 }
 
@@ -175,6 +220,7 @@ function write_kerb_config() {
 }
 
 function prepare_files() {
+  chmod 0755 "${TESTS_DIR}"
   mkdir -p ${TESTS_DIR}/integration
   pushd ${TESTS_DIR}/integration
   write_kerb_config
@@ -183,16 +229,16 @@ function prepare_files() {
   eval "$base64cmd" grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
 }
 
-function remove_files() {
-  rm -fr $TESTS_DIR/integration # using superfluous child dir in case variable is blank at some point ;)
-}
-
 function start_domain_joined_container() {
-  DOMAIN_JOINED_CONTAINER=$(docker run --net=${DNS_NAME} -d -v "${TESTS_DIR}/integration:/tests:Z" -e KRB5_CONFIG=/tests/krb5.conf -e KRB5_CLIENT_KTNAME=/tests/grace.keytab -t python:3.7 cat)
+  DOMAIN_JOINED_CONTAINER=$(docker run --net=${DNS_NAME} -d \
+    -v "${TESTS_DIR}/integration:/tests:Z" \
+    -e KRB5_CONFIG=/tests/krb5.conf \
+    -e KRB5_CLIENT_KTNAME=/tests/grace.keytab \
+    -t python:3.7 cat)
 }
 
 function stop_domain_joined_container() {
-  docker rm -f ${DOMAIN_JOINED_CONTAINER}
+  stop_container ${DOMAIN_JOINED_CONTAINER}
 }
 
 function run_test_script() {
@@ -228,20 +274,20 @@ function run_test_script() {
 }
 
 function run_tests() {
-  remove_files
   prepare_files
   start_domain_joined_container
   run_test_script
 }
 
 function main() {
+  trap tear_down EXIT SIGINT
   start_infrastructure
+
   sleep 15  # could loop until `ldapsearch` returns properly....
   setup_users
   add_vault_spn
   enable_plugin
   run_tests
-  stop_infrastructure
   if [ ! $python_login_result = 0 ]; then
     echo "python login failed"
     return $python_login_result
@@ -254,6 +300,7 @@ function main() {
     echo "active directory go login failed"
     return $active_dir_login_result
   fi
+  echo "Tests completed successfully"
   return 0
 }
 main

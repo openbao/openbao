@@ -6,22 +6,23 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Update Go"
+          name: "Install Go"
           command: |
-            sudo rm -rf /usr/local/go
-            wget https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-            sudo tar -xvf go1.12.7.linux-amd64.tar.gz
-            sudo mv go /usr/local
-            rm go1.12.7.linux-amd64.tar.gz
+            # taken from https://golang.org/dl/, will need to be updated on version bump
+            sha256_linux_amd64='f242a9db6a0ad1846de7b6d94d507915d14062660616a61ef7c808a76e4f1676'
+            filename="go1.17.2.linux-amd64.tar.gz"
+            pushd /tmp
+            hash="$(curl -fL "https://golang.org/dl/${filename}" | tee "${filename}" | sha256sum | cut -f 1 -d ' ')"
+            [ "${sha256_linux_amd64}" = "${hash}" ] || (echo "${filename} has an invalid hash ${hash}" >&2 ; exit 1)
+            rm -rf /var/tmp/go &> /dev/null
+            tar -xpf "${filename}" -C /var/tmp/.
+            echo 'export GOROOT=/var/tmp/go' >> $BASH_ENV
+            echo "export PATH=/var/tmp/go/bin:$PATH" >> $BASH_ENV
+            popd
       - run:
-          name: "Install Vault CLI"
+          name: "Go version"
           command: |
-            export VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
-            wget https://releases.hashicorp.com/vault/${VAULT_VER}/vault_${VAULT_VER}_linux_amd64.zip
-            unzip vault_${VAULT_VER}_linux_amd64.zip
-            mkdir -p /home/circleci/.go_workspace/bin
-            mv vault /home/circleci/.go_workspace/bin/
-            rm vault_${VAULT_VER}_linux_amd64.zip
+            go version
       - run:
           name: "Run Go Tests"
           command: |
@@ -32,6 +33,6 @@ jobs:
             go get github.com/mitchellh/gox
             make dev
       - run:
-          name: "Run Docker Tests"
+          name: "Run Integration Tests"
           command: |
             ./scripts/integration_env.sh

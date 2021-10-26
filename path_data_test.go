@@ -34,8 +34,51 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	return b, config.StorageView
 }
 
+func keys(m map[string]interface{}) map[string]struct{} {
+	set := make(map[string]struct{})
+
+	for k := range m {
+		set[k] = struct{}{}
+	}
+
+	return set
+}
+
+// expectedMetadataKeys produces a deterministic set of expected
+// metadata fields to ensure consistent shape across all endpoints
+func expectedMetadataKeys() map[string]struct{} {
+	return map[string]struct{}{
+		"version":         {},
+		"created_time":    {},
+		"deletion_time":   {},
+		"destroyed":       {},
+		"custom_metadata": {},
+	}
+}
+
 func TestVersionedKV_Data_Put(t *testing.T) {
 	b, storage := getBackend(t)
+
+	customMetadata := map[string]string{
+		"foo": "abc",
+		"bar": "def",
+	}
+
+	metadata := map[string]interface{}{
+		"custom_metadata": customMetadata,
+	}
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
+	}
 
 	data := map[string]interface{}{
 		"data": map[string]interface{}{
@@ -43,20 +86,30 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 		},
 	}
 
-	req := &logical.Request{
+	req = &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
+	}
+
+	actualKeys := keys(resp.Data)
+
+	if diff := deep.Equal(actualKeys, expectedMetadataKeys()); len(diff) > 0 {
+		t.Fatalf("metadata map keys mismatch, diff: %#v", diff)
 	}
 
 	if resp.Data["version"] != uint64(1) {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("expected version to be 1, resp: %#v", resp)
+	}
+
+	if diff := deep.Equal(resp.Data["custom_metadata"], customMetadata); len(diff) > 0 {
+		t.Fatalf("custom_metadata map mismatch, diff: %#v", diff)
 	}
 
 	data = map[string]interface{}{
@@ -77,11 +130,21 @@ func TestVersionedKV_Data_Put(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
+	}
+
+	actualKeys = keys(resp.Data)
+
+	if diff := deep.Equal(actualKeys, expectedMetadataKeys()); len(diff) > 0 {
+		t.Fatalf("metadata map keys mismatch, diff: %#v", diff)
 	}
 
 	if resp.Data["version"] != uint64(2) {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("expected version to be 2, resp: %#v", resp)
+	}
+
+	if diff := deep.Equal(resp.Data["custom_metadata"], customMetadata); len(diff) > 0 {
+		t.Fatalf("custom_metadata map mismatch, diff: %#v", diff)
 	}
 }
 
@@ -139,11 +202,32 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 
 	resp, err := b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data ReadOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
 	if resp != nil {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("expected nil resp for data ReadOperation resp: %#v", resp)
+	}
+
+	customMetadata := map[string]string{
+		"foo": "abc",
+		"bar": "def",
+	}
+
+	metadata := map[string]interface{}{
+		"custom_metadata": customMetadata,
+	}
+
+	req = &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
 	data := map[string]interface{}{
@@ -161,11 +245,11 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data CreateOperation request failed, err: %s, resp %#v", err, resp)
 	}
 
 	if resp.Data["version"] != uint64(1) {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("epxected version to be 1, resp: %#v", resp)
 	}
 
 	req = &logical.Request{
@@ -183,17 +267,32 @@ func TestVersionedKV_Data_Get(t *testing.T) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
 
-	if resp.Data["metadata"].(map[string]interface{})["version"].(uint64) != uint64(1) {
-		t.Fatalf("Bad response: %#v", resp)
+	if _, ok := resp.Data["metadata"]; !ok {
+		t.Fatalf("data ReadOperation resp did not include metadata field, resp: %#v", resp)
 	}
 
-	parsed, err := time.Parse(time.RFC3339Nano, resp.Data["metadata"].(map[string]interface{})["created_time"].(string))
+	respMetadata := resp.Data["metadata"].(map[string]interface{})
+	actualMetadataKeys := keys(respMetadata)
+
+	if diff := deep.Equal(actualMetadataKeys, expectedMetadataKeys()); len(diff) > 0 {
+		t.Fatalf("metadata map keys mismatch, diff: %#v\n", diff)
+	}
+
+	if respMetadata["version"].(uint64) != uint64(1) {
+		t.Fatalf("expected version to be 1, resp: %#v", resp)
+	}
+
+	parsed, err := time.Parse(time.RFC3339Nano, respMetadata["created_time"].(string))
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to parse created_time: %#v", respMetadata["created_time"])
 	}
 
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("invalid created_time value: %#v", respMetadata["created_time"])
+	}
+
+	if diff := deep.Equal(respMetadata["custom_metadata"], customMetadata); len(diff) > 0 {
+		t.Fatalf("custom_metadata mismatch, diff: %#v\n", diff)
 	}
 }
 
@@ -698,6 +797,27 @@ func TestVersionedKV_Patch_NoData(t *testing.T) {
 func TestVersionedKV_Patch_Success(t *testing.T) {
 	b, storage := getBackend(t)
 
+	customMetadata := map[string]string{
+		"foo": "abc",
+		"bar": "def",
+	}
+
+	metadata := map[string]interface{}{
+		"custom_metadata": customMetadata,
+	}
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      "metadata/foo",
+		Storage:   storage,
+		Data:      metadata,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("metadata CreateOperation request failed, err: %s, resp %#v", err, resp)
+	}
+
 	data := map[string]interface{}{
 		"data": map[string]interface{}{
 			"bar": "baz",
@@ -707,20 +827,26 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 		},
 	}
 
-	req := &logical.Request{
+	req = &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      "data/foo",
 		Storage:   storage,
 		Data:      data,
 	}
 
-	resp, err := b.HandleRequest(context.Background(), req)
+	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("CreateOperation request failed - err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data CreateOperation request failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	actualKeys := keys(resp.Data)
+
+	if diff := deep.Equal(actualKeys, expectedMetadataKeys()); len(diff) > 0 {
+		t.Fatalf("metadata map keys mismatch, diff: %#v", diff)
 	}
 
 	if resp.Data["version"] != uint64(1) {
-		t.Fatalf("Bad response: %#v", resp)
+		t.Fatalf("expected version to be 1, resp: %#v", resp)
 	}
 
 	data = map[string]interface{}{
@@ -746,7 +872,17 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 	resp, err = b.HandleRequest(context.Background(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("PatchOperation request failed - err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data PatchOperation request failed - err:%s resp:%#v\n", err, resp)
+	}
+
+	actualKeys = keys(resp.Data)
+
+	if diff := deep.Equal(actualKeys, expectedMetadataKeys()); len(diff) > 0 {
+		t.Fatalf("metadata map keys mismatch, diff: %#v", diff)
+	}
+
+	if resp.Data["version"] != uint64(2) {
+		t.Fatalf("expected version to be 2, resp: %#v", resp)
 	}
 
 	req = &logical.Request{
@@ -758,7 +894,7 @@ func TestVersionedKV_Patch_Success(t *testing.T) {
 	resp, err = b.HandleRequest(context.Background(), req)
 
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Readperation request failed - err:%s resp:%#v\n", err, resp)
+		t.Fatalf("data ReadOperation request failed - err:%s resp:%#v\n", err, resp)
 	}
 
 	expectedData := map[string]interface{}{

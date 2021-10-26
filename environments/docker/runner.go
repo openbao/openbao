@@ -68,7 +68,7 @@ func (d *Runner) Start(ctx context.Context) (*types.ContainerJSON, error) {
 	hostConfig.CapAdd = strslice.StrSlice{"IPC_LOCK"}
 	cfg.Hostname = d.ContainerName
 	fullName := d.ContainerName
-	container, err := d.dockerAPI.ContainerCreate(ctx, &cfg, hostConfig, networkingConfig, fullName)
+	container, err := d.dockerAPI.ContainerCreate(ctx, &cfg, hostConfig, networkingConfig, nil, fullName)
 	if err != nil {
 		return nil, fmt.Errorf("container create failed: %v", err)
 	}

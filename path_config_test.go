@@ -22,10 +22,11 @@ func TestConfig_Create(t *testing.T) {
 	tests := map[string]testCase{
 		"happy path with defaults": {
 			createData: fieldData(map[string]interface{}{
-				"binddn":      "tester",
-				"bindpass":    "pa$$w0rd",
-				"url":         "ldap://138.91.247.105",
-				"certificate": validCertificate,
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"certificate":     validCertificate,
+				"request_timeout": 60,
 			}),
 			createExpectErr: false,
 			expectedReadResp: &logical.Response{
@@ -33,6 +34,7 @@ func TestConfig_Create(t *testing.T) {
 					"binddn", "tester",
 					"url", "ldap://138.91.247.105",
 					"certificate", validCertificate,
+					"request_timeout", 60,
 				),
 			},
 		},
@@ -47,6 +49,7 @@ func TestConfig_Create(t *testing.T) {
 				Data: ldapResponseData(
 					"binddn", "tester",
 					"url", "ldap://138.91.247.105",
+					"request_timeout", 90,
 				),
 			},
 		},
@@ -71,6 +74,7 @@ func TestConfig_Create(t *testing.T) {
 					"binddn", "tester",
 					"url", "ldap://138.91.247.105",
 					"password_policy", "testpolicy",
+					"request_timeout", 90,
 				),
 			},
 		},
@@ -87,6 +91,7 @@ func TestConfig_Create(t *testing.T) {
 					"binddn", "tester",
 					"url", "ldap://138.91.247.105",
 					"length", 30,
+					"request_timeout", 90,
 				),
 			},
 		},

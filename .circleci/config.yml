@@ -2,7 +2,7 @@ version: 2.1
 
 references:
   images:
-    go: &GOLANG_IMAGE docker.mirror.hashicorp.services/circleci/golang:1.16.7-buster
+    go: &GOLANG_IMAGE docker.mirror.hashicorp.services/cimg/go:1.17.2 
 
 jobs:
   go-test:
@@ -10,7 +10,6 @@ jobs:
       - image: *GOLANG_IMAGE
         environment:
           GO111MODULE: "on"
-    working_directory: /go/src/github.com/hashicorp/vault-plugin-secrets-kv
     steps:
       - checkout
       - run: go test

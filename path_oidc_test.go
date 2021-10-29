@@ -438,7 +438,8 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 			}
 			resp, err = b.HandleRequest(context.Background(), req)
 			if tt.expectErr {
-				require.Error(t, err)
+				require.Nil(t, err)
+				require.True(t, resp.IsError())
 				return
 			}
 			require.NoError(t, err)

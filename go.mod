@@ -3,6 +3,7 @@ module github.com/hashicorp/vault-testing-stepwise
 go 1.16
 
 require (
+	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/docker/docker v20.10.10+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/hashicorp/errwrap v1.1.0

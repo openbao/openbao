@@ -13,21 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Jira sync
     steps:
-    - name: Check if community user
-      if: github.event.action == 'opened'
-      id: vault-team-role
-      run: |
-        TEAM=vault
-        ROLE="$(hub api orgs/hashicorp/teams/${TEAM}/memberships/${{ github.actor }} | jq -r '.role | select(.!=null)')"
-        if [[ -n ${ROLE} ]]; then
-          echo "Actor ${{ github.actor }} is a ${TEAM} team member, skipping ticket creation"
-        else
-          echo "Actor ${{ github.actor }} is not a ${TEAM} team member"
-        fi
-        echo "::set-output name=role::${ROLE}"
-      env:
-        GITHUB_TOKEN: ${{ secrets.JIRA_SYNC_GITHUB_TOKEN }}
-
     - name: Login
       uses: atlassian/gajira-login@v2.0.0
       env:
@@ -46,7 +31,7 @@ jobs:
         fi
 
     - name: Create ticket
-      if: github.event.action == 'opened' && !steps.vault-team-role.outputs.role
+      if: github.event.action == 'opened'
       uses: tomhjp/gh-action-jira-create@v0.2.0
       with:
         project: VAULT
@@ -63,7 +48,7 @@ jobs:
       uses: tomhjp/gh-action-jira-search@v0.2.1
       with:
         # cf[10089] is Issue Link custom field
-        jql: 'project = "VAULT" and issuetype = "GH Issue" and cf[10089]="${{ github.event.issue.html_url || github.event.pull_request.html_url }}"'
+        jql: 'project = "VAULT" and cf[10089]="${{ github.event.issue.html_url || github.event.pull_request.html_url }}"'
 
     - name: Sync comment
       if: github.event.action == 'created' && steps.search.outputs.issue
@@ -77,11 +62,11 @@ jobs:
       uses: atlassian/gajira-transition@v2.0.1
       with:
         issue: ${{ steps.search.outputs.issue }}
-        transition: Done
+        transition: Close
 
     - name: Reopen ticket
       if: github.event.action == 'reopened' && steps.search.outputs.issue
       uses: atlassian/gajira-transition@v2.0.1
       with:
         issue: ${{ steps.search.outputs.issue }}
-        transition: "To Do"
+        transition: "Pending Triage"

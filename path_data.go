@@ -402,10 +402,8 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 			return nil, err
 		}
 
-		// Returning a nil logical.Response and error will ultimately
-		// result in a 404 HTTP response status
 		if meta == nil {
-			return nil, nil
+			return logical.RespondWithStatusCode(nil, req, http.StatusNotFound)
 		}
 
 		config, err := b.config(ctx, req.Storage)
@@ -427,7 +425,7 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 		versionMetadata := meta.Versions[currentVersion]
 
 		if versionMetadata == nil {
-			return nil, nil
+			return logical.RespondWithStatusCode(nil, req, http.StatusNotFound)
 		}
 
 		// Like the read handler, initialize a resp with the version metadata

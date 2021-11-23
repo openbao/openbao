@@ -615,8 +615,12 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
-	if err != nil || resp != nil {
-		t.Fatalf("expected nil response for PatchOperation - err:%s resp:%#v\n", err, resp)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("PatchOperation failed - err:%s resp:%#v", err, resp)
+	}
+
+	if resp.Data["http_status_code"] != 404 {
+		t.Fatalf("expected 404 response for PatchOperation: resp:%#v", resp)
 	}
 
 	metadata := map[string]interface{}{
@@ -634,7 +638,7 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err != nil || resp != nil {
-		t.Fatalf("metadata CreateOperation request failed - err:%s resp:%#v\n", err, resp)
+		t.Fatalf("metadata CreateOperation request failed - err:%s resp:%#v", err, resp)
 	}
 
 	req = &logical.Request{
@@ -645,8 +649,12 @@ func TestVersionedKV_Patch_NotFound(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
-	if err != nil || resp != nil {
-		t.Fatalf("expected nil response for PatchOperation - err:%s resp:%#v\n", err, resp)
+	if err != nil || resp == nil || resp.IsError() {
+		t.Fatalf("PatchOperation failed - err:%s resp:%#v", err, resp)
+	}
+
+	if resp.Data["http_status_code"] != 404 {
+		t.Fatalf("expected 404 response for PatchOperation: resp:%#v", resp)
 	}
 }
 

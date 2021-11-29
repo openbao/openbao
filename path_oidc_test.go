@@ -3,7 +3,9 @@ package jwtauth
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -101,6 +103,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 				`state=st_\w{20}`,
 				`redirect_uri=https%3A%2F%2Fexample.com`,
 				`response_type=code`,
+				`code_challenge=\w+`,
 				`scope=openid`,
 			}
 
@@ -211,7 +214,6 @@ func TestOIDC_AuthURL(t *testing.T) {
 }
 
 func TestOIDC_AuthURL_namespace(t *testing.T) {
-
 	type testCase struct {
 		namespaceInState    string
 		allowedRedirectURIs []string
@@ -362,7 +364,6 @@ func TestOIDC_AuthURL_namespace(t *testing.T) {
 			if !matchState {
 				t.Fatalf("expected state to match regex: %s, %s", test.expectedStateRegEx, state)
 			}
-
 		})
 	}
 }
@@ -583,7 +584,6 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 
 func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
-
 		// run test with and without bound_cidrs configured
 		for _, useBoundCIDRs := range []bool{false, true} {
 			b, storage, s := getBackendAndServer(t, useBoundCIDRs)
@@ -617,7 +617,10 @@ func TestOIDC_Callback(t *testing.T) {
 			// set mock provider's expected code
 			s.code = "abc"
 
-			// invoke the callback, which will in to try to exchange the code
+			// save PKCE challenge
+			s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
+			// invoke the callback, which will try to exchange the code
 			// with the mock provider.
 			req = &logical.Request{
 				Operation: logical.ReadOperation,
@@ -711,6 +714,9 @@ func TestOIDC_Callback(t *testing.T) {
 		// set mock provider's expected code
 		s.code = "abc"
 
+		// save PKCE challenge
+		s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
 		// invoke the callback, which will in to try to exchange the code
 		// with the mock provider.
 		req = &logical.Request{
@@ -764,6 +770,9 @@ func TestOIDC_Callback(t *testing.T) {
 
 		// set mock provider's expected code
 		s.code = "abc"
+
+		// save PKCE challenge
+		s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
 
 		// invoke the callback, which will in to try to exchange the code
 		// with the mock provider.
@@ -896,6 +905,10 @@ func TestOIDC_Callback(t *testing.T) {
 		// set mock provider's expected code
 		s.code = "abc"
 
+		// save PKCE challenge
+		s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
+		// verify failure with wrong code
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
@@ -903,6 +916,58 @@ func TestOIDC_Callback(t *testing.T) {
 			Data: map[string]interface{}{
 				"state": state,
 				"code":  "wrong_code",
+			},
+		}
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if resp == nil || !strings.Contains(resp.Error().Error(), "cannot fetch token") {
+			t.Fatalf("expected code exchange error response, got: %#v", resp)
+		}
+	})
+
+	t.Run("failed code exchange (PKCE)", func(t *testing.T) {
+		b, storage, s := getBackendAndServer(t, false)
+		defer s.server.Close()
+
+		// get auth_url
+		data := map[string]interface{}{
+			"role":         "test",
+			"redirect_uri": "https://example.com",
+		}
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "oidc/auth_url",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%v resp:%#v\n", err, resp)
+		}
+
+		authURL := resp.Data["auth_url"].(string)
+		state := getQueryParam(t, authURL, "state")
+
+		// set mock provider's expected code
+		s.code = "abc"
+
+		// Verify failure with failed PKCE verification
+		// The challenge on the request side is embedded in the cap library request state which
+		// is inaccessible. To cause a mismatch, adjust the mock.
+		s.codeChallenge = "wrong_challenge"
+
+		// verify failure with PKCE
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "oidc/callback",
+			Storage:   storage,
+			Data: map[string]interface{}{
+				"state": state,
+				"code":  "abc",
 			},
 		}
 		resp, err = b.HandleRequest(context.Background(), req)
@@ -1037,6 +1102,9 @@ func TestOIDC_Callback(t *testing.T) {
 		// set provider claims that will be returned by the mock server
 		s.customClaims = sampleClaims(nonce)
 
+		// save PKCE challenge
+		s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
 		req = &logical.Request{
 			Operation: logical.ReadOperation,
 			Path:      "oidc/callback",
@@ -1123,6 +1191,9 @@ func TestOIDC_Callback(t *testing.T) {
 			// set mock provider's expected code
 			s.code = "abc"
 
+			// save PKCE challenge
+			s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+
 			// invoke the callback, which will try to exchange the code
 			// with the mock provider.
 			req = &logical.Request{
@@ -1149,15 +1220,16 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 }
 
-// oidcProvider is local server the mocks the basis endpoints used by the
+// oidcProvider is a local server that mocks the basis endpoints used by the
 // OIDC callback process.
 type oidcProvider struct {
-	t            *testing.T
-	server       *httptest.Server
-	clientID     string
-	clientSecret string
-	code         string
-	customClaims map[string]interface{}
+	t             *testing.T
+	server        *httptest.Server
+	clientID      string
+	clientSecret  string
+	code          string
+	codeChallenge string
+	customClaims  map[string]interface{}
 }
 
 func newOIDCProvider(t *testing.T) *oidcProvider {
@@ -1190,8 +1262,17 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("It's not a keyset!"))
 	case "/token":
 		code := r.FormValue("code")
+		codeVerifier := r.FormValue("code_verifier")
 
 		if code != o.code {
+			w.WriteHeader(401)
+			break
+		}
+
+		sum := sha256.Sum256([]byte(codeVerifier))
+		computedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
+
+		if computedChallenge != o.codeChallenge {
 			w.WriteHeader(401)
 			break
 		}

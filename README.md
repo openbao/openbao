@@ -142,3 +142,40 @@ You can also specify a `TESTARGS` variable to filter tests like so:
 ```sh
 $ make test TESTARGS='--run=TestConfig'
 ```
+
+Additionally, there are some BATs tests in the `tests` dir.
+
+#### Prerequisites
+
+- [Install Bats Core](https://bats-core.readthedocs.io/en/stable/installation.html#homebrew)
+- Docker or a vault binary in the `tests` directory.
+
+#### Setup
+
+- [Configure an OIDC provider](https://www.vaultproject.io/docs/auth/jwt/oidc_providers)
+- Save and export the following values to your shell:
+  - `CLIENT_ID`
+  - `CLIENT_SECRET`
+  - `ISSUER`
+- Export `VAULT_IMAGE` to test the image of your choice or place a vault binary
+  in the `tests` directory.
+- Export `VAULT_LICENSE`. This test will only work for enterprise images.
+
+#### Logs
+
+Vault logs will be written to `VAULT_OUTFILE`. BATs test logs will be written to
+`SETUP_TEARDOWN_OUTFILE`.
+
+#### Run Bats tests
+
+```
+# export env vars
+export CLIENT_ID="12345"
+export CLIENT_SECRET="6789"
+export ISSUER="my-issuer-url"
+export VAULT_LICENSE="abcde"
+
+# run tests
+cd tests/
+./test.bats
+```

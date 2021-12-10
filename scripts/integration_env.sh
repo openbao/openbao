@@ -267,7 +267,7 @@ function run_test_script() {
 
   # execute a login from python and record result
   docker exec $DOMAIN_JOINED_CONTAINER \
-    pip install --quiet requests-kerberos
+    pip install --quiet requests-kerberos kerberos
   docker exec $DOMAIN_JOINED_CONTAINER \
     python /tests/manual_test.py
   python_login_result=$?

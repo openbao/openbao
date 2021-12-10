@@ -176,7 +176,7 @@ function stop_domain_joined_container() {
 
 function test_joined_container() {
   docker exec $DOMAIN_JOINED_CONTAINER \
-    pip install --quiet requests-kerberos
+    pip install --quiet requests-kerberos kerberos
   docker cp $WD/bin/login-kerb $DOMAIN_JOINED_CONTAINER:/usr/local/bin/login-kerb
 }
 

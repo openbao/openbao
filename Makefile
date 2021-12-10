@@ -30,6 +30,9 @@ dev-dynamic: generate
 test: fmtcheck generate
 	CGO_ENABLED=0 VAULT_TOKEN= VAULT_ACC= go test -v -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=4
 
+test-acceptance: dev-linux-only
+	 bats $(CURDIR)/test/acceptance/server-enterprise-basic-tests.bats
+
 testcompile: fmtcheck generate
 	@for pkg in $(TEST) ; do \
 		go test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
@@ -68,4 +71,4 @@ dev-env: dev-linux-only
 integration: dev-linux-only
 	./scripts/integration_env.sh
 
-.PHONY: bin default generate test vet bootstrap fmt fmtcheck
+.PHONY: bin default generate test test-acceptance vet bootstrap fmt fmtcheck

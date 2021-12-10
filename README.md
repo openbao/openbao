@@ -36,7 +36,7 @@ Put the plugin binary (`vault-plugin-auth-kerberos`) into a location of your cho
 will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
 in the Vault config used to start the server.
 
-```json
+```
 ...
 plugin_directory = "path/to/plugin/directory"
 ...
@@ -185,6 +185,18 @@ You can also specify a `TESTARGS` variable to filter tests like so:
 
 ```sh
 $ make test TESTARGS='--run=TestConfig'
+```
+
+Acceptance tests requires a Vault Enterprise license to be 
+[provided](https://www.vaultproject.io/docs/commands#vault_license) through 
+`VAULT_LICENSE` and the following tools to be installed:
+- [Docker](https://docs.docker.com/get-docker/)
+- [jq](https://stedolan.github.io/jq/)
+- [bats](https://bats-core.readthedocs.io/en/stable)
+
+
+```sh
+$ make test-acceptance VAULT_LICENSE=<vault-license>
 ```
 
 ## Contributors

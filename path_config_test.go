@@ -6,12 +6,39 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+func setupLocalFiles(t *testing.T, b logical.Backend) func() {
+	cert, err := ioutil.TempFile("", "ca.crt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert.WriteString(testLocalCACert)
+	cert.Close()
+
+	token, err := ioutil.TempFile("", "token")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token.WriteString(testLocalJWT)
+	token.Close()
+	b.(*kubeAuthBackend).localCACertReader = newCachingFileReader(cert.Name(), caReloadPeriod, time.Now)
+	b.(*kubeAuthBackend).localSATokenReader = newCachingFileReader(token.Name(), jwtReloadPeriod, time.Now)
+
+	return func() {
+		os.Remove(cert.Name())
+		os.Remove(token.Name())
+	}
+}
+
 func TestConfig_Read(t *testing.T) {
 	b, storage := getBackend(t)
+
+	cleanup := setupLocalFiles(t, b)
+	defer cleanup()
 
 	data := map[string]interface{}{
 		"pem_keys":               []string{testRSACert, testECCert},
@@ -54,6 +81,9 @@ func TestConfig_Read(t *testing.T) {
 func TestConfig(t *testing.T) {
 	b, storage := getBackend(t)
 
+	cleanup := setupLocalFiles(t, b)
+	defer cleanup()
+
 	// test no certificate
 	data := map[string]interface{}{
 		"kubernetes_host": "host",
@@ -67,11 +97,8 @@ func TestConfig(t *testing.T) {
 	}
 
 	resp, err := b.HandleRequest(context.Background(), req)
-	if resp == nil || !resp.IsError() {
-		t.Fatal("expected error")
-	}
-	if resp.Error().Error() != "one of pem_keys or kubernetes_ca_cert must be set" {
-		t.Fatalf("got unexpected error: %v", resp.Error())
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
 	// test no host
@@ -331,24 +358,16 @@ func TestConfig(t *testing.T) {
 }
 
 func TestConfig_LocalCaJWT(t *testing.T) {
-	b, storage := getBackend(t)
-
-	// write "local" CA and JWT, and override local path vars
-	caFile := writeToTempFile(t, testLocalCACert)
-	localCACertPath = caFile
-	defer os.Remove(caFile)
-	jwtFile := writeToTempFile(t, testLocalJWT)
-	localJWTPath = jwtFile
-	defer os.Remove(jwtFile)
-
 	testCases := map[string]struct {
-		config   map[string]interface{}
-		expected *kubeConfig
+		config              map[string]interface{}
+		setupInClusterFiles bool
+		expected            *kubeConfig
 	}{
 		"no CA or JWT, default to local": {
 			config: map[string]interface{}{
 				"kubernetes_host": "host",
 			},
+			setupInClusterFiles: true,
 			expected: &kubeConfig{
 				PublicKeys:           []interface{}{},
 				PEMKeys:              []string{},
@@ -364,6 +383,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 				"kubernetes_host":    "host",
 				"kubernetes_ca_cert": testCACert,
 			},
+			setupInClusterFiles: true,
 			expected: &kubeConfig{
 				PublicKeys:           []interface{}{},
 				PEMKeys:              []string{},
@@ -379,6 +399,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 				"kubernetes_host":    "host",
 				"token_reviewer_jwt": jwtData,
 			},
+			setupInClusterFiles: true,
 			expected: &kubeConfig{
 				PublicKeys:           []interface{}{},
 				PEMKeys:              []string{},
@@ -409,6 +430,13 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+
+			if tc.setupInClusterFiles {
+				cleanup := setupLocalFiles(t, b)
+				defer cleanup()
+			}
+
 			req := &logical.Request{
 				Operation: logical.CreateOperation,
 				Path:      configPath,
@@ -421,7 +449,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 				t.Fatalf("err:%s resp:%#v\n", err, resp)
 			}
 
-			conf, err := b.(*kubeAuthBackend).config(context.Background(), storage)
+			conf, err := b.(*kubeAuthBackend).loadConfig(context.Background(), storage)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -433,18 +461,84 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 	}
 }
 
-func writeToTempFile(t *testing.T, contents string) string {
-	t.Helper()
+func TestConfig_LocalJWTRenewal(t *testing.T) {
+	b, storage := getBackend(t)
 
-	f, err := ioutil.TempFile("", "test")
+	cleanup := setupLocalFiles(t, b)
+	defer cleanup()
+
+	// Create temp file that will be used as token.
+	f, err := ioutil.TempFile("", "renewed-token")
 	if err != nil {
-		t.Fatalf("Failure to create test file: %s", err)
+		t.Error(err)
 	}
-	_, err = f.WriteString(contents)
-	if err != nil {
-		t.Fatalf("Failure to write test file: %s", err)
+	f.Close()
+	defer os.Remove(f.Name())
+
+	currentTime := time.Now()
+
+	b.(*kubeAuthBackend).localSATokenReader = newCachingFileReader(f.Name(), jwtReloadPeriod, func() time.Time {
+		return currentTime
+	})
+
+	token1 := "before-renewal"
+	token2 := "after-renewal"
+
+	// Write initial token to the temp file.
+	ioutil.WriteFile(f.Name(), []byte(token1), 0644)
+
+	data := map[string]interface{}{
+		"kubernetes_host": "host",
 	}
-	return f.Name()
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	// Loading the config will load the initial token file from disk.
+	conf, err := b.(*kubeAuthBackend).loadConfig(context.Background(), storage)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	// Check that we loaded the initial token.
+	if conf.TokenReviewerJWT != token1 {
+		t.Fatalf("got unexpected JWT: expected %#v\n got %#v\n", token1, conf.TokenReviewerJWT)
+	}
+
+	// Write new value to the token file to simulate renewal.
+	ioutil.WriteFile(f.Name(), []byte(token2), 0644)
+
+	// Load again to check we still got the old cached token from memory.
+	conf, err = b.(*kubeAuthBackend).loadConfig(context.Background(), storage)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if conf.TokenReviewerJWT != token1 {
+		t.Fatalf("got unexpected JWT: expected %#v\n got %#v\n", token1, conf.TokenReviewerJWT)
+	}
+
+	// Advance simulated time for cache to expire
+	currentTime = currentTime.Add(1 * time.Minute)
+
+	// Load again and check we the new renewed token from disk.
+	conf, err = b.(*kubeAuthBackend).loadConfig(context.Background(), storage)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("err:%s resp:%#v\n", err, resp)
+	}
+
+	if conf.TokenReviewerJWT != token2 {
+		t.Fatalf("got unexpected JWT: expected %#v\n got %#v\n", token2, conf.TokenReviewerJWT)
+	}
+
 }
 
 var testLocalCACert string = `-----BEGIN CERTIFICATE-----

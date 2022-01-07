@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -27,6 +28,18 @@ var (
 	// when adding new alias name sources make sure to update the corresponding FieldSchema description in path_role.go
 	aliasNameSources          = []string{aliasNameSourceSAUid, aliasNameSourceSAName}
 	errInvalidAliasNameSource = fmt.Errorf(`invalid alias_name_source, must be one of: %s`, strings.Join(aliasNameSources, ", "))
+
+	// jwtReloadPeriod is the time period how often the in-memory copy of local
+	// service account token can be used, before reading it again from disk.
+	//
+	// The value is selected according to recommendation in Kubernetes 1.21 changelog:
+	// "Clients should reload the token from disk periodically (once per minute
+	// is recommended) to ensure they continue to use a valid token."
+	jwtReloadPeriod = 1 * time.Minute
+
+	// caReloadPeriod is the time period how often the in-memory copy of local
+	// CA cert can be used, before reading it again from disk.
+	caReloadPeriod = 1 * time.Hour
 )
 
 // kubeAuthBackend implements logical.Backend
@@ -37,6 +50,19 @@ type kubeAuthBackend struct {
 	// Currently the only options are using the kubernetes API or mocking the
 	// review. Mocks should only be used in tests.
 	reviewFactory tokenReviewFactory
+
+	// localSATokenReader caches the service account token in memory.
+	// It periodically reloads the token to support token rotation/renewal.
+	// Local token is used when running in a pod with following configuration
+	// - token_reviewer_jwt is not set
+	// - disable_local_ca_jwt is false
+	localSATokenReader *cachingFileReader
+
+	// localCACertReader contains the local CA certificate. Local CA certificate is
+	// used when running in a pod with following configuration
+	// - kubernetes_ca_cert is not set
+	// - disable_local_ca_jwt is false
+	localCACertReader *cachingFileReader
 
 	l sync.RWMutex
 }
@@ -51,7 +77,10 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 }
 
 func Backend() *kubeAuthBackend {
-	b := &kubeAuthBackend{}
+	b := &kubeAuthBackend{
+		localSATokenReader: newCachingFileReader(localJWTPath, jwtReloadPeriod, time.Now),
+		localCACertReader:  newCachingFileReader(localCACertPath, caReloadPeriod, time.Now),
+	}
 
 	b.Backend = &framework.Backend{
 		AuthRenew:   b.pathLoginRenew(),
@@ -80,7 +109,8 @@ func Backend() *kubeAuthBackend {
 	return b
 }
 
-// config takes a storage object and returns a kubeConfig object
+// config takes a storage object and returns a kubeConfig object.
+// It does not return local token and CA file which are specific to the pod we run in.
 func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeConfig, error) {
 	raw, err := s.Get(ctx, configPath)
 	if err != nil {
@@ -107,6 +137,8 @@ func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeC
 	return conf, nil
 }
 
+// loadConfig fetches the kubeConfig from storage and optionally decorates it with
+// local token and CA certificate.
 func (b *kubeAuthBackend) loadConfig(ctx context.Context, s logical.Storage) (*kubeConfig, error) {
 	config, err := b.config(ctx, s)
 	if err != nil {
@@ -115,6 +147,30 @@ func (b *kubeAuthBackend) loadConfig(ctx context.Context, s logical.Storage) (*k
 	if config == nil {
 		return nil, errors.New("could not load backend configuration")
 	}
+
+	// Nothing more to do if loading local CA cert and JWT token is disabled.
+	if config.DisableLocalCAJwt {
+		return config, nil
+	}
+
+	// Read local JWT token unless it was not stored in config.
+	if config.TokenReviewerJWT == "" {
+		config.TokenReviewerJWT, err = b.localSATokenReader.ReadFile()
+		if err != nil {
+			// Ignore error: make best effort trying to load local JWT,
+			// otherwise the JWT submitted in login payload will be used.
+			b.Logger().Debug("failed to read local service account token, will use client token", "error", err)
+		}
+	}
+
+	// Read local CA cert unless it was stored in config.
+	if config.CACert == "" {
+		config.CACert, err = b.localCACertReader.ReadFile()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return config, nil
 }
 

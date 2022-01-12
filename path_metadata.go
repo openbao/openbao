@@ -2,9 +2,12 @@ package kv
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/mitchellh/mapstructure"
+	"net/http"
 	"strings"
 	"time"
 
@@ -46,7 +49,7 @@ A negative duration will cause an error.
 `,
 			},
 			"custom_metadata": {
-				Type: framework.TypeKVPairs,
+				Type: framework.TypeMap,
 				Description: `
 User-provided key-value pairs that are used to describe arbitrary and
 version-agnostic information about a secret.
@@ -59,6 +62,7 @@ version-agnostic information about a secret.
 			logical.ReadOperation:   b.upgradeCheck(b.pathMetadataRead()),
 			logical.DeleteOperation: b.upgradeCheck(b.pathMetadataDelete()),
 			logical.ListOperation:   b.upgradeCheck(b.pathMetadataList()),
+			logical.PatchOperation:  b.upgradeCheck(b.pathMetadataPatch()),
 		},
 
 		ExistenceCheck: b.metadataExistenceCheck(),
@@ -213,6 +217,31 @@ func validateCustomMetadata(customMetadata map[string]string) error {
 	return errs.ErrorOrNil()
 }
 
+// parseCustomMetadata is used to effectively convert the TypeMap
+// (map[string]interface{}) into a TypeKVPairs (map[string]string)
+// which is how custom_metadata is stored. Defining custom_metadata
+// as a TypeKVPairs will convert nulls into empty strings. A null,
+// however, is essential for a PATCH operation in that it signals
+// the handler to remove the field. The filterNils flag should
+// only be used during a patch operation.
+func parseCustomMetadata(raw map[string]interface{}, filterNils bool) (map[string]string, error) {
+	customMetadata := map[string]string{}
+	for k, v := range raw {
+		if filterNils && v == nil {
+			continue
+		}
+
+		var s string
+		if err := mapstructure.WeakDecode(v, &s); err != nil {
+			return nil, err
+		}
+
+		customMetadata[k] = s
+	}
+
+	return customMetadata, nil
+}
+
 func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := data.Get("path").(string)
@@ -238,7 +267,11 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		customMetadataMap := map[string]string{}
 
 		if cmOk {
-			customMetadataMap = customMetadataRaw.(map[string]string)
+			customMetadataMap, err = parseCustomMetadata(customMetadataRaw.(map[string]interface{}), false)
+			if err != nil {
+				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+			}
+
 			customMetadataErrs := validateCustomMetadata(customMetadataMap)
 
 			if customMetadataErrs != nil {
@@ -285,6 +318,108 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
 		return resp, err
+	}
+}
+
+// metadataPatchPreprocessor returns a framework.PatchPreprocessorFunc meant to
+// be provided to framework.HandlePatchOperation. The returned
+// framework.PatchPreprocessorFunc handles filtering out Vault-managed fields,
+// and ensuring appropriate handling of data types not supported directly by FieldType.
+func metadataPatchPreprocessor() framework.PatchPreprocessorFunc {
+	return func(input map[string]interface{}) (map[string]interface{}, error) {
+		patchableKeys := []string{"max_versions", "cas_required", "delete_version_after", "custom_metadata"}
+		patchData := map[string]interface{}{}
+
+		for _, k := range patchableKeys {
+			if v, ok := input[k]; ok {
+				if k == "delete_version_after" {
+					patchData[k] = ptypes.DurationProto(time.Duration(v.(int)) * time.Second)
+				} else {
+					patchData[k] = v
+				}
+			}
+		}
+
+		return patchData, nil
+	}
+}
+
+// pathMetadataPatch handles a PatchOperation request for a secret's key metadata
+// The key metadata entry must exist to apply the provided patch data.
+func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		key := data.Get("path").(string)
+
+		if key == "" {
+			return logical.ErrorResponse("missing path"), nil
+		}
+
+		if cmRaw, cmOk := data.GetOk("custom_metadata"); cmOk {
+			customMetadataMap, err := parseCustomMetadata(cmRaw.(map[string]interface{}), true)
+			if err != nil {
+				return logical.ErrorResponse(fmt.Sprintf("%s: %s", customMetadataValidationErrorPrefix, err.Error())), nil
+			}
+
+			customMetadataErrs := validateCustomMetadata(customMetadataMap)
+
+			if customMetadataErrs != nil {
+				return logical.ErrorResponse(customMetadataErrs.Error()), nil
+			}
+		}
+
+		config, err := b.config(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+
+		lock := locksutil.LockForKey(b.locks, key)
+		lock.Lock()
+		defer lock.Unlock()
+
+		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
+		if err != nil {
+			return nil, err
+		}
+
+		if meta == nil {
+			return logical.RespondWithStatusCode(nil, req, http.StatusNotFound)
+		}
+
+		var resp *logical.Response
+		casRaw, cOk := data.GetOk("cas_required")
+
+		if cOk && config.CasRequired && !casRaw.(bool) {
+			resp = &logical.Response{}
+			resp.AddWarning("\"cas_required\" set to false, but is mandated by backend config. This value will be ignored.")
+		}
+
+		// proto-generated structs do not have mapstructure tags so marshal
+		// metadata here so that map keys are consistent with request data
+		metadataJSON, err := json.Marshal(meta)
+		if err != nil {
+			return nil, err
+		}
+
+		var metaMap map[string]interface{}
+		if err = json.Unmarshal(metadataJSON, &metaMap); err != nil {
+			return nil, err
+		}
+
+		patchedBytes, err := framework.HandlePatchOperation(data, metaMap, metadataPatchPreprocessor())
+		if err != nil {
+			return nil, err
+		}
+
+		var patchedMetadata *KeyMetadata
+		if err = json.Unmarshal(patchedBytes, &patchedMetadata); err != nil {
+			return nil, err
+		}
+
+		if err = b.writeKeyMetadata(ctx, req.Storage, patchedMetadata); err != nil {
+			return nil, err
+		}
+
+		return resp, nil
 	}
 }
 

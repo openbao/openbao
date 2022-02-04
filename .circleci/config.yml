@@ -13,4 +13,4 @@ jobs:
       - run:
           name: "Run Tests"
           command: |
-            make test
+            make test TESTARGS='-v'

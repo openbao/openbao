@@ -315,12 +315,19 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	}
 
 	if source, ok := data.GetOk("alias_name_source"); ok {
-		if err := validateAliasNameSource(source.(string)); err != nil {
-			return logical.ErrorResponse(err.Error()), nil
+		// migrate the role.AliasNameSource to be the default
+		// if both it and the field value are unset
+		if role.AliasNameSource == aliasNameSourceUnset && source.(string) == aliasNameSourceUnset {
+			role.AliasNameSource = data.GetDefaultOrZero("alias_name_source").(string)
+		} else {
+			role.AliasNameSource = source.(string)
 		}
-		role.AliasNameSource = source.(string)
 	} else if role.AliasNameSource == aliasNameSourceUnset {
 		role.AliasNameSource = data.Get("alias_name_source").(string)
+	}
+
+	if err := validateAliasNameSource(role.AliasNameSource); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	// Store the entry.

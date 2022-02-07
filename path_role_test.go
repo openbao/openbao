@@ -2,6 +2,7 @@ package kubeauth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -309,5 +310,175 @@ func TestPath_Delete(t *testing.T) {
 
 	if resp != nil {
 		t.Fatalf("Unexpected resp data: expected nil got %#v\n", resp.Data)
+	}
+}
+
+func TestPath_Update(t *testing.T) {
+	testCases := map[string]struct {
+		storageData map[string]interface{}
+		requestData map[string]interface{}
+		expected    *roleStorageEntry
+		wantErr     error
+	}{
+		"default": {
+			storageData: map[string]interface{}{
+				"bound_service_account_names":      []string{"name"},
+				"bound_service_account_namespaces": []string{"namespace"},
+				"policies":                         []string{"test"},
+				"period":                           1 * time.Second,
+				"ttl":                              1 * time.Second,
+				"num_uses":                         12,
+				"max_ttl":                          5 * time.Second,
+				"alias_name_source":                aliasNameSourceDefault,
+			},
+			requestData: map[string]interface{}{
+				"alias_name_source": aliasNameSourceDefault,
+				"policies":          []string{"bar", "foo"},
+				"period":            "3s",
+			},
+			expected: &roleStorageEntry{
+				TokenParams: tokenutil.TokenParams{
+					TokenPolicies:   []string{"bar", "foo"},
+					TokenPeriod:     3 * time.Second,
+					TokenTTL:        1 * time.Second,
+					TokenMaxTTL:     5 * time.Second,
+					TokenNumUses:    12,
+					TokenBoundCIDRs: nil,
+				},
+				Policies:                 []string{"bar", "foo"},
+				Period:                   3 * time.Second,
+				ServiceAccountNames:      []string{"name"},
+				ServiceAccountNamespaces: []string{"namespace"},
+				TTL:                      1 * time.Second,
+				MaxTTL:                   5 * time.Second,
+				NumUses:                  12,
+				BoundCIDRs:               nil,
+				AliasNameSource:          aliasNameSourceDefault,
+			},
+			wantErr: nil,
+		},
+		"migrate-alias-name-source": {
+			storageData: map[string]interface{}{
+				"bound_service_account_names":      []string{"name"},
+				"bound_service_account_namespaces": []string{"namespace"},
+				"policies":                         []string{"test"},
+				"period":                           1 * time.Second,
+				"ttl":                              1 * time.Second,
+				"num_uses":                         12,
+				"max_ttl":                          5 * time.Second,
+			},
+			requestData: map[string]interface{}{
+				"alias_name_source": aliasNameSourceUnset,
+			},
+			expected: &roleStorageEntry{
+				TokenParams: tokenutil.TokenParams{
+					TokenPolicies:   []string{"test"},
+					TokenPeriod:     1 * time.Second,
+					TokenTTL:        1 * time.Second,
+					TokenMaxTTL:     5 * time.Second,
+					TokenNumUses:    12,
+					TokenBoundCIDRs: nil,
+				},
+				Policies:                 []string{"test"},
+				Period:                   1 * time.Second,
+				ServiceAccountNames:      []string{"name"},
+				ServiceAccountNamespaces: []string{"namespace"},
+				TTL:                      1 * time.Second,
+				MaxTTL:                   5 * time.Second,
+				NumUses:                  12,
+				BoundCIDRs:               nil,
+				AliasNameSource:          aliasNameSourceDefault,
+			},
+			wantErr: nil,
+		},
+		"invalid-alias-name-source": {
+			storageData: map[string]interface{}{
+				"bound_service_account_names":      []string{"name"},
+				"bound_service_account_namespaces": []string{"namespace"},
+				"alias_name_source":                aliasNameSourceDefault,
+			},
+			requestData: map[string]interface{}{
+				"alias_name_source": "_invalid_",
+			},
+			wantErr: errInvalidAliasNameSource,
+		},
+		"invalid-alias-name-source-in-storage": {
+			storageData: map[string]interface{}{
+				"bound_service_account_names":      []string{"name"},
+				"bound_service_account_namespaces": []string{"namespace"},
+				"alias_name_source":                "_invalid_",
+			},
+			requestData: map[string]interface{}{},
+			wantErr:     errInvalidAliasNameSource,
+		},
+		"invalid-alias-name-source-migration": {
+			storageData: map[string]interface{}{
+				"bound_service_account_names":      []string{"name"},
+				"bound_service_account_namespaces": []string{"namespace"},
+				"alias_name_source":                aliasNameSourceUnset,
+			},
+			requestData: map[string]interface{}{
+				"alias_name_source": "_invalid_",
+			},
+			wantErr: errInvalidAliasNameSource,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			b, storage := getBackend(t)
+			path := fmt.Sprintf("role/%s", name)
+
+			data, err := json.Marshal(tc.storageData)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			entry := &logical.StorageEntry{
+				Key:      path,
+				Value:    data,
+				SealWrap: false,
+			}
+			if err := storage.Put(context.Background(), entry); err != nil {
+				t.Fatal(err)
+			}
+
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      path,
+				Storage:   storage,
+				Data:      tc.requestData,
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+
+			if tc.wantErr != nil {
+				var actual error
+				if err != nil {
+					actual = err
+				} else if resp != nil && resp.IsError() {
+					actual = resp.Error()
+				} else {
+					t.Fatalf("expected error")
+				}
+
+				if tc.wantErr.Error() != actual.Error() {
+					t.Fatalf("expected err %q, actual %q", tc.wantErr, actual)
+				}
+			} else {
+				if err != nil || (resp != nil && resp.IsError()) {
+					t.Fatalf("err:%s resp:%#v\n", err, resp)
+				}
+
+				actual, err := b.(*kubeAuthBackend).role(context.Background(), storage, name)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if diff := deep.Equal(tc.expected, actual); diff != nil {
+					t.Fatal(diff)
+				}
+			}
+		})
 	}
 }

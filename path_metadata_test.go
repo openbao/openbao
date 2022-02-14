@@ -1324,7 +1324,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 		Operation: logical.PatchOperation,
 		Path:      path,
 		Storage:   storage,
-		Data:      map[string]interface{}{
+		Data: map[string]interface{}{
 			"max_versions": nil,
 		},
 	}

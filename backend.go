@@ -128,6 +128,7 @@ func VersionedKVFactory(ctx context.Context, conf *logical.BackendConfig) (logic
 				pathData(b),
 				pathMetadata(b),
 				pathDestroy(b),
+				pathSubkeys(b),
 			},
 			pathsDelete(b),
 
@@ -453,7 +454,7 @@ you may or may not be able to access certain paths.
         Configures settings for the KV store
 
     ^data/.*$
-        Write, Read, and Delete data in the Key-Value Store.
+        Write, Read, and Delete data in the KV store.
 
     ^delete/.*$
         Marks one or more versions as deleted in the KV store.
@@ -466,4 +467,7 @@ you may or may not be able to access certain paths.
 
     ^undelete/.*$
         Undeletes one or more versions from the KV store.
+
+    ^subkeys/.*$
+        Read the subkeys within the data from the KV store without their associated values
 `

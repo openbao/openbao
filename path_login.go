@@ -11,7 +11,7 @@ import (
 	"github.com/briankassouf/jose/jws"
 	"github.com/briankassouf/jose/jwt"
 	"github.com/hashicorp/errwrap"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
@@ -160,7 +160,11 @@ func (b *kubeAuthBackend) getAliasName(role *roleStorageEntry, serviceAccount *s
 		}
 		return uid, nil
 	case aliasNameSourceSAName:
-		return fmt.Sprintf("%s/%s", serviceAccount.Namespace, serviceAccount.Name), nil
+		ns, name := serviceAccount.namespace(), serviceAccount.name()
+		if ns == "" || name == "" {
+			return "", fmt.Errorf("service account namespace and name must be set")
+		}
+		return fmt.Sprintf("%s/%s", ns, name), nil
 	default:
 		return "", fmt.Errorf("unknown alias_name_source %q", role.AliasNameSource)
 	}

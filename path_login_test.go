@@ -2,14 +2,26 @@ package kubeauth
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
+	"time"
 
+	"github.com/briankassouf/jose/jws"
+	// TODO: using github.com/golang-jwt/jwt for tests only,
+	// as a part of moving away from jose we should consider standardizing
+	// on a single JWT library for tests and runtime uses.
+	"github.com/golang-jwt/jwt"
 	"github.com/hashicorp/errwrap"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/mitchellh/mapstructure"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -1088,3 +1100,300 @@ WKDrXOZIZAMPHZtt2MojxdGpPxiBSVODn6hw8n4hGBWuH7UABU+2h2kZI0ctxWaX
 UIX4hSHyjlKYDGEezrUP1mm7AX5pN1qrjtxasTSPPX8nZY/3HtM77n4PfYEwCrew
 rwIDAQAB
 -----END PUBLIC KEY-----`
+
+func Test_kubeAuthBackend_getAliasName(t *testing.T) {
+	expectedErr := fmt.Errorf("service account namespace and name must be set")
+	issuerDefault := "kubernetes/serviceaccount"
+	issuerProjected := "https://kubernetes.default.svc.cluster.local"
+
+	tests := []struct {
+		name        string
+		role        *roleStorageEntry
+		signRequest *jwtSignTestRequest
+		want        string
+		wantErr     bool
+	}{
+		{
+			name: "default",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceDefault,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerDefault,
+				ns:        "default",
+				sa:        "sa",
+				uid:       testUID,
+				projected: false,
+			},
+			want:    testUID,
+			wantErr: false,
+		},
+		{
+			name: "default-sa-uid",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAUid,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerDefault,
+				ns:        "default",
+				sa:        "sa",
+				uid:       testUID,
+				projected: false,
+			},
+			want:    testUID,
+			wantErr: false,
+		},
+		{
+			name: "default-sa-name",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerDefault,
+				ns:        "default",
+				sa:        "sa",
+				projected: false,
+			},
+			want:    fmt.Sprintf("%s/%s", "default", "sa"),
+			wantErr: false,
+		},
+		{
+			name: "invalid-default-empty-ns",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "",
+				sa:        "sa2",
+				projected: false,
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "invalid-default-empty-sa",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "default",
+				sa:        "",
+				projected: false,
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "projected",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceDefault,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "default",
+				sa:        "sa",
+				uid:       testProjectedUID,
+				projected: true,
+			},
+			want:    testProjectedUID,
+			wantErr: false,
+		},
+		{
+			name: "projected-sa-uid",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAUid,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "default",
+				sa:        "sa",
+				uid:       testProjectedUID,
+				projected: true,
+			},
+			want:    testProjectedUID,
+			wantErr: false,
+		},
+		{
+			name: "projected-sa-name",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "ns1",
+				sa:        "sa",
+				projected: true,
+			},
+			want:    fmt.Sprintf("%s/%s", "ns1", "sa"),
+			wantErr: false,
+		},
+		{
+			name: "invalid-projected-empty-ns",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "",
+				sa:        "sa2",
+				projected: true,
+			},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name: "invalid-projected-empty-sa",
+			role: &roleStorageEntry{
+				AliasNameSource: aliasNameSourceSAName,
+			},
+			signRequest: &jwtSignTestRequest{
+				issuer:    issuerProjected,
+				ns:        "default",
+				sa:        "",
+				projected: true,
+			},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := &kubeAuthBackend{}
+
+			s, err := signTestJWTRequest(tt.signRequest)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			parsedJWT, err := jws.ParseJWT([]byte(s))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			sa := &serviceAccount{}
+			if err := mapstructure.Decode(parsedJWT.Claims(), sa); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := b.getAliasName(tt.role, sa)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("getAliasName() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+				if !reflect.DeepEqual(expectedErr, err) {
+					t.Errorf("getAliasName() expected error = %v, actual %v", expectedErr, err)
+				}
+			}
+
+			if got != tt.want {
+				t.Errorf("getAliasName() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type jwtSignTestRequest struct {
+	ns        string
+	sa        string
+	uid       string
+	projected bool
+	issuer    string
+	expired   bool
+}
+
+func (r *jwtSignTestRequest) getUID() string {
+	var uid string
+	if r.uid == "" {
+		uid, _ = uuid.GenerateUUID()
+		r.uid = uid
+	}
+
+	return r.uid
+}
+
+func signTestJWTRequest(req *jwtSignTestRequest) (string, error) {
+	var claims jwt.Claims
+	if req.projected {
+		claims = projectedJWTTestClaims(req)
+	} else {
+		claims = defaultJWTTestClaims(req)
+	}
+
+	return signTestJWT(claims)
+}
+
+func jwtStandardTestClaims(req *jwtSignTestRequest) jwt.StandardClaims {
+	now := time.Now()
+	var horizon int64 = 86400
+	if req.expired {
+		horizon = horizon * -1
+	}
+	return jwt.StandardClaims{
+		IssuedAt:  now.Unix(),
+		ExpiresAt: now.Unix() + horizon,
+		Issuer:    req.issuer,
+	}
+}
+
+func projectedJWTTestClaims(req *jwtSignTestRequest) jwt.Claims {
+	type testToken struct {
+		Namespace      string         `json:"namespace"`
+		Pod            *v1.ObjectMeta `json:"pod"`
+		ServiceAccount *v1.ObjectMeta `json:"serviceaccount"`
+	}
+
+	type Claims struct {
+		Audiences []string   `json:"aud"`
+		Token     *testToken `json:"kubernetes.io"`
+		jwt.StandardClaims
+	}
+
+	uid := types.UID(req.getUID())
+	return &Claims{
+		Audiences: []string{"baz"},
+		Token: &testToken{
+			Namespace: req.ns,
+			Pod: &v1.ObjectMeta{
+				Name: "pod",
+				UID:  uid,
+			},
+			ServiceAccount: &v1.ObjectMeta{
+				Name: req.sa,
+				UID:  uid,
+			},
+		},
+		StandardClaims: jwtStandardTestClaims(req),
+	}
+}
+
+func defaultJWTTestClaims(req *jwtSignTestRequest) jwt.Claims {
+	type Claims struct {
+		Namespace          string `json:"kubernetes.io/serviceaccount/namespace"`
+		SecretName         string `json:"kubernetes.io/serviceaccount/secret.name"`
+		ServiceAccountName string `json:"kubernetes.io/serviceaccount/service-account.name"`
+		UID                string `json:"kubernetes.io/serviceaccount/service-account.uid"`
+		Sub                string `json:"sub"`
+		jwt.StandardClaims
+	}
+
+	return &Claims{
+		Namespace:          req.ns,
+		ServiceAccountName: req.sa,
+		UID:                req.getUID(),
+		StandardClaims:     jwtStandardTestClaims(req),
+	}
+}
+
+func signTestJWT(claims jwt.Claims) (string, error) {
+	pkey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", err
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+
+	return token.SignedString(pkey)
+}

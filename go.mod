@@ -5,7 +5,7 @@ go 1.12
 require (
 	github.com/briankassouf/jose v0.9.2-0.20180619214549-d2569464773f
 	github.com/go-test/deep v1.0.8
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v4 v4.3.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.0.0

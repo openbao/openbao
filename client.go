@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 )
 
@@ -18,9 +19,9 @@ type ldapClient interface {
 	Execute(conf *client.Config, entries []*ldif.Entry, continueOnError bool) (err error)
 }
 
-func NewClient() *Client {
+func NewClient(logger hclog.Logger) *Client {
 	return &Client{
-		ldap: client.New(),
+		ldap: client.New(logger),
 	}
 }
 

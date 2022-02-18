@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 )
@@ -20,10 +21,15 @@ type Config struct {
 	Schema                   string    `json:"schema"`
 }
 
-func New() Client {
+func New(logger hclog.Logger) Client {
+	if logger == nil {
+		logger = hclog.NewNullLogger()
+	}
+
 	return Client{
 		ldap: &ldaputil.Client{
-			LDAP: ldaputil.NewLDAP(),
+			LDAP:   ldaputil.NewLDAP(),
+			Logger: logger,
 		},
 	}
 }

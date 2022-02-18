@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 )
@@ -21,7 +22,7 @@ var (
 // main executes one call using a simple client pointed at the given instance.
 func main() {
 	config := newInsecureConfig()
-	c := client.New()
+	c := client.New(hclog.NewNullLogger())
 
 	filters := map[*client.Field][]string{
 		client.FieldRegistry.DisplayName: {"Sara", "Sarah"},

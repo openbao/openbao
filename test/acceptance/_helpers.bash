@@ -1,7 +1,12 @@
 # vault-related env vars
-VAULT_VER=${VAULT_VER:=$(curl -s "https://api.github.com/repos/hashicorp/vault/tags?page=1" | jq -r '.[0].name[1:]')_ent}
+VAULT_IMAGE_TAG=${VAULT_IMAGE_TAG:=$(curl -s "https://api.github.com/repos/hashicorp/vault/tags?page=1" | jq -r '.[0].name[1:]')-ent}
 VAULT_IMAGE=vault-enterprise
 VAULT_PORT=8200
+
+# Set the VAULT_LICENSE from VAULT_LICENSE_PATH if set.
+if [ -f "${VAULT_LICENSE_PATH}" -a -z "${VAULT_LICENSE}" ]; then
+    export VAULT_LICENSE="$(cat ${VAULT_LICENSE_PATH})"
+fi
 
 # Error if the following env vars are not set
 [ "${VAULT_LICENSE:?}" ]
@@ -27,12 +32,6 @@ export DNS_NAME=matrix.lan
 export SAMBA_CONTAINER=samba-server
 export VAULT_ADDR=http://localhost:8200
 export DOMAIN_JOINED_CONTAINER=domain-joined-client
-
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  base64cmd="base64 -D"
-else
-  base64cmd="base64 -d"
-fi
 
 # plugin_dir returns the directory for the plugin
 plugin_dir() (
@@ -69,7 +68,7 @@ start_vault() {
     -e "VAULT_LICENSE=${VAULT_LICENSE}" \
     -p 8200:8200 \
     --name "${VAULT_CONTAINER}" \
-    "hashicorp/${VAULT_IMAGE}:${VAULT_VER}" server -dev -dev-plugin-dir="/plugins"
+    "hashicorp/${VAULT_IMAGE}:${VAULT_IMAGE_TAG}" server -dev -dev-plugin-dir="/plugins"
 }
 
 stop_vault() {
@@ -203,7 +202,7 @@ function prepare_files() {
   mkdir -p "${BATS_FILE_TMPDIR}"/integration
   pushd "${BATS_FILE_TMPDIR}"/integration
   write_kerb_config
-  eval "$base64cmd" grace.keytab.base64 > "${BATS_FILE_TMPDIR}/integration/grace.keytab"
+  eval base64 -d grace.keytab.base64 > "${BATS_FILE_TMPDIR}/integration/grace.keytab"
 }
 
 function start_domain_joined_container() {
@@ -231,4 +230,3 @@ function prepare_outer_environment() {
   start_domain_joined_container
   test_joined_container
 }
-

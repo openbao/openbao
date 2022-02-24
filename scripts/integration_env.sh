@@ -2,14 +2,8 @@
 
 set -eo pipefail
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  base64cmd="base64 -D"
-else
-  base64cmd="base64 -d"
-fi
-
 REPO_ROOT="$(readlink -f $(git rev-parse --show-toplevel || echo .))"
-VAULT_VER="$(curl -fsSL 'https://api.github.com/repos/hashicorp/vault/tags?page=1' | jq -r '.[0].name' | sed -e 's/^v//')"
+VAULT_IMAGE_TAG="$(curl -fsSL 'https://api.github.com/repos/hashicorp/vault/tags?page=1' | jq -r '.[0].name' | sed -e 's/^v//')"
 VAULT_PORT=8200
 SAMBA_VER=4.8.12
 
@@ -66,7 +60,7 @@ function start_vault() {
     -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" \
     -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" \
     -p ${VAULT_PORT}:${VAULT_PORT} \
-    hashicorp/vault:${VAULT_VER} server -dev -dev-plugin-dir=/tmp/repo-root/pkg/linux_amd64)
+    hashicorp/vault:${VAULT_IMAGE_TAG} server -dev -dev-plugin-dir=/tmp/repo-root/pkg/linux_amd64)
   export VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 }
 
@@ -226,7 +220,7 @@ function prepare_files() {
   write_kerb_config
   write_python_test
   popd
-  eval "$base64cmd" grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
+  eval base64 -d grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
 }
 
 function start_domain_joined_container() {

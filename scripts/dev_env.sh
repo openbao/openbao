@@ -1,14 +1,12 @@
 #!/bin/bash
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-  base64cmd="base64 -D"
   sleepcmd="while true; do sleep 86400; done"
 else
-  base64cmd="base64 -d"
   sleepcmd="sleep infinity"
 fi
 
-VAULT_VER=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
+VAULT_IMAGE_TAG=$(curl https://api.github.com/repos/hashicorp/vault/tags?page=1 | python -c "import sys, json; print(json.load(sys.stdin)[0]['name'][1:])")
 VAULT_PORT=8200
 VAULT_TOKEN=root
 SAMBA_VER=4.8.12
@@ -52,7 +50,7 @@ function delete_network() {
 }
 
 function start_vault() {
-  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_VER} server -dev -dev-plugin-dir=/plugins)
+  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_IMAGE_TAG} server -dev -dev-plugin-dir=/plugins)
   export VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 }
 
@@ -105,7 +103,7 @@ function check_user() {
 }
 
 function create_keytab() {
-  
+
   username="${1}"
   password="${2}"
 
@@ -159,7 +157,7 @@ function prepare_files() {
   pushd ${TESTS_DIR}/integration
   write_kerb_config
   # base64 -d $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
-  eval "$base64cmd" $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
+  eval base64 -d $WD/grace.keytab.base64 > $TESTS_DIR/integration/grace.keytab
 }
 
 function remove_files() {

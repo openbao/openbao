@@ -12,6 +12,18 @@ The plugin supports the generation of static and dynamic user roles and root cre
 
 To build this package for any platform you will need to clone this repository and cd into the repo directory and `go build -o redis-database-plugin ./cmd/redis-database-plugin/`. To test `go test` will execute a set of basic tests against against the docker.io/redis:latest redis database image. To test against different redis images, for example 5.0-buster, set the `REDIS_VERSION=5.0-buster` environment variable. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. **Note** the tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If not you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file. Set VAULT_ACC to execute all of the tests. A subset of tests can be run using the command `go test -run TestDriver/Init` for example.
 
+**Please note:** In case of the following errors, while creating Redis connection in Vault, please build this plugin with `CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o redis-database-plugin ./cmd/redis-database-plugin/` command. More details on this error can be found [here](https://github.com/fhitchen/vault-plugin-database-redis/issues/1#issuecomment-1078415041).
+````bash
+Error writing data to database/config/my-redis: Error making API request.
+
+URL: PUT http://127.0.0.1:8200/v1/database/config/my-redis
+Code: 400. Errors:
+
+* error creating database object: invalid database version: 2 errors occurred:
+        * fork/exec /config/plugin/redis-database-plugin: no such file or directory
+        * fork/exec /config/plugin/redis-database-plugin: no such file or directory
+````
+
 ## Installation
 
 The Vault plugin system is documented on the [Vault documentation site](https://www.vaultproject.io/docs/internals/plugins.html).
@@ -129,6 +141,35 @@ rotation_period        5m
 ttl                    3m59s
 username               vault-edu
 ```
+
+## Spring Cloud Vault Integration
+
+> Tested on [spring-cloud-vault:3.1.0](https://docs.spring.io/spring-cloud-vault/docs/3.1.0/reference/html)
+
+In order to enable integration with `Spring Cloud Vault` and therefore supply dynamically-generated Redis credentials to Spring applications, we can use `org.springframework.cloud:spring-cloud-vault-config-databases` with [Multiple Databases](https://docs.spring.io/spring-cloud-vault/docs/3.1.0/reference/html/#vault.config.backends.databases) configuration approach.
+
+Sample `application.yml` configuration (not-related sections are omitted):
+
+```yaml
+spring:
+  cloud:
+    vault:
+      host: 127.0.0.1
+      port: 8200
+      authentication: TOKEN
+      token: ${VAULT_TOKEN}
+      databases:
+        redis:
+          enabled: true
+          role: my-redis-role
+          backend: database
+          username-property: spring.redis.username
+          password-property: spring.redis.password
+  config:
+    import: vault://
+```
+
+**Please note:** Spring Cloud Vault does not support `max_ttl` yet, thus we have to set it up to `0` when creating configurations. More details can be found [here](https://docs.spring.io/spring-cloud-vault/docs/3.1.0/reference/html/#vault.config.backends.databases).
 
 ## Developing
 

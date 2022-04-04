@@ -13,8 +13,8 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2
-	github.com/hashicorp/vault/api v1.2.0
-	github.com/hashicorp/vault/sdk v0.2.1
+	github.com/hashicorp/vault/api v1.5.0
+	github.com/hashicorp/vault/sdk v0.4.1
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
 	github.com/mitchellh/mapstructure v1.4.2
 	k8s.io/api v0.0.0-20190409092523-d687e77c8ae9

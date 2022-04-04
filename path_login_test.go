@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"errors"
 	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -192,6 +193,7 @@ func TestLogin(t *testing.T) {
 	if err.Error() != "service account name not authorized" {
 		t.Fatalf("unexpected error: %s", err)
 	}
+	requireErrorCode(t, err, http.StatusForbidden)
 
 	// test bad jwt key
 	data = map[string]interface{}{
@@ -390,6 +392,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	if err.Error() != "service account name not authorized" {
 		t.Fatalf("unexpected error: %s", err)
 	}
+	requireErrorCode(t, err, http.StatusForbidden)
 
 	// test successful login
 	data = map[string]interface{}{
@@ -605,6 +608,7 @@ func TestAliasLookAhead(t *testing.T) {
 		config            *testBackendConfig
 		expectedAliasName string
 		wantErr           error
+		wantErrCode       int
 	}{
 		"default": {
 			role:              "plugin-test",
@@ -623,10 +627,22 @@ func TestAliasLookAhead(t *testing.T) {
 			wantErr: errors.New("missing jwt"),
 		},
 		"invalid_jwt": {
-			role:    "plugin-test",
-			config:  defaultTestBackendConfig(),
-			jwt:     jwtBadServiceAccount,
-			wantErr: errors.New("service account name not authorized"),
+			role:        "plugin-test",
+			config:      defaultTestBackendConfig(),
+			jwt:         jwtBadServiceAccount,
+			wantErr:     errors.New("service account name not authorized"),
+			wantErrCode: http.StatusForbidden,
+		},
+		"wrong_namespace": {
+			role: "plugin-test",
+			jwt:  jwtData,
+			config: func() *testBackendConfig {
+				config := defaultTestBackendConfig()
+				config.saNamespace = "wrong-namespace"
+				return config
+			}(),
+			wantErr:     errors.New("namespace not authorized"),
+			wantErrCode: http.StatusForbidden,
 		},
 		"serviceaccount_uid": {
 			role: "plugin-test",
@@ -682,6 +698,9 @@ func TestAliasLookAhead(t *testing.T) {
 
 				if tc.wantErr.Error() != actual.Error() {
 					t.Fatalf("expected err %q, actual %q", tc.wantErr, actual)
+				}
+				if tc.wantErrCode != 0 {
+					requireErrorCode(t, err, tc.wantErrCode)
 				}
 			} else {
 				if err != nil || (resp != nil && resp.IsError()) {
@@ -1396,4 +1415,18 @@ func signTestJWT(claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
 	return token.SignedString(pkey)
+}
+
+func requireErrorCode(t *testing.T, err error, expectedCode int) {
+	t.Helper()
+
+	codedErr, ok := err.(logical.HTTPCodedError)
+	switch {
+	case ok && codedErr.Code() == expectedCode:
+		// Happy case
+	case !ok:
+		t.Fatal("err was not logical.HTTPCodedError")
+	default:
+		t.Fatalf("wrong error code, expected %d, got %d", expectedCode, codedErr.Code())
+	}
 }

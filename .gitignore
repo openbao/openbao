@@ -1,3 +1,4 @@
 pkg/*
 bin/*
 .idea/*
+vault-plugin-auth-kubernetes

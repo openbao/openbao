@@ -1,62 +1,70 @@
-TOOL?=vault-plugin-auth-kubernetes
-TEST?=$$(go list ./...)
-VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
-EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox \
-	github.com/golang/dep/cmd/dep
-BUILD_TAGS?=${TOOL}
-GOFMT_FILES?=$$(find . -name '*.go')
+# kind cluster name
+KIND_CLUSTER_NAME?=vault-plugin-auth-kubernetes
 
-# bin generates the releaseable binaries for this plugin
-bin: fmtcheck generate
-	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
+# kind k8s version
+KIND_K8S_VERSION?=v1.23.4
 
+.PHONY: default
 default: dev
 
-# dev creates binaries for testing Vault locally. These are put
-# into ./bin/ as well as $GOPATH/bin, except for quickdev which
-# is only put into /bin/
-quickdev: generate
-	@CGO_ENABLED=0 go build -i -tags='$(BUILD_TAGS)' -o bin/vault-plugin-auth-kubernetes
-dev: fmtcheck generate
-	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-dev-dynamic: generate
-	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+.PHONY: dev
+dev:
+	CGO_ENABLED=0 go build -o bin/vault-plugin-auth-kubernetes cmd/vault-plugin-auth-kubernetes/main.go
 
-# test runs the unit tests and vets the code
-test: fmtcheck generate
-	CGO_ENABLED=0 VAULT_TOKEN= VAULT_ACC= go test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=20m -parallel=4
+.PHONY: test
+test: fmtcheck
+	CGO_ENABLED=0 go test ./... $(TESTARGS) -timeout=20m
 
-testcompile: fmtcheck generate
-	@for pkg in $(TEST) ; do \
-		go test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
-	done
+.PHONY: integration-test
+integration-test:
+	INTEGRATION_TESTS=true CGO_ENABLED=0 go test github.com/hashicorp/vault-plugin-auth-kubernetes/integrationtest/... $(TESTARGS) -count=1 -timeout=20m
 
-# testacc runs acceptance tests
-testacc: fmtcheck generate
-	@if [ "$(TEST)" = "./..." ]; then \
-		echo "ERROR: Set TEST to a specific package"; \
-		exit 1; \
-	fi
-	VAULT_ACC=1 go test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout 45m
-
-# generate runs `go generate` to build the dynamically generated
-# source files.
-generate:
-	go generate $(go list ./...)
-
-# bootstrap the build by downloading additional tools
-bootstrap:
-	@for tool in  $(EXTERNAL_TOOLS) ; do \
-		echo "Installing/Updating $$tool" ; \
-		go get -u $$tool; \
-	done
-
+.PHONY: fmtcheck
 fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
 
+.PHONY: fmt
 fmt:
-	gofmt -w $(GOFMT_FILES)
+	gofmt -w .
 
+.PHONY: setup-kind
+# create a kind cluster for running the acceptance tests locally
+setup-kind:
+	kind get clusters | grep --silent "^${KIND_CLUSTER_NAME}$$" || \
+	kind create cluster \
+		--image kindest/node:${KIND_K8S_VERSION} \
+		--name ${KIND_CLUSTER_NAME}  \
+		--config $(CURDIR)/integrationtest/kind/config.yaml
+	kubectl config use-context kind-${KIND_CLUSTER_NAME}
 
-.PHONY: bin default generate test vet bootstrap fmt fmtcheck
+.PHONY: delete-kind
+# delete the kind cluster
+delete-kind:
+	kind delete cluster --name ${KIND_CLUSTER_NAME} || true
+
+.PHONY: vault-image
+vault-image:
+	GOOS=linux GOARCH=amd64 make dev
+	docker build -f integrationtest/vault/Dockerfile bin/ --tag=hashicorp/vault:dev
+
+# Create Vault inside the cluster with a locally-built version of kubernetes auth.
+.PHONY: setup-integration-test
+setup-integration-test: teardown-integration-test vault-image
+	kind --name ${KIND_CLUSTER_NAME} load docker-image hashicorp/vault:dev
+	kubectl create namespace test
+	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.19.0 \
+		--wait --timeout=5m \
+		--namespace=test \
+		--set server.dev.enabled=true \
+		--set server.image.tag=dev \
+		--set server.image.pullPolicy=Never \
+		--set injector.enabled=false \
+		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
+	kubectl patch --namespace=test statefulset vault --patch-file integrationtest/vault/hostPortPatch.yaml
+	kubectl delete --namespace=test pod vault-0
+	kubectl wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
+
+.PHONY: teardown-integration-test
+teardown-integration-test:
+	helm uninstall vault --namespace=test || true
+	kubectl delete --ignore-not-found namespace test

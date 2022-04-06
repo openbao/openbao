@@ -1,0 +1,1 @@
+# vault-plugin-secrets-kubernetes

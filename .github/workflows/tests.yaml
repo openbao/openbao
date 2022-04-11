@@ -1,0 +1,80 @@
+name: Tests
+
+on: [push, workflow_dispatch]
+
+jobs:
+  get-go-version:
+    name: "Determine Go toolchain version"
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: ${{ steps.get-go-version.outputs.go-version }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Determine Go version
+        id: get-go-version
+        run: |
+          echo "Building with Go $(cat .go-version)"
+          echo "::set-output name=go-version::$(cat .go-version)"
+
+  fmtcheck:
+    runs-on: ubuntu-latest
+    needs: [get-go-version]
+    env:
+      GOFUMPT_VERSION: 0.3.1
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.get-go-version.outputs.go-version }}
+      - run: |
+          go install "mvdan.cc/gofumpt@v${GOFUMPT_VERSION}"
+          make fmtcheck
+
+  test:
+    runs-on: ubuntu-latest
+    needs: [get-go-version]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.get-go-version.outputs.go-version }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: make test
+
+  integrationTest:
+    runs-on: ubuntu-latest
+    needs: [fmtcheck, test, get-go-version]
+    strategy:
+      fail-fast: false
+      matrix:
+        kind-k8s-version: [1.20.15, 1.21.10, 1.22.7, 1.23.4]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Create K8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
+        with:
+          cluster_name: vault-plugin-secrets-kubernetes
+          config: integrationtest/kind/config.yaml
+          node_image: kindest/node:v${{ matrix.kind-k8s-version }}
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ needs.get-go-version.outputs.go-version }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: make setup-integration-test
+      - env:
+          INTEGRATION_TESTS: true
+        run: make integration-test

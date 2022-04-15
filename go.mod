@@ -3,13 +3,10 @@ module github.com/hashicorp/vault-plugin-auth-kubernetes
 go 1.12
 
 require (
-	github.com/briankassouf/jose v0.9.2-0.20180619214549-d2569464773f
 	github.com/go-test/deep v1.0.8
 	github.com/golang-jwt/jwt/v4 v4.3.0
-	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.0.0
-	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.1
 	github.com/hashicorp/go-sockaddr v1.0.2
 	github.com/hashicorp/go-uuid v1.0.2

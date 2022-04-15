@@ -46,7 +46,6 @@ func tokenReviewAPIFactory(config *kubeConfig) tokenReviewer {
 }
 
 func (t *tokenReviewAPI) Review(ctx context.Context, jwt string, aud []string) (*tokenReviewResult, error) {
-
 	client := cleanhttp.DefaultClient()
 
 	// If we have a CA cert build the TLSConfig

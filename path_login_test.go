@@ -11,13 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/briankassouf/jose/jws"
-	// TODO: using github.com/golang-jwt/jwt/v4 for tests only,
-	// as a part of moving away from the jose fork we should consider standardizing
-	// on a single JWT library for tests and runtime uses.
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
@@ -41,7 +35,6 @@ var (
 	testProjectedMockFactory = mockTokenReviewFactory(testProjectedName, testNamespace, testProjectedUID)
 
 	testDefaultPEMs = []string{testECCert, testRSACert}
-	testNoPEMs      = []string{testECCert, testRSACert}
 )
 
 type testBackendConfig struct {
@@ -212,11 +205,8 @@ func TestLogin(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
-		t.Fatal("expected error")
-	}
-	var expectedErr error
-	expectedErr = multierror.Append(expectedErr, errwrap.Wrapf("failed to validate JWT: {{err}}", errMismatchedSigningMethod), errwrap.Wrapf("failed to validate JWT: {{err}}", rsa.ErrVerification))
-	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Expected error")
+	} else if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -321,7 +311,6 @@ func TestLogin_ContextError(t *testing.T) {
 
 func TestLogin_ECDSA_PEM(t *testing.T) {
 	config := defaultTestBackendConfig()
-	config.pems = testNoPEMs
 	b, storage := setupBackend(t, config)
 
 	// test no certificate
@@ -367,7 +356,6 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 
 func TestLogin_NoPEMs(t *testing.T) {
 	config := defaultTestBackendConfig()
-	config.pems = testNoPEMs
 	b, storage := setupBackend(t, config)
 
 	// test bad jwt service account
@@ -500,7 +488,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err.Error() != "permission denied" {
+	if !errors.Is(logical.ErrPermissionDenied, err) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -521,11 +509,8 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
-		t.Fatal("expected error")
-	}
-	var expectedErr error
-	expectedErr = multierror.Append(expectedErr, errwrap.Wrapf("failed to validate JWT: {{err}}", errMismatchedSigningMethod), errwrap.Wrapf("failed to validate JWT: {{err}}", rsa.ErrVerification))
-	if err.Error() != expectedErr.Error() {
+		t.Fatalf("Expected error")
+	} else if !errors.Is(logical.ErrPermissionDenied, err) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -717,7 +702,6 @@ func TestAliasLookAhead(t *testing.T) {
 
 func TestLoginIssValidation(t *testing.T) {
 	config := defaultTestBackendConfig()
-	config.pems = testNoPEMs
 	b, storage := setupBackend(t, config)
 
 	// test iss validation enabled with default "kubernetes/serviceaccount" issuer
@@ -761,6 +745,7 @@ func TestLoginIssValidation(t *testing.T) {
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": false,
 		"issuer":                 "kubernetes/serviceaccount",
+		"pem_keys":               testDefaultPEMs,
 	}
 
 	req = &logical.Request{
@@ -802,6 +787,7 @@ func TestLoginIssValidation(t *testing.T) {
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": false,
 		"issuer":                 "custom-issuer",
+		"pem_keys":               testDefaultPEMs,
 	}
 
 	req = &logical.Request{
@@ -836,7 +822,7 @@ func TestLoginIssValidation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err.Error() != `claim "iss" is invalid` {
+	if err.Error() != `invalid token issuer` {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -846,6 +832,7 @@ func TestLoginIssValidation(t *testing.T) {
 		"kubernetes_ca_cert":     testCACert,
 		"disable_iss_validation": true,
 		"issuer":                 "custom-issuer",
+		"pem_keys":               testDefaultPEMs,
 	}
 
 	req = &logical.Request{
@@ -924,7 +911,7 @@ func TestLoginProjectedToken(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	var roleNameError = fmt.Errorf("invalid role name %q", "plugin-test-x")
+	roleNameError := fmt.Errorf("invalid role name %q", "plugin-test-x")
 
 	testCases := map[string]struct {
 		role        string
@@ -952,7 +939,7 @@ func TestLoginProjectedToken(t *testing.T) {
 			role:        "plugin-test",
 			jwt:         jwtProjectedDataExpired,
 			tokenReview: testProjectedMockFactory,
-			e:           errors.New("token is expired"), // jwt.ErrTokenIsExpired,
+			e:           errors.New("Token is expired"),
 		},
 		"projected-token-invalid-role": {
 			role:        "plugin-test-x",
@@ -964,7 +951,6 @@ func TestLoginProjectedToken(t *testing.T) {
 
 	for k, tc := range testCases {
 		t.Run(k, func(t *testing.T) {
-
 			data := map[string]interface{}{
 				"role": tc.role,
 				"jwt":  tc.jwt,
@@ -1286,13 +1272,14 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			parsedJWT, err := jws.ParseJWT([]byte(s))
+			claims := jwt.MapClaims{}
+			_, _, err = jwt.NewParser().ParseUnverified(s, &claims)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			sa := &serviceAccount{}
-			if err := mapstructure.Decode(parsedJWT.Claims(), sa); err != nil {
+			if err := mapstructure.Decode(claims, sa); err != nil {
 				t.Fatal(err)
 			}
 

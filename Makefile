@@ -25,10 +25,10 @@ fmtcheck:
 
 .PHONY: fmt
 fmt:
-	gofmt -w .
+	gofumpt -w .
 
 .PHONY: setup-kind
-# create a kind cluster for running the acceptance tests locally
+# create a kind cluster for running the integration tests locally
 setup-kind:
 	kind get clusters | grep --silent "^${KIND_CLUSTER_NAME}$$" || \
 	kind create cluster \
@@ -61,6 +61,8 @@ setup-integration-test: teardown-integration-test vault-image
 		--set injector.enabled=false \
 		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
 	kubectl patch --namespace=test statefulset vault --patch-file integrationtest/vault/hostPortPatch.yaml
+	kubectl apply --namespace=test -f integrationtest/vault/tokenReviewerServiceAccount.yaml
+	kubectl apply -f integrationtest/vault/tokenReviewerBinding.yaml
 	kubectl delete --namespace=test pod vault-0
 	kubectl wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
 

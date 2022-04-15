@@ -160,11 +160,6 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err := parsePublicKeyPEM([]byte(testRSACert))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	expected := &kubeConfig{
 		PublicKeys:           []interface{}{},
 		PEMKeys:              []string{},
@@ -201,7 +196,7 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	cert, err = parsePublicKeyPEM([]byte(testRSACert))
+	cert, err := parsePublicKeyPEM([]byte(testRSACert))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -538,7 +533,6 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	if conf.TokenReviewerJWT != token2 {
 		t.Fatalf("got unexpected JWT: expected %#v\n got %#v\n", token2, conf.TokenReviewerJWT)
 	}
-
 }
 
 var testLocalCACert string = `-----BEGIN CERTIFICATE-----

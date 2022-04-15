@@ -7,12 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
-	"github.com/briankassouf/jose/crypto"
-	"github.com/briankassouf/jose/jws"
-	"github.com/briankassouf/jose/jwt"
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-multierror"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
@@ -20,14 +17,14 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-var (
-	// defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.
-	defaultJWTIssuer = "kubernetes/serviceaccount"
+// defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.
+var defaultJWTIssuer = "kubernetes/serviceaccount"
 
-	// errMismatchedSigningMethod is used if the certificate doesn't match the
-	// JWT's expected signing method.
-	errMismatchedSigningMethod = errors.New("invalid signing method")
-)
+// See https://datatracker.ietf.org/doc/html/rfc7518#section-3.
+var supportedJwtAlgs = []string{
+	"RS256", "RS384", "RS512",
+	"ES256", "ES384", "ES512",
+}
 
 // pathLogin returns the path configurations for login endpoints
 func pathLogin(b *kubeAuthBackend) *framework.Path {
@@ -94,7 +91,10 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	}
 
 	serviceAccount, err := b.parseAndValidateJWT(jwtStr, role, config)
-	if err != nil {
+	if err == jwt.ErrSignatureInvalid {
+		b.Logger().Debug(`login unauthorized`, "err", err)
+		return nil, logical.ErrPermissionDenied
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	// look up the JWT token in the kubernetes API
 	err = serviceAccount.lookup(ctx, jwtStr, b.reviewFactory(config))
 	if err != nil {
-		b.Logger().Error(`login unauthorized due to: ` + err.Error())
+		b.Logger().Debug(`login unauthorized`, "err", err)
 		return nil, logical.ErrPermissionDenied
 	}
 
@@ -222,129 +222,106 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 	}, nil
 }
 
+// parseAndVerifySignature parses the JWT token validating the signature against
+// any of the keys passed in.
+func (b *kubeAuthBackend) parseAndVerifySignature(token string, keys ...interface{}) (*jwt.Token, error) {
+	for i, k := range keys {
+		// only consider RSA & ECDSA signatures
+		_, isEcdsa := k.(*ecdsa.PublicKey)
+		_, isRsa := k.(*rsa.PublicKey)
+		if !(isEcdsa || isRsa) {
+			continue
+		}
+		result, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+			return k, nil
+		}, jwt.WithValidMethods(supportedJwtAlgs))
+		if result != nil && err == nil {
+			return result, nil
+		}
+		if err != nil && strings.ToLower(err.Error()) == strings.ToLower(jwt.ErrTokenExpired.Error()) {
+			return nil, err
+		}
+		b.Logger().Debug(fmt.Sprintf("JWT signature did not validate with key %d, testing next key", i))
+		// otherwise, try the next key
+	}
+	b.Logger().Debug("JWT signature did not validate with any keys")
+	return nil, jwt.ErrSignatureInvalid
+}
+
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
 	// Parse into JWT
-	parsedJWT, err := jws.ParseJWT([]byte(jwtStr))
+	var token *jwt.Token
+	var err error
+	if len(config.PublicKeys) == 0 {
+		// we don't verify the signature if we aren't configured with public keys
+		token, _, err = jwt.NewParser().ParseUnverified(jwtStr, jwt.MapClaims{})
+	} else {
+		token, err = b.parseAndVerifySignature(jwtStr, config.PublicKeys...)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// do default claims validation (expiration, issued at, not before)
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("unsupported JWT claims type")
+	}
+	err = claims.Valid()
 	if err != nil {
 		return nil, err
 	}
 
 	sa := &serviceAccount{}
 
-	validator := &jwt.Validator{
-		Fn: func(c jwt.Claims) error {
-			// Decode claims into a service account object
-			err := mapstructure.Decode(c, sa)
-			if err != nil {
-				return err
-			}
+	// Decode claims into a service account object
+	err = mapstructure.Decode(token.Claims, sa)
+	if err != nil {
+		return nil, err
+	}
 
-			// verify the namespace is allowed
-			if len(role.ServiceAccountNamespaces) > 1 || role.ServiceAccountNamespaces[0] != "*" {
-				if !strutil.StrListContainsGlob(role.ServiceAccountNamespaces, sa.namespace()) {
-					return logical.CodedError(http.StatusForbidden, "namespace not authorized")
-				}
-			}
+	// verify the namespace is allowed
+	if len(role.ServiceAccountNamespaces) > 1 || role.ServiceAccountNamespaces[0] != "*" {
+		if !strutil.StrListContainsGlob(role.ServiceAccountNamespaces, sa.namespace()) {
+			return nil, logical.CodedError(http.StatusForbidden, "namespace not authorized")
+		}
+	}
 
-			// verify the service account name is allowed
-			if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
-				if !strutil.StrListContainsGlob(role.ServiceAccountNames, sa.name()) {
-					return logical.CodedError(http.StatusForbidden, "service account name not authorized")
-				}
-			}
-
-			return nil
-		},
+	// verify the service account name is allowed
+	if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
+		if !strutil.StrListContainsGlob(role.ServiceAccountNames, sa.name()) {
+			return nil, logical.CodedError(http.StatusForbidden,
+				fmt.Sprintf("service account name not authorized"))
+		}
 	}
 
 	// perform ISS Claim validation if configured
 	if !config.DisableISSValidation {
 		// set the expected issuer to the default kubernetes issuer if the config doesn't specify it
 		if config.Issuer != "" {
-			validator.SetIssuer(config.Issuer)
+			if !claims.VerifyIssuer(config.Issuer, true) {
+				return nil, logical.CodedError(http.StatusForbidden, "invalid token issuer")
+			}
 		} else {
-			validator.SetIssuer(defaultJWTIssuer)
+			if !claims.VerifyIssuer(defaultJWTIssuer, true) {
+				return nil, logical.CodedError(http.StatusForbidden, "invalid token issuer")
+			}
 		}
 	}
 
 	// validate the audience if the role expects it
 	if role.Audience != "" {
-		validator.SetAudience(role.Audience)
+		if !claims.VerifyAudience(role.Audience, true) {
+			return nil, logical.CodedError(http.StatusForbidden, "invalid audience")
+		}
 	}
-
-	if err := validator.Validate(parsedJWT); err != nil {
-		return nil, err
-	}
-
 	// If we don't have any public keys to verify, return the sa and end early.
 	if len(config.PublicKeys) == 0 {
 		return sa, nil
 	}
 
-	// verifyFunc is called for each certificate that is configured in the
-	// backend until one of the certificates succeeds.
-	verifyFunc := func(cert interface{}) error {
-		// Parse Headers and verify the signing method matches the public key type
-		// configured. This is done in its own scope since we don't need most of
-		// these variables later.
-		var signingMethod crypto.SigningMethod
-		{
-			parsedJWS, err := jws.Parse([]byte(jwtStr))
-			if err != nil {
-				return err
-			}
-			headers := parsedJWS.Protected()
-
-			var algStr string
-			if headers.Has("alg") {
-				algStr = headers.Get("alg").(string)
-			} else {
-				return errors.New("provided JWT must have 'alg' header value")
-			}
-
-			signingMethod = jws.GetSigningMethod(algStr)
-			switch signingMethod.(type) {
-			case *crypto.SigningMethodECDSA:
-				if _, ok := cert.(*ecdsa.PublicKey); !ok {
-					return errMismatchedSigningMethod
-				}
-			case *crypto.SigningMethodRSA:
-				if _, ok := cert.(*rsa.PublicKey); !ok {
-					return errMismatchedSigningMethod
-				}
-			default:
-				return errors.New("unsupported JWT signing method")
-			}
-		}
-
-		// validates the signature and then runs the claim validation
-		if err := parsedJWT.Validate(cert, signingMethod); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	var validationErr error
-	// for each configured certificate run the verifyFunc
-	for _, cert := range config.PublicKeys {
-		err := verifyFunc(cert)
-		switch err {
-		case nil:
-			return sa, nil
-		case rsa.ErrVerification, crypto.ErrECDSAVerification, errMismatchedSigningMethod:
-			// if the error is a failure to verify or a signing method mismatch
-			// continue onto the next cert, storing the error to be returned if
-			// this is the last cert.
-			validationErr = multierror.Append(validationErr, errwrap.Wrapf("failed to validate JWT: {{err}}", err))
-			continue
-		default:
-			return nil, err
-		}
-	}
-
-	return nil, validationErr
+	return sa, nil
 }
 
 // serviceAccount holds the metadata from the JWT token and is used to lookup
@@ -464,7 +441,9 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 	}
 }
 
-const pathLoginHelpSyn = `Authenticates Kubernetes service accounts with Vault.`
-const pathLoginHelpDesc = `
+const (
+	pathLoginHelpSyn  = `Authenticates Kubernetes service accounts with Vault.`
+	pathLoginHelpDesc = `
 Authenticate Kubernetes service accounts.
 `
+)

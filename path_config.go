@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"net/http"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/vault/sdk/framework"
@@ -152,6 +154,32 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 		Issuer:               issuer,
 		DisableISSValidation: disableIssValidation,
 		DisableLocalCAJwt:    disableLocalJWT,
+	}
+
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	// Determine if we load the local CA cert or the CA cert provided
+	// by the kubernetes_ca_cert path into the backend's HTTP client
+	certPool := x509.NewCertPool()
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	if disableLocalJWT || len(caCert) > 0 {
+		certPool.AppendCertsFromPEM([]byte(config.CACert))
+		tlsConfig.RootCAs = certPool
+
+		b.httpClient.Transport.(*http.Transport).TLSClientConfig = tlsConfig
+	} else {
+		localCACert, err := b.localCACertReader.ReadFile()
+		if err != nil {
+			return nil, err
+		}
+
+		certPool.AppendCertsFromPEM([]byte(localCACert))
+		tlsConfig.RootCAs = certPool
+
+		b.httpClient.Transport.(*http.Transport).TLSClientConfig = tlsConfig
 	}
 
 	var err error

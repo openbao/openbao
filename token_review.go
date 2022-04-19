@@ -3,8 +3,6 @@ package kubeauth
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +10,6 @@ import (
 	"net/http"
 	"strings"
 
-	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	authv1 "k8s.io/api/authentication/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +26,7 @@ type tokenReviewResult struct {
 
 // This exists so we can use a mock TokenReview when running tests
 type tokenReviewer interface {
-	Review(context.Context, string, []string) (*tokenReviewResult, error)
+	Review(context.Context, *http.Client, string, []string) (*tokenReviewResult, error)
 }
 
 type tokenReviewFactory func(*kubeConfig) tokenReviewer
@@ -45,22 +42,7 @@ func tokenReviewAPIFactory(config *kubeConfig) tokenReviewer {
 	}
 }
 
-func (t *tokenReviewAPI) Review(ctx context.Context, jwt string, aud []string) (*tokenReviewResult, error) {
-	client := cleanhttp.DefaultClient()
-
-	// If we have a CA cert build the TLSConfig
-	if len(t.config.CACert) > 0 {
-		certPool := x509.NewCertPool()
-		certPool.AppendCertsFromPEM([]byte(t.config.CACert))
-
-		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			RootCAs:    certPool,
-		}
-
-		client.Transport.(*http.Transport).TLSClientConfig = tlsConfig
-	}
-
+func (t *tokenReviewAPI) Review(ctx context.Context, client *http.Client, jwt string, aud []string) (*tokenReviewResult, error) {
 	// Create the TokenReview Object and marshal it into json
 	trReq := &authv1.TokenReview{
 		Spec: authv1.TokenReviewSpec{
@@ -188,9 +170,17 @@ func mockTokenReviewFactory(name, namespace, UID string) tokenReviewFactory {
 	}
 }
 
-func (t *mockTokenReview) Review(ctx context.Context, cjwt string, aud []string) (*tokenReviewResult, error) {
+func (t *mockTokenReview) Review(ctx context.Context, client *http.Client, cjwt string, aud []string) (*tokenReviewResult, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
+	}
+
+	httpTransport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		return nil, errors.New("failed to check whether DisableKeepAlives is false as Transport is not *http.Transport")
+	}
+	if httpTransport.DisableKeepAlives {
+		return nil, errors.New("expected DisableKeepAlives to be false but was true")
 	}
 
 	return &tokenReviewResult{

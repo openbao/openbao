@@ -89,6 +89,9 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	if err != nil {
 		return nil, err
 	}
+	if config == nil {
+		return nil, errors.New("could not load backend configuration")
+	}
 
 	serviceAccount, err := b.parseAndValidateJWT(jwtStr, role, config)
 	if err == jwt.ErrSignatureInvalid {
@@ -104,7 +107,8 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	}
 
 	// look up the JWT token in the kubernetes API
-	err = serviceAccount.lookup(ctx, jwtStr, b.reviewFactory(config))
+	err = serviceAccount.lookup(ctx, b.httpClient, jwtStr, b.reviewFactory(config))
+
 	if err != nil {
 		b.Logger().Debug(`login unauthorized`, "err", err)
 		return nil, logical.ErrPermissionDenied
@@ -200,7 +204,9 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 	if err != nil {
 		return nil, err
 	}
-
+	if config == nil {
+		return nil, errors.New("could not load backend configuration")
+	}
 	// validation of the JWT against the provided role ensures alias look ahead requests
 	// are authentic.
 	sa, err := b.parseAndValidateJWT(jwtStr, role, config)
@@ -388,8 +394,8 @@ type k8sObjectRef struct {
 
 // lookup calls the TokenReview API in kubernetes to verify the token and secret
 // still exist.
-func (s *serviceAccount) lookup(ctx context.Context, jwtStr string, tr tokenReviewer) error {
-	r, err := tr.Review(ctx, jwtStr, s.Audience)
+func (s *serviceAccount) lookup(ctx context.Context, client *http.Client, jwtStr string, tr tokenReviewer) error {
+	r, err := tr.Review(ctx, client, jwtStr, s.Audience)
 	if err != nil {
 		return err
 	}

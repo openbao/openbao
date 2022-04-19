@@ -2,13 +2,16 @@ package kubeauth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 )
@@ -45,6 +48,9 @@ var (
 // kubeAuthBackend implements logical.Backend
 type kubeAuthBackend struct {
 	*framework.Backend
+
+	// default HTTP client for connection reuse
+	httpClient *http.Client
 
 	// reviewFactory is used to configure the strategy for doing a token review.
 	// Currently the only options are using the kubernetes API or mocking the
@@ -101,12 +107,45 @@ func Backend() *kubeAuthBackend {
 			},
 			pathsRole(b),
 		),
+		InitializeFunc: b.initialize,
 	}
+
+	// Set default HTTP client
+	b.httpClient = cleanhttp.DefaultPooledClient()
 
 	// Set the review factory to default to calling into the kubernetes API.
 	b.reviewFactory = tokenReviewAPIFactory
 
 	return b
+}
+
+// initialize is used to handle the state of config values just after the K8s plugin has been mounted
+func (b *kubeAuthBackend) initialize(ctx context.Context, req *logical.InitializationRequest) error {
+	// Try to load the config on initialization
+	config, err := b.loadConfig(ctx, req.Storage)
+	if err != nil {
+		return err
+	}
+	if config == nil {
+		return nil
+	}
+
+	b.l.Lock()
+	defer b.l.Unlock()
+	// If we have a CA cert build the TLSConfig
+	if len(config.CACert) > 0 {
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM([]byte(config.CACert))
+
+		tlsConfig := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			RootCAs:    certPool,
+		}
+
+		b.httpClient.Transport.(*http.Transport).TLSClientConfig = tlsConfig
+	}
+
+	return nil
 }
 
 // config takes a storage object and returns a kubeConfig object.
@@ -138,16 +177,18 @@ func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeC
 }
 
 // loadConfig fetches the kubeConfig from storage and optionally decorates it with
-// local token and CA certificate.
+// local token and CA certificate. Since loadConfig does not return an error if the kubeConfig reference
+// is nil, we should nil-check. This behavior exists to allow loadConfig's caller to
+// make a decision based on the returned reference.
 func (b *kubeAuthBackend) loadConfig(ctx context.Context, s logical.Storage) (*kubeConfig, error) {
 	config, err := b.config(ctx, s)
 	if err != nil {
 		return nil, err
 	}
+	// We know the config is empty so exit early
 	if config == nil {
-		return nil, errors.New("could not load backend configuration")
+		return config, nil
 	}
-
 	// Nothing more to do if loading local CA cert and JWT token is disabled.
 	if config.DisableLocalCAJwt {
 		return config, nil
@@ -157,13 +198,14 @@ func (b *kubeAuthBackend) loadConfig(ctx context.Context, s logical.Storage) (*k
 	if config.TokenReviewerJWT == "" {
 		config.TokenReviewerJWT, err = b.localSATokenReader.ReadFile()
 		if err != nil {
-			// Ignore error: make best effort trying to load local JWT,
+			// Ignore error: make the best effort trying to load local JWT,
 			// otherwise the JWT submitted in login payload will be used.
 			b.Logger().Debug("failed to read local service account token, will use client token", "error", err)
 		}
 	}
 
 	// Read local CA cert unless it was stored in config.
+	// Else build the TLSConfig with the trusted CA cert and load into client
 	if config.CACert == "" {
 		config.CACert, err = b.localCACertReader.ReadFile()
 		if err != nil {

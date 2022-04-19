@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/stretchr/testify/assert"
 )
 
 // Set the environment variable INTEGRATION_TESTS to any non-empty value to run
@@ -42,17 +43,76 @@ func TestMount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("sys/mounts/kubernetes", map[string]interface{}{
+	_, umount := mountHelper(t, client)
+	defer umount()
+}
+
+func TestConfig(t *testing.T) {
+	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
+	client, err := api.NewClient(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path, umount := mountHelper(t, client)
+	defer umount()
+
+	// create
+	_, err = client.Logical().Write(path+"/config", map[string]interface{}{
+		"disable_local_ca_jwt": true,
+		"kubernetes_ca_cert":   "cert",
+		"kubernetes_host":      "host",
+		"service_account_jwt":  "jwt",
+	})
+	assert.NoError(t, err)
+
+	result, err := client.Logical().Read(path + "/config")
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"disable_local_ca_jwt": true,
+		"kubernetes_ca_cert":   "cert",
+		"kubernetes_host":      "host",
+	}, result.Data)
+
+	// update
+	_, err = client.Logical().Write(path+"/config", map[string]interface{}{
+		"kubernetes_host": "another-host",
+	})
+	assert.NoError(t, err)
+
+	result, err = client.Logical().Read(path + "/config")
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{
+		"disable_local_ca_jwt": true,
+		"kubernetes_ca_cert":   "cert",
+		"kubernetes_host":      "another-host",
+	}, result.Data)
+
+	// delete
+	_, err = client.Logical().Delete(path + "/config")
+	assert.NoError(t, err)
+
+	result, err = client.Logical().Read(path + "/config")
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func mountHelper(t *testing.T, client *api.Client) (string, func()) {
+	t.Helper()
+
+	path := randomWithPrefix("kubernetes")
+	fullPath := fmt.Sprintf("sys/mounts/%s", path)
+	_, err := client.Logical().Write(fullPath, map[string]interface{}{
 		"type": "kubernetes-dev",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		_, err = client.Logical().Delete("sys/mounts/kubernetes")
+	return path, func() {
+		_, err = client.Logical().Delete(fullPath)
 		if err != nil {
 			t.Fatal(err)
 		}
-	}()
+	}
 }

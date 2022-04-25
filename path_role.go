@@ -561,6 +561,10 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		return nil, err
 	}
 
+	if len(resp.Warnings) == 0 {
+		return nil, nil
+	}
+
 	return resp, nil
 }
 

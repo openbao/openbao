@@ -1,0 +1,37 @@
+name: Tests
+
+# Run this workflow on pushes and manually
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: on
+    steps:
+      - uses: actions/checkout@v2
+
+      # cache/restore go mod
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - uses: actions/setup-go@v2
+        with:
+          go-version: 1.18.1
+
+      - name: Build
+        run: |
+          go install github.com/mitchellh/gox@latest
+          make dev
+
+      - name: Test
+        run: make test
+      
+      - name: Integration Tests
+        run: ./scripts/integration_env.sh

@@ -72,9 +72,12 @@ func newBackend() (*backend, error) {
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        strings.TrimSpace(backendHelp),
-		Paths: []*framework.Path{
-			b.pathConfig(),
-		},
+		Paths: framework.PathAppend(
+			[]*framework.Path{
+				b.pathConfig(),
+			},
+			b.pathRoles(),
+		),
 		PathsSpecial: &logical.Paths{
 			LocalStorage: []string{
 				framework.WALPrefix,

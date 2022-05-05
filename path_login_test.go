@@ -2,19 +2,26 @@ package kubeauth
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	josejwt "gopkg.in/square/go-jose.v2/jwt"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -34,8 +41,169 @@ var (
 	testProjectedUID         = "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
 	testProjectedMockFactory = mockTokenReviewFactory(testProjectedName, testNamespace, testProjectedUID)
 
-	testDefaultPEMs = []string{testECCert, testRSACert}
+	testDefaultPEMs      []string
+	ecdsaPrivateKey      *ecdsa.PrivateKey
+	ecdsaOtherPrivateKey *ecdsa.PrivateKey
+
+	jwtES256Header = `{
+  "alg": "ES256",
+  "typ": "JWT"
+}`
+	jwtGoodDataPayload = `{
+  "iss": "kubernetes/serviceaccount",
+  "kubernetes.io/serviceaccount/namespace": "default",
+  "kubernetes.io/serviceaccount/secret.name": "vault-auth-token-t5pcn",
+  "kubernetes.io/serviceaccount/service-account.name": "vault-auth",
+  "kubernetes.io/serviceaccount/service-account.uid": "d77f89bc-9055-11e7-a068-0800276d99bf",
+  "sub": "system:serviceaccount:default:vault-auth"
+}`
+	jwtInvalidPayload = `{
+  "iss": "kubernetes/serviceaccount",
+  "kubernetes.io/serviceaccount/namespace": "default",
+  "kubernetes.io/serviceaccount/secret.name": "vault-invalid-token-gvqpt",
+  "kubernetes.io/serviceaccount/service-account.name": "vault-auth",
+  "kubernetes.io/serviceaccount/service-account.uid": "044fd4f1-974d-11e7-9a15-0800276d99bf",
+  "sub": "system:serviceaccount:default:vault-auth"
+}`
+	jwtBadServiceAccountPayload = `{
+  "iss": "kubernetes/serviceaccount",
+  "kubernetes.io/serviceaccount/namespace": "default",
+  "kubernetes.io/serviceaccount/secret.name": "vault-invalid-token-gvqpt",
+  "kubernetes.io/serviceaccount/service-account.name": "vault-invalid",
+  "kubernetes.io/serviceaccount/service-account.uid": "044fd4f1-974d-11e7-9a15-0800276d99bf",
+  "sub": "system:serviceaccount:default:vault-invalid"
+}`
+	jwtProjectedDataPayload = `{
+  "aud": [
+    "kubernetes.default.svc"
+  ],
+  "exp": 1920082797,
+  "iat": 1604082797,
+  "iss": "kubernetes/serviceaccount",
+  "kubernetes.io": {
+    "namespace": "default",
+    "pod": {
+      "name": "vault",
+      "uid": "086c2f61-dea2-47bb-b5ca-63e63c5c9885"
+    },
+    "serviceaccount": {
+      "name": "default",
+      "uid": "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
+    }
+  },
+  "nbf": 1604082797,
+  "sub": "system:serviceaccount:default:default"
+}`
+
+	jwtProjectedDataExpiredPayload = `{
+  "aud": [
+    "kubernetes.default.svc"
+  ],
+  "exp": 1604083886,
+  "iat": 1604083286,
+  "iss": "kubernetes/serviceaccount",
+  "kubernetes.io": {
+    "namespace": "default",
+    "pod": {
+      "name": "vault",
+      "uid": "34be4d5f-66d3-4a29-beea-ce23e51f9fb8"
+    },
+    "serviceaccount": {
+      "name": "default",
+      "uid": "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
+    }
+  },
+  "nbf": 1604083286,
+  "sub": "system:serviceaccount:default:default"
+}`
+
+	// computed below by init()
+	jwtGoodDataToken          = ""
+	jwtBadServiceAccountToken = ""
+	jwtBadSigningKeyToken     = ""
+	jwtProjectedDataExpired   = ""
+	jwtProjectedData          = ""
 )
+
+func init() {
+	var err error
+	ecdsaPrivateKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	ecdsaOtherPrivateKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	var blockBytes []byte
+	blockBytes, err = x509.MarshalPKIXPublicKey(ecdsaPrivateKey.Public())
+	ecdsaPublicKeyText := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: blockBytes,
+	})
+	testDefaultPEMs = []string{string(ecdsaPublicKeyText)}
+
+	jwtGoodDataToken = jwtSign(jwtES256Header, patchIat(jwtGoodDataPayload), ecdsaPrivateKey)
+	jwtBadServiceAccountToken = jwtSign(jwtES256Header, patchIat(jwtBadServiceAccountPayload), ecdsaPrivateKey)
+
+	jwtProjectedData = jwtSign(jwtES256Header, patchExp(patchIat(jwtProjectedDataPayload)), ecdsaPrivateKey)
+	// don't patch Issued At
+	jwtProjectedDataExpired = jwtSign(jwtES256Header, jwtProjectedDataExpiredPayload, ecdsaPrivateKey)
+
+	// sign with an unknown key
+	jwtBadSigningKeyToken = jwtSign(jwtES256Header, patchIat(jwtInvalidPayload), ecdsaOtherPrivateKey)
+}
+
+// patches in the Issued At time to be now
+func patchIat(input string) string {
+	m := map[string]interface{}{}
+	err := json.Unmarshal([]byte(input), &m)
+	if err != nil {
+		panic(err)
+	}
+	m["iat"] = time.Now().Unix()
+	out, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+// patches in the Expires time to be 10 years from now
+func patchExp(input string) string {
+	m := map[string]interface{}{}
+	err := json.Unmarshal([]byte(input), &m)
+	if err != nil {
+		panic(err)
+	}
+	m["exp"] = time.Now().AddDate(10, 0, 0).Unix()
+	out, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+// creates a signed JWT token
+func jwtSign(header string, payload string, privateKey *ecdsa.PrivateKey) string {
+	header64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString([]byte(header)), "=", "")
+	payload64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString([]byte(payload)), "=", "")
+	toSign := header64 + "." + payload64
+
+	sha := crypto.SHA256.New()
+	sha.Write([]byte(toSign))
+	digest := sha.Sum([]byte{})
+	r, s, err := ecdsa.Sign(rand.Reader, privateKey, digest)
+	if err != nil {
+		panic(err)
+	}
+	rBytes := r.Bytes()
+	sBytes := s.Bytes()
+	rBytes = append(rBytes, sBytes...)
+	sig64 := strings.ReplaceAll(base64.URLEncoding.EncodeToString(rBytes), "=", "")
+	return toSign + "." + sig64
+}
 
 type testBackendConfig struct {
 	pems            []string
@@ -107,7 +275,7 @@ func TestLogin(t *testing.T) {
 
 	// Test bad inputs
 	data := map[string]interface{}{
-		"jwt": jwtData,
+		"jwt": jwtGoodDataToken,
 	}
 
 	req := &logical.Request{
@@ -147,7 +315,7 @@ func TestLogin(t *testing.T) {
 	// test bad role name
 	data = map[string]interface{}{
 		"role": "plugin-test-bad",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -167,7 +335,7 @@ func TestLogin(t *testing.T) {
 	// test bad jwt service account
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccount,
+		"jwt":  jwtBadServiceAccountToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -191,7 +359,7 @@ func TestLogin(t *testing.T) {
 	// test bad jwt key
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtWithBadSigningKey,
+		"jwt":  jwtBadSigningKeyToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -213,7 +381,7 @@ func TestLogin(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -238,7 +406,7 @@ func TestLogin(t *testing.T) {
 
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -263,7 +431,7 @@ func TestLogin(t *testing.T) {
 
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -287,7 +455,7 @@ func TestLogin_ContextError(t *testing.T) {
 
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req := &logical.Request{
@@ -315,7 +483,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 
 	// test no certificate
 	data := map[string]interface{}{
-		"pem_keys":           []string{ecdsaKey},
+		"pem_keys":           testDefaultPEMs,
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
 	}
@@ -335,7 +503,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtECDSASigned,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -361,7 +529,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test bad jwt service account
 	data := map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccount,
+		"jwt":  jwtBadServiceAccountToken,
 	}
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -385,7 +553,7 @@ func TestLogin_NoPEMs(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -412,7 +580,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 
 	// Test bad inputs
 	data := map[string]interface{}{
-		"jwt": jwtData,
+		"jwt": jwtGoodDataToken,
 	}
 
 	req := &logical.Request{
@@ -452,7 +620,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad role name
 	data = map[string]interface{}{
 		"role": "plugin-test-bad",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -472,7 +640,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad jwt service account
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtBadServiceAccount,
+		"jwt":  jwtBadServiceAccountToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -495,7 +663,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test bad jwt key
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtWithBadSigningKey,
+		"jwt":  jwtBadSigningKeyToken,
 	}
 	req = &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -517,7 +685,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	// test successful login
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -542,7 +710,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -567,7 +735,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -597,12 +765,12 @@ func TestAliasLookAhead(t *testing.T) {
 	}{
 		"default": {
 			role:              "plugin-test",
-			jwt:               jwtData,
+			jwt:               jwtGoodDataToken,
 			config:            defaultTestBackendConfig(),
 			expectedAliasName: testUID,
 		},
 		"no_role": {
-			jwt:     jwtData,
+			jwt:     jwtGoodDataToken,
 			config:  defaultTestBackendConfig(),
 			wantErr: errors.New("missing role"),
 		},
@@ -614,13 +782,13 @@ func TestAliasLookAhead(t *testing.T) {
 		"invalid_jwt": {
 			role:        "plugin-test",
 			config:      defaultTestBackendConfig(),
-			jwt:         jwtBadServiceAccount,
+			jwt:         jwtBadServiceAccountToken,
 			wantErr:     errors.New("service account name not authorized"),
 			wantErrCode: http.StatusForbidden,
 		},
 		"wrong_namespace": {
 			role: "plugin-test",
-			jwt:  jwtData,
+			jwt:  jwtGoodDataToken,
 			config: func() *testBackendConfig {
 				config := defaultTestBackendConfig()
 				config.saNamespace = "wrong-namespace"
@@ -631,7 +799,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_uid": {
 			role: "plugin-test",
-			jwt:  jwtData,
+			jwt:  jwtGoodDataToken,
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -642,7 +810,7 @@ func TestAliasLookAhead(t *testing.T) {
 		},
 		"serviceaccount_name": {
 			role: "plugin-test",
-			jwt:  jwtData,
+			jwt:  jwtGoodDataToken,
 			config: &testBackendConfig{
 				pems:            testDefaultPEMs,
 				saName:          testName,
@@ -726,7 +894,7 @@ func TestLoginIssValidation(t *testing.T) {
 	// test successful login with default issuer
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -763,7 +931,7 @@ func TestLoginIssValidation(t *testing.T) {
 	// test successful login with explicitly defined issuer
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -805,7 +973,7 @@ func TestLoginIssValidation(t *testing.T) {
 	// test login fail with enabled iss validation and custom issuer
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -822,7 +990,7 @@ func TestLoginIssValidation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err.Error() != `invalid token issuer` {
+	if err.Error() != `invalid issuer (iss) claim` {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
@@ -850,7 +1018,7 @@ func TestLoginIssValidation(t *testing.T) {
 	// test login success with disabled iss validation and custom issuer
 	data = map[string]interface{}{
 		"role": "plugin-test",
-		"jwt":  jwtData,
+		"jwt":  jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -869,23 +1037,8 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 }
 
-var jwtData = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWF1dGgtdG9rZW4tdDVwY24iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtYXV0aCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImQ3N2Y4OWJjLTkwNTUtMTFlNy1hMDY4LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWF1dGgifQ.HKUcqgrvan5ZC_mnpaMEx4RW3KrhfyH_u8G_IA2vUfkLK8tH3T7fJuJaPr7W6K_BqCrbeM5y3owszOzb4NR0Lvw6GBt2cFcen2x1Ua4Wokr0bJjTT7xQOIOw7UvUDyVS17wAurlfUnmWMwMMMOebpqj5K1t6GnyqghH1wPdHYRGX-q5a6C323dBCgM5t6JY_zTTaBgM6EkFq0poBaifmSMiJRPrdUN_-IgyK8fgQRiFYYkgS6DMIU4k4nUOb_sUFf5xb8vMs3SMteKiuWFAIt4iszXTj5IyBUNqe0cXA3zSY3QiNCV6bJ2CWW0Qf9WDtniT79VAqcR4GYaTC_gxjNA"
-
-var jwtBadServiceAccount = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWludmFsaWQtdG9rZW4tZ3ZxcHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtaW52YWxpZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjA0NGZkNGYxLTk3NGQtMTFlNy05YTE1LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWludmFsaWQifQ.BcoOdu5BrIchp66Zl8-dY7HcGHJrVXrUh4SNTlIHR6vDaNH29B7JuI_-B1pvW9GpzQnc-XjZyua_wfSssqe-KYJcq--Qh0yQfbbLE5rvEipBCHH341IqGaTHaBVip8zXqYE-bt-7J6vAH8Azvw46iatDC73tKxh46xDuxK0gKjdprW4cOklDx6ZSxEHpu63ftLYgAgk9c0MUJxKWhu9Jk0aye5pTj_iyBbBy8llZNGaw2gxvhPzFVUEHZUlTRiSIbmPmNqep48RiJoWrq6FM1lijvrtT5y-E7aFk6TpW2BH3VDHy8k10sMIxuRAYrGB3tpUKNyVDI3tJOi_xY7iJvw"
-
-var jwtWithBadSigningKey = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6InZhdWx0LWludmFsaWQtdG9rZW4tZ3ZxcHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtYXV0aCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjA0NGZkNGYxLTk3NGQtMTFlNy05YTE1LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWF1dGgifQ.hv4O-T9XPtV3Smy55TrA2qCjRJJEQqeifqzbV1kyb8hr7o7kSqhBRy0fSWHi8rkrnBXjibB0yTDDHR1UvkHLWD2Ddi9tKeXZahaKLxGh5GJI8TSxZizX3ilZB9A5LBpW_VberSxcazhGA1u3VEPaL_nPsxWcdF9kxZR3hwSlyEA"
-
-var jwtECDSASigned = "eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCIsImtpZCI6ImlUcVhYSTB6YkFuSkNLRGFvYmZoa00xZi02ck1TcFRmeVpNUnBfMnRLSTgifQ.eyJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L25hbWVzcGFjZSI6ImRlZmF1bHQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidmF1bHQtYXV0aCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImQ3N2Y4OWJjLTkwNTUtMTFlNy1hMDY4LTA4MDAyNzZkOTliZiIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OnZhdWx0LWF1dGgiLCJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50In0.JYxQVgAJQhEIa1lIZ1s9SQ4IrW3FUsl7IfykYBflTgHz0CExAe5BcJ90g1eErVi1RZB1mh2pl9SjIrfFgDeRwqOYwZ4tqCr5dhcZAX5F7yt_RBuuVOvX-EGAklMo0usp"
-
-var ecdsaKey = `-----BEGIN PUBLIC KEY-----
-MHYwEAYHKoZIzj0CAQYFK4EEACIDYgAEC1uWSXj2czCDwMTLWV5BFmwxdM6PX9p+
-Pk9Yf9rIf374m5XP1U8q79dBhLSIuaojsvOT39UUcPJROSD1FqYLued0rXiooIii
-1D3jaW6pmGVJFhodzC31cy5sfOYotrzF
------END PUBLIC KEY-----`
-
 func TestLoginProjectedToken(t *testing.T) {
 	config := defaultTestBackendConfig()
-	config.pems = append(testDefaultPEMs, testMinikubePubKey)
 	b, storage := setupBackend(t, config)
 
 	// update backend to accept "default" bound account name
@@ -921,12 +1074,12 @@ func TestLoginProjectedToken(t *testing.T) {
 	}{
 		"normal": {
 			role:        "plugin-test",
-			jwt:         jwtData,
+			jwt:         jwtGoodDataToken,
 			tokenReview: testMockFactory,
 		},
 		"fail": {
 			role:        "plugin-test-x",
-			jwt:         jwtData,
+			jwt:         jwtGoodDataToken,
 			tokenReview: testMockFactory,
 			e:           roleNameError,
 		},
@@ -939,7 +1092,7 @@ func TestLoginProjectedToken(t *testing.T) {
 			role:        "plugin-test",
 			jwt:         jwtProjectedDataExpired,
 			tokenReview: testProjectedMockFactory,
-			e:           errors.New("Token is expired"),
+			e:           errors.New("invalid expiration time (exp) claim: token is expired"),
 		},
 		"projected-token-invalid-role": {
 			role:        "plugin-test-x",
@@ -997,7 +1150,6 @@ func TestLoginProjectedToken(t *testing.T) {
 
 func TestAliasLookAheadProjectedToken(t *testing.T) {
 	config := defaultTestBackendConfig()
-	config.pems = append(testDefaultPEMs, testMinikubePubKey)
 	config.saName = "default"
 	b, storage := setupBackend(t, config)
 
@@ -1025,86 +1177,6 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 		t.Fatalf("Unexpected UID: %s", resp.Auth.Alias.Name)
 	}
 }
-
-// jwtProjectedData is a Projected Service Account jwt with expiration set to
-// 05 Nov 2030 04:19:57 (UTC)
-//
-// {
-// 	"aud": [
-// 	  "kubernetes.default.svc"
-// 	],
-// 	"exp": 1920082797,
-// 	"iat": 1604082797,
-// 	"iss": "kubernetes/serviceaccount",
-// 	"kubernetes.io": {
-// 	  "namespace": "default",
-// 	  "pod": {
-// 		"name": "vault",
-// 		"uid": "086c2f61-dea2-47bb-b5ca-63e63c5c9885"
-// 	  },
-// 	  "serviceaccount": {
-// 		"name": "default",
-// 		"uid": "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
-// 	  }
-// 	},
-// 	"nbf": 1604082797,
-// 	"sub": "system:serviceaccount:default:default"
-// }
-var jwtProjectedData = "eyJhbGciOiJSUzI1NiIsImtpZCI6InBKY3hrSjRxME8xdE90MFozN1ZCNi14Nk13OHhGWlN4TTlyb1B0TVFxMEEifQ.eyJhdWQiOlsia3ViZXJuZXRlcy5kZWZhdWx0LnN2YyJdLCJleHAiOjE5MjAwODI3OTcsImlhdCI6MTYwNDA4Mjc5NywiaXNzIjoia3ViZXJuZXRlcy9zZXJ2aWNlYWNjb3VudCIsImt1YmVybmV0ZXMuaW8iOnsibmFtZXNwYWNlIjoiZGVmYXVsdCIsInBvZCI6eyJuYW1lIjoidmF1bHQiLCJ1aWQiOiIwODZjMmY2MS1kZWEyLTQ3YmItYjVjYS02M2U2M2M1Yzk4ODUifSwic2VydmljZWFjY291bnQiOnsibmFtZSI6ImRlZmF1bHQiLCJ1aWQiOiI3N2M4MWFkNy0xYmVhLTRkOTQtOWNhNS1mNWQ3ZjM2MzIzMzEifX0sIm5iZiI6MTYwNDA4Mjc5Nywic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6ZGVmYXVsdCJ9.fh9yPq8zPQR4Gms6sNpn82yppV5ONWaAVzEYnFSrOK_mM69wn51bCtdG3ARJjbBoZv6wK7bNfwSKlD3nar1QTCpyz5UKW_f_m9J7IqVdLnNIjEXhuzTv2WlxFV4VeXSYX9Q6ndUsWO-m1iKdPCkIm8sHKKv9BYVtFyhEgwSDsisX2YmseHMO8j1lpROlgrv4JvUfJ7m7tn2vV4B0WiM3djwVg2Uqv830mzZ-w0VKEuqBtUzw3zisNWa96N6DcokVebD4ZzUU2-YQPWE9ccjy0NW0frCCwFO1KiVMW9E7KTQ3qMq-B8-ZTrdV58ba-EgEnbOLsmLgp4Z_e_bmvJx4hg"
-
-// jwtProjectedDataExpired is a Projected Service Account jwt with expiration
-// set to 30 Oct 2020 18:51:26 (UTC)
-//
-// {
-// 	"aud": [
-// 	  "kubernetes.default.svc"
-// 	],
-// 	"exp": 1604083886,
-// 	"iat": 1604083286,
-// 	"iss": "kubernetes/serviceaccount",
-// 	"kubernetes.io": {
-// 	  "namespace": "default",
-// 	  "pod": {
-// 		"name": "vault",
-// 		"uid": "34be4d5f-66d3-4a29-beea-ce23e51f9fb8"
-// 	  },
-// 	  "serviceaccount": {
-// 		"name": "default",
-// 		"uid": "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
-// 	  }
-// 	},
-// 	"nbf": 1604083286,
-// 	"sub": "system:serviceaccount:default:default"
-// }
-var jwtProjectedDataExpired = "eyJhbGciOiJSUzI1NiIsImtpZCI6InBKY3hrSjRxME8xdE90MFozN1ZCNi14Nk13OHhGWlN4TTlyb1B0TVFxMEEifQ.eyJhdWQiOlsia3ViZXJuZXRlcy5kZWZhdWx0LnN2YyJdLCJleHAiOjE2MDQwODM4ODYsImlhdCI6MTYwNDA4MzI4NiwiaXNzIjoia3ViZXJuZXRlcy9zZXJ2aWNlYWNjb3VudCIsImt1YmVybmV0ZXMuaW8iOnsibmFtZXNwYWNlIjoiZGVmYXVsdCIsInBvZCI6eyJuYW1lIjoidmF1bHQiLCJ1aWQiOiIzNGJlNGQ1Zi02NmQzLTRhMjktYmVlYS1jZTIzZTUxZjlmYjgifSwic2VydmljZWFjY291bnQiOnsibmFtZSI6ImRlZmF1bHQiLCJ1aWQiOiI3N2M4MWFkNy0xYmVhLTRkOTQtOWNhNS1mNWQ3ZjM2MzIzMzEifX0sIm5iZiI6MTYwNDA4MzI4Niwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmRlZmF1bHQ6ZGVmYXVsdCJ9.dpsCBhOC-7yy47JgoSN1rCafLVR_wV9drXfRPqZotj_KszG-Oyq8zO3HmZTRM7aWqwR7X-Zna04DdnIktLuLaRvLfOMkRDJsdfzsxMlRNqaxVkJq3fRYTbJwcsM9xNiquJ16lfZmQV2VE64kYFTiN_3-kkGY05z_CvzqZcEfnKhdUTuvNXIP893rdk-72kKFa1HuWz0c6vgOOoxMf4hsoNhzgVAp5P39ZpQvZLNMhwaUcbhq55WxuaGsBcm7SNLfkT-hNG06RQXhSwo_qTXo9gZzPhG7bm4nNDh_wg7b4ORQVBe00kqiFhfyH7bBdwZliKKi3xxw43wpbC2cS8nyDA"
-
-// testMinikubePubKey is the public key of the minikube instance used to
-// generate the projected token signature for jwtProjectedData and
-// jwtProjectedDataExpired above.
-//
-// To setup a minikube instance to replicate or re-generate keys if needed, use
-// this invocation:
-//
-// minikube start --kubernetes-version v1.18.10  \
-//   --feature-gates="TokenRequest=true,TokenRequestProjection=true" \
-//   --extra-config=apiserver.service-account-signing-key-file=/var/lib/minikube/certs/sa.key \
-//   --extra-config=apiserver.service-account-issuer="kubernetes/serviceaccount" \
-//   --extra-config=apiserver.service-account-api-audiences="kubernetes.default.svc" \
-//   --extra-config=apiserver.service-account-key-file=/var/lib/minikube/certs/sa.pub
-//
-// When Minikube is up, use `minikube ssh` to connect and extract the contents
-// of sa.pub for use here.
-//
-var testMinikubePubKey = `
------BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAygmU/WKtGT77GhHYbEmR
-DXufJVdJ3iSuooYcscFcwAUvQMpzt5Gd0kfI03dLx7o6r7z4BTeSaJ14ABPTYfAy
-+U47Cf1zhlHw2pcWveRfq3lVEzlaqzD9u8ENkqBSB6guyIxM8RadiufJPHGkWPrw
-fOH7VaKwuW/T//oMmZwrFwD6DF99O02hUwwvM1B7b+E1+zvH5BdMHtEzB/32ibkX
-WKDrXOZIZAMPHZtt2MojxdGpPxiBSVODn6hw8n4hGBWuH7UABU+2h2kZI0ctxWaX
-UIX4hSHyjlKYDGEezrUP1mm7AX5pN1qrjtxasTSPPX8nZY/3HtM77n4PfYEwCrew
-rwIDAQAB
------END PUBLIC KEY-----`
 
 func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 	expectedErr := fmt.Errorf("service account namespace and name must be set")
@@ -1272,8 +1344,12 @@ func Test_kubeAuthBackend_getAliasName(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			claims := jwt.MapClaims{}
-			_, _, err = jwt.NewParser().ParseUnverified(s, &claims)
+			tok, err := josejwt.ParseSigned(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			claims := map[string]interface{}{}
+			err = tok.UnsafeClaimsWithoutVerification(&claims)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1322,7 +1398,7 @@ func (r *jwtSignTestRequest) getUID() string {
 }
 
 func signTestJWTRequest(req *jwtSignTestRequest) (string, error) {
-	var claims jwt.Claims
+	var claims map[string]interface{}
 	if req.projected {
 		claims = projectedJWTTestClaims(req)
 	} else {
@@ -1332,76 +1408,57 @@ func signTestJWTRequest(req *jwtSignTestRequest) (string, error) {
 	return signTestJWT(claims)
 }
 
-func jwtStandardTestClaims(req *jwtSignTestRequest) jwt.StandardClaims {
+func jwtStandardTestClaims(req *jwtSignTestRequest) map[string]interface{} {
 	now := time.Now()
 	var horizon int64 = 86400
 	if req.expired {
 		horizon = horizon * -1
 	}
-	return jwt.StandardClaims{
-		IssuedAt:  now.Unix(),
-		ExpiresAt: now.Unix() + horizon,
-		Issuer:    req.issuer,
+	return map[string]interface{}{
+		"iat": now.Unix(),
+		"exp": now.Unix() + horizon,
+		"iss": req.issuer,
 	}
 }
 
-func projectedJWTTestClaims(req *jwtSignTestRequest) jwt.Claims {
+func projectedJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
 	type testToken struct {
 		Namespace      string         `json:"namespace"`
 		Pod            *v1.ObjectMeta `json:"pod"`
 		ServiceAccount *v1.ObjectMeta `json:"serviceaccount"`
 	}
 
-	type Claims struct {
-		Audiences []string   `json:"aud"`
-		Token     *testToken `json:"kubernetes.io"`
-		jwt.StandardClaims
-	}
-
 	uid := types.UID(req.getUID())
-	return &Claims{
-		Audiences: []string{"baz"},
-		Token: &testToken{
-			Namespace: req.ns,
-			Pod: &v1.ObjectMeta{
-				Name: "pod",
-				UID:  uid,
-			},
-			ServiceAccount: &v1.ObjectMeta{
-				Name: req.sa,
-				UID:  uid,
-			},
+	claims := jwtStandardTestClaims(req)
+	claims["aud"] = []string{"baz"}
+	claims["kubernetes.io"] = testToken{
+		Namespace: req.ns,
+		Pod: &v1.ObjectMeta{
+			Name: "pod",
+			UID:  uid,
 		},
-		StandardClaims: jwtStandardTestClaims(req),
+		ServiceAccount: &v1.ObjectMeta{
+			Name: req.sa,
+			UID:  uid,
+		},
 	}
+	return claims
 }
 
-func defaultJWTTestClaims(req *jwtSignTestRequest) jwt.Claims {
-	type Claims struct {
-		Namespace          string `json:"kubernetes.io/serviceaccount/namespace"`
-		SecretName         string `json:"kubernetes.io/serviceaccount/secret.name"`
-		ServiceAccountName string `json:"kubernetes.io/serviceaccount/service-account.name"`
-		UID                string `json:"kubernetes.io/serviceaccount/service-account.uid"`
-		Sub                string `json:"sub"`
-		jwt.StandardClaims
-	}
-
-	return &Claims{
-		Namespace:          req.ns,
-		ServiceAccountName: req.sa,
-		UID:                req.getUID(),
-		StandardClaims:     jwtStandardTestClaims(req),
-	}
+func defaultJWTTestClaims(req *jwtSignTestRequest) map[string]interface{} {
+	claims := jwtStandardTestClaims(req)
+	claims["kubernetes.io/serviceaccount/namespace"] = req.ns
+	claims["kubernetes.io/serviceaccount/service-account.name"] = req.sa
+	claims["kubernetes.io/serviceaccount/service-account.uid"] = req.getUID()
+	return claims
 }
 
-func signTestJWT(claims jwt.Claims) (string, error) {
-	pkey, err := rsa.GenerateKey(rand.Reader, 2048)
+func signTestJWT(claims map[string]interface{}) (string, error) {
+	data, err := json.Marshal(claims)
 	if err != nil {
 		return "", err
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-
-	return token.SignedString(pkey)
+	return jwtSign(jwtES256Header, string(data), ecdsaPrivateKey), nil
 }
 
 func requireErrorCode(t *testing.T, err error, expectedCode int) {

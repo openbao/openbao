@@ -2,28 +2,28 @@ package kubeauth
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/golang-jwt/jwt/v4"
+	capjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"gopkg.in/square/go-jose.v2"
+	josejwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 // defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.
 var defaultJWTIssuer = "kubernetes/serviceaccount"
 
 // See https://datatracker.ietf.org/doc/html/rfc7518#section-3.
-var supportedJwtAlgs = []string{
-	"RS256", "RS384", "RS512",
-	"ES256", "ES384", "ES512",
+var supportedJwtAlgs = []capjwt.Alg{
+	capjwt.RS256, capjwt.RS384, capjwt.RS512,
+	capjwt.ES256, capjwt.RS384, capjwt.ES512,
 }
 
 // pathLogin returns the path configurations for login endpoints
@@ -94,10 +94,11 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	}
 
 	serviceAccount, err := b.parseAndValidateJWT(jwtStr, role, config)
-	if err == jwt.ErrSignatureInvalid {
-		b.Logger().Debug(`login unauthorized`, "err", err)
-		return nil, logical.ErrPermissionDenied
-	} else if err != nil {
+	if err != nil {
+		if err == jose.ErrCryptoFailure || strings.Contains(err.Error(), "verifying token signature") {
+			b.Logger().Debug(`login unauthorized`, "err", err)
+			return nil, logical.ErrPermissionDenied
+		}
 		return nil, err
 	}
 
@@ -228,53 +229,60 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 	}, nil
 }
 
-// parseAndVerifySignature parses the JWT token validating the signature against
-// any of the keys passed in.
-func (b *kubeAuthBackend) parseAndVerifySignature(token string, keys ...interface{}) (*jwt.Token, error) {
-	for i, k := range keys {
-		// only consider RSA & ECDSA signatures
-		_, isEcdsa := k.(*ecdsa.PublicKey)
-		_, isRsa := k.(*rsa.PublicKey)
-		if !(isEcdsa || isRsa) {
-			continue
-		}
-		result, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
-			return k, nil
-		}, jwt.WithValidMethods(supportedJwtAlgs))
-		if result != nil && err == nil {
-			return result, nil
-		}
-		if err != nil && strings.ToLower(err.Error()) == strings.ToLower(jwt.ErrTokenExpired.Error()) {
-			return nil, err
-		}
-		b.Logger().Debug(fmt.Sprintf("JWT signature did not validate with key %d, testing next key", i))
-		// otherwise, try the next key
+type DontVerifySignature struct{}
+
+func (keySet DontVerifySignature) VerifySignature(_ context.Context, token string) (map[string]interface{}, error) {
+	parsed, err := josejwt.ParseSigned(token)
+	if err != nil {
+		return nil, err
 	}
-	b.Logger().Debug("JWT signature did not validate with any keys")
-	return nil, jwt.ErrSignatureInvalid
+	claims := map[string]interface{}{}
+	err = parsed.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		return nil, err
+	}
+	return claims, nil
 }
 
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
+	expected := capjwt.Expected{
+		SigningAlgorithms: supportedJwtAlgs,
+	}
+
+	// perform ISS Claim validation if configured
+	if !config.DisableISSValidation {
+		// set the expected issuer to the default kubernetes issuer if the config doesn't specify it
+		if config.Issuer != "" {
+			expected.Issuer = config.Issuer
+		} else {
+			config.Issuer = defaultJWTIssuer
+		}
+	}
+
+	// validate the audience if the role expects it
+	if role.Audience != "" {
+		expected.Audiences = []string{role.Audience}
+	}
+
 	// Parse into JWT
-	var token *jwt.Token
 	var err error
+	var keySet capjwt.KeySet
 	if len(config.PublicKeys) == 0 {
 		// we don't verify the signature if we aren't configured with public keys
-		token, _, err = jwt.NewParser().ParseUnverified(jwtStr, jwt.MapClaims{})
+		keySet = DontVerifySignature{}
 	} else {
-		token, err = b.parseAndVerifySignature(jwtStr, config.PublicKeys...)
+		keySet, err = capjwt.NewStaticKeySet(config.PublicKeys)
+		if err != nil {
+			return nil, err
+		}
 	}
+	validator, err := capjwt.NewValidator(keySet)
 	if err != nil {
 		return nil, err
 	}
 
-	// do default claims validation (expiration, issued at, not before)
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, fmt.Errorf("unsupported JWT claims type")
-	}
-	err = claims.Valid()
+	claims, err := validator.ValidateAllowMissingIatNbfExp(nil, jwtStr, expected)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +290,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 	sa := &serviceAccount{}
 
 	// Decode claims into a service account object
-	err = mapstructure.Decode(token.Claims, sa)
+	err = mapstructure.Decode(claims, sa)
 	if err != nil {
 		return nil, err
 	}
@@ -302,26 +310,6 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 		}
 	}
 
-	// perform ISS Claim validation if configured
-	if !config.DisableISSValidation {
-		// set the expected issuer to the default kubernetes issuer if the config doesn't specify it
-		if config.Issuer != "" {
-			if !claims.VerifyIssuer(config.Issuer, true) {
-				return nil, logical.CodedError(http.StatusForbidden, "invalid token issuer")
-			}
-		} else {
-			if !claims.VerifyIssuer(defaultJWTIssuer, true) {
-				return nil, logical.CodedError(http.StatusForbidden, "invalid token issuer")
-			}
-		}
-	}
-
-	// validate the audience if the role expects it
-	if role.Audience != "" {
-		if !claims.VerifyAudience(role.Audience, true) {
-			return nil, logical.CodedError(http.StatusForbidden, "invalid audience")
-		}
-	}
 	// If we don't have any public keys to verify, return the sa and end early.
 	if len(config.PublicKeys) == 0 {
 		return sa, nil

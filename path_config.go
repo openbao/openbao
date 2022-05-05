@@ -2,6 +2,7 @@ package kubeauth
 
 import (
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/tls"
@@ -10,9 +11,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	josejwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 const (
@@ -135,7 +136,7 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 
 	if tokenReviewer != "" {
 		// Validate it's a JWT, but don't verify the signature, since we may not have the right cert.
-		_, _, err := jwt.NewParser().ParseUnverified(tokenReviewer, jwt.MapClaims{})
+		_, err := josejwt.ParseSigned(tokenReviewer)
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +147,7 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 	}
 
 	config := &kubeConfig{
-		PublicKeys:           make([]interface{}, len(pemList)),
+		PublicKeys:           make([]crypto.PublicKey, len(pemList)),
 		PEMKeys:              pemList,
 		Host:                 host,
 		CACert:               caCert,
@@ -205,7 +206,7 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 // on the service account JWTs
 type kubeConfig struct {
 	// PublicKeys is the list of public key objects used to verify JWTs
-	PublicKeys []interface{} `json:"-"`
+	PublicKeys []crypto.PublicKey `json:"-"`
 	// PEMKeys is the list of public key PEMs used to store the keys
 	// in storage.
 	PEMKeys []string `json:"pem_keys"`
@@ -226,7 +227,7 @@ type kubeConfig struct {
 }
 
 // PasrsePublicKeyPEM is used to parse RSA and ECDSA public keys from PEMs
-func parsePublicKeyPEM(data []byte) (interface{}, error) {
+func parsePublicKeyPEM(data []byte) (crypto.PublicKey, error) {
 	block, data := pem.Decode(data)
 	if block != nil {
 		var rawKey interface{}

@@ -2,6 +2,7 @@ package kubeauth
 
 import (
 	"context"
+	"crypto"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -161,7 +162,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected := &kubeConfig{
-		PublicKeys:           []interface{}{},
+		PublicKeys:           []crypto.PublicKey{},
 		PEMKeys:              []string{},
 		Host:                 "host",
 		CACert:               testCACert,
@@ -181,7 +182,7 @@ func TestConfig(t *testing.T) {
 	data = map[string]interface{}{
 		"kubernetes_host":    "host",
 		"kubernetes_ca_cert": testCACert,
-		"token_reviewer_jwt": jwtData,
+		"token_reviewer_jwt": jwtGoodDataToken,
 	}
 
 	req = &logical.Request{
@@ -202,11 +203,11 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected = &kubeConfig{
-		PublicKeys:           []interface{}{},
+		PublicKeys:           []crypto.PublicKey{},
 		PEMKeys:              []string{},
 		Host:                 "host",
 		CACert:               testCACert,
-		TokenReviewerJWT:     jwtData,
+		TokenReviewerJWT:     jwtGoodDataToken,
 		DisableISSValidation: true,
 		DisableLocalCAJwt:    false,
 	}
@@ -245,7 +246,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected = &kubeConfig{
-		PublicKeys:           []interface{}{cert},
+		PublicKeys:           []crypto.PublicKey{cert},
 		PEMKeys:              []string{testRSACert},
 		Host:                 "host",
 		CACert:               testCACert,
@@ -292,7 +293,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected = &kubeConfig{
-		PublicKeys:           []interface{}{cert, cert2},
+		PublicKeys:           []crypto.PublicKey{cert, cert2},
 		PEMKeys:              []string{testRSACert, testECCert},
 		Host:                 "host",
 		CACert:               testCACert,
@@ -334,7 +335,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	expected = &kubeConfig{
-		PublicKeys:           []interface{}{},
+		PublicKeys:           []crypto.PublicKey{},
 		PEMKeys:              []string{},
 		Host:                 "host",
 		CACert:               testCACert,
@@ -364,7 +365,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			},
 			setupInClusterFiles: true,
 			expected: &kubeConfig{
-				PublicKeys:           []interface{}{},
+				PublicKeys:           []crypto.PublicKey{},
 				PEMKeys:              []string{},
 				Host:                 "host",
 				CACert:               testLocalCACert,
@@ -380,7 +381,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			},
 			setupInClusterFiles: true,
 			expected: &kubeConfig{
-				PublicKeys:           []interface{}{},
+				PublicKeys:           []crypto.PublicKey{},
 				PEMKeys:              []string{},
 				Host:                 "host",
 				CACert:               testCACert,
@@ -392,15 +393,15 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 		"JWT set, default to local CA": {
 			config: map[string]interface{}{
 				"kubernetes_host":    "host",
-				"token_reviewer_jwt": jwtData,
+				"token_reviewer_jwt": jwtGoodDataToken,
 			},
 			setupInClusterFiles: true,
 			expected: &kubeConfig{
-				PublicKeys:           []interface{}{},
+				PublicKeys:           []crypto.PublicKey{},
 				PEMKeys:              []string{},
 				Host:                 "host",
 				CACert:               testLocalCACert,
-				TokenReviewerJWT:     jwtData,
+				TokenReviewerJWT:     jwtGoodDataToken,
 				DisableISSValidation: true,
 				DisableLocalCAJwt:    false,
 			},
@@ -412,7 +413,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 				"disable_local_ca_jwt": true,
 			},
 			expected: &kubeConfig{
-				PublicKeys:           []interface{}{},
+				PublicKeys:           []crypto.PublicKey{},
 				PEMKeys:              []string{},
 				Host:                 "host",
 				CACert:               testCACert,

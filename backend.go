@@ -2,6 +2,7 @@ package kubeauth
 
 import (
 	"context"
+	"crypto"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -165,7 +166,7 @@ func (b *kubeAuthBackend) config(ctx context.Context, s logical.Storage) (*kubeC
 	}
 
 	// Parse the public keys from the CertificatesBytes
-	conf.PublicKeys = make([]interface{}, len(conf.PEMKeys))
+	conf.PublicKeys = make([]crypto.PublicKey, len(conf.PEMKeys))
 	for i, cert := range conf.PEMKeys {
 		conf.PublicKeys[i], err = parsePublicKeyPEM([]byte(cert))
 		if err != nil {

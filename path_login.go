@@ -182,10 +182,16 @@ func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Reques
 // createIdentity creates an alias and set of groups aliases based on the role
 // definition and received claims.
 func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[string]interface{}, role *jwtRole, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
-	userClaimRaw, ok := allClaims[role.UserClaim]
-	if !ok {
+	var userClaimRaw interface{}
+	if role.UserClaimJSONPointer {
+		userClaimRaw = getClaim(b.Logger(), allClaims, role.UserClaim)
+	} else {
+		userClaimRaw = allClaims[role.UserClaim]
+	}
+	if userClaimRaw == nil {
 		return nil, nil, fmt.Errorf("claim %q not found in token", role.UserClaim)
 	}
+
 	userName, ok := userClaimRaw.(string)
 	if !ok {
 		return nil, nil, fmt.Errorf("claim %q could not be converted to string", role.UserClaim)

@@ -469,6 +469,140 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 	}
 }
 
+// TestOIDC_UserClaim_JSON_Pointer tests the ability to use JSON
+// pointer syntax for the user_claim of roles. For claims used
+// in assertions, see the sampleClaims function.
+func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
+	b, storage, s := getBackendAndServer(t, false)
+	defer s.server.Close()
+
+	type args struct {
+		userClaim            string
+		userClaimJSONPointer bool
+	}
+	tests := []struct {
+		name          string
+		args          args
+		wantAliasName string
+		wantErr       bool
+	}{
+		{
+			name: "user_claim without JSON pointer",
+			args: args{
+				userClaim:            "email",
+				userClaimJSONPointer: false,
+			},
+			wantAliasName: "bob@example.com",
+		},
+		{
+			name: "user_claim without JSON pointer using claim that could be JSON pointer",
+			args: args{
+				userClaim:            "/nested/username",
+				userClaimJSONPointer: false,
+			},
+			wantAliasName: "non_nested_username",
+		},
+		{
+			name: "user_claim without JSON pointer not found",
+			args: args{
+				userClaim:            "other",
+				userClaimJSONPointer: false,
+			},
+			wantErr: true,
+		},
+		{
+			name: "user_claim with JSON pointer nested",
+			args: args{
+				userClaim:            "/nested/username",
+				userClaimJSONPointer: true,
+			},
+			wantAliasName: "nested_username",
+		},
+		{
+			name: "user_claim with JSON pointer not nested",
+			args: args{
+				userClaim:            "/email",
+				userClaimJSONPointer: true,
+			},
+			wantAliasName: "bob@example.com",
+		},
+		{
+			name: "user_claim with JSON pointer not found",
+			args: args{
+				userClaim:            "/nested/username/email",
+				userClaimJSONPointer: true,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Update the role's user_claim config
+			data := map[string]interface{}{
+				"user_claim":              tt.args.userClaim,
+				"user_claim_json_pointer": tt.args.userClaimJSONPointer,
+			}
+			req := &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      "role/test",
+				Storage:   storage,
+				Data:      data,
+			}
+			resp, err := b.HandleRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Generate an auth URL
+			data = map[string]interface{}{
+				"role":         "test",
+				"redirect_uri": "https://example.com",
+			}
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "oidc/auth_url",
+				Storage:   storage,
+				Data:      data,
+			}
+			resp, err = b.HandleRequest(context.Background(), req)
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+
+			// Parse the state and nonce from the auth URL
+			authURL := resp.Data["auth_url"].(string)
+			state := getQueryParam(t, authURL, "state")
+			nonce := getQueryParam(t, authURL, "nonce")
+
+			// Set test provider custom claims, expected auth code, expected code challenge
+			s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+			s.customClaims = sampleClaims(nonce)
+			s.code = "abc"
+
+			// Complete authentication by invoking the callback handler
+			req = &logical.Request{
+				Operation: logical.ReadOperation,
+				Path:      "oidc/callback",
+				Storage:   storage,
+				Data: map[string]interface{}{
+					"state": state,
+					"code":  "abc",
+				},
+			}
+
+			// Assert that we get the expected alias name
+			resp, err = b.HandleRequest(context.Background(), req)
+			if tt.wantErr {
+				require.True(t, resp.IsError())
+				return
+			}
+			require.NoError(t, err)
+			require.False(t, resp.IsError())
+			require.NotNil(t, resp.Auth)
+			require.NotNil(t, resp.Auth.Alias)
+			require.Equal(t, tt.wantAliasName, resp.Auth.Alias.Name)
+		})
+	}
+}
+
 // TestOIDC_ResponseTypeIDToken tests authentication using an implicit flow
 // by setting oidc_response_types=id_token and oidc_response_mode=form_post.
 // This means that there is no exchange of an authorization code for tokens.
@@ -1474,14 +1608,16 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 
 func sampleClaims(nonce string) map[string]interface{} {
 	return map[string]interface{}{
-		"nonce": nonce,
-		"email": "bob@example.com",
-		"COLOR": "green",
-		"sk":    "42",
+		"nonce":            nonce,
+		"email":            "bob@example.com",
+		"/nested/username": "non_nested_username",
+		"COLOR":            "green",
+		"sk":               "42",
 		"nested": map[string]interface{}{
 			"Size":        "medium",
 			"Groups":      []string{"a", "b"},
 			"secret_code": "bar",
+			"username":    "nested_username",
 		},
 		"password": "foo",
 	}

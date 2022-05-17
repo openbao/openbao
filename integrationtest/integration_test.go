@@ -2,7 +2,7 @@ package integrationtest
 
 import (
 	"bytes"
-	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -24,6 +25,7 @@ import (
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {
+		checkKubectlVersion()
 		os.Setenv("VAULT_ADDR", "http://127.0.0.1:38200")
 		os.Setenv("VAULT_TOKEN", "root")
 		os.Setenv("KUBERNETES_JWT", getVaultServiceAccountJWT())
@@ -32,28 +34,36 @@ func TestMain(m *testing.M) {
 	}
 }
 
-// TODO: In 1.24 this will break because k8s will stop auto-generating tokens for service accounts:
-// https://github.com/kubernetes/enhancements/tree/master/keps/sig-auth/2799-reduction-of-secret-based-service-account-token#proposal.
-// The cleanest long-term solution will probably be to use TokenRequest to generate our own tokens on demand.
-// Unfortunately that would take a little more boiler plate than usual because kubectl doesn't support it directly and
-// we don't want to import k8s.io/client-go, as its dependencies have caused issues in the past in upstream Vault.
-// We could do kubectl config --raw -o json and parse the result into a struct, then extract the
-// API/CA/auth information required from there to interact with the k8s API directly. There's a good chance there's a
-// cleaner/simpler way too.
-func getTokenReviewerJWT() string {
-	name := runCmd("kubectl --namespace=test get serviceaccount test-token-reviewer-account -o jsonpath={.secrets[0].name}")
-	b64token := runCmd(fmt.Sprintf("kubectl --namespace=test get secrets %s -o jsonpath={.data.token}", name))
-	token, err := base64.URLEncoding.DecodeString(b64token)
-	if err != nil {
+type kubectlVersion struct {
+	ClientVersion struct {
+		GitVersion string `json:"gitVersion"`
+	} `json:"clientVersion"`
+}
+
+// kubectl create token requires kubectl >= v1.24.0
+func checkKubectlVersion() {
+	versionJSON := runCmd("kubectl version --client --output=json")
+	var versionInfo kubectlVersion
+
+	if err := json.Unmarshal([]byte(versionJSON), &versionInfo); err != nil {
 		panic(err)
 	}
-	return string(token)
+
+	v := version.Must(version.NewSemver(versionInfo.ClientVersion.GitVersion))
+	if v.LessThan(version.Must(version.NewSemver("v1.24.0"))) {
+		panic("integration tests require kubectl version >= v1.24.0, but found: " + versionInfo.ClientVersion.GitVersion)
+	}
+}
+
+func getTokenReviewerJWT() string {
+	return runCmd("kubectl --namespace=test create token test-token-reviewer-account")
 }
 
 func getVaultServiceAccountJWT() string {
-	return runCmd("kubectl exec --namespace=test vault-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token")
+	return runCmd("kubectl --namespace=test create token vault")
 }
 
+// runCmd returns standard out + standard error
 func runCmd(command string) string {
 	parts := strings.Split(command, " ")
 	cmd := exec.Command(parts[0], parts[1:]...)

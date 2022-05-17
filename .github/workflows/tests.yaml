@@ -32,15 +32,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind-k8s-version: [1.20.15, 1.21.10, 1.22.7, 1.23.4]
+        kind-k8s-version: [1.21.10, 1.22.7, 1.23.6, 1.24.0]
     steps:
       - uses: actions/checkout@v2
       - name: Create K8s Kind Cluster
         uses: helm/kind-action@v1.2.0
         with:
+          version: v0.13.0
           cluster_name: vault-plugin-auth-kubernetes
           config: integrationtest/kind/config.yaml
           node_image: kindest/node:v${{ matrix.kind-k8s-version }}
+      # Must come _after_ kind-action, because the kind step also sets up a kubectl binary.
+      - uses: azure/setup-kubectl@v2.0
+        with:
+          version: 'v1.24.0'
       - uses: actions/setup-go@v2
         with:
           go-version: 1.18.0

@@ -2,7 +2,7 @@
 KIND_CLUSTER_NAME?=vault-plugin-auth-kubernetes
 
 # kind k8s version
-KIND_K8S_VERSION?=v1.23.4
+KIND_K8S_VERSION?=v1.24.0
 
 .PHONY: default
 default: dev

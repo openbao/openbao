@@ -2,10 +2,12 @@ package integrationtest
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/vault/api"
@@ -22,18 +24,13 @@ import (
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {
-		cmd := exec.Command("kubectl", "exec", "--namespace=test", "vault-0", "--", "cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
-		out := &bytes.Buffer{}
-		cmd.Stdout = out
-		cmd.Stderr = out
-		if err := cmd.Run(); err != nil {
-			fmt.Println(out.String())
-			fmt.Println(err)
-			os.Exit(1)
-		}
 		os.Setenv("VAULT_ADDR", "http://127.0.0.1:38300")
 		os.Setenv("VAULT_TOKEN", "root")
-		os.Setenv("KUBERNETES_JWT", out.String())
+		os.Setenv("KUBERNETES_JWT", getVaultJWT())
+		os.Setenv("KUBERNETES_CA", getK8sCA())
+		os.Setenv("KUBE_HOST", getKubeHost(os.Getenv("KIND_CLUSTER_NAME")))
+		os.Setenv("SUPER_JWT", getSuperJWT())
+		os.Setenv("BROKEN_JWT", getBrokenJWT())
 		os.Exit(m.Run())
 	}
 }
@@ -116,7 +113,7 @@ func TestRole(t *testing.T) {
 	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
 		"allowed_kubernetes_namespaces": []string{"*"},
 		"generated_role_rules":          sampleRules,
-		"token_ttl":                     "1h",
+		"token_default_ttl":             "1h",
 		"token_max_ttl":                 "24h",
 	})
 	assert.NoError(t, err)
@@ -133,14 +130,14 @@ func TestRole(t *testing.T) {
 		"name_template":                 "",
 		"service_account_name":          "",
 		"token_max_ttl":                 oneDay,
-		"token_ttl":                     oneHour,
+		"token_default_ttl":             oneHour,
 	}, result.Data)
 
 	// update
 	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
 		"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 		"additional_metadata":           sampleMetadata,
-		"token_ttl":                     "30m",
+		"token_default_ttl":             "30m",
 	})
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
@@ -155,7 +152,7 @@ func TestRole(t *testing.T) {
 		"name_template":                 "",
 		"service_account_name":          "",
 		"token_max_ttl":                 oneDay,
-		"token_ttl":                     thirtyMinutes,
+		"token_default_ttl":             thirtyMinutes,
 	}, result.Data)
 
 	result, err = client.Logical().List(path + "/roles")
@@ -212,3 +209,49 @@ const (
 	oneHour       json.Number = "3600"
 	oneDay        json.Number = "86400"
 )
+
+func runCmd(command string) string {
+	parts := strings.Split(command, " ")
+	fmt.Println(parts)
+	cmd := exec.Command(parts[0], parts[1:]...)
+	out := &bytes.Buffer{}
+	cmd.Stdout = out
+	cmd.Stderr = out
+	if err := cmd.Run(); err != nil {
+		panic(fmt.Sprintf("Got unexpected output: %s, err = %s", out.String(), err))
+	}
+	return out.String()
+}
+
+func getVaultJWT() string {
+	return runCmd("kubectl exec --namespace=test vault-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token")
+}
+
+func getSuperJWT() string {
+	name := runCmd("kubectl --namespace=test get serviceaccount super-jwt -o jsonpath={.secrets[0].name}")
+	b64token := runCmd(fmt.Sprintf("kubectl --namespace=test get secrets %s -o jsonpath={.data.token}", name))
+	token, err := base64.URLEncoding.DecodeString(b64token)
+	if err != nil {
+		panic(err)
+	}
+	return string(token)
+}
+
+func getBrokenJWT() string {
+	name := runCmd("kubectl --namespace=test get serviceaccount broken-jwt -o jsonpath={.secrets[0].name}")
+	b64token := runCmd(fmt.Sprintf("kubectl --namespace=test get secrets %s -o jsonpath={.data.token}", name))
+	token, err := base64.URLEncoding.DecodeString(b64token)
+	if err != nil {
+		panic(err)
+	}
+	return string(token)
+}
+
+func getK8sCA() string {
+	return runCmd("kubectl exec --namespace=test vault-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+}
+
+func getKubeHost(clusterName string) string {
+	cmd := fmt.Sprintf(`kubectl config view --raw --minify --flatten --output=jsonpath={.clusters[?(@.name=="kind-%s")].cluster.server}`, clusterName)
+	return runCmd(cmd)
+}

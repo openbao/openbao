@@ -65,6 +65,23 @@ func TestRoles(t *testing.T) {
 		})
 		assert.NoError(t, err)
 		assert.EqualError(t, resp.Error(), "kubernetes_role_type must be either 'Role' or 'ClusterRole'")
+
+		resp, err = testRoleCreate(t, b, s, "badttl_tokenmax", map[string]interface{}{
+			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
+			"service_account_name":          "test_svc_account",
+			"token_default_ttl":             "11h",
+			"token_max_ttl":                 "5h",
+		})
+		assert.NoError(t, err)
+		assert.EqualError(t, resp.Error(), "token_default_ttl 11h0m0s cannot be greater than token_max_ttl 5h0m0s")
+
+		resp, err = testRoleCreate(t, b, s, "badtemplate", map[string]interface{}{
+			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
+			"service_account_name":          "test_svc_account",
+			"name_template":                 "{{.String",
+		})
+		assert.NoError(t, err)
+		assert.EqualError(t, resp.Error(), "unable to initialize name template: unable to parse template: template: template:1: unclosed action")
 	})
 
 	t.Run("delete role - non-existant and blank", func(t *testing.T) {
@@ -87,7 +104,7 @@ func TestRoles(t *testing.T) {
 		resp, err = testRoleCreate(t, b, s, "jsonrules", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 			"generated_role_rules":          goodJSONRules,
-			"token_ttl":                     "5h",
+			"token_default_ttl":             "5h",
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Error())
@@ -104,7 +121,7 @@ func TestRoles(t *testing.T) {
 			"name_template":                 "",
 			"service_account_name":          "",
 			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_ttl":                     time.Duration(time.Hour * 5).Seconds(),
+			"token_default_ttl":             time.Duration(time.Hour * 5).Seconds(),
 		}, resp.Data)
 
 		// Create one with yaml role rules and metadata
@@ -124,12 +141,12 @@ func TestRoles(t *testing.T) {
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 			"generated_role_rules":          goodYAMLRules,
 			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "role",
+			"kubernetes_role_type":          "Role",
 			"name":                          "yamlrules",
 			"name_template":                 "",
 			"service_account_name":          "",
 			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_ttl":                     time.Duration(0).Seconds(),
+			"token_default_ttl":             time.Duration(0).Seconds(),
 		}, resp.Data)
 
 		// update yamlrules (with a duplicate namespace)
@@ -145,12 +162,12 @@ func TestRoles(t *testing.T) {
 			"allowed_kubernetes_namespaces": []string{"app3", "app4"},
 			"generated_role_rules":          goodYAMLRules,
 			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "role",
+			"kubernetes_role_type":          "Role",
 			"name":                          "yamlrules",
 			"name_template":                 "",
 			"service_account_name":          "",
 			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_ttl":                     time.Duration(0).Seconds(),
+			"token_default_ttl":             time.Duration(0).Seconds(),
 		}, resp.Data)
 
 		// Now there should be two roles returned from list

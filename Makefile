@@ -2,7 +2,7 @@
 KIND_CLUSTER_NAME?=vault-plugin-secrets-kubernetes
 
 # kind k8s version
-KIND_K8S_VERSION?=v1.23.4
+KIND_K8S_VERSION?=v1.23.6
 
 .PHONY: default
 default: dev
@@ -17,7 +17,7 @@ test: fmtcheck
 
 .PHONY: integration-test
 integration-test:
-	INTEGRATION_TESTS=true CGO_ENABLED=0 go test github.com/hashicorp/vault-plugin-secrets-kubernetes/integrationtest/... $(TESTARGS) -count=1 -timeout=20m
+	INTEGRATION_TESTS=true KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) CGO_ENABLED=0 go test github.com/hashicorp/vault-plugin-secrets-kubernetes/integrationtest/... $(TESTARGS) -count=1 -timeout=40m
 
 .PHONY: fmtcheck
 fmtcheck:
@@ -55,12 +55,17 @@ setup-integration-test: teardown-integration-test vault-image
 	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.19.0 \
 		--wait --timeout=5m \
 		--namespace=test \
+		--set server.logLevel=debug \
 		--set server.dev.enabled=true \
 		--set server.image.tag=dev \
 		--set server.image.pullPolicy=Never \
 		--set injector.enabled=false \
 		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
 	kubectl patch --namespace=test statefulset vault --patch-file integrationtest/vault/hostPortPatch.yaml
+	kubectl apply --namespace=test -f integrationtest/vault/testRoles.yaml
+	kubectl apply --namespace=test -f integrationtest/vault/testServiceAccounts.yaml
+	kubectl apply --namespace=test -f integrationtest/vault/testBindings.yaml
+
 	kubectl delete --namespace=test pod vault-0
 	kubectl wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
 
@@ -68,3 +73,8 @@ setup-integration-test: teardown-integration-test vault-image
 teardown-integration-test:
 	helm uninstall vault --namespace=test || true
 	kubectl delete --ignore-not-found namespace test
+	# kubectl delete --ignore-not-found clusterrolebinding vault-crb
+	# kubectl delete --ignore-not-found clusterrole k8s-clusterrole
+	kubectl delete --ignore-not-found --namespace=test -f integrationtest/vault/testBindings.yaml
+	kubectl delete --ignore-not-found --namespace=test -f integrationtest/vault/testServiceAccounts.yaml
+	kubectl delete --ignore-not-found --namespace=test -f integrationtest/vault/testRoles.yaml

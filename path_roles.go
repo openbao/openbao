@@ -2,29 +2,27 @@ package kubesecrets
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/template"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
-	"gopkg.in/yaml.v2"
-	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 const (
-	defaultRoleType = "Role"
-	rolesPath       = "roles/"
+	defaultRoleType     = "Role"
+	rolesPath           = "roles/"
+	defaultNameTemplate = `{{ printf "v-%s-%s-%s-%s" (.DisplayName | truncate 8) (.RoleName | truncate 8) (unix_time) (random 24) | truncate 62 | lowercase }}`
 )
 
 type roleEntry struct {
 	Name               string        `json:"name" mapstructure:"name"`
-	K8sNamespace       []string      `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
+	K8sNamespaces      []string      `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
 	TokenMaxTTL        time.Duration `json:"token_max_ttl" mapstructure:"token_max_ttl"`
-	TokenTTL           time.Duration `json:"token_ttl" mapstructure:"token_ttl"`
+	TokenDefaultTTL    time.Duration `json:"token_default_ttl" mapstructure:"token_default_ttl"`
 	ServiceAccountName string        `json:"service_account_name" mapstructure:"service_account_name"`
 	K8sRoleName        string        `json:"kubernetes_role_name" mapstructure:"kubernetes_role_name"`
 	K8sRoleType        string        `json:"kubernetes_role_type" mapstructure:"kubernetes_role_type"`
@@ -44,7 +42,7 @@ func (r *roleEntry) toResponseData() (map[string]interface{}, error) {
 		return nil, err
 	}
 	// Format the TTLs as seconds
-	respData["token_ttl"] = r.TokenTTL.Seconds()
+	respData["token_default_ttl"] = r.TokenDefaultTTL.Seconds()
 	respData["token_max_ttl"] = r.TokenMaxTTL.Seconds()
 
 	return respData, nil
@@ -70,7 +68,7 @@ func (b *backend) pathRoles() []*framework.Path {
 					Description: "The maximum valid ttl for generated Kubernetes tokens. If not set or set to 0, will use system default.",
 					Required:    false,
 				},
-				"token_ttl": {
+				"token_default_ttl": {
 					Type:        framework.TypeDurationSecond,
 					Description: "The default ttl for generated Kubernetes service accounts. If not set or set to 0, will use system default.",
 					Required:    false,
@@ -187,13 +185,13 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 
 	if k8sNamespaces, ok := d.GetOk("allowed_kubernetes_namespaces"); ok {
 		// K8s namespaces need to be lowercase
-		entry.K8sNamespace = strutil.RemoveDuplicates(k8sNamespaces.([]string), true)
+		entry.K8sNamespaces = strutil.RemoveDuplicates(k8sNamespaces.([]string), true)
 	}
 	if tokenMaxTTLRaw, ok := d.GetOk("token_max_ttl"); ok {
 		entry.TokenMaxTTL = time.Duration(tokenMaxTTLRaw.(int)) * time.Second
 	}
-	if tokenTTLRaw, ok := d.GetOk("token_ttl"); ok {
-		entry.TokenTTL = time.Duration(tokenTTLRaw.(int)) * time.Second
+	if tokenTTLRaw, ok := d.GetOk("token_default_ttl"); ok {
+		entry.TokenDefaultTTL = time.Duration(tokenTTLRaw.(int)) * time.Second
 	}
 	if svcAccount, ok := d.GetOk("service_account_name"); ok {
 		entry.ServiceAccountName = svcAccount.(string)
@@ -221,28 +219,38 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 		}
 	}
 
-	// Sanity checks
-	if len(entry.K8sNamespace) == 0 {
+	// Validate the entry
+	if len(entry.K8sNamespaces) == 0 {
 		return logical.ErrorResponse("allowed_kubernetes_namespaces must be set"), nil
 	}
 	if !onlyOneSet(entry.ServiceAccountName, entry.K8sRoleName, entry.RoleRules) {
 		return logical.ErrorResponse("one (and only one) of service_account_name, kubernetes_role_name or generated_role_rules must be set"), nil
 	}
-	if strings.ToLower(entry.K8sRoleType) != "role" && strings.ToLower(entry.K8sRoleType) != "clusterrole" {
+	if entry.TokenMaxTTL > 0 && entry.TokenDefaultTTL > entry.TokenMaxTTL {
+		return logical.ErrorResponse("token_default_ttl %s cannot be greater than token_max_ttl %s", entry.TokenDefaultTTL, entry.TokenMaxTTL), nil
+	}
+
+	casedRoleType := makeRoleType(entry.K8sRoleType)
+	if casedRoleType != "Role" && casedRoleType != "ClusterRole" {
 		return logical.ErrorResponse("kubernetes_role_type must be either 'Role' or 'ClusterRole'"), nil
 	}
+	entry.K8sRoleType = casedRoleType
+
 	// Try parsing the role rules as json or yaml
 	if entry.RoleRules != "" {
-		testPolicyRules := struct {
-			Rules []rbacv1.PolicyRule `json:"rules"`
-		}{}
-		err := json.Unmarshal([]byte(entry.RoleRules), &testPolicyRules)
-		if err != nil {
-			// Try yaml
-			if err := yaml.Unmarshal([]byte(entry.RoleRules), &testPolicyRules); err != nil {
-				return logical.ErrorResponse("failed to parse 'generated_role_rules' as k8s.io/api/rbac/v1/Policy object"), nil
-			}
+		if _, err := makeRules(entry.RoleRules); err != nil {
+			return logical.ErrorResponse("failed to parse 'generated_role_rules' as k8s.io/api/rbac/v1/Policy object"), nil
 		}
+	}
+
+	// verify the template is valid
+	nameTemplate := entry.NameTemplate
+	if nameTemplate == "" {
+		nameTemplate = defaultNameTemplate
+	}
+	_, err = template.NewTemplate(template.Template(nameTemplate))
+	if err != nil {
+		return logical.ErrorResponse("unable to initialize name template: %s", err), nil
 	}
 
 	if err := setRole(ctx, req.Storage, name, entry); err != nil {

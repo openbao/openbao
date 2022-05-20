@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind-k8s-version: [1.20.15, 1.21.10, 1.22.7, 1.23.4]
+        kind-k8s-version: [1.20.15, 1.21.12, 1.22.9, 1.23.6]
     steps:
       - uses: actions/checkout@v2
       - name: Create K8s Kind Cluster
@@ -77,4 +77,4 @@ jobs:
       - run: make setup-integration-test
       - env:
           INTEGRATION_TESTS: true
-        run: make integration-test
+        run: make integration-test TESTARGS="-v"

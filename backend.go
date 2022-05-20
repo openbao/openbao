@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
@@ -28,6 +29,8 @@ var (
 // backend wraps the backend framework and adds a map for storing key value pairs
 type backend struct {
 	*framework.Backend
+	lock   sync.Mutex
+	client *client
 
 	// localSATokenReader caches the service account token in memory.
 	// It periodically reloads the token to support token rotation/renewal.
@@ -72,9 +75,11 @@ func newBackend() (*backend, error) {
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        strings.TrimSpace(backendHelp),
+		Invalidate:  b.invalidate,
 		Paths: framework.PathAppend(
 			[]*framework.Path{
 				b.pathConfig(),
+				b.pathCredentials(),
 			},
 			b.pathRoles(),
 		),
@@ -84,14 +89,31 @@ func newBackend() (*backend, error) {
 			},
 			SealWrapStorage: []string{
 				"config",
-				"role/*",
 			},
 		},
+		Secrets: []*framework.Secret{
+			b.kubeServiceAccount(),
+		},
+		WALRollback: b.walRollback,
 	}
 
 	return b, nil
 }
 
+// This resets anything that needs to be rebuilt after a change. In our case,
+// the k8s client if the config is changed.
+func (b *backend) invalidate(ctx context.Context, key string) {
+	if key == "config" {
+		b.reset()
+	}
+}
+
+func (b *backend) reset() {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	b.client = nil
+}
+
 const backendHelp = `
-The Kubernetes Secret Backend generates Kubernetes service account tokens with associated roles and role bindings.
+The Kubernetes Secret Engine generates Kubernetes service account tokens with associated roles and role bindings.
 `

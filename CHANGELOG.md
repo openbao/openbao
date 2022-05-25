@@ -1,22 +1,34 @@
-## Next
+## Unreleased
+
+## 0.13.0
+
+* Adds ability to use JSON pointer syntax for the `user_claim` value [[GH-204](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/204)]
+
+## 0.12.0
+
+* Uses Proof Key for Code Exchange (PKCE) in OIDC flow [[GH-188](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/188)]
 
 ## 0.11.4
-### December 21st, 2021
 
 * Fixes OIDC auth from the Vault UI when using the implicit flow and `form_post` response mode [[GH-192](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/192)]
 
+## 0.11.3
+
+* Uses Proof Key for Code Exchange (PKCE) in OIDC flow [[GH-191](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/191)]
+
+## 0.11.2
+
+* Add a skip_browser argument to make auto-launching of the default browser optional [[GH-182](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/182)]
+
 ## 0.10.2
-### December 21st, 2021
 
 * Fixes OIDC auth from the Vault UI when using the implicit flow and `form_post` response mode [[GH-192](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/192)]
 
 ## 0.9.6
-### December 21st, 2021
 
 * Fixes OIDC auth from the Vault UI when using the implicit flow and `form_post` response mode [[GH-192](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/192)]
 
 ## 0.8.1
-### December 14th, 2020
 
 BUG FIXES:
 

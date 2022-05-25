@@ -121,8 +121,9 @@ func TestRole(t *testing.T) {
 	result, err := client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"additional_metadata":           map[string]interface{}{},
 		"allowed_kubernetes_namespaces": []interface{}{"*"},
+		"extra_annotations":             nil,
+		"extra_labels":                  nil,
 		"generated_role_rules":          sampleRules,
 		"kubernetes_role_name":          "",
 		"kubernetes_role_type":          "Role",
@@ -136,15 +137,17 @@ func TestRole(t *testing.T) {
 	// update
 	_, err = client.Logical().Write(path+"/roles/testrole", map[string]interface{}{
 		"allowed_kubernetes_namespaces": []string{"app1", "app2"},
-		"additional_metadata":           sampleMetadata,
+		"extra_annotations":             sampleExtraAnnotations,
+		"extra_labels":                  sampleExtraLabels,
 		"token_default_ttl":             "30m",
 	})
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"additional_metadata":           sampleMetadata,
 		"allowed_kubernetes_namespaces": []interface{}{"app1", "app2"},
+		"extra_annotations":             asMapInterface(sampleExtraAnnotations),
+		"extra_labels":                  asMapInterface(sampleExtraLabels),
 		"generated_role_rules":          sampleRules,
 		"kubernetes_role_name":          "",
 		"kubernetes_role_type":          "Role",
@@ -193,16 +196,16 @@ const sampleRules = `rules:
   verbs: ["get", "watch", "list"]
 `
 
-var sampleMetadata = map[string]interface{}{
-	"labels": map[string]interface{}{
+var (
+	sampleExtraLabels = map[string]string{
 		"key1": "value1",
 		"key2": "value2",
-	},
-	"annotations": map[string]interface{}{
+	}
+	sampleExtraAnnotations = map[string]string{
 		"key3": "value3",
 		"key4": "value4",
-	},
-}
+	}
+)
 
 const (
 	thirtyMinutes json.Number = "1800"

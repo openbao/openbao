@@ -63,13 +63,13 @@ func (c *client) createToken(ctx context.Context, namespace, name string, ttl ti
 
 func (c *client) createServiceAccount(ctx context.Context, namespace, name string, vaultRole *roleEntry, ownerRef metav1.OwnerReference) (*v1.ServiceAccount, error) {
 	// Set standardLabels last so that users can't override them
-	labels := combineMaps(vaultRole.Metadata.Labels, standardLabels)
+	labels := combineMaps(vaultRole.ExtraLabels, standardLabels)
 	serviceAccountConfig := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            name,
 			Namespace:       namespace,
 			Labels:          labels,
-			Annotations:     vaultRole.Metadata.Annotations,
+			Annotations:     vaultRole.ExtraAnnotations,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
 	}
@@ -94,11 +94,11 @@ func (c *client) createRole(ctx context.Context, namespace, name string, vaultRo
 		return thisOwnerRef, err
 	}
 	// Set standardLabels last so that users can't override them
-	labels := combineMaps(vaultRole.Metadata.Labels, standardLabels)
+	labels := combineMaps(vaultRole.ExtraLabels, standardLabels)
 	objectMeta := metav1.ObjectMeta{
 		Name:        name,
 		Labels:      labels,
-		Annotations: vaultRole.Metadata.Annotations,
+		Annotations: vaultRole.ExtraAnnotations,
 	}
 
 	switch vaultRole.K8sRoleType {
@@ -154,11 +154,11 @@ func (c *client) createRoleBinding(ctx context.Context, namespace, name, k8sRole
 		Name:       name,
 	}
 	// Set standardLabels last so that users can't override them
-	labels := combineMaps(vaultRole.Metadata.Labels, standardLabels)
+	labels := combineMaps(vaultRole.ExtraLabels, standardLabels)
 	objectMeta := metav1.ObjectMeta{
 		Name:        name,
 		Labels:      labels,
-		Annotations: vaultRole.Metadata.Annotations,
+		Annotations: vaultRole.ExtraAnnotations,
 	}
 	if ownerRef != nil {
 		objectMeta.OwnerReferences = []metav1.OwnerReference{*ownerRef}

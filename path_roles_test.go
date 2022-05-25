@@ -48,15 +48,17 @@ func TestRoles(t *testing.T) {
 		assert.NoError(t, err)
 		assert.EqualError(t, resp.Error(), "failed to parse 'generated_role_rules' as k8s.io/api/rbac/v1/Policy object")
 
+		badmeta := map[string]interface{}{
+			"foo": []string{"one", "two"},
+		}
 		resp, err = testRoleCreate(t, b, s, "badmeta", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"*"},
 			"service_account_name":          "test_svc_account",
-			"additional_metadata": map[string]interface{}{
-				"labels": []string{"one", "two"},
-			},
+			"extra_labels":                  badmeta,
+			"extra_annotations":             badmeta,
 		})
 		assert.NoError(t, err)
-		assert.EqualError(t, resp.Error(), "additional_metadata should be a nested map, with only 'labels' and 'annotations' as the top level keys")
+		assert.Contains(t, resp.Error().Error(), "Field validation failed")
 
 		resp, err = testRoleCreate(t, b, s, "badrole", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
@@ -111,9 +113,11 @@ func TestRoles(t *testing.T) {
 
 		resp, err = testRoleRead(t, b, s, "jsonrules")
 		require.NoError(t, err)
+		var nilMeta map[string]string
 		assert.Equal(t, map[string]interface{}{
-			"additional_metadata":           map[string]interface{}{},
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
+			"extra_labels":                  nilMeta,
+			"extra_annotations":             nilMeta,
 			"generated_role_rules":          goodJSONRules,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "Role",
@@ -127,8 +131,9 @@ func TestRoles(t *testing.T) {
 		// Create one with yaml role rules and metadata
 		resp, err = testRoleCreate(t, b, s, "yamlrules", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
+			"extra_annotations":             testExtraAnnotations,
+			"extra_labels":                  testExtraLabels,
 			"generated_role_rules":          goodYAMLRules,
-			"additional_metadata":           testMetadata,
 			"kubernetes_role_type":          "role",
 		})
 		assert.NoError(t, err)
@@ -137,8 +142,9 @@ func TestRoles(t *testing.T) {
 		resp, err = testRoleRead(t, b, s, "yamlrules")
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"additional_metadata":           testMetadata,
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
+			"extra_annotations":             testExtraAnnotations,
+			"extra_labels":                  testExtraLabels,
 			"generated_role_rules":          goodYAMLRules,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "Role",
@@ -158,8 +164,9 @@ func TestRoles(t *testing.T) {
 		resp, err = testRoleRead(t, b, s, "yamlrules")
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"additional_metadata":           testMetadata,
 			"allowed_kubernetes_namespaces": []string{"app3", "app4"},
+			"extra_annotations":             testExtraAnnotations,
+			"extra_labels":                  testExtraLabels,
 			"generated_role_rules":          goodYAMLRules,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "Role",
@@ -239,14 +246,14 @@ func testRolesDelete(t *testing.T, b *backend, s logical.Storage, name string) (
 	})
 }
 
-var testMetadata = map[string]interface{}{
-	"labels": map[string]string{
+var (
+	testExtraLabels = map[string]string{
 		"one": "two",
-	},
-	"annotations": map[string]string{
+	}
+	testExtraAnnotations = map[string]string{
 		"test": "annotation",
-	},
-}
+	}
+)
 
 const (
 	goodJSONRules = `"rules": [

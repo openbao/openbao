@@ -28,7 +28,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t.Run("generated_role_rules (takes 10 minutes)", func(t *testing.T) {
+	t.Run("generated_role_rules", func(t *testing.T) {
 		t.Parallel()
 		mountPath, umount := mountHelper(t, client)
 		defer umount()
@@ -44,27 +44,27 @@ func TestCreds_wal_rollback(t *testing.T) {
   resources: ["pods"]
   verbs: ["list"]`
 
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "testing",
-				"test":        "wal_rollback",
-				"type":        "role",
-			},
-			"annotations": map[string]interface{}{
-				"tested": "today",
-			},
+		extraLabels := map[string]string{
+			"environment": "testing",
+			"test":        "wal_rollback",
+			"type":        "role",
+		}
+		extraAnnotations := map[string]string{
+			"tested": "today",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"generated_role_rules":          roleRulesYAML,
 			"kubernetes_role_type":          "RolE",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          roleRulesYAML,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "Role",
@@ -94,14 +94,16 @@ func TestCreds_wal_rollback(t *testing.T) {
 		assert.Nil(t, credsResponse)
 		assert.Contains(t, err.Error(), `User "system:serviceaccount:test:broken-jwt" cannot create resource "serviceaccounts" in API group "" in the namespace "test"`)
 
-		checkObjects(t, roleConfig, false, true, 30*time.Second)
+		t.Log("Checking for hanging k8s objects")
+		checkObjects(t, roleConfig, false, true, 10*time.Second)
 
-		// The backend's WAL min age is 10 minutes. After that the k8s objects
-		// should be cleaned up.
-		checkObjects(t, roleConfig, false, false, 15*time.Minute)
+		// The backend's WAL min age is 10 seconds for tests. After that the k8s
+		// objects should be cleaned up.
+		t.Log("Checking hanging objects have been cleaned up")
+		checkObjects(t, roleConfig, false, false, 1*time.Minute)
 	})
 
-	t.Run("kubernetes_role_name (takes 10 minutes)", func(t *testing.T) {
+	t.Run("kubernetes_role_name", func(t *testing.T) {
 		t.Parallel()
 		mountPath, umount := mountHelper(t, client)
 		defer umount()
@@ -112,28 +114,28 @@ func TestCreds_wal_rollback(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "staging",
-				"test":        "wal_rollback",
-				"type":        "clusterrolebinding",
-			},
-			"annotations": map[string]interface{}{
-				"tested":  "tomorrow",
-				"checked": "again",
-			},
+		extraLabels := map[string]string{
+			"environment": "staging",
+			"test":        "wal_rollback",
+			"type":        "clusterrolebinding",
+		}
+		extraAnnotations := map[string]string{
+			"tested":  "tomorrow",
+			"checked": "again",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"kubernetes_role_name":          "test-cluster-role-list-pods",
 			"kubernetes_role_type":          "ClusterRole",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          "",
 			"kubernetes_role_name":          "test-cluster-role-list-pods",
 			"kubernetes_role_type":          "ClusterRole",
@@ -163,11 +165,13 @@ func TestCreds_wal_rollback(t *testing.T) {
 		assert.Nil(t, credsResponse)
 		assert.Contains(t, err.Error(), `User "system:serviceaccount:test:broken-jwt" cannot create resource "serviceaccounts" in API group "" in the namespace "test"`)
 
-		checkObjects(t, roleConfig, true, true, 30*time.Second)
+		t.Log("Checking for hanging k8s objects")
+		checkObjects(t, roleConfig, true, true, 10*time.Second)
 
-		// The backend's WAL min age is 10 minutes. After that the k8s objects
-		// should be cleaned up.
-		checkObjects(t, roleConfig, true, false, 15*time.Minute)
+		// The backend's WAL min age is 10 seconds for tests. After that the k8s
+		// objects should be cleaned up.
+		t.Log("Checking hanging objects have been cleaned up")
+		checkObjects(t, roleConfig, true, false, 1*time.Minute)
 	})
 }
 
@@ -182,7 +186,7 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 	}
 
 	// Query by labels since we may not know the name
-	l := makeExpectedLabels(t, roleConfig["additional_metadata"].(map[string]interface{}))
+	l := makeExpectedLabels(t, asMapInterface(roleConfig["extra_labels"].(map[string]string)))
 	validatedSelector, err := labels.ValidatedSelectorFromSet(l)
 	require.NoError(t, err)
 	listOptions := metav1.ListOptions{
@@ -204,40 +208,23 @@ func checkObjects(t *testing.T, roleConfig map[string]interface{}, isClusterBind
 		if exists != shouldExist {
 			return fmt.Errorf("binding (cluster %v) exists (%v) but should be (%v)", isClusterBinding, exists, shouldExist)
 		}
+
+		exists, err = checkServiceAccountExists(k8sClient, listOptions)
+		require.NoError(t, err)
+		// No permission to create services accounts, so they should never get created
+		if exists {
+			return fmt.Errorf("service account exists (%v) but should be (false)", exists)
+		}
+
 		return nil
 	}
 	bo := backoff.NewExponentialBackOff()
 	bo.MaxElapsedTime = maxWaitTime
+	// Don't actually back off, just keep retrying quickly to speed up the test.
+	bo.Multiplier = 1
 
 	err = backoff.Retry(operation, bo)
 	assert.NoError(t, err, "timed out waiting for objects to exist=%v", shouldExist)
-}
-
-func verifyObjectsDeleted(t *testing.T, roleConfig map[string]interface{}, isClusterBinding bool) {
-	t.Helper()
-
-	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
-	roleType := strings.ToLower(roleConfig["kubernetes_role_type"].(string))
-
-	// Query by labels since we may not know the name
-	l := makeExpectedLabels(t, roleConfig["additional_metadata"].(map[string]interface{}))
-	validatedSelector, err := labels.ValidatedSelectorFromSet(l)
-	require.NoError(t, err)
-	listOptions := metav1.ListOptions{
-		LabelSelector: validatedSelector.String(),
-	}
-
-	// Check the k8s objects that should be cleaned up
-
-	exists, err := checkRoleExists(k8sClient, listOptions, roleType)
-	require.NoError(t, err)
-	assert.False(t, exists)
-	exists, err = checkRoleBindingExists(k8sClient, listOptions, isClusterBinding)
-	require.NoError(t, err)
-	assert.False(t, exists)
-	exists, err = checkServiceAccountExists(k8sClient, listOptions)
-	require.NoError(t, err)
-	assert.False(t, exists)
 }
 
 func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOptions, roleType string) (bool, error) {

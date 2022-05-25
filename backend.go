@@ -24,6 +24,8 @@ var (
 	// caReloadPeriod is the time period how often the in-memory copy of local
 	// CA cert can be used, before reading it again from disk.
 	caReloadPeriod = 1 * time.Hour
+
+	WALRollbackMinAge = "10m"
 )
 
 // backend wraps the backend framework and adds a map for storing key value pairs
@@ -72,6 +74,11 @@ func newBackend() (*backend, error) {
 		localCACertReader:  fileutil.NewCachingFileReader(localCACertPath, caReloadPeriod),
 	}
 
+	walRollbackMinAge, err := time.ParseDuration(WALRollbackMinAge)
+	if err != nil {
+		return nil, err
+	}
+
 	b.Backend = &framework.Backend{
 		BackendType: logical.TypeLogical,
 		Help:        strings.TrimSpace(backendHelp),
@@ -94,7 +101,8 @@ func newBackend() (*backend, error) {
 		Secrets: []*framework.Secret{
 			b.kubeServiceAccount(),
 		},
-		WALRollback: b.walRollback,
+		WALRollback:       b.walRollback,
+		WALRollbackMinAge: walRollbackMinAge,
 	}
 
 	return b, nil
@@ -102,7 +110,7 @@ func newBackend() (*backend, error) {
 
 // This resets anything that needs to be rebuilt after a change. In our case,
 // the k8s client if the config is changed.
-func (b *backend) invalidate(ctx context.Context, key string) {
+func (b *backend) invalidate(_ context.Context, key string) {
 	if key == "config" {
 		b.reset()
 	}

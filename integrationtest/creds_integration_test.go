@@ -145,8 +145,9 @@ func TestCreds_service_account_name(t *testing.T) {
 	roleResponse, err := client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"additional_metadata":           map[string]interface{}{},
 		"allowed_kubernetes_namespaces": []interface{}{"*"},
+		"extra_labels":                  nil,
+		"extra_annotations":             nil,
 		"generated_role_rules":          "",
 		"kubernetes_role_name":          "",
 		"kubernetes_role_type":          "Role",
@@ -201,17 +202,16 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Role type", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "testing",
-			},
-			"annotations": map[string]interface{}{
-				"tested": "today",
-			},
+		extraLabels := map[string]string{
+			"environment": "testing",
+		}
+		extraAnnotations := map[string]string{
+			"tested": "today",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"kubernetes_role_name":          "test-role-list-pods",
 			"kubernetes_role_type":          "role",
 			"token_default_ttl":             "1h",
@@ -219,8 +219,9 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 			"name_template":                 `{{ printf "v-custom-name-%s" (random 24) | truncate 62 | lowercase }}`,
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          "",
 			"kubernetes_role_name":          "test-role-list-pods",
 			"kubernetes_role_type":          "Role",
@@ -234,25 +235,25 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 	})
 
 	t.Run("ClusterRole type", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "staging",
-			},
-			"annotations": map[string]interface{}{
-				"tested": "tomorrow",
-			},
+		extraLabels := map[string]string{
+			"environment": "staging",
+		}
+		extraAnnotations := map[string]string{
+			"tested": "tomorrow",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"kubernetes_role_name":          "test-cluster-role-list-pods",
 			"kubernetes_role_type":          "Clusterrole",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          "",
 			"kubernetes_role_name":          "test-cluster-role-list-pods",
 			"kubernetes_role_type":          "ClusterRole",
@@ -300,25 +301,25 @@ func TestCreds_generated_role_rules(t *testing.T) {
 ]`
 
 	t.Run("Role type", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "testing",
-			},
-			"annotations": map[string]interface{}{
-				"tested": "today",
-			},
+		extraLabels := map[string]string{
+			"environment": "testing",
+		}
+		extraAnnotations := map[string]string{
+			"tested": "today",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"generated_role_rules":          roleRulesYAML,
 			"kubernetes_role_type":          "RolE",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          roleRulesYAML,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "Role",
@@ -332,27 +333,27 @@ func TestCreds_generated_role_rules(t *testing.T) {
 	})
 
 	t.Run("ClusterRole type", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"labels": map[string]interface{}{
-				"environment": "staging",
-				"asdf":        "123",
-			},
-			"annotations": map[string]interface{}{
-				"tested":  "tomorrow",
-				"checked": "again",
-			},
+		extraLabels := map[string]string{
+			"environment": "staging",
+			"asdf":        "123",
+		}
+		extraAnnotations := map[string]string{
+			"tested":  "tomorrow",
+			"checked": "again",
 		}
 		roleConfig := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []string{"test"},
+			"extra_annotations":             extraAnnotations,
+			"extra_labels":                  extraLabels,
 			"generated_role_rules":          roleRulesJSON,
 			"kubernetes_role_type":          "clusterRole",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"additional_metadata":           metadata,
 			"allowed_kubernetes_namespaces": []interface{}{"test"},
+			"extra_annotations":             asMapInterface(extraAnnotations),
+			"extra_labels":                  asMapInterface(extraLabels),
 			"generated_role_rules":          roleRulesJSON,
 			"kubernetes_role_name":          "",
 			"kubernetes_role_type":          "ClusterRole",

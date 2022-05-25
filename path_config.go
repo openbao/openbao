@@ -51,7 +51,7 @@ func (b *backend) pathConfig() *framework.Path {
 			},
 			"kubernetes_ca_cert": {
 				Type:        framework.TypeString,
-				Description: "PEM encoded CA certificate to use by the secret engine to verify the Kubernetes API server certificate. Defaults to the local pod's CA if found.",
+				Description: "PEM encoded CA certificate to use to verify the Kubernetes API server certificate. Defaults to the local pod's CA if found.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Kubernetes CA Certificate",
 				},
@@ -65,7 +65,7 @@ func (b *backend) pathConfig() *framework.Path {
 			},
 			"service_account_jwt": {
 				Type:        framework.TypeString,
-				Description: "The JSON web token of the service account used by the secret engine to manage Kubernetes roles. Defaults to the local pod's JWT if found.",
+				Description: "The JSON web token of the service account used by the secret engine to manage Kubernetes credentials. Defaults to the local pod's JWT if found.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name: "Kubernetes API JWT",
 				},

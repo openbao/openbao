@@ -4,12 +4,16 @@ KIND_CLUSTER_NAME?=vault-plugin-secrets-kubernetes
 # kind k8s version
 KIND_K8S_VERSION?=v1.23.6
 
+PKG=github.com/hashicorp/vault-plugin-secrets-kubernetes
+LDFLAGS?="-X '$(PKG).WALRollbackMinAge=10s'"
+
 .PHONY: default
 default: dev
 
+# dev target sets WALRollbackMinAge to 10s instead of the default 10 minutes to speed up integration tests
 .PHONY: dev
 dev:
-	CGO_ENABLED=0 go build -o bin/vault-plugin-secrets-kubernetes cmd/vault-plugin-secrets-kubernetes/main.go
+	CGO_ENABLED=0 go build -ldflags $(LDFLAGS) -o bin/vault-plugin-secrets-kubernetes cmd/vault-plugin-secrets-kubernetes/main.go
 
 .PHONY: test
 test: fmtcheck

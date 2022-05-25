@@ -58,7 +58,7 @@ func (b *backend) pathCredentials() *framework.Path {
 			},
 			"kubernetes_namespace": {
 				Type:        framework.TypeString,
-				Description: "The name of the Kubernetes namespace in which to generate the service account",
+				Description: "The name of the Kubernetes namespace in which to generate the credentials",
 				Required:    true,
 			},
 			"cluster_role_binding": {
@@ -269,7 +269,7 @@ func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *r
 	createdTokenTTL, err := getTokenTTL(token)
 	switch {
 	case err != nil:
-		b.Logger().Warn(fmt.Sprintf("failed to read TTL of created Kubernetes token for %s/%s: %s", reqPayload.Namespace, genName, err))
+		return nil, fmt.Errorf("failed to read TTL of created Kubernetes token for %s/%s: %s", reqPayload.Namespace, genName, err)
 	case createdTokenTTL > theTTL:
 		respWarning = append(respWarning, fmt.Sprintf("the created Kubernetes service accout token TTL %v is greater than the Vault lease TTL %v", createdTokenTTL, theTTL))
 	case createdTokenTTL < theTTL:

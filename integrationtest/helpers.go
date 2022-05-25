@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/vault/api"
-	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	josejwt "gopkg.in/square/go-jose.v2/jwt"
@@ -118,8 +117,8 @@ func verifyRole(t *testing.T, roleConfig map[string]interface{}, credsResponse *
 	roleName := credsResponse.Data["service_account_name"].(string)
 	roleType := strings.ToLower(roleConfig["kubernetes_role_type"].(string))
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["additional_metadata"].(map[string]interface{}))
-	expectedAnnotations := makeExpectedAnnotations(t, roleConfig["additional_metadata"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
 	expectedRules := makeRules(t, roleConfig["generated_role_rules"].(string))
 
 	returnedLabels := map[string]string{}
@@ -154,8 +153,8 @@ func verifyBinding(t *testing.T, roleConfig map[string]interface{}, credsRespons
 	// or ClusterRole
 	objName := credsResponse.Data["service_account_name"].(string)
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["additional_metadata"].(map[string]interface{}))
-	expectedAnnotations := makeExpectedAnnotations(t, roleConfig["additional_metadata"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
 	expectedSubjects := []rbacv1.Subject{
 		{
 			Kind:      "ServiceAccount",
@@ -195,8 +194,8 @@ func verifyServiceAccount(t *testing.T, roleConfig map[string]interface{}, creds
 	// or ClusterRole
 	objName := credsResponse.Data["service_account_name"].(string)
 
-	expectedLabels := makeExpectedLabels(t, roleConfig["additional_metadata"].(map[string]interface{}))
-	expectedAnnotations := makeExpectedAnnotations(t, roleConfig["additional_metadata"].(map[string]interface{}))
+	expectedLabels := makeExpectedLabels(t, roleConfig["extra_labels"].(map[string]interface{}))
+	expectedAnnotations := asMapString(roleConfig["extra_annotations"].(map[string]interface{}))
 
 	k8sClient := newK8sClient(t, os.Getenv("SUPER_JWT"))
 	acct, err := k8sClient.CoreV1().ServiceAccounts("test").Get(context.Background(), objName, metav1.GetOptions{})
@@ -410,27 +409,32 @@ func makeRules(t *testing.T, rules string) []rbacv1.PolicyRule {
 	return policyRules.Rules
 }
 
-func makeExpectedLabels(t *testing.T, userMetadata map[string]interface{}) map[string]string {
+func makeExpectedLabels(t *testing.T, extraLabels map[string]interface{}) map[string]string {
 	t.Helper()
 
-	userLabels := map[string]string{}
-	err := mapstructure.Decode(userMetadata["labels"], &userLabels)
-	require.NoError(t, err)
-
 	expectedLabels := map[string]string{}
-	if userLabels != nil {
-		expectedLabels = combineMaps(userLabels, standardLabels)
+	if extraLabels != nil {
+		expectedLabels = combineMaps(asMapString(extraLabels), standardLabels)
 	} else {
 		expectedLabels = standardLabels
 	}
 	return expectedLabels
 }
 
-func makeExpectedAnnotations(t *testing.T, userMetadata map[string]interface{}) map[string]string {
-	t.Helper()
+func asMapInterface(m map[string]string) map[string]interface{} {
+	result := map[string]interface{}{}
+	for k, v := range m {
+		result[k] = v
+	}
 
-	expectedAnnotations := map[string]string{}
-	err := mapstructure.Decode(userMetadata["annotations"], &expectedAnnotations)
-	require.NoError(t, err)
-	return expectedAnnotations
+	return result
+}
+
+func asMapString(m map[string]interface{}) map[string]string {
+	result := map[string]string{}
+	for k, v := range m {
+		result[k] = v.(string)
+	}
+
+	return result
 }

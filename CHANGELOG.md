@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.1.1 (May 26th, 2022)
+
 ### Changes
 
 * Split `additional_metadata` into `extra_annotations` and `extra_labels` parameters [[GH-7](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/7)]

@@ -165,6 +165,9 @@ function remove_files() {
 }
 
 function start_domain_joined_container() {
+  # Pull the container image first to ensure it will start up quickly,
+  # because when we run in the acceptance tests, we detach and move on immediately.
+  docker pull python:3.7
   DOMAIN_JOINED_CONTAINER=$(docker run --net=${DNS_NAME} -d -v "${TESTS_DIR}/integration:/tests:Z" -e KRB5_CONFIG=/tests/krb5.conf -e KRB5_CLIENT_KTNAME=/tests/grace.keytab -t python:3.7 cat)
 }
 

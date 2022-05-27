@@ -95,12 +95,13 @@ start_domain() {
   sleep 1
 
   samba_readiness_check() {
-  docker exec "$SAMBA_CONTAINER" \
-    ldapsearch \
-    -H ldaps://localhost \
-    -D "Administrator@${REALM_NAME}" \
-    -w "${DOMAIN_ADMIN_PASS}" \
-    -b "${DOMAIN_DN}" '(objectClass=*)'
+    # Discard stdout (but not stderr), as it's a lot of noise.
+    docker exec "$SAMBA_CONTAINER" \
+      ldapsearch \
+        -H ldaps://localhost \
+        -D "Administrator@${REALM_NAME}" \
+        -w "${DOMAIN_ADMIN_PASS}" \
+        -b "${DOMAIN_DN}" '(objectClass=*)' > /dev/null
   }
   declare -fxr samba_readiness_check
 

@@ -69,24 +69,31 @@ login_kerberos() {
   docker exec -it "$DOMAIN_JOINED_CONTAINER" python /home/auth-check.py "$VAULT_CONTAINER" "${VAULT_NAMESPACE}"
 }
 
+assert_success() {
+  if [ ! "${status?}" -eq 0 ]; then
+    echo "${output}"
+    exit $status
+  fi
+}
+
 @test "auth/kerberos: create namespace" {
   run create_namespace
-  [ "${status?}" -eq 0 ]
+  assert_success
 }
 
 @test "auth/kerberos: register plugin" {
   run register_plugin
-  [ "${status?}" -eq 0 ]
+  assert_success
 }
 
 @test "auth/kerberos: enable and configure auth method" {
   run enable_and_config_auth_kerberos
-  [ "${status?}" -eq 0 ]
+  assert_success
 }
 
 @test "auth/kerberos: setup and authentication within a Vault namespace" {
   run login_kerberos
-  [ "${status?}" -eq 0 ]
+  assert_success
 
   [[ "${output?}" =~ ^Vault[[:space:]]token\:[[:space:]].+$ ]]
 }

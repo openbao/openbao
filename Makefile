@@ -2,7 +2,7 @@
 KIND_CLUSTER_NAME?=vault-plugin-secrets-kubernetes
 
 # kind k8s version
-KIND_K8S_VERSION?=v1.23.6
+KIND_K8S_VERSION?=v1.24.1
 
 PKG=github.com/hashicorp/vault-plugin-secrets-kubernetes
 LDFLAGS?="-X '$(PKG).WALRollbackMinAge=10s'"

@@ -2,7 +2,6 @@ package integrationtest
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-version"
 	"github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,14 +24,35 @@ import (
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {
+		checkKubectlVersion()
 		os.Setenv("VAULT_ADDR", "http://127.0.0.1:38300")
 		os.Setenv("VAULT_TOKEN", "root")
-		os.Setenv("KUBERNETES_JWT", getVaultJWT())
 		os.Setenv("KUBERNETES_CA", getK8sCA())
 		os.Setenv("KUBE_HOST", getKubeHost(os.Getenv("KIND_CLUSTER_NAME")))
 		os.Setenv("SUPER_JWT", getSuperJWT())
 		os.Setenv("BROKEN_JWT", getBrokenJWT())
 		os.Exit(m.Run())
+	}
+}
+
+type kubectlVersion struct {
+	ClientVersion struct {
+		GitVersion string `json:"gitVersion"`
+	} `json:"clientVersion"`
+}
+
+// kubectl create token requires kubectl >= v1.24.0
+func checkKubectlVersion() {
+	versionJSON := runCmd("kubectl version --client --output=json")
+	var versionInfo kubectlVersion
+
+	if err := json.Unmarshal([]byte(versionJSON), &versionInfo); err != nil {
+		panic(err)
+	}
+
+	v := version.Must(version.NewSemver(versionInfo.ClientVersion.GitVersion))
+	if v.LessThan(version.Must(version.NewSemver("v1.24.0"))) {
+		panic("integration tests require kubectl version >= v1.24.0, but found: " + versionInfo.ClientVersion.GitVersion)
 	}
 }
 
@@ -226,28 +247,12 @@ func runCmd(command string) string {
 	return out.String()
 }
 
-func getVaultJWT() string {
-	return runCmd("kubectl exec --namespace=test vault-0 -- cat /var/run/secrets/kubernetes.io/serviceaccount/token")
-}
-
 func getSuperJWT() string {
-	name := runCmd("kubectl --namespace=test get serviceaccount super-jwt -o jsonpath={.secrets[0].name}")
-	b64token := runCmd(fmt.Sprintf("kubectl --namespace=test get secrets %s -o jsonpath={.data.token}", name))
-	token, err := base64.URLEncoding.DecodeString(b64token)
-	if err != nil {
-		panic(err)
-	}
-	return string(token)
+	return runCmd("kubectl --namespace=test create token super-jwt")
 }
 
 func getBrokenJWT() string {
-	name := runCmd("kubectl --namespace=test get serviceaccount broken-jwt -o jsonpath={.secrets[0].name}")
-	b64token := runCmd(fmt.Sprintf("kubectl --namespace=test get secrets %s -o jsonpath={.data.token}", name))
-	token, err := base64.URLEncoding.DecodeString(b64token)
-	if err != nil {
-		panic(err)
-	}
-	return string(token)
+	return runCmd("kubectl --namespace=test create token broken-jwt")
 }
 
 func getK8sCA() string {

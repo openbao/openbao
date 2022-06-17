@@ -526,7 +526,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 	// Mock the G Suite groups and users APIs
 	gServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/groups":
+		case "/admin/directory/v1/groups":
 			w.Write([]byte(`{
 				"kind": "admin#directory#groups",
 				"groups": [{
@@ -534,7 +534,7 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 					"email": "group1@example.com"
 				}]
 			}`))
-		case "/users/user1@example.com":
+		case "/admin/directory/v1/users/user1@example.com":
 			w.Write([]byte(`{
 				"kind": "admin#directory#user",
 				"customSchemas": {

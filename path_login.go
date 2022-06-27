@@ -273,7 +273,7 @@ func (b *jwtAuthBackend) fetchGroups(ctx context.Context, pConfig CustomProvider
 
 			// Add groups obtained by provider-specific fetching to the claims
 			// so that they can be used for bound_claims validation on the role.
-			allClaims["groups"] = groupsRaw
+			setClaim(b.Logger(), allClaims, role.GroupsClaim, groupsRaw)
 		}
 	}
 	groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)

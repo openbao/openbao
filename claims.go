@@ -11,6 +11,25 @@ import (
 	"github.com/ryanuber/go-glob"
 )
 
+// setClaim sets a claim value from allClaims given a provided claim string.
+// If this string is a valid JSONPointer, it will be interpreted as such to locate
+// the claim. Otherwise, the claim string will be used directly.
+func setClaim(logger log.Logger, allClaims map[string]interface{}, claim string, val interface{}) interface{} {
+	var err error
+
+	if !strings.HasPrefix(claim, "/") {
+		allClaims[claim] = val
+	} else {
+		val, err = pointerstructure.Set(allClaims, claim, val)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("unable to set %s in claims: %s", claim, err.Error()))
+			return nil
+		}
+	}
+
+	return val
+}
+
 // getClaim returns a claim value from allClaims given a provided claim string.
 // If this string is a valid JSONPointer, it will be interpreted as such to locate
 // the claim. Otherwise, the claim string will be used directly.

@@ -55,6 +55,50 @@ func TestGetClaim(t *testing.T) {
 	}
 }
 
+func TestSetClaim(t *testing.T) {
+	data := `{
+		"a": 42,
+		"b": "bar",
+		"c": {
+			"d": 95,
+			"e": [
+				"dog",
+				"cat",
+				"bird"
+			],
+			"f": {
+				"g": "zebra"
+			}
+		}
+	}`
+	var claims map[string]interface{}
+	if err := json.Unmarshal([]byte(data), &claims); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		claim string
+		value interface{}
+	}{
+		{"a", float64(43)},
+		{"/a", float64(43)},
+		{"b", "foo"},
+		{"/c/d", float64(96)},
+		{"/c/e/1", "dog"},
+		{"/c/f/g", "elephant"},
+	}
+
+	for _, test := range tests {
+		_ = setClaim(hclog.NewNullLogger(), claims, test.claim, test.value)
+
+		v := getClaim(hclog.NewNullLogger(), claims, test.claim)
+
+		if diff := deep.Equal(v, test.value); diff != nil {
+			t.Fatal(diff)
+		}
+	}
+}
+
 func TestExtractMetadata(t *testing.T) {
 	emptyMap := make(map[string]string)
 

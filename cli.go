@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -68,9 +67,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	if err != nil {
 		return nil, err
 	}
-	headers := http.Header{}
-	headers.Set(spnego.HTTPHeaderAuthRequest, authHeaderVal)
-	c.SetHeaders(headers)
+	c.AddHeader(spnego.HTTPHeaderAuthRequest, authHeaderVal)
 
 	path := fmt.Sprintf("auth/%s/login", mount)
 

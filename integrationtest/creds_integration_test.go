@@ -19,6 +19,8 @@ func TestCreds_ttl(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create default config
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
@@ -129,6 +131,8 @@ func TestCreds_service_account_name(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create default config
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
@@ -196,6 +200,8 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create default config
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
@@ -276,6 +282,8 @@ func TestCreds_generated_role_rules(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create default config
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})

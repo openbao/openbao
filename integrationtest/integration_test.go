@@ -76,6 +76,8 @@ func TestConfig(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{
@@ -126,6 +128,8 @@ func TestRole(t *testing.T) {
 
 	path, umount := mountHelper(t, client)
 	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
 
 	// create default config
 	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
@@ -191,6 +195,42 @@ func TestRole(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func isEnterprise(client *api.Client) bool {
+	req := client.NewRequest("GET", "/v1/sys/license/status")
+	resp, err := client.RawRequest(req)
+	if err != nil {
+		return false
+	}
+	return resp.StatusCode == 200
+}
+
+func createNamespace(client *api.Client, namespace string) error {
+	req := client.NewRequest("PUT", "/v1/sys/namespaces/"+namespace)
+	resp, err := client.RawRequest(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("error creating namespace. Server returned status %d %s", resp.StatusCode, resp.Status)
+	}
+	return nil
+}
+
+func deleteNamespace(client *api.Client, namespace string) error {
+	req := client.NewRequest("DELETE", "/v1/sys/namespaces/"+namespace)
+	resp, err := client.RawRequest(req)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("error creating namespace. Server returned status %d %s", resp.StatusCode, resp.Status)
+	}
+	return nil
+}
+
+// mountHelper creates the kubernetes mount.
 func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 	t.Helper()
 
@@ -207,6 +247,40 @@ func mountHelper(t *testing.T, client *api.Client) (string, func()) {
 		_, err = client.Logical().Delete(fullPath)
 		if err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+// namespaceHelper creates a Vault Enterprise namespace and returns a client with the namespace changed to it.
+func namespaceHelper(t *testing.T, client *api.Client) (*api.Client, func()) {
+	t.Helper()
+
+	var err error
+	namespace := ""
+	newClient := client
+
+	if isEnterprise(client) {
+		namespace := randomWithPrefix("somenamespace")
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = createNamespace(client, namespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newClient, err := client.Clone()
+		if err != nil {
+			t.Fatal(err)
+		}
+		newClient.SetNamespace(namespace)
+	}
+
+	return newClient, func() {
+		if namespace != "" {
+			err = deleteNamespace(client, namespace)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 }

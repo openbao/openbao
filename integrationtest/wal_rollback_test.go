@@ -23,10 +23,13 @@ func TestCreds_wal_rollback(t *testing.T) {
 	}
 
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
-	client, err := api.NewClient(nil)
+	baseClient, err := api.NewClient(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	client, delNamespace := namespaceHelper(t, baseClient)
+	defer delNamespace()
 
 	t.Run("generated_role_rules", func(t *testing.T) {
 		t.Parallel()

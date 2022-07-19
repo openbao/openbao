@@ -55,6 +55,8 @@ jobs:
       fail-fast: false
       matrix:
         kind-k8s-version: [1.21.12, 1.22.9, 1.23.6, 1.24.1]
+        enterprise: ["", "-ent"]
+    name: Integration test ${{ matrix.enterprise }} kind ${{ matrix.kind-k8s-version }}
     steps:
       - uses: actions/checkout@v2
       - name: Create K8s Kind Cluster
@@ -79,7 +81,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - run: make setup-integration-test
+      - env:
+          VAULT_LICENSE_CI: ${{ secrets.VAULT_LICENSE_CI }}
+        run: make setup-integration-test${{ matrix.enterprise }}
       - env:
           INTEGRATION_TESTS: true
         run: make integration-test TESTARGS="-v"

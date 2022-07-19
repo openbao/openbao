@@ -7,6 +7,8 @@ KIND_K8S_VERSION?=v1.24.1
 PKG=github.com/hashicorp/vault-plugin-secrets-kubernetes
 LDFLAGS?="-X '$(PKG).WALRollbackMinAge=10s'"
 
+RUNNER_TEMP ?= $(TMPDIR)
+
 .PHONY: default
 default: dev
 
@@ -48,14 +50,28 @@ delete-kind:
 
 .PHONY: vault-image
 vault-image:
-	GOOS=linux GOARCH=amd64 make dev
+	GOOS=linux make dev
 	docker build -f integrationtest/vault/Dockerfile bin/ --tag=hashicorp/vault:dev
 
+.PHONY: vault-image-ent
+vault-image-ent:
+	GOOS=linux make dev
+	docker build -f integrationtest/vault/Dockerfile --target enterprise bin/ --tag=hashicorp/vault:dev
+
 # Create Vault inside the cluster with a locally-built version of kubernetes secrets.
-.PHONY: setup-integration-test
-setup-integration-test: teardown-integration-test vault-image
+.PHONY: setup-integration-test-common
+setup-integration-test-common: SET_LICENSE=$(if $(VAULT_LICENSE_CI),--set server.enterpriseLicense.secretName=vault-license)
+setup-integration-test-common: teardown-integration-test
 	kind --name ${KIND_CLUSTER_NAME} load docker-image hashicorp/vault:dev
 	kubectl create namespace test
+
+	# don't log the license
+	printenv VAULT_LICENSE_CI > $(RUNNER_TEMP)/vault-license.txt || true
+	if [ -s $(RUNNER_TEMP)/vault-license.txt ]; then \
+		kubectl -n test create secret generic vault-license --from-file license=$(RUNNER_TEMP)/vault-license.txt; \
+		rm -rf $(RUNNER_TEMP)/vault-license.txt; \
+	fi
+
 	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.19.0 \
 		--wait --timeout=5m \
 		--namespace=test \
@@ -64,6 +80,7 @@ setup-integration-test: teardown-integration-test vault-image
 		--set server.image.tag=dev \
 		--set server.image.pullPolicy=Never \
 		--set injector.enabled=false \
+		$(SET_LICENSE) \
 		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
 	kubectl patch --namespace=test statefulset vault --patch-file integrationtest/vault/hostPortPatch.yaml
 	kubectl apply --namespace=test -f integrationtest/vault/testRoles.yaml
@@ -72,6 +89,16 @@ setup-integration-test: teardown-integration-test vault-image
 
 	kubectl delete --namespace=test pod vault-0
 	kubectl wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
+
+.PHONY: setup-integration-test
+setup-integration-test: vault-image setup-integration-test-common
+
+.PHONY: setup-integration-test-ent
+setup-integration-test-ent: check-license vault-image-ent setup-integration-test-common
+
+.PHONY: check-license
+check-license:
+	(printenv VAULT_LICENSE_CI > /dev/null) || (echo "VAULT_LICENSE_CI must be set"; exit 1)
 
 .PHONY: teardown-integration-test
 teardown-integration-test:

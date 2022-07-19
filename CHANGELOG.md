@@ -1,5 +1,7 @@
 ## Unreleased
 
+* Test against Vault Enterprise [[GH-11](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/11)]
+
 ## 0.1.1 (May 26th, 2022)
 
 ### Changes

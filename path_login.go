@@ -44,11 +44,33 @@ func pathLogin(b *kubeAuthBackend) *framework.Path {
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.UpdateOperation:         b.pathLogin,
 			logical.AliasLookaheadOperation: b.aliasLookahead,
+			logical.ResolveRoleOperation:    b.pathResolveRole,
 		},
 
 		HelpSynopsis:    pathLoginHelpSyn,
 		HelpDescription: pathLoginHelpDesc,
 	}
+}
+
+// pathLogin is used to resolve the role to be used from a login request
+func (b *kubeAuthBackend) pathResolveRole(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	roleName, resp := b.getFieldValueStr(data, "role")
+	if resp != nil {
+		return resp, nil
+	}
+
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	role, err := b.role(ctx, req.Storage, roleName)
+	if err != nil {
+		return nil, err
+	}
+	if role == nil {
+		return logical.ErrorResponse(fmt.Sprintf("invalid role name %q", roleName)), nil
+	}
+
+	return logical.ResolveRoleResponse(roleName)
 }
 
 // pathLogin is used to authenticate to this backend

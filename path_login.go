@@ -35,11 +35,49 @@ func pathLogin(b *jwtAuthBackend) *framework.Path {
 			logical.AliasLookaheadOperation: &framework.PathOperation{
 				Callback: b.pathLogin,
 			},
+			logical.ResolveRoleOperation: &framework.PathOperation{
+				Callback: b.pathResolveRole,
+			},
 		},
 
 		HelpSynopsis:    pathLoginHelpSyn,
 		HelpDescription: pathLoginHelpDesc,
 	}
+}
+
+func (b *jwtAuthBackend) pathResolveRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	config, err := b.config(ctx, req.Storage)
+	if err != nil {
+		return nil, err
+	}
+	if config == nil {
+		return logical.ErrorResponse("could not load configuration"), nil
+	}
+	roleName, _, resp, err := b.getRoleNameAndRoleFromLoginRequest(config, ctx, req, d)
+	if resp != nil || err != nil {
+		return resp, err
+	}
+	return logical.ResolveRoleResponse(roleName)
+}
+
+func (b *jwtAuthBackend) getRoleNameAndRoleFromLoginRequest(config *jwtConfig, ctx context.Context, req *logical.Request, d *framework.FieldData) (string, *jwtRole, *logical.Response, error) {
+	roleName := d.Get("role").(string)
+	if roleName == "" {
+		roleName = config.DefaultRole
+	}
+	if roleName == "" {
+		return "", nil, logical.ErrorResponse("missing role"), nil
+	}
+
+	role, err := b.role(ctx, req.Storage, roleName)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	if role == nil {
+		return "", nil, logical.ErrorResponse("role %q could not be found", roleName), nil
+	}
+
+	return roleName, role, nil, nil
 }
 
 func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -51,20 +89,9 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("could not load configuration"), nil
 	}
 
-	roleName := d.Get("role").(string)
-	if roleName == "" {
-		roleName = config.DefaultRole
-	}
-	if roleName == "" {
-		return logical.ErrorResponse("missing role"), nil
-	}
-
-	role, err := b.role(ctx, req.Storage, roleName)
-	if err != nil {
-		return nil, err
-	}
-	if role == nil {
-		return logical.ErrorResponse("role %q could not be found", roleName), nil
+	roleName, role, resp, err := b.getRoleNameAndRoleFromLoginRequest(config, ctx, req, d)
+	if resp != nil || err != nil {
+		return resp, err
 	}
 
 	if role.RoleType == "oidc" {

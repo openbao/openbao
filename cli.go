@@ -3,21 +3,19 @@ package jwtauth
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/vault/api"
+	"github.com/hashicorp/cap/util"
 )
 
 const (
@@ -106,7 +104,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	// Open the default browser to the callback URL.
 	if !skipBrowserLaunch {
 		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Launching browser to:\n\n    %s\n\n\n", authURL)
-		if err := openURL(authURL); err != nil {
+		if err := util.OpenURL(authURL); err != nil {
 			fmt.Fprintf(os.Stderr, "Error attempting to automatically open browser: '%s'.\nPlease visit the authorization URL manually.", err)
 		}
 	} else {
@@ -209,39 +207,6 @@ func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMetho
 	}
 
 	return authURL, clientNonce, nil
-}
-
-// isWSL tests if the binary is being run in Windows Subsystem for Linux
-func isWSL() bool {
-	if runtime.GOOS == "darwin" || runtime.GOOS == "windows" {
-		return false
-	}
-	data, err := ioutil.ReadFile("/proc/version")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to read /proc/version.\n")
-		return false
-	}
-	return strings.Contains(strings.ToLower(string(data)), "microsoft")
-}
-
-// openURL opens the specified URL in the default browser of the user.
-// Source: https://stackoverflow.com/a/39324149/453290
-func openURL(url string) error {
-	var cmd string
-	var args []string
-
-	switch {
-	case "windows" == runtime.GOOS || isWSL():
-		cmd = "cmd.exe"
-		args = []string{"/c", "start"}
-		url = strings.Replace(url, "&", "^&", -1)
-	case "darwin" == runtime.GOOS:
-		cmd = "open"
-	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = "xdg-open"
-	}
-	args = append(args, url)
-	return exec.Command(cmd, args...).Start()
 }
 
 // parseError converts error from the API into summary and detailed portions.

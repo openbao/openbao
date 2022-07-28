@@ -16,10 +16,12 @@ import (
 
 const (
 	// Deprecated: The host of the Azure Active Directory (AAD) graph API
-	azureADGraphHost = "graph.windows.net"
+	azureADGraphHost   = "graph.windows.net"
+	azureADGraphUShost = "graph.microsoftazure.us"
 
 	// The host and version of the Microsoft Graph API
 	microsoftGraphHost       = "graph.microsoft.com"
+	microsoftGraphUSHost     = "graph.microsoft.us"
 	microsoftGraphAPIVersion = "/v1.0"
 
 	// Distributed claim fields
@@ -114,8 +116,12 @@ func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]i
 	// and will eventually stop servicing requests. See details at:
 	// - https://developer.microsoft.com/en-us/office/blogs/microsoft-graph-or-azure-ad-graph/
 	// - https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0
+	// - https://docs.microsoft.com/en-us/graph/migrate-azure-ad-graph-request-differences 
 	if urlParsed.Host == azureADGraphHost {
 		urlParsed.Host = microsoftGraphHost
+		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
+	} else if urlParsed.Host == azureADGraphUShost {
+		urlParsed.Host = microsoftGraphUSHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path
 	}
 

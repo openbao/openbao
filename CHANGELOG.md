@@ -5,6 +5,7 @@ IMPROVEMENTS:
 * Updates dependency `google.golang.org/api@v0.83.0` [[GH-205](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/205)]
 * Add Custom Provider for SecureAuth IdP [[GH-196](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/196)]
 * Improves detection of Windows Subsystem for Linux (WSL) in CLI [[GH-209](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/209)]
+* Adds support for Microsoft US Gov L4 to the Azure provider for groups fetching [[GH-211](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/211)]
 
 ## 0.13.0
 

@@ -8,8 +8,9 @@ import (
 )
 
 type kerberosConfig struct {
-	Keytab         string `json:"keytab"`
-	ServiceAccount string `json:"service_account"`
+	Keytab             string `json:"keytab"`
+	ServiceAccount     string `json:"service_account"`
+	RemoveInstanceName bool   `json:"remove_instance_name"`
 }
 
 func (b *backend) pathConfig() *framework.Path {
@@ -26,6 +27,10 @@ func (b *backend) pathConfig() *framework.Path {
 			"service_account": {
 				Type:        framework.TypeString,
 				Description: `Service Account`,
+			},
+			"remove_instance_name": {
+				Type:        framework.TypeBool,
+				Description: `Remove instance/FQDN from keytab principal names.`,
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -54,7 +59,8 @@ func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data
 		return &logical.Response{
 			Data: map[string]interface{}{
 				// keytab is intentionally not returned here because it's sensitive
-				"service_account": config.ServiceAccount,
+				"remove_instance_name": config.RemoveInstanceName,
+				"service_account":      config.ServiceAccount,
 			},
 		}, nil
 	}
@@ -71,14 +77,17 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 		return logical.ErrorResponse("data does not contain keytab"), logical.ErrInvalidRequest
 	}
 
+	removeInstanceName := data.Get("remove_instance_name").(bool)
+
 	// Check that the keytab is valid by parsing with krb5go
 	if _, err := parseKeytab(kt); err != nil {
 		return logical.ErrorResponse("invalid keytab: %v", err), logical.ErrInvalidRequest
 	}
 
 	config := &kerberosConfig{
-		Keytab:         kt,
-		ServiceAccount: serviceAccount,
+		Keytab:             kt,
+		ServiceAccount:     serviceAccount,
+		RemoveInstanceName: removeInstanceName,
 	}
 
 	entry, err := logical.StorageEntryJSON("config", config)

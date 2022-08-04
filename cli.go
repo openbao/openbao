@@ -40,10 +40,12 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	if keytabPath == "" {
 		return nil, errors.New(`"keytab_path" is required`)
 	}
+
 	krb5ConfPath := m["krb5conf_path"]
 	if krb5ConfPath == "" {
 		return nil, errors.New(`"krb5conf_path" is required`)
 	}
+
 	disableFAST := false
 	disableFASTNegotiation := m["disable_fast_negotiation"]
 	if disableFASTNegotiation != "" {
@@ -54,6 +56,16 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		disableFAST = setting
 	}
 
+	removeInstanceName := false
+	removeinstanceNameRaw := m["remove_instance_name"]
+	if removeinstanceNameRaw != "" {
+		setting, err := strconv.ParseBool(removeinstanceNameRaw)
+		if err != nil {
+			return nil, fmt.Errorf(`invalid value "%s" for remove_instance_name, must be "true" or "false"`, removeinstanceNameRaw)
+		}
+		removeInstanceName = setting
+	}
+
 	loginCfg := &LoginCfg{
 		Username:               username,
 		Service:                service,
@@ -61,6 +73,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		KeytabPath:             keytabPath,
 		Krb5ConfPath:           krb5ConfPath,
 		DisableFASTNegotiation: disableFAST,
+		RemoveInstanceName:     removeInstanceName,
 	}
 
 	authHeaderVal, err := GetAuthHeaderVal(loginCfg)
@@ -113,6 +126,12 @@ Configuration:
 
   realm=<string>
       The name of the Kerberos realm.
+
+  disable_fast_negotiation=<bool>
+      When set to true, disables the FAST pre-authentication framework.
+
+  remove_instance_name=<bool>
+      When set to true, strips instance names from the principal name in the keytab file.
 `
 
 	return strings.TrimSpace(help)
@@ -130,6 +149,11 @@ type LoginCfg struct {
 	// guessing attacks.
 	// Some common Kerberos implementations do not support FAST negotiation.
 	DisableFASTNegotiation bool
+
+	// Some keytab creators include FQDN in the username, which can cause
+	// issues during login when finding the user principal name in LDAP.
+	// When true, we will strip out any data after the username.
+	RemoveInstanceName bool
 }
 
 // GetAuthHeaderVal is a convenience function that takes a given loginCfg
@@ -139,6 +163,10 @@ func GetAuthHeaderVal(loginCfg *LoginCfg) (string, error) {
 	kt, err := keytab.Load(loginCfg.KeytabPath)
 	if err != nil {
 		return "", errwrap.Wrapf("couldn't load keytab: {{err}}", err)
+	}
+
+	if loginCfg.RemoveInstanceName {
+		removeInstanceNameFromKeytab(kt)
 	}
 
 	krb5Conf, err := config.Load(loginCfg.Krb5ConfPath)
@@ -152,6 +180,7 @@ func GetAuthHeaderVal(loginCfg *LoginCfg) (string, error) {
 	if loginCfg.DisableFASTNegotiation {
 		settings = append(settings, client.DisablePAFXFAST(true))
 	}
+
 	cl := client.NewWithKeytab(loginCfg.Username, loginCfg.Realm, kt, krb5Conf, settings...)
 	if err := cl.Login(); err != nil {
 		return "", errwrap.Wrapf("couldn't log in: {{err}}", err)
@@ -162,14 +191,30 @@ func GetAuthHeaderVal(loginCfg *LoginCfg) (string, error) {
 	if err := spnegoClient.AcquireCred(); err != nil {
 		return "", errwrap.Wrapf("couldn't acquire client credential: {{err}}", err)
 	}
+
 	spnegoToken, err := spnegoClient.InitSecContext()
 	if err != nil {
 		return "", errwrap.Wrapf("couldn't initialize context: {{err}}", err)
 	}
+
 	marshalledToken, err := spnegoToken.Marshal()
 	if err != nil {
 		return "", errwrap.Wrapf("couldn't marshal SPNEGO: {{err}}", err)
 	}
 	authHeaderVal := "Negotiate " + base64.StdEncoding.EncodeToString(marshalledToken)
 	return authHeaderVal, nil
+}
+
+func removeInstanceNameFromKeytab(kt *keytab.Keytab) {
+	for index := range kt.Entries {
+		user := splitUsername(kt.Entries[index].Principal.String())
+		if len(user) > 1 {
+			kt.Entries[index].Principal.Components = []string{user[0]}
+			kt.Entries[index].Principal.NumComponents = int16(len(kt.Entries[index].Principal.Components))
+		}
+	}
+}
+
+func splitUsername(username string) []string {
+	return strings.Split(username, "/")
 }

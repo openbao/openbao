@@ -249,6 +249,7 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		}
 		policies = append(policies, group.Policies...)
 	}
+
 	// Policies from each group may overlap
 	policies = strutil.RemoveDuplicates(policies, true)
 	auth := &logical.Auth{
@@ -273,6 +274,18 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 	// Combine our policies with the ones parsed from PopulateTokenAuth.
 	if len(policies) > 0 {
 		auth.Policies = append(auth.Policies, policies...)
+	}
+
+	// Add the LDAP groups so the Identity system can use them
+	if kerbCfg.AddGroupAliases {
+		for _, groupName := range allGroups {
+			if groupName == "" {
+				continue
+			}
+			auth.GroupAliases = append(auth.GroupAliases, &logical.Alias{
+				Name: groupName,
+			})
+		}
 	}
 
 	return &logical.Response{

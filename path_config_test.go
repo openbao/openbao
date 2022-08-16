@@ -38,6 +38,7 @@ func TestConfig_ReadWrite(t *testing.T) {
 		"keytab":               testValidKeytab,
 		"service_account":      "testuser",
 		"remove_instance_name": true,
+		"add_group_aliases":    true,
 	}
 
 	req := &logical.Request{

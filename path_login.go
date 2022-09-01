@@ -23,7 +23,7 @@ var defaultJWTIssuer = "kubernetes/serviceaccount"
 // See https://datatracker.ietf.org/doc/html/rfc7518#section-3.
 var supportedJwtAlgs = []capjwt.Alg{
 	capjwt.RS256, capjwt.RS384, capjwt.RS512,
-	capjwt.ES256, capjwt.RS384, capjwt.ES512,
+	capjwt.ES256, capjwt.ES384, capjwt.ES512,
 }
 
 // pathLogin returns the path configurations for login endpoints

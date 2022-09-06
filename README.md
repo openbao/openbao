@@ -56,7 +56,7 @@ At this stage you are now ready to initialize the plugin to connect to the redis
 
 Prior to initializing the plugin, ensure that you have created an administration account. Vault will use the user specified here to create/update/revoke database credentials. That user must have the appropriate rule `+@admin` to perform actions upon other database users.
 
-### Plugin initialization
+### Plugin Initialization
 
 #### Standalone REDIS Server.
 

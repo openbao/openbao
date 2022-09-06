@@ -3,22 +3,22 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
-	"errors"
-	
-	"github.com/mediocregopher/radix/v3"
-	"github.com/mediocregopher/radix/v3/resp/resp2"
+
 	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
+	"github.com/mediocregopher/radix/v4"
+	"github.com/mediocregopher/radix/v4/resp/resp3"
 )
 
 const (
 	redisTypeName        = "redis"
-	defaultRedisUserRule  = `["~*", "+@read"]`
+	defaultRedisUserRule = `["~*", "+@read"]`
 	defaultTimeout       = 20000 * time.Millisecond
 	maxKeyLength         = 64
 )
@@ -106,7 +106,7 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 	c.Lock()
 	defer c.Unlock()
 
-	db, err := c.getConnection(ctx) 
+	db, err := c.getConnection(ctx)
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, fmt.Errorf("failed to make connection: %w", err)
 	}
@@ -120,11 +120,11 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 	}()
 
 	var response string
-	
-	err = db.Do(radix.Cmd(&response, "ACL", "DELUSER", req.Username))
+
+	err = db.Do(ctx, radix.Cmd(&response, "ACL", "DELUSER", req.Username))
 
 	fmt.Printf("Response in DeleteUser: %s\n", response)
-	
+
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
 	}
@@ -132,7 +132,7 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 	return dbplugin.DeleteUserResponse{}, nil
 }
 
-func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.NewUserRequest) error {
+func newUser(ctx context.Context, db radix.Client, username string, req dbplugin.NewUserRequest) error {
 	statements := removeEmpty(req.Statements.Commands)
 	if len(statements) == 0 {
 		statements = append(statements, defaultRedisUserRule)
@@ -153,11 +153,10 @@ func newUser(ctx context.Context, db *radix.Pool, username string, req dbplugin.
 	fmt.Printf("Appended args: %v\n", aclargs)
 	var response string
 	
-	//	err = db.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + req.Password, args...))
-	err = db.Do(radix.Cmd(&response, "ACL", aclargs...))
+	err = db.Do(ctx, radix.Cmd(&response, "ACL", aclargs...))
 
 	fmt.Printf("Response in newUser: %s\n", response)
-	
+
 	if err != nil {
 		return err
 	}
@@ -182,14 +181,12 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 		}
 	}()
 
-	var response resp2.Array
-	mn := radix.MaybeNil{Rcv: &response}
-	
-
-	var redisErr resp2.Error
-	err = db.Do(radix.Cmd(&mn, "ACL", "GETUSER", username))
+	var response resp3.ArrayHeader
+	mn := radix.Maybe{Rcv: &response}
+	var redisErr resp3.SimpleError
+	err = db.Do(ctx, radix.Cmd(&mn, "ACL", "GETUSER", username))
 	if errors.As(err, &redisErr) {
-		fmt.Printf("redis error returned: %s", redisErr.E)
+		fmt.Printf("redis error returned: %s", redisErr.S)
 	}
 
 	fmt.Printf("Response in changeUserPassword: %#v for %s %T\n", response, username, response)
@@ -198,12 +195,12 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 		return fmt.Errorf("reset of passwords for user %s failed in changeUserPassword: %w", username, err)
 	}
 
-	if mn.Nil {
-		return fmt.Errorf("changeUserPassword for user %s failed, user not found!", username);
+	if mn.Null {
+		return fmt.Errorf("changeUserPassword for user %s failed, user not found!", username)
 	}
-	
+
 	var sresponse string
-	err = db.Do(radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">" + password))
+	err = db.Do(ctx, radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">"+password))
 
 	fmt.Printf("Response in changeUserPassword2: %s\n", sresponse)
 
@@ -235,12 +232,12 @@ func computeTimeout(ctx context.Context) (timeout time.Duration) {
 	return defaultTimeout
 }
 
-func (c *RedisDB) getConnection(ctx context.Context) (*radix.Pool, error) {
+func (c *RedisDB) getConnection(ctx context.Context) (radix.Client, error) {
 	db, err := c.Connection(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return db.(*radix.Pool), nil
+	return db.(radix.Client), nil
 }
 
 func (c *RedisDB) Type() (string, error) {

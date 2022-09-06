@@ -2,16 +2,13 @@ package redis
 
 import (
 	"context"
-//	"crypto/x509"
-//	"encoding/base64"
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/mediocregopher/radix/v3"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/database/helper/connutil"
+	"github.com/mediocregopher/radix/v4"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -31,7 +28,7 @@ type redisDBConnectionProducer struct {
 	Initialized bool
 	rawConfig   map[string]interface{}
 	Type        string
-	pool        *radix.Pool
+	client      radix.Client
 	Addr        string
 	sync.Mutex
 }
@@ -78,14 +75,14 @@ func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[str
 	}
 
 	c.Addr = fmt.Sprintf("%s:%d", c.Host, c.Port)
-	
+
 	if c.TLS {
 		if len(c.Base64Pem) == 0 {
 			return nil, fmt.Errorf("base64pem cannot be empty")
 		}
 
-		if !strings.HasPrefix(c.Host, "couchbases://") {
-			return nil, fmt.Errorf("hosts list must start with couchbases:// for TLS connection")
+		if !strings.HasPrefix(c.Host, "redis://") {
+			return nil, fmt.Errorf("hosts list must start with redis:// for TLS connection")
 		}
 	}
 
@@ -96,11 +93,6 @@ func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[str
 			c.close()
 			return nil, errwrap.Wrapf("error verifying connection: {{err}}", err)
 		}
-		/*var pong string
-		if err = c.pool.Do(radix.Cmd(&pong, "PING", "PONG")); err != nil {
-			c.close()
-			return nil, errwrap.Wrapf("error verifying connection: PONG failed: {{err}}", err)
-		}*/
 	}
 
 	return initConfig, nil
@@ -110,6 +102,7 @@ func (c *redisDBConnectionProducer) Initialize(ctx context.Context, config map[s
 	_, err := c.Init(ctx, config, verifyConnection)
 	return err
 }
+
 func (c *redisDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
 	// This is intentionally not grabbing the lock since the calling functions (e.g. CreateUser)
 	// are claiming it. (The locking patterns could be refactored to be more consistent/clear.)
@@ -118,36 +111,35 @@ func (c *redisDBConnectionProducer) Connection(ctx context.Context) (interface{}
 		return nil, connutil.ErrNotInitialized
 	}
 
-	if c.pool != nil {
-		return c.pool, nil
+	if c.client != nil {
+		return c.client, nil
 	}
 	var err error
 
-	customConnFunc := func(network, addr string) (radix.Conn, error) {
-		return radix.Dial(network, addr,
-			radix.DialTimeout(1 * time.Minute),
-			radix.DialAuthUser(c.Username, c.Password),
-		)
+	poolConfig := radix.PoolConfig{
+		Dialer: radix.Dialer{
+			AuthUser: c.Username,
+			AuthPass: c.Password,
+		},
 	}
-
-	c.pool, err = radix.NewPool("tcp", c.Addr, 1, radix.PoolConnFunc(customConnFunc)) // [TODO] poolopts for timeout from ctx??
+	client, err := poolConfig.New(ctx, "tcp", c.Addr)
 	if err != nil {
-		return nil, errwrap.Wrapf("error in Connection: {{err}}", err)
+		return nil, err
 	}
+	c.client = client
 
-	return c.pool, nil
+	return c.client, nil
 }
 
 // close terminates the database connection without locking
 func (c *redisDBConnectionProducer) close() error {
-
-	if c.pool != nil {
-		if err := c.pool.Close(); err != nil {
+	if c.client != nil {
+		if err := c.client.Close(); err != nil {
 			return err
 		}
 	}
 
-	c.pool = nil
+	c.client = nil
 	return nil
 }
 

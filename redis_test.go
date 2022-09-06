@@ -8,9 +8,8 @@ import (
 	"testing"
 	"time"
 
-	//	"github.com/cenkalti/backoff"
-	"github.com/mediocregopher/radix/v3"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/mediocregopher/radix/v4"
 	"github.com/ory/dockertest"
 	dc "github.com/ory/dockertest/docker"
 )
@@ -20,9 +19,9 @@ var pre6dot5 = false // check for Pre 6.5.0 Redis
 const (
 	defaultUsername = "default"
 	defaultPassword = ""
-	adminUsername = "Administrator"
-	adminPassword = "password"
-	aclCat        = "+@admin"
+	adminUsername   = "Administrator"
+	adminPassword   = "password"
+	aclCat          = "+@admin"
 )
 
 func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
@@ -71,10 +70,12 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 
 	if err = pool.Retry(func() error {
 		t.Log("Waiting for the database to start...")
-		_, err := radix.NewPool("tcp", address, 1) 
+		poolConfig := radix.PoolConfig{}
+		_, err := poolConfig.New(context.Background(), "tcp", address)
 		if err != nil {
 			return err
 		}
+
 		return nil
 	}); err != nil {
 		t.Fatalf("Could not connect to redis: %s", err)
@@ -87,7 +88,6 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 func TestDriver(t *testing.T) {
 	// Spin up redis
 	cleanup, host, port := prepareRedisTestContainer(t)
-
 	defer cleanup()
 
 	err := createUser(host, port, defaultUsername, defaultPassword, "Administrator", "password",
@@ -107,40 +107,6 @@ func TestDriver(t *testing.T) {
 	}
 
 	t.Run("Init", func(t *testing.T) { testRedisDBInitialize_NoTLS(t, host, port) })
-
-	/* Need to pause here as sometimes the travel-sample bucket is not ready and you get strange errors like this...
-		   err: {"errors":{"roles":"Cannot assign roles to user because the following roles are unknown, malformed or role
-		       parameters are undefined: [bucket_admin[travel-sample]]"}}
-		   the backoff function uses
-	           http://Administrator:password@localhost:8091/sampleBuckets
-	           to see if the redis container has finished installing the test bucket befor proceeding. The installed
-	           element for the bucket needs to be true before proceeding.
-
-		   [{"name":"beer-sample","installed":false,"quotaNeeded":104857600},
-		    {"name":"gamesim-sample","installed":false,"quotaNeeded":104857600},
-		    {"name":"travel-sample","installed":false,"quotaNeeded":104857600}] */
-
-	/* if err = backoff.Retry(func() error {
-		t.Log("Waiting for the bucket to be installed.")
-
-		bucketFound, bucketInstalled, err := waitForBucketInstalled(address, adminUsername, adminPassword, aclCat)
-		if err != nil {
-			return err
-		}
-		if bucketFound == false {
-			err := backoff.PermanentError{
-				Err: fmt.Errorf("bucket %s was not found..", aclCat),
-			}
-			return &err
-		}
-		if bucketInstalled == false {
-			return fmt.Errorf("waiting for bucket %s to be installed...", aclCat)
-		}
-		return nil
-	}, backoff.NewExponentialBackOff()); err != nil {
-		t.Fatalf("bucket %s installed check failed: %s", aclCat, err)
-	} */
-
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_DefaultRule(t, host, port) })
 	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_plusRole(t, host, port) })
@@ -178,8 +144,6 @@ func setupRedisDBInitialize(t *testing.T, connectionDetails map[string]interface
 
 func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
 	t.Log("Testing plain text Init()")
-
-	// address  = fmt.Sprintf("redis://%s:%d", host, port) // [todo] remove?
 
 	connectionDetails := map[string]interface{}{
 		"host":     host,
@@ -267,8 +231,6 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 		"password": password,
 	}
 
-	// time.Sleep(1 * time.Second) // a brief pause to let redis finish creating the account
-
 	initReq := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
 		VerifyConnection: true,
@@ -315,7 +277,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 		t.Fatal("Database should be initialized")
 	}
 	var response string
-	err = db.pool.Do(radix.Cmd(&response, cmd, rules...))
+	err = db.client.Do(context.Background(), radix.Cmd(&response, cmd, rules...))
 
 	return err
 }
@@ -327,7 +289,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	t.Log("Testing RevokeUser()")
 
 	connectionDetails := map[string]interface{}{
-		"host":    address,
+		"host":     address,
 		"port":     port,
 		"username": adminUsername,
 		"password": adminPassword,

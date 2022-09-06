@@ -1,40 +1,28 @@
 package redis
 
 import (
-//	"encoding/base64"
-//	"encoding/json"
+	"context"
 	"fmt"
-//	"io/ioutil"
-//	"net/http"
-//	"net/url"
-//	"strings"
-	"time"
 
-	"github.com/mediocregopher/radix/v3"
-	"github.com/hashicorp/errwrap"
-//	"github.com/cenkalti/backoff"
-//	"github.com/hashicorp/go-version"
+	"github.com/mediocregopher/radix/v4"
 )
 
 func createUser(hostname string, port int, adminuser, adminpassword, username, password, aclRule string) (err error) {
-	
-	customConnFunc := func(network, addr string) (radix.Conn, error) {
-		return radix.Dial(network, addr,
-			radix.DialTimeout(1 * time.Minute),
-			radix.DialAuthUser(adminuser, adminpassword),
-		)
+	poolConfig := radix.PoolConfig{
+		Dialer: radix.Dialer{
+			AuthUser: adminuser,
+			AuthPass: adminpassword,
+		},
 	}
 
 	addr := fmt.Sprintf("%s:%d", hostname, port)
-	
-	pool, err := radix.NewPool("tcp", addr, 1, radix.PoolConnFunc(customConnFunc)) // [TODO] poolopts for timeout from ctx??
+	client, err := poolConfig.New(context.Background(), "tcp", addr)
 	if err != nil {
-		return errwrap.Wrapf("error in Connection: {{err}}", err)
+		return err
 	}
 
 	var response string
-	
-	err = pool.Do(radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">" + password, aclRule))
+	err = client.Do(context.Background(), radix.Cmd(&response, "ACL", "SETUSER", username, "on", ">"+password, aclRule))
 
 	fmt.Printf("Response in createUser: %s\n", response)
 
@@ -42,14 +30,11 @@ func createUser(hostname string, port int, adminuser, adminpassword, username, p
 		return err
 	}
 
-	if pool != nil {
-		if err = pool.Close(); err != nil {
+	if client != nil {
+		if err = client.Close(); err != nil {
 			return err
 		}
 	}
 
-
 	return nil
 }
-
-

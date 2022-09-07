@@ -76,8 +76,23 @@ func (b *backend) configFields() map[string]*framework.FieldSchema {
 }
 
 func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.Request, fieldData *framework.FieldData) (*logical.Response, error) {
+	conf, err := readConfig(ctx, req.Storage)
+	if err != nil {
+		return nil, err
+	}
+	if conf == nil {
+		conf = new(config)
+		conf.LDAP = new(client.Config)
+	}
+
+	// Use the existing ldap client config if it is set
+	var existing *ldaputil.ConfigEntry
+	if conf.LDAP != nil && conf.LDAP.ConfigEntry != nil {
+		existing = conf.LDAP.ConfigEntry
+	}
+
 	// Build and validate the ldap conf.
-	ldapConf, err := ldaputil.NewConfigEntry(nil, fieldData)
+	ldapConf, err := ldaputil.NewConfigEntry(existing, fieldData)
 	if err != nil {
 		return nil, err
 	}
@@ -114,16 +129,13 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 		return nil, fmt.Errorf("cannot set both 'password_policy' and 'length'")
 	}
 
-	config := config{
-		LDAP: &client.Config{
-			ConfigEntry: ldapConf,
-			Schema:      schema,
-		},
-		PasswordPolicy: passPolicy,
-		PasswordLength: passLength,
-	}
+	// Update config field values
+	conf.PasswordPolicy = passPolicy
+	conf.PasswordLength = passLength
+	conf.LDAP.ConfigEntry = ldapConf
+	conf.LDAP.Schema = schema
 
-	err = writeConfig(ctx, req.Storage, config)
+	err = writeConfig(ctx, req.Storage, *conf)
 	if err != nil {
 		return nil, err
 	}

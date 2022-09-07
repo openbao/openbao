@@ -228,6 +228,68 @@ func TestConfig_Update(t *testing.T) {
 			t.Fatalf("no response expected, got: %#v", resp)
 		}
 	})
+
+	t.Run("update retains prior config values in storage", func(t *testing.T) {
+		b, storage := getBackend(false)
+		defer b.Cleanup(context.Background())
+
+		data := map[string]interface{}{
+			"binddn":      "tester",
+			"bindpass":    "pa$$w0rd",
+			"url":         "ldap://138.91.247.105",
+			"certificate": validCertificate,
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		// certificate is intentionally omitted for the update in order
+		// to test that it's value set at creation time is retained.
+		data = map[string]interface{}{
+			"binddn":   "newtester",
+			"bindpass": "pa$$w0rd",
+			"url":      "ldap://138.91.247.105",
+		}
+
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      nil,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		// Assert that the certificate is retained in storage after the update
+		if resp.Data["certificate"] != validCertificate {
+			t.Fatalf("expected certificate to be %q after update, got %q",
+				validCertificate, resp.Data["certificate"])
+		}
+	})
 }
 
 func TestConfig_Delete(t *testing.T) {

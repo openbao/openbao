@@ -94,6 +94,8 @@ func (b *backend) pathRotateRootCredentialsUpdate(ctx context.Context, req *logi
 		return nil, err
 	}
 	config.LDAP.BindPassword = newPassword
+	config.LDAP.LastBindPassword = oldPassword
+	config.LDAP.LastBindPasswordRotation = time.Now()
 
 	// Update the password locally.
 	if pwdStoringErr := storePassword(ctx, req.Storage, config); pwdStoringErr != nil {
@@ -110,6 +112,7 @@ due to %s, configure a new binddn and bindpass to restore openldap function`, pw
 	// Respond with a 204.
 	return nil, nil
 }
+
 func (b *backend) pathRotateRoleCredentialsUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 	if name == "" {

@@ -177,6 +177,9 @@ func (b *backend) configReadOperation(ctx context.Context, req *logical.Request,
 	if config.PasswordPolicy != "" {
 		configMap["password_policy"] = config.PasswordPolicy
 	}
+	if !config.LDAP.LastBindPasswordRotation.IsZero() {
+		configMap["last_bind_password_rotation"] = config.LDAP.LastBindPasswordRotation
+	}
 
 	resp := &logical.Response{
 		Data: configMap,

@@ -7,14 +7,16 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
-func TestManaulRotate(t *testing.T) {
+func TestManualRotate(t *testing.T) {
 	t.Run("rotate root", func(t *testing.T) {
 		b, storage := getBackend(false)
 		defer b.Cleanup(context.Background())
 
+		originalBindPass := "pa$$w0rd"
+
 		data := map[string]interface{}{
 			"binddn":      "tester",
-			"bindpass":    "pa$$w0rd",
+			"bindpass":    originalBindPass,
 			"url":         "ldap://138.91.247.105",
 			"certificate": validCertificate,
 		}
@@ -41,6 +43,18 @@ func TestManaulRotate(t *testing.T) {
 		resp, err = b.HandleRequest(context.Background(), req)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		config, err := readConfig(context.Background(), storage)
+		if err != nil {
+			t.Fatalf("expected nil error, got %v", err)
+		}
+		if config.LDAP.LastBindPassword != originalBindPass {
+			t.Fatalf("expected last_bind_password %q, got %q", originalBindPass,
+				config.LDAP.LastBindPassword)
+		}
+		if config.LDAP.LastBindPasswordRotation.IsZero() {
+			t.Fatal("expected last_bind_password_rotation to not be the zero time instant")
 		}
 	})
 

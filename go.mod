@@ -1,4 +1,4 @@
-module github.com/fhitchen/vault-plugin-database-redis
+module github.com/hashicorp/vault-plugin-database-redis
 
 go 1.14
 

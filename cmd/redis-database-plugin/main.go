@@ -4,7 +4,7 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	redis "github.com/fhitchen/vault-plugin-database-redis"
+	redis "github.com/hashicorp/vault-plugin-database-redis"
 	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 )
 

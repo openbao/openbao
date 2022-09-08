@@ -126,7 +126,7 @@ func (b *backend) pathStaticRoleDelete(ctx context.Context, req *logical.Request
 	lock.Lock()
 	defer lock.Unlock()
 
-	//TODO: Add retry logic
+	// TODO: Add retry logic
 
 	// Remove the item from the queue
 	_, err := b.popFromRotationQueueByKey(name)
@@ -283,7 +283,7 @@ func (b *backend) pathStaticRoleCreateUpdate(ctx context.Context, req *logical.R
 		// In case this is an update, remove any previous version of the item from
 		// the queue. The existing item could be tracking a WAL ID for this role,
 		// so it's important to keep the existing item rather than recreate it.
-		//TODO: Add retry logic
+		// TODO: Add retry logic
 		item, err = b.popFromRotationQueueByKey(name)
 		if err != nil {
 			return nil, err

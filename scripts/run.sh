@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-MNT_PATH="openldap"
 PLUGIN_NAME="vault-plugin-secrets-openldap"
 PLUGIN_CATALOG_NAME="openldap"
 

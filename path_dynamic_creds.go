@@ -99,7 +99,6 @@ func (b *backend) pathDynamicCredsRead(ctx context.Context, req *logical.Request
 // upon completion if any occurred.
 func (b *backend) executeLDIF(config *client.Config, ldifTemplate string, templateData dynamicTemplateData, continueOnError bool) (dns []string, err error) {
 	rawLDIF, err := applyTemplate(ldifTemplate, templateData)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply template: %w", err)
 	}

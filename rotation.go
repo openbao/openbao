@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/consts"
@@ -327,7 +326,7 @@ func (b *backend) setStaticAccountPassword(ctx context.Context, s logical.Storag
 	if output.WALID != "" {
 		wal, err := b.findStaticWAL(ctx, s, output.WALID)
 		if err != nil {
-			return output, errwrap.Wrapf("error retrieving WAL entry: {{err}}", err)
+			return output, fmt.Errorf("error retrieving WAL entry: %w", err)
 		}
 
 		switch {
@@ -363,7 +362,7 @@ func (b *backend) setStaticAccountPassword(ctx context.Context, s logical.Storag
 		})
 		b.Logger().Debug("wrote WAL", "role", input.RoleName, "WAL ID", output.WALID)
 		if err != nil {
-			return output, errwrap.Wrapf("error writing WAL entry: {{err}}", err)
+			return output, fmt.Errorf("error writing WAL entry: %w", err)
 		}
 	}
 
@@ -384,6 +383,7 @@ func (b *backend) setStaticAccountPassword(ctx context.Context, s logical.Storag
 	// lvr is the known LastVaultRotation
 	lvr := time.Now()
 	input.Role.StaticAccount.LastVaultRotation = lvr
+	input.Role.StaticAccount.LastPassword = input.Role.StaticAccount.Password
 	input.Role.StaticAccount.Password = newPassword
 	output.RotationTime = lvr
 

@@ -101,9 +101,15 @@ func TestAutoRotate(t *testing.T) {
 		if resp.Data["password"] == "" {
 			t.Fatal("expected password to be set after auto rotation, it wasn't")
 		}
+		if resp.Data["last_password"] == "" {
+			t.Fatal("expected last_password to be set after auto rotation, it wasn't")
+		}
 
 		if oldPassword == resp.Data["password"] {
 			t.Fatal("expected passwords to be different after auto rotation, they weren't")
+		}
+		if oldPassword != resp.Data["last_password"] {
+			t.Fatal("expected last_password to be equal to old password after auto rotation")
 		}
 	})
 }

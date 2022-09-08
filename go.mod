@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/go-ldap/ldap/v3 v3.4.1
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
-	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
@@ -28,6 +27,7 @@ require (
 	github.com/go-asn1-ber/asn1-ber v1.5.1 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/entropy v0.1.0 // indirect

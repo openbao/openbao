@@ -152,50 +152,6 @@ func shouldTryLastPwd(lastPwd string, lastBindPasswordRotation time.Time) bool {
 	return lastBindPasswordRotation.Add(10 * time.Minute).After(time.Now())
 }
 
-func (c *Client) Add(cfg *Config, req *ldap.AddRequest) error {
-	if req == nil {
-		return fmt.Errorf("invalid request: request is nil")
-	}
-	if req.DN == "" {
-		return fmt.Errorf("invalid request: DN is empty")
-	}
-	conn, err := c.ldap.DialLDAP(cfg.ConfigEntry)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	if err := bind(cfg, conn); err != nil {
-		return err
-	}
-
-	err = conn.Add(req)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *Client) Del(cfg *Config, req *ldap.DelRequest) error {
-	if req == nil {
-		return fmt.Errorf("invalid request: request is nil")
-	}
-	if req.DN == "" {
-		return fmt.Errorf("invalid request: DN is empty")
-	}
-	conn, err := c.ldap.DialLDAP(cfg.ConfigEntry)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	if err := bind(cfg, conn); err != nil {
-		return err
-	}
-
-	return conn.Del(req)
-}
-
 func (c *Client) Execute(cfg *Config, entries []*ldif.Entry, continueOnFailure bool) (err error) {
 	if len(entries) == 0 {
 		return nil

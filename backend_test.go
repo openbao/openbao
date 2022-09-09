@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
@@ -55,19 +54,6 @@ type fakeLdapClient struct {
 	throwErrs bool
 }
 
-func (f *fakeLdapClient) Get(_ *client.Config, _ string) (*client.Entry, error) {
-	entry := &ldap.Entry{}
-	entry.Attributes = append(entry.Attributes, &ldap.EntryAttribute{
-		Name:   client.FieldRegistry.PasswordLastSet.String(),
-		Values: []string{"131680504285591921"},
-	})
-	var err error
-	if f.throwErrs {
-		err = errors.New("forced error")
-	}
-	return client.NewEntry(entry), err
-}
-
 func (f *fakeLdapClient) UpdatePassword(_ *client.Config, _ string, _ string) error {
 	var err error
 	if f.throwErrs {
@@ -82,14 +68,6 @@ func (f *fakeLdapClient) UpdateRootPassword(_ *client.Config, _ string) error {
 		err = errors.New("forced error")
 	}
 	return err
-}
-
-func (f *fakeLdapClient) Add(_ *client.Config, _ *ldap.AddRequest) error {
-	return fmt.Errorf("not implemented")
-}
-
-func (f *fakeLdapClient) Del(_ *client.Config, _ *ldap.DelRequest) error {
-	return fmt.Errorf("not implemented")
 }
 
 func (f *fakeLdapClient) Execute(_ *client.Config, _ []*ldif.Entry, _ bool) (err error) {

@@ -3,7 +3,6 @@ package openldap
 import (
 	"context"
 
-	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -14,21 +13,6 @@ var _ ldapClient = (*mockLDAPClient)(nil)
 
 type mockLDAPClient struct {
 	mock.Mock
-}
-
-func (m *mockLDAPClient) Add(conf *client.Config, request *ldap.AddRequest) error {
-	args := m.Called(conf, request)
-	return args.Error(0)
-}
-
-func (m *mockLDAPClient) Get(conf *client.Config, dn string) (*client.Entry, error) {
-	args := m.Called(conf, dn)
-	return args.Get(0).(*client.Entry), args.Error(1)
-}
-
-func (m *mockLDAPClient) Del(conf *client.Config, delRequest *ldap.DelRequest) error {
-	args := m.Called(conf, delRequest)
-	return args.Error(0)
 }
 
 func (m *mockLDAPClient) UpdatePassword(conf *client.Config, dn string, newPassword string) error {

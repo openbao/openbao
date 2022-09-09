@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -35,6 +36,89 @@ func TestConfig_Create(t *testing.T) {
 					"url", "ldap://138.91.247.105",
 					"certificate", validCertificate,
 					"request_timeout", 60,
+				),
+			},
+		},
+		"non-default userattr of uid": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"certificate":     validCertificate,
+				"request_timeout": 60,
+				"userattr":        "uid",
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"certificate", validCertificate,
+					"request_timeout", 60,
+					"userattr", "uid",
+				),
+			},
+		},
+		"default userattr for openldap schema": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"certificate":     validCertificate,
+				"request_timeout": 60,
+				"schema":          client.SchemaOpenLDAP,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"certificate", validCertificate,
+					"request_timeout", 60,
+					"userattr", "cn",
+					"schema", client.SchemaOpenLDAP,
+				),
+			},
+		},
+		"default userattr for ad schema": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"certificate":     validCertificate,
+				"request_timeout": 60,
+				"schema":          client.SchemaAD,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"certificate", validCertificate,
+					"request_timeout", 60,
+					"userattr", "userPrincipalName",
+					"schema", client.SchemaAD,
+				),
+			},
+		},
+		"default userattr for racf schema": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":          "tester",
+				"bindpass":        "pa$$w0rd",
+				"url":             "ldap://138.91.247.105",
+				"certificate":     validCertificate,
+				"request_timeout": 60,
+				"schema":          client.SchemaRACF,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"certificate", validCertificate,
+					"request_timeout", 60,
+					"userattr", "racfid",
+					"schema", client.SchemaRACF,
 				),
 			},
 		},
@@ -114,7 +198,8 @@ func TestConfig_Create(t *testing.T) {
 			defer b.Cleanup(context.Background())
 
 			req := &logical.Request{
-				Storage: storage,
+				Storage:   storage,
+				Operation: logical.CreateOperation,
 			}
 
 			resp, err := b.configCreateUpdateOperation(context.Background(), req, test.createData)
@@ -330,6 +415,42 @@ func TestConfig_Delete(t *testing.T) {
 	})
 }
 
+func Test_defaultUserAttr(t *testing.T) {
+	tests := []struct {
+		name   string
+		schema string
+		want   string
+	}{
+		{
+			name:   "default userattr for openldap schema",
+			schema: client.SchemaOpenLDAP,
+			want:   "cn",
+		},
+		{
+			name:   "default userattr for ad schema",
+			schema: client.SchemaAD,
+			want:   "userPrincipalName",
+		},
+		{
+			name:   "default userattr for racf schema",
+			schema: client.SchemaRACF,
+			want:   "racfid",
+		},
+		{
+			name:   "default userattr for unknown schema",
+			schema: "unknown",
+			want:   "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := defaultUserAttr(tt.schema); got != tt.want {
+				t.Errorf("defaultUserAttr() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func fieldData(raw map[string]interface{}) *framework.FieldData {
 	fields := ldaputil.ConfigFields()
 	fields["ttl"] = &framework.FieldSchema{
@@ -381,6 +502,7 @@ func ldapResponseData(vals ...interface{}) map[string]interface{} {
 		"groupfilter":            "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))",
 		"insecure_tls":           false,
 		"starttls":               false,
+		"schema":                 client.SchemaOpenLDAP,
 		"tls_max_version":        defaultTLSVersion,
 		"tls_min_version":        defaultTLSVersion,
 		"upndomain":              "",

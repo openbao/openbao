@@ -15,7 +15,7 @@ import (
 const (
 	configPath            = "config"
 	defaultPasswordLength = 64
-	defaultSchema         = "openldap"
+	defaultSchema         = client.SchemaOpenLDAP
 	defaultTLSVersion     = "tls12"
 	defaultCtxTimeout     = 1 * time.Minute
 )
@@ -39,11 +39,21 @@ func (b *backend) pathConfig() []*framework.Path {
 					Callback: b.configDeleteOperation,
 				},
 			},
-			HelpSynopsis: "Configure the OpenLDAP secret engine plugin.",
+			ExistenceCheck: b.pathConfigExistenceCheck,
+			HelpSynopsis:   "Configure the OpenLDAP secret engine plugin.",
 			HelpDescription: "This path configures the OpenLDAP secret engine plugin. See the documentation for the " +
 				"plugin specified for a full list of accepted connection details.",
 		},
 	}
+}
+
+func (b *backend) pathConfigExistenceCheck(ctx context.Context, req *logical.Request, _ *framework.FieldData) (bool, error) {
+	entry, err := readConfig(ctx, req.Storage)
+	if err != nil {
+		return false, err
+	}
+
+	return entry != nil, nil
 }
 
 func (b *backend) configFields() map[string]*framework.FieldSchema {
@@ -118,12 +128,18 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 	}
 
 	if !client.ValidSchema(schema) {
-		return nil, fmt.Errorf("the configured schema %s is not valid.  Supported schemas: %s",
+		return nil, fmt.Errorf("the configured schema %s is not valid. Supported schemas: %s",
 			schema, client.SupportedSchemas())
 	}
 
-	passPolicy := fieldData.Get("password_policy").(string)
+	// Set the userattr if given. Otherwise, set the default for creates.
+	if userAttrRaw, ok := fieldData.GetOk("userattr"); ok {
+		ldapConf.UserAttr = userAttrRaw.(string)
+	} else if req.Operation == logical.CreateOperation {
+		ldapConf.UserAttr = defaultUserAttr(schema)
+	}
 
+	passPolicy := fieldData.Get("password_policy").(string)
 	if passPolicy != "" && hasPassLen {
 		// If both a password policy and a password length are set, we can't figure out what to do
 		return nil, fmt.Errorf("cannot set both 'password_policy' and 'length'")
@@ -142,6 +158,21 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 
 	// Respond with a 204.
 	return nil, nil
+}
+
+// defaultUserAttr returns the default user attribute for the given
+// schema or an empty string if the schema is unknown.
+func defaultUserAttr(schema string) string {
+	switch schema {
+	case client.SchemaAD:
+		return "userPrincipalName"
+	case client.SchemaRACF:
+		return "racfid"
+	case client.SchemaOpenLDAP:
+		return "cn"
+	default:
+		return ""
+	}
 }
 
 func readConfig(ctx context.Context, storage logical.Storage) (*config, error) {
@@ -181,8 +212,7 @@ func (b *backend) configReadOperation(ctx context.Context, req *logical.Request,
 	}
 
 	// "password" is intentionally not returned by this endpoint
-	configMap := config.LDAP.Map()
-	delete(configMap, "bindpass")
+	configMap := config.LDAP.PasswordlessMap()
 	if config.PasswordLength > 0 {
 		configMap["length"] = config.PasswordLength
 	}
@@ -191,6 +221,9 @@ func (b *backend) configReadOperation(ctx context.Context, req *logical.Request,
 	}
 	if !config.LDAP.LastBindPasswordRotation.IsZero() {
 		configMap["last_bind_password_rotation"] = config.LDAP.LastBindPasswordRotation
+	}
+	if config.LDAP.Schema != "" {
+		configMap["schema"] = config.LDAP.Schema
 	}
 
 	resp := &logical.Response{

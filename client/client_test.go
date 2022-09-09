@@ -116,7 +116,7 @@ func TestUpdatePasswordOpenLDAP(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	newValues, err := GetSchemaFieldRegistry("openldap", testPass)
+	newValues, err := GetSchemaFieldRegistry(SchemaOpenLDAP, testPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestUpdatePasswordRACF(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	newValues, err := GetSchemaFieldRegistry("racf", testPass)
+	newValues, err := GetSchemaFieldRegistry(SchemaRACF, testPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestUpdatePasswordAD(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	newValues, err := GetSchemaFieldRegistry("ad", testPass)
+	newValues, err := GetSchemaFieldRegistry(SchemaAD, testPass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestUpdateRootPassword(t *testing.T) {
 		FieldRegistry.ObjectClass: {"*"},
 	}
 
-	newValues, err := GetSchemaFieldRegistry("openldap", testPass)
+	newValues, err := GetSchemaFieldRegistry(SchemaOpenLDAP, testPass)
 	if err != nil {
 		t.Fatal(err)
 	}

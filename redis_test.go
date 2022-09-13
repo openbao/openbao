@@ -10,8 +10,8 @@ import (
 
 	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/mediocregopher/radix/v4"
-	"github.com/ory/dockertest"
-	dc "github.com/ory/dockertest/docker"
+	"github.com/ory/dockertest/v3"
+	dc "github.com/ory/dockertest/v3/docker"
 )
 
 var pre6dot5 = false // check for Pre 6.5.0 Redis

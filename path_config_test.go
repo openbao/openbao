@@ -481,7 +481,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	token2 := "after-renewal"
 
 	// Write initial token to the temp file.
-	ioutil.WriteFile(f.Name(), []byte(token1), 0644)
+	ioutil.WriteFile(f.Name(), []byte(token1), 0o644)
 
 	data := map[string]interface{}{
 		"kubernetes_host": "host",
@@ -510,7 +510,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	}
 
 	// Write new value to the token file to simulate renewal.
-	ioutil.WriteFile(f.Name(), []byte(token2), 0644)
+	ioutil.WriteFile(f.Name(), []byte(token2), 0o644)
 
 	// Load again to check we still got the old cached token from memory.
 	conf, err = b.(*kubeAuthBackend).loadConfig(context.Background(), storage)

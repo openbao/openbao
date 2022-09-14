@@ -27,7 +27,7 @@ func TestCachingFileReader(t *testing.T) {
 		})
 
 	// Write initial content to file and check that we can read it.
-	ioutil.WriteFile(f.Name(), []byte(content1), 0644)
+	ioutil.WriteFile(f.Name(), []byte(content1), 0o644)
 	got, err := r.ReadFile()
 	if err != nil {
 		t.Error(err)
@@ -37,7 +37,7 @@ func TestCachingFileReader(t *testing.T) {
 	}
 
 	// Write new content to the file.
-	ioutil.WriteFile(f.Name(), []byte(content2), 0644)
+	ioutil.WriteFile(f.Name(), []byte(content2), 0o644)
 
 	// Advance simulated time, but not enough for cache to expire.
 	currentTime = currentTime.Add(30 * time.Second)

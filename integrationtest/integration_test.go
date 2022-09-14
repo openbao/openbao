@@ -17,11 +17,12 @@ import (
 
 // Set the environment variable INTEGRATION_TESTS to any non-empty value to run
 // the tests in this package. The test assumes it has available:
-//   - kubectl
-//   - A Kubernetes cluster in which:
-//       - it can use the `test` namespace
-//       - Vault is deployed and accessible
-//       - There is a serviceaccount called test-token-reviewer-account with access to the TokenReview API
+// - kubectl
+// - A Kubernetes cluster in which:
+//   - it can use the `test` namespace
+//   - Vault is deployed and accessible
+//   - There is a serviceaccount called test-token-reviewer-account with access to the TokenReview API
+//
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {

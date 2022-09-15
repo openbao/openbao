@@ -29,7 +29,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	dn := "CN=Jim H.. Jones,OU=Vault,OU=Engineering,DC=example,DC=com"
-	entries, err := client.Search(config, dn, filters)
+	entries, err := client.Search(config, dn, ldap.ScopeBaseObject, filters)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestUpdateEntry(t *testing.T) {
 		FieldRegistry.CommonName: {"Blue", "Red"},
 	}
 
-	if err := client.UpdateEntry(config, dn, filters, newValues); err != nil {
+	if err := client.UpdateEntry(config, dn, ldap.ScopeBaseObject, filters, newValues); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -121,7 +121,7 @@ func TestUpdatePasswordOpenLDAP(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
+	if err := client.UpdatePassword(config, dn, ldap.ScopeBaseObject, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -161,7 +161,7 @@ func TestUpdatePasswordRACF(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
+	if err := client.UpdatePassword(config, dn, ldap.ScopeBaseObject, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -211,7 +211,7 @@ func TestUpdatePasswordAD(t *testing.T) {
 		t.Fatalf("Expected unicodePwd field equal to %q but got %q", encodedTestPass, p[0])
 	}
 
-	if err := client.UpdatePassword(config, dn, newValues, filters); err != nil {
+	if err := client.UpdatePassword(config, dn, ldap.ScopeBaseObject, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -254,7 +254,7 @@ func TestUpdateRootPassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := client.UpdatePassword(config, config.BindDN, newValues, filters); err != nil {
+	if err := client.UpdatePassword(config, config.BindDN, ldap.ScopeBaseObject, newValues, filters); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -40,9 +40,9 @@ func (b *backend) pathConfig() []*framework.Path {
 				},
 			},
 			ExistenceCheck: b.pathConfigExistenceCheck,
-			HelpSynopsis:   "Configure the OpenLDAP secret engine plugin.",
-			HelpDescription: "This path configures the OpenLDAP secret engine plugin. See the documentation for the " +
-				"plugin specified for a full list of accepted connection details.",
+			HelpSynopsis:   "Configure the LDAP secrets engine plugin.",
+			HelpDescription: "This path configures the LDAP secrets engine plugin. See the " +
+				"documentation for the plugin for a full list of accepted parameters.",
 		},
 	}
 }
@@ -69,7 +69,7 @@ func (b *backend) configFields() map[string]*framework.FieldSchema {
 	fields["schema"] = &framework.FieldSchema{
 		Type:        framework.TypeString,
 		Default:     defaultSchema,
-		Description: "The desired OpenLDAP schema used when modifying user account passwords.",
+		Description: "The desired LDAP schema used when modifying user account passwords.",
 	}
 	fields["password_policy"] = &framework.FieldSchema{
 		Type:        framework.TypeString,
@@ -116,11 +116,6 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 		rawPassLength = 0 // Don't set to the default but keep this as the zero value so we know it hasn't been set
 	}
 	passLength := rawPassLength.(int)
-	url := fieldData.Get("url").(string)
-
-	if url == "" {
-		return nil, errors.New("url is required")
-	}
 
 	schema := fieldData.Get("schema").(string)
 	if schema == "" {

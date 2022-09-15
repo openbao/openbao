@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-ldap/ldap/v3"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
@@ -28,7 +29,7 @@ func main() {
 		client.FieldRegistry.DisplayName: {"Sara", "Sarah"},
 	}
 
-	entries, err := c.Search(config, config.UserDN, filters)
+	entries, err := c.Search(config, config.UserDN, ldap.ScopeBaseObject, filters)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

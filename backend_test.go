@@ -54,7 +54,7 @@ type fakeLdapClient struct {
 	throwErrs bool
 }
 
-func (f *fakeLdapClient) UpdatePassword(_ *client.Config, _ string, _ string) error {
+func (f *fakeLdapClient) UpdateUserPassword(_ *client.Config, _ string, _ string) error {
 	var err error
 	if f.throwErrs {
 		err = errors.New("forced error")
@@ -62,7 +62,7 @@ func (f *fakeLdapClient) UpdatePassword(_ *client.Config, _ string, _ string) er
 	return err
 }
 
-func (f *fakeLdapClient) UpdateRootPassword(_ *client.Config, _ string) error {
+func (f *fakeLdapClient) UpdateDNPassword(_ *client.Config, _ string, _ string) error {
 	var err error
 	if f.throwErrs {
 		err = errors.New("forced error")

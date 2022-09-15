@@ -38,10 +38,10 @@ type Client struct {
 	ldap *ldaputil.Client
 }
 
-func (c *Client) Search(cfg *Config, baseDN string, filters map[*Field][]string) ([]*Entry, error) {
+func (c *Client) Search(cfg *Config, baseDN string, scope int, filters map[*Field][]string) ([]*Entry, error) {
 	req := &ldap.SearchRequest{
 		BaseDN:    baseDN,
-		Scope:     ldap.ScopeBaseObject,
+		Scope:     scope,
 		Filter:    toString(filters),
 		SizeLimit: math.MaxInt32,
 	}
@@ -68,8 +68,8 @@ func (c *Client) Search(cfg *Config, baseDN string, filters map[*Field][]string)
 	return entries, nil
 }
 
-func (c *Client) UpdateEntry(cfg *Config, baseDN string, filters map[*Field][]string, newValues map[*Field][]string) error {
-	entries, err := c.Search(cfg, baseDN, filters)
+func (c *Client) UpdateEntry(cfg *Config, baseDN string, scope int, filters map[*Field][]string, newValues map[*Field][]string) error {
+	entries, err := c.Search(cfg, baseDN, scope, filters)
 	if err != nil {
 		return err
 	}
@@ -98,14 +98,15 @@ func (c *Client) UpdateEntry(cfg *Config, baseDN string, filters map[*Field][]st
 	return conn.Modify(modifyReq)
 }
 
-// UpdatePassword uses a Modify call under the hood instead of LDAP change password function.
-// This allows AD and OpenLDAP secret engines to use the same api without changes to
-// the interface.
-func (c *Client) UpdatePassword(cfg *Config, baseDN string, newValues map[*Field][]string, filters map[*Field][]string) error {
-	return c.UpdateEntry(cfg, baseDN, filters, newValues)
+// UpdatePassword uses a Modify call under the hood instead of LDAP change
+// password function. This allows AD and OpenLDAP schemas to use the same
+// api without changes to the interface.
+func (c *Client) UpdatePassword(cfg *Config, baseDN string, scope int, newValues map[*Field][]string, filters map[*Field][]string) error {
+	return c.UpdateEntry(cfg, baseDN, scope, filters, newValues)
 }
 
-// Ex. "(cn=Ellen Jones)"
+// toString turns the following map of filters into LDAP search filter strings
+// For example: "(cn=Ellen Jones)"
 func toString(filters map[*Field][]string) string {
 	var fieldEquals []string
 	for f, values := range filters {
@@ -122,25 +123,46 @@ func bind(cfg *Config, conn ldaputil.Connection) error {
 		return errors.New("unable to bind due to lack of configured password")
 	}
 
-	if cfg.BindDN == "" {
-		return errors.New("must provide binddn")
+	// Determine the user to bind with
+	var bindUser string
+	switch {
+	case cfg.UPNDomain != "":
+		bindUser = fmt.Sprintf("%s@%s", ldaputil.EscapeLDAPValue(cfg.BindDN), cfg.UPNDomain)
+	case cfg.BindDN != "":
+		bindUser = cfg.BindDN
+	default:
+		return errors.New("must provide binddn or upndomain")
 	}
 
-	origErr := conn.Bind(cfg.BindDN, cfg.BindPassword)
-	if origErr == nil {
+	merr := new(multierror.Error)
+
+	// Bind using the bind password. If this fails, attempt to bind with the prior
+	// bind password for at most 10 minutes. We do this to allow continued operation
+	// after a root credential rotation where we may not be able to bind with the new
+	// password immediately.
+	err := conn.Bind(bindUser, cfg.BindPassword)
+	if err == nil {
 		return nil
 	}
+	merr = multierror.Append(merr, err)
+
 	if !shouldTryLastPwd(cfg.LastBindPassword, cfg.LastBindPasswordRotation) {
-		return origErr
+		return fmt.Errorf("failed to bind with current password: %w", merr.ErrorOrNil())
 	}
 
-	return conn.Bind(cfg.BindDN, cfg.LastBindPassword)
+	err = conn.Bind(bindUser, cfg.LastBindPassword)
+	if err == nil {
+		return nil
+	}
+	merr = multierror.Append(merr, err)
+
+	return fmt.Errorf("failed to bind with current and prior password: %w", merr.ErrorOrNil())
 }
 
 // shouldTryLastPwd determines if we should try a previous password.
 // LDAP can return a variety of errors when a password is invalid.
-// Rather than attempting to catalogue these errors across multiple versions of
-// OpenLDAP, we simply try the last password if it's been less than a set amount of
+// Rather than attempting to catalogue these errors across multiple implementations of
+// LDAP, we simply try the last password if it's been less than a set amount of
 // time since a rotation occurred.
 func shouldTryLastPwd(lastPwd string, lastBindPasswordRotation time.Time) bool {
 	if lastPwd == "" {

@@ -464,7 +464,7 @@ func fieldData(raw map[string]interface{}) *framework.FieldData {
 	fields["schema"] = &framework.FieldSchema{
 		Type:        framework.TypeString,
 		Default:     defaultSchema,
-		Description: "The desired OpenLDAP schema used when modifying user account passwords.",
+		Description: "The desired LDAP schema used when modifying user account passwords.",
 	}
 	fields["password_policy"] = &framework.FieldSchema{
 		Type:        framework.TypeString,
@@ -510,6 +510,8 @@ func ldapResponseData(vals ...interface{}) map[string]interface{} {
 		"use_token_groups":       false,
 		"userattr":               "cn",
 		"userdn":                 "",
+		"userfilter":             "({{.UserAttr}}={{.Username}})",
+		"username_as_alias":      false,
 	}
 
 	for i := 0; i < len(vals); i += 2 {

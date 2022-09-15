@@ -1235,7 +1235,7 @@ func dynamicRoleFieldData(data map[string]interface{}) *framework.FieldData {
 		},
 		"creation_ldif": {
 			Type:        framework.TypeString,
-			Description: "LDIF string used to create new entities within OpenLDAP. This LDIF can be templated.",
+			Description: "LDIF string used to create new entities within the LDAP system. This LDIF can be templated.",
 			Required:    true,
 		},
 		"username_template": {

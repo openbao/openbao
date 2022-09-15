@@ -6,10 +6,219 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/stretchr/testify/require"
 )
 
+func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
+	b, storage := getBackend(false)
+	defer b.Cleanup(context.Background())
+	ctx := context.Background()
+
+	req := &logical.Request{
+		Operation: logical.CreateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"binddn":      "tester",
+			"bindpass":    "pa$$w0rd",
+			"url":         "ldap://138.91.247.105",
+			"certificate": validCertificate,
+		},
+	}
+	_, err := b.HandleRequest(ctx, req)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name          string
+		createData    map[string]interface{}
+		updateData    map[string]interface{}
+		wantCreateErr bool
+		wantUpdateErr bool
+	}{
+		{
+			name: "missing required username results in create error",
+			createData: map[string]interface{}{
+				"rotation_period": float64(5),
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "empty required username results in create error",
+			createData: map[string]interface{}{
+				"username":        "",
+				"rotation_period": float64(5),
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "missing required rotation_period results in create error",
+			createData: map[string]interface{}{
+				"username": "bob",
+				"dn":       "uid=bob,ou=users,dc=hashicorp,dc=com",
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "rotation_period less than 5 seconds results in create error",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(2),
+			},
+			wantCreateErr: true,
+		},
+		{
+			name: "modified username results in update error",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username": "alice",
+			},
+			wantUpdateErr: true,
+		},
+		{
+			name: "modified dn results in update error",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username": "bob",
+				"dn":       "uid=alice,ou=users,dc=hashicorp,dc=com",
+			},
+			wantUpdateErr: true,
+		},
+		{
+			name: "successful static role update with only username",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username": "bob",
+			},
+		},
+		{
+			name: "successful static role update with missing dn",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username":        "bob",
+				"rotation_period": float64(20),
+			},
+		},
+		{
+			name: "successful static role update with empty dn",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username": "bob",
+				"dn":       "",
+			},
+		},
+		{
+			name: "successful static role update with new rotation_period",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username":        "bob",
+				"dn":              "uid=bob,ou=users,dc=hashicorp,dc=com",
+				"rotation_period": float64(25),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// create the static role
+			req = &logical.Request{
+				Operation: logical.CreateOperation,
+				Path:      staticRolePath + "hashicorp",
+				Storage:   storage,
+				Data:      tt.createData,
+			}
+			resp, err := b.HandleRequest(ctx, req)
+			if tt.wantCreateErr {
+				isErr := err != nil || (resp != nil && resp.IsError())
+				require.True(t, isErr)
+				return
+			}
+
+			t.Cleanup(func() {
+				_, err = b.HandleRequest(ctx, &logical.Request{
+					Operation: logical.DeleteOperation,
+					Path:      staticRolePath + "hashicorp",
+					Storage:   storage,
+				})
+				require.NoError(t, err)
+			})
+
+			// read the static role
+			readReq := &logical.Request{
+				Operation: logical.ReadOperation,
+				Path:      staticRolePath + "hashicorp",
+				Storage:   storage,
+				Data:      nil,
+			}
+			resp, err = b.HandleRequest(ctx, readReq)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.False(t, resp.IsError())
+
+			// assert response has expected fields
+			for key, expected := range tt.createData {
+				actual := resp.Data[key]
+				if actual != expected {
+					t.Fatalf("expected %v to be %v, got %v", key, expected, actual)
+				}
+			}
+			require.NotEmpty(t, resp.Data["last_vault_rotation"])
+
+			// update the static role
+			req = &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      staticRolePath + "hashicorp",
+				Storage:   storage,
+				Data:      tt.updateData,
+			}
+			resp, err = b.HandleRequest(ctx, req)
+			if tt.wantUpdateErr {
+				isErr := err != nil || (resp != nil && resp.IsError())
+				require.True(t, isErr)
+				return
+			}
+
+			// read the static role again
+			resp, err = b.HandleRequest(ctx, readReq)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.False(t, resp.IsError())
+
+			// assert response has expected fields
+			for key, expected := range tt.updateData {
+				actual := resp.Data[key]
+				if actual != expected {
+					t.Fatalf("expected %v to be %v, got %v", key, expected, actual)
+				}
+			}
+			require.NotEmpty(t, resp.Data["last_vault_rotation"])
+		})
+	}
+}
+
 func TestRoles(t *testing.T) {
-	t.Run("happy path with roles", func(t *testing.T) {
+	t.Run("happy path with role using DN search", func(t *testing.T) {
 		b, storage := getBackend(false)
 		defer b.Cleanup(context.Background())
 
@@ -78,8 +287,7 @@ func TestRoles(t *testing.T) {
 			t.Fatal("expected last_vault_rotation to not be empty")
 		}
 	})
-
-	t.Run("missing dn", func(t *testing.T) {
+	t.Run("happy path with role using username search", func(t *testing.T) {
 		b, storage := getBackend(false)
 		defer b.Cleanup(context.Background())
 
@@ -88,6 +296,7 @@ func TestRoles(t *testing.T) {
 			"bindpass":    "pa$$w0rd",
 			"url":         "ldap://138.91.247.105",
 			"certificate": validCertificate,
+			"userdn":      "ou=users,dc=hashicorp,dc=com",
 		}
 
 		req := &logical.Request{
@@ -104,6 +313,7 @@ func TestRoles(t *testing.T) {
 
 		data = map[string]interface{}{
 			"username":        "hashicorp",
+			"dn":              "",
 			"rotation_period": "5s",
 		}
 
@@ -115,8 +325,36 @@ func TestRoles(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
-		if resp == nil || !resp.IsError() {
-			t.Fatal("expected error")
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      staticRolePath + "hashicorp",
+			Storage:   storage,
+			Data:      nil,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		if resp.Data["dn"] != data["dn"] {
+			t.Fatalf("expected dn to be %s but got %s", data["dn"], resp.Data["dn"])
+		}
+
+		if resp.Data["username"] != data["username"] {
+			t.Fatalf("expected username to be %s but got %s", data["username"], resp.Data["username"])
+		}
+
+		if resp.Data["rotation_period"] != float64(5) {
+			t.Fatalf("expected rotation_period to be %d but got %s", 5, resp.Data["rotation_period"])
+		}
+
+		if resp.Data["last_vault_rotation"] == nil {
+			t.Fatal("expected last_vault_rotation to not be empty")
 		}
 	})
 

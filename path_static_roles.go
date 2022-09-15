@@ -39,10 +39,14 @@ func (b *backend) pathStaticRoles() []*framework.Path {
 			ExistenceCheck: b.pathStaticRoleExistenceCheck,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.pathStaticRoleCreateUpdate,
+					Callback:                    b.pathStaticRoleCreateUpdate,
+					ForwardPerformanceStandby:   true,
+					ForwardPerformanceSecondary: true,
 				},
 				logical.CreateOperation: &framework.PathOperation{
-					Callback: b.pathStaticRoleCreateUpdate,
+					Callback:                    b.pathStaticRoleCreateUpdate,
+					ForwardPerformanceStandby:   true,
+					ForwardPerformanceSecondary: true,
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathStaticRoleRead,
@@ -76,10 +80,6 @@ func fieldsForType(roleType string) map[string]*framework.FieldSchema {
 		"dn": {
 			Type:        framework.TypeString,
 			Description: "The distinguished name of the entry to manage.",
-		},
-		"ttl": {
-			Type:        framework.TypeDurationSecond,
-			Description: "The time-to-live for the password.",
 		},
 	}
 
@@ -147,6 +147,10 @@ func (b *backend) pathStaticRoleDelete(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
+	b.managedUserLock.Lock()
+	defer b.managedUserLock.Unlock()
+	delete(b.managedUsers, role.StaticAccount.Username)
+
 	walIDs, err := framework.ListWAL(ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -213,30 +217,56 @@ func (b *backend) pathStaticRoleCreateUpdate(ctx context.Context, req *logical.R
 		}
 	}
 
-	dn := data.Get("dn").(string)
-	if dn == "" {
-		return logical.ErrorResponse("dn is a required field to manage a static account"), nil
-	}
-	role.StaticAccount.DN = dn
+	isCreate := req.Operation == logical.CreateOperation
 
-	username := data.Get("username").(string)
-	if username == "" {
+	b.managedUserLock.Lock()
+	defer b.managedUserLock.Unlock()
+
+	usernameRaw, ok := data.GetOk("username")
+	if !ok && isCreate {
 		return logical.ErrorResponse("username is a required field to manage a static account"), nil
 	}
-	role.StaticAccount.Username = username
+	if ok {
+		username := usernameRaw.(string)
+		if username == "" {
+			return logical.ErrorResponse("username must not be empty"), nil
+		}
+		if _, exists := b.managedUsers[username]; exists && isCreate {
+			return logical.ErrorResponse("%q is already managed by the secrets engine", username), nil
+		}
+		if !isCreate && username != role.StaticAccount.Username {
+			return logical.ErrorResponse("cannot update static account username"), nil
+		}
+
+		role.StaticAccount.Username = username
+	}
+
+	// DN is optional. Unless it is unset via providing the empty string, it
+	// cannot be modified after creation. If given, it will take precedence
+	// over username for LDAP search during password rotation.
+	if dnRaw, ok := data.GetOk("dn"); ok {
+		dn := dnRaw.(string)
+		if !isCreate && dn != "" && dn != role.StaticAccount.DN {
+			return logical.ErrorResponse("cannot update static account distinguished name (dn)"), nil
+		}
+
+		role.StaticAccount.DN = dn
+	}
 
 	rotationPeriodSecondsRaw, ok := data.GetOk("rotation_period")
-	if !ok {
-		return logical.ErrorResponse("rotation_period is required for static accounts"), nil
+	if !ok && isCreate {
+		return logical.ErrorResponse("rotation_period is required to create static accounts"), nil
 	}
-	rotationPeriodSeconds := rotationPeriodSecondsRaw.(int)
-	if rotationPeriodSeconds < queueTickSeconds {
-		// If rotation frequency is specified the value
-		// must be at least that of the constant queueTickSeconds (5 seconds at
-		// time of writing), otherwise we wont be able to rotate in time
-		return logical.ErrorResponse("rotation_period must be %d seconds or more", queueTickSeconds), nil
+	if ok {
+		rotationPeriodSeconds := rotationPeriodSecondsRaw.(int)
+		if rotationPeriodSeconds < queueTickSeconds {
+			// If rotation frequency is specified the value must be at least
+			// that of the constant queueTickSeconds (5 seconds at time of writing),
+			// otherwise we won't be able to rotate in time
+			return logical.ErrorResponse("rotation_period must be %d seconds or more", queueTickSeconds), nil
+		}
+		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 	}
-	role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 
 	// lvr represents the role's LastVaultRotation
 	lvr := role.StaticAccount.LastVaultRotation
@@ -296,6 +326,8 @@ func (b *backend) pathStaticRoleCreateUpdate(ctx context.Context, req *logical.R
 	if err := b.pushItem(item); err != nil {
 		return nil, err
 	}
+
+	b.managedUsers[role.StaticAccount.Username] = struct{}{}
 
 	return nil, nil
 }
@@ -386,16 +418,18 @@ This path lets you manage the static roles that can be created with this
 backend. Static Roles are associated with a single LDAP entry, and manage the
 password based on a rotation period, automatically rotating the password.
 
-The "dn" parameter is required and configures the domain name to use when managing 
-the existing entry.
-
 The "username" parameter is required and configures the username for the LDAP entry. 
-This is helpful to provide a usable name when domain name (DN) isn't used directly for 
-authentication.
+This is helpful to provide a usable name when distinguished name (DN) isn't used 
+directly for authentication. If DN not provided, "username" will be used for LDAP 
+subtree search, rooted at the "userdn" configuration value. The name attribute to use 
+when searching for the user can be configured with the "userattr" configuration value.
 
+The "dn" parameter is optional and configures the distinguished name to use 
+when managing the existing entry. If the "dn" parameter is set, it will take 
+precedence over the "username" when LDAP searches are performed.
 
-The "rotation_period' parameter is required and configures how often, in seconds, the credentials should be 
-automatically rotated by Vault.  The minimum is 5 seconds (5s).
+The "rotation_period' parameter is required and configures how often, in seconds, 
+the credentials should be automatically rotated by Vault.  The minimum is 5 seconds (5s).
 `
 
 const staticRolesListHelpDescription = `
@@ -403,5 +437,5 @@ List all the static roles being managed by Vault.
 `
 
 const staticRolesListHelpSynopsis = `
-This path lists all the static roles Vault is currently managing in OpenLDAP.
+This path lists all the static roles Vault is currently managing within the LDAP system.
 `

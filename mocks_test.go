@@ -15,13 +15,13 @@ type mockLDAPClient struct {
 	mock.Mock
 }
 
-func (m *mockLDAPClient) UpdatePassword(conf *client.Config, dn string, newPassword string) error {
+func (m *mockLDAPClient) UpdateDNPassword(conf *client.Config, dn string, newPassword string) error {
 	args := m.Called(conf, dn, newPassword)
 	return args.Error(0)
 }
 
-func (m *mockLDAPClient) UpdateRootPassword(conf *client.Config, newPassword string) error {
-	args := m.Called(conf, newPassword)
+func (m *mockLDAPClient) UpdateUserPassword(conf *client.Config, user string, newPassword string) error {
+	args := m.Called(conf, user, newPassword)
 	return args.Error(0)
 }
 

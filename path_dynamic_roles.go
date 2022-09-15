@@ -17,14 +17,12 @@ import (
 
 const (
 	secretCredsType = "creds"
-
 	dynamicRolePath = "role/"
 	dynamicCredPath = "creds/"
 )
 
 func (b *backend) pathDynamicRoles() []*framework.Path {
 	return []*framework.Path{
-		// POST/GET/DELETE role/:name
 		{
 			Pattern: path.Join(dynamicRolePath, framework.GenericNameRegex("name")),
 			Fields: map[string]*framework.FieldSchema{
@@ -35,12 +33,12 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 				},
 				"creation_ldif": {
 					Type:        framework.TypeString,
-					Description: "LDIF string used to create new entities within OpenLDAP. This LDIF can be templated.",
+					Description: "LDIF string used to create new entities within the LDAP system. This LDIF can be templated.",
 					Required:    true,
 				},
 				"deletion_ldif": {
 					Type:        framework.TypeString,
-					Description: "LDIF string used to delete entities created within OpenLDAP. This LDIF can be templated.",
+					Description: "LDIF string used to delete entities created within the LDAP system. This LDIF can be templated.",
 					Required:    true,
 				},
 				"rollback_ldif": {
@@ -78,7 +76,6 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 			HelpSynopsis:    staticRoleHelpSynopsis,
 			HelpDescription: staticRoleHelpDescription,
 		},
-		// LIST role
 		{
 			Pattern: dynamicRolePath + "?$",
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -86,28 +83,8 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 					Callback: b.pathDynamicRoleList,
 				},
 			},
-			HelpSynopsis:    "List all the dynamic roles Vault is currently managing in OpenLDAP.",
+			HelpSynopsis:    "List all the dynamic roles Vault is currently managing in LDAP.",
 			HelpDescription: "List all the dynamic roles being managed by Vault.",
-		},
-		// GET credentials
-		{
-			Pattern: path.Join(dynamicCredPath, framework.MatchAllRegex("name")),
-			Fields: map[string]*framework.FieldSchema{
-				"name": {
-					Type:        framework.TypeLowerCaseString,
-					Description: "Name of the dynamic role.",
-				},
-			},
-			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.pathDynamicCredsRead,
-				},
-			},
-			HelpSynopsis: "Request LDAP credentials for a dynamic role. These credentials are " +
-				"created within OpenLDAP when querying this endpoint.",
-			HelpDescription: "This path requests new LDAP credentials for a certain dynamic role. " +
-				"The credentials are created within OpenLDAP based on the creation_ldif specified " +
-				"within the dynamic role configuration.",
 		},
 	}
 }

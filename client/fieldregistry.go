@@ -9,14 +9,13 @@ import (
 //
 // Example: Accessing constants
 //
-//   FieldRegistry.AccountExpires
-//   FieldRegistry.BadPasswordCount
+//	FieldRegistry.AccountExpires
+//	FieldRegistry.BadPasswordCount
 //
 // Example: Utility methods
 //
-//   FieldRegistry.List()
-//   FieldRegistry.Parse("givenName")
-//
+//	FieldRegistry.List()
+//	FieldRegistry.Parse("givenName")
 var FieldRegistry = newFieldRegistry()
 
 // newFieldRegistry iterates through all the fields in the registry,
@@ -58,9 +57,12 @@ type fieldRegistry struct {
 	ObjectSID          *Field `ldap:"objectSid"`
 	OrganizationalUnit *Field `ldap:"ou"`
 	PasswordLastSet    *Field `ldap:"passwordLastSet"`
+	RACFID             *Field `ldap:"racfid"`
 	RACFPassword       *Field `ldap:"racfPassword"`
 	RACFAttributes     *Field `ldap:"racfAttributes"`
+	SAMAccountName     *Field `ldap:"sAMAccountName"`
 	UnicodePassword    *Field `ldap:"unicodePwd"`
+	UID                *Field `ldap:"uid"`
 	UserPassword       *Field `ldap:"userPassword"`
 	UserPrincipalName  *Field `ldap:"userPrincipalName"`
 

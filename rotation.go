@@ -374,8 +374,16 @@ func (b *backend) setStaticAccountPassword(ctx context.Context, s logical.Storag
 		}
 	}
 
-	// Update the password remotely.
-	if err := b.client.UpdatePassword(config.LDAP, input.Role.StaticAccount.DN, newPassword); err != nil {
+	// Perform the LDAP search with the DN if it's configured. DN-based search
+	// targets the object directly. Otherwise, search using the userdn, userattr,
+	// and username. UserDN-based search targets the object by searching the whole
+	// subtree rooted at the userDN.
+	if input.Role.StaticAccount.DN != "" {
+		err = b.client.UpdateDNPassword(config.LDAP, input.Role.StaticAccount.DN, newPassword)
+	} else {
+		err = b.client.UpdateUserPassword(config.LDAP, input.Role.StaticAccount.Username, newPassword)
+	}
+	if err != nil {
 		return output, err
 	}
 

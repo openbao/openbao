@@ -17,10 +17,11 @@ import (
 
 // Set the environment variable INTEGRATION_TESTS to any non-empty value to run
 // the tests in this package. The test assumes it has available:
-//   - kubectl
+// - kubectl
 //   - A Kubernetes cluster in which:
-//       - it can use the `test` namespace
-//       - Vault is deployed and accessible
+//   - it can use the `test` namespace
+//   - Vault is deployed and accessible
+//
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {

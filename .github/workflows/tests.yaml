@@ -54,7 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kind-k8s-version: [1.21.12, 1.22.9, 1.23.6, 1.24.1]
+        kind-k8s-version: [1.22.13, 1.23.10, 1.24.4, 1.25.0]
         enterprise: ["", "-ent"]
     name: Integration test ${{ matrix.enterprise }} kind ${{ matrix.kind-k8s-version }}
     steps:
@@ -69,7 +69,7 @@ jobs:
       # Must come _after_ kind-action, because the kind step also sets up a kubectl binary.
       - uses: azure/setup-kubectl@v2.0
         with:
-          version: 'v1.24.1'
+          version: 'v1.25.0'
       - uses: actions/setup-go@v2
         with:
           go-version: ${{ needs.get-go-version.outputs.go-version }}

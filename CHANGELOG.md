@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.2.0 (September 15, 2022)
+
 ### Changes
 
 * Test against k8s versions 1.22-25, vault-helm 0.22.0, and Vault 1.11.3 [[GH-14](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/14)]

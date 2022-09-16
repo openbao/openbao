@@ -149,17 +149,18 @@ func TestCreds_service_account_name(t *testing.T) {
 	roleResponse, err := client.Logical().Read(path + "/roles/testrole")
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]interface{}{
-		"allowed_kubernetes_namespaces": []interface{}{"*"},
-		"extra_labels":                  nil,
-		"extra_annotations":             nil,
-		"generated_role_rules":          "",
-		"kubernetes_role_name":          "",
-		"kubernetes_role_type":          "Role",
-		"name":                          "testrole",
-		"name_template":                 "",
-		"service_account_name":          "sample-app",
-		"token_max_ttl":                 oneDay,
-		"token_default_ttl":             oneHour,
+		"allowed_kubernetes_namespaces":         []interface{}{"*"},
+		"allowed_kubernetes_namespace_selector": "",
+		"extra_labels":                          nil,
+		"extra_annotations":                     nil,
+		"generated_role_rules":                  "",
+		"kubernetes_role_name":                  "",
+		"kubernetes_role_type":                  "Role",
+		"name":                                  "testrole",
+		"name_template":                         "",
+		"service_account_name":                  "sample-app",
+		"token_max_ttl":                         oneDay,
+		"token_default_ttl":                     oneHour,
 	}, roleResponse.Data)
 
 	result1, err := client.Logical().Write(path+"/creds/testrole", map[string]interface{}{
@@ -225,17 +226,18 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 			"name_template":                 `{{ printf "v-custom-name-%s" (random 24) | truncate 62 | lowercase }}`,
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces": []interface{}{"test"},
-			"extra_annotations":             asMapInterface(extraAnnotations),
-			"extra_labels":                  asMapInterface(extraLabels),
-			"generated_role_rules":          "",
-			"kubernetes_role_name":          "test-role-list-pods",
-			"kubernetes_role_type":          "Role",
-			"name":                          "testrole",
-			"name_template":                 `{{ printf "v-custom-name-%s" (random 24) | truncate 62 | lowercase }}`,
-			"service_account_name":          "",
-			"token_max_ttl":                 oneDay,
-			"token_default_ttl":             oneHour,
+			"allowed_kubernetes_namespaces":         []interface{}{"test"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_annotations":                     asMapInterface(extraAnnotations),
+			"extra_labels":                          asMapInterface(extraLabels),
+			"generated_role_rules":                  "",
+			"kubernetes_role_name":                  "test-role-list-pods",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "testrole",
+			"name_template":                         `{{ printf "v-custom-name-%s" (random 24) | truncate 62 | lowercase }}`,
+			"service_account_name":                  "",
+			"token_max_ttl":                         oneDay,
+			"token_default_ttl":                     oneHour,
 		}
 		testRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -248,26 +250,28 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 			"tested": "tomorrow",
 		}
 		roleConfig := map[string]interface{}{
-			"allowed_kubernetes_namespaces": []string{"test"},
-			"extra_annotations":             extraAnnotations,
-			"extra_labels":                  extraLabels,
-			"kubernetes_role_name":          "test-cluster-role-list-pods",
-			"kubernetes_role_type":          "Clusterrole",
-			"token_default_ttl":             "1h",
-			"token_max_ttl":                 "24h",
+			"allowed_kubernetes_namespaces":         []string{"random"},
+			"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
+			"extra_annotations":                     extraAnnotations,
+			"extra_labels":                          extraLabels,
+			"kubernetes_role_name":                  "test-cluster-role-list-pods",
+			"kubernetes_role_type":                  "Clusterrole",
+			"token_default_ttl":                     "1h",
+			"token_max_ttl":                         "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces": []interface{}{"test"},
-			"extra_annotations":             asMapInterface(extraAnnotations),
-			"extra_labels":                  asMapInterface(extraLabels),
-			"generated_role_rules":          "",
-			"kubernetes_role_name":          "test-cluster-role-list-pods",
-			"kubernetes_role_type":          "ClusterRole",
-			"name":                          "clusterrole",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 oneDay,
-			"token_default_ttl":             oneHour,
+			"allowed_kubernetes_namespaces":         []interface{}{"random"},
+			"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
+			"extra_annotations":                     asMapInterface(extraAnnotations),
+			"extra_labels":                          asMapInterface(extraLabels),
+			"generated_role_rules":                  "",
+			"kubernetes_role_name":                  "test-cluster-role-list-pods",
+			"kubernetes_role_type":                  "ClusterRole",
+			"name":                                  "clusterrole",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         oneDay,
+			"token_default_ttl":                     oneHour,
 		}
 		testClusterRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -325,17 +329,18 @@ func TestCreds_generated_role_rules(t *testing.T) {
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces": []interface{}{"test"},
-			"extra_annotations":             asMapInterface(extraAnnotations),
-			"extra_labels":                  asMapInterface(extraLabels),
-			"generated_role_rules":          roleRulesYAML,
-			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "Role",
-			"name":                          "testrole",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 oneDay,
-			"token_default_ttl":             oneHour,
+			"allowed_kubernetes_namespaces":         []interface{}{"test"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_annotations":                     asMapInterface(extraAnnotations),
+			"extra_labels":                          asMapInterface(extraLabels),
+			"generated_role_rules":                  roleRulesYAML,
+			"kubernetes_role_name":                  "",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "testrole",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         oneDay,
+			"token_default_ttl":                     oneHour,
 		}
 		testRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -359,17 +364,18 @@ func TestCreds_generated_role_rules(t *testing.T) {
 			"token_max_ttl":                 "24h",
 		}
 		expectedRoleResponse := map[string]interface{}{
-			"allowed_kubernetes_namespaces": []interface{}{"test"},
-			"extra_annotations":             asMapInterface(extraAnnotations),
-			"extra_labels":                  asMapInterface(extraLabels),
-			"generated_role_rules":          roleRulesJSON,
-			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "ClusterRole",
-			"name":                          "clusterrole",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 oneDay,
-			"token_default_ttl":             oneHour,
+			"allowed_kubernetes_namespaces":         []interface{}{"test"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_annotations":                     asMapInterface(extraAnnotations),
+			"extra_labels":                          asMapInterface(extraLabels),
+			"generated_role_rules":                  roleRulesJSON,
+			"kubernetes_role_name":                  "",
+			"kubernetes_role_type":                  "ClusterRole",
+			"name":                                  "clusterrole",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         oneDay,
+			"token_default_ttl":                     oneHour,
 		}
 		testClusterRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})

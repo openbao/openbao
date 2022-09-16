@@ -216,6 +216,14 @@ func (c *client) deleteRoleBinding(ctx context.Context, namespace, name string, 
 	return nil
 }
 
+func (c *client) getNamespaceLabelSet(ctx context.Context, namespace string) (map[string]string, error) {
+	ns, err := c.k8s.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+	if err != nil {
+		return map[string]string{}, err
+	}
+	return ns.Labels, nil
+}
+
 func makeRules(rules string) ([]rbacv1.PolicyRule, error) {
 	policyRules := struct {
 		Rules []rbacv1.PolicyRule `json:"rules"`
@@ -226,6 +234,16 @@ func makeRules(rules string) ([]rbacv1.PolicyRule, error) {
 		return nil, err
 	}
 	return policyRules.Rules, nil
+}
+
+func makeLabelSelector(selector string) (metav1.LabelSelector, error) {
+	labelSelector := metav1.LabelSelector{}
+	decoder := k8s_yaml.NewYAMLOrJSONDecoder(strings.NewReader(selector), len(selector))
+	err := decoder.Decode(&labelSelector)
+	if err != nil {
+		return labelSelector, err
+	}
+	return labelSelector, nil
 }
 
 func makeRoleType(roleType string) string {

@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	josejwt "gopkg.in/square/go-jose.v2/jwt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 const (
@@ -109,14 +110,46 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 	}
 
 	// Validate the request
-	if !strutil.StrListContains(roleEntry.K8sNamespaces, "*") && !strutil.StrListContains(roleEntry.K8sNamespaces, request.Namespace) {
-		return logical.ErrorResponse(fmt.Sprintf("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces", request.Namespace)), nil
+	isValidNs, err := b.isValidKubernetesNamespace(ctx, req, request.Namespace, roleEntry)
+	if err != nil {
+		return nil, fmt.Errorf("error verifying namespace: %w", err)
+	}
+	if !isValidNs {
+		return logical.ErrorResponse(fmt.Sprintf("kubernetes_namespace '%s' is not present in role's allowed_kubernetes_namespaces or does not match role's label selector allowed_kubernetes_namespace_selector", request.Namespace)), nil
 	}
 	if request.ClusterRoleBinding && roleEntry.K8sRoleType == "Role" {
 		return logical.ErrorResponse("a ClusterRoleBinding cannot ref a Role"), nil
 	}
 
 	return b.createCreds(ctx, req, roleEntry, request)
+}
+
+func (b *backend) isValidKubernetesNamespace(ctx context.Context, req *logical.Request, namespace string, role *roleEntry) (bool, error) {
+	if strutil.StrListContains(role.K8sNamespaces, "*") || strutil.StrListContains(role.K8sNamespaces, namespace) {
+		return true, nil
+	}
+
+	if role.K8sNamespaceSelector == "" {
+		return false, nil
+	}
+	selector, err := makeLabelSelector(role.K8sNamespaceSelector)
+	if err != nil {
+		return false, err
+	}
+
+	client, err := b.getClient(ctx, req.Storage)
+	if err != nil {
+		return false, err
+	}
+	nsLabels, err := client.getNamespaceLabelSet(ctx, namespace)
+	if err != nil {
+		return false, err
+	}
+	labelSelector, err := metav1.LabelSelectorAsSelector(&selector)
+	if err != nil {
+		return false, err
+	}
+	return labelSelector.Matches(labels.Set(nsLabels)), nil
 }
 
 func (b *backend) createCreds(ctx context.Context, req *logical.Request, role *roleEntry, reqPayload *credsRequest) (*logical.Response, error) {

@@ -1,6 +1,9 @@
 ## Unreleased
 
+### Improvements
+
 * Test against Vault Enterprise [[GH-11](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/11)]
+* Role namespace configuration possible via LabelSelector [[GH-10](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/10)]
 
 ## 0.1.1 (May 26th, 2022)
 

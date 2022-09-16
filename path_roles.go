@@ -19,17 +19,18 @@ const (
 )
 
 type roleEntry struct {
-	Name               string            `json:"name" mapstructure:"name"`
-	K8sNamespaces      []string          `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
-	TokenMaxTTL        time.Duration     `json:"token_max_ttl" mapstructure:"token_max_ttl"`
-	TokenDefaultTTL    time.Duration     `json:"token_default_ttl" mapstructure:"token_default_ttl"`
-	ServiceAccountName string            `json:"service_account_name" mapstructure:"service_account_name"`
-	K8sRoleName        string            `json:"kubernetes_role_name" mapstructure:"kubernetes_role_name"`
-	K8sRoleType        string            `json:"kubernetes_role_type" mapstructure:"kubernetes_role_type"`
-	RoleRules          string            `json:"generated_role_rules" mapstructure:"generated_role_rules"`
-	NameTemplate       string            `json:"name_template" mapstructure:"name_template"`
-	ExtraLabels        map[string]string `json:"extra_labels" mapstructure:"extra_labels"`
-	ExtraAnnotations   map[string]string `json:"extra_annotations" mapstructure:"extra_annotations"`
+	Name                 string            `json:"name" mapstructure:"name"`
+	K8sNamespaces        []string          `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
+	K8sNamespaceSelector string            `json:"allowed_kubernetes_namespace_selector" mapstructure:"allowed_kubernetes_namespace_selector"`
+	TokenMaxTTL          time.Duration     `json:"token_max_ttl" mapstructure:"token_max_ttl"`
+	TokenDefaultTTL      time.Duration     `json:"token_default_ttl" mapstructure:"token_default_ttl"`
+	ServiceAccountName   string            `json:"service_account_name" mapstructure:"service_account_name"`
+	K8sRoleName          string            `json:"kubernetes_role_name" mapstructure:"kubernetes_role_name"`
+	K8sRoleType          string            `json:"kubernetes_role_type" mapstructure:"kubernetes_role_type"`
+	RoleRules            string            `json:"generated_role_rules" mapstructure:"generated_role_rules"`
+	NameTemplate         string            `json:"name_template" mapstructure:"name_template"`
+	ExtraLabels          map[string]string `json:"extra_labels" mapstructure:"extra_labels"`
+	ExtraAnnotations     map[string]string `json:"extra_annotations" mapstructure:"extra_annotations"`
 }
 
 func (r *roleEntry) toResponseData() (map[string]interface{}, error) {
@@ -57,7 +58,12 @@ func (b *backend) pathRoles() []*framework.Path {
 				"allowed_kubernetes_namespaces": {
 					Type:        framework.TypeCommaStringSlice,
 					Description: `A list of the Kubernetes namespaces in which credentials can be generated. If set to "*" all namespaces are allowed.`,
-					Required:    true,
+					Required:    false,
+				},
+				"allowed_kubernetes_namespace_selector": {
+					Type:        framework.TypeString,
+					Description: `A label selector for Kubernetes namespaces in which credentials can be generated. Accepts either a JSON or YAML object. If set with allowed_kubernetes_namespaces, the conditions are conjuncted.`,
+					Required:    false,
 				},
 				"token_max_ttl": {
 					Type:        framework.TypeDurationSecond,
@@ -188,6 +194,9 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 		// K8s namespaces need to be lowercase
 		entry.K8sNamespaces = strutil.RemoveDuplicates(k8sNamespaces.([]string), true)
 	}
+	if k8sNamespaceSelector, ok := d.GetOk("allowed_kubernetes_namespace_selector"); ok {
+		entry.K8sNamespaceSelector = k8sNamespaceSelector.(string)
+	}
 	if tokenMaxTTLRaw, ok := d.GetOk("token_max_ttl"); ok {
 		entry.TokenMaxTTL = time.Duration(tokenMaxTTLRaw.(int)) * time.Second
 	}
@@ -222,8 +231,8 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 	}
 
 	// Validate the entry
-	if len(entry.K8sNamespaces) == 0 {
-		return logical.ErrorResponse("allowed_kubernetes_namespaces must be set"), nil
+	if len(entry.K8sNamespaces) == 0 && entry.K8sNamespaceSelector == "" {
+		return logical.ErrorResponse("one (at least) of allowed_kubernetes_namespaces or allowed_kubernetes_namespace_selector must be set"), nil
 	}
 	if !onlyOneSet(entry.ServiceAccountName, entry.K8sRoleName, entry.RoleRules) {
 		return logical.ErrorResponse("one (and only one) of service_account_name, kubernetes_role_name or generated_role_rules must be set"), nil
@@ -237,6 +246,13 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 		return logical.ErrorResponse("kubernetes_role_type must be either 'Role' or 'ClusterRole'"), nil
 	}
 	entry.K8sRoleType = casedRoleType
+
+	// Try parsing the label selector as json or yaml
+	if entry.K8sNamespaceSelector != "" {
+		if _, err := makeLabelSelector(entry.K8sNamespaceSelector); err != nil {
+			return logical.ErrorResponse("failed to parse 'allowed_kubernetes_namespace_selector' as k8s.io/api/meta/v1/LabelSelector object"), nil
+		}
+	}
 
 	// Try parsing the role rules as json or yaml
 	if entry.RoleRules != "" {

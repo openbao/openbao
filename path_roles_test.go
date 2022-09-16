@@ -32,7 +32,21 @@ func TestRoles(t *testing.T) {
 			"service_account_name": "test_svc_account",
 		})
 		assert.NoError(t, err)
-		assert.EqualError(t, resp.Error(), "allowed_kubernetes_namespaces must be set")
+		assert.EqualError(t, resp.Error(), "one (at least) of allowed_kubernetes_namespaces or allowed_kubernetes_namespace_selector must be set")
+
+		resp, err = testRoleCreate(t, b, s, "badrole", map[string]interface{}{
+			"allowed_kubernetes_namespace_selector": badYAMLSelector,
+			"kubernetes_role_name":                  "existing_role",
+		})
+		assert.NoError(t, err)
+		assert.EqualError(t, resp.Error(), "failed to parse 'allowed_kubernetes_namespace_selector' as k8s.io/api/meta/v1/LabelSelector object")
+
+		resp, err = testRoleCreate(t, b, s, "badrole", map[string]interface{}{
+			"allowed_kubernetes_namespace_selector": badJSONSelector,
+			"kubernetes_role_name":                  "existing_role",
+		})
+		assert.NoError(t, err)
+		assert.EqualError(t, resp.Error(), "failed to parse 'allowed_kubernetes_namespace_selector' as k8s.io/api/meta/v1/LabelSelector object")
 
 		resp, err = testRoleCreate(t, b, s, "badrole", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
@@ -102,6 +116,62 @@ func TestRoles(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, resp.Data)
 
+		// Create one with json namespace label selector
+		resp, err = testRoleCreate(t, b, s, "jsonselector", map[string]interface{}{
+			"allowed_kubernetes_namespaces":         []string{"test"},
+			"allowed_kubernetes_namespace_selector": goodJSONSelector,
+			"kubernetes_role_name":                  "existing_role",
+			"token_default_ttl":                     "5h",
+		})
+		assert.NoError(t, err)
+		assert.NoError(t, resp.Error())
+
+		resp, err = testRoleRead(t, b, s, "jsonselector")
+		require.NoError(t, err)
+		var nilMeta map[string]string
+		assert.Equal(t, map[string]interface{}{
+			"allowed_kubernetes_namespaces":         []string{"test"},
+			"allowed_kubernetes_namespace_selector": goodJSONSelector,
+			"extra_labels":                          nilMeta,
+			"extra_annotations":                     nilMeta,
+			"generated_role_rules":                  "",
+			"kubernetes_role_name":                  "existing_role",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "jsonselector",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         time.Duration(0).Seconds(),
+			"token_default_ttl":                     time.Duration(time.Hour * 5).Seconds(),
+		}, resp.Data)
+
+		// Create one with yaml namespace selector and metadata
+		resp, err = testRoleCreate(t, b, s, "yamlselector", map[string]interface{}{
+			"allowed_kubernetes_namespace_selector": goodYAMLSelector,
+			"extra_annotations":                     testExtraAnnotations,
+			"extra_labels":                          testExtraLabels,
+			"kubernetes_role_name":                  "existing_role",
+			"kubernetes_role_type":                  "role",
+		})
+		assert.NoError(t, err)
+		assert.NoError(t, resp.Error())
+
+		resp, err = testRoleRead(t, b, s, "yamlselector")
+		require.NoError(t, err)
+		assert.Equal(t, map[string]interface{}{
+			"allowed_kubernetes_namespaces":         []string(nil),
+			"allowed_kubernetes_namespace_selector": goodYAMLSelector,
+			"extra_annotations":                     testExtraAnnotations,
+			"extra_labels":                          testExtraLabels,
+			"generated_role_rules":                  "",
+			"kubernetes_role_name":                  "existing_role",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "yamlselector",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         time.Duration(0).Seconds(),
+			"token_default_ttl":                     time.Duration(0).Seconds(),
+		}, resp.Data)
+
 		// Create one with json role rules
 		resp, err = testRoleCreate(t, b, s, "jsonrules", map[string]interface{}{
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
@@ -113,19 +183,19 @@ func TestRoles(t *testing.T) {
 
 		resp, err = testRoleRead(t, b, s, "jsonrules")
 		require.NoError(t, err)
-		var nilMeta map[string]string
 		assert.Equal(t, map[string]interface{}{
-			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
-			"extra_labels":                  nilMeta,
-			"extra_annotations":             nilMeta,
-			"generated_role_rules":          goodJSONRules,
-			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "Role",
-			"name":                          "jsonrules",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_default_ttl":             time.Duration(time.Hour * 5).Seconds(),
+			"allowed_kubernetes_namespaces":         []string{"app1", "app2"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_labels":                          nilMeta,
+			"extra_annotations":                     nilMeta,
+			"generated_role_rules":                  goodJSONRules,
+			"kubernetes_role_name":                  "",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "jsonrules",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         time.Duration(0).Seconds(),
+			"token_default_ttl":                     time.Duration(time.Hour * 5).Seconds(),
 		}, resp.Data)
 
 		// Create one with yaml role rules and metadata
@@ -142,17 +212,18 @@ func TestRoles(t *testing.T) {
 		resp, err = testRoleRead(t, b, s, "yamlrules")
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
-			"extra_annotations":             testExtraAnnotations,
-			"extra_labels":                  testExtraLabels,
-			"generated_role_rules":          goodYAMLRules,
-			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "Role",
-			"name":                          "yamlrules",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_default_ttl":             time.Duration(0).Seconds(),
+			"allowed_kubernetes_namespaces":         []string{"app1", "app2"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_annotations":                     testExtraAnnotations,
+			"extra_labels":                          testExtraLabels,
+			"generated_role_rules":                  goodYAMLRules,
+			"kubernetes_role_name":                  "",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "yamlrules",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         time.Duration(0).Seconds(),
+			"token_default_ttl":                     time.Duration(0).Seconds(),
 		}, resp.Data)
 
 		// update yamlrules (with a duplicate namespace)
@@ -164,37 +235,42 @@ func TestRoles(t *testing.T) {
 		resp, err = testRoleRead(t, b, s, "yamlrules")
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"allowed_kubernetes_namespaces": []string{"app3", "app4"},
-			"extra_annotations":             testExtraAnnotations,
-			"extra_labels":                  testExtraLabels,
-			"generated_role_rules":          goodYAMLRules,
-			"kubernetes_role_name":          "",
-			"kubernetes_role_type":          "Role",
-			"name":                          "yamlrules",
-			"name_template":                 "",
-			"service_account_name":          "",
-			"token_max_ttl":                 time.Duration(0).Seconds(),
-			"token_default_ttl":             time.Duration(0).Seconds(),
+			"allowed_kubernetes_namespaces":         []string{"app3", "app4"},
+			"allowed_kubernetes_namespace_selector": "",
+			"extra_annotations":                     testExtraAnnotations,
+			"extra_labels":                          testExtraLabels,
+			"generated_role_rules":                  goodYAMLRules,
+			"kubernetes_role_name":                  "",
+			"kubernetes_role_type":                  "Role",
+			"name":                                  "yamlrules",
+			"name_template":                         "",
+			"service_account_name":                  "",
+			"token_max_ttl":                         time.Duration(0).Seconds(),
+			"token_default_ttl":                     time.Duration(0).Seconds(),
 		}, resp.Data)
 
-		// Now there should be two roles returned from list
+		// Now there should be four roles returned from list
 		resp, err = testRolesList(t, b, s)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"keys": []string{"jsonrules", "yamlrules"},
+			"keys": []string{"jsonrules", "jsonselector", "yamlrules", "yamlselector"},
 		}, resp.Data)
 
 		// Delete one
 		resp, err = testRolesDelete(t, b, s, "jsonrules")
 		require.NoError(t, err)
-		// Now there should be one
+		// Now there should be three
 		resp, err = testRolesList(t, b, s)
 		require.NoError(t, err)
 		assert.Equal(t, map[string]interface{}{
-			"keys": []string{"yamlrules"},
+			"keys": []string{"jsonselector", "yamlrules", "yamlselector"},
 		}, resp.Data)
-		// Delete the last one
+		// Delete the last three
 		resp, err = testRolesDelete(t, b, s, "yamlrules")
+		require.NoError(t, err)
+		resp, err = testRolesDelete(t, b, s, "jsonselector")
+		require.NoError(t, err)
+		resp, err = testRolesDelete(t, b, s, "yamlselector")
 		require.NoError(t, err)
 		// Now there should be none
 		resp, err = testRolesList(t, b, s)
@@ -256,6 +332,28 @@ var (
 )
 
 const (
+	goodJSONSelector = `{
+	"matchLabels": {
+	  "stage": "prod",
+		"app": "vault"
+	}
+}`
+
+	badJSONSelector = `{
+	"matchLabels":
+	  "stage": "prod",
+		"app": "vault"
+}`
+
+	goodYAMLSelector = `matchLabels:
+  stage: prod
+  app: vault
+`
+	badYAMLSelector = `matchLabels:
+- stage: prod
+- app: vault
+`
+
 	goodJSONRules = `"rules": [
 	{
 		"apiGroups": [

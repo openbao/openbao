@@ -64,6 +64,7 @@ setup-integration-test-common: SET_LICENSE=$(if $(VAULT_LICENSE_CI),--set server
 setup-integration-test-common: teardown-integration-test
 	kind --name ${KIND_CLUSTER_NAME} load docker-image hashicorp/vault:dev
 	kubectl create namespace test
+	kubectl label namespaces test target=integration-test other=label
 
 	# don't log the license
 	printenv VAULT_LICENSE_CI > $(RUNNER_TEMP)/vault-license.txt || true

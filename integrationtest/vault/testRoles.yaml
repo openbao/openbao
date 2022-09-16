@@ -10,14 +10,19 @@ rules:
   verbs:
   - create
 - apiGroups: [""]
-  resources: 
+  resources:
+  - namespaces
+  verbs:
+  - get
+- apiGroups: [""]
+  resources:
   - serviceaccounts
   verbs:
   - create
   - delete
 - apiGroups:
   - rbac.authorization.k8s.io
-  resources: 
+  resources:
   - rolebindings
   - roles
   - clusterrolebindings
@@ -40,6 +45,12 @@ rules:
   - serviceaccounts/token
   verbs:
   - create
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:

@@ -105,7 +105,7 @@ start_domain() {
   }
   declare -fxr samba_readiness_check
 
-  timeout 20s bash -c 'until samba_readiness_check; do sleep 2; done'
+  timeout 60s bash -c 'until samba_readiness_check; do sleep 2; done'
 
   echo "Samba container ready!"
 }

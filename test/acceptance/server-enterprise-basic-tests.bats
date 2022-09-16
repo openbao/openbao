@@ -1,5 +1,8 @@
 #!/usr/bin/env bats
 
+# First run 'make bin' to generate a linux binary in the pkg directory,
+# then run bats from the root directory of the project - not from here!
+
 load _helpers
 
 export VAULT_ADDR="http://127.0.0.1:8200"

@@ -123,8 +123,6 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 
 	err = db.Do(ctx, radix.Cmd(&response, "ACL", "DELUSER", req.Username))
 
-	fmt.Printf("Response in DeleteUser: %s\n", response)
-
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
 	}
@@ -146,16 +144,10 @@ func newUser(ctx context.Context, db radix.Client, username string, req dbplugin
 		return errwrap.Wrapf("error unmarshalling REDIS rules in the creation statement JSON: {{err}}", err)
 	}
 
-	fmt.Printf("Unmarshaled: %v\n", args)
-	fmt.Printf("statements %#v %s\n", statements, statements)
-
 	aclargs = append(aclargs, args...)
-	fmt.Printf("Appended args: %v\n", aclargs)
 	var response string
-	
-	err = db.Do(ctx, radix.Cmd(&response, "ACL", aclargs...))
 
-	fmt.Printf("Response in newUser: %s\n", response)
+	err = db.Do(ctx, radix.Cmd(&response, "ACL", aclargs...))
 
 	if err != nil {
 		return err
@@ -186,10 +178,8 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 	var redisErr resp3.SimpleError
 	err = db.Do(ctx, radix.Cmd(&mn, "ACL", "GETUSER", username))
 	if errors.As(err, &redisErr) {
-		fmt.Printf("redis error returned: %s", redisErr.S)
+		return fmt.Errorf("redis error returned: %s", redisErr.Error())
 	}
-
-	fmt.Printf("Response in changeUserPassword: %#v for %s %T\n", response, username, response)
 
 	if err != nil {
 		return fmt.Errorf("reset of passwords for user %s failed in changeUserPassword: %w", username, err)
@@ -201,8 +191,6 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 
 	var sresponse string
 	err = db.Do(ctx, radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">"+password))
-
-	fmt.Printf("Response in changeUserPassword2: %s\n", sresponse)
 
 	if err != nil {
 		return err

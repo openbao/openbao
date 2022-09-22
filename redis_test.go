@@ -20,7 +20,7 @@ var pre6dot5 = false // check for Pre 6.5.0 Redis
 
 const (
 	defaultUsername       = "default"
-	defaultPassword       = "the-strong-one"
+	defaultPassword       = ""
 	adminUsername         = "Administrator"
 	adminPassword         = "password"
 	aclCat                = "+@admin"

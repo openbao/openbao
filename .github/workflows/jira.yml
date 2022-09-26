@@ -73,7 +73,7 @@ jobs:
         comment: "${{ github.actor }} ${{ github.event.review.state || 'commented' }}:\n\n${{ github.event.comment.body || github.event.review.body }}\n\n${{ github.event.comment.html_url || github.event.review.html_url }}"
 
     - name: Close ticket
-      if: (github.event.action == 'closed' || github.event.action == 'deleted') && steps.search.outputs.issue
+      if: (github.event.action == 'closed' || github.event.action == 'deleted' || github.event.pull_request.merged == true) && steps.search.outputs.issue
       uses: atlassian/gajira-transition@v2.0.1
       with:
         issue: ${{ steps.search.outputs.issue }}

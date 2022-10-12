@@ -13,18 +13,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hashicorp/cap/util"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/cap/util"
 )
 
 const (
-	defaultMount             = "oidc"
-	defaultListenAddress     = "localhost"
-	defaultPort              = "8250"
-	defaultCallbackHost      = "localhost"
-	defaultCallbackMethod    = "http"
-	defaultSkipBrowserLaunch = false
+	defaultMount          = "oidc"
+	defaultListenAddress  = "localhost"
+	defaultPort           = "8250"
+	defaultCallbackHost   = "localhost"
+	defaultCallbackMethod = "http"
+
+	FieldCallbackHost   = "callbackhost"
+	FieldCallbackMethod = "callbackmethod"
+	FieldListenAddress  = "listenaddress"
+	FieldPort           = "port"
+	FieldCallbackPort   = "callbackport"
+	FieldSkipBrowser    = "skip_browser"
+	FieldAbortOnError   = "abort_on_error"
 )
 
 var errorRegex = regexp.MustCompile(`(?s)Errors:.*\* *(.*)`)
@@ -44,45 +51,63 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	signal.Notify(sigintCh, os.Interrupt)
 	defer signal.Stop(sigintCh)
 
-	doneCh := make(chan loginResp)
-
 	mount, ok := m["mount"]
 	if !ok {
 		mount = defaultMount
 	}
 
-	listenAddress, ok := m["listenaddress"]
+	listenAddress, ok := m[FieldListenAddress]
 	if !ok {
 		listenAddress = defaultListenAddress
 	}
 
-	port, ok := m["port"]
+	port, ok := m[FieldPort]
 	if !ok {
 		port = defaultPort
 	}
 
-	callbackHost, ok := m["callbackhost"]
+	callbackHost, ok := m[FieldCallbackHost]
 	if !ok {
 		callbackHost = defaultCallbackHost
 	}
 
-	callbackMethod, ok := m["callbackmethod"]
+	callbackMethod, ok := m[FieldCallbackMethod]
 	if !ok {
 		callbackMethod = defaultCallbackMethod
 	}
 
-	callbackPort, ok := m["callbackport"]
+	callbackPort, ok := m[FieldCallbackPort]
 	if !ok {
 		callbackPort = port
 	}
 
-	skipBrowserLaunch := defaultSkipBrowserLaunch
-	if x, ok := m["skip_browser"]; ok {
-		parsed, err := strconv.ParseBool(x)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to parse \"skip_browser\" as a boolean: %w", err)
+	parseBool := func(f string, d bool) (bool, error) {
+		s, ok := m[f]
+		if !ok {
+			return d, nil
 		}
-		skipBrowserLaunch = parsed
+
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			return false, fmt.Errorf(
+				"failed to parse value for %q, err=%w", f, err)
+		}
+
+		return v, nil
+	}
+
+	var skipBrowserLaunch bool
+	if v, err := parseBool(FieldSkipBrowser, false); err != nil {
+		return nil, err
+	} else {
+		skipBrowserLaunch = v
+	}
+
+	var abortOnError bool
+	if v, err := parseBool(FieldAbortOnError, false); err != nil {
+		return nil, err
+	} else {
+		abortOnError = v
 	}
 
 	role := m["role"]
@@ -93,6 +118,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	}
 
 	// Set up callback handler
+	doneCh := make(chan loginResp)
 	http.HandleFunc("/oidc/callback", callbackHandler(c, mount, clientNonce, doneCh))
 
 	listener, err := net.Listen("tcp", listenAddress+":"+port)
@@ -105,6 +131,9 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	if !skipBrowserLaunch {
 		fmt.Fprintf(os.Stderr, "Complete the login via your OIDC provider. Launching browser to:\n\n    %s\n\n\n", authURL)
 		if err := util.OpenURL(authURL); err != nil {
+			if abortOnError {
+				return nil, fmt.Errorf("failed to launch the browser %s=%t, err=%w", FieldAbortOnError, abortOnError, err)
+			}
 			fmt.Fprintf(os.Stderr, "Error attempting to automatically open browser: '%s'.\nPlease visit the authorization URL manually.", err)
 		}
 	} else {
@@ -178,7 +207,7 @@ func callbackHandler(c *api.Client, mount string, clientNonce string, doneCh cha
 	}
 }
 
-func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMethod string, callbackHost string) (string, string, error) {
+func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMethod string, callbackHost string) (string, string, error) {
 	var authURL string
 
 	clientNonce, err := base62.Random(20)
@@ -186,7 +215,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackport string, callbackMetho
 		return "", "", err
 	}
 
-	redirectURI := fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackport)
+	redirectURI := fmt.Sprintf("%s://%s:%s/oidc/callback", callbackMethod, callbackHost, callbackPort)
 	data := map[string]interface{}{
 		"role":         role,
 		"redirect_uri": redirectURI,
@@ -247,7 +276,7 @@ func parseError(err error) (string, string) {
 
 // Help method for OIDC cli
 func (h *CLIHandler) Help() string {
-	help := `
+	help := fmt.Sprintf(`
 Usage: vault login -method=oidc [CONFIG K=V...]
 
   The OIDC auth method allows users to authenticate using an OIDC provider.
@@ -268,24 +297,31 @@ Configuration:
   role=<string>
     Vault role of type "OIDC" to use for authentication.
 
-  listenaddress=<string>
+  %s=<string>
     Optional address to bind the OIDC callback listener to (default: localhost).
 
-  port=<string>
+  %s=<string>
     Optional localhost port to use for OIDC callback (default: 8250).
 
-  callbackmethod=<string>
+  %s=<string>
     Optional method to to use in OIDC redirect_uri (default: http).
 
-  callbackhost=<string>
+  %s=<string>
     Optional callback host address to use in OIDC redirect_uri (default: localhost).
 
-  callbackport=<string>
+  %s=<string>
     Optional port to to use in OIDC redirect_uri (default: the value set for port).
 
-  skip_browser=<bool>
+  %s=<bool>
     Toggle the automatic launching of the default browser to the login URL. (default: false).
-`
+
+  %s=<bool>
+    Abort on any error. (default: false).
+`,
+		FieldListenAddress, FieldPort, FieldCallbackMethod,
+		FieldCallbackHost, FieldCallbackPort, FieldSkipBrowser,
+		FieldAbortOnError,
+	)
 
 	return strings.TrimSpace(help)
 }

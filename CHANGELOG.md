@@ -1,5 +1,22 @@
 ## Unreleased
 
+### Changes
+
+* Update to Go 1.19 [GH-15](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/15)
+* Update dependencies [GH-15](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/15):
+|             MODULE              | VERSION | NEW VERSION | DIRECT | VALID TIMESTAMPS |
+|---------------------------------|---------|-------------|--------|------------------|
+| github.com/cenkalti/backoff/v3  | v3.0.0  | v3.2.2      | true   | true             |
+| github.com/hashicorp/go-hclog   | v0.16.2 | v1.3.1      | true   | true             |
+| github.com/hashicorp/go-version | v1.2.0  | v1.6.0      | true   | true             |
+| github.com/hashicorp/vault/api  | v1.7.2  | v1.8.2      | true   | true             |
+| github.com/hashicorp/vault/sdk  | v0.5.3  | v0.6.1      | true   | true             |
+| github.com/stretchr/testify     | v1.8.0  | v1.8.1      | true   | true             |
+| gopkg.in/square/go-jose.v2      | v2.5.1  | v2.6.0      | true   | true             |
+| k8s.io/api                      | v0.22.2 | v0.25.3     | true   | true             |
+| k8s.io/apimachinery             | v0.22.2 | v0.25.3     | true   | true             |
+| k8s.io/client-go                | v0.22.2 | v0.25.3     | true   | true             |
+
 ## 0.2.0 (September 15, 2022)
 
 ### Changes

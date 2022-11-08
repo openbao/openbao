@@ -44,7 +44,7 @@ delete-kind:
 
 .PHONY: vault-image
 vault-image:
-	GOOS=linux GOARCH=amd64 make dev
+	GOOS=linux make dev
 	docker build -f integrationtest/vault/Dockerfile bin/ --tag=hashicorp/vault:dev
 
 # Create Vault inside the cluster with a locally-built version of kubernetes auth.

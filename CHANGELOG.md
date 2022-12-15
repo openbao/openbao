@@ -1,5 +1,7 @@
 ## Unreleased
 
+* Add `/check` endpoint to determine if environment variables are set [GH-18](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/18)
+
 ### Changes
 
 * Update to Go 1.19 [GH-15](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/15)

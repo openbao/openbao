@@ -87,6 +87,7 @@ func newBackend() (*backend, error) {
 			[]*framework.Path{
 				b.pathConfig(),
 				b.pathCredentials(),
+				b.pathCheck(),
 			},
 			b.pathRoles(),
 		),

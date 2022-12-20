@@ -7,7 +7,7 @@ This plugin provides OpenLDAP functionality to Vault.
 
 ## Quick Links
 - Vault Website: https://www.vaultproject.io
-- OpenLDAP Docs: https://www.vaultproject.io/docs/secrets/openldap/index.html
+- OpenLDAP Docs: https://developer.hashicorp.com/vault/docs/secrets/ldap
 - Main Project Github: https://www.github.com/hashicorp/vault
 
 ## Getting Started

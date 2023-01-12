@@ -5,11 +5,9 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"net/http"
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -122,6 +120,9 @@ func (b *kubeAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reque
 
 // pathConfigWrite handles create and update commands to the config
 func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	b.l.Lock()
+	defer b.l.Unlock()
+
 	host := data.Get("kubernetes_host").(string)
 	if host == "" {
 		return logical.ErrorResponse("no host provided"), nil
@@ -157,38 +158,16 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 		DisableLocalCAJwt:    disableLocalJWT,
 	}
 
-	b.l.Lock()
-	defer b.l.Unlock()
-
-	// Determine if we load the local CA cert or the CA cert provided
-	// by the kubernetes_ca_cert path into the backend's HTTP client
-	certPool := x509.NewCertPool()
-	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-	if disableLocalJWT || len(caCert) > 0 {
-		certPool.AppendCertsFromPEM([]byte(config.CACert))
-		tlsConfig.RootCAs = certPool
-
-		b.httpClient.Transport.(*http.Transport).TLSClientConfig = tlsConfig
-	} else {
-		localCACert, err := b.localCACertReader.ReadFile()
-		if err != nil {
-			return nil, err
-		}
-
-		certPool.AppendCertsFromPEM([]byte(localCACert))
-		tlsConfig.RootCAs = certPool
-
-		b.httpClient.Transport.(*http.Transport).TLSClientConfig = tlsConfig
-	}
-
 	var err error
 	for i, pem := range pemList {
 		config.PublicKeys[i], err = parsePublicKeyPEM([]byte(pem))
 		if err != nil {
 			return logical.ErrorResponse(err.Error()), nil
 		}
+	}
+
+	if err := b.updateTLSConfig(config); err != nil {
+		return logical.ErrorResponse(err.Error()), nil
 	}
 
 	entry, err := logical.StorageEntryJSON(configPath, config)
@@ -199,6 +178,7 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 

@@ -19,6 +19,9 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
 	b := Backend()
+	if err := b.validateHTTPClientInit(); err != nil {
+		t.Fatalf("unable to create backend: %v", err)
+	}
 
 	config := &logical.BackendConfig{
 		Logger: logging.NewVaultLogger(log.Trace),
@@ -29,9 +32,8 @@ func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 		},
 		StorageView: &logical.InmemStorage{},
 	}
-	err := b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatalf("unable to create backend: %v", err)
+	if err := b.Setup(context.Background(), config); err != nil {
+		t.Fatalf("unable to setup backend: %v", err)
 	}
 
 	return b, config.StorageView

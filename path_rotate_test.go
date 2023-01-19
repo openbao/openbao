@@ -34,7 +34,7 @@ func TestManualRotate(t *testing.T) {
 		}
 
 		req = &logical.Request{
-			Operation: logical.CreateOperation,
+			Operation: logical.UpdateOperation,
 			Path:      rotateRootPath,
 			Storage:   storage,
 			Data:      nil,
@@ -99,7 +99,7 @@ func TestManualRotate(t *testing.T) {
 		}
 
 		req = &logical.Request{
-			Operation: logical.CreateOperation,
+			Operation: logical.UpdateOperation,
 			Path:      rotateRootPath,
 			Storage:   storage,
 			Data:      nil,
@@ -183,7 +183,7 @@ func TestManualRotate(t *testing.T) {
 		defer b.Cleanup(context.Background())
 
 		req := &logical.Request{
-			Operation: logical.CreateOperation,
+			Operation: logical.UpdateOperation,
 			Path:      rotateRolePath + "hashicorp",
 			Storage:   storage,
 			Data:      nil,

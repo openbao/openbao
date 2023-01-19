@@ -37,7 +37,7 @@ func TestAutoRotate(t *testing.T) {
 		}
 
 		req = &logical.Request{
-			Operation: logical.CreateOperation,
+			Operation: logical.UpdateOperation,
 			Path:      rotateRootPath,
 			Storage:   storage,
 			Data:      nil,

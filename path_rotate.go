@@ -28,11 +28,6 @@ func (b *backend) pathRotateCredentials() []*framework.Path {
 					ForwardPerformanceStandby:   true,
 					ForwardPerformanceSecondary: true,
 				},
-				logical.CreateOperation: &framework.PathOperation{
-					Callback:                    b.pathRotateRootCredentialsUpdate,
-					ForwardPerformanceStandby:   true,
-					ForwardPerformanceSecondary: true,
-				},
 			},
 			HelpSynopsis: "Request to rotate the root credentials Vault uses for the LDAP administrator account.",
 			HelpDescription: "This path attempts to rotate the root credentials of the administrator account " +
@@ -48,11 +43,6 @@ func (b *backend) pathRotateCredentials() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback:                    b.pathRotateRoleCredentialsUpdate,
-					ForwardPerformanceStandby:   true,
-					ForwardPerformanceSecondary: true,
-				},
-				logical.CreateOperation: &framework.PathOperation{
 					Callback:                    b.pathRotateRoleCredentialsUpdate,
 					ForwardPerformanceStandby:   true,
 					ForwardPerformanceSecondary: true,

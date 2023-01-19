@@ -43,9 +43,6 @@ func (b *backend) pathConfig() *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathConfigWrite,
 			},
-			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.pathConfigWrite,
-			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathConfigRead,
 			},

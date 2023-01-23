@@ -136,7 +136,7 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	}
 
 	// look up the JWT token in the kubernetes API
-	err = serviceAccount.lookup(ctx, client, jwtStr, b.reviewFactory(config))
+	err = serviceAccount.lookup(ctx, client, jwtStr, role.Audience, b.reviewFactory(config))
 
 	if err != nil {
 		b.Logger().Debug(`login unauthorized`, "err", err)
@@ -312,7 +312,7 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 
 	claims, err := validator.ValidateAllowMissingIatNbfExp(nil, jwtStr, expected)
 	if err != nil {
-		return nil, err
+		return nil, logical.CodedError(http.StatusForbidden, err.Error())
 	}
 
 	sa := &serviceAccount{}
@@ -410,8 +410,18 @@ type k8sObjectRef struct {
 
 // lookup calls the TokenReview API in kubernetes to verify the token and secret
 // still exist.
-func (s *serviceAccount) lookup(ctx context.Context, client *http.Client, jwtStr string, tr tokenReviewer) error {
-	r, err := tr.Review(ctx, client, jwtStr, s.Audience)
+func (s *serviceAccount) lookup(ctx context.Context, client *http.Client, jwtStr string, aud string, tr tokenReviewer) error {
+	// This is somewhat redundant, as we are asking k8s if the token's audiences
+	// overlap with wantAud, but setting wantAud to the token's own audiences by
+	// default. In the case that `audience` was set on the Vault role, we have
+	// already validated that it matches one of the token's audiences by this
+	// point, so we are essentially asking k8s to either ignore audience
+	// validation or check our homework.
+	wantAud := s.Audience
+	if aud != "" {
+		wantAud = []string{aud}
+	}
+	r, err := tr.Review(ctx, client, jwtStr, wantAud)
 	if err != nil {
 		return err
 	}

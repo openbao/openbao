@@ -2,6 +2,8 @@
 
 ### Changes
 
+* Return HTTP 403 error code instead of 500 when JWT validation fails due to invalid issuer, audiences, or signing algorithm [GH-179](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/179)
+* Checks the Kubernetes API is audience-aware by checking for at least one compatible audience in the response from TokenReviews [GH-179](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/179)
 * Update to Go 1.19 [GH-166](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/166)
 * Update dependencies [GH-166](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/166):
 |             MODULE              |              VERSION               | NEW VERSION | DIRECT | VALID TIMESTAMPS |

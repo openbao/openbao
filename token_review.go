@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/go-secure-stdlib/strutil"
 	authv1 "k8s.io/api/authentication/v1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,6 +102,22 @@ func (t *tokenReviewAPI) Review(ctx context.Context, client *http.Client, jwt st
 
 	if !r.Status.Authenticated {
 		return nil, errors.New("lookup failed: service account jwt not valid")
+	}
+
+	// Ensure the token review endpoint is audience-aware if we requested
+	// audience validation.
+	wantAud := trReq.Spec.Audiences
+	if len(wantAud) != 0 {
+		intersectionFound := false
+		for _, aud := range trReq.Spec.Audiences {
+			if strutil.StrListContains(r.Status.Audiences, aud) {
+				intersectionFound = true
+				break
+			}
+		}
+		if !intersectionFound {
+			return nil, fmt.Errorf("lookup failed: service account jwt valid for audience(s) %v, but wanted %v", r.Status.Audiences, wantAud)
+		}
 	}
 
 	// The username is of format: system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)

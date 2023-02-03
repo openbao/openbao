@@ -89,7 +89,6 @@ then this plugin will use kubernetes.io/serviceaccount as the default issuer.
 		},
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.UpdateOperation: b.pathConfigWrite,
-			logical.CreateOperation: b.pathConfigWrite,
 			logical.ReadOperation:   b.pathConfigRead,
 		},
 

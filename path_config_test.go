@@ -54,7 +54,7 @@ func TestConfig_Read(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -94,7 +94,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -111,7 +111,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -132,7 +132,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -153,7 +153,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -189,7 +189,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -232,7 +232,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -274,7 +274,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -321,7 +321,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,
@@ -437,7 +437,7 @@ func TestConfig_LocalCaJWT(t *testing.T) {
 			}
 
 			req := &logical.Request{
-				Operation: logical.CreateOperation,
+				Operation: logical.UpdateOperation,
 				Path:      configPath,
 				Storage:   storage,
 				Data:      tc.config,
@@ -490,7 +490,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 		"kubernetes_host": "host",
 	}
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      configPath,
 		Storage:   storage,
 		Data:      data,

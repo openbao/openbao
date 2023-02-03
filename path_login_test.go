@@ -236,7 +236,7 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,
@@ -493,7 +493,7 @@ func TestLogin_ECDSA_PEM(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,
@@ -884,7 +884,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	req := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,
@@ -921,7 +921,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,
@@ -963,7 +963,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,
@@ -1008,7 +1008,7 @@ func TestLoginIssValidation(t *testing.T) {
 	}
 
 	req = &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      "config",
 		Storage:   storage,
 		Data:      data,

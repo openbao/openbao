@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 # vault-related env vars
 VAULT_IMAGE_TAG=${VAULT_IMAGE_TAG:=$(curl -s "https://api.github.com/repos/hashicorp/vault/tags?page=1" | jq -r '.[0].name[1:]')-ent}
 VAULT_IMAGE=vault-enterprise

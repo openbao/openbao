@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 // Package main within login-kerb is used for testing the important
 // neck of code within the CLI handler. It's used in automated
 // integration tests to ensure logins can be performed. It also

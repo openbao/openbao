@@ -46,6 +46,10 @@ type GSuiteProviderConfig struct {
 
 	// Comma-separated list of G Suite custom schemas to fetch as claims.
 	UserCustomSchemas string `mapstructure:"user_custom_schemas"`
+
+	// The domain to get groups from. Set this if your workspace is
+	// configured with more than one domain.
+	Domain string `mapstructure:"domain"`
 }
 
 // Initialize initializes the GSuiteProvider by validating and creating configuration.
@@ -141,8 +145,15 @@ func (g *GSuiteProvider) FetchGroups(ctx context.Context, b *jwtAuthBackend, all
 
 // search recursively searches for G Suite groups based on a configured depth for this provider.
 func (g *GSuiteProvider) search(ctx context.Context, visited map[string]bool, userName string, depth int) error {
-	call := g.adminSvc.Groups.List().UserKey(userName).Fields("nextPageToken", "groups(email)")
-	if err := call.Pages(ctx, func(groups *admin.Groups) error {
+	req := g.adminSvc.Groups.List().UserKey(userName)
+
+	// Request for a specific domain if one is set
+	if g.config.Domain != "" {
+		req = req.Domain(g.config.Domain)
+	}
+
+	req = req.Fields("nextPageToken", "groups(email)")
+	if err := req.Pages(ctx, func(groups *admin.Groups) error {
 		var newGroups []string
 		for _, group := range groups.Groups {
 			if _, ok := visited[group.Email]; ok {

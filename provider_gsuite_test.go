@@ -43,8 +43,8 @@ func getTestCreds(t *testing.T) (string, string) {
 // Tests fetching groups from G Suite using the provider configuration.
 //
 // To run the tests:
-//   1. Supply credentials via environment variables as detailed in getTestCreds()
-//   2. Supply the G Suite userName and expected groups to be fetched for the user in the test table
+//  1. Supply credentials via environment variables as detailed in getTestCreds()
+//  2. Supply the G Suite userName and expected groups to be fetched for the user in the test table
 func TestGSuiteProvider_FetchGroups(t *testing.T) {
 	creds, adminEmail := getTestCreds(t)
 
@@ -128,9 +128,9 @@ func TestGSuiteProvider_FetchGroups(t *testing.T) {
 // Tests fetching user custom schemas from G Suite using the provider configuration.
 //
 // To run the tests:
-//   1. Supply credentials via environment variables as detailed in getTestCreds()
-//   2. Supply the G Suite userName, user_custom_schemas, and expected custom schema
-//      values to be fetched as claims in the test table
+//  1. Supply credentials via environment variables as detailed in getTestCreds()
+//  2. Supply the G Suite userName, user_custom_schemas, and expected custom schema
+//     values to be fetched as claims in the test table
 func TestGSuiteProvider_FetchUserInfo(t *testing.T) {
 	creds, adminEmail := getTestCreds(t)
 
@@ -460,6 +460,7 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 						"gsuite_admin_impersonate": "test@example.com",
 						"groups_recurse_max_depth": 5,
 						"user_custom_schemas":      "Custom",
+						"domain":                   "example.com",
 					},
 				},
 			},
@@ -596,5 +597,57 @@ func TestGSuiteProvider_validateBoundClaims(t *testing.T) {
 
 	// Ensure that bound_claims defined on the role are properly validated
 	err = validateBoundClaims(b.Logger(), jwtRole.BoundClaimsType, jwtRole.BoundClaims, allClaims)
+	assert.NoError(t, err)
+}
+
+func TestGSuiteProvider_domain(t *testing.T) {
+	b, _ := getBackend(t)
+	ctx := context.Background()
+
+	expectedDomain := "example.com"
+	gServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Assert that we got the expected domain query parameter
+		assert.Equal(t, expectedDomain, r.URL.Query().Get("domain"))
+
+		// Write the groups response
+		_, err := w.Write([]byte(`{
+			"kind": "admin#directory#groups",
+			"groups": [{
+				"kind": "admin#directory#group",
+				"email": "group1@example.com"
+			}]
+		}`))
+		assert.NoError(t, err)
+	}))
+	defer gServer.Close()
+
+	jwtRole := &jwtRole{
+		AllowedRedirectURIs: []string{"http://localhost:8250"},
+		UserClaim:           "email",
+		GroupsClaim:         "groups",
+	}
+
+	config := &jwtConfig{
+		ProviderConfig: map[string]interface{}{
+			"gsuite_service_account":   `{"type": "service_account"}`,
+			"gsuite_admin_impersonate": "admin@example.com",
+			"fetch_groups":             true,
+			"fetch_user_info":          true,
+			"groups_recurse_max_depth": 5,
+			"user_custom_schemas":      "Preferences",
+			"domain":                   expectedDomain,
+		},
+	}
+	provider := &GSuiteProvider{}
+	err := provider.Initialize(ctx, config)
+	assert.NoError(t, err)
+
+	// Swap the base URL to make requests to gServer
+	provider.adminSvc, _ = admin.NewService(ctx, option.WithHTTPClient(&http.Client{}))
+	provider.adminSvc.BasePath = gServer.URL
+
+	// Fetch the groups
+	claims := map[string]interface{}{"email": "user1@example.com"}
+	_, err = b.(*jwtAuthBackend).fetchGroups(ctx, provider, claims, jwtRole, nil)
 	assert.NoError(t, err)
 }

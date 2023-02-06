@@ -1,6 +1,10 @@
 ## Unreleased
 
-IMPROVEMENTS:
+## 0.15.0
+
+* Adds ability to set Google Workspace domain for groups search [[GH-220]](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/220)
+
+## 0.14.0
 
 * Updates dependency `google.golang.org/api@v0.83.0` [[GH-205](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/205)]
 * Add Custom Provider for SecureAuth IdP [[GH-196](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/196)]

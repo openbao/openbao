@@ -1,6 +1,13 @@
-## Unreleased
+## v0.9.0
 
-* Add new features here
+### IMPROVEMENTS
+
+* Update dependencies
+  * Update gokbr5 lib [[GH-77](https://github.com/hashicorp/vault-plugin-auth-kerberos/pull/77)]
+  * Update github.com/hashicorp/vault/sdk [[GH-81](https://github.com/hashicorp/vault-plugin-auth-kerberos/pull/81)]
+  * Update github.com/hashicorp/vault/api [[GH-81](https://github.com/hashicorp/vault-plugin-auth-kerberos/pull/81)]
+* Remove CreateOperation [[GH-79](https://github.com/hashicorp/vault-plugin-auth-kerberos/pull/79)]
+  * This change is transparent to users.
 
 ## v0.8.0
 

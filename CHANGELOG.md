@@ -2,6 +2,9 @@
 
 ## 0.15.0
 
+IMPROVEMENTS:
+
+* Adds `abort_on_error` parameter to CLI login command to help in non-interactive contexts [[GH-214]](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/214)
 * Adds ability to set Google Workspace domain for groups search [[GH-220]](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/220)
 
 ## 0.14.0

@@ -72,9 +72,6 @@ func (b *backend) pathConfig() *framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.pathConfigWrite,
-			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathConfigWrite,
 			},

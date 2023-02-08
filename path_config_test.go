@@ -147,7 +147,7 @@ func Test_configWithDynamicValues(t *testing.T) {
 			}
 
 			req := &logical.Request{
-				Operation: logical.CreateOperation,
+				Operation: logical.UpdateOperation,
 				Path:      configPath,
 				Storage:   storage,
 				Data:      tc.config,

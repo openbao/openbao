@@ -1,3 +1,5 @@
-*~
-cmd/redis-database-plugin/redis-database-plugin
-
+.DS_Store
+.idea
+.vscode
+pkg/*
+bin/*

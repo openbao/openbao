@@ -1,7 +1,5 @@
 # vault-plugin-database-redis
 
-[![CircleCI](https://circleci.com/gh/hashicorp/vault-plugin-database-redis.svg?style=svg)](https://circleci.com/gh/hashicorp/vault-plugin-database-redis)
-
 A [Vault](https://www.vaultproject.io) plugin for Redis
 
 This project uses the database plugin interface introduced in Vault version 0.7.1.
@@ -10,9 +8,9 @@ The plugin supports the generation of static and dynamic user roles and root cre
 
 ## Build
 
-To build this package for any platform you will need to clone this repository and cd into the repo directory and `go build -o redis-database-plugin ./cmd/redis-database-plugin/`. To test `go test` will execute a set of basic tests against against the docker.io/redis:latest redis database image. To test against different redis images, for example 5.0-buster, set the `REDIS_VERSION=5.0-buster` environment variable. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. **Note** the tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If not you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file. Set VAULT_ACC to execute all of the tests. A subset of tests can be run using the command `go test -run TestDriver/Init` for example.
+To build this package for any platform you will need to clone this repository and cd into the repo directory and `go build -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/`. To test `go test` will execute a set of basic tests against against the docker.io/redis:latest redis database image. To test against different redis images, for example 5.0-buster, set the `REDIS_VERSION=5.0-buster` environment variable. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. **Note** the tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If not you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file. Set VAULT_ACC to execute all of the tests. A subset of tests can be run using the command `go test -run TestDriver/Init` for example.
 
-**Please note:** In case of the following errors, while creating Redis connection in Vault, please build this plugin with `CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o redis-database-plugin ./cmd/redis-database-plugin/` command. More details on this error can be found [here](https://github.com/hashicorp/vault-plugin-database-redis/issues/1#issuecomment-1078415041).
+**Please note:** In case of the following errors, while creating Redis connection in Vault, please build this plugin with `CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/` command. More details on this error can be found [here](https://github.com/hashicorp/vault-plugin-database-redis/issues/1#issuecomment-1078415041).
 ````bash
 Error writing data to database/config/my-redis: Error making API request.
 
@@ -20,8 +18,8 @@ URL: PUT http://127.0.0.1:8200/v1/database/config/my-redis
 Code: 400. Errors:
 
 * error creating database object: invalid database version: 2 errors occurred:
-        * fork/exec /config/plugin/redis-database-plugin: no such file or directory
-        * fork/exec /config/plugin/redis-database-plugin: no such file or directory
+        * fork/exec /config/plugin/vault-plugin-database-redis: no such file or directory
+        * fork/exec /config/plugin/vault-plugin-database-redis: no such file or directory
 ````
 
 ## Installation
@@ -44,12 +42,12 @@ Code: 400. Errors:
 Sample commands for registering and starting to use the plugin:
 
 ```bash
-$ SHA256=$(shasum -a 256 plugins/redis-database-plugin | cut -d' ' -f1)
+$ SHA256=$(shasum -a 256 plugins/vault-plugin-database-redis | cut -d' ' -f1)
 
 $ vault secrets enable database
 
-$ vault write sys/plugins/catalog/database/redis-database-plugin sha256=$SHA256 \
-        command=redis-database-plugin
+$ vault write sys/plugins/catalog/database/vault-plugin-database-redis sha256=$SHA256 \
+        command=vault-plugin-database-redis
 ```
 
 At this stage you are now ready to initialize the plugin to connect to the redis db using unencrypted or encrypted communications.
@@ -61,7 +59,7 @@ Prior to initializing the plugin, ensure that you have created an administration
 #### Standalone REDIS Server.
 
 ```bash
-$ vault write database/config/my-redis plugin_name="redis-database-plugin" \
+$ vault write database/config/my-redis plugin_name="vault-plugin-database-redis" \
         host="localhost" port=6379 username="Administrator" password="password" \
         allowed_roles="my-redis-*-role"
 

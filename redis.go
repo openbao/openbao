@@ -26,9 +26,7 @@ const (
 	maxKeyLength         = 64
 )
 
-var (
-	_ dbplugin.Database = &RedisDB{}
-)
+var _ dbplugin.Database = &RedisDB{}
 
 // Type that combines the custom plugins Redis database connection configuration options and the Vault CredentialsProducer
 // used for generating user information for the Redis database.

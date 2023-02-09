@@ -42,7 +42,6 @@ func (c *redisDBConnectionProducer) secretValues() map[string]string {
 }
 
 func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[string]interface{}, verifyConnection bool) (saveConfig map[string]interface{}, err error) {
-
 	c.Lock()
 	defer c.Unlock()
 

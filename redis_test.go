@@ -99,27 +99,31 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 }
 
 func TestDriver(t *testing.T) {
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+	var err error
+	var caCert []byte
+	if os.Getenv("REDIS_TLS") != "" {
+		caCertFile := os.Getenv("CA_CERT_FILE")
+		caCert, err = os.ReadFile(caCertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", caCertFile, err))
+		}
 	}
 
 	// Spin up redis
 	cleanup, host, port := prepareRedisTestContainer(t)
 	defer cleanup()
 
-	err = createUser(host, port, redisTls, CACert, defaultUsername, defaultPassword, "Administrator", "password",
+	err = createUser(host, port, redisTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
 	}
-	err = createUser(host, port, redisTls, CACert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+	err = createUser(host, port, redisTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)
 	}
-	err = createUser(host, port, redisTls, CACert, adminUsername, adminPassword, "vault-edu", "password",
+	err = createUser(host, port, redisTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
@@ -175,11 +179,9 @@ func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
 		"password": adminPassword,
 	}
 	err := setupRedisDBInitialize(t, connectionDetails)
-
 	if err != nil {
 		t.Fatalf("Testing Init() failed: error: %s", err)
 	}
-
 }
 
 func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
@@ -209,18 +211,11 @@ func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
 	if err != nil {
 		t.Fatalf("Testing TLS Init() failed: error: %s", err)
 	}
-
 }
 
 func testRedisDBCreateUser(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
-	}
-
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
 	}
 
 	t.Log("Testing CreateUser()")
@@ -233,6 +228,12 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -244,7 +245,7 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("Failed to initialize database: %s", err)
 	}
@@ -288,11 +289,6 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	t.Log("Testing checkCredsExist()")
 
@@ -304,6 +300,12 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -315,7 +317,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -331,11 +333,6 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	t.Log("Testing checkRuleAllowed()")
 
@@ -347,6 +344,12 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -358,7 +361,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -376,11 +379,6 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	t.Log("Testing RevokeUser()")
 
@@ -392,6 +390,12 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -403,7 +407,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -425,11 +429,6 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	t.Log("Testing CreateUser_DefaultRule()")
 
@@ -441,6 +440,12 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -452,7 +457,7 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -506,11 +511,6 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	t.Log("Testing CreateUser_plusRole()")
 
@@ -523,6 +523,12 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -534,7 +540,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -579,11 +585,6 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
 
 	if pre6dot5 {
 		t.Log("Skipping as groups are not supported pre6.5.0")
@@ -600,6 +601,12 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -611,7 +618,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -650,14 +657,10 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 		t.Fatalf("Could not revoke user: %s", userResp.Username)
 	}
 }
+
 func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
-	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
 	}
 
 	if pre6dot5 {
@@ -675,6 +678,12 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -686,7 +695,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -725,14 +734,10 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 		t.Fatalf("Could not revoke user: %s", userResp.Username)
 	}
 }
+
 func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
-	}
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
 	}
 
 	t.Log("Testing RotateRootCredentials()")
@@ -745,6 +750,12 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -756,7 +767,7 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -788,12 +799,6 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 }
 
 func doRedisDBSetCredentials(t *testing.T, username, password, address string, port int) {
-	CACertFile := os.Getenv("CA_CERT_FILE")
-	CACert, err := os.ReadFile(CACertFile)
-	if err != nil {
-		t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
-	}
-
 	t.Log("Testing SetCredentials()")
 
 	connectionDetails := map[string]interface{}{
@@ -804,6 +809,12 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 	}
 
 	if redisTls {
+		CACertFile := os.Getenv("CA_CERT_FILE")
+		CACert, err := os.ReadFile(CACertFile)
+		if err != nil {
+			t.Fatal(fmt.Errorf("unable to read CA_CERT_FILE at %v: %w", CACertFile, err))
+		}
+
 		connectionDetails["tls"] = true
 		connectionDetails["ca_cert"] = CACert
 		connectionDetails["insecure_tls"] = true
@@ -815,7 +826,7 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 	}
 
 	db := new()
-	_, err = db.Initialize(context.Background(), initReq)
+	_, err := db.Initialize(context.Background(), initReq)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -893,15 +904,15 @@ func testComputeTimeout(t *testing.T) {
 }
 
 func createUser(hostname string, port int, redisTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
-	rootCAs := x509.NewCertPool()
-	ok := rootCAs.AppendCertsFromPEM(CACert)
-	if !ok {
-		return fmt.Errorf("failed to parse root certificate")
-	}
-
 	var poolConfig radix.PoolConfig
 
 	if redisTls {
+		rootCAs := x509.NewCertPool()
+		ok := rootCAs.AppendCertsFromPEM(CACert)
+		if !ok {
+			return fmt.Errorf("failed to parse root certificate")
+		}
+
 		poolConfig = radix.PoolConfig{
 			Dialer: radix.Dialer{
 				AuthUser: adminuser,

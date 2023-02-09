@@ -1,5 +1,17 @@
 ## Unreleased
 
+## v0.10.0
+
+CHANGES:
+
+* CreateOperation should only be implemented alongside ExistenceCheck [[GH-50]](https://github.com/hashicorp/vault-plugin-secrets-openldap/pull/50)
+
+IMPROVEMENTS:
+
+* Update golang.org/x/text to v0.3.8 [[GH-48]](https://github.com/hashicorp/vault-plugin-secrets-openldap/pull/48)
+
+## v0.9.0
+
 FEATURES:
 
 - Adds service account check-out functionality for `ad`, `openldap`, and `racf` schemas.

@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 FROM docker.mirror.hashicorp.services/hashicorp/vault-enterprise:1.11.3-ent as enterprise
 
 # Don't use `kubernetes` as plugin name to ensure we don't silently fall back to

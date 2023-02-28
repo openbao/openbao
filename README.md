@@ -79,7 +79,7 @@ Once the server is started, register the plugin in the Vault server's [plugin ca
 $ vault plugin register \
         -sha256=<expected SHA256 Hex value of the plugin binary> \
         -command="vault-plugin-secrets-kubernetes" \
-        secrets kubernetes
+        secret kubernetes
 ...
 Success! Data written to: sys/plugins/catalog/kubernetes
 ```

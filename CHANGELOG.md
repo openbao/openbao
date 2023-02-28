@@ -1,5 +1,12 @@
 ## Unreleased
 
+### IMPROVEMENTS:
+
+* enable plugin multiplexing [GH-23](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/23)
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.0
+  * `github.com/hashicorp/vault/sdk` v0.8.1
+
 ## 0.3.0 (February 9, 2023)
 
 * Add `/check` endpoint to determine if environment variables are set [GH-18](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/18)

@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.3.0 (February 9, 2023)
+
 * Add `/check` endpoint to determine if environment variables are set [GH-18](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/18)
 
 ### Changes

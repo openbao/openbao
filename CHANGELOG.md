@@ -1,5 +1,12 @@
 ## Unreleased
 
+### IMPROVEMENTS:
+
+* enable plugin multiplexing [GH-55](https://github.com/hashicorp/vault-plugin-secrets-openldap/pull/55)
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.0
+  * `github.com/hashicorp/vault/sdk` v0.8.1
+
 ## v0.10.0
 
 CHANGES:

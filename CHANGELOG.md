@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.15.0 (February 9, 2023)
+
 ### Changes
 
 * Return HTTP 403 error code instead of 500 when JWT validation fails due to invalid issuer, audiences, or signing algorithm [GH-179](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/179)

@@ -21,9 +21,11 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
-	err := plugin.Serve(&plugin.ServeOpts{
+	err := plugin.ServeMultiplex(&plugin.ServeOpts{
 		BackendFactoryFunc: kubeauth.Factory,
-		TLSProviderFunc:    tlsProviderFunc,
+		// set the TLSProviderFunc so that the plugin maintains backwards
+		// compatibility with Vault versions that don’t support plugin AutoMTLS
+		TLSProviderFunc: tlsProviderFunc,
 	})
 	if err != nil {
 		log.L().Error("plugin shutting down", "error", err)

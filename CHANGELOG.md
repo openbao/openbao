@@ -1,5 +1,12 @@
 ## Unreleased
 
+### Changes
+
+* enable plugin multiplexing [GH-186](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/186)
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.0
+  * `github.com/hashicorp/vault/sdk` v0.8.1
+
 ## 0.15.0 (February 9, 2023)
 
 ### Changes

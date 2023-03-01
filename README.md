@@ -73,7 +73,7 @@ $ vault server -config=path/to/config.hcl ...
 ...
 ```
 
-Once the server is started, register the plugin in the Vault server's [plugin catalog](https://www.vaultproject.io/docs/plugins/plugin-architecture#plugin-catalog):
+Once the server is started, register the plugin in the Vault server's [plugin catalog](https://developer.hashicorp.com/vault/docs/plugins/plugin-architecture#plugin-catalog):
 
 ```sh
 $ vault plugin register \

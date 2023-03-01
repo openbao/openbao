@@ -1,5 +1,12 @@
 ## Unreleased
 
+IMPROVEMENTS:
+
+* enable plugin multiplexing [GH-225](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/225)
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.0
+  * `github.com/hashicorp/vault/sdk` v0.8.1
+
 ## 0.15.0
 
 IMPROVEMENTS:

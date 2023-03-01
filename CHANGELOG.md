@@ -1,3 +1,12 @@
+## Unreleased
+
+### IMPROVEMENTS
+
+* enable plugin multiplexing [GH-82](https://github.com/hashicorp/vault-plugin-auth-kerberos/pull/82)
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.0
+  * `github.com/hashicorp/vault/sdk` v0.8.1
+
 ## v0.9.0
 
 ### IMPROVEMENTS

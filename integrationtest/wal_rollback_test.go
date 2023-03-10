@@ -66,6 +66,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"kubernetes_role_type":          "RolE",
 			"token_default_ttl":             "1h",
 			"token_max_ttl":                 "24h",
+			"token_default_audiences":       []string{"foobar"},
 		}
 		expectedRoleResponse := map[string]interface{}{
 			"allowed_kubernetes_namespaces":         []interface{}{"test"},
@@ -80,6 +81,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               []interface{}{"foobar"},
 		}
 
 		_, err := client.Logical().Write(mountPath+"/roles/walrole", roleConfig)
@@ -138,6 +140,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"kubernetes_role_type":                  "ClusterRole",
 			"token_default_ttl":                     "1h",
 			"token_max_ttl":                         "24h",
+			"token_default_audiences":               []string{"foobar"},
 		}
 		expectedRoleResponse := map[string]interface{}{
 			"allowed_kubernetes_namespaces":         interface{}(nil),
@@ -152,6 +155,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               []interface{}{"foobar"},
 		}
 
 		_, err := client.Logical().Write(mountPath+"/roles/walrolebinding", roleConfig)

@@ -22,18 +22,19 @@ const (
 )
 
 type roleEntry struct {
-	Name                 string            `json:"name" mapstructure:"name"`
-	K8sNamespaces        []string          `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
-	K8sNamespaceSelector string            `json:"allowed_kubernetes_namespace_selector" mapstructure:"allowed_kubernetes_namespace_selector"`
-	TokenMaxTTL          time.Duration     `json:"token_max_ttl" mapstructure:"token_max_ttl"`
-	TokenDefaultTTL      time.Duration     `json:"token_default_ttl" mapstructure:"token_default_ttl"`
-	ServiceAccountName   string            `json:"service_account_name" mapstructure:"service_account_name"`
-	K8sRoleName          string            `json:"kubernetes_role_name" mapstructure:"kubernetes_role_name"`
-	K8sRoleType          string            `json:"kubernetes_role_type" mapstructure:"kubernetes_role_type"`
-	RoleRules            string            `json:"generated_role_rules" mapstructure:"generated_role_rules"`
-	NameTemplate         string            `json:"name_template" mapstructure:"name_template"`
-	ExtraLabels          map[string]string `json:"extra_labels" mapstructure:"extra_labels"`
-	ExtraAnnotations     map[string]string `json:"extra_annotations" mapstructure:"extra_annotations"`
+	Name                  string            `json:"name" mapstructure:"name"`
+	K8sNamespaces         []string          `json:"allowed_kubernetes_namespaces" mapstructure:"allowed_kubernetes_namespaces"`
+	K8sNamespaceSelector  string            `json:"allowed_kubernetes_namespace_selector" mapstructure:"allowed_kubernetes_namespace_selector"`
+	TokenMaxTTL           time.Duration     `json:"token_max_ttl" mapstructure:"token_max_ttl"`
+	TokenDefaultTTL       time.Duration     `json:"token_default_ttl" mapstructure:"token_default_ttl"`
+	TokenDefaultAudiences []string          `json:"token_default_audiences" mapstructure:"token_default_audiences"`
+	ServiceAccountName    string            `json:"service_account_name" mapstructure:"service_account_name"`
+	K8sRoleName           string            `json:"kubernetes_role_name" mapstructure:"kubernetes_role_name"`
+	K8sRoleType           string            `json:"kubernetes_role_type" mapstructure:"kubernetes_role_type"`
+	RoleRules             string            `json:"generated_role_rules" mapstructure:"generated_role_rules"`
+	NameTemplate          string            `json:"name_template" mapstructure:"name_template"`
+	ExtraLabels           map[string]string `json:"extra_labels" mapstructure:"extra_labels"`
+	ExtraAnnotations      map[string]string `json:"extra_annotations" mapstructure:"extra_annotations"`
 }
 
 func (r *roleEntry) toResponseData() (map[string]interface{}, error) {
@@ -76,6 +77,11 @@ func (b *backend) pathRoles() []*framework.Path {
 				"token_default_ttl": {
 					Type:        framework.TypeDurationSecond,
 					Description: "The default ttl for generated Kubernetes service account tokens. If not set or set to 0, will use system default.",
+					Required:    false,
+				},
+				"token_default_audiences": {
+					Type:        framework.TypeCommaStringSlice,
+					Description: "The default audiences for generated Kubernetes service account tokens. If not set or set to \"\", will use k8s cluster default.",
 					Required:    false,
 				},
 				"service_account_name": {
@@ -205,6 +211,9 @@ func (b *backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *f
 	}
 	if tokenTTLRaw, ok := d.GetOk("token_default_ttl"); ok {
 		entry.TokenDefaultTTL = time.Duration(tokenTTLRaw.(int)) * time.Second
+	}
+	if tokenAudiencesRaw, ok := d.GetOk("token_default_audiences"); ok {
+		entry.TokenDefaultAudiences = strutil.RemoveDuplicates(tokenAudiencesRaw.([]string), false)
 	}
 	if svcAccount, ok := d.GetOk("service_account_name"); ok {
 		entry.ServiceAccountName = svcAccount.(string)

@@ -1,5 +1,10 @@
 ## Unreleased
 
+Features:
+* add `audiences` option to set audiences for the k8s token created from the TokenRequest API, and add `token_default_audiences` 
+option to set the default audiences on role write [GH-24](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/24)
+
+
 ### IMPROVEMENTS:
 
 * enable plugin multiplexing [GH-23](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/23)

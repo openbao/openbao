@@ -49,11 +49,12 @@ func newClient(config *kubeConfig) (*client, error) {
 	return &client{k8sClient}, nil
 }
 
-func (c *client) createToken(ctx context.Context, namespace, name string, ttl time.Duration) (*authenticationv1.TokenRequestStatus, error) {
+func (c *client) createToken(ctx context.Context, namespace, name string, ttl time.Duration, audiences []string) (*authenticationv1.TokenRequestStatus, error) {
 	intTTL := int64(ttl.Seconds())
 	resp, err := c.k8s.CoreV1().ServiceAccounts(namespace).CreateToken(ctx, name, &authenticationv1.TokenRequest{
 		Spec: authenticationv1.TokenRequestSpec{
 			ExpirationSeconds: &intTTL,
+			Audiences:         audiences,
 		},
 	}, metav1.CreateOptions{})
 	if err != nil {

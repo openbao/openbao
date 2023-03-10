@@ -162,6 +162,7 @@ func TestRole(t *testing.T) {
 		"generated_role_rules":          sampleRules,
 		"token_default_ttl":             "1h",
 		"token_max_ttl":                 "24h",
+		"token_default_audiences":       []string{"foobar"},
 	})
 	assert.NoError(t, err)
 
@@ -180,6 +181,7 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     oneHour,
+		"token_default_audiences":               []interface{}{"foobar"},
 	}, result.Data)
 
 	// update
@@ -188,6 +190,7 @@ func TestRole(t *testing.T) {
 		"extra_annotations":             sampleExtraAnnotations,
 		"extra_labels":                  sampleExtraLabels,
 		"token_default_ttl":             "30m",
+		"token_default_audiences":       []string{"bar"},
 	})
 
 	result, err = client.Logical().Read(path + "/roles/testrole")
@@ -205,6 +208,7 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     thirtyMinutes,
+		"token_default_audiences":               []interface{}{"bar"},
 	}, result.Data)
 
 	// update again
@@ -228,6 +232,7 @@ func TestRole(t *testing.T) {
 		"service_account_name":                  "",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     thirtyMinutes,
+		"token_default_audiences":               []interface{}{"bar"},
 	}, result.Data)
 
 	result, err = client.Logical().List(path + "/roles")

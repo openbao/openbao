@@ -125,6 +125,7 @@ func TestRoles(t *testing.T) {
 			"allowed_kubernetes_namespace_selector": goodJSONSelector,
 			"kubernetes_role_name":                  "existing_role",
 			"token_default_ttl":                     "5h",
+			"token_default_audiences":               []string{"foobar"},
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Error())
@@ -145,6 +146,7 @@ func TestRoles(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         time.Duration(0).Seconds(),
 			"token_default_ttl":                     time.Duration(time.Hour * 5).Seconds(),
+			"token_default_audiences":               []string{"foobar"},
 		}, resp.Data)
 
 		// Create one with yaml namespace selector and metadata
@@ -154,6 +156,7 @@ func TestRoles(t *testing.T) {
 			"extra_labels":                          testExtraLabels,
 			"kubernetes_role_name":                  "existing_role",
 			"kubernetes_role_type":                  "role",
+			"token_default_audiences":               []string{"foobar"},
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Error())
@@ -173,6 +176,7 @@ func TestRoles(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         time.Duration(0).Seconds(),
 			"token_default_ttl":                     time.Duration(0).Seconds(),
+			"token_default_audiences":               []string{"foobar"},
 		}, resp.Data)
 
 		// Create one with json role rules
@@ -180,6 +184,7 @@ func TestRoles(t *testing.T) {
 			"allowed_kubernetes_namespaces": []string{"app1", "app2"},
 			"generated_role_rules":          goodJSONRules,
 			"token_default_ttl":             "5h",
+			"token_default_audiences":       []string{"foobar"},
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Error())
@@ -199,6 +204,7 @@ func TestRoles(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         time.Duration(0).Seconds(),
 			"token_default_ttl":                     time.Duration(time.Hour * 5).Seconds(),
+			"token_default_audiences":               []string{"foobar"},
 		}, resp.Data)
 
 		// Create one with yaml role rules and metadata
@@ -208,6 +214,7 @@ func TestRoles(t *testing.T) {
 			"extra_labels":                  testExtraLabels,
 			"generated_role_rules":          goodYAMLRules,
 			"kubernetes_role_type":          "role",
+			"token_default_audiences":       []string{"foobar"},
 		})
 		assert.NoError(t, err)
 		assert.NoError(t, resp.Error())
@@ -227,6 +234,7 @@ func TestRoles(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         time.Duration(0).Seconds(),
 			"token_default_ttl":                     time.Duration(0).Seconds(),
+			"token_default_audiences":               []string{"foobar"},
 		}, resp.Data)
 
 		// update yamlrules (with a duplicate namespace)
@@ -250,6 +258,7 @@ func TestRoles(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         time.Duration(0).Seconds(),
 			"token_default_ttl":                     time.Duration(0).Seconds(),
+			"token_default_audiences":               []string{"foobar"},
 		}, resp.Data)
 
 		// Now there should be four roles returned from list

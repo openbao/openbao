@@ -125,6 +125,81 @@ func TestCreds_ttl(t *testing.T) {
 	}
 }
 
+// Test token audiences handling and defaults
+func TestCreds_audiences(t *testing.T) {
+	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
+	client, err := api.NewClient(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path, umount := mountHelper(t, client)
+	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
+
+	// create default config
+	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
+	require.NoError(t, err)
+
+	type testCase struct {
+		roleConfig        map[string]interface{}
+		credsConfig       map[string]interface{}
+		expectedAudiences []interface{}
+	}
+
+	tests := map[string]testCase{
+		"both set": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"*"},
+				"service_account_name":          "sample-app",
+				"token_default_audiences":       []string{"foo", "bar"},
+			},
+			credsConfig: map[string]interface{}{
+				"kubernetes_namespace": "test",
+				"audiences":            "baz,qux",
+			},
+			expectedAudiences: []interface{}{"baz", "qux"},
+		},
+		"default to token_default_audiences": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"*"},
+				"service_account_name":          "sample-app",
+				"token_default_audiences":       []string{"foo", "bar"},
+			},
+			credsConfig: map[string]interface{}{
+				"kubernetes_namespace": "test",
+			},
+			expectedAudiences: []interface{}{"foo", "bar"},
+		},
+		"default to audiences of k8s cluster default if both not set": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"*"},
+				"service_account_name":          "sample-app",
+			},
+			credsConfig: map[string]interface{}{
+				"kubernetes_namespace": "test",
+			},
+			expectedAudiences: []interface{}{"https://kubernetes.default.svc.cluster.local"},
+		},
+	}
+	i := 0
+	for n, tc := range tests {
+		t.Run(n, func(t *testing.T) {
+			roleName := fmt.Sprintf("testrole-%d", i)
+			_, err = client.Logical().Write(path+"/roles/"+roleName, tc.roleConfig)
+			assert.NoError(t, err)
+
+			creds, err := client.Logical().Write(path+"/creds/"+roleName, tc.credsConfig)
+			assert.NoError(t, err)
+			require.NotNil(t, creds)
+
+			testK8sTokenAudiences(t, tc.expectedAudiences, creds.Data["service_account_token"].(string))
+		})
+		i = i + 1
+	}
+}
+
 func TestCreds_service_account_name(t *testing.T) {
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
 	client, err := api.NewClient(nil)
@@ -164,6 +239,7 @@ func TestCreds_service_account_name(t *testing.T) {
 		"service_account_name":                  "sample-app",
 		"token_max_ttl":                         oneDay,
 		"token_default_ttl":                     oneHour,
+		"token_default_audiences":               nil,
 	}, roleResponse.Data)
 
 	result1, err := client.Logical().Write(path+"/creds/testrole", map[string]interface{}{
@@ -241,6 +317,7 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               nil,
 		}
 		testRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -275,6 +352,7 @@ func TestCreds_kubernetes_role_name(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               nil,
 		}
 		testClusterRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -344,6 +422,7 @@ func TestCreds_generated_role_rules(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               nil,
 		}
 		testRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
@@ -379,6 +458,7 @@ func TestCreds_generated_role_rules(t *testing.T) {
 			"service_account_name":                  "",
 			"token_max_ttl":                         oneDay,
 			"token_default_ttl":                     oneHour,
+			"token_default_audiences":               nil,
 		}
 		testClusterRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})

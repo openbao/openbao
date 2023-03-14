@@ -18,8 +18,12 @@ import (
 )
 
 var (
-	defaultLeaseTTLVal = time.Hour * 12
-	maxLeaseTTLVal     = time.Hour * 24
+	defaultLeaseTTLVal      = time.Hour * 12
+	maxLeaseTTLVal          = time.Hour * 24
+	testPasswordPolicy1     = "test_policy_1"
+	testPasswordPolicy2     = "test_policy_2"
+	testPasswordFromPolicy1 = "TestPolicy1Password"
+	testPasswordFromPolicy2 = "TestPolicy2Password"
 )
 
 func getBackend(throwsErr bool) (*backend, logical.Storage) {
@@ -29,6 +33,14 @@ func getBackend(throwsErr bool) (*backend, logical.Storage) {
 		System: &logical.StaticSystemView{
 			DefaultLeaseTTLVal: defaultLeaseTTLVal,
 			MaxLeaseTTLVal:     maxLeaseTTLVal,
+			PasswordPolicies: map[string]logical.PasswordGenerator{
+				testPasswordPolicy1: func() (string, error) {
+					return testPasswordFromPolicy1, nil
+				},
+				testPasswordPolicy2: func() (string, error) {
+					return testPasswordFromPolicy2, nil
+				},
+			},
 		},
 		StorageView: &logical.InmemStorage{},
 	}

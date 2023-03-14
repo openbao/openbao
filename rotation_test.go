@@ -117,6 +117,63 @@ func TestAutoRotate(t *testing.T) {
 	})
 }
 
+// TestPasswordPolicyModificationInvalidatesWAL tests that modification of the
+// password policy set on the config invalidates pre-generated passwords in WAL
+// entries. WAL entries are used to roll forward during partial failure, but
+// a password policy change should cause the WAL to be discarded and a new
+// password to be generated using the updated policy.
+func TestPasswordPolicyModificationInvalidatesWAL(t *testing.T) {
+	ctx := context.Background()
+	b, storage := getBackend(false)
+	defer b.Cleanup(ctx)
+
+	configureOpenLDAPMountWithPasswordPolicy(t, b, storage, testPasswordPolicy1)
+	createRole(t, b, storage, "hashicorp")
+
+	// Create a WAL entry from a partial failure to rotate
+	generateWALFromFailedRotation(t, b, storage, "hashicorp")
+	requireWALs(t, storage, 1)
+
+	// The role password should still be the password generated from policy 1
+	role, err := b.staticRole(ctx, storage, "hashicorp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if role.StaticAccount.Password != testPasswordFromPolicy1 {
+		t.Fatalf("expected %v, got %v", testPasswordFromPolicy1, role.StaticAccount.Password)
+	}
+
+	// Update the password policy on the configuration
+	configureOpenLDAPMountWithPasswordPolicy(t, b, storage, testPasswordPolicy2)
+
+	// Manually rotate the role. It should not use the password from the WAL entry
+	// created earlier. Instead, it should result in generation of a new password
+	// using the updated policy 2.
+	_, err = b.HandleRequest(ctx, &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "rotate-role/hashicorp",
+		Storage:   storage,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The role password should be the password generated from policy 2
+	role, err = b.staticRole(ctx, storage, "hashicorp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if role.StaticAccount.Password != testPasswordFromPolicy2 {
+		t.Fatalf("expected %v, got %v", testPasswordFromPolicy2, role.StaticAccount.Password)
+	}
+	if role.StaticAccount.LastPassword != testPasswordFromPolicy1 {
+		t.Fatalf("expected %v, got %v", testPasswordFromPolicy1, role.StaticAccount.LastPassword)
+	}
+
+	// The WAL entry should be deleted after the successful rotation
+	requireWALs(t, storage, 0)
+}
+
 func TestRollsPasswordForwardsUsingWAL(t *testing.T) {
 	ctx := context.Background()
 	b, storage := getBackend(false)

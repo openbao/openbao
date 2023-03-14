@@ -741,16 +741,29 @@ func TestWALsDeletedOnRoleDeletion(t *testing.T) {
 
 func configureOpenLDAPMount(t *testing.T, b *backend, storage logical.Storage) {
 	t.Helper()
+
+	configureOpenLDAPMountWithPasswordPolicy(t, b, storage, "")
+}
+
+func configureOpenLDAPMountWithPasswordPolicy(t *testing.T, b *backend, storage logical.Storage, policy string) {
+	t.Helper()
+
+	data := map[string]interface{}{
+		"binddn":      "tester",
+		"bindpass":    "pa$$w0rd",
+		"url":         "ldap://138.91.247.105",
+		"certificate": validCertificate,
+	}
+
+	if policy != "" {
+		data["password_policy"] = policy
+	}
+
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.CreateOperation,
 		Path:      configPath,
 		Storage:   storage,
-		Data: map[string]interface{}{
-			"binddn":      "tester",
-			"bindpass":    "pa$$w0rd",
-			"url":         "ldap://138.91.247.105",
-			"certificate": validCertificate,
-		},
+		Data:      data,
 	})
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%s resp:%#v\n", err, resp)

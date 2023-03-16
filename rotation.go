@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/vault/sdk/helper/locksutil"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -123,12 +124,12 @@ func (b *backend) runTicker(ctx context.Context, s logical.Storage) {
 // setCredentialsWAL is used to store information in a WAL that can retry a
 // credential setting or rotation in the event of partial failure.
 type setCredentialsWAL struct {
-	NewPassword       string    `json:"new_password"`
-	RoleName          string    `json:"role_name"`
-	Username          string    `json:"username"`
-	DN                string    `json:"dn"`
-	PasswordPolicy    string    `json:"password_policy"`
-	LastVaultRotation time.Time `json:"last_vault_rotation"`
+	NewPassword       string    `json:"new_password" mapstructure:"new_password"`
+	RoleName          string    `json:"role_name" mapstructure:"role_name"`
+	Username          string    `json:"username" mapstructure:"username"`
+	DN                string    `json:"dn" mapstructure:"dn"`
+	PasswordPolicy    string    `json:"password_policy" mapstructure:"password_policy"`
+	LastVaultRotation time.Time `json:"last_vault_rotation" mapstructure:"last_vault_rotation"`
 
 	// Private fields which will not be included in json.Marshal/Unmarshal.
 	walID        string
@@ -256,21 +257,21 @@ func (b *backend) findStaticWAL(ctx context.Context, s logical.Storage, id strin
 		return nil, nil
 	}
 
-	data := wal.Data.(map[string]interface{})
 	walEntry := setCredentialsWAL{
-		walID:          id,
-		walCreatedAt:   wal.CreatedAt,
-		NewPassword:    data["new_password"].(string),
-		RoleName:       data["role_name"].(string),
-		Username:       data["username"].(string),
-		DN:             data["dn"].(string),
-		PasswordPolicy: data["password_policy"].(string),
+		walID:        id,
+		walCreatedAt: wal.CreatedAt,
 	}
-	lvr, err := time.Parse(time.RFC3339, data["last_vault_rotation"].(string))
+	d, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.StringToTimeHookFunc(time.RFC3339),
+		Result:     &walEntry,
+	})
 	if err != nil {
 		return nil, err
 	}
-	walEntry.LastVaultRotation = lvr
+	err = d.Decode(wal.Data)
+	if err != nil {
+		return nil, err
+	}
 
 	return &walEntry, nil
 }

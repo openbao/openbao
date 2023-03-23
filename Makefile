@@ -3,7 +3,7 @@ TESTARGS  ?= '-test.v'
 KIND_CLUSTER_NAME ?= vault-plugin-auth-kubernetes
 
 # kind k8s version
-KIND_K8S_VERSION ?= v1.25.0
+KIND_K8S_VERSION ?= v1.26.2
 
 .PHONY: default
 default: dev
@@ -53,7 +53,7 @@ vault-image:
 setup-integration-test: teardown-integration-test vault-image
 	kind --name ${KIND_CLUSTER_NAME} load docker-image hashicorp/vault:dev
 	kubectl create namespace test
-	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.22.0 \
+	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.23.0 \
 		--wait --timeout=5m \
 		--namespace=test \
 		--set server.dev.enabled=true \

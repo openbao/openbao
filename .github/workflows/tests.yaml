@@ -3,84 +3,53 @@ name: Tests
 on: [push, workflow_dispatch]
 
 jobs:
-  get-go-version:
-    name: "Determine Go toolchain version"
-    runs-on: ubuntu-latest
-    outputs:
-      go-version: ${{ steps.get-go-version.outputs.go-version }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Determine Go version
-        id: get-go-version
-        run: |
-          echo "Building with Go $(cat .go-version)"
-          echo "::set-output name=go-version::$(cat .go-version)"
-
   fmtcheck:
     runs-on: ubuntu-latest
-    needs: [get-go-version]
     env:
       GOFUMPT_VERSION: 0.3.1
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          go-version: ${{ needs.get-go-version.outputs.go-version }}
+          go-version-file: .go-version
+          cache: true
       - run: |
           go install "mvdan.cc/gofumpt@v${GOFUMPT_VERSION}"
           make fmtcheck
 
   test:
     runs-on: ubuntu-latest
-    needs: [get-go-version]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          go-version: ${{ needs.get-go-version.outputs.go-version }}
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version-file: .go-version
+          cache: true
       - run: make test
 
   integrationTest:
     runs-on: ubuntu-latest
-    needs: [fmtcheck, test, get-go-version]
+    needs: [fmtcheck, test]
     strategy:
       fail-fast: false
       matrix:
-        kind-k8s-version: [1.22.13, 1.23.10, 1.24.4, 1.25.0]
+        kind-k8s-version: [1.22.15, 1.23.13, 1.24.7, 1.25.3, 1.26.2]
         enterprise: ["", "-ent"]
     name: Integration test ${{ matrix.enterprise }} kind ${{ matrix.kind-k8s-version }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
       - name: Create K8s Kind Cluster
-        uses: helm/kind-action@v1.2.0
+        uses: helm/kind-action@d8ccf8fb623ce1bb360ae2f45f323d9d5c5e9f00 # v1.5.0
         with:
-          version: v0.14.0
+          version: v0.17.0
           cluster_name: vault-plugin-secrets-kubernetes
           config: integrationtest/kind/config.yaml
           node_image: kindest/node:v${{ matrix.kind-k8s-version }}
-      # Must come _after_ kind-action, because the kind step also sets up a kubectl binary.
-      - uses: azure/setup-kubectl@v2.0
+          kubectl_version: v1.25.3
+      - uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
         with:
-          version: 'v1.25.0'
-      - uses: actions/setup-go@v2
-        with:
-          go-version: ${{ needs.get-go-version.outputs.go-version }}
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version-file: .go-version
+          cache: true
       - env:
           VAULT_LICENSE_CI: ${{ secrets.VAULT_LICENSE_CI }}
         run: make setup-integration-test${{ matrix.enterprise }}

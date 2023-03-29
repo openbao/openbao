@@ -1,8 +1,6 @@
 TOOL?=vault-plugin-auth-kerberos
 TEST?=$$(go list ./... | grep -v /vendor/)
-VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
-EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox
+EXTERNAL_TOOLS=
 BUILD_TAGS?=${TOOL}
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 
@@ -21,8 +19,9 @@ dev: fmtcheck generate
 	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 	go build -o bin/login-kerb ./cmd/login-kerb
 dev-linux-only: fmtcheck generate
-	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEVENV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
-	GOOS=linux GOARCH=amd64 go build -o bin/login-kerb ./cmd/login-kerb
+	@GOOS=linux GOARCH=amd64 CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEVENV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	@mkdir -p pkg/linux_amd64; cp bin/$(TOOL) pkg/linux_amd64/
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/login-kerb ./cmd/login-kerb
 dev-dynamic: generate
 	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 

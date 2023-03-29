@@ -33,17 +33,20 @@ print('Vault token:', r.json()['auth']['client_token'])
 1. Install and register the plugin.
 
 Put the plugin binary (`vault-plugin-auth-kerberos`) into a location of your choice. This directory
-will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
+will be specified as the [`plugin_directory`](https://developer.hashicorp.com/vault/docs/configuration#plugin_directory)
 in the Vault config used to start the server.
 
-```
-...
+```hcl
 plugin_directory = "path/to/plugin/directory"
-...
 ```
 
 ```sh
-$ vault write sys/plugins/catalog/auth/kerberos sha_256="$(shasum -a 256 'vault-plugin-auth-kerberos' | cut -d ' ' -f1)" command="vault-plugin-auth-kerberos -client-cert server.crt -client-key server.key"
+$ SHA256=$(shasum -a 256 'vault-plugin-auth-kerberos' | cut -d ' ' -f2)
+$ vault plugin register \
+        -sha256=$SHA256 \
+        -command="vault-plugin-auth-kerberos" \
+        -client-cert server.crt -client-key server.key \
+        auth kerberos
 ```
 
 2. Enable the Kerberos auth method:
@@ -88,7 +91,7 @@ setspn.exe -U -S HTTP/vault.domain your_service_account
 ```
 
 5. Configure LDAP backend to look up Vault policies.
-Configuration for LDAP is identical to the [LDAP](https://www.vaultproject.io/docs/auth/ldap.html)
+Configuration for LDAP is identical to the [LDAP](https://developer.hashicorp.com/vault/docs/auth/ldap)
 auth method, but writing to to the Kerberos endpoint:
 
 ```sh
@@ -169,7 +172,7 @@ r = requests.post("http://{}/v1/auth/kerberos/login".format(host),
 print('Vault token:', r.json()['auth']['client_token'])
 ```
 
-#### Tests
+### Tests
 
 If you are developing this plugin and want to verify it is still
 functioning (and you haven't broken anything else), we recommend
@@ -187,17 +190,22 @@ You can also specify a `TESTARGS` variable to filter tests like so:
 $ make test TESTARGS='--run=TestConfig'
 ```
 
+### Acceptance Tests
+
 Acceptance tests requires a Vault Enterprise license to be 
-[provided](https://www.vaultproject.io/docs/commands#vault_license) through 
+[provided](https://developer.hashicorp.com/vault/docs/commands#vault_license) through 
 `VAULT_LICENSE` and the following tools to be installed:
 - [Docker](https://docs.docker.com/get-docker/)
 - [jq](https://stedolan.github.io/jq/)
 - [bats](https://bats-core.readthedocs.io/en/stable)
 
 
+Run the acceptance tests:
+
 ```sh
 $ make test-acceptance VAULT_LICENSE=<vault-license>
 ```
+
 
 ## Contributors
 

@@ -1,11 +1,21 @@
 ## Unreleased
 
+## 0.15.1
+
 IMPROVEMENTS:
 
 * enable plugin multiplexing [GH-225](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/225)
 * update dependencies
-  * `github.com/hashicorp/vault/api` v1.9.0
-  * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/hashicorp/vault/api` v1.9.0
+   * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/go-test/deep` v1.0.8 -> v1.1.0
+   * `github.com/hashicorp/cap` v0.2.1-0.20220727210936-60cd1534e220 -> v0.2.1-0.20230221194157-7894fed1633d
+   * `github.com/hashicorp/go-hclog` v1.0.0 -> v1.5.0
+   * `github.com/mitchellh/pointerstructure` v1.2.0 -> v1.2.1
+   * `github.com/stretchr/testify` v1.7.0 -> v1.8.2
+   * `golang.org/x/oauth2` v0.0.0-20220524215830-622c5d57e401 -> v0.6.0
+   * `golang.org/x/sync` v0.0.0-20220722155255-886fb9371eb4 -> v0.1.0
+   * `google.golang.org/api` v0.83.0 -> v0.114.0
 
 ## 0.15.0
 

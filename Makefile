@@ -1,7 +1,6 @@
 TOOL?=vault-plugin-auth-jwt
 TEST?=$$(go list ./... | grep -v /vendor/)
-EXTERNAL_TOOLS=\
-	github.com/mitchellh/gox
+EXTERNAL_TOOLS=
 BUILD_TAGS?=${TOOL}
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 

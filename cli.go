@@ -245,11 +245,11 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 // This is used to present a nicer UI by splitting up *known* prefix sentences
 // from the rest of the text. e.g.
 //
-//    "No response from provider. Gateway timeout from upstream proxy."
+//	"No response from provider. Gateway timeout from upstream proxy."
 //
 // becomes:
 //
-//    "No response from provider.", "Gateway timeout from upstream proxy."
+//	"No response from provider.", "Gateway timeout from upstream proxy."
 func parseError(err error) (string, string) {
 	headers := []string{errNoResponse, errLoginFailed, errTokenVerification}
 	summary := "Login error"

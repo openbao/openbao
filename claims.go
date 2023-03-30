@@ -69,11 +69,11 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 // extractMetadata builds a metadata map from a set of claims and claims mappings.
 // The referenced claims must be strings and the claims mappings must be of the structure:
 //
-//   {
-//       "/some/claim/pointer": "metadata_key1",
-//       "another_claim": "metadata_key2",
-//        ...
-//   }
+//	{
+//	    "/some/claim/pointer": "metadata_key1",
+//	    "another_claim": "metadata_key2",
+//	     ...
+//	}
 func extractMetadata(logger log.Logger, allClaims map[string]interface{}, claimMappings map[string]string) (map[string]string, error) {
 	metadata := make(map[string]string)
 	for source, target := range claimMappings {

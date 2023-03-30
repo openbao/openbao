@@ -12,8 +12,7 @@ import (
 )
 
 // SecureAuthProvider is used for SecureAuth-specific configuration
-type SecureAuthProvider struct {
-}
+type SecureAuthProvider struct{}
 
 // Initialize anything in the SecureAuthProvider struct - satisfying the CustomProvider interface
 func (a *SecureAuthProvider) Initialize(_ context.Context, _ *jwtConfig) error {
@@ -36,7 +35,7 @@ func (a *SecureAuthProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, a
 		if groupsstr, ok := groupsClaimRaw.(string); ok {
 			rawsecureauthGroups := strings.Split(groupsstr, ",")
 
-			var secureauthGroups = make([]interface{}, 0, len(rawsecureauthGroups))
+			secureauthGroups := make([]interface{}, 0, len(rawsecureauthGroups))
 			for group := range rawsecureauthGroups {
 				secureauthGroups = append(secureauthGroups, rawsecureauthGroups[group])
 			}

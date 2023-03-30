@@ -74,7 +74,6 @@ func (a *azureServer) getTLSCert() (string, error) {
 }
 
 func TestLogin_fetchGroups(t *testing.T) {
-
 	aServer := newAzureServer(t)
 	aCert, err := aServer.getTLSCert()
 	require.NoError(t, err)

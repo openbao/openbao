@@ -66,7 +66,6 @@ func (a *secureauthServer) getTLSCert() (string, error) {
 }
 
 func TestLogin_secureauth_fetchGroups(t *testing.T) {
-
 	aServer := newsecureauthServer(t)
 	aCert, err := aServer.getTLSCert()
 	require.NoError(t, err)

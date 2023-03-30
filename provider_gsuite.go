@@ -134,7 +134,7 @@ func (g *GSuiteProvider) FetchGroups(ctx context.Context, b *jwtAuthBackend, all
 	}
 
 	// Convert set of groups to list
-	var userGroups = make([]interface{}, 0, len(userGroupsMap))
+	userGroups := make([]interface{}, 0, len(userGroupsMap))
 	for email := range userGroupsMap {
 		userGroups = append(userGroups, email)
 	}

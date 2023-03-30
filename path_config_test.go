@@ -584,7 +584,6 @@ func TestConfig_OIDC_Create_Namespace(t *testing.T) {
 			assert.Equal(t, &test.expected, conf)
 		})
 	}
-
 }
 
 func TestConfig_OIDC_Update_Namespace(t *testing.T) {
@@ -695,7 +694,6 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 			assert.Equal(t, &test.expected, conf)
 		})
 	}
-
 }
 
 const (

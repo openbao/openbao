@@ -29,7 +29,6 @@ func (t *testProviderConfig) SensitiveKeys() []string {
 }
 
 func TestNewProviderConfig(t *testing.T) {
-
 	t.Run("normal case", func(t *testing.T) {
 		jc := &jwtConfig{
 			ProviderConfig: map[string]interface{}{

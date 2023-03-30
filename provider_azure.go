@@ -82,19 +82,18 @@ func (a *AzureProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allCla
 // https://openid.net/specs/openid-connect-core-1_0.html#AggregatedDistributedClaims
 // In the future this could be used with other providers as well. Example:
 //
-// {
-// 	 "_claim_names": {
-// 	   "groups": "src1"
-// 	 },
-// 	 "_claim_sources": {
-// 	   "src1": {
-// 	     "endpoint": "https://graph.windows.net...."
-// 	   }
-//   }
-// }
+//	{
+//		 "_claim_names": {
+//		   "groups": "src1"
+//		 },
+//		 "_claim_sources": {
+//		   "src1": {
+//		     "endpoint": "https://graph.windows.net...."
+//		   }
+//	  }
+//	}
 //
 // For this to work, "profile" should be set in "oidc_scopes" in the vault oidc role.
-//
 func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]interface{}, role *jwtRole) (string, error) {
 	// Get the source key for the groups claim
 	name := fmt.Sprintf("/%s/%s", claimNamesField, role.GroupsClaim)
@@ -119,7 +118,7 @@ func (a *AzureProvider) getClaimSource(logger log.Logger, allClaims map[string]i
 	// and will eventually stop servicing requests. See details at:
 	// - https://developer.microsoft.com/en-us/office/blogs/microsoft-graph-or-azure-ad-graph/
 	// - https://docs.microsoft.com/en-us/graph/api/overview?view=graph-rest-1.0
-	// - https://docs.microsoft.com/en-us/graph/migrate-azure-ad-graph-request-differences 
+	// - https://docs.microsoft.com/en-us/graph/migrate-azure-ad-graph-request-differences
 	if urlParsed.Host == azureADGraphHost {
 		urlParsed.Host = microsoftGraphHost
 		urlParsed.Path = microsoftGraphAPIVersion + urlParsed.Path

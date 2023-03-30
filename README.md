@@ -1,4 +1,4 @@
-# Vault Plugin: JWT Auth Backend [![CircleCI](https://circleci.com/gh/hashicorp/vault-plugin-auth-jwt.svg?style=svg)](https://circleci.com/gh/hashicorp/vault-plugin-auth-jwt)
+# Vault Plugin: JWT Auth Backend
 
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
 This plugin allows for JWTs (including OIDC tokens) to authenticate with Vault.
@@ -7,22 +7,22 @@ This plugin allows for JWTs (including OIDC tokens) to authenticate with Vault.
 
 ## Quick Links
     - Vault Website: https://www.vaultproject.io
-    - JWT Auth Docs: https://www.vaultproject.io/docs/auth/jwt.html
+    - JWT Auth Docs: https://developer.hashicorp.com/vault/docs/auth/jwt
     - Main Project Github: https://www.github.com/hashicorp/vault
 
 ## Getting Started
 
-This is a [Vault plugin](https://www.vaultproject.io/docs/internals/plugins.html)
+This is a [Vault plugin](https://developer.hashicorp.com/vault/docs/plugins)
 and is meant to work with Vault. This guide assumes you have already installed Vault
 and have a basic understanding of how Vault works.
 
-Otherwise, first read this guide on how to [get started with Vault](https://www.vaultproject.io/intro/getting-started/install.html).
+Otherwise, first read this guide on how to [get started with Vault](https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-install).
 
-To learn specifically about how plugins work, see documentation on [Vault plugins](https://www.vaultproject.io/docs/internals/plugins.html).
+To learn specifically about how plugins work, see documentation on [Vault plugins](https://developer.hashicorp.com/vault/docs/plugins).
 
 ## Usage
 
-Please see [documentation for the plugin](https://www.vaultproject.io/docs/auth/jwt.html)
+Please see [documentation for the plugin](https://developer.hashicorp.com/vault/docs/auth/jwt)
 on the Vault website.
 
 This plugin is currently built into Vault and by default is accessed
@@ -33,7 +33,7 @@ $ vault auth enable jwt
 Successfully enabled 'jwt' at 'jwt'!
 ```
 
-To see all the supported paths, see the [JWT auth backend docs](https://www.vaultproject.io/docs/auth/jwt.html).
+To see all the supported paths, see the [JWT auth backend docs](https://developer.hashicorp.com/vault/docs/auth/jwt).
 
 ## Developing
 
@@ -61,7 +61,7 @@ $ make dev
 ```
 
 Put the plugin binary into a location of your choice. This directory
-will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
+will be specified as the [`plugin_directory`](https://developer.hashicorp.com/vault/docs/configuration#plugin_directory)
 in the Vault config used to start the server.
 
 ```hcl

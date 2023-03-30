@@ -17,8 +17,8 @@ import (
 // ProviderMap returns a map of provider names to custom types
 func ProviderMap() map[string]CustomProvider {
 	return map[string]CustomProvider{
-		"azure":  &AzureProvider{},
-		"gsuite": &GSuiteProvider{},
+		"azure":      &AzureProvider{},
+		"gsuite":     &GSuiteProvider{},
 		"secureauth": &SecureAuthProvider{},
 	}
 }

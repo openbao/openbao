@@ -1,16 +1,23 @@
 ## Unreleased
 
-Features:
-* add `audiences` option to set audiences for the k8s token created from the TokenRequest API, and add `token_default_audiences` 
+## 0.4.0 (March 30, 2023)
+
+### Features:
+
+* add `audiences` option to set audiences for the k8s token created from the TokenRequest API, and add `token_default_audiences`
 option to set the default audiences on role write [GH-24](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/24)
 
-
-### IMPROVEMENTS:
+### Changes:
 
 * enable plugin multiplexing [GH-23](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/23)
 * update dependencies
-  * `github.com/hashicorp/vault/api` v1.9.0
-  * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/hashicorp/vault/api` v1.9.0
+   * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/hashicorp/go-hclog` v1.3.1 -> v1.5.0
+   * `github.com/stretchr/testify` v1.8.1 -> v1.8.2
+   * `k8s.io/api` v0.25.3 -> v0.26.3
+   * `k8s.io/apimachinery` v0.25.3 -> v0.26.3
+   * `k8s.io/client-go` v0.25.3 -> v0.26.3
 
 ## 0.3.0 (February 9, 2023)
 

@@ -1,11 +1,17 @@
 ## Unreleased
 
+## 0.15.1 (March 27, 2023)
+
 ### Changes
 
 * enable plugin multiplexing [GH-186](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/186)
 * update dependencies
-  * `github.com/hashicorp/vault/api` v1.9.0
-  * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/hashicorp/vault/api` v1.9.0
+   * `github.com/hashicorp/vault/sdk` v0.8.1
+   * `github.com/go-test/deep` v1.0.8 -> v1.1.0
+   * `github.com/hashicorp/go-hclog` v1.3.1 -> v1.5.0
+   * `k8s.io/api` v0.25.3 -> v0.26.3
+   * `k8s.io/apimachinery` v0.25.3 -> v0.26.3
 
 ## 0.15.0 (February 9, 2023)
 

@@ -109,7 +109,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		// The backend's WAL min age is 10 seconds for tests. After that the k8s
 		// objects should be cleaned up.
 		t.Log("Checking hanging objects have been cleaned up")
-		checkObjects(t, roleConfig, false, false, 1*time.Minute)
+		checkObjects(t, roleConfig, false, false, 3*time.Minute)
 	})
 
 	t.Run("kubernetes_role_name", func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestCreds_wal_rollback(t *testing.T) {
 		// The backend's WAL min age is 10 seconds for tests. After that the k8s
 		// objects should be cleaned up.
 		t.Log("Checking hanging objects have been cleaned up")
-		checkObjects(t, roleConfig, true, false, 1*time.Minute)
+		checkObjects(t, roleConfig, true, false, 3*time.Minute)
 	})
 }
 

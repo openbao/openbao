@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Features:
+
+* allow omitting `kubernetes_namespace` on token create for single namespace Vault roles [GH-27](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/27)
+
 ## 0.4.0 (March 30, 2023)
 
 ### Features:

@@ -105,10 +105,9 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 		RoleName: roleName,
 	}
 	requestNamespace, ok := d.GetOk("kubernetes_namespace")
-	if !ok {
-		return logical.ErrorResponse("'kubernetes_namespace' is required"), nil
+	if ok {
+		request.Namespace = requestNamespace.(string)
 	}
-	request.Namespace = requestNamespace.(string)
 
 	request.ClusterRoleBinding = d.Get("cluster_role_binding").(bool)
 
@@ -123,7 +122,7 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 	}
 
 	// Validate the request
-	isValidNs, err := b.isValidKubernetesNamespace(ctx, req, request.Namespace, roleEntry)
+	isValidNs, err := b.isValidKubernetesNamespace(ctx, req, request, roleEntry)
 	if err != nil {
 		return nil, fmt.Errorf("error verifying namespace: %w", err)
 	}
@@ -137,8 +136,18 @@ func (b *backend) pathCredentialsRead(ctx context.Context, req *logical.Request,
 	return b.createCreds(ctx, req, roleEntry, request)
 }
 
-func (b *backend) isValidKubernetesNamespace(ctx context.Context, req *logical.Request, namespace string, role *roleEntry) (bool, error) {
-	if strutil.StrListContains(role.K8sNamespaces, "*") || strutil.StrListContains(role.K8sNamespaces, namespace) {
+func (b *backend) isValidKubernetesNamespace(ctx context.Context, req *logical.Request, request *credsRequest, role *roleEntry) (bool, error) {
+	if request.Namespace == "" {
+		if role.HasSingleK8sNamespace() {
+			// Assign the single namespace to the creds request namespace
+			request.Namespace = role.K8sNamespaces[0]
+			return true, nil
+		}
+
+		return false, fmt.Errorf("'kubernetes_namespace' is required unless the Vault role has a single namespace specified")
+	}
+
+	if strutil.StrListContains(role.K8sNamespaces, "*") || strutil.StrListContains(role.K8sNamespaces, request.Namespace) {
 		return true, nil
 	}
 
@@ -154,7 +163,7 @@ func (b *backend) isValidKubernetesNamespace(ctx context.Context, req *logical.R
 	if err != nil {
 		return false, err
 	}
-	nsLabels, err := client.getNamespaceLabelSet(ctx, namespace)
+	nsLabels, err := client.getNamespaceLabelSet(ctx, request.Namespace)
 	if err != nil {
 		return false, err
 	}

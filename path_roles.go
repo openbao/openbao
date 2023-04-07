@@ -37,6 +37,13 @@ type roleEntry struct {
 	ExtraAnnotations      map[string]string `json:"extra_annotations" mapstructure:"extra_annotations"`
 }
 
+// HasSingleK8sNamespace returns true if the role has a single namespace specified
+// and the label selector for Kubernetes namespaces is empty
+func (r *roleEntry) HasSingleK8sNamespace() bool {
+	return r.K8sNamespaceSelector == "" &&
+		len(r.K8sNamespaces) == 1 && r.K8sNamespaces[0] != "" && r.K8sNamespaces[0] != "*"
+}
+
 func (r *roleEntry) toResponseData() (map[string]interface{}, error) {
 	respData := map[string]interface{}{}
 	if err := mapstructure.Decode(r, &respData); err != nil {

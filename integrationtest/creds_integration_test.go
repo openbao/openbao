@@ -463,3 +463,99 @@ func TestCreds_generated_role_rules(t *testing.T) {
 		testClusterRoleType(t, client, path, roleConfig, expectedRoleResponse)
 	})
 }
+
+// Test kubernetes_namespace handling
+func TestCreds_kubernetes_namespace(t *testing.T) {
+	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars
+	client, err := api.NewClient(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path, umount := mountHelper(t, client)
+	defer umount()
+	client, delNamespace := namespaceHelper(t, client)
+	defer delNamespace()
+
+	// create default config
+	_, err = client.Logical().Write(path+"/config", map[string]interface{}{})
+	require.NoError(t, err)
+
+	type testCase struct {
+		roleConfig                  map[string]interface{}
+		credsConfig                 map[string]interface{}
+		expectedCredsCreateErrIsNil bool
+	}
+
+	tests := map[string]testCase{
+		"allowed_kubernetes_namespaces to * and kubernetes_namespace to test": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"*"},
+				"service_account_name":          "sample-app",
+			},
+			credsConfig: map[string]interface{}{
+				"kubernetes_namespace": "test",
+			},
+			expectedCredsCreateErrIsNil: true,
+		},
+		"allowed_kubernetes_namespaces to a single namespace, allowed_kubernetes_namespace_selector to empty," +
+			" and kubernetes_namespace omitted": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"test"},
+				"service_account_name":          "sample-app",
+			},
+			credsConfig:                 nil,
+			expectedCredsCreateErrIsNil: true,
+		},
+		"allowed_kubernetes_namespaces to * and kubernetes_namespace omitted": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"*"},
+				"service_account_name":          "sample-app",
+			},
+			credsConfig:                 nil,
+			expectedCredsCreateErrIsNil: false,
+		},
+		"allowed_kubernetes_namespaces to a single namespace, allowed_kubernetes_namespace_selector to nonempty," +
+			" and kubernetes_namespace omitted": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces":         []string{"test"},
+				"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
+				"service_account_name":                  "sample-app",
+			},
+			credsConfig:                 nil,
+			expectedCredsCreateErrIsNil: false,
+		},
+		"allowed_kubernetes_namespaces to empty, allowed_kubernetes_namespace_selector to nonempty," +
+			"kubernetes_namespace omitted": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespace_selector": `{"matchExpressions": [{"key": "target", "operator": "In", "values": ["integration-test"]}, {"key": "nonexistantlabel", "operator": "DoesNotExist", "values": []}]}`,
+				"service_account_name":                  "sample-app",
+			},
+			credsConfig:                 nil,
+			expectedCredsCreateErrIsNil: false,
+		},
+		"allowed_kubernetes_namespaces to more than one specified, kubernetes_namespace omitted": {
+			roleConfig: map[string]interface{}{
+				"allowed_kubernetes_namespaces": []string{"test", "foo"},
+				"service_account_name":          "sample-app",
+			},
+			credsConfig:                 nil,
+			expectedCredsCreateErrIsNil: false,
+		},
+	}
+	i := 0
+	for n, tc := range tests {
+		t.Run(n, func(t *testing.T) {
+			roleName := fmt.Sprintf("testrole-%d", i)
+			_, err = client.Logical().Write(path+"/roles/"+roleName, tc.roleConfig)
+			require.NoError(t, err)
+
+			creds, err := client.Logical().Write(path+"/creds/"+roleName, tc.credsConfig)
+			assert.Equal(t, tc.expectedCredsCreateErrIsNil, err == nil)
+			if tc.expectedCredsCreateErrIsNil {
+				require.NotNil(t, creds)
+			}
+		})
+		i = i + 1
+	}
+}

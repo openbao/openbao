@@ -66,7 +66,6 @@ func (a *ibmisamServer) getTLSCert() (string, error) {
 }
 
 func TestLogin_ibmisam_fetchGroups(t *testing.T) {
-
 	aServer := newibmisamServer(t)
 	aCert, err := aServer.getTLSCert()
 	require.NoError(t, err)

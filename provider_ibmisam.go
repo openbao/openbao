@@ -12,8 +12,7 @@ import (
 )
 
 // IBMISAMProvider is used for IBMISAM-specific configuration
-type IBMISAMProvider struct {
-}
+type IBMISAMProvider struct{}
 
 // Initialize anything in the IBMISAMProvider struct - satisfying the CustomProvider interface
 func (a *IBMISAMProvider) Initialize(_ context.Context, _ *jwtConfig) error {
@@ -36,7 +35,7 @@ func (a *IBMISAMProvider) FetchGroups(_ context.Context, b *jwtAuthBackend, allC
 		if groupsstr, ok := groupsClaimRaw.(string); ok {
 			rawibmisamGroups := strings.Split(groupsstr, " ")
 
-			var ibmisamGroups = make([]interface{}, 0, len(rawibmisamGroups))
+			ibmisamGroups := make([]interface{}, 0, len(rawibmisamGroups))
 			for group := range rawibmisamGroups {
 				ibmisamGroups = append(ibmisamGroups, rawibmisamGroups[group])
 			}

@@ -4,26 +4,33 @@ EXTERNAL_TOOLS=
 BUILD_TAGS?=${TOOL}
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 
-# bin generates the releaseable binaries for this plugin
+# bin generates the releasable binaries for this plugin
+.PHONY: bin
 bin: generate
 	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/build.sh'"
 
+.PHONY: default
 default: dev
 
 # dev creates binaries for testing Vault locally. These are put
 # into ./bin/ as well as $GOPATH/bin, except for quickdev which
 # is only put into /bin/
+.PHONY: quickdev
 quickdev: generate
 	@CGO_ENABLED=0 go build -i -tags='$(BUILD_TAGS)' -o bin/${TOOL}
+
+.PHONY: dev
 dev: generate
 	@CGO_ENABLED=0 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
+.PHONY: testcompile
 testcompile: generate
 	@for pkg in $(TEST) ; do \
 		go test -v -c -tags='$(BUILD_TAGS)' $$pkg -parallel=4 ; \
 	done
 
 # test runs all tests
+.PHONY: test
 test: generate
 	@if [ "$(TEST)" = "./..." ]; then \
 		echo "ERROR: Set TEST to a specific package"; \
@@ -33,23 +40,20 @@ test: generate
 
 # generate runs `go generate` to build the dynamically generated
 # source files.
+.PHONY: generate 
 generate:
 	@go generate $(go list ./... | grep -v /vendor/)
 
 # bootstrap the build by downloading additional tools
+.PHONY: bootstrap
 bootstrap:
-	@for tool in  $(EXTERNAL_TOOLS) ; do \
-		echo "Installing/Updating $$tool" ; \
-		go get -u $$tool; \
-		go install $$tool; \
-	done
+	@echo "Downloading tools ..."
+	@go generate -tags tools tools/tools.go
 
+.PHONY: fmtcheck
+fmtcheck:
+	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
+
+.PHONY: fmt
 fmt:
-	gofmt -w $(GOFMT_FILES)
-
-# deps updates all dependencies for this project.
-deps:
-	@echo "==> Updating deps for ${TOOL}"
-	@dep ensure -update
-
-.PHONY: bin default generate test bootstrap fmt deps
+	gofumpt -l -w .

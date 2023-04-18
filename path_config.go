@@ -20,6 +20,9 @@ type kerberosConfig struct {
 func (b *backend) pathConfig() *framework.Path {
 	return &framework.Path{
 		Pattern: "config$",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKerberos,
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"keytab": {
 				Type:        framework.TypeString,
@@ -45,9 +48,15 @@ func (b *backend) pathConfig() *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathConfigWrite,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "configure",
+				},
 			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathConfigRead,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationSuffix: "configuration",
+				},
 			},
 		},
 

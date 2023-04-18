@@ -17,13 +17,24 @@ const ldapConfPath = "config/ldap"
 func (b *backend) pathConfigLdap() *framework.Path {
 	p := &framework.Path{
 		Pattern: ldapConfPath,
-		Fields:  ldaputil.ConfigFields(),
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKerberos,
+		},
+		Fields: ldaputil.ConfigFields(),
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathConfigLdapRead,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb:   "read",
+					OperationSuffix: "ldap-configuration",
+				},
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathConfigLdapWrite,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb:   "configure",
+					OperationSuffix: "ldap",
+				},
 			},
 		},
 		HelpSynopsis:    pathConfigLdapHelpSyn,

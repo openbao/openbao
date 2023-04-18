@@ -27,6 +27,9 @@ import (
 func (b *backend) pathLogin() *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKerberos,
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"authorization": {
 				Type:        framework.TypeString,
@@ -36,9 +39,15 @@ func (b *backend) pathLogin() *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathLoginGet,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "login2",
+				},
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathLoginUpdate,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "login",
+				},
 			},
 		},
 	}

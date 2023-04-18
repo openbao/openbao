@@ -13,6 +13,9 @@ import (
 
 const (
 	configPath string = "config"
+
+	// operationPrefixKerberos is used as a prefix for OpenAPI operation id's.
+	operationPrefixKerberos = "kerberos"
 )
 
 type backend struct {

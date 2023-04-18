@@ -15,6 +15,12 @@ func (b *backend) pathGroupsList() *framework.Path {
 	return &framework.Path{
 		Pattern: "groups/?$",
 
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKerberos,
+			OperationVerb:   "list",
+			OperationSuffix: "groups",
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathGroupList,
@@ -29,6 +35,12 @@ func (b *backend) pathGroupsList() *framework.Path {
 func (b *backend) pathGroups() *framework.Path {
 	return &framework.Path{
 		Pattern: `groups/(?P<name>.+)`,
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKerberos,
+			OperationSuffix: "group",
+		},
+
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeString,

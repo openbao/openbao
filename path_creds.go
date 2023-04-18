@@ -55,6 +55,11 @@ func (b *backend) pathCredentials() *framework.Path {
 	}
 	return &framework.Path{
 		Pattern: pathCreds + framework.GenericNameRegex("name"),
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKubernetes,
+			OperationVerb:   "generate",
+			OperationSuffix: "credentials",
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeLowerCaseString,

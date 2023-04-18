@@ -60,6 +60,10 @@ func (b *backend) pathRoles() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: rolesPath + framework.GenericNameRegex("name"),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixKubernetes,
+				OperationSuffix: "role",
+			},
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeLowerCaseString,
@@ -148,6 +152,10 @@ func (b *backend) pathRoles() []*framework.Path {
 		},
 		{
 			Pattern: rolesPath + "?$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixKubernetes,
+				OperationSuffix: "roles",
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathRolesList,

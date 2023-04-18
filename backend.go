@@ -28,6 +28,9 @@ var (
 	// CA cert can be used, before reading it again from disk.
 	caReloadPeriod = 1 * time.Hour
 
+	// operationPrefixKubernetes is used as a prefix for OpenAPI operation id's.
+	operationPrefixKubernetes = "kubernetes"
+
 	WALRollbackMinAge = "10m"
 )
 

@@ -25,6 +25,11 @@ var envVarsToCheck = []string{k8sServiceHostEnv, k8sServicePortEnv}
 func (b *backend) pathCheck() *framework.Path {
 	return &framework.Path{
 		Pattern: checkPath + "/?$",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKubernetes,
+			OperationVerb:   "check",
+			OperationSuffix: "configuration",
+		},
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathCheckRead,

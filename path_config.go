@@ -43,6 +43,9 @@ type kubeConfig struct {
 func (b *backend) pathConfig() *framework.Path {
 	return &framework.Path{
 		Pattern: configPath,
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKubernetes,
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"disable_local_ca_jwt": {
 				Type:        framework.TypeBool,
@@ -77,12 +80,21 @@ func (b *backend) pathConfig() *framework.Path {
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathConfigWrite,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "configure",
+				},
 			},
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathConfigRead,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationSuffix: "configuration",
+				},
 			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathConfigDelete,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationSuffix: "configuration",
+				},
 			},
 		},
 		HelpSynopsis: "Configure the Kubernetes secret engine plugin.",

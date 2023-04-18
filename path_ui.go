@@ -16,6 +16,11 @@ func pathUI(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `ui$`,
 
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixJWT,
+			OperationVerb:   "ui",
+		},
+
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.ReadOperation: b.pathUI,
 		},

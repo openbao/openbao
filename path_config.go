@@ -33,6 +33,9 @@ const (
 func pathConfig(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `config`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixJWT,
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"oidc_discovery_url": {
 				Type:        framework.TypeString,
@@ -106,12 +109,18 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			logical.ReadOperation: &framework.PathOperation{
 				Callback: b.pathConfigRead,
 				Summary:  "Read the current JWT authentication backend configuration.",
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationSuffix: "configuration",
+				},
 			},
 
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback:    b.pathConfigWrite,
 				Summary:     "Configure the JWT authentication backend.",
 				Description: confHelpDesc,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "configure",
+				},
 			},
 		},
 

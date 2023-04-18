@@ -19,6 +19,10 @@ import (
 const (
 	configPath string = "config"
 	rolePrefix string = "role/"
+
+	// operationPrefixJWT/JWTOIDC are used as prefixes for OpenAPI operation id's.
+	operationPrefixJWT     = "jwt"
+	operationPrefixJWTOIDC = "jwt-oidc"
 )
 
 // Factory is used by framework

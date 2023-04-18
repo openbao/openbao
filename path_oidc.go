@@ -57,6 +57,12 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: `oidc/callback`,
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixJWTOIDC,
+				OperationVerb:   "callback",
+			},
+
 			Fields: map[string]*framework.FieldSchema{
 				"state": {
 					Type: framework.TypeString,
@@ -84,6 +90,10 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Callback: b.pathCallbackPost,
 					Summary:  "Callback endpoint to handle form_posts.",
 
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationSuffix: "with-parameters",
+					},
+
 					// state is cached so don't process OIDC logins on perf standbys
 					ForwardPerformanceStandby: true,
 				},
@@ -91,6 +101,13 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 		},
 		{
 			Pattern: `oidc/auth_url`,
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixJWTOIDC,
+				OperationVerb:   "request",
+				OperationSuffix: "authorization-url",
+			},
+
 			Fields: map[string]*framework.FieldSchema{
 				"role": {
 					Type:        framework.TypeLowerCaseString,
@@ -105,6 +122,7 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Description: "Optional client-provided nonce that must match during callback, if present.",
 				},
 			},
+
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.authURL,

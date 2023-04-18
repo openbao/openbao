@@ -29,6 +29,11 @@ const (
 func pathRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "role/?",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixJWT,
+			OperationVerb:   "list",
+			OperationSuffix: "roles",
+		},
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback:    b.pathRoleList,
@@ -45,6 +50,10 @@ func pathRoleList(b *jwtAuthBackend) *framework.Path {
 func pathRole(b *jwtAuthBackend) *framework.Path {
 	p := &framework.Path{
 		Pattern: "role/" + framework.GenericNameRegex("name"),
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixJWT,
+			OperationSuffix: "role",
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeLowerCaseString,

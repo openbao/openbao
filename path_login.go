@@ -33,6 +33,12 @@ var supportedJwtAlgs = []capjwt.Alg{
 func pathLogin(b *kubeAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login$",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixKubernetes,
+			OperationVerb:   "login",
+		},
+
 		Fields: map[string]*framework.FieldSchema{
 			"role": {
 				Type:        framework.TypeString,

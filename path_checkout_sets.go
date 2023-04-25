@@ -46,6 +46,10 @@ func (b *backend) pathListSets() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: libraryPrefix + "?$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAPLibrary,
+				OperationVerb:   "list",
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.listSetsOperation,
@@ -69,6 +73,9 @@ func (b *backend) pathSets() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: libraryPrefix + framework.GenericNameRegex("name"),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAPLibrary,
+			},
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeLowerCaseString,
@@ -97,23 +104,35 @@ func (b *backend) pathSets() []*framework.Path {
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
-					Callback:                    b.operationSetCreate,
+					Callback: b.operationSetCreate,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "configure",
+					},
 					Summary:                     "Create a library set.",
 					ForwardPerformanceStandby:   true,
 					ForwardPerformanceSecondary: true,
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback:                    b.operationSetUpdate,
+					Callback: b.operationSetUpdate,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "configure",
+					},
 					Summary:                     "Update a library set.",
 					ForwardPerformanceStandby:   true,
 					ForwardPerformanceSecondary: true,
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.operationSetRead,
-					Summary:  "Read a library set.",
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "read",
+					},
+					Summary: "Read a library set.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
-					Callback:                    b.operationSetDelete,
+					Callback: b.operationSetDelete,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "delete",
+					},
 					Summary:                     "Delete a library set.",
 					ForwardPerformanceStandby:   true,
 					ForwardPerformanceSecondary: true,

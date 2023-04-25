@@ -24,7 +24,12 @@ func (b *backend) pathRotateCredentials() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: rotateRootPath,
-			Fields:  map[string]*framework.FieldSchema{},
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationVerb:   "rotate",
+				OperationSuffix: "root-credentials",
+			},
+			Fields: map[string]*framework.FieldSchema{},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback:                    b.pathRotateRootCredentialsUpdate,
@@ -38,6 +43,11 @@ func (b *backend) pathRotateCredentials() []*framework.Path {
 		},
 		{
 			Pattern: rotateRolePath + framework.GenericNameRegex("name"),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationVerb:   "rotate",
+				OperationSuffix: "static-role",
+			},
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeString,

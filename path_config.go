@@ -27,19 +27,34 @@ func (b *backend) pathConfig() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: configPath,
-			Fields:  b.configFields(),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+			},
+			Fields: b.configFields(),
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.CreateOperation: &framework.PathOperation{
 					Callback: b.configCreateUpdateOperation,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "configure",
+					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.configCreateUpdateOperation,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "configure",
+					},
 				},
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.configReadOperation,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationSuffix: "configuration",
+					},
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.configDeleteOperation,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationSuffix: "configuration",
+					},
 				},
 			},
 			ExistenceCheck: b.pathConfigExistenceCheck,

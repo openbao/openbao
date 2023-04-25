@@ -28,6 +28,10 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: path.Join(dynamicRolePath, framework.GenericNameRegex("name")),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationSuffix: "dynamic-role",
+			},
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeLowerCaseString,
@@ -81,6 +85,11 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 		},
 		{
 			Pattern: dynamicRolePath + "?$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationVerb:   "list",
+				OperationSuffix: "dynamic-roles",
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathDynamicRoleList,

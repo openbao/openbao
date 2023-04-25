@@ -16,6 +16,11 @@ func (b *backend) pathStaticCredsCreate() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: staticCredPath + framework.GenericNameRegex("name"),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationVerb:   "request",
+				OperationSuffix: "static-role-credentials",
+			},
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeLowerCaseString,

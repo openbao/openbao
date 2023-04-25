@@ -14,6 +14,12 @@ import (
 	"github.com/hashicorp/vault/sdk/queue"
 )
 
+const (
+	// operationPrefixLDAP/LDAPLibrary are used as prefixes for OpenAPI operation id's.
+	operationPrefixLDAP        = "ldap"
+	operationPrefixLDAPLibrary = "ldap-library"
+)
+
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	ldapClient := NewClient(conf.Logger)
 	b := Backend(ldapClient)

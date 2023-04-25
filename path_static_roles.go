@@ -23,6 +23,11 @@ func (b *backend) pathListStaticRoles() []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: staticRolePath + "?$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationVerb:   "list",
+				OperationSuffix: "static-roles",
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathStaticRoleList,
@@ -37,7 +42,11 @@ func (b *backend) pathListStaticRoles() []*framework.Path {
 func (b *backend) pathStaticRoles() []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern:        staticRolePath + framework.GenericNameRegex("name"),
+			Pattern: staticRolePath + framework.GenericNameRegex("name"),
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: operationPrefixLDAP,
+				OperationSuffix: "static-role",
+			},
 			Fields:         fieldsForType(staticRolePath),
 			ExistenceCheck: b.pathStaticRoleExistenceCheck,
 			Operations: map[logical.Operation]framework.OperationHandler{

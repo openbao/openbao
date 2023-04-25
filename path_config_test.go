@@ -499,6 +499,7 @@ func ldapResponseData(vals ...interface{}) map[string]interface{} {
 		"case_sensitive_names":   false,
 		"certificate":            "",
 		"deny_null_bind":         true,
+		"dereference_aliases":    "never",
 		"discoverdn":             false,
 		"groupattr":              "cn",
 		"groupdn":                "",

@@ -9,7 +9,7 @@ jobs:
     outputs:
       go-version: ${{ steps.get-go-version.outputs.go-version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
       - name: Determine Go version
         id: get-go-version
         run: |
@@ -21,8 +21,8 @@ jobs:
     env:
       GOFUMPT_VERSION: 0.3.1
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ needs.get-go-version.outputs.go-version }}
       - run: |
@@ -32,11 +32,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: [get-go-version]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
+      - uses: actions/setup-go@4d34df0c2316fe8122ab82dc22947d607c0c91f9 # v4.0.0
         with:
           go-version: ${{ needs.get-go-version.outputs.go-version }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: |
             ~/.cache/go-build

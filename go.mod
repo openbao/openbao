@@ -6,7 +6,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/vault/sdk v0.7.0
-	github.com/mediocregopher/radix/v4 v4.1.1
+	github.com/mediocregopher/radix/v4 v4.1.2
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/ory/dockertest/v3 v3.9.1
 )

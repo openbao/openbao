@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/hashicorp/vault/sdk v0.9.0
 	github.com/hashicorp/yamux v0.0.0-20181012175058-2f1d1f20f75d // indirect
-	github.com/jcmturner/gokrb5/v8 v8.4.3
+	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/ory/dockertest/v3 v3.8.0
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0

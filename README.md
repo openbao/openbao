@@ -8,7 +8,7 @@ The plugin supports the generation of static and dynamic user roles and root cre
 
 ## Build
 
-To build this package for any platform you will need to clone this repository and cd into the repo directory and `go build -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/`. To test `go test` will execute a set of basic tests against against the docker.io/redis:latest redis database image. To test against different redis images, for example 5.0-buster, set the `REDIS_VERSION=5.0-buster` environment variable. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. **Note** the tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If not you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file. Set VAULT_ACC to execute all of the tests. A subset of tests can be run using the command `go test -run TestDriver/Init` for example.
+To build this package for any platform, you will need to clone this repository, cd into the repo directory, then run `go build -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/`.
 
 **Please note:** In case of the following errors, while creating Redis connection in Vault, please build this plugin with `CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/` command. More details on this error can be found [here](https://github.com/hashicorp/vault-plugin-database-redis/issues/1#issuecomment-1078415041).
 ````bash
@@ -21,6 +21,13 @@ Code: 400. Errors:
         * fork/exec /config/plugin/vault-plugin-database-redis: no such file or directory
         * fork/exec /config/plugin/vault-plugin-database-redis: no such file or directory
 ````
+
+## Testing
+To run tests, `go test` will first set up the docker.io/redis:latest database image, then execute a set of basic tests against it. To test against different redis images, for example 5.0-buster, set the environment variable `REDIS_VERSION=5.0-buster`. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. 
+
+**Note:** The tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If it doesn't, you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file.
+
+Set `VAULT_ACC=1` to execute all of the tests including the acceptance tests, or run just a subset of tests by using a command like `go test -run TestDriver/Init` for example.
 
 ## Installation
 

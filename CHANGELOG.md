@@ -1,8 +1,15 @@
 ## Unreleased
 
+## 0.5.0 (May 25, 2023)
+
 ### Features:
 
 * allow omitting `kubernetes_namespace` on token create for single namespace Vault roles [GH-27](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/27)
+* update dependencies [GH-196](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/196)
+  * github.com/hashicorp/cap v0.3.0
+  * github.com/hashicorp/vault/api v1.9.1
+  * k8s.io/api v0.27.2
+  * k8s.io/apimachinery v0.27.2
 
 ## 0.4.0 (March 30, 2023)
 

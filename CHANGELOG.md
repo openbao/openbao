@@ -1,5 +1,22 @@
 ## Unreleased
 
+## 0.16.0
+
+IMPROVEMENTS:
+* Updated dependencies:
+   * `github.com/hashicorp/cap` v0.2.1-0.20230221194157-7894fed1633d -> v0.3.0
+   * `github.com/hashicorp/vault/api` v1.9.0 -> v1.9.1
+   * `github.com/hashicorp/vault/sdk` v0.8.1 -> v0.9.0
+   * `github.com/stretchr/testify` v1.8.2 -> v1.8.3
+   * `golang.org/x/oauth2` v0.6.0 -> v0.8.0
+   * `golang.org/x/sync` v0.1.0 -> v0.2.0
+   * `google.golang.org/api` v0.114.0 -> v0.124.0
+
+## 0.15.2
+
+IMPROVEMENTS:
+* Make error response less verbose [[GH-233](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/233)]
+
 ## 0.15.1
 
 IMPROVEMENTS:

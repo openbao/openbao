@@ -29,7 +29,7 @@ This plugin is currently built into Vault and by default is accessed
 at `auth/jwt`. To enable this in a running Vault server:
 
 ```sh
-$ vault auth enable jwt 
+$ vault auth enable jwt
 Successfully enabled 'jwt' at 'jwt'!
 ```
 
@@ -153,7 +153,7 @@ Additionally, there are some BATs tests in the `tests` dir.
 
 #### Setup
 
-- [Configure an OIDC provider](https://www.vaultproject.io/docs/auth/jwt/oidc_providers)
+- [Configure an OIDC provider](https://developer.hashicorp.com/vault/docs/auth/jwt/oidc-providers)
 - Save and export the following values to your shell:
   - `CLIENT_ID`
   - `CLIENT_SECRET`

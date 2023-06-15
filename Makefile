@@ -73,7 +73,7 @@ setup-integration-test-common: teardown-integration-test
 		rm -rf $(RUNNER_TEMP)/vault-license.txt; \
 	fi
 
-	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.23.0 \
+	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.24.1 \
 		--wait --timeout=5m \
 		--namespace=test \
 		--set server.logLevel=debug \

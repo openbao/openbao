@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Changes
+
+* Testing with K8s versions 1.23-1.27
+* Building with Go 1.20.5
+
 ## 0.5.0 (May 25, 2023)
 
 ### Features:

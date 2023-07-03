@@ -412,32 +412,6 @@ func TestGSuiteProvider_Initialize(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "invalid config: required service account key is empty",
-			args: args{
-				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
-						"gsuite_admin_impersonate": "test@example.com",
-						"groups_recurse_max_depth": -1,
-						"user_custom_schemas":      "Custom",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "invalid config: required admin impersonate email is empty",
-			args: args{
-				config: &jwtConfig{
-					ProviderConfig: map[string]interface{}{
-						"gsuite_service_account":   `{"type": "service_account"}`,
-						"groups_recurse_max_depth": -1,
-						"user_custom_schemas":      "Custom",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "invalid config: recurse max depth negative number",
 			args: args{
 				config: &jwtConfig{

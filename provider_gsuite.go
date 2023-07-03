@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	admin "google.golang.org/api/admin/directory/v1"
+	"google.golang.org/api/impersonate"
 	"google.golang.org/api/option"
 )
 
@@ -29,16 +30,31 @@ type GSuiteProvider struct {
 
 // GSuiteProviderConfig represents the configuration for a GSuiteProvider.
 type GSuiteProviderConfig struct {
-	// The path to or contents of a Google service account key file. Required.
+	// The path to or contents of a Google service account key file. Optional.
+	// If left unspecified, Application Default Credentials will be used.
 	ServiceAccount string `mapstructure:"gsuite_service_account"`
 
-	// Email address of a G Suite admin to impersonate. Required.
+	// Email address of a Google Workspace user that has access to read users
+	// and groups for the organization in the Google Workspace Directory API.
+	// Required if accessing the Google Workspace Directory API through
+	// domain-wide delegation of authority.
 	AdminImpersonateEmail string `mapstructure:"gsuite_admin_impersonate"`
 
-	// If set to true, groups will be fetched from G Suite.
+	// Service account email that has been granted domain-wide delegation of
+	// authority in Google Workspace. Required if accessing the Google
+	// Workspace Directory API through domain-wide delegation of authority,
+	// without using a service account key. The service account vault is
+	// running under must be granted the `iam.serviceAccounts.signJwt`
+	// permission on this service account. If AdminImpersonateEmail is
+	// specifed, that Workspace user will be impersonated.
+	ImpersonatePrincipal string `mapstructure:"impersonate_principal"`
+
+	// If set to true, groups will be fetched from the Google Workspace
+	// Directory API.
 	FetchGroups bool `mapstructure:"fetch_groups"`
 
-	// If set to true, user info will be fetched from G Suite using UserCustomSchemas.
+	// If set to true, user info will be fetched from the Google Workspace
+	// Directory API using UserCustomSchemas.
 	FetchUserInfo bool `mapstructure:"fetch_user_info"`
 
 	// Group membership recursion max depth (0 = do not recurse).
@@ -61,28 +77,8 @@ func (g *GSuiteProvider) Initialize(ctx context.Context, jc *jwtConfig) error {
 	}
 
 	// Validate configuration
-	if config.ServiceAccount == "" {
-		return errors.New("'gsuite_service_account' must be either the path to or contents of " +
-			"a JSON service account key file")
-	}
-	if config.AdminImpersonateEmail == "" {
-		return errors.New("'gsuite_admin_impersonate' must be set to an email address of a " +
-			"G Suite user with 'Read' permission to access the G Suite Admin User and Group APIs")
-	}
 	if config.GroupsRecurseMaxDepth < 0 {
 		return errors.New("'gsuite_recurse_max_depth' must be a positive integer")
-	}
-
-	// A file path or JSON string may be provided for the service account parameter.
-	// Check to see if a file exists at the given path, and if so, read its contents.
-	// Otherwise, assume the service account has been provided as a JSON string.
-	var err error
-	keyJSON := []byte(config.ServiceAccount)
-	if fileExists(config.ServiceAccount) {
-		keyJSON, err = ioutil.ReadFile(config.ServiceAccount)
-		if err != nil {
-			return err
-		}
 	}
 
 	// Set the requested scopes
@@ -90,24 +86,62 @@ func (g *GSuiteProvider) Initialize(ctx context.Context, jc *jwtConfig) error {
 		admin.AdminDirectoryGroupReadonlyScope,
 		admin.AdminDirectoryUserReadonlyScope,
 	}
+	g.config = config
 
-	// Create the google JWT config from the service account
-	jwtConfig, err := google.JWTConfigFromJSON(keyJSON, scopes...)
-	if err != nil {
-		return fmt.Errorf("error parsing service account JSON: %w", err)
+	var ts oauth2.TokenSource
+	switch {
+	// A file path or JSON string may be provided for the service account parameter.
+	// Check to see if a file exists at the given path, and if so, read its contents.
+	// Otherwise, assume the service account has been provided as a JSON string.
+	case config.ServiceAccount != "":
+		var err error
+		keyJSON := []byte(config.ServiceAccount)
+		if fileExists(config.ServiceAccount) {
+			keyJSON, err = ioutil.ReadFile(config.ServiceAccount)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Create the google JWT config from the service account
+		jwtConfig, err := google.JWTConfigFromJSON(keyJSON, scopes...)
+		if err != nil {
+			return fmt.Errorf("error parsing service account JSON: %w", err)
+		}
+
+		// Set the subject to impersonate
+		jwtConfig.Subject = config.AdminImpersonateEmail
+
+		ts = jwtConfig.TokenSource(ctx)
+	// We are performing impersonation of a Workspace user through domain-wide
+	// delegation of authority.
+	case config.ImpersonatePrincipal != "":
+		its, err := impersonate.CredentialsTokenSource(ctx, impersonate.CredentialsConfig{
+			TargetPrincipal: config.ImpersonatePrincipal,
+			Scopes:          scopes,
+			Subject:         config.AdminImpersonateEmail,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to impersonate principal: %q: %w", config.ImpersonatePrincipal, err)
+		}
+
+		ts = its
+	// Assume Application Default Credentials and no impersonation.
+	default:
+		creds, err := google.FindDefaultCredentials(ctx, scopes...)
+		if err != nil {
+			return fmt.Errorf("failed to find application default credentials: %w", err)
+		}
+
+		ts = creds.TokenSource
 	}
 
-	// Set the subject to impersonate
-	jwtConfig.Subject = config.AdminImpersonateEmail
-
-	// Create a new admin service for requests to Google admin APIs
-	svc, err := admin.NewService(ctx, option.WithHTTPClient(jwtConfig.Client(ctx)))
+	svc, err := admin.NewService(ctx, option.WithTokenSource(ts))
 	if err != nil {
 		return err
 	}
-
 	g.adminSvc = svc
-	g.config = config
+
 	return nil
 }
 

@@ -365,7 +365,7 @@ type roleStorageEntry struct {
 	ServiceAccountNamespaces []string `json:"bound_service_account_namespaces" mapstructure:"bound_service_account_namespaces" structs:"bound_service_account_namespaces"`
 
 	// Audience is an optional jwt claim to verify
-	Audience string `json:"audience" mapstructure:"audience" structs: "audience"`
+	Audience string `json:"audience" mapstructure:"audience" structs:"audience"`
 
 	// AliasNameSource used when deriving the Alias' name.
 	AliasNameSource string `json:"alias_name_source" mapstructure:"alias_name_source" structs:"alias_name_source"`

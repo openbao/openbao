@@ -35,7 +35,6 @@ jobs:
         with:
           version: v0.17.0
           cluster_name: vault-plugin-auth-kubernetes
-          config: integrationtest/kind/config.yaml
           node_image: kindest/node:v${{ matrix.kind-k8s-version }}
           kubectl_version: v1.25.3
       - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1

@@ -4,22 +4,20 @@
 package integrationtest
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/go-version"
+	"github.com/hashicorp/vault-plugin-auth-kubernetes/integrationtest/k8s"
 	"github.com/hashicorp/vault/api"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Set the environment variable INTEGRATION_TESTS to any non-empty value to run
 // the tests in this package. The test assumes it has available:
-// - kubectl
 // - A Kubernetes cluster in which:
 //   - it can use the `test` namespace
 //   - Vault is deployed and accessible
@@ -28,55 +26,42 @@ import (
 // See `make setup-integration-test` for manual testing.
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {
-		checkKubectlVersion()
-		os.Setenv("VAULT_ADDR", "http://127.0.0.1:38200")
-		os.Setenv("VAULT_TOKEN", "root")
-		os.Setenv("KUBERNETES_JWT", getVaultServiceAccountJWT())
-		os.Setenv("TOKEN_REVIEWER_JWT", getTokenReviewerJWT())
-		os.Exit(m.Run())
+		os.Exit(run(m))
 	}
 }
 
-type kubectlVersion struct {
-	ClientVersion struct {
-		GitVersion string `json:"gitVersion"`
-	} `json:"clientVersion"`
+func run(m *testing.M) int {
+	localPort, close, err := k8s.SetupPortForwarding(os.Getenv("KUBE_CONTEXT"), "test", "vault-0")
+	if err != nil {
+		fmt.Println(err)
+		return 1
+	}
+	defer close()
+
+	os.Setenv("VAULT_ADDR", fmt.Sprintf("http://127.0.0.1:%d", localPort))
+	os.Setenv("VAULT_TOKEN", "root")
+
+	return m.Run()
 }
 
-// kubectl create token requires kubectl >= v1.24.0
-func checkKubectlVersion() {
-	versionJSON := runCmd("kubectl version --client --output=json")
-	var versionInfo kubectlVersion
+func createToken(t *testing.T, sa string, audiences []string) string {
+	t.Helper()
 
-	if err := json.Unmarshal([]byte(versionJSON), &versionInfo); err != nil {
-		panic(err)
+	k8sClient, err := k8s.ClientFromKubeConfig(os.Getenv("KUBE_CONTEXT"))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	v := version.Must(version.NewSemver(versionInfo.ClientVersion.GitVersion))
-	if v.LessThan(version.Must(version.NewSemver("v1.24.0"))) {
-		panic("integration tests require kubectl version >= v1.24.0, but found: " + versionInfo.ClientVersion.GitVersion)
+	resp, err := k8sClient.CoreV1().ServiceAccounts("test").CreateToken(context.Background(), sa, &authenticationv1.TokenRequest{
+		Spec: authenticationv1.TokenRequestSpec{
+			Audiences: audiences,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
-}
 
-func getTokenReviewerJWT() string {
-	return runCmd("kubectl --namespace=test create token test-token-reviewer-account")
-}
-
-func getVaultServiceAccountJWT() string {
-	return runCmd("kubectl --namespace=test create token vault")
-}
-
-// runCmd returns standard out + standard error
-func runCmd(command string) string {
-	parts := strings.Split(command, " ")
-	cmd := exec.Command(parts[0], parts[1:]...)
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
-	cmd.Stderr = out
-	if err := cmd.Run(); err != nil {
-		panic(fmt.Sprintf("Got unexpected output: %s, err = %s", out.String(), err))
-	}
-	return out.String()
+	return resp.Status.Token
 }
 
 func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConfigOverride map[string]interface{}, roleConfigOverride map[string]interface{}) (*api.Client, func()) {
@@ -102,11 +87,7 @@ func setupKubernetesAuth(t *testing.T, boundServiceAccountName string, mountConf
 	}
 
 	defer func() {
-		// just in case setupKubernetesAuth panics before returning cleanup to the caller
-		if panicErr := recover(); panicErr != nil {
-			cleanup()
-			panic(panicErr)
-		} else if t.Failed() {
+		if t.Failed() {
 			cleanup()
 		}
 	}()
@@ -145,7 +126,7 @@ func TestSuccess(t *testing.T) {
 
 	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
 		"role": "test-role",
-		"jwt":  os.Getenv("KUBERNETES_JWT"),
+		"jwt":  createToken(t, "vault", nil),
 	})
 	if err != nil {
 		t.Fatalf("Expected successful login but got: %v", err)
@@ -155,13 +136,13 @@ func TestSuccess(t *testing.T) {
 func TestSuccessWithTokenReviewerJwt(t *testing.T) {
 	client, cleanup := setupKubernetesAuth(t, "vault", map[string]interface{}{
 		"kubernetes_host":    "https://kubernetes.default.svc.cluster.local",
-		"token_reviewer_jwt": os.Getenv("TOKEN_REVIEWER_JWT"),
+		"token_reviewer_jwt": createToken(t, "test-token-reviewer-account", nil),
 	}, nil)
 	defer cleanup()
 
 	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
 		"role": "test-role",
-		"jwt":  os.Getenv("KUBERNETES_JWT"),
+		"jwt":  createToken(t, "vault", nil),
 	})
 	if err != nil {
 		t.Fatalf("Expected successful login but got: %v", err)
@@ -177,7 +158,7 @@ func TestFailWithBadTokenReviewerJwt(t *testing.T) {
 
 	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
 		"role": "test-role",
-		"jwt":  os.Getenv("KUBERNETES_JWT"),
+		"jwt":  createToken(t, "vault", nil),
 	})
 	respErr, ok := err.(*api.ResponseError)
 	if !ok {
@@ -194,7 +175,7 @@ func TestUnauthorizedServiceAccountErrorCode(t *testing.T) {
 
 	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
 		"role": "test-role",
-		"jwt":  os.Getenv("KUBERNETES_JWT"),
+		"jwt":  createToken(t, "vault", nil),
 	})
 	respErr, ok := err.(*api.ResponseError)
 	if !ok {
@@ -205,12 +186,12 @@ func TestUnauthorizedServiceAccountErrorCode(t *testing.T) {
 	}
 }
 
-var badTokenReviewerJwt = "eyJhbGciOiJSUzI1NiIsImtpZCI6IkZza1ViNWREek8tQ05uaVk3TU5mRWZ2dEx5bzFuU0tsV3JhUU5nekhVQ28ifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjgwODg5NjQ4LCJpYXQiOjE2NDkzNTM2NDgsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJ0ZXN0IiwicG9kIjp7Im5hbWUiOiJ2YXVsdC0wIiwidWlkIjoiYTQwNGZiMTktNWQ4MC00OTBlLTkwYjktMGJjNWE3NzA5ODdkIn0sInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJ2YXVsdCIsInVpZCI6ImI2ZTM2ZDMxLTA2MDQtNDE5MS04Y2JjLTAwYzg4ZWViZDlmOSJ9LCJ3YXJuYWZ0ZXIiOjE2NDkzNTcyNTV9LCJuYmYiOjE2NDkzNTM2NDgsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDp0ZXN0OnZhdWx0In0.hxzMpKx38rKvaWUBNEg49TioRXt_JT1Z5st4A9NeBWO2xiC8hCDgVJRWqPzejz-sYoQGhZyZcrTa0cbNRIevcR7XH4DnHd27OOzSoj198I2DAdLfw_pntzOjq35-tZhxSYXsfKH69DSpHACpu5HHUAf1aiY3B6cq5Z3gXbtaoHBocfNwvtOirGL8pTYXo1kNCkcahDPfpf3faztyUQ77v0viBKIAqwxDuGks4crqIG5jT_tOnXbb7PahwtE5cS3bMLjQb1j5oEcgq6HF4NMV46Ly479QRoXtYWWsI9OSwl4H7G9Rel3fr9q4IMdCCI5A-FLxL2Fpep9TDwrNQ3mhBQ"
+const badTokenReviewerJwt = "eyJhbGciOiJSUzI1NiIsImtpZCI6IkZza1ViNWREek8tQ05uaVk3TU5mRWZ2dEx5bzFuU0tsV3JhUU5nekhVQ28ifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNjgwODg5NjQ4LCJpYXQiOjE2NDkzNTM2NDgsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJ0ZXN0IiwicG9kIjp7Im5hbWUiOiJ2YXVsdC0wIiwidWlkIjoiYTQwNGZiMTktNWQ4MC00OTBlLTkwYjktMGJjNWE3NzA5ODdkIn0sInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJ2YXVsdCIsInVpZCI6ImI2ZTM2ZDMxLTA2MDQtNDE5MS04Y2JjLTAwYzg4ZWViZDlmOSJ9LCJ3YXJuYWZ0ZXIiOjE2NDkzNTcyNTV9LCJuYmYiOjE2NDkzNTM2NDgsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDp0ZXN0OnZhdWx0In0.hxzMpKx38rKvaWUBNEg49TioRXt_JT1Z5st4A9NeBWO2xiC8hCDgVJRWqPzejz-sYoQGhZyZcrTa0cbNRIevcR7XH4DnHd27OOzSoj198I2DAdLfw_pntzOjq35-tZhxSYXsfKH69DSpHACpu5HHUAf1aiY3B6cq5Z3gXbtaoHBocfNwvtOirGL8pTYXo1kNCkcahDPfpf3faztyUQ77v0viBKIAqwxDuGks4crqIG5jT_tOnXbb7PahwtE5cS3bMLjQb1j5oEcgq6HF4NMV46Ly479QRoXtYWWsI9OSwl4H7G9Rel3fr9q4IMdCCI5A-FLxL2Fpep9TDwrNQ3mhBQ"
 
 func TestAudienceValidation(t *testing.T) {
-	jwtWithDefaultAud := runCmd("kubectl --namespace=test create token vault")
-	jwtWithAudA := runCmd("kubectl --namespace=test --audience=a create token vault")
-	jwtWithAudB := runCmd("kubectl --namespace=test --audience=b create token vault")
+	jwtWithDefaultAud := createToken(t, "vault", nil)
+	jwtWithAudA := createToken(t, "vault", []string{"a"})
+	jwtWithAudB := createToken(t, "vault", []string{"b"})
 
 	for name, tc := range map[string]struct {
 		audienceConfig string

@@ -18,7 +18,7 @@ test: fmtcheck
 
 .PHONY: integration-test
 integration-test:
-	INTEGRATION_TESTS=true CGO_ENABLED=0 go test $(TESTARGS) -count=1 -timeout=20m github.com/hashicorp/vault-plugin-auth-kubernetes/integrationtest/...
+	cd integrationtest && INTEGRATION_TESTS=true CGO_ENABLED=0 KUBE_CONTEXT="kind-$(KIND_CLUSTER_NAME)" go test $(TESTARGS) -count=1 -timeout=20m ./...
 
 .PHONY: fmtcheck
 fmtcheck:
@@ -31,17 +31,15 @@ fmt:
 .PHONY: setup-kind
 # create a kind cluster for running the integration tests locally
 setup-kind:
-	kind get clusters | grep --silent "^${KIND_CLUSTER_NAME}$$" || \
+	kind get clusters | grep --silent "^$(KIND_CLUSTER_NAME)$$" || \
 	kind create cluster \
-		--image kindest/node:${KIND_K8S_VERSION} \
-		--name ${KIND_CLUSTER_NAME}  \
-		--config $(CURDIR)/integrationtest/kind/config.yaml
-	kubectl config use-context kind-${KIND_CLUSTER_NAME}
+		--image kindest/node:$(KIND_K8S_VERSION) \
+		--name $(KIND_CLUSTER_NAME)
 
 .PHONY: delete-kind
 # delete the kind cluster
 delete-kind:
-	kind delete cluster --name ${KIND_CLUSTER_NAME} || true
+	kind delete cluster --name $(KIND_CLUSTER_NAME) || true
 
 .PHONY: vault-image
 vault-image:
@@ -51,9 +49,10 @@ vault-image:
 # Create Vault inside the cluster with a locally-built version of kubernetes auth.
 .PHONY: setup-integration-test
 setup-integration-test: teardown-integration-test vault-image
-	kind --name ${KIND_CLUSTER_NAME} load docker-image hashicorp/vault:dev
-	kubectl create namespace test
-	helm install vault vault --repo https://helm.releases.hashicorp.com --version=0.23.0 \
+	kind --name $(KIND_CLUSTER_NAME) load docker-image hashicorp/vault:dev
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" create namespace test
+	helm upgrade --install vault vault --repo https://helm.releases.hashicorp.com --version=0.25.0 \
+		--kube-context="kind-$(KIND_CLUSTER_NAME)" \
 		--wait --timeout=5m \
 		--namespace=test \
 		--set server.dev.enabled=true \
@@ -62,13 +61,11 @@ setup-integration-test: teardown-integration-test vault-image
 		--set server.logLevel=trace \
 		--set injector.enabled=false \
 		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
-	kubectl patch --namespace=test statefulset vault --patch-file integrationtest/vault/hostPortPatch.yaml
-	kubectl apply --namespace=test -f integrationtest/vault/tokenReviewerServiceAccount.yaml
-	kubectl apply -f integrationtest/vault/tokenReviewerBinding.yaml
-	kubectl delete --namespace=test pod vault-0
-	kubectl wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" apply --namespace=test -f integrationtest/vault/tokenReviewerServiceAccount.yaml
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" apply -f integrationtest/vault/tokenReviewerBinding.yaml
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
 
 .PHONY: teardown-integration-test
 teardown-integration-test:
 	helm uninstall vault --namespace=test || true
-	kubectl delete --ignore-not-found namespace test
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" delete --ignore-not-found namespace test

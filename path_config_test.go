@@ -20,14 +20,20 @@ func setupLocalFiles(t *testing.T, b logical.Backend) func() {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cert.WriteString(testLocalCACert)
+	_, err = cert.WriteString(testLocalCACert)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cert.Close()
 
 	token, err := ioutil.TempFile("", "token")
 	if err != nil {
 		t.Fatal(err)
 	}
-	token.WriteString(testLocalJWT)
+	_, err = token.WriteString(testLocalJWT)
+	if err != nil {
+		t.Fatal(err)
+	}
 	token.Close()
 	b.(*kubeAuthBackend).localCACertReader = newCachingFileReader(cert.Name(), caReloadPeriod, time.Now)
 	b.(*kubeAuthBackend).localSATokenReader = newCachingFileReader(token.Name(), jwtReloadPeriod, time.Now)
@@ -484,7 +490,10 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	token2 := "after-renewal"
 
 	// Write initial token to the temp file.
-	ioutil.WriteFile(f.Name(), []byte(token1), 0o644)
+	err = ioutil.WriteFile(f.Name(), []byte(token1), 0o644)
+	if err != nil {
+		t.Error(err)
+	}
 
 	data := map[string]interface{}{
 		"kubernetes_host": "host",
@@ -513,7 +522,10 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	}
 
 	// Write new value to the token file to simulate renewal.
-	ioutil.WriteFile(f.Name(), []byte(token2), 0o644)
+	err = ioutil.WriteFile(f.Name(), []byte(token2), 0o644)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// Load again to check we still got the old cached token from memory.
 	conf, err = b.(*kubeAuthBackend).loadConfig(context.Background(), storage)

@@ -15,8 +15,11 @@ import (
 
 func main() {
 	apiClientMeta := &api.PluginAPIClientMeta{}
+
 	flags := apiClientMeta.FlagSet()
-	flags.Parse(os.Args[1:])
+	if err := flags.Parse(os.Args[1:]); err != nil {
+		fatal(err)
+	}
 
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
@@ -28,7 +31,11 @@ func main() {
 		TLSProviderFunc: tlsProviderFunc,
 	})
 	if err != nil {
-		log.L().Error("plugin shutting down", "error", err)
-		os.Exit(1)
+		fatal(err)
 	}
+}
+
+func fatal(err error) {
+	log.L().Error("plugin shutting down", "error", err)
+	os.Exit(1)
 }

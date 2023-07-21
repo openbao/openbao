@@ -65,16 +65,21 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 
 			Fields: map[string]*framework.FieldSchema{
 				"state": {
-					Type: framework.TypeString,
+					Type:  framework.TypeString,
+					Query: true,
 				},
 				"code": {
-					Type: framework.TypeString,
+					Type:  framework.TypeString,
+					Query: true,
 				},
 				"id_token": {
 					Type: framework.TypeString,
+					// This one is not "Query: true" as it is only consumed by the UpdateOperation,
+					// not the ReadOperation
 				},
 				"client_nonce": {
-					Type: framework.TypeString,
+					Type:  framework.TypeString,
+					Query: true,
 				},
 			},
 
@@ -91,7 +96,7 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 					Summary:  "Callback endpoint to handle form_posts.",
 
 					DisplayAttrs: &framework.DisplayAttributes{
-						OperationSuffix: "with-parameters",
+						OperationSuffix: "form-post",
 					},
 
 					// state is cached so don't process OIDC logins on perf standbys

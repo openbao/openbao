@@ -378,6 +378,78 @@ func TestConfig_Update(t *testing.T) {
 				validCertificate, resp.Data["certificate"])
 		}
 	})
+
+	t.Run("update retains prior schema and password_policy values in storage", func(t *testing.T) {
+		b, storage := getBackend(false)
+		defer b.Cleanup(context.Background())
+
+		initialSchema := "ad"
+		initialPasswordPolicy := "test_policy"
+
+		data := map[string]interface{}{
+			"binddn":          "tester",
+			"schema":          initialSchema,
+			"password_policy": initialPasswordPolicy,
+			"bindpass":        "pa$$w0rd",
+			"url":             "ldap://138.91.247.105",
+			"certificate":     validCertificate,
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		// schema and password_policy are intentionally omitted for the update in order
+		// to test that their values set at creation time is retained.
+		data = map[string]interface{}{
+			"binddn":   "newtester",
+			"bindpass": "pa$$w0rd",
+			"url":      "ldap://138.91.247.105",
+		}
+
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      nil,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		// Assert that schema and password policy are retained in storage after the update
+		if resp.Data["schema"] != initialSchema {
+			t.Fatalf("expected schema to be %q after update, got %q",
+				initialSchema, resp.Data["schema"])
+		}
+
+		if resp.Data["password_policy"] != initialPasswordPolicy {
+			t.Fatalf("expected password_policy to be %q after update, got %q",
+				initialPasswordPolicy, resp.Data["password_policy"])
+		}
+	})
 }
 
 func TestConfig_Delete(t *testing.T) {

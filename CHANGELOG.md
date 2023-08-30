@@ -1,5 +1,15 @@
 ## Unreleased
 
+## 0.17.0
+
+IMPROVEMENTS:
+* Support ADC for Google Workspace [[GH-240](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/240)]
+* Updated dependencies:
+   * `github.com/hashicorp/cap` v0.3.1 -> v0.3.4
+   * `github.com/hashicorp/vault/sdk` v0.9.1 -> v0.9.2
+   * `golang.org/x/oauth2 v0.9.0` -> v0.10.0
+   * `google.golang.org/api v0.129.0` -> v0.134.0
+
 ## 0.16.0
 
 IMPROVEMENTS:

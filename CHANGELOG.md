@@ -1,5 +1,13 @@
 ## Unreleased
 
+## 0.17.0 (Aug 31, 2023)
+* update dependencies [GH-206](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/206)
+  * github.com/hashicorp/cap v0.3.4
+  * github.com/hashicorp/vault/api v1.9.2
+  * github.com/hashicorp/vault/sdk v0.9.2
+  * k8s.io/api v0.28.1
+  * k8s.io/apimachinery v0.28.1
+
 ## 0.16.0 (May 25, 2023)
 * Add display attributes for OpenAPI OperationID's [GH-192](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/192)
 * update dependencies [GH-196](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/196)

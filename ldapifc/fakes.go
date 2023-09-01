@@ -20,11 +20,7 @@ type FakeLDAPClient struct {
 	ConnToReturn ldaputil.Connection
 }
 
-func (f *FakeLDAPClient) Dial(network, addr string) (ldaputil.Connection, error) {
-	return f.ConnToReturn, nil
-}
-
-func (f *FakeLDAPClient) DialTLS(network, addr string, config *tls.Config) (ldaputil.Connection, error) {
+func (f *FakeLDAPClient) DialURL(addr string, opts ...ldap.DialOpt) (ldaputil.Connection, error) {
 	return f.ConnToReturn, nil
 }
 

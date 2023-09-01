@@ -1,5 +1,16 @@
 ## Unreleased
 
+## v0.11.1
+
+### IMPROVEMENTS:
+
+* update dependencies [GH-XXX](https://github.com/hashicorp/vault-plugin-secrets-openldap/pull/XXX)
+  * github.com/hashicorp/go-metrics v0.5.1
+  * github.com/hashicorp/vault/api v1.9.2
+  * github.com/hashicorp/vault/sdk v0.9.2
+  * github.com/stretchr/testify v1.8.4
+  * golang.org/x/text v0.12.0
+
 ## v0.11.0
 
 ### IMPROVEMENTS:

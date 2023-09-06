@@ -1,5 +1,20 @@
 ## Unreleased
 
+* Add changes here
+
+## 0.6.0 (September 6th, 2023)
+
+### Features:
+
+* update dependencies [GH-35](https://github.com/hashicorp/vault-plugin-secrets-kubernetes/pull/35)
+  * github.com/hashicorp/vault/api v1.10.0
+  * github.com/hashicorp/vault/sdk v0.10.0
+  * github.com/stretchr/testify v1.8.4
+  *	k8s.io/api v0.28.1
+  * k8s.io/apimachinery v0.28.1
+  * k8s.io/client-go v0.28.1
+  * golang.org/x/net v0.15.0
+
 ### Changes
 
 * Testing with K8s versions 1.23-1.27

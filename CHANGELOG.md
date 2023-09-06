@@ -1,5 +1,12 @@
 ## Unreleased
 
+## v0.10.1
+
+### IMPROVEMENTS
+* update dependencies
+  * `github.com/hashicorp/vault/api` v1.9.2
+  * `github.com/hashicorp/vault/sdk` v0.9.2
+
 ## v0.10.0
 
 ### IMPROVEMENTS

@@ -589,9 +589,9 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 	r := &Runner{
 		dockerAPI: cli,
 		ContainerConfig: &container.Config{
-			Image: "vault",
+			Image: "hashicorp/vault:latest",
 			Entrypoint: []string{"/bin/sh", "-c", "update-ca-certificates && " +
-				"exec /usr/local/bin/docker-entrypoint.sh vault server -log-level=trace -dev-plugin-dir=./vault/config -config /vault/config/local.json"},
+				"exec /usr/local/bin/docker-entrypoint.sh hashicorp/vault server -log-level=trace -dev-plugin-dir=./vault/config -config /vault/config/local.json"},
 			Env: []string{
 				"VAULT_CLUSTER_INTERFACE=eth0",
 				"VAULT_API_ADDR=https://127.0.0.1:8200",

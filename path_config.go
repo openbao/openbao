@@ -14,7 +14,6 @@ import (
 
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	josejwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 const (
@@ -45,7 +44,7 @@ func pathConfig(b *kubeAuthBackend) *framework.Path {
 			},
 			"token_reviewer_jwt": {
 				Type: framework.TypeString,
-				Description: `A service account JWT used to access the
+				Description: `A service account JWT (or other token) used as a bearer token to access the
 TokenReview API to validate other JWTs during login. If not set
 the JWT used for login will be used to access the API.`,
 				DisplayAttrs: &framework.DisplayAttributes{
@@ -152,14 +151,6 @@ func (b *kubeAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Requ
 	issuer := data.Get("issuer").(string)
 	disableIssValidation := data.Get("disable_iss_validation").(bool)
 	tokenReviewer := data.Get("token_reviewer_jwt").(string)
-
-	if tokenReviewer != "" {
-		// Validate it's a JWT, but don't verify the signature, since we may not have the right cert.
-		_, err := josejwt.ParseSigned(tokenReviewer)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	if disableLocalJWT && caCert == "" {
 		return logical.ErrorResponse("kubernetes_ca_cert must be given when disable_local_ca_jwt is true"), nil

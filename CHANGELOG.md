@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Improvements
+
+* Allow any token type for TokenReviewer validation [GH-207](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/207)
+
 ## 0.17.0 (Aug 31, 2023)
 * update dependencies [GH-206](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/206)
   * github.com/hashicorp/cap v0.3.4

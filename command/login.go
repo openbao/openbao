@@ -216,7 +216,7 @@ func (c *LoginCommand) Run(args []string) int {
 	}
 
 	// Create the client
-	client, err := c.Client()
+	client, err := c.ClientWithoutToken()
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 2

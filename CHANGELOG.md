@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.17.1
+IMPROVEMENTS:
+* Close HTTP listener if stop or kill signal is received [[GH-251](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/251)]
+
 ## 0.17.0
 
 IMPROVEMENTS:

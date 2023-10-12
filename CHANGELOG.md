@@ -2,6 +2,8 @@
 
 ### Changes
 
+* Build with go 1.21.3
+* Test with k8s versions 1.24-1.28
 * Updated dependencies [GH-209](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/209):
   * `github.com/hashicorp/cap` v0.3.4 -> v0.4.0
   * `github.com/hashicorp/go-sockaddr` v1.0.2 -> v1.0.5
@@ -9,6 +11,10 @@
   * `github.com/hashicorp/vault/sdk` v0.9.2 -> v0.10.0
   * `k8s.io/api` v0.28.1 -> v0.28.2
   * `k8s.io/apimachinery` v0.28.1 -> v0.28.2
+  * `golang.org/x/crypto` v0.11.0 -> v0.14.0
+  * `golang.org/x/net` v0.13.0 -> v0.17.0
+  * `golang.org/x/sys` v0.10.0 -> v0.13.0
+  * `golang.org/x/text` v0.11.0 -> v0.13.0
 
 ## 0.17.1 (Sept 7, 2023)
 

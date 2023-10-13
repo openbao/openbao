@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/hashicorp/cap/util"
@@ -52,7 +51,7 @@ type loginResp struct {
 func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
 	// handle ctrl-c while waiting for the callback
 	sigintCh := make(chan os.Signal, 1)
-	signal.Notify(sigintCh, os.Interrupt, os.Kill, syscall.SIGTSTP)
+	signal.Notify(sigintCh, authHalts...)
 	defer signal.Stop(sigintCh)
 
 	mount, ok := m["mount"]
@@ -153,7 +152,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		}
 	}()
 
-	// Wait for either the callback to finish, SIGINT, SIGKILL, or SIGTSTP to be received or up to 2 minutes
+	// Wait for either the callback to finish, or a halt signal (e.g., SIGKILL, SIGINT, SIGTSTP) to be received or up to 2 minutes
 	select {
 	case s := <-doneCh:
 		return s.secret, s.err

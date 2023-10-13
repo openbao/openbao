@@ -1,4 +1,6 @@
 ## Unreleased
+FIXES:
+* Ensure SIGTSTP is only used in unix builds [[GH-255](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/255)]
 
 ## 0.17.1
 IMPROVEMENTS:

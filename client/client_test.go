@@ -8,8 +8,10 @@ import (
 
 	"github.com/go-ldap/ldap/v3"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault-plugin-secrets-openldap/ldapifc"
 	"github.com/hashicorp/vault/sdk/helper/ldaputil"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/hashicorp/vault-plugin-secrets-openldap/ldapifc"
 )
 
 func TestSearch(t *testing.T) {
@@ -302,5 +304,35 @@ func testSearchResult() *ldap.SearchResult {
 				},
 			},
 		},
+	}
+}
+
+func TestToString(t *testing.T) {
+	tcs := map[string]struct {
+		filters              map[*Field][]string
+		expectedFilterString string
+	}{
+		"no-filters": {
+			filters:              nil,
+			expectedFilterString: "",
+		},
+		"single-filter": {
+			filters:              map[*Field][]string{FieldRegistry.DomainName: {"bob"}},
+			expectedFilterString: "(dn=bob)",
+		},
+		"two-filters": {
+			filters: map[*Field][]string{
+				FieldRegistry.DomainName:        {"bob"},
+				FieldRegistry.UserPrincipalName: {"Bob@example.net"},
+			},
+			expectedFilterString: "(&(dn=bob)(userPrincipalName=Bob@example.net))",
+		},
+	}
+
+	for name, tc := range tcs {
+		t.Run(name, func(t *testing.T) {
+			got := toString(tc.filters)
+			assert.Equal(t, tc.expectedFilterString, got)
+		})
 	}
 }

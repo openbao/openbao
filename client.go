@@ -9,6 +9,8 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/vault/sdk/helper/ldaputil"
+
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
 )
 
@@ -32,14 +34,33 @@ type Client struct {
 
 // UpdateDNPassword updates the password for the object with the given DN.
 func (c *Client) UpdateDNPassword(conf *client.Config, dn string, newPassword string) error {
-	filters := map[*client.Field][]string{client.FieldRegistry.ObjectClass: {"*"}}
+	scope := ldap.ScopeBaseObject
+	filters := map[*client.Field][]string{
+		client.FieldRegistry.ObjectClass: {"*"},
+	}
+
+	userAttr := conf.UserAttr
+	if userAttr == "" {
+		userAttr = defaultUserAttr(conf.Schema)
+	}
+	field := client.FieldRegistry.Parse(userAttr)
+	if field == nil {
+		return fmt.Errorf("unsupported userattr %q", userAttr)
+	}
+
+	if field == client.FieldRegistry.UserPrincipalName {
+		scope = ldap.ScopeWholeSubtree
+		bindUser := fmt.Sprintf("%s@%s", ldaputil.EscapeLDAPValue(dn), conf.UPNDomain)
+		filters[field] = []string{bindUser}
+		dn = conf.UserDN
+	}
 
 	newValues, err := client.GetSchemaFieldRegistry(conf.Schema, newPassword)
 	if err != nil {
 		return fmt.Errorf("error updating password: %s", err)
 	}
 
-	return c.ldap.UpdatePassword(conf, dn, ldap.ScopeBaseObject, newValues, filters)
+	return c.ldap.UpdatePassword(conf, dn, scope, newValues, filters)
 }
 
 // UpdateUserPassword updates the password for the object with the given username.

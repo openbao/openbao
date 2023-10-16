@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -33,6 +34,15 @@ func New(logger hclog.Logger) Client {
 		ldap: &ldaputil.Client{
 			LDAP:   ldaputil.NewLDAP(),
 			Logger: logger,
+		},
+	}
+}
+
+func NewWithClient(logger hclog.Logger, ldap ldaputil.LDAP) Client {
+	return Client{
+		ldap: &ldaputil.Client{
+			Logger: logger,
+			LDAP:   ldap,
 		},
 	}
 }
@@ -110,15 +120,31 @@ func (c *Client) UpdatePassword(cfg *Config, baseDN string, scope int, newValues
 
 // toString turns the following map of filters into LDAP search filter strings
 // For example: "(cn=Ellen Jones)"
+// when multiple filters are applied, they get AND'ed together.
+// example: (&(x=1)(y=2))
+// for test assertions, this sorts the filters alphabetically.
 func toString(filters map[*Field][]string) string {
 	var fieldEquals []string
-	for f, values := range filters {
+	sortedFilters := make([]*Field, 0, len(filters))
+	for filter := range filters {
+		sortedFilters = append(sortedFilters, filter)
+	}
+	sort.Slice(sortedFilters, func(i, j int) bool {
+		return sortedFilters[i].String() < sortedFilters[j].String()
+	})
+	for _, filter := range sortedFilters {
+		values := filters[filter]
+		// make values deterministic
+		sort.Strings(values)
 		for _, v := range values {
-			fieldEquals = append(fieldEquals, fmt.Sprintf("%s=%s", f, v))
+			fieldEquals = append(fieldEquals, fmt.Sprintf("(%s=%s)", filter, v))
 		}
 	}
-	result := strings.Join(fieldEquals, ",")
-	return "(" + result + ")"
+	if len(fieldEquals) <= 1 {
+		return strings.Join(fieldEquals, "")
+	}
+
+	return "(&" + strings.Join(fieldEquals, "") + ")"
 }
 
 func bind(cfg *Config, conn ldaputil.Connection) error {

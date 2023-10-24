@@ -1,4 +1,5 @@
 REPO_DIR := $(shell basename $(CURDIR))
+PLUGIN_DIR := $(GOPATH)/vault-plugins
 PLUGIN_NAME := $(shell command ls cmd/)
 
 .PHONY: default
@@ -35,4 +36,22 @@ fmtcheck:
 
 .PHONY: fmt
 fmt:
-	gofumpt -l -w .
+	gofumpt -l -w . && cd bootstrap/terraform && terraform fmt
+
+.PHONY: setup-env
+setup-env:
+	cd bootstrap/terraform && terraform init && terraform apply -auto-approve
+
+.PHONY: teardown-env
+teardown-env:
+	cd bootstrap/terraform && terraform init && terraform destroy -auto-approve
+
+.PHONY: configure
+configure: dev
+	@./scripts/configure.sh \
+	$(PLUGIN_DIR) \
+	$(PLUGIN_NAME) \
+	$(TEST_REDIS_HOST) \
+	$(TEST_REDIS_PORT) \
+	$(TEST_REDIS_USERNAME) \
+	$(TEST_REDIS_PASSWORD)

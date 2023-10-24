@@ -23,7 +23,7 @@ var pre6dot5 = false // check for Pre 6.5.0 Redis
 
 const (
 	defaultUsername       = "default"
-	defaultPassword       = ""
+	defaultPassword       = "default-pa55w0rd"
 	adminUsername         = "Administrator"
 	adminPassword         = "password"
 	aclCat                = "+@admin"
@@ -35,11 +35,11 @@ const (
 var redisTls = false
 
 func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
-	if os.Getenv("REDIS_TLS") != "" {
+	if os.Getenv("TEST_REDIS_TLS") != "" {
 		redisTls = true
 	}
-	if os.Getenv("REDIS_HOST") != "" {
-		return func() {}, os.Getenv("REDIS_HOST"), 6379
+	if os.Getenv("TEST_REDIS_HOST") != "" {
+		return func() {}, os.Getenv("TEST_REDIS_HOST"), 6379
 	}
 	// redver should match a redis repository tag. Default to latest.
 	redver := os.Getenv("REDIS_VERSION")
@@ -101,7 +101,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 func TestDriver(t *testing.T) {
 	var err error
 	var caCert []byte
-	if os.Getenv("REDIS_TLS") != "" {
+	if os.Getenv("TEST_REDIS_TLS") != "" {
 		caCertFile := os.Getenv("CA_CERT_FILE")
 		caCert, err = os.ReadFile(caCertFile)
 		if err != nil {

@@ -8,7 +8,7 @@ The plugin supports the generation of static and dynamic user roles and root cre
 
 ## Build
 
-To build this package for any platform, you will need to clone this repository, cd into the repo directory, then run `go build -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/`.
+Use `make dev` to build a development version of this plugin.
 
 **Please note:** In case of the following errors, while creating Redis connection in Vault, please build this plugin with `CGO_ENABLED=0 go build -ldflags='-extldflags=-static' -o vault-plugin-database-redis ./cmd/vault-plugin-database-redis/` command. More details on this error can be found [here](https://github.com/hashicorp/vault-plugin-database-redis/issues/1#issuecomment-1078415041).
 ````bash
@@ -23,9 +23,9 @@ Code: 400. Errors:
 ````
 
 ## Testing
-To run tests, `go test` will first set up the docker.io/redis:latest database image, then execute a set of basic tests against it. To test against different redis images, for example 5.0-buster, set the environment variable `REDIS_VERSION=5.0-buster`. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `REDIS_HOST` before executing. 
+To run tests, `go test` will first set up the docker.io/redis:latest database image, then execute a set of basic tests against it. To test against different redis images, for example 5.0-buster, set the environment variable `REDIS_VERSION=5.0-buster`. If you want to run the tests against a local redis installation or an already running redis container, set the environment variable `TEST_REDIS_HOST` before executing. 
 
-**Note:** The tests assume that the redis database instance has a default user with the following ACL settings `user default on nopass ~* +@all`. If it doesn't, you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file.
+**Note:** The tests assume that the redis database instance has a default user with the following ACL settings `user default on >default-pa55w0rd ~* +@all`. If it doesn't, you will need to align the Administrator username and password with the pre-set values in the `redis_test.go` file.
 
 Set `VAULT_ACC=1` to execute all of the tests including the acceptance tests, or run just a subset of tests by using a command like `go test -run TestDriver/Init` for example.
 
@@ -178,4 +178,15 @@ spring:
 
 ## Developing
 
-You can run `make dev` in the root of the repo to start up a development vault server and automatically register a local build of the plugin. You will need to have a built `vault` binary available in your `$PATH` to do so.
+A set of make targets are provided for quick and easy iterations when developing. These steps assume there is a Vault
+server running locally and accessible via the `vault` CLI. See this [documentation](https://github.com/hashicorp/vault#developing-vault) 
+on how to get started with Vault.
+
+1. `make setup-env` will start a Redis docker container and initialize a test user with the username `us3rn4m3` and passwod `user-pa55w0rd`
+2. `source ./bootstrap/terraform/local_environment_setup.sh` will export the necessary environment variables generated from the setup step
+3. `make configure` will build the plugin, register it in your local Vault server and run sample commands to verify everything is working
+4. `make testacc` will run the acceptance tests against the Redis container created during the environment setup
+5. `make teardown-env` will stop the Redis docker container with any resources generated alongside it such as network configs
+
+When iterating, you can reload any local code changes with `make configure` as many times as desired to test the latest 
+modifications via the Vault CLI or API.

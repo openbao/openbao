@@ -1,6 +1,6 @@
 module github.com/hashicorp/vault-plugin-database-redis
 
-go 1.20
+go 1.21
 
 require (
 	github.com/hashicorp/errwrap v1.1.0

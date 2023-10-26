@@ -106,5 +106,4 @@ func Test_UpdateDNPassword_AD_DN(t *testing.T) {
 
 	err = c.UpdateDNPassword(config, "CN=Bob,CN=Users,DC=example,DC=net", newPassword)
 	assert.NoError(t, err)
-
 }

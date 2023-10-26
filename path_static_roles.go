@@ -5,6 +5,7 @@ package openldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -117,6 +118,10 @@ func staticFields() map[string]*framework.FieldSchema {
 		"rotation_period": {
 			Type:        framework.TypeDurationSecond,
 			Description: "Period for automatic credential rotation of the given entry.",
+		},
+		"skip_import_rotation": {
+			Type:        framework.TypeBool,
+			Description: "Skip the initial pasword rotation on import (has no effect on updates)",
 		},
 	}
 	return fields
@@ -280,37 +285,73 @@ func (b *backend) pathStaticRoleCreateUpdate(ctx context.Context, req *logical.R
 		role.StaticAccount.RotationPeriod = time.Duration(rotationPeriodSeconds) * time.Second
 	}
 
+	skipRotation := false
+	skipRotationRaw, ok := data.GetOk("skip_import_rotation")
+	if ok {
+		// if skip rotation was set, use it (or validation error on an update)
+		if !isCreate {
+			return logical.ErrorResponse("skip_import_rotation has no effect on updates"), nil
+		}
+		skipRotation = skipRotationRaw.(bool)
+	} else if isCreate {
+		// otherwise, go get it if this is a create request.
+		c, err := readConfig(ctx, req.Storage)
+		if err != nil {
+			return nil, errors.New("couldn't find configuration for this create operation's endpoint")
+		}
+		skipRotation = c.SkipStaticRoleImportRotation
+	}
+
 	// lvr represents the role's LastVaultRotation
 	lvr := role.StaticAccount.LastVaultRotation
 
-	// Only call setStaticAccountPassword if we're creating the role for the
-	// first time
+	// Only call setStaticAccountPassword if we're creating the role for the first time
 	var item *queue.Item
 	switch req.Operation {
 	case logical.CreateOperation:
-		// setStaticAccountPassword calls Storage.Put and saves the role to storage
-		resp, err := b.setStaticAccountPassword(ctx, req.Storage, &setStaticAccountInput{
-			RoleName: name,
-			Role:     role,
-		})
-		if err != nil {
-			if resp != nil && resp.WALID != "" {
-				b.Logger().Debug("deleting WAL for failed role creation", "WAL ID", resp.WALID, "role", name)
-				walDeleteErr := framework.DeleteWAL(ctx, req.Storage, resp.WALID)
-				if walDeleteErr != nil {
-					b.Logger().Debug("failed to delete WAL for failed role creation", "WAL ID", resp.WALID, "error", walDeleteErr)
-					var merr *multierror.Error
-					merr = multierror.Append(merr, err)
-					merr = multierror.Append(merr, fmt.Errorf("failed to clean up WAL from failed role creation: %w", walDeleteErr))
-					err = merr.ErrorOrNil()
-				}
+		// if we were asked to not rotate, just add the entry - this essentially becomes an update operation, except
+		// the item is new
+		if skipRotation {
+			entry, err := logical.StorageEntryJSON(staticRolePath+name, role)
+			if err != nil {
+				return nil, err
 			}
-			return nil, err
-		}
-		// guard against RotationTime not being set or zero-value
-		lvr = resp.RotationTime
-		item = &queue.Item{
-			Key: name,
+			if err := req.Storage.Put(ctx, entry); err != nil {
+				return nil, err
+			}
+
+			// set the item
+			item = &queue.Item{
+				Key: name,
+			}
+			// synthetically set lvr to now, so that it gets queued correctly
+			lvr = time.Now()
+			break
+		} else {
+			// setStaticAccountPassword calls Storage.Put and saves the role to storage
+			resp, err := b.setStaticAccountPassword(ctx, req.Storage, &setStaticAccountInput{
+				RoleName: name,
+				Role:     role,
+			})
+			if err != nil {
+				if resp != nil && resp.WALID != "" {
+					b.Logger().Debug("deleting WAL for failed role creation", "WAL ID", resp.WALID, "role", name)
+					walDeleteErr := framework.DeleteWAL(ctx, req.Storage, resp.WALID)
+					if walDeleteErr != nil {
+						b.Logger().Debug("failed to delete WAL for failed role creation", "WAL ID", resp.WALID, "error", walDeleteErr)
+						var merr *multierror.Error
+						merr = multierror.Append(merr, err)
+						merr = multierror.Append(merr, fmt.Errorf("failed to clean up WAL from failed role creation: %w", walDeleteErr))
+						err = merr.ErrorOrNil()
+					}
+				}
+				return nil, err
+			}
+			// guard against RotationTime not being set or zero-value
+			lvr = resp.RotationTime
+			item = &queue.Item{
+				Key: name,
+			}
 		}
 	case logical.UpdateOperation:
 		// store updated Role

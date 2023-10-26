@@ -93,6 +93,10 @@ func (b *backend) configFields() map[string]*framework.FieldSchema {
 		Type:        framework.TypeString,
 		Description: "Password policy to use to generate passwords",
 	}
+	fields["skip_static_role_import_rotation"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Description: "Whether to skip the 'import' rotation.",
+	}
 
 	// Deprecated
 	fields["length"] = &framework.FieldSchema{
@@ -172,9 +176,15 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 		return nil, fmt.Errorf("cannot set both 'password_policy' and 'length'")
 	}
 
+	staticSkip := fieldData.Get("skip_static_role_import_rotation").(bool)
+	if _, set := fieldData.Raw["skip_static_role_import_rotation"]; existing != nil && !set {
+		staticSkip = conf.SkipStaticRoleImportRotation // use existing value if not set
+	}
+
 	// Update config field values
 	conf.PasswordPolicy = passPolicy
 	conf.PasswordLength = passLength
+	conf.SkipStaticRoleImportRotation = staticSkip
 	conf.LDAP.ConfigEntry = ldapConf
 	conf.LDAP.Schema = schema
 
@@ -246,6 +256,7 @@ func (b *backend) configReadOperation(ctx context.Context, req *logical.Request,
 	if config.PasswordPolicy != "" {
 		configMap["password_policy"] = config.PasswordPolicy
 	}
+	configMap["skip_static_role_import_rotation"] = config.SkipStaticRoleImportRotation
 	if !config.LDAP.LastBindPasswordRotation.IsZero() {
 		configMap["last_bind_password_rotation"] = config.LDAP.LastBindPasswordRotation
 	}
@@ -267,8 +278,9 @@ func (b *backend) configDeleteOperation(ctx context.Context, req *logical.Reques
 }
 
 type config struct {
-	LDAP           *client.Config
-	PasswordPolicy string `json:"password_policy,omitempty"`
+	LDAP                         *client.Config
+	PasswordPolicy               string `json:"password_policy,omitempty"`
+	SkipStaticRoleImportRotation bool   `json:"skip_static_role_import_rotation"`
 
 	// Deprecated
 	PasswordLength int `json:"length,omitempty"`

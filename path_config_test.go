@@ -182,6 +182,23 @@ func TestConfig_Create(t *testing.T) {
 				),
 			},
 		},
+		"skip initial static rotation set": {
+			createData: fieldData(map[string]interface{}{
+				"binddn":                           "tester",
+				"bindpass":                         "pa$$w0rd",
+				"url":                              "ldap://138.91.247.105",
+				"skip_static_role_import_rotation": true,
+			}),
+			createExpectErr: false,
+			expectedReadResp: &logical.Response{
+				Data: ldapResponseData(
+					"binddn", "tester",
+					"url", "ldap://138.91.247.105",
+					"skip_static_role_import_rotation", true,
+					"request_timeout", 90,
+				),
+			},
+		},
 		"both password policy and password length": {
 			createData: fieldData(map[string]interface{}{
 				"binddn":          "tester",
@@ -545,6 +562,10 @@ func fieldData(raw map[string]interface{}) *framework.FieldData {
 		Type:        framework.TypeString,
 		Description: "Password policy to use to generate passwords",
 	}
+	fields["skip_static_role_import_rotation"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Description: "Whether to skip the 'import' rotation.",
+	}
 
 	// Deprecated
 	fields["length"] = &framework.FieldSchema{
@@ -566,30 +587,31 @@ func ldapResponseData(vals ...interface{}) map[string]interface{} {
 	}
 
 	m := map[string]interface{}{
-		"anonymous_group_search": false,
-		"binddn":                 "",
-		"case_sensitive_names":   false,
-		"certificate":            "",
-		"connection_timeout":     30,
-		"deny_null_bind":         true,
-		"dereference_aliases":    "never",
-		"discoverdn":             false,
-		"groupattr":              "cn",
-		"groupdn":                "",
-		"groupfilter":            "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))",
-		"insecure_tls":           false,
-		"max_page_size":          0,
-		"schema":                 client.SchemaOpenLDAP,
-		"starttls":               false,
-		"tls_max_version":        defaultTLSVersion,
-		"tls_min_version":        defaultTLSVersion,
-		"upndomain":              "",
-		"url":                    "",
-		"use_token_groups":       false,
-		"userattr":               "cn",
-		"userdn":                 "",
-		"userfilter":             "({{.UserAttr}}={{.Username}})",
-		"username_as_alias":      false,
+		"anonymous_group_search":           false,
+		"binddn":                           "",
+		"case_sensitive_names":             false,
+		"certificate":                      "",
+		"connection_timeout":               30,
+		"deny_null_bind":                   true,
+		"dereference_aliases":              "never",
+		"discoverdn":                       false,
+		"groupattr":                        "cn",
+		"groupdn":                          "",
+		"groupfilter":                      "(|(memberUid={{.Username}})(member={{.UserDN}})(uniqueMember={{.UserDN}}))",
+		"insecure_tls":                     false,
+		"max_page_size":                    0,
+		"schema":                           client.SchemaOpenLDAP,
+		"skip_static_role_import_rotation": false,
+		"starttls":                         false,
+		"tls_max_version":                  defaultTLSVersion,
+		"tls_min_version":                  defaultTLSVersion,
+		"upndomain":                        "",
+		"url":                              "",
+		"use_token_groups":                 false,
+		"userattr":                         "cn",
+		"userdn":                           "",
+		"userfilter":                       "({{.UserAttr}}={{.Username}})",
+		"username_as_alias":                false,
 	}
 
 	for i := 0; i < len(vals); i += 2 {

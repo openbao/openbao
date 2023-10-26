@@ -82,6 +82,18 @@ func Test_backend_pathStaticRoleLifecycle(t *testing.T) {
 			wantUpdateErr: true,
 		},
 		{
+			name: "including skip_import_rotation is an update error",
+			createData: map[string]interface{}{
+				"username":        "bob",
+				"rotation_period": float64(5),
+			},
+			updateData: map[string]interface{}{
+				"username":             "bob",
+				"skip_import_rotation": false,
+			},
+			wantUpdateErr: true,
+		},
+		{
 			name: "modified dn results in update error",
 			createData: map[string]interface{}{
 				"username":        "bob",
@@ -358,6 +370,77 @@ func TestRoles(t *testing.T) {
 
 		if resp.Data["last_vault_rotation"] == nil {
 			t.Fatal("expected last_vault_rotation to not be empty")
+		}
+	})
+
+	t.Run("happy path with skip_rotate set", func(t *testing.T) {
+		b, storage := getBackend(false)
+		defer b.Cleanup(context.Background())
+
+		data := map[string]interface{}{
+			"binddn":      "tester",
+			"bindpass":    "pa$$w0rd",
+			"url":         "ldap://138.91.247.105",
+			"certificate": validCertificate,
+		}
+
+		req := &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      configPath,
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		data = map[string]interface{}{
+			"username":             "hashicorp",
+			"dn":                   "uid=hashicorp,ou=users,dc=hashicorp,dc=com",
+			"rotation_period":      "10m",
+			"skip_import_rotation": true,
+		}
+
+		req = &logical.Request{
+			Operation: logical.CreateOperation,
+			Path:      staticRolePath + "hashicorp",
+			Storage:   storage,
+			Data:      data,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		req = &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      staticRolePath + "hashicorp",
+			Storage:   storage,
+			Data:      nil,
+		}
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("err:%s resp:%#v\n", err, resp)
+		}
+
+		if resp.Data["dn"] != data["dn"] {
+			t.Fatalf("expected dn to be %s but got %s", data["dn"], resp.Data["dn"])
+		}
+
+		if resp.Data["username"] != data["username"] {
+			t.Fatalf("expected username to be %s but got %s", data["username"], resp.Data["username"])
+		}
+
+		if resp.Data["rotation_period"] != float64(600) {
+			t.Fatalf("expected rotation_period to be %d but got %s", 5, resp.Data["rotation_period"])
+		}
+
+		if resp.Data["password"] != nil {
+			t.Fatalf("expected password to be empty, but got %s", resp.Data["password"])
 		}
 	})
 

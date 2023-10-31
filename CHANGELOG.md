@@ -2,6 +2,8 @@
 
 ### IMPROVEMENTS:
 * add rotate-root support when using userattr=userPrincipalName
+* add `skip_static_role_import_rotation` and `skip_import_rotation` to allow users to retain the existing role password
+on import (note: Vault will not know the role password until it is rotated)
  
 ## v0.11.1
 

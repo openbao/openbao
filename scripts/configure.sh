@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 PLUGIN_DIR=$1
 PLUGIN_NAME=$2
 TEST_REDIS_HOST=$3

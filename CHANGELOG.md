@@ -9,6 +9,7 @@
   * golang.org/x/net v0.15.0 => v0.17.0
   * golang.org/x/sys v0.12.0 => v0.13.0
   * golang.org/x/term v0.12.0 => v0.13.0
+  * github.com/docker/docker v24.0.5 => v24.0.7
 
 ## 0.6.0 (September 6th, 2023)
 

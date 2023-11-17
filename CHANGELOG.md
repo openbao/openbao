@@ -15,6 +15,7 @@
   * `golang.org/x/net` v0.13.0 -> v0.17.0
   * `golang.org/x/sys` v0.10.0 -> v0.13.0
   * `golang.org/x/text` v0.11.0 -> v0.13.0
+  * `github.com/docker/docker` v24.0.5+incompatible -> v24.0.7+incompatible
 
 ## 0.17.1 (Sept 7, 2023)
 

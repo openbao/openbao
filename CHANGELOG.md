@@ -14,6 +14,7 @@
   * k8s.io/api v0.28.1 -> v0.28.3
   * k8s.io/apimachinery v0.28.1 -> v0.28.3
   * k8s.io/client-go v0.28.1 -> v0.28.3
+  * github.com/go-jose/go-jose/v3 v3.0.0 -> v3.0.1
 
 ## 0.6.0 (September 6th, 2023)
 

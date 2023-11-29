@@ -3,5 +3,5 @@
 
 contact_links:
   - name: Ask a question
-    url: https://discuss.hashicorp.com/c/vault
-    about: For increased visibility, please post questions on the discussion forum.
+    url: https://lists.lfedge.org/g/openbao
+    about: For questions, please send questions to our mailing list

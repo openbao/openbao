@@ -2,16 +2,16 @@
 name: Bug report
 about: Let us know about a bug!
 title: ''
-labels: ''
+labels: 'bug,pending-decision'
 assignees: ''
 
 ---
 
 <!-- Please reserve GitHub issues for bug reports and feature requests.
 
-For questions, the best place to get answers is on our [discussion forum](https://discuss.hashicorp.com/c/vault), as they will get more visibility from experienced users than the issue tracker.
+For questions, the best place to get answers is on our [mailing list](https://lists.lfedge.org/g/openbao), as they will get more visibility from experienced users than the issue tracker.
 
-Please note: We take Vault's security and our users' trust very seriously. If you believe you have found a security issue in Vault, please responsibly disclose by contacting us at security@hashicorp.com. Our PGP key is available at [our security page](https://www.hashicorp.com/security/).
+Please note: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us at TODO: security email. Our PGP key is available at [TODO: our security page](TODO).
 
 -->
 
@@ -20,22 +20,22 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Run `vault write ...`
-2. Run `vault login....`
+1. Run `bao write ...`
+2. Run `bao login....`
 3. See error
 
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
 **Environment:**
-* Vault Server Version (retrieve with `vault status`):
-* Vault CLI Version (retrieve with `vault version`):
+* OpenBao Server Version (retrieve with `bao status`):
+* OpenBao CLI Version (retrieve with `bao version`):
 * Server Operating System/Architecture:
 
-Vault server configuration file(s):
+OpenBao server configuration file(s):
 
 ```hcl
-# Paste your Vault config here.
+# Paste your OpenBao config here.
 # Be sure to scrub any sensitive values
 ```
 

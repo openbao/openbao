@@ -97,7 +97,18 @@ body:
     attributes:
       label: Security Implications
       description: |
-        - Are there any impact on OpenBao's security?
+        - Is there any impact on OpenBao's security?
+      placeholder:
+      value:
+    validations:
+      required: false
+
+  - type: textarea
+    id: ux
+    attributes:
+      label: User/Developer Experience
+      description: |
+        - Are there any changes to the user/developer experience?
       placeholder:
       value:
     validations:

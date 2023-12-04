@@ -11,7 +11,7 @@ assignees: ''
 
 For questions, the best place to get answers is on our [mailing list](https://lists.lfedge.org/g/openbao), as they will get more visibility from experienced users than the issue tracker.
 
-Please note: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us at TODO: security email. Our PGP key is available at [TODO: our security page](TODO).
+Please note: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, please responsibly disclose by contacting us at openbao-security@lists.lfedge.org.
 
 -->
 

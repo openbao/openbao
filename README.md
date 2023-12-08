@@ -11,7 +11,9 @@
 -	Discussion forum: [GitHub Discussions](https://github.com/openbao/openbao/discussions)
 <!-- - Documentation: [https://www.vaultproject.io/docs/](https://www.vaultproject.io/docs/) -->
 
-<img width="300" alt="OpenBao Mascot" src="bao.svg">
+<p align="center">
+  <img width="300" alt="OpenBao Mascot" src="bao.svg">
+</p>
 
 **OpenBao exists to provide a software solution to manage, store, and distribute sensitive data including secrets, certificates, and keys. The OpenBao community intends to provide this software under an OSI-approved open-source license, led by a community run under open governance principles.**
 

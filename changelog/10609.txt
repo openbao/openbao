@@ -1,3 +1,0 @@
-```release-note:improvement
-command/debug: Now collects logs (at level `trace`) as a periodic output.
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-command/debug: fix bug where monitor was not honoring configured duration
-```

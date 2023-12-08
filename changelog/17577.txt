@@ -1,3 +1,0 @@
-```release-note:bug
-cli: Remove empty table heading for `vault secrets list -detailed` output.
-```

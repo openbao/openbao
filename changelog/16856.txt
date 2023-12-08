@@ -1,3 +1,0 @@
-```release-note:change
-plugins: Add plugin version to auth register, list, and mount table
-```

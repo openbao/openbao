@@ -1,3 +1,0 @@
-```release-note: bug
-core: Fix double counting for "route" metrics
-```

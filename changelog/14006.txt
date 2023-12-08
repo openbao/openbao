@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Use secure default for algorithm signer (rsa-sha2-256) with RSA SSH CA keys on new roles
-```

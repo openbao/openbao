@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add error handling for error types other than UserError or InternalError
-```

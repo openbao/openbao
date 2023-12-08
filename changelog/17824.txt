@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Allow issuer creation, import to change default issuer via `default_follows_latest_issuer`.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-auth: Provide an IP address of the requests from Vault to a Duo challenge after successful authentication.
-```

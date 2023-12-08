@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Fixes inherited group membership when evaluating client assignments
-```

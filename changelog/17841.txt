@@ -1,3 +1,0 @@
-```release-note:improvement
-logging: Vault Agent supports logging to a specified file path via environment variable, CLI or config
-```

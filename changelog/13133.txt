@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes issue with OIDC auth workflow when using MetaMask Chrome extension
-```

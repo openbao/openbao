@@ -1,3 +1,0 @@
-```release-note:bug
-core/metrics: Fix incorrect table size metric for local mounts
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-activity log (enterprise): allow partial monthly client count to be accessed from namespaces
-```

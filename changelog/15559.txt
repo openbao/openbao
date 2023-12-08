@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/ssh: Convert role field not_before_duration to seconds before returning it
-```

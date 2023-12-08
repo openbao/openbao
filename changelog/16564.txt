@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Allow revocation of certificates with explicitly provided certificate (bring your own certificate / BYOC).
-```

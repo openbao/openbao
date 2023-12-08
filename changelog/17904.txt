@@ -1,3 +1,0 @@
-```release-note:bug
-credential/cert: adds error message if no tls connection is found during the AliasLookahead operation
-```

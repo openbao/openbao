@@ -1,3 +1,0 @@
-```release-note:improvement
-api: respect WithWrappingToken() option during AppRole login authentication when used with secret ID specified from environment or from string
-```

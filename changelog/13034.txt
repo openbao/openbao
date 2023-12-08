@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/azure: Adds support for rotate-root. [#70](https://github.com/hashicorp/vault-plugin-secrets-azure/pull/70)
-```

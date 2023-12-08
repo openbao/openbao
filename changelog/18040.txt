@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Added a new API that allows external actors to craft a CRL through JSON parameters
-```

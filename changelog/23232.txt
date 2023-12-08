@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Adds tidy_revoked_certs to PKI tidy status page
-```

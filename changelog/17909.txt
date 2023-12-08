@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Mark request body objects as required 
-```

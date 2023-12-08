@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Decode the connection url for display on the connection details page
-```

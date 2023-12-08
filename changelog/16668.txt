@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/transit: Add a dedicated HMAC key type, which can be used with key import.
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes login screen display issue with Safari browser
-```

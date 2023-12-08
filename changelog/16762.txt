@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add ability to periodically rebuild CRL before expiry
-```

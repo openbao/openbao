@@ -1,3 +1,0 @@
-```release-note:bug
-core: prevent memory leak when using control group factors in a policy
-```

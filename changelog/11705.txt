@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Add specific error message if unseal fails due to license
-```

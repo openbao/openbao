@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: show site-wide banners for license warnings if applicable
-```

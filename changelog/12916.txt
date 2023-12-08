@@ -1,3 +1,0 @@
-```release-note:bug
-identity/token: Adds missing call to unlock mutex in key deletion error handling
-```

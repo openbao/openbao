@@ -1,4 +1,0 @@
-```release-note:improvement
-secrets/kv: Emit events on write if events system enabled
-```
-

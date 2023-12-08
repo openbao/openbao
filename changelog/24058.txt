@@ -1,3 +1,0 @@
-```release-note:bug
-core/config: Use correct HCL config value when configuring `log_requests_level`.
-```

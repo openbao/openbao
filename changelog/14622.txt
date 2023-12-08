@@ -1,3 +1,0 @@
-```release-note:bug
-replication (enterprise): fix panic due to missing entity during invalidation of local aliases.
-```

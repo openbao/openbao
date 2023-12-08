@@ -1,3 +1,0 @@
-```release-note:feature
-secrets/aws: add IAM tagging support for iam_user roles
-```

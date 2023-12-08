@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes keymgmt key details page 
-``

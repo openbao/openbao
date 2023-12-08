@@ -1,3 +1,0 @@
-```release-note:bug
-ui: don't exclude features present on license
-```

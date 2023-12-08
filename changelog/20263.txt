@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix OIDC provider logo showing when domain doesn't match
-```

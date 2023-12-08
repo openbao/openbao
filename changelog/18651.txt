@@ -1,3 +1,0 @@
-```release-note:bug
-ui: cleanup unsaved auth method ember data record when navigating away from mount backend form
-```

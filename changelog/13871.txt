@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Adds support for port-agnostic validation of loopback IP redirect URIs.
-```

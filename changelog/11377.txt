@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix storage entry leak when revoking leases created with non-orphan batch tokens.
-```

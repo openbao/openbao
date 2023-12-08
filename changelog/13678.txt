@@ -1,3 +1,0 @@
-```release-note:bug
-core: add support for go-sockaddr templates in the top-level cluster_addr field
-```

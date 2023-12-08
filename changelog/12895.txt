@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Standardizes toolbar presentation of destructive actions 
-```

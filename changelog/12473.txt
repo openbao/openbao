@@ -1,3 +1,0 @@
-```release-note:bug
-identity: Fail alias rename if the resulting (name,accessor) exists already
-```

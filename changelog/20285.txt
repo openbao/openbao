@@ -1,3 +1,0 @@
-```release-note:bug
-openapi: Small fixes for OpenAPI display attributes. Changed "log-in" to "login"
-```

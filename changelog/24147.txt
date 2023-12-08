@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix error when tuning token auth configuration within namespace
-```

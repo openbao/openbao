@@ -1,3 +1,0 @@
-```release-note:bug
-openapi: Fix schema definitions for PKI EAB APIs
-```

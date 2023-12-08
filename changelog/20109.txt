@@ -1,3 +1,0 @@
-```release-note:improvement
-sys/wrapping: Add example how to unwrap without authentication in Vault
-```

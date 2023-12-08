@@ -1,3 +1,0 @@
-```release-note:bug
-expiration: Prevent large lease loads from delaying state changes, e.g. becoming active or standby.
-```

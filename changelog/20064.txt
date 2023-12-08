@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes browser console formatting for help command output
-```

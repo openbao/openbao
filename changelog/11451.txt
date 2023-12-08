@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/database: Fix marshalling to allow providing numeric arguments to external database plugins.
-```

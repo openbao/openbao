@@ -1,3 +1,0 @@
-```release-note:bug
-plugins: Only report deprecation status for builtin plugins.
-```

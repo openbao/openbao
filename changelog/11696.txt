@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Allow a leveled logger to be provided to `api.Client` through `SetLogger`.
-```

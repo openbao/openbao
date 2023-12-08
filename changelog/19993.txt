@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/openldap: upgrades dependencies
-```

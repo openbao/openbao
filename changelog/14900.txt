@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Added MFALogin() for handling MFA flow when using login helpers.
-```

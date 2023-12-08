@@ -1,3 +1,0 @@
-```release-note:improvement
-core: allow arbitrary length stack traces upon receiving SIGUSR2 (was 32MB)
-```

@@ -1,3 +1,0 @@
-```release-note:enhancement
-auth/cert: Load config, crls from InitializeFunc to allow parallel processing.
-```

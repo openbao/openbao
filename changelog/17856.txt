@@ -1,3 +1,0 @@
-```release-note:bug
-core/activity: fix the end_date returned from the activity log endpoint when partial counts are computed
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-license: Add autoloaded license path to the cache exempt list. This is to ensure the license changes on the active node is observed on the perfStandby node.
-```

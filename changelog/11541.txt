@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix edge cases in the configuration endpoint for barrier key autorotation.
-```

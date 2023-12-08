@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Do not set nextUpdate field in OCSP responses when ocsp_expiry is 0
-```

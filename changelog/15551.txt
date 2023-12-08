@@ -1,3 +1,0 @@
-```release-note:feature
-**Kubernetes Secrets Engine**: This new secrets engine generates Kubernetes service account tokens, service accounts, role bindings, and roles dynamically.
-```

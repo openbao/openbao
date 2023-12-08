@@ -1,3 +1,0 @@
-```release-note:improvement
-database/redis-elasticache: changed config argument names for disambiguation
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Add default values to thing_mount_path parameters
-```

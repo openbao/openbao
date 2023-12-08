@@ -1,3 +1,0 @@
-```release-note:improvement
-core/activity: refactor activity log api to reuse partial api functions in activity endpoint when current month is specified
-```

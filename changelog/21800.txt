@@ -1,3 +1,0 @@
-```release-note:bug
-auth/azure: Fix intermittent 401s by preventing performance secondary clusters from rotating root credentials. 
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Allow namespace param to be parsed from state queryParam
-```

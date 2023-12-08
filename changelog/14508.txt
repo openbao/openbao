@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Parse schema refs from OpenAPI
-```

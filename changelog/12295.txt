@@ -1,3 +1,0 @@
-```release-note:feature
-ui: Creates new StatText component
-```

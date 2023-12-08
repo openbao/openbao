@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes issue with correct auth method not selected when logging out from OIDC or JWT methods
-```

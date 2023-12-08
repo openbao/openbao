@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: add new http option : -header which enable sending arbitrary headers with the cli
-```

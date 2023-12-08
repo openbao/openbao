@@ -1,3 +1,0 @@
-```release-note:bug
-core (enterprise): Fix orphan return value from auth methods executed on performance standby nodes.
-```

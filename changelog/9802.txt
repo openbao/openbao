@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: Send notifications to systemd on start and stop.
-```

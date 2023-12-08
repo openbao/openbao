@@ -1,3 +1,0 @@
-```release-note: bug
-secrets/aws: Revert changes that removed the lease on STS credentials, while leaving the new ttl field in place.
-```

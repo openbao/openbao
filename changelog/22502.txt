@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: KV View Secret card will link to list view if input ends in "/"
-```

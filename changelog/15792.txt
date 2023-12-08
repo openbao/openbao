@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/kv: Fix issue preventing the ability to reset the `delete_version_after` key metadata field to 0s via HTTP `PATCH`.
-```

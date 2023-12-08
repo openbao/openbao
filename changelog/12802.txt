@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: Operator diagnose now tests for missing or partial telemetry configurations.
-```

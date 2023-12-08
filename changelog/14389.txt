@@ -1,3 +1,0 @@
-```release-note:improvement
-website/docs: added a link to an Enigma secret plugin.
-```

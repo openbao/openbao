@@ -1,3 +1,0 @@
-```release-note:feature
-nomad: Bootstrap Nomad ACL system if no token is provided
-```

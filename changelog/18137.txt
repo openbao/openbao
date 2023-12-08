@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: Configured Vault Agent listeners now listen without the need for caching to be configured.
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix error message caused by control group
-```

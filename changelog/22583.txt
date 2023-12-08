@@ -1,3 +1,0 @@
-```release-note:bug
-core/quotas: Reduce overhead for role calculation when using cloud auth methods.
-```

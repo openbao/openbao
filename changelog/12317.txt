@@ -1,3 +1,0 @@
-```release-note: bug
-core (enterprise): Fixes reading raft auto-snapshot configuration from performance standby node
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-core: Refactor lock grabbing code to simplify stateLock deadlock investigations
-```

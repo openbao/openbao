@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/approle: expose secret_id_accessor as WrappedAccessor when creating wrapped secret-id.
-```

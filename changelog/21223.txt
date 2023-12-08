@@ -1,3 +1,0 @@
-```release-note:bug
-core: Do not cache seal configuration to fix a bug that resulted in sporadic auto unseal failures.
-```

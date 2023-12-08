@@ -1,3 +1,0 @@
-```release-note:bug
-identity: Fix possible nil pointer dereference.
-```

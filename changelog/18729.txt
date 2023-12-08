@@ -1,3 +1,0 @@
-```release-note:bug
-sdk/backend: prevent panic when computing the zero value for a `TypeInt64` schema field.
-```

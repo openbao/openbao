@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Have pki/sign-verbatim use the not_before_duration field defined in the role
-```

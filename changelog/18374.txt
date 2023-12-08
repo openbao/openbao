@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: update DocLink component to use new host url: developer.hashicorp.com
-```

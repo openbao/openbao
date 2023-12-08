@@ -1,3 +1,0 @@
-```release-note:bug
-server/config:  Use file.Stat when checking file permissions when VAULT_ENABLE_FILE_PERMISSIONS_CHECK is enabled
-```

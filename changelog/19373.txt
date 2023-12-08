@@ -1,3 +1,0 @@
-```release-note:bug
-cli/transit: Fix import, import-version command invocation
-```

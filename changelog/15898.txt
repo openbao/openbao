@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Removed deprecated version of core-js 2.6.11
-```

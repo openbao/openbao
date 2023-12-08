@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/cert: Better return OCSP validation errors during login to the caller.
-```

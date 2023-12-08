@@ -1,3 +1,0 @@
-```release-note:bug
-tokenutil: Perform the num uses check before token type.
-```

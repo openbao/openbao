@@ -1,3 +1,0 @@
-```release-note:change
-secrets/azure: Removed deprecated AAD graph API support from the secrets engine.
-```

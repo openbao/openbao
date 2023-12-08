@@ -1,3 +1,0 @@
-```release-note:change
-secrets/pki: Allow issuance of root CAs without AIA, when templated AIA information includes issuer_id.
-```

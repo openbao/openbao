@@ -1,3 +1,0 @@
-```release-note:improvement
-physical/postgresql: pass context to queries to propagate timeouts and cancellations on requests.
-```

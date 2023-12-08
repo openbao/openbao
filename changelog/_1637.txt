@@ -1,3 +1,0 @@
-```release-note:bug
-transform (enterprise): Fix bug where tokenization store changes are persisted but don't take effect
-```

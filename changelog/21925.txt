@@ -1,3 +1,0 @@
-```release-note:improvement
-kmip (enterprise): Add namespace lock and unlock support
-```

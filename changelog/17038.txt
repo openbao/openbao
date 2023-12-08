@@ -1,3 +1,0 @@
-```release-note:change
-secrets: All database-specific (standalone DB) secrets engines are now marked `Pending Removal`.
-```

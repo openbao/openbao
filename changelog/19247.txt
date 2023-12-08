@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/oidc: Adds support for group membership parsing when using IBM ISAM as an OIDC provider.
-```

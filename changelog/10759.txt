@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/gcp: Fix issue with account and iam_policy roleset WALs not being removed after attempts when GCP project no longer exists
-```

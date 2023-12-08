@@ -1,3 +1,0 @@
-```release-note:improvement
-identity: fix issue where Cache-Control header causes stampede of requests for JWKS keys
-```

@@ -1,3 +1,0 @@
-```release-note: bug
-plugin/snowflake: Fixed bug where plugin would crash on 32 bit systems
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-database/postgres: Support multiline strings for revocation statements.
-```

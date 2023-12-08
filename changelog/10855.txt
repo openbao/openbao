@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix duplicate quotas on performance standby nodes.
-```

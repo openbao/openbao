@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: LIST issuers endpoint is now unauthenticated.
-```

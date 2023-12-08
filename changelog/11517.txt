@@ -1,3 +1,0 @@
-```release-note:improvement
-core: Send notifications to systemd on start, stop, and configuration reload.
-```

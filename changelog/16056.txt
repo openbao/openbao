@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Add allowed_domains_template to allow templating of allowed_domains.
-```

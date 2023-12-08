@@ -1,3 +1,0 @@
-```release-note:improvement
-hcp/status: Add cluster-level status information 
-```

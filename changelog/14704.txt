@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix panic for help request URL paths without /v1/ prefix   
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-api/mfa: Add namespace path to the MFA read/list endpoint
-```

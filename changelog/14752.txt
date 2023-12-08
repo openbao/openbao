@@ -1,3 +1,0 @@
-```release-note:bug
-core: report unused or redundant keys in server configuration   
-```

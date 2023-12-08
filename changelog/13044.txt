@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Trim newline character from wrapping token in logical.Unwrap from the api package
-```

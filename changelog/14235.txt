@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fix issuance of wildcard certificates matching glob patterns
-```

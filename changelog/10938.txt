@@ -1,3 +1,0 @@
-```release-note:feature
-agent: Support for persisting the agent cache to disk
-```

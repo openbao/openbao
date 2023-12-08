@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/azure: Adds ability to persist an application for the lifetime of a role.
-```

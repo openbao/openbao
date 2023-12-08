@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes issue with certain navigational links incorrectly displaying in child namespaces
-```

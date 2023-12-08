@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: Alternative flag-based syntax for KV to mitigate confusion from automatically appended /data
-```

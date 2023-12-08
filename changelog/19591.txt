@@ -1,3 +1,0 @@
-```release-note:improvement
-core: validate name identifiers in mssql physical storage backend prior use 
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-sdk/ldap: Added support for paging when searching for groups using group filters
-```

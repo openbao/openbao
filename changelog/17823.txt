@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Allow tidying of expired issuer certificates.
-```

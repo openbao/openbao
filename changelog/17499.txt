@@ -1,3 +1,0 @@
-```release-note:improvement
-core: Update protoc from 3.21.5 to 3.21.7
-```

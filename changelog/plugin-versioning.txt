@@ -1,3 +1,0 @@
-```release-note:feature
-**Plugin Versioning**: Vault supports registering, managing, and running plugins with semantic versions specified.
-```

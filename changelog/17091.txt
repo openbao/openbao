@@ -1,3 +1,0 @@
-```release-note:improvement
-agent/auto-auth: Add `exit_on_err` which when set to true, will cause Agent to exit if any errors are encountered during authentication.
-```

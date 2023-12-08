@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Surface DOMException error when browser settings prevent localStorage.
-```

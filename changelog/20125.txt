@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: updates clients configuration edit form state based on census reporting configuration
-```

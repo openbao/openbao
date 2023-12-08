@@ -1,3 +1,0 @@
-```release-note:improvement
-command/server: New -dev-cluster-json writes a file describing the dev cluster in -dev and -dev-three-node modes, plus -dev-three-node now enables unauthenticated metrics and pprof requests.
-```

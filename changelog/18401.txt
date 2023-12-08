@@ -1,3 +1,0 @@
-```release-note:bug
-expiration: Prevent panics on perf standbys when an irrevocable lease gets deleted.
-```

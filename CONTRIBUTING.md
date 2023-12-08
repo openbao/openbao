@@ -1,8 +1,8 @@
-# Contributing to Vault
+# Contributing to OpenBao
 
-**Please note:** We take Vault's security and our users' trust very seriously.
-If you believe you have found a security issue in Vault, please responsibly
-disclose by contacting us at security@hashicorp.com.
+**Please note:** We take OpenBao's security and our users' trust very seriously.
+If you believe you have found a security issue in OpenBao, please responsibly
+disclose by contacting us at openbao-security@lists.lfedge.org.
 
 **First:** if you're unsure or afraid of _anything_, just ask or submit the
 issue or pull request anyways. You won't be yelled at for giving it your best
@@ -12,8 +12,8 @@ rules to get in the way of that.
 
 That said, if you want to ensure that a pull request is likely to be merged,
 talk to us! You can find out our thoughts and ensure that your contribution
-won't clash or be obviated by Vault's normal direction. A great way to do this
-is via the [Vault Discussion Forum][2].
+won't clash or be obviated by OpenBao's normal direction. A great way to do this
+is via the [GitHub Discussions][2].
 
 ## Issues
 
@@ -26,28 +26,28 @@ quickly merge or address your contributions.
 
 * Make sure you test against the latest released version. It is possible we
   already fixed the bug you're experiencing. Even better is if you can test
-  against the `main` branch, as the bugs are regularly fixed but new versions
+  against the `development` branch, as the bugs are regularly fixed but new versions
   are only released every few months.
 
 * Provide steps to reproduce the issue, and if possible include the expected 
   results as well as the actual results. Please provide text, not screen shots!
 
-* If you are seeing an internal Vault error (a status code of 5xx), please be
-  sure to post relevant parts of (or the entire) Vault log, as often these
+* If you are seeing an internal OpenBao error (a status code of 5xx), please be
+  sure to post relevant parts of (or the entire) OpenBao log, as often these
   errors are logged on the server but not reported to the user.
 
 * If you experienced a panic, please create a [gist](https://gist.github.com)
   of the *entire* generated crash log for us to look at. Double check
   no sensitive items were in the log.
 
-* Respond as promptly as possible to any questions made by the Vault
+* Respond as promptly as possible to any questions made by the OpenBao
   team to your issue.
 
 ### Issue Lifecycle
 
 1. The issue is reported.
 
-2. The issue is verified and categorized by a Vault collaborator.
+2. The issue is verified and categorized by a OpenBao collaborator.
    Categorization is done via tags. For example, bugs are marked as "bugs".
 
 3. Unless it is critical, the issue may be left for a period of time (sometimes
@@ -78,11 +78,11 @@ that will help with your approach.
 
 Your pull request should have a description of what it accomplishes, how it does so,
 and why you chose the approach you did.  PRs should include unit tests that validate
-correctness and the existing tests must pass.  Follow-up work to fix tests
+correctness and the existing tests must pass. Follow-up work to fix tests
 does not need a fresh issue filed.
 
 Someone will do a first pass review on your PR making sure it follows the guidelines 
-in this document.  If it doesn't we'll mark the PR incomplete and ask you to follow
+in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
 up on the missing requirements.
 
 ### Changelog Entries
@@ -108,7 +108,7 @@ You do not need to include the link at the end of the summary that appears in
 CHANGELOG.md, those are generated automatically by the changelog-building 
 process.
 
-### Vault UI
+### OpenBao UI
 
 How you contribute to the UI depends on what you want to contribute. If that is 
 a new feature, please submit an informational issue first.  That issue 
@@ -119,28 +119,47 @@ is optional but encouraged.
 Bug fixes are welcome in PRs but existing tests must pass and updated logic 
 should be handled in new tests.  You needn't submit an issue first to fix bugs.
 
-Keep in mind that the UI should be consistent with other areas of Vault. 
+Keep in mind that the UI should be consistent with other areas of OpenBao. 
 The UI should be user-centered, informative, and include edge cases and errors— 
 including accommodations for users who may not have permissions to view or 
-interact with your feature. If you are not comfortable with UI design, a Vault
+interact with your feature. If you are not comfortable with UI design, an OpenBao
 designer can take a look at your work— just be aware that this might mean 
-it will add some time to the PR process. 
+it will add some time to the PR process.
 
 Finally, in your code, try to avoid logic-heavy templates (when possible, 
 calculate values in the .js file instead of .hbs) and Ember anti-patterns. 
 And most of all, if you have any questions, please ask!
 
-## Setting up Go to work on Vault
+## Setting up Go to work on OpenBao
 
 If you have never worked with Go before, you will have to complete the
-following steps listed in the README, under the section [Developing Vault][1].
+following steps listed in the README, under the section [Developing OpenBao][1].
 
 
-[1]: https://github.com/hashicorp/vault#developing-vault
-[2]: https://discuss.hashicorp.com/c/vault
+[1]: https://github.com/openbao/openbao#developing-openbao
+[2]: https://github.com/openbao/openbao/discussions
 
-## Contributor License Agreement
+## DCO Sign Off
 
-We require that all contributors sign our Contributor License Agreement ("CLA") before we can accept the contribution. 
+All contributors are required to confirm their legal rights to the code they contribute. This is done throught a "DCO Sign Off". Note that this is different from commit signing, such as using `PGP` or `gitsign`.
 
-[Learn more about why HashiCorp requires a CLA and what the CLA includes](https://www.hashicorp.com/cla)
+To add your sign-off, include the --signoff option in your `git commit` or `git rebase` commands:
+
+```
+# Sign off a commit
+git commit --signoff -m"my commit"
+
+# Add a signoff to the last commit you made
+git commit --amend --signoff
+
+# Sign off every commit in your branch
+git rebase --signoff master
+```
+
+This will add a line similar to the following at the end of your commit:
+
+```
+Signed-off-by: Alex Smith <alex@example.com>
+```
+
+Signing off a commit signifies your agreement to the terms outlined at https://developercertificate.org/ for that specific contribution.

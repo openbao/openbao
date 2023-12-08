@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/consul: Fix revocations when Vault has an access token using specific namespace and admin partition policies
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-identity: merge associated entity groups when merging entities
-```

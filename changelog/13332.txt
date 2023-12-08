@@ -1,3 +1,0 @@
-```release-note:bug
-auth/github: Use the Organization ID instead of the Organization name to verify the org membership.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: use the combined activity log (partial + historic) API for client count dashboard and remove use of monthly endpoint
-```

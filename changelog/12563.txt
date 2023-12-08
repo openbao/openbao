@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/db: Fix bug where Vault can rotate static role passwords early during start up under certain conditions.
-```

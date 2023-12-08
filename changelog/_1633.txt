@@ -1,3 +1,0 @@
-```release-note: bug
-core (enterprise): Vault EGP policies attached to path * were not correctly scoped to the namespace.
-```

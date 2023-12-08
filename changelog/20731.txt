@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes auto_rotate_period ttl input for transit keys
-```

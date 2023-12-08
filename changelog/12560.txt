@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Use entropy augmentation when available for generation of the signing key.
-```

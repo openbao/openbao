@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Do not show verify connection value on database connection config page
-```

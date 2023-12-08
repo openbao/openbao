@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Enable Patch Functionality for Roles and Issuers (API only)
-```

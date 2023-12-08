@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Redirects to managed namespace if incorrect namespace in URL param
-```

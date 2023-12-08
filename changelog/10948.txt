@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add ability to fetch individual certificate as DER or PEM
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/kv: Fix `kv get` issue preventing the ability to read a secret when providing a leading slash
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes issue with placeholder not displaying for automatically deleted secrets when deletion time has passed
-```

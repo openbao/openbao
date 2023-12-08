@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: enables create and update KV secret workflow when control group present
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes oidc/jwt login issue with alternate mount path and jwt login via mount path tab
-```

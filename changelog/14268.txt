@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Allow static role credential rotation in Database secrets engines
-```

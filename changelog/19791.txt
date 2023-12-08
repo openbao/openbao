@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: add allowed_managed_keys field to secret engine mount options
-```

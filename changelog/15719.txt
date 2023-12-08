@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/aws: Add rsa2048 signature type to API
-```

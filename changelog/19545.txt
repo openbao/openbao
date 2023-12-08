@@ -1,3 +1,0 @@
-```release-note:improvement
-database/elasticsearch: Update error messages resulting from Elasticsearch API errors
-```

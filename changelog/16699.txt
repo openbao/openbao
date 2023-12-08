@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Add a sentinel error for missing KV secrets
-```

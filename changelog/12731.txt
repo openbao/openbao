@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Move mergeStates and other required utils from agent to api module
-```

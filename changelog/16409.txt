@@ -1,3 +1,0 @@
-```release-note:improvement
-command/audit: Improve missing type error message
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: better errors on Database secrets engine role create
-```

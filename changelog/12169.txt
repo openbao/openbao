@@ -1,3 +1,0 @@
-```release-note:feature
-ui: Add custom metadata to KV secret engine and metadata to config
-```

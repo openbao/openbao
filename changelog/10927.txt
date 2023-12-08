@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: Route templating server through cache when persistent cache is enabled.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secret/pki: Allow specifying SKID for cross-signed issuance from older Vault versions.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Added client side paging for namespace list view
-```

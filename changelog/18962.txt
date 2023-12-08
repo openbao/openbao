@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Remove dependency on sdk module.
-```

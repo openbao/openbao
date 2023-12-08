@@ -1,3 +1,0 @@
-```release-note:improvement
-api: add api method for modifying raft autopilot configuration
-```

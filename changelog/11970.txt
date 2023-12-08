@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fixed double counting of http requests after operator stepdown
-```

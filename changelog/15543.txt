@@ -1,3 +1,0 @@
-```release-note:change
-secrets/pki: Err on unknown role during sign-verbatim.
-```

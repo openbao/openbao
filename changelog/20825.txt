@@ -1,3 +1,0 @@
-```release-note:change
-storage/aerospike: Aerospike storage shouldn't be used on 32-bit architectures and is now unsupported on them.
-```

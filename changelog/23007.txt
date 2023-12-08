@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fix removal of issuers to clean up unreferenced CRLs.
-```

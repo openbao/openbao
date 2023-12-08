@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Remove spinner after token renew
-```

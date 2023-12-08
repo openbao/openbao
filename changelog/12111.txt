@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix database role CG access
-```

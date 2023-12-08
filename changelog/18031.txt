@@ -1,3 +1,0 @@
-```release-note:improvement
-logging: Vault agent and server commands support log file and log rotation.
-```

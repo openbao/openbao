@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Add version diff view for KV V2
-```

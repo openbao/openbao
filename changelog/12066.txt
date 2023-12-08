@@ -1,3 +1,0 @@
-```release-note:feature
-secrets/aws: add support for custom IAM usernames
-```

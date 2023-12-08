@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: Support the -format=raw option, to read non-JSON Vault endpoints and original response bodies.
-```

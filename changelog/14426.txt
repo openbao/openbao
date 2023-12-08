@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Fixes potential write to readonly storage on performance secondary clusters during key rotation
-```

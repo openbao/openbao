@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Use the context passed to the api/auth Login helpers.
-```

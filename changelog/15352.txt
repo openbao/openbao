@@ -1,3 +1,0 @@
-```release-note:improvement
-core/activity: allow client counts to be precomputed and queried on non-contiguous chunks of data
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-core: fix GPG encryption to support subkeys.
-```

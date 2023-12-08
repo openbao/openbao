@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: allows some parts of config to be reloaded without requiring a restart.
-```

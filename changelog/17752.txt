@@ -1,3 +1,0 @@
-```release-note:bug
-openapi: fix gen_openapi.sh script to correctly load vault plugins
-```

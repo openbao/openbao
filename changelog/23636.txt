@@ -1,3 +1,0 @@
-```release-note:bug
-command/server: Fix bug with sigusr2 where pprof files were not closed correctly
-```

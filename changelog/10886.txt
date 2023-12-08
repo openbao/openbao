@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Let allowed_users template mix templated and non-templated parts.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/aws: add profile support for AWS credentials when using the AWS auth method
-```

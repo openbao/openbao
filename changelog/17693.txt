@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fix upgrade of missing expiry, delta_rebuild_interval by setting them to the default.
-```

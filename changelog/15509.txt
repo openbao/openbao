@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Warn on missing AIA access information when generating issuers (config/urls).
-```

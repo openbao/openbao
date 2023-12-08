@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Added resize for JSON editor [[GH-12906](https://github.com/hashicorp/vault/pull/12906)]
-```

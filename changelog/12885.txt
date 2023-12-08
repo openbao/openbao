@@ -1,3 +1,0 @@
-```release-note:feature:
-secrets/pki: Add `tidy-status` endpoint to obtain information of the current or most recent tidy operation.
-```

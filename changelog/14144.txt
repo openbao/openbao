@@ -1,3 +1,0 @@
-```release-note:bug
-auth/kubernetes: ensure valid entity alias names created for projected volume tokens
-```

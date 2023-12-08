@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Return new fields revocation_time_rfc3339 and issuer_id to existing certificate serial lookup api if it is revoked
-```

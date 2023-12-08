@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fix migration to properly handle mounts that contain only keys, no certificates
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-command: operator generate-root -decode: allow passing encoded token via stdin
-```

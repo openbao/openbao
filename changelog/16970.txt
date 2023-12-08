@@ -1,3 +1,0 @@
-```release-note:bug
-agent: Agent will now respect `max_retries` retry configuration even when caching is set.
-```

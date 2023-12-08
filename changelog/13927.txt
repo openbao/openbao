@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Use application/pem-certificate-chain for PEM certificates, application/x-pem-file for PEM CRLs
-```

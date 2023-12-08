@@ -1,3 +1,0 @@
-```release-note:bug
-plugins: Skip loading but still mount data associated with missing plugins on unseal.
-```

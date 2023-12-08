@@ -1,3 +1,0 @@
-```release-note:bug
-auth/jwt: Fixes `bound_claims` validation for provider-specific group and user info fetching.
-```

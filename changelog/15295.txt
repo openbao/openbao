@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/consul: Add support for Consul node-identities and service-identities
-```

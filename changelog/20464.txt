@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: Add walkSecretsTree helper function, which recursively walks secrets rooted at the given path
-```

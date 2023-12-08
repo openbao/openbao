@@ -1,3 +1,0 @@
-```release-note:bug
-ui: remove use of htmlSafe except when first sanitized
-```

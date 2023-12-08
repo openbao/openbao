@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add support for CPS URLs and User Notice to Policy Information
-```

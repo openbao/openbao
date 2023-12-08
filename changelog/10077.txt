@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix client.Clone() to include the address
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Added gauge metrics "secrets.pki.total_revoked_certificates_stored" and "secrets.pki.total_certificates_stored" to track the number of certificates in storage.
-```

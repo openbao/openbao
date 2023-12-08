@@ -1,3 +1,0 @@
-```release-note:bug
-auth/cert: Handle errors related to expired OCSP server responses
-```

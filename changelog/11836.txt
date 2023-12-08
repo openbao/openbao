@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/ad: Forward all creds requests to active node [[GH-76](https://github.com/hashicorp/vault-plugin-secrets-ad/pull/76)]
-```

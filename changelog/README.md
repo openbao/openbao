@@ -1,6 +1,6 @@
 # changelog
 
-This folder holds changelog updates from commit 3bc7d15 onwards.
+This folder holds changelog updates from commit 8ae7e24 onwards.
 
 Release notes are text files with three lines:
 
@@ -24,7 +24,7 @@ Release notes are text files with three lines:
        might be warranted.
      - `deprecation` - Announcement of a planned future removal of a
        feature. Only use this if a deprecation notice also exists [in the
-       docs](https://www.vaultproject.io/docs/deprecation).
+       docs](https://www.openbao.org/docs/deprecation).
      - `feature` - Large topical additions for a major release. These are
        rarely in minor releases. Formatting for `feature` entries differs
        from normal changelog formatting - see the [new features

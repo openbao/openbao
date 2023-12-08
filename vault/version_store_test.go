@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/version"
+	"github.com/lf-edge/openbao/version"
 )
 
 // TestVersionStore_StoreMultipleVaultVersions writes multiple versions of 1.9.0 and verifies that only

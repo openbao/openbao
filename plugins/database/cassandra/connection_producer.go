@@ -14,9 +14,9 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/connutil"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	dbplugin "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/database/helper/connutil"
+	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
 	"github.com/mitchellh/mapstructure"
 )
 

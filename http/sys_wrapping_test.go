@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/vault"
 )
 
 // Test wrapping functionality

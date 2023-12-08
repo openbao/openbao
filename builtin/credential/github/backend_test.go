@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	logicaltest "github.com/hashicorp/vault/helper/testhelpers/logical"
-	"github.com/hashicorp/vault/sdk/logical"
+	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestBackend_Config(t *testing.T) {

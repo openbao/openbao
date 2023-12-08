@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/api"
-	credLdap "github.com/hashicorp/vault/builtin/credential/ldap"
-	credUserpass "github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/helper/testhelpers/ldap"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	credLdap "github.com/lf-edge/openbao/builtin/credential/ldap"
+	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
+	"github.com/lf-edge/openbao/helper/testhelpers/ldap"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestTokenStore_CreateOrphanResponse(t *testing.T) {

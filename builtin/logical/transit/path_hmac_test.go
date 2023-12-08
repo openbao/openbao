@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/keysutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestTransit_HMAC(t *testing.T) {

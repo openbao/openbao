@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 var (

@@ -10,7 +10,7 @@
 package vault
 
 import (
-	forwarding "github.com/hashicorp/vault/helper/forwarding"
+	forwarding "github.com/lf-edge/openbao/helper/forwarding"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

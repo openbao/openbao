@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // intentionally != time.Now() to catch latent used of time.Now instead of

@@ -1,4 +1,4 @@
-module github.com/hashicorp/vault/api
+module github.com/lf-edge/openbao/api
 
 // The Go version directive for the api package should normally only be updated when
 // code in the api package requires a newer Go version to build.  It should not

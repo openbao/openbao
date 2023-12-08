@@ -13,7 +13,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/hashicorp/vault/internal"
+	"github.com/lf-edge/openbao/internal"
 )
 
 func init() {

@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/errutil"
 )
 
 func comparePublicKey(sc *storageContext, key *keyEntry, publicKey crypto.PublicKey) (bool, error) {

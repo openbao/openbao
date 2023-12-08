@@ -16,7 +16,7 @@ import type PkiActionModel from 'vault/models/pki/action';
 /**
  * @module PkiImportPemBundle
  * PkiImportPemBundle components are used to import PKI CA certificates and keys via pem_bundle.
- * https://github.com/hashicorp/vault/blob/main/website/content/api-docs/secret/pki.mdx#import-ca-certificates-and-keys
+ * https://github.com/lf-edge/openbao/blob/main/website/content/api-docs/secret/pki.mdx#import-ca-certificates-and-keys
  *
  * @example
  * ```js

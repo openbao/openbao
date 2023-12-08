@@ -11,10 +11,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/service/iam/iamiface"
 	"github.com/aws/aws-sdk-go/service/sts/stsiface"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/queue"
 )
 
 const (

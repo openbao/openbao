@@ -10,10 +10,10 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/helper/wrapping"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // PassthroughBackendFactory returns a PassthroughBackend

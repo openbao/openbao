@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/credential/approle"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/credential/approle"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestIdentityStore_EntityDisabled(t *testing.T) {

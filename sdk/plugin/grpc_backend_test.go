@@ -11,9 +11,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	gplugin "github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin/mock"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/plugin/mock"
 )
 
 func TestGRPCBackendPlugin_impl(t *testing.T) {

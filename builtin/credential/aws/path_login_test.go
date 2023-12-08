@@ -16,7 +16,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestBackend_pathLogin_getCallerIdentityResponse(t *testing.T) {

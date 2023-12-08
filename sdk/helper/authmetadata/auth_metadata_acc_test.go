@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 type environment struct {

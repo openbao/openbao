@@ -10,16 +10,16 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/plugin"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	logicalPlugin "github.com/hashicorp/vault/sdk/plugin"
-	"github.com/hashicorp/vault/sdk/plugin/mock"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/plugin"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	logicalPlugin "github.com/lf-edge/openbao/sdk/plugin"
+	"github.com/lf-edge/openbao/sdk/plugin/mock"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestBackend_impl(t *testing.T) {

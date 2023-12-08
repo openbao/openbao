@@ -11,10 +11,10 @@ import (
 	"time"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/tokenutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/copystructure"
 )
 

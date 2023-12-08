@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 type AzureAuth struct {

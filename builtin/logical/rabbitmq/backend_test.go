@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	logicaltest "github.com/hashicorp/vault/helper/testhelpers/logical"
-	"github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
+	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
 	"github.com/mitchellh/mapstructure"
 )

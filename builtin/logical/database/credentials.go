@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/helper/random"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/template"
+	"github.com/lf-edge/openbao/helper/random"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/template"
 	"github.com/mitchellh/mapstructure"
 )
 

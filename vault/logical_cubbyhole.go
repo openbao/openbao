@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/versions"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // CubbyholeBackendFactory constructs a new cubbyhole backend

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestHelp(t *testing.T) {

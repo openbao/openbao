@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/pgpkeys"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/helper/pgpkeys"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 

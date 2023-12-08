@@ -10,10 +10,10 @@ import (
 
 	"github.com/go-test/deep"
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 // TestKV_Subkeys_NotFound issues a read to the subkeys endpoint for a path

@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
 	"go.uber.org/atomic"
 )
 

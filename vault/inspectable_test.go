@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/command/server"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/command/server"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestInspectRouter(t *testing.T) {

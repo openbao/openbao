@@ -8,8 +8,8 @@ import (
 	"net"
 
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/internalshared/listenerutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/internalshared/listenerutil"
 	"github.com/mitchellh/cli"
 )
 

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/cache"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/agentproxyshared/cache"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
 )
 
 func testNewLeaseCache(t *testing.T, responses []*cache.SendResponse) *cache.LeaseCache {

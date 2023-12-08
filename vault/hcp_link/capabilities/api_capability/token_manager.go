@@ -16,10 +16,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
 	scada "github.com/hashicorp/hcp-scada-provider"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/hcp_link/internal"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/vault/hcp_link/internal"
 )
 
 const (

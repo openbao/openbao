@@ -10,7 +10,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
 )
 
 // Job is an interface for jobs used with this job manager

@@ -19,23 +19,23 @@ import (
 	"time"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	auditFile "github.com/hashicorp/vault/builtin/audit/file"
-	credUserpass "github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
+	"github.com/lf-edge/openbao/api"
+	auditFile "github.com/lf-edge/openbao/builtin/audit/file"
+	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
+	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/lf-edge/openbao/sdk/physical/inmem"
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/audit"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestLogical(t *testing.T) {

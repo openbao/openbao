@@ -19,9 +19,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/hashicorp/vault/command/agentproxyshared"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/command/agentproxyshared"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 )
 
 // Config is the configuration for Vault Proxy.

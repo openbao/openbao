@@ -12,10 +12,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	scada "github.com/hashicorp/hcp-scada-provider"
 	sdkResource "github.com/hashicorp/hcp-sdk-go/resource"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/hcp_link/internal"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/vault/hcp_link/internal"
 )
 
 func getHCPConfig(t *testing.T, clientID, clientSecret string) *configutil.HCPLinkConfig {

@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	v4 "github.com/hashicorp/vault/sdk/database/dbplugin"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	v4 "github.com/lf-edge/openbao/sdk/database/dbplugin"
+	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const SecretCredsType = "creds"

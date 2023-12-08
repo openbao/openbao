@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/wrapping"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

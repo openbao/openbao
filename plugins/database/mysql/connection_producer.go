@@ -16,8 +16,8 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/database/helper/connutil"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	"github.com/lf-edge/openbao/sdk/database/helper/connutil"
+	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
 	"github.com/mitchellh/mapstructure"
 )
 

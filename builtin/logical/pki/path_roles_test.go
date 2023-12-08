@@ -14,8 +14,8 @@ import (
 
 	"github.com/go-errors/errors"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

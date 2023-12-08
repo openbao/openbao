@@ -6,8 +6,8 @@ package mock
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // pathInternal is used to test viewing internal backend values. In this case,

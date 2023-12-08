@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 	"github.com/posener/complete"
 )
 

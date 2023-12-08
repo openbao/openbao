@@ -15,7 +15,7 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
 	"github.com/mitchellh/mapstructure"
 )
 

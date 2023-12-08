@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/audit"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestAuditFile_fileModeNew(t *testing.T) {

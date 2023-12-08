@@ -11,8 +11,8 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/base62"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

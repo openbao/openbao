@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/vault/helper/pgpkeys"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/helper/pgpkeys"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {

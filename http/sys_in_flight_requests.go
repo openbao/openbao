@@ -6,7 +6,7 @@ package http
 import (
 	"net/http"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func handleUnAuthenticatedInFlightRequest(core *vault.Core) http.Handler {

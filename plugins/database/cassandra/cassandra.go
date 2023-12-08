@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/helper/template"
+	"github.com/lf-edge/openbao/sdk/helper/template"
 
 	"github.com/gocql/gocql"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	dbplugin "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
 )
 
 const (

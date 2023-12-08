@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestSysConfigCors(t *testing.T) {

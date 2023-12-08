@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/lf-edge/openbao/physical/raft"
+	"github.com/lf-edge/openbao/sdk/physical"
 	"github.com/mitchellh/cli"
 )
 

@@ -12,11 +12,11 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
+	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/lf-edge/openbao/sdk/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 

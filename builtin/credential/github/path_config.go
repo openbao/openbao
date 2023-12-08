@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/google/go-github/github"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/tokenutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathConfig(b *backend) *framework.Path {

@@ -8,21 +8,21 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/ldaputil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/sdk/helper/ldaputil"
+	"github.com/lf-edge/openbao/sdk/logical"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/vault/helper/testhelpers/teststorage"
+	"github.com/lf-edge/openbao/helper/testhelpers/teststorage"
 
 	"github.com/go-ldap/ldap/v3"
 	log "github.com/hashicorp/go-hclog"
-	ldapcred "github.com/hashicorp/vault/builtin/credential/ldap"
-	"github.com/hashicorp/vault/helper/namespace"
-	ldaphelper "github.com/hashicorp/vault/helper/testhelpers/ldap"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/vault"
+	ldapcred "github.com/lf-edge/openbao/builtin/credential/ldap"
+	"github.com/lf-edge/openbao/helper/namespace"
+	ldaphelper "github.com/lf-edge/openbao/helper/testhelpers/ldap"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestIdentityStore_ExternalGroupMemberships_DifferentMounts(t *testing.T) {

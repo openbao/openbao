@@ -11,12 +11,12 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/physical/inmem"
 )
 
 var defaultCustomHeaders = map[string]string{

@@ -2,7 +2,7 @@
 
 package builtinplugins
 
-import "github.com/hashicorp/vault/sdk/helper/consts"
+import "github.com/lf-edge/openbao/sdk/helper/consts"
 
 // IsBuiltinEntPlugin checks whether the plugin is an enterprise only builtin plugin
 func (r *registry) IsBuiltinEntPlugin(name string, pluginType consts.PluginType) bool {

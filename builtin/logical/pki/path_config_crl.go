@@ -9,10 +9,10 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/helper/constants"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/constants"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/errutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const latestCrlConfigVersion = 1

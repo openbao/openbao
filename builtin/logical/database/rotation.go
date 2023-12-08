@@ -11,12 +11,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/queue"
+	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/locksutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/queue"
 )
 
 const (

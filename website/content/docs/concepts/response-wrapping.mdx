@@ -119,7 +119,7 @@ client using the `X-Vault-Wrap-TTL` header and can be either an integer number
 of seconds or a string duration of seconds (`15s`), minutes (`20m`), or hours
 (`25h`). When using the Vault CLI, you can set this via the `-wrap-ttl`
 parameter. When using the Go API, wrapping is triggered by [setting a helper
-function](https://godoc.org/github.com/hashicorp/vault/api#Client.SetWrappingLookupFunc)
+function](https://godoc.org/github.com/lf-edge/openbao/api#Client.SetWrappingLookupFunc)
 that tells the API the conditions under which to request wrapping, by mapping
 an operation and path to a desired TTL.
 

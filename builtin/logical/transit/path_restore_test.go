@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestTransit_Restore(t *testing.T) {

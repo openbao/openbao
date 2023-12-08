@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	sr "github.com/hashicorp/vault/serviceregistration"
-	"github.com/hashicorp/vault/serviceregistration/kubernetes/client"
-	kubetest "github.com/hashicorp/vault/serviceregistration/kubernetes/testing"
+	sr "github.com/lf-edge/openbao/serviceregistration"
+	"github.com/lf-edge/openbao/serviceregistration/kubernetes/client"
+	kubetest "github.com/lf-edge/openbao/serviceregistration/kubernetes/testing"
 )
 
 var testVersion = "version1"

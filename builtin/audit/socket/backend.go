@@ -14,9 +14,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/audit"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, error) {

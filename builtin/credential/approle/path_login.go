@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/cidrutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathLogin(b *backend) *framework.Path {

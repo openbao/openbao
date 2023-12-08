@@ -10,9 +10,9 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	raftlib "github.com/hashicorp/raft"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/physical/raft"
+	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/lf-edge/openbao/vault"
 	"github.com/mitchellh/go-testing-interface"
 )
 

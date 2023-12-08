@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/command/agentproxyshared"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/command/agentproxyshared"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 )
 
 // TestLoadConfigFile_ProxyCache tests loading a config file containing a cache

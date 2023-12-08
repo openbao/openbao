@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	v4 "github.com/hashicorp/vault/sdk/database/dbplugin"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/logical"
+	v4 "github.com/lf-edge/openbao/sdk/database/dbplugin"
+	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

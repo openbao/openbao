@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	scada "github.com/hashicorp/hcp-scada-provider"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestHCPLinkConnected(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
 )
 
 func TestNewTokenFileAuthMethodEmptyConfig(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-cleanhttp"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
-	"github.com/hashicorp/vault/vault"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/vault"
 	"golang.org/x/net/http2"
 )
 

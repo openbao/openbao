@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/certhelpers"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/helper/testhelpers/certhelpers"
+	dbplugin "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
 	"github.com/ory/dockertest"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

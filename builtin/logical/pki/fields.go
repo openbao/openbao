@@ -6,7 +6,7 @@ package pki
 import (
 	"time"
 
-	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/framework"
 )
 
 const (

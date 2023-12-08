@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/postgresql"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/template"
+	"github.com/lf-edge/openbao/helper/testhelpers/postgresql"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
+	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -311,7 +311,7 @@ func TestPostgreSQL_NewUser(t *testing.T) {
 				assertCredsExist,
 			),
 		},
-		// https://github.com/hashicorp/vault/issues/6098
+		// https://github.com/lf-edge/openbao/issues/6098
 		"reproduce GH-6098": {
 			req: dbplugin.NewUserRequest{
 				UsernameConfig: dbplugin.UsernameMetadata{

@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/docker"
 )
 
 func PrepareTestContainer(t *testing.T, version string) (func(), string) {

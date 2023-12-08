@@ -11,10 +11,10 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/pgpkeys"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/roottoken"
-	"github.com/hashicorp/vault/shamir"
+	"github.com/lf-edge/openbao/helper/pgpkeys"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/roottoken"
+	"github.com/lf-edge/openbao/shamir"
 )
 
 const coreDROperationTokenPath = "core/dr-operation-token"

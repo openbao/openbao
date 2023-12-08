@@ -21,12 +21,12 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/helper/versions"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 	"github.com/stretchr/testify/require"
 )
 
@@ -338,7 +338,7 @@ func TestHandler_InFlightRequest(t *testing.T) {
 
 // TestHandler_MissingToken tests the response / error code if a request comes
 // in with a missing client token. See
-// https://github.com/hashicorp/vault/issues/8377
+// https://github.com/lf-edge/openbao/issues/8377
 func TestHandler_MissingToken(t *testing.T) {
 	// core, _, token := vault.TestCoreUnsealed(t)
 	core, _, _ := vault.TestCoreUnsealed(t)

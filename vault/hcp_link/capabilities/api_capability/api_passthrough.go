@@ -12,10 +12,10 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	scada "github.com/hashicorp/hcp-scada-provider"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/hcp_link/capabilities"
-	"github.com/hashicorp/vault/vault/hcp_link/internal"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/vault/hcp_link/capabilities"
+	"github.com/lf-edge/openbao/vault/hcp_link/internal"
 )
 
 type APIPassThroughCapability struct {

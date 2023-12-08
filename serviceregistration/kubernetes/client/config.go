@@ -10,7 +10,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
 )
 
 const (

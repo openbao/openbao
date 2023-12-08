@@ -6,8 +6,8 @@ package pki
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathAcmeChallenge(b *backend) []*framework.Path {

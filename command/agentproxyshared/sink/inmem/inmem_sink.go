@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/command/agentproxyshared/cache"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink"
+	"github.com/lf-edge/openbao/command/agentproxyshared/cache"
+	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
 	"go.uber.org/atomic"
 )
 

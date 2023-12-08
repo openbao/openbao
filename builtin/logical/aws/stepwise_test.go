@@ -10,7 +10,7 @@ import (
 
 	stepwise "github.com/hashicorp/vault-testing-stepwise"
 	dockerEnvironment "github.com/hashicorp/vault-testing-stepwise/environments/docker"
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 	"github.com/mitchellh/mapstructure"
 )
 

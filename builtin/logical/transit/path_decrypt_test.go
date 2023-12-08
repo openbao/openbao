@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

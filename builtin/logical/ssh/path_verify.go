@@ -6,9 +6,9 @@ package ssh
 import (
 	"context"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathVerify(b *backend) *framework.Path {

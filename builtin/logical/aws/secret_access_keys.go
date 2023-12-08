@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/awsutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/template"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/template"
+	"github.com/lf-edge/openbao/sdk/logical"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"

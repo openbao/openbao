@@ -97,11 +97,11 @@ function build() {
     ldflags=""
   fi
 
-  ldflags="${ldflags} -X github.com/hashicorp/vault/version.GitCommit=$revision -X github.com/hashicorp/vault/version.BuildDate=$build_date"
+  ldflags="${ldflags} -X github.com/lf-edge/openbao/version.GitCommit=$revision -X github.com/lf-edge/openbao/version.BuildDate=$build_date"
 
   if [[ ${VERSION_METADATA+x} ]]; then
     msg="${msg}, metadata ${VERSION_METADATA}"
-    ldflags="${ldflags} -X github.com/hashicorp/vault/version.VersionMetadata=$VERSION_METADATA"
+    ldflags="${ldflags} -X github.com/lf-edge/openbao/version.VersionMetadata=$VERSION_METADATA"
   fi
 
   # Build vault

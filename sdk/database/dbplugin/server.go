@@ -8,7 +8,7 @@ import (
 	fmt "fmt"
 
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
 )
 
 // Serve is called from within a plugin and wraps the provided

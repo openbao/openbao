@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/hashicorp/vault/sdk/helper/hclutil"
+	"github.com/lf-edge/openbao/sdk/helper/hclutil"
 	homedir "github.com/mitchellh/go-homedir"
 )
 

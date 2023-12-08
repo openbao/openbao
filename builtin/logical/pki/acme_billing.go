@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func (b *backend) doTrackBilling(ctx context.Context, identifiers []*ACMEIdentifier) error {

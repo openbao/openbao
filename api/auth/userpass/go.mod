@@ -1,5 +1,5 @@
-module github.com/hashicorp/vault/api/auth/userpass
+module github.com/lf-edge/openbao/api/auth/userpass
 
 go 1.16
 
-require github.com/hashicorp/vault/api v1.9.2
+require github.com/lf-edge/openbao/api v1.9.2

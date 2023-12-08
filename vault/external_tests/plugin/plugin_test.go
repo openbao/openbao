@@ -12,16 +12,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/plugin"
-	"github.com/hashicorp/vault/helper/namespace"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	lplugin "github.com/hashicorp/vault/sdk/plugin"
-	"github.com/hashicorp/vault/sdk/plugin/mock"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/plugin"
+	"github.com/lf-edge/openbao/helper/namespace"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	lplugin "github.com/lf-edge/openbao/sdk/plugin"
+	"github.com/lf-edge/openbao/sdk/plugin/mock"
+	"github.com/lf-edge/openbao/vault"
 )
 
 const (

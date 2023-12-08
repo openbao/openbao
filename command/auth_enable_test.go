@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/helper/builtinplugins"
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/lf-edge/openbao/helper/builtinplugins"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
 	"github.com/mitchellh/cli"
 )
 

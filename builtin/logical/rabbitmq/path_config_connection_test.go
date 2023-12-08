@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestBackend_ConfigConnection_DefaultUsernameTemplate(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 // testPluginCreate creates a sample plugin in a tempdir and returns the shasum

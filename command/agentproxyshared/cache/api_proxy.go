@@ -11,8 +11,8 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/http"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/http"
 )
 
 type EnforceConsistency int

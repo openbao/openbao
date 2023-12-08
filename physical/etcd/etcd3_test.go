@@ -9,9 +9,9 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers/etcd"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/lf-edge/openbao/helper/testhelpers/etcd"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/physical"
 )
 
 func TestEtcd3Backend(t *testing.T) {

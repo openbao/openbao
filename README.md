@@ -13,7 +13,7 @@
 - Tutorials: [HashiCorp's Learn Platform](https://learn.hashicorp.com/vault)
 - Certification Exam: [Vault Associate](https://www.hashicorp.com/certification/#hashicorp-certified-vault-associate)
 
-<img width="300" alt="Vault Logo" src="https://github.com/hashicorp/vault/blob/f22d202cde2018f9455dec755118a9b84586e082/Vault_PrimaryLogo_Black.png">
+<img width="300" alt="Vault Logo" src="https://github.com/lf-edge/openbao/blob/f22d202cde2018f9455dec755118a9b84586e082/Vault_PrimaryLogo_Black.png">
 
 Vault is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. Vault provides a unified interface to any secret, while providing tight access control and recording a detailed audit log.
 
@@ -124,7 +124,7 @@ $ make test TEST=./vault
 ### Importing Vault
 
 This repository publishes two libraries that may be imported by other projects:
-`github.com/hashicorp/vault/api` and `github.com/hashicorp/vault/sdk`.
+`github.com/lf-edge/openbao/api` and `github.com/lf-edge/openbao/sdk`.
 
 Note that this repository also contains Vault (the product), and as with most Go
 projects, Vault uses Go modules to manage its dependencies. The mechanism to do
@@ -180,7 +180,7 @@ An example of how to use it:
 ```go
 import (
   "testing"
-  "github.com/hashicorp/vault/sdk/helper/testcluster/docker"
+  "github.com/lf-edge/openbao/sdk/helper/testcluster/docker"
 )
 
 func Test_Something_With_Docker(t *testing.T) {
@@ -204,7 +204,7 @@ Or for Enterprise:
 ```go
 import (
   "testing"
-  "github.com/hashicorp/vault/sdk/helper/testcluster/docker"
+  "github.com/lf-edge/openbao/sdk/helper/testcluster/docker"
 )
 
 func Test_Something_With_Docker(t *testing.T) {
@@ -237,7 +237,7 @@ func Test_Custom_Build_With_Docker(t *testing.T) {
 }
 ```
 
-There are a variety of helpers in the `github.com/hashicorp/vault/sdk/helper/testcluster`
+There are a variety of helpers in the `github.com/lf-edge/openbao/sdk/helper/testcluster`
 package, e.g. these tests below will create a pair of 3-node clusters and link them using
 PR or DR replication respectively, and fail if the replication state doesn't become healthy
 before the passed context expires.
@@ -284,5 +284,5 @@ Finally, here's an example of running an existing OSS docker test with a custom 
 ```bash
 $ GOOS=linux make dev
 $ VAULT_BINARY=$(pwd)/bin/vault go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
-ok      github.com/hashicorp/vault/vault/external_tests/raft/raft_binary        20.960s
+ok      github.com/lf-edge/openbao/vault/external_tests/raft/raft_binary        20.960s
 ```

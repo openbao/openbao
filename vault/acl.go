@@ -13,9 +13,9 @@ import (
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/helper/identity"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/identity"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/copystructure"
 )
 

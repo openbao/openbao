@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )

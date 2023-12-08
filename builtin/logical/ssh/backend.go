@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const operationPrefixSSH = "ssh"

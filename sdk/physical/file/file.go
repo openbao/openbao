@@ -18,9 +18,9 @@ import (
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/physical"
 )
 
 // Verify FileBackend satisfies the correct interfaces

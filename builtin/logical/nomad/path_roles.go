@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathListRoles(b *backend) *framework.Path {

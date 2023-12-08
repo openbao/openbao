@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/ldaputil"
+	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/ldaputil"
 )
 
 func PrepareTestContainer(t *testing.T, version string) (cleanup func(), cfg *ldaputil.ConfigEntry) {

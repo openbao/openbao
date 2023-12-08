@@ -6,7 +6,7 @@
 package vault
 
 import (
-	"github.com/hashicorp/vault/helper/namespace"
+	"github.com/lf-edge/openbao/helper/namespace"
 )
 
 func (i *IdentityStore) listNamespaces() []*namespace.Namespace {

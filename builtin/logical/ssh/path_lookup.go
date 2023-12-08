@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathLookup(b *backend) *framework.Path {

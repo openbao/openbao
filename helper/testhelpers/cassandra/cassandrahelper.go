@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/docker"
 )
 
 type containerConfig struct {

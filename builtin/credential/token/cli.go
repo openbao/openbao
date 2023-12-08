@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 type CLIHandler struct {

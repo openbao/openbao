@@ -9,11 +9,11 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	"github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/physical/inmem"
+	"github.com/lf-edge/openbao/vault"
 	"go.uber.org/atomic"
 )
 

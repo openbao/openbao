@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 type KubernetesAuth struct {

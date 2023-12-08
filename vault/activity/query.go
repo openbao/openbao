@@ -13,9 +13,9 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/sdk/helper/compressutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/timeutil"
+	"github.com/lf-edge/openbao/sdk/helper/compressutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 type NamespaceRecord struct {

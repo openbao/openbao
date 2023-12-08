@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
+	"github.com/lf-edge/openbao/sdk/helper/wrapping"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/reflectwalk"
 )

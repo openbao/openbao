@@ -13,10 +13,10 @@ import (
 	"time"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/parseip"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/parseip"
+	"github.com/lf-edge/openbao/sdk/helper/cidrutil"
+	"github.com/lf-edge/openbao/sdk/helper/locksutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // secretIDStorageEntry represents the information stored in storage

@@ -22,8 +22,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
-	protoio "github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	protoio "github.com/lf-edge/openbao/physical/raft"
+	"github.com/lf-edge/openbao/sdk/plugin/pb"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

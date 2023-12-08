@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathListIssuers(b *backend) *framework.Path {

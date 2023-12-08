@@ -10,8 +10,8 @@ import (
 	"time"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // WALPrefix is the prefix within Storage where WAL entries will be written.

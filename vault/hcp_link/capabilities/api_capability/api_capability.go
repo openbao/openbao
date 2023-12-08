@@ -13,11 +13,11 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	scada "github.com/hashicorp/hcp-scada-provider"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/hcp_link/capabilities"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/vault/hcp_link/capabilities"
 )
 
 type APICapability struct {

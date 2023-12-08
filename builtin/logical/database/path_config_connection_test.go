@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/helper/versions"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestWriteConfig_PluginVersionInStorage(t *testing.T) {

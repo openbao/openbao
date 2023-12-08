@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/lf-edge/openbao/sdk/queue"
 )
 
 // NewLoginMFAPriorityQueue initializes the internal data structures and returns a new

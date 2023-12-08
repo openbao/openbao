@@ -8,9 +8,9 @@ import (
 	"errors"
 
 	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5/proto"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5/proto"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 var _ logical.PluginVersioner = (*DatabasePluginClient)(nil)

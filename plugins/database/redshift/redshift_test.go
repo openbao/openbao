@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
-	"github.com/hashicorp/vault/sdk/helper/dbtxn"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	dbplugin "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/lf-edge/openbao/sdk/helper/dbtxn"
 	"github.com/stretchr/testify/require"
 )
 

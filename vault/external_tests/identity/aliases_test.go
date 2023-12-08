@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/userpass"
-	"github.com/hashicorp/vault/builtin/credential/github"
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	auth "github.com/lf-edge/openbao/api/auth/userpass"
+	"github.com/lf-edge/openbao/builtin/credential/github"
+	"github.com/lf-edge/openbao/builtin/credential/userpass"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestIdentityStore_ListAlias(t *testing.T) {

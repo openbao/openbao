@@ -14,8 +14,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/logical/ssh"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/logical/ssh"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"

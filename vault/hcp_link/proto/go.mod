@@ -1,4 +1,4 @@
-module github.com/hashicorp/vault/vault/hcp_link/proto
+module github.com/lf-edge/openbao/vault/hcp_link/proto
 
 go 1.19
 

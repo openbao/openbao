@@ -35,7 +35,7 @@ if [ ${#failed_jobs[@]} -eq 0 ]; then
 All builds succeeded! :white_check_mark:"
 else
   new_body="Build Results:
-Build failed for these jobs: ${failed_jobs[*]}. Please refer to this workflow to learn more: https://github.com/hashicorp/vault/actions/runs/$RUN_ID"
+Build failed for these jobs: ${failed_jobs[*]}. Please refer to this workflow to learn more: https://github.com/lf-edge/openbao/actions/runs/$RUN_ID"
 fi
 
 

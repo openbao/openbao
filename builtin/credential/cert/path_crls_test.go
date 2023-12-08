@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
+	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 )
 

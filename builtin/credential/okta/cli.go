@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	pwd "github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 // CLIHandler struct

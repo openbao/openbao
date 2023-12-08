@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/token"
-	"github.com/hashicorp/vault/helper/namespace"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/token"
+	"github.com/lf-edge/openbao/helper/namespace"
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"

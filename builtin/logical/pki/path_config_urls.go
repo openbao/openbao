@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathConfigURLs(b *backend) *framework.Path {

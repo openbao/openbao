@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
 	"github.com/mitchellh/go-testing-interface"
 )
 
@@ -43,17 +43,17 @@ func GetPlugin(t testing.T, typ consts.PluginType) (string, string, string, stri
 		pluginType = "approle"
 		pluginName = "vault-plugin-auth-" + pluginType
 		pluginMain = filepath.Join("builtin", "credential", pluginType, "cmd", pluginType, "main.go")
-		pluginVersionLocation = fmt.Sprintf("github.com/hashicorp/vault/builtin/credential/%s.ReportedVersion", pluginType)
+		pluginVersionLocation = fmt.Sprintf("github.com/lf-edge/openbao/builtin/credential/%s.ReportedVersion", pluginType)
 	case consts.PluginTypeSecrets:
 		pluginType = "consul"
 		pluginName = "vault-plugin-secrets-" + pluginType
 		pluginMain = filepath.Join("builtin", "logical", pluginType, "cmd", pluginType, "main.go")
-		pluginVersionLocation = fmt.Sprintf("github.com/hashicorp/vault/builtin/logical/%s.ReportedVersion", pluginType)
+		pluginVersionLocation = fmt.Sprintf("github.com/lf-edge/openbao/builtin/logical/%s.ReportedVersion", pluginType)
 	case consts.PluginTypeDatabase:
 		pluginType = "postgresql"
 		pluginName = "vault-plugin-database-" + pluginType
 		pluginMain = filepath.Join("plugins", "database", pluginType, fmt.Sprintf("%s-database-plugin", pluginType), "main.go")
-		pluginVersionLocation = fmt.Sprintf("github.com/hashicorp/vault/plugins/database/%s.ReportedVersion", pluginType)
+		pluginVersionLocation = fmt.Sprintf("github.com/lf-edge/openbao/plugins/database/%s.ReportedVersion", pluginType)
 	default:
 		t.Fatal(typ.String())
 	}

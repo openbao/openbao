@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func handleSysInit(core *vault.Core) http.Handler {

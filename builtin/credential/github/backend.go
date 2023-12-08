@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/go-github/github"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"golang.org/x/oauth2"
 )
 

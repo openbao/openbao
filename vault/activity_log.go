@@ -22,11 +22,11 @@ import (
 	"github.com/axiomhq/hyperloglog"
 	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault/activity"
+	"github.com/lf-edge/openbao/helper/metricsutil"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/helper/timeutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault/activity"
 	"go.uber.org/atomic"
 )
 

@@ -11,13 +11,13 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	token_file "github.com/hashicorp/vault/command/agentproxyshared/auth/token-file"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink/file"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	token_file "github.com/lf-edge/openbao/command/agentproxyshared/auth/token-file"
+	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
+	"github.com/lf-edge/openbao/command/agentproxyshared/sink/file"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestTokenFileEndToEnd(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster"
 )
 
 type ClusterStorage struct {

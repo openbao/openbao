@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
+	"github.com/lf-edge/openbao/sdk/helper/keysutil"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

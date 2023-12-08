@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/template"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/template"
+	"github.com/lf-edge/openbao/sdk/logical"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
 )
 

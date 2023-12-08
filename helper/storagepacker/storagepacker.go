@@ -15,9 +15,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/compressutil"
-	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/compressutil"
+	"github.com/lf-edge/openbao/sdk/helper/locksutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const (

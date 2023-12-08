@@ -8,7 +8,7 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/hashicorp/vault/command/token"
+	"github.com/lf-edge/openbao/command/token"
 )
 
 func testAuthCommand(tb testing.TB) (*cli.MockUi, *AuthCommand) {

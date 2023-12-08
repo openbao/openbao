@@ -14,10 +14,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/awsutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	vlttesting "github.com/hashicorp/vault/helper/testhelpers/logical"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/policyutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	vlttesting "github.com/lf-edge/openbao/helper/testhelpers/logical"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/policyutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func TestBackend_pathRoleEc2(t *testing.T) {
@@ -991,7 +991,7 @@ func TestAwsVersion(t *testing.T) {
 	}
 }
 
-// This test was used to reproduce https://github.com/hashicorp/vault/issues/7418
+// This test was used to reproduce https://github.com/lf-edge/openbao/issues/7418
 // and verify its fix.
 // Please run it at least 3 times to ensure that passing tests are due to actually
 // passing, rather than the region being randomly chosen tying to the one in the

@@ -13,10 +13,10 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	ldapcred "github.com/hashicorp/vault/builtin/credential/ldap"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	ldapcred "github.com/lf-edge/openbao/builtin/credential/ldap"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 var (

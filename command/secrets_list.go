@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

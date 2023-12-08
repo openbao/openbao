@@ -19,12 +19,12 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/hashicorp/vault/helper/experiments"
-	"github.com/hashicorp/vault/helper/osutil"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
+	"github.com/lf-edge/openbao/helper/experiments"
+	"github.com/lf-edge/openbao/helper/osutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/strutil"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster"
 	"github.com/mitchellh/mapstructure"
 )
 

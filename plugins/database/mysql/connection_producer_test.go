@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/certhelpers"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	"github.com/lf-edge/openbao/helper/testhelpers/certhelpers"
+	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
 	dockertest "github.com/ory/dockertest/v3"
 )
 

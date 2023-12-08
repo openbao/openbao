@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 var (

@@ -12,16 +12,16 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	vaultoci "github.com/hashicorp/vault-plugin-auth-oci"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	agentoci "github.com/hashicorp/vault/command/agentproxyshared/auth/oci"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink/file"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	agentoci "github.com/lf-edge/openbao/command/agentproxyshared/auth/oci"
+	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
+	"github.com/lf-edge/openbao/command/agentproxyshared/sink/file"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 const (

@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-hclog"
-	sr "github.com/hashicorp/vault/serviceregistration"
-	"github.com/hashicorp/vault/serviceregistration/kubernetes/client"
+	sr "github.com/lf-edge/openbao/serviceregistration"
+	"github.com/lf-edge/openbao/serviceregistration/kubernetes/client"
 )
 
 const (

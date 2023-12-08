@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/config"
-	"github.com/hashicorp/vault/command/token"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/config"
+	"github.com/lf-edge/openbao/command/token"
 	"github.com/mitchellh/cli"
 )
 

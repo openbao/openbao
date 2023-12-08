@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"golang.org/x/crypto/ssh"
 )
 

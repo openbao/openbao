@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/xor"
+	"github.com/lf-edge/openbao/sdk/helper/xor"
 )
 
 // DecodeToken will decode the root token returned by the Vault API

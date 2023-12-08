@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 	"github.com/mitchellh/cli"
 )
 

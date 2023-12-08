@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/vault/command/healthcheck"
+	"github.com/lf-edge/openbao/command/healthcheck"
 
 	"github.com/ghodss/yaml"
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 	"github.com/ryanuber/columnize"
 )
 

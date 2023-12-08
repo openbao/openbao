@@ -8,14 +8,14 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
 
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/plugin"
 )
 
 func TestBackend_lazyLoad(t *testing.T) {

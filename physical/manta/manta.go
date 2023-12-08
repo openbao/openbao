@@ -17,11 +17,11 @@ import (
 
 	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/physical"
 	triton "github.com/joyent/triton-go"
 	"github.com/joyent/triton-go/authentication"
 	"github.com/joyent/triton-go/errors"
 	"github.com/joyent/triton-go/storage"
+	"github.com/lf-edge/openbao/sdk/physical"
 )
 
 const mantaDefaultRootStore = "/stor"

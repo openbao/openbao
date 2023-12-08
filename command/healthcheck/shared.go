@@ -6,7 +6,7 @@ package healthcheck
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func StringList(source interface{}) ([]string, error) {

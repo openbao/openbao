@@ -16,8 +16,8 @@ import (
 	"github.com/hashicorp/go-gcp-common/gcputil"
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
 	"golang.org/x/oauth2"
 	"google.golang.org/api/iamcredentials/v1"
 )

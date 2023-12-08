@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/hashicorp/vault/vault/hcp_link/proto/node_status";
+option go_package = "github.com/lf-edge/openbao/vault/hcp_link/proto/node_status";
 
 package hashicorp.vault.hcp_link.node_status;
 

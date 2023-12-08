@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/healthcheck"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/command/healthcheck"
 
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"

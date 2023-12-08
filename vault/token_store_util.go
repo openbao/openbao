@@ -6,7 +6,7 @@
 package vault
 
 import (
-	"github.com/hashicorp/vault/helper/namespace"
+	"github.com/lf-edge/openbao/helper/namespace"
 )
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) *BarrierView {

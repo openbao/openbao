@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/lf-edge/openbao/helper/metricsutil"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
 	"github.com/stretchr/testify/require"
 )
 

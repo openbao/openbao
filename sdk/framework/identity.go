@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/vault/sdk/helper/identitytpl"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/identitytpl"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // PopulateIdentityTemplate takes a template string, an entity ID, and an

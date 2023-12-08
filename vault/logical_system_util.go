@@ -8,8 +8,8 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func (b *SystemBackend) verifyDROperationToken(f framework.OperationFunc, lock bool) framework.OperationFunc {

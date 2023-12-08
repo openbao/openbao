@@ -12,7 +12,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
+	"github.com/lf-edge/openbao/sdk/helper/wrapping"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

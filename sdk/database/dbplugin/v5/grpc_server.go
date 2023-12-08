@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5/proto"
-	"github.com/hashicorp/vault/sdk/helper/base62"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5/proto"
+	"github.com/lf-edge/openbao/sdk/helper/base62"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

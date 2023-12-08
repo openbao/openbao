@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/helper/identity"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/identity"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func lookupPaths(i *IdentityStore) []*framework.Path {

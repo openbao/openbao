@@ -7,9 +7,9 @@ import (
 
 	"github.com/fatih/structs"
 
-	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/framework"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // TestStaticCredsRead verifies that we can correctly read a cred that exists, and correctly _not read_

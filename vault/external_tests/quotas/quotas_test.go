@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/builtin/logical/pki"
-	"github.com/hashicorp/vault/helper/testhelpers/teststorage"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/builtin/credential/userpass"
+	"github.com/lf-edge/openbao/builtin/logical/pki"
+	"github.com/lf-edge/openbao/helper/testhelpers/teststorage"
+	"github.com/lf-edge/openbao/vault"
 	"go.uber.org/atomic"
 )
 

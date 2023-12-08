@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 )
 
 // TestTLSValidCert is the positive test case to show that specifying a valid cert and key

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
 	"github.com/stretchr/testify/require"
 )
 

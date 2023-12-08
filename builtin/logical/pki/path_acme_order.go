@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/strutil"
+	"github.com/lf-edge/openbao/sdk/helper/strutil"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"golang.org/x/net/idna"
 )
 

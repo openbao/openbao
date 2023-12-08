@@ -6,8 +6,8 @@ package main // import "github.com/hashicorp/vault"
 import (
 	"os"
 
-	"github.com/hashicorp/vault/command"
-	"github.com/hashicorp/vault/internal"
+	"github.com/lf-edge/openbao/command"
+	"github.com/lf-edge/openbao/internal"
 )
 
 func init() {

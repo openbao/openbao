@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/compressutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/compressutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // protectedPaths cannot be accessed via the raw APIs.

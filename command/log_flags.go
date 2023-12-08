@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 	"github.com/posener/complete"
 )
 

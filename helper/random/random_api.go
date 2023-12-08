@@ -12,9 +12,9 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/xor"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/xor"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const APIMaxBytes = 128 * 1024

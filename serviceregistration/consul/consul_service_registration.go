@@ -23,9 +23,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	sr "github.com/hashicorp/vault/serviceregistration"
-	"github.com/hashicorp/vault/vault/diagnose"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	sr "github.com/lf-edge/openbao/serviceregistration"
+	"github.com/lf-edge/openbao/vault/diagnose"
 	atomicB "go.uber.org/atomic"
 	"golang.org/x/net/http2"
 )

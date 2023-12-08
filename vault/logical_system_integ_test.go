@@ -10,14 +10,14 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/version"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/lf-edge/openbao/sdk/physical/inmem"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/version"
 )
 
 func TestSystemBackend_InternalUIResultantACL(t *testing.T) {

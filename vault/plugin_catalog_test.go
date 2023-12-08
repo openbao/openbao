@@ -15,16 +15,16 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/plugins/database/postgresql"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	backendplugin "github.com/hashicorp/vault/sdk/plugin"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/credential/userpass"
+	"github.com/lf-edge/openbao/helper/versions"
+	"github.com/lf-edge/openbao/plugins/database/postgresql"
+	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
+	backendplugin "github.com/lf-edge/openbao/sdk/plugin"
 
-	"github.com/hashicorp/vault/helper/builtinplugins"
+	"github.com/lf-edge/openbao/helper/builtinplugins"
 )
 
 func TestPluginCatalog_CRUD(t *testing.T) {

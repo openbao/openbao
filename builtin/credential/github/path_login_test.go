@@ -8,8 +8,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/assert"
 )
 

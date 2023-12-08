@@ -23,7 +23,7 @@ do
 		git clone https://github.com/hashicorp/$plugin
 		cd $plugin
 		rm -rf vendor
-		go get github.com/hashicorp/vault/api${API_BRANCH}
+		go get github.com/lf-edge/openbao/api${API_BRANCH}
 		go mod tidy
 		go mod vendor
 		git add .

@@ -17,12 +17,12 @@ import (
 
 	"golang.org/x/crypto/acme"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/logical/pki/dnstest"
-	"github.com/hashicorp/vault/helper/constants"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/activity"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/logical/pki/dnstest"
+	"github.com/lf-edge/openbao/helper/constants"
+	"github.com/lf-edge/openbao/helper/timeutil"
+	"github.com/lf-edge/openbao/vault"
+	"github.com/lf-edge/openbao/vault/activity"
 
 	"github.com/stretchr/testify/require"
 )

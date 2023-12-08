@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	credUserpass "github.com/hashicorp/vault/builtin/credential/userpass"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func TestPolicyTemplating(t *testing.T) {

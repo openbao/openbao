@@ -13,13 +13,13 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/vault"
 	"github.com/kr/pretty"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/helper/testhelpers"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/lf-edge/openbao/vault"
 )
 
 // Tests the regression in

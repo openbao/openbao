@@ -11,7 +11,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
 )
 
 var errEntOnly = errors.New("managed keys are supported within enterprise edition only")

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // noinspection SpellCheckingInspection

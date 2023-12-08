@@ -6,8 +6,8 @@ package audit
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // Backend interface must be implemented for an audit

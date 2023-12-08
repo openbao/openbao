@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/logical/pki/dnstest"
-	dockhelper "github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
-	"github.com/hashicorp/vault/sdk/helper/testcluster/docker"
+	"github.com/lf-edge/openbao/api"
+	"github.com/lf-edge/openbao/builtin/logical/pki/dnstest"
+	dockhelper "github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster/docker"
 )
 
 type VaultPkiCluster struct {

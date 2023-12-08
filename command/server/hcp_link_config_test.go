@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-test/deep"
 	sdkResource "github.com/hashicorp/hcp-sdk-go/resource"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/lf-edge/openbao/internalshared/configutil"
 )
 
 func TestHCPLinkConfig(t *testing.T) {

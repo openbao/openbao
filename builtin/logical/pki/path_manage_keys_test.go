@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
+	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 )
 

@@ -15,12 +15,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/helper/ocsp"
-	"github.com/hashicorp/vault/sdk/helper/policyutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/lf-edge/openbao/sdk/helper/cidrutil"
+	"github.com/lf-edge/openbao/sdk/helper/ocsp"
+	"github.com/lf-edge/openbao/sdk/helper/policyutil"
+	"github.com/lf-edge/openbao/sdk/logical"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-multierror"

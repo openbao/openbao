@@ -7,8 +7,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathConfigCA(b *backend) *framework.Path {

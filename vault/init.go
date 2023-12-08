@@ -13,12 +13,12 @@ import (
 	"sync/atomic"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/vault/seal"
+	"github.com/lf-edge/openbao/physical/raft"
+	"github.com/lf-edge/openbao/vault/seal"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/pgpkeys"
-	"github.com/hashicorp/vault/shamir"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/helper/pgpkeys"
+	"github.com/lf-edge/openbao/shamir"
 )
 
 // InitParams keeps the init function from being littered with too many

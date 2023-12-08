@@ -6,7 +6,7 @@ package healthcheck
 import (
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )

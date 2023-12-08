@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/vault/plugins/database/influxdb"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/lf-edge/openbao/plugins/database/influxdb"
+	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
 )
 
 func main() {

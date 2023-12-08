@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	sockaddr "github.com/hashicorp/go-sockaddr"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func getListenerConfigForMarshalerTest(addr sockaddr.IPAddr) *configutil.Listener {

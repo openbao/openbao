@@ -15,7 +15,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/lf-edge/openbao/sdk/physical"
 	"github.com/oracle/oci-go-sdk/objectstorage"
 )
 

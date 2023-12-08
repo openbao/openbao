@@ -12,7 +12,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/vault"
 )
 
 func handleSysGenerateRootAttempt(core *vault.Core, generateStrategy vault.GenerateRootStrategy) http.Handler {

@@ -8,9 +8,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/authmetadata"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/helper/authmetadata"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 var (

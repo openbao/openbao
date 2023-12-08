@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/eventlogger"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 // TestBusBasics tests that basic event sending and subscribing function.

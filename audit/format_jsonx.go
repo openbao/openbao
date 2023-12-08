@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hashicorp/vault/sdk/helper/salt"
 	"github.com/jefferai/jsonx"
+	"github.com/lf-edge/openbao/sdk/helper/salt"
 )
 
 // JSONxFormatWriter is an AuditFormatWriter implementation that structures data into

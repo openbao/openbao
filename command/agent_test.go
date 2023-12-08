@@ -23,17 +23,17 @@ import (
 	"github.com/hashicorp/go-hclog"
 	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	credAppRole "github.com/hashicorp/vault/builtin/credential/approle"
-	"github.com/hashicorp/vault/command/agent"
-	agentConfig "github.com/hashicorp/vault/command/agent/config"
-	"github.com/hashicorp/vault/helper/useragent"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/helper/pointerutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/lf-edge/openbao/api"
+	credAppRole "github.com/lf-edge/openbao/builtin/credential/approle"
+	"github.com/lf-edge/openbao/command/agent"
+	agentConfig "github.com/lf-edge/openbao/command/agent/config"
+	"github.com/lf-edge/openbao/helper/useragent"
+	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/lf-edge/openbao/sdk/helper/consts"
+	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/lf-edge/openbao/sdk/helper/pointerutil"
+	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/lf-edge/openbao/vault"
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1156,7 +1156,7 @@ func testListFiles(t *testing.T, dir, extension string) int {
 // similar to TestAgent_Template_Basic, but differs by using a consistent number
 // of secrets from multiple sources, where as the basic test could possibly
 // generate a random number of secrets, but all using the same source. This test
-// reproduces https://github.com/hashicorp/vault/issues/7883
+// reproduces https://github.com/lf-edge/openbao/issues/7883
 func TestAgent_Template_ExitCounter(t *testing.T) {
 	//----------------------------------------------------
 	// Start the server and agent

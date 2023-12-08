@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 const adminAccessPolicyARN = "arn:aws:iam::aws:policy/AdministratorAccess"

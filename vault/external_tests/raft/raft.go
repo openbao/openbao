@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
+	"github.com/lf-edge/openbao/sdk/helper/testcluster"
 )
 
 func Raft_Configuration_Test(t *testing.T, cluster testcluster.VaultCluster) {

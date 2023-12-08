@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/helper/useragent"
+	"github.com/lf-edge/openbao/helper/useragent"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/lf-edge/openbao/api"
 )
 
 // mockProxier is a mock implementation of the Proxier interface, used for testing purposes.

@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/consul/api"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/lf-edge/openbao/sdk/logical"
 )
 
 func pathConfigAccess(b *backend) *framework.Path {

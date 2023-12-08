@@ -17,7 +17,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // Verify MSSQLBackend satisfies the correct interfaces

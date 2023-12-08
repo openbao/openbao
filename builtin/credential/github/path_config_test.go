@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/assert"
 )
 

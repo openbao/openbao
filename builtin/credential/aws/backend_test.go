@@ -17,10 +17,10 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
-	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/policyutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/policyutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

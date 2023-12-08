@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 func TestIngressToken(t *testing.T) {

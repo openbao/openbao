@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/healthcheck"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/healthcheck"
 
 	"github.com/mitchellh/cli"
 	"github.com/stretchr/testify/require"

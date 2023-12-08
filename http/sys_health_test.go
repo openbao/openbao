@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysHealth_get(t *testing.T) {

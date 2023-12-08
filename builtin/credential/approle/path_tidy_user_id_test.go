@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestAppRole_TidyDanglingAccessors_Normal(t *testing.T) {

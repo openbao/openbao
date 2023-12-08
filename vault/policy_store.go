@@ -15,10 +15,10 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

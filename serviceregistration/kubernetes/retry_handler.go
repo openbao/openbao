@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	sr "github.com/lf-edge/openbao/serviceregistration"
-	"github.com/lf-edge/openbao/serviceregistration/kubernetes/client"
+	sr "github.com/openbao/openbao/serviceregistration"
+	"github.com/openbao/openbao/serviceregistration/kubernetes/client"
 	"github.com/oklog/run"
 )
 

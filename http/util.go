@@ -13,11 +13,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/vault"
-	"github.com/lf-edge/openbao/vault/quotas"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/quotas"
 )
 
 var (

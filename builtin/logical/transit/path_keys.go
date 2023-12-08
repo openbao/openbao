@@ -14,9 +14,9 @@ import (
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/fatih/structs"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/keysutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func (b *backend) pathListKeys() *framework.Path {

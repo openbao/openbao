@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	kubetest "github.com/lf-edge/openbao/serviceregistration/kubernetes/testing"
+	kubetest "github.com/openbao/openbao/serviceregistration/kubernetes/testing"
 )
 
 func TestClient(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 )
 
 func testAuthHelpCommand(tb testing.TB) (*cli.MockUi, *AuthHelpCommand) {

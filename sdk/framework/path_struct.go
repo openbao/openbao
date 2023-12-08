@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // PathStruct can be used to generate a path that stores a struct

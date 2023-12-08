@@ -6,8 +6,8 @@ package vault
 import (
 	"github.com/hashicorp/go-hclog"
 	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/vault/seal"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/vault/seal"
 	testing "github.com/mitchellh/go-testing-interface"
 )
 

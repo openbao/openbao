@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestSalt(t *testing.T) {

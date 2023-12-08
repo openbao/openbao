@@ -17,11 +17,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/helper/experiments"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/experiments"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 	"go.uber.org/atomic"
 )
 

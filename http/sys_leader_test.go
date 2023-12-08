@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysLeader_get(t *testing.T) {

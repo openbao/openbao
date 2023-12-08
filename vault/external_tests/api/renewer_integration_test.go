@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 )
 
 func TestRenewer_Renew(t *testing.T) {

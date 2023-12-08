@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-plugin"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )

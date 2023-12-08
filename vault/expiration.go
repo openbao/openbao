@@ -23,16 +23,16 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/lf-edge/openbao/helper/fairshare"
-	"github.com/lf-edge/openbao/helper/locking"
-	"github.com/lf-edge/openbao/helper/metricsutil"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/helper/locksutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault/quotas"
+	"github.com/openbao/openbao/helper/fairshare"
+	"github.com/openbao/openbao/helper/locking"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/locksutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault/quotas"
 	uberAtomic "go.uber.org/atomic"
 )
 
@@ -2825,7 +2825,7 @@ func (le *leaseEntry) nonexpiringToken() bool {
 		le.namespace.ID == namespace.RootNamespaceID
 }
 
-// TODO maybe lock RevokeErr once this goes in: https://github.com/lf-edge/openbao/pull/11122
+// TODO maybe lock RevokeErr once this goes in: https://github.com/openbao/openbao/pull/11122
 func (le *leaseEntry) isIrrevocable() bool {
 	return le.RevokeErr != ""
 }

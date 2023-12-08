@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 
 	"golang.org/x/crypto/ocsp"
 
-	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var ocspPort int

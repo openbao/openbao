@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestAuthTokenCreate(t *testing.T) {

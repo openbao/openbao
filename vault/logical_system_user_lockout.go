@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 type LockedUsersResponse struct {

@@ -15,12 +15,12 @@ import (
 	"github.com/go-test/deep"
 	"github.com/golang/protobuf/ptypes"
 	uuid "github.com/hashicorp/go-uuid"
-	credGithub "github.com/lf-edge/openbao/builtin/credential/github"
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/storagepacker"
-	"github.com/lf-edge/openbao/sdk/logical"
+	credGithub "github.com/openbao/openbao/builtin/credential/github"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/storagepacker"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {

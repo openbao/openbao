@@ -10,9 +10,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/fatih/structs"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 const (

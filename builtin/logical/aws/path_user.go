@@ -13,8 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -126,7 +126,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 
 	// creds requested through the sts path shouldn't be allowed to get iamUserCred type creds
 	// when the role is created from legacy data because they might have more privileges in AWS.
-	// See https://github.com/lf-edge/openbao/issues/4229#issuecomment-380316788 for details.
+	// See https://github.com/openbao/openbao/issues/4229#issuecomment-380316788 for details.
 	if role.ProhibitFlexibleCredPath {
 		if credentialType == iamUserCred && strings.HasPrefix(req.Path, "sts") {
 			return logical.ErrorResponse(fmt.Sprintf("attempted to retrieve %s credentials through the sts path; this is not allowed for legacy roles", iamUserCred)), nil

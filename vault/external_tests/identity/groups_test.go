@@ -6,14 +6,14 @@ package identity
 import (
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
-	ldaphelper "github.com/lf-edge/openbao/helper/testhelpers/ldap"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	ldaphelper "github.com/openbao/openbao/helper/testhelpers/ldap"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 
-	"github.com/lf-edge/openbao/builtin/credential/github"
-	credLdap "github.com/lf-edge/openbao/builtin/credential/ldap"
+	"github.com/openbao/openbao/builtin/credential/github"
+	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 )
 
 func TestIdentityStore_ListGroupAlias(t *testing.T) {

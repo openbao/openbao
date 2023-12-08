@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestPhysicalView_impl(t *testing.T) {

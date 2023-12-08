@@ -13,9 +13,9 @@ import (
 	ctconfig "github.com/hashicorp/consul-template/config"
 	"golang.org/x/exp/slices"
 
-	"github.com/lf-edge/openbao/command/agentproxyshared"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/command/agentproxyshared"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/pointerutil"
 )
 
 func TestLoadConfigFile_AgentCache(t *testing.T) {

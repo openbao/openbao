@@ -7,10 +7,10 @@ import (
 	"context"
 
 	"github.com/hashicorp/hcp-link/pkg/nodestatus"
-	"github.com/lf-edge/openbao/helper/logging"
-	"github.com/lf-edge/openbao/vault"
-	"github.com/lf-edge/openbao/vault/hcp_link/internal"
-	"github.com/lf-edge/openbao/vault/hcp_link/proto/node_status"
+	"github.com/openbao/openbao/helper/logging"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/hcp_link/internal"
+	"github.com/openbao/openbao/vault/hcp_link/proto/node_status"
 	"github.com/shirou/gopsutil/v3/host"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

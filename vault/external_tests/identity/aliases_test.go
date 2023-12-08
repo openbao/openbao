@@ -11,14 +11,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
-	auth "github.com/lf-edge/openbao/api/auth/userpass"
-	"github.com/lf-edge/openbao/builtin/credential/github"
-	"github.com/lf-edge/openbao/builtin/credential/userpass"
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	auth "github.com/openbao/openbao/api/auth/userpass"
+	"github.com/openbao/openbao/builtin/credential/github"
+	"github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/helper/testhelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestIdentityStore_ListAlias(t *testing.T) {

@@ -5,7 +5,7 @@
 
 package config
 
-import "github.com/lf-edge/openbao/internalshared/configutil"
+import "github.com/openbao/openbao/internalshared/configutil"
 
 func IsValidListener(listener *configutil.Listener) error {
 	return nil

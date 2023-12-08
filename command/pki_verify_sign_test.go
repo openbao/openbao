@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 )
 
 func TestPKIVerifySign(t *testing.T) {

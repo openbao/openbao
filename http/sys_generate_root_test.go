@@ -15,13 +15,13 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/audit"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/pgpkeys"
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
-	"github.com/lf-edge/openbao/sdk/helper/xor"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 var tokenLength string = fmt.Sprintf("%d", vault.TokenLength+vault.TokenPrefixLength)

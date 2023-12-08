@@ -8,7 +8,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // backendPluginClient implements logical.Backend and is the

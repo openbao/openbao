@@ -11,10 +11,10 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/builtin/credential/approle"
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/builtin/credential/approle"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestRequestHandling_Wrapping(t *testing.T) {

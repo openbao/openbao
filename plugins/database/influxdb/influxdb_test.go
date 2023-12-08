@@ -15,9 +15,9 @@ import (
 	"time"
 
 	influx "github.com/influxdata/influxdb1-client/v2"
-	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 
@@ -380,7 +380,7 @@ func TestUpdateUser_password(t *testing.T) {
 
 // TestInfluxdb_RevokeDeletedUser tests attempting to revoke a user that was
 // deleted externally. Guards against a panic, see
-// https://github.com/lf-edge/openbao/issues/6734
+// https://github.com/openbao/openbao/issues/6734
 // Updated to attempt to delete a user that never existed to replicate a similar scenario since
 // the cleanup function from `prepareInfluxdbTestContainer` does not do anything if using an
 // external InfluxDB instance rather than spinning one up for the test.

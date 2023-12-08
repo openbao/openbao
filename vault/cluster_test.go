@@ -14,13 +14,13 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/sdk/physical/inmem"
-	"github.com/lf-edge/openbao/vault/cluster"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/vault/cluster"
 )
 
 var clusterTestPausePeriod = 2 * time.Second

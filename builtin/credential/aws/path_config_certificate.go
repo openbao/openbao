@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // pathListCertificates creates a path that enables listing of all

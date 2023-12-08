@@ -13,8 +13,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/lf-edge/openbao/sdk/helper/locksutil"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/locksutil"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // NewSealUnwrapper creates a new seal unwrapper

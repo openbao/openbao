@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 
 	"github.com/armon/go-metrics"
-	"github.com/lf-edge/openbao/helper/metricsutil"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysMetricsUnauthenticated(t *testing.T) {

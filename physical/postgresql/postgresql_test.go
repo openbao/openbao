@@ -11,9 +11,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/lf-edge/openbao/helper/testhelpers/postgresql"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/helper/testhelpers/postgresql"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestPostgreSQLBackend(t *testing.T) {

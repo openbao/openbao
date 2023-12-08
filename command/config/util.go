@@ -4,7 +4,7 @@
 package config
 
 import (
-	"github.com/lf-edge/openbao/command/token"
+	"github.com/openbao/openbao/command/token"
 )
 
 // DefaultTokenHelper returns the token helper that is configured for Vault.

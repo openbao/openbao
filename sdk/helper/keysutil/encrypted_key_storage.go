@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

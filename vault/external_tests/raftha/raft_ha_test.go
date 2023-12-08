@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	"github.com/lf-edge/openbao/helper/testhelpers/teststorage"
-	consulstorage "github.com/lf-edge/openbao/helper/testhelpers/teststorage/consul"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/physical/raft"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
+	consulstorage "github.com/openbao/openbao/helper/testhelpers/teststorage/consul"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestRaft_HA_NewCluster(t *testing.T) {

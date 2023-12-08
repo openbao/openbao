@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/vault/quotas"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/quotas"
 )
 
 // quotasPaths returns paths that enable quota management

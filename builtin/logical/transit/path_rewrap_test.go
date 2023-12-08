@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Check the normal flow of rewrap

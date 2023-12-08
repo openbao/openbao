@@ -20,9 +20,9 @@ import (
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/lf-edge/openbao/command/server"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/vault"
 )
 
 const trailing_slash_key = "trailing_slash/"

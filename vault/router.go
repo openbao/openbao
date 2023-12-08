@@ -16,10 +16,10 @@ import (
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/salt"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var deniedPassthroughRequestHeaders = []string{

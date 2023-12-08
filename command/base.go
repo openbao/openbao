@@ -15,9 +15,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/token"
-	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/token"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"

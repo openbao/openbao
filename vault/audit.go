@@ -11,12 +11,12 @@ import (
 	"strings"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/audit"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/helper/salt"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

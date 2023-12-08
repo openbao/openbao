@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 var rawPolicy = strings.TrimSpace(`

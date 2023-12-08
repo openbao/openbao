@@ -5,7 +5,7 @@
 
 package replication
 
-import "github.com/lf-edge/openbao/sdk/helper/consts"
+import "github.com/openbao/openbao/sdk/helper/consts"
 
 type Cluster struct {
 	State              consts.ReplicationState

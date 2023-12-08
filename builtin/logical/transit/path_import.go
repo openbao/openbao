@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/google/tink/go/kwp/subtle"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/keysutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const EncryptedKeyBytes = 512

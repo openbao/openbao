@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lf-edge/openbao/sdk/database/dbplugin"
+	"github.com/openbao/openbao/sdk/database/dbplugin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

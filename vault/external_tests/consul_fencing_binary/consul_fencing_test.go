@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/testhelpers/consul"
-	"github.com/lf-edge/openbao/sdk/helper/testcluster"
-	"github.com/lf-edge/openbao/sdk/helper/testcluster/docker"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers/consul"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
 	"github.com/stretchr/testify/require"
 )
 

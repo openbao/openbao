@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
-	credLdap "github.com/lf-edge/openbao/builtin/credential/ldap"
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/logical"
+	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {

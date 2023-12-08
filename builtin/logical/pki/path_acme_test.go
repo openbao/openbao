@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
@@ -32,14 +32,14 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/builtin/logical/pki/dnstest"
-	"github.com/lf-edge/openbao/helper/constants"
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
+	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/helper/testhelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 // TestAcmeBasicWorkflow a test that will validate a basic ACME workflow using the Golang ACME client.

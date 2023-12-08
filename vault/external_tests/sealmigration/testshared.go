@@ -13,14 +13,14 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	sealhelper "github.com/lf-edge/openbao/helper/testhelpers/seal"
-	"github.com/lf-edge/openbao/helper/testhelpers/teststorage"
-	"github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/physical/raft"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers"
+	sealhelper "github.com/openbao/openbao/helper/testhelpers/seal"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
+	"github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/vault"
 )
 
 const (

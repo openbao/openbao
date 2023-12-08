@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 
 	"github.com/hashicorp/go-kms-wrapping/entropy/v2"
 )

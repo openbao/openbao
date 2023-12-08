@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/docker"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 

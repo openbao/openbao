@@ -13,8 +13,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/xor"
 )
 
 // Note that OSS standbys will not accept seal requests.  And ent perf standbys

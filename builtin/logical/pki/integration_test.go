@@ -14,12 +14,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	vaultocsp "github.com/lf-edge/openbao/sdk/helper/ocsp"
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	vaultocsp "github.com/openbao/openbao/sdk/helper/ocsp"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/require"

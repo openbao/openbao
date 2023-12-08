@@ -10,12 +10,12 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/storagepacker"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/custommetadata"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/storagepacker"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/custommetadata"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // aliasPaths returns the API endpoints to operate on aliases.

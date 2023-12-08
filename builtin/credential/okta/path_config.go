@@ -13,9 +13,9 @@ import (
 
 	oktaold "github.com/chrismalek/oktasdk-go/okta"
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/tokenutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/logical"
 	oktanew "github.com/okta/okta-sdk-golang/v2/okta"
 )
 

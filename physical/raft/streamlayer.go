@@ -25,9 +25,9 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/vault/cluster"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/vault/cluster"
 )
 
 // TLSKey is a single TLS keypair in the Keyring

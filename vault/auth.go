@@ -12,13 +12,13 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/builtin/plugin"
-	"github.com/lf-edge/openbao/helper/experiments"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/versions"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/builtin/plugin"
+	"github.com/openbao/openbao/helper/experiments"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

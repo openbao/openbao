@@ -12,11 +12,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 )
 

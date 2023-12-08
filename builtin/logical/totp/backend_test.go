@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"

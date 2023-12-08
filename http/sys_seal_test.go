@@ -15,11 +15,11 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
-	"github.com/lf-edge/openbao/vault/seal"
-	"github.com/lf-edge/openbao/version"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
+	"github.com/openbao/openbao/version"
 )
 
 func TestSysSealStatus(t *testing.T) {

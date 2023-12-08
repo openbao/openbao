@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/mapstructure"
 )
 

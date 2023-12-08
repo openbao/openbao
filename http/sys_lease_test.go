@@ -6,8 +6,8 @@ package http
 import (
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysRenew(t *testing.T) {

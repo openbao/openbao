@@ -14,7 +14,7 @@ import (
 	aero "github.com/aerospike/aerospike-client-go/v5"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

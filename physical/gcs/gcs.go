@@ -19,8 +19,8 @@ import (
 	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/helper/useragent"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/helper/useragent"
+	"github.com/openbao/openbao/sdk/physical"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )

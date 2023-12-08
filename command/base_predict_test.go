@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 	"github.com/posener/complete"
 )
 

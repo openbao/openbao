@@ -14,8 +14,8 @@ import (
 
 	cf "github.com/hashicorp/vault-plugin-auth-cf"
 	"github.com/hashicorp/vault-plugin-auth-cf/signatures"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 type cfMethod struct {

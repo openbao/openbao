@@ -15,13 +15,13 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/helper/pgpkeys"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/shamir"
-	"github.com/lf-edge/openbao/vault/seal"
+	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/shamir"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 const (

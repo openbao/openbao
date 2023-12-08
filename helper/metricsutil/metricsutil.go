@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/armon/go-metrics"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/expfmt"
 )

@@ -7,8 +7,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
 )
 
 // InmemStorage implements Storage and stores all data in memory. It is

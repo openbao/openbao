@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 // ClusterMetricSink serves as a shim around go-metrics

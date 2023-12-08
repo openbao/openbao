@@ -13,8 +13,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	kerberos "github.com/hashicorp/vault-plugin-auth-kerberos"
 	"github.com/jcmturner/gokrb5/v8/spnego"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 type kerberosMethod struct {

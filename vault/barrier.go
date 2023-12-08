@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var (

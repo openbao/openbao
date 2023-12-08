@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/docker"
 )
 
 type Config struct {

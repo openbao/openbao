@@ -13,12 +13,12 @@ import (
 	"time"
 
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/audit"
-	auditFile "github.com/lf-edge/openbao/builtin/audit/file"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/audit"
+	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestKV_Patch_BadContentTypeHeader(t *testing.T) {

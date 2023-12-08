@@ -14,10 +14,10 @@ import (
 	az "github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
-	"github.com/lf-edge/openbao/helper/useragent"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/helper/useragent"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 const (

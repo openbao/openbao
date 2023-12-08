@@ -13,9 +13,9 @@ import (
 
 	"github.com/go-jose/go-jose/v3/jwt"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/helper/salt"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type AuditFormatWriter interface {

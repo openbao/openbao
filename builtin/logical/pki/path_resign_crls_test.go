@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 
-	"github.com/lf-edge/openbao/api"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/vault"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 )
 

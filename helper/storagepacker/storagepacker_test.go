@@ -12,8 +12,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func BenchmarkStoragePacker(b *testing.B) {

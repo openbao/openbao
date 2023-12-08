@@ -8,7 +8,7 @@ package diagnose
 import (
 	"io/fs"
 
-	"github.com/lf-edge/openbao/helper/osutil"
+	"github.com/openbao/openbao/helper/osutil"
 )
 
 // IsOwnedByRoot checks if a file is owned by root

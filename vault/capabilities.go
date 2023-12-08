@@ -7,8 +7,8 @@ import (
 	"context"
 	"sort"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Capabilities is used to fetch the capabilities of the given token on the

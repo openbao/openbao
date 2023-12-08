@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/hostutil"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/hostutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysHostInfo(t *testing.T) {

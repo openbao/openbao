@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 type FeatureFlagsResponse struct {

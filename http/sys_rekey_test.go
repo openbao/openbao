@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/vault"
 )
 
 // Test to check if the API errors out when wrong number of PGP keys are

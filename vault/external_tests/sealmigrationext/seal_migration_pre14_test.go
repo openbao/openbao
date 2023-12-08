@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/helper/testhelpers/teststorage"
-	"github.com/lf-edge/openbao/helper/testhelpers/teststorage/consul"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/vault/external_tests/sealmigration"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage/consul"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/vault/external_tests/sealmigration"
 )
 
 func TestSealMigration_ShamirToTransit_Pre14(t *testing.T) {

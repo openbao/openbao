@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/helper/namespace"
-	postgreshelper "github.com/lf-edge/openbao/helper/testhelpers/postgresql"
-	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

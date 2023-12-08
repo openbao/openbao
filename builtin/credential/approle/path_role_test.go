@@ -14,10 +14,10 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/lf-edge/openbao/sdk/helper/policyutil"
-	"github.com/lf-edge/openbao/sdk/helper/testhelpers/schema"
-	"github.com/lf-edge/openbao/sdk/helper/tokenutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/policyutil"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

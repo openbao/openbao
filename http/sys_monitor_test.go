@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysMonitorUnknownLogLevel(t *testing.T) {

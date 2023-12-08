@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestListener(tb testing.TB) (net.Listener, string) {

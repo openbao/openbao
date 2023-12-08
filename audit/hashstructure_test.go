@@ -14,10 +14,10 @@ import (
 
 	"github.com/go-test/deep"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
-	"github.com/lf-edge/openbao/sdk/helper/salt"
-	"github.com/lf-edge/openbao/sdk/helper/wrapping"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/copystructure"
 )
 

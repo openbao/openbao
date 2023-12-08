@@ -20,10 +20,10 @@ import (
 	"github.com/hashicorp/consul-template/manager"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/lf-edge/openbao/command/agent/config"
-	"github.com/lf-edge/openbao/command/agent/internal/ctmanager"
-	"github.com/lf-edge/openbao/helper/useragent"
-	"github.com/lf-edge/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/command/agent/config"
+	"github.com/openbao/openbao/command/agent/internal/ctmanager"
+	"github.com/openbao/openbao/helper/useragent"
+	"github.com/openbao/openbao/sdk/helper/pointerutil"
 )
 
 // ServerConfig is a config struct for setting up the basic parts of the

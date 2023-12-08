@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 // rotateExpiredStaticCreds will pop expired credentials (credentials whose priority

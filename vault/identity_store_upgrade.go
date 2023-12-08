@@ -6,8 +6,8 @@ package vault
 import (
 	"strings"
 
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func upgradePaths(i *IdentityStore) []*framework.Path {

@@ -4,7 +4,7 @@
 package consts
 
 // NOTE: this file has been copied to
-// https://github.com/lf-edge/openbao/blob/main/api/plugin_types.go
+// https://github.com/openbao/openbao/blob/main/api/plugin_types.go
 // Any changes made should be made to both files at the same time.
 
 import "fmt"

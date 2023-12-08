@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/lf-edge/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/mitchellh/cli"
 	"google.golang.org/api/option"
 )

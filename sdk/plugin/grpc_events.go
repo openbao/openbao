@@ -6,8 +6,8 @@ package plugin
 import (
 	"context"
 
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	"google.golang.org/grpc"
 )
 

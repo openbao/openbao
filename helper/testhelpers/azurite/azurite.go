@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/docker"
 )
 
 type Config struct {

@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/database/helper/connutil"
-	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/database/helper/connutil"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
 	"github.com/mitchellh/mapstructure"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

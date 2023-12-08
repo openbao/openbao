@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/errutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/logical"
 	atomic2 "go.uber.org/atomic"
 )
 
@@ -1718,7 +1718,7 @@ func buildAnyCRLsWithCerts(
 				// this by reissuing the CA certificate or adding an equivalent
 				// version with KU bits if the CA cert lacks KU altogether.
 				//
-				// See also: https://github.com/lf-edge/openbao/issues/20137
+				// See also: https://github.com/openbao/openbao/issues/20137
 				warning := "Issuer equivalency set with associated keys lacked an issuer with CRL Signing KeyUsage; refusing to rebuild CRL for this group of issuers: "
 				var issuers []string
 				for _, issuerId := range issuersSet {

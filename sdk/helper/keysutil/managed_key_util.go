@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type ManagedKeyParameters struct {

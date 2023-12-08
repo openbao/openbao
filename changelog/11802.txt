@@ -1,3 +1,0 @@
-```release-note:change
-go: Update to Go 1.16.5
-```

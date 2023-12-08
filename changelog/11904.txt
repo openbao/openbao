@@ -1,3 +1,0 @@
-```release-note:bug
-api: properly handle switching to/from unix domain socket when changing client address
-```

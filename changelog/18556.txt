@@ -1,3 +1,0 @@
-```release-note:bug
-auth/token: Fix parsing of `auth/token/create` fields to avoid incorrect warnings about ignored parameters
-```

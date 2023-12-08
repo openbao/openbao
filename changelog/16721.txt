@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Ignore EC PARAMETER PEM blocks during issuer import (/config/ca, /issuers/import/*, and /intermediate/set-signed)
-```

@@ -1,3 +1,0 @@
-```release-note:enhancement
-storage/raft: Switch to shared raft-boltdb library and add boltdb metrics
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/database: Ensure that a `connection_url` password is redacted in all cases.
-```

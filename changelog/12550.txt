@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix bug where capabilities check on secret-delete-menu was encoding the forward slashes.
-```

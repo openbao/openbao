@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki/tidy: Add another pair of metrics counting certificates not deleted by the tidy operation.
-```

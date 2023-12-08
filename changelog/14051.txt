@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/aws: Enable region detection in the CLI by specifying the region as `auto`
-```

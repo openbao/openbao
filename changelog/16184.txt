@@ -1,3 +1,0 @@
-```release-note:improvement
-core/activity: use monthly hyperloglogs to calculate new clients approximation for current month
-```

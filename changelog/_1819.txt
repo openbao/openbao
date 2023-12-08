@@ -1,3 +1,0 @@
-```release-note:feature
-core: Add controlled capabilities to control group policy stanza
-```

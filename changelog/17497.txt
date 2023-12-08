@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Respond to tidy-status, tidy-cancel on PR Secondary clusters.
-```

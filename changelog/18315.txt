@@ -1,3 +1,0 @@
-```release-note:improvement
-hcp/connectivity: Include HCP organization, project, and resource ID in server startup logs
-```

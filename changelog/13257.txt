@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Recognize ed25519 when requesting a response in PKCS8 format
-```

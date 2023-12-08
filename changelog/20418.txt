@@ -1,3 +1,0 @@
-```release-note:bug
-command/server: fixes panic in Vault server command when running in recovery mode
-```

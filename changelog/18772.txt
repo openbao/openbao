@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Add openapi response definitions to approle/path_login.go & approle/path_tidy_user_id.go
-```

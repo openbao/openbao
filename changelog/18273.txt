@@ -1,3 +1,0 @@
-```release-note:bug
-core/quotas: Fix issue with improper application of default rate limit quota exempt paths
-```

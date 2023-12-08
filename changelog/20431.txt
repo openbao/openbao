@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Add download button for each secret value in KV v2
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: Allow Agent auto auth to read symlinked JWT files
-```

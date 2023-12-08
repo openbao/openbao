@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: Add support for creating requests to existing non-KVv2 PATCH-capable endpoints.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Evaluate ssh validprincipals user template before splitting
-```

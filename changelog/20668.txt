@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/transform: Added importing of keys and key versions into the Transform secrets engine using the command 'vault transform import' and 'vault transform import-version'.
-```

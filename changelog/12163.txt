@@ -1,3 +1,0 @@
-```release-note:improvement
-serviceregistration: add `external-source: "vault"` metadata value for Consul registration.
-```

@@ -1,3 +1,0 @@
-```release-note:feature
-**Server UDS Listener**: Adding listener to Vault server to serve http request via unix domain socket
-```

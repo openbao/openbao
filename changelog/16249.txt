@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Honor If-Modified-Since header on CA, CRL fetch; requires passthrough_request_headers modification on the mount point.
-```

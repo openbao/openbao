@@ -1,3 +1,0 @@
-```release-note:bug
-cli: vault debug now puts newlines after every captured log line.
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-mfa/okta: disable client side rate limiting causing delays in push notifications
-```

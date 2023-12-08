@@ -1,3 +1,0 @@
-```release-note:bug
-ui: update bar chart when model changes
-```

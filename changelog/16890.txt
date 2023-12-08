@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/kerberos: add `add_group_aliases` config to include LDAP groups in Vault group aliases
-```

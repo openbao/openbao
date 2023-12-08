@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/azure: Fixed bug where Azure environment did not change Graph URL
-```

@@ -1,4 +1,0 @@
-```release-note:improvement
-website/docs: Update replication docs to mention Integrated Storage
-```
-

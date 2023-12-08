@@ -1,3 +1,0 @@
-```release-note:bug
-storage/raft: On linux, use map_populate for bolt files to improve startup time.
-```

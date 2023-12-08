@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixed and updated lease renewal picker
-```

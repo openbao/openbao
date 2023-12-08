@@ -1,3 +1,0 @@
-```release-note:improvement
-pki: adds signature_bits field to customize signature algorithm on CAs and certs signed by Vault
-```

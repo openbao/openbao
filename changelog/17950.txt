@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fix entity policies list link to policy show page
-```

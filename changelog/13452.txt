@@ -1,3 +1,0 @@
-```release-note:bug
-sdk/helper/ldaputil: properly escape a trailing escape character to prevent panics.
-```

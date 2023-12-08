@@ -1,3 +1,0 @@
-```release-note:bug
-sdk/queue: move lock before length check to prevent panics.
-```

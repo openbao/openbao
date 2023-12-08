@@ -1,3 +1,0 @@
-```release-note:bug
-raft: Ensure initialMmapSize is set to 0 on Windows
-```

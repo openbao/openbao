@@ -1,3 +1,0 @@
-```release-note:bug
-core (enterprise): Limit entropy augmentation during token generation to root tokens.
-```

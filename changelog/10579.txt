@@ -1,3 +1,0 @@
-```release-note:bug
-core: Avoid disclosing IP addresses in the errors of unauthenticated requests
-```

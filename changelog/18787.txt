@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Added JWT authentication warning message about blocked pop-up windows and web browser settings.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-auth: enforce a rate limit for TOTP passcode validation attempts
-```

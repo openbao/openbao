@@ -1,3 +1,0 @@
-```release-note:change
-storage/etcd: Remove support for v2.
-```

@@ -1,3 +1,0 @@
-```release-note:enhancement
-core: Add per-listener config to allow unauthenticated pprof requests, and collect a few more pprof targets.
-```

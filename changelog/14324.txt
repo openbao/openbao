@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/ldap: Add username_as_alias configurable to change how aliases are named
-```

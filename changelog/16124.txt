@@ -1,3 +1,0 @@
-```release-note:improvement
-secret/pki: Add signature_bits to sign-intermediate, sign-verbatim endpoints
-```

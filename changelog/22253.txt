@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/database: Improves error logging for static role rotations by including the database and role names.
-```

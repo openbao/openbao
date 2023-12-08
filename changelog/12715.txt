@@ -1,3 +1,0 @@
-```release-note:bug
-auth/aws: fix config/rotate-root to store new key
-```

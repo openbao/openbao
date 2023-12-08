@@ -1,3 +1,0 @@
-```release-note:improvement
-release-note: Add dependencies listed in dependencies/2-25-21
-```

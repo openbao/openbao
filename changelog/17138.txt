@@ -1,3 +1,0 @@
-```release-note:bug
-auth/cert: Vault does not initially load the CRLs in cert auth unless the read/write CRL endpoint is hit.
-```

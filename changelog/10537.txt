@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/ldap: Improve consistency in error messages
-```

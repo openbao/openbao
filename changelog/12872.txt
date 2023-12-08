@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fixes around NIST P-curve signature hash length, default value for signature_bits changed to 0.
-```

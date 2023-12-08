@@ -1,3 +1,0 @@
-```release-note:bug
-storage/raft: joining a node to a cluster now ignores any VAULT_NAMESPACE environment variable set on the server process
-```

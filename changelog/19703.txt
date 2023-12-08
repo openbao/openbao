@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes issue navigating back a level using the breadcrumb from secret metadata view
-```

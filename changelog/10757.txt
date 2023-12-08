@@ -1,3 +1,0 @@
-```release-note:bug
-agent: Set namespace for template server in agent.
-```

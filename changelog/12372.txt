@@ -1,3 +1,0 @@
-```release-note: bug
-core/api: Fix an arm64 bug converting a negative int to an unsigned int
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/aws: Add conditional template that allows custom usernames for both STS and IAM cases
-```

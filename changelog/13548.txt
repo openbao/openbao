@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/gcp: Fixes role bindings for BigQuery dataset resources.
-```

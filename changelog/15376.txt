@@ -1,3 +1,0 @@
-```release-note:feature
-**Snowflake Database Plugin**: Adds ability to manage RSA key pair credentials for dynamic and static Snowflake users.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-hcp/status: Expand node-level status information
-```

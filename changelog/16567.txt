@@ -1,3 +1,0 @@
-```release-note:improvement
-identity/oidc: Adds support for detailed listing of clients and providers.
-```

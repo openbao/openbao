@@ -1,3 +1,0 @@
-```release-note:bug
-auth/okta: fix a panic for AuthRenew in Okta
-```

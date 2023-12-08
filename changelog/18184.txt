@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Address nil panic when an empty POST request is sent to the OCSP handler
-```

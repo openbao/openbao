@@ -1,3 +1,0 @@
-```release-note:bug
-core: Turn off case sensitivity for allowed entity alias check during token create operation.
-```

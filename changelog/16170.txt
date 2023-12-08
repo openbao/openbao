@@ -1,3 +1,0 @@
-```release-note:bug
-ui: OIDC login type uses localStorage instead of sessionStorage
-```

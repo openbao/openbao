@@ -1,3 +1,0 @@
-```release-note:change
-plugins: `GET /database/config/:name` endpoint now returns an additional `plugin_version` field in the response data.
-```

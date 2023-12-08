@@ -1,3 +1,0 @@
-```release-note:bug
-auth/kubernetes: Fix AliasLookahead to correctly extract ServiceAccount UID when using ephemeral JWTs
-```

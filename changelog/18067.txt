@@ -1,3 +1,0 @@
-```release-note:improvement
-cli/kv: improve kv CLI to remove data or custom metadata using kv patch
-```

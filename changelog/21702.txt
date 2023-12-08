@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add a parameter to allow ExtKeyUsage field usage from a role within ACME.
-```

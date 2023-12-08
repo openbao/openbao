@@ -1,3 +1,0 @@
-```release-note:bug
-core: fix policies with wildcards not matching list operations due to the policy path not having a trailing slash 
-```

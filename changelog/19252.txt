@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Consistently stop Vault server on exit in gen_openapi.sh
-```

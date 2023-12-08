@@ -1,4 +1,0 @@
-```release-note:bug
-sdk/ldaputil: Properly escape user filters when using UPN domains
-sdk/ldaputil: use EscapeLDAPValue implementation from cap/ldap
-```

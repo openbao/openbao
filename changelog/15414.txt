@@ -1,3 +1,0 @@
-```release-note:feature
-**Transit BYOK**: Allow import of externally-generated keys into the Transit secrets engine.
-```

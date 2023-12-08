@@ -1,3 +1,0 @@
-```release-note:bug
-replication (enterprise): Fix bug with not starting merkle sync while requests are in progress
-```

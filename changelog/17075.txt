@@ -1,3 +1,0 @@
-```release-note:feature
-**Redis ElastiCache DB Plugin**: Added Redis ElastiCache as a built-in plugin.
-```

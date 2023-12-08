@@ -1,3 +1,0 @@
-```release-note: bug
-core/api: Fix overwriting of request headers when using JSONMergePatch.
-```

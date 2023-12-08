@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Clarify language on usage metrics page empty state
-```

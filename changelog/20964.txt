@@ -1,3 +1,0 @@
-```release-note:bug
-identity: Fixes duplicate groups creation with the same name but unique IDs. 
-```

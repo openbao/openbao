@@ -1,3 +1,0 @@
-```release-note:improvement
-cli/pki: Add pki issue command, which creates a CSR, has a vault mount sign it, then reimports it.
-```

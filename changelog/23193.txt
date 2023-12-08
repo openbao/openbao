@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Add pagination to PKI roles, keys, issuers, and certificates list pages
-```

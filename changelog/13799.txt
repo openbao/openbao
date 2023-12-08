@@ -1,3 +1,0 @@
-```release-note:security
-database/mssql: Removed string interpolation on internal queries and replaced them with inline queries using named parameters.
-```

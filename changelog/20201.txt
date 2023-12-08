@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Decrease size and improve compatibility of OCSP responses by removing issuer certificate.
-```

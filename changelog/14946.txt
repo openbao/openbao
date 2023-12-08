@@ -1,3 +1,0 @@
-```release-note:feature
-**Secrets/auth plugin multiplexing**: manage multiple plugin configurations with a single plugin process
-```

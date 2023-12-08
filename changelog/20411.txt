@@ -1,3 +1,0 @@
-```release-note:improvement
-audit: add a `mount_point` field to audit requests and response entries
-```

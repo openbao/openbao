@@ -1,3 +1,0 @@
-```release-note:bug
-login: Store token in tokenhelper for interactive login MFA
-```

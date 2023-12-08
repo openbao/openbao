@@ -1,3 +1,0 @@
-```release-note:deprecation
-secrets/consul: Deprecate old parameters "token_type" and "policy"
-```

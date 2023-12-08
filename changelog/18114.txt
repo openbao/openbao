@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: update TTL picker for consistency
-```

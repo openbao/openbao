@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Sort list view of entities and aliases alphabetically using the item name
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-core: Increase the allowed concurrent gRPC streams over the cluster port.
-```

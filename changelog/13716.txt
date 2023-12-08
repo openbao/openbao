@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Check for a nil signing key on rotation to prevent panics.
-```

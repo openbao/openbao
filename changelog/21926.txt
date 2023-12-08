@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes problem displaying certificates issued with unsupported signature algorithms (i.e. ed25519)
-```

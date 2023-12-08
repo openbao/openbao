@@ -1,3 +1,0 @@
-```release-note:bug
-sdk: Don't panic if system view or storage methods called during plugin setup.
-```

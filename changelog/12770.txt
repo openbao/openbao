@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Filter DB connection attributes so only relevant attrs POST to backend 
-```

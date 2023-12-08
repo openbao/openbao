@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fix firefox inability to recognize file format of client count csv export
-```

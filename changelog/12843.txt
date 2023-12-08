@@ -1,3 +1,0 @@
-```release-note:improvement
-agent/cache: Process persistent cache leases in dependency order during restore to ensure child leases are always correctly restored
-```

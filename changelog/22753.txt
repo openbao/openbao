@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/transit: fix panic when providing non-PEM formatted public key for import
-```

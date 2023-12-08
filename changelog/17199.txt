@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/gcpkms: Update dependencies: google.golang.org/api@v0.83.0.
-```

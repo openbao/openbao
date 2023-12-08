@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Add root rotation statements support to appropriate database secret engine plugins
-```

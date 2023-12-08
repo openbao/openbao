@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Removes ability to tune token_type for token auth methods 
-```

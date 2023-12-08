@@ -1,3 +1,0 @@
-```release-note:feature
-ui: Adds check for feature flag on application, and updates namespace toolbar on login if present
-```

@@ -1,3 +1,0 @@
-```release-note:feature
-api: adds native Login method to Go client module with different auth method interfaces to support easier authentication
-```

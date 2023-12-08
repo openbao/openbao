@@ -1,3 +1,0 @@
-```release-note:feature
-**Transit SHA-3 Support**: Add support for SHA-3 in the Transit backend.
-```

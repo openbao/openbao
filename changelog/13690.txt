@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/transit: Ensure that Vault does not panic for invalid nonce size when we aren't in convergent encryption mode.
-```

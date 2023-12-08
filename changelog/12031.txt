@@ -1,3 +1,0 @@
-```release-note:bug
-cli: Add support for response wrapping in `vault list` and `vault kv list` with output format other than `table`.
-```

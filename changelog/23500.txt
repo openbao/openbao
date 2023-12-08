@@ -1,3 +1,0 @@
-```release-note:bug
-events: Ignore sending context to give more time for events to send
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-plugins: Listing all plugins while audit logging is enabled will no longer result in an internal server error.
-```

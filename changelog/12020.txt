@@ -1,3 +1,0 @@
-```release-note:bug
-core/metrics: Add generic KV mount support for vault.kv.secret.count telemetry metric
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: trigger token renewal if inactive and half of TTL has passed
-```

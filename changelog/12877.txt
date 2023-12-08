@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/rabbitmq: Update dependency github.com/michaelklishin/rabbit-hole to v2 and resolve UserInfo.tags regression from RabbitMQ v3.9
-```

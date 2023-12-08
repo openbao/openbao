@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add support to specify signature bits when generating CSRs through intermediate/generate apis
-```

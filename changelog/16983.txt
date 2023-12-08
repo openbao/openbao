@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes secret version and status menu links transitioning to auth screen
-```

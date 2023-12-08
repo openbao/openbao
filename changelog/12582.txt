@@ -1,3 +1,0 @@
-```release-note:improvement
-api: Support VAULT_HTTP_PROXY environment variable to allow overriding the Vault client's HTTP proxy
-```

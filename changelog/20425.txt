@@ -1,3 +1,0 @@
-```release-note:feature
-**MongoDB Atlas Database Secrets**: Adds support for client certificate credentials
-```

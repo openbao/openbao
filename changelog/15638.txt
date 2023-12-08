@@ -1,3 +1,0 @@
-```release-note:bug
-vault: Fix a bug where duplicate policies could be added to an identity group.
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixed api explorer routing bug
-```

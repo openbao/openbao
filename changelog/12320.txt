@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/okta: Send x-forwarded-for in Okta Push Factor request
-```

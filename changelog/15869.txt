@@ -1,3 +1,0 @@
-```release-note:change
-secrets/aws: do not create leases for non-renewable/non-revocable STS credentials to reduce storage calls
-```

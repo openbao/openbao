@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Do not ignore provided signature bits value when signing intermediate and leaf certificates with a managed key
-```

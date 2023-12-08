@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Allow additional text along with a template definition in defaultExtension value fields.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-website/docs: fix inaccuracies with unauthenticated_in_flight_requests_access parameter
-```

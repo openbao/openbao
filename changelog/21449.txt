@@ -1,3 +1,0 @@
-```release-note:bug
-openapi: Fix response schema for PKI Issue requests
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-plugins/multiplexing: Added multiplexing support to database plugins if run as external plugins
-```

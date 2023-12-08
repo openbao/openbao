@@ -1,3 +1,0 @@
-```release-note:improvement
-cli: updated `vault operator rekey` prompts to describe recovery keys when `-target=recovery`
-```

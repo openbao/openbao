@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/transit: Honor `partial_success_response_code` on decryption failures.
-```

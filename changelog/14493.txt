@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes horizontal bar chart hover issue when filtering namespaces and mounts
-```

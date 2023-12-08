@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/ssh: Allow removing SSH host keys from the dynamic keys feature.
-```

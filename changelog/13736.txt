@@ -1,3 +1,0 @@
-```release-note:improvement
-core/pki: Support Y10K value in notAfter field when signing non-CA certificates
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-auth/cert: Address a race condition accessing the loaded crls without a lock
-```

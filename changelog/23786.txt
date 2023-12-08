@@ -1,3 +1,0 @@
-```release-note:change
-auth/approle: Normalized error response messages when invalid credentials are provided
-```

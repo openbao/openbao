@@ -1,3 +1,0 @@
-```release-note:enhancement
-secrets/azure: Update Azure SDK to allow consuming different Resource Manager Endpoint URIs
-```

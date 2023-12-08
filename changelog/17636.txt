@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/transit: Add support for PKCSv1_5_NoOID RSA signatures
-```

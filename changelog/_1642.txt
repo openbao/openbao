@@ -1,3 +1,0 @@
-```release-note:improvement
-core (enterprise): Update Trial Enterprise license from 30 minutes to 6 hours
-```

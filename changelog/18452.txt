@@ -1,3 +1,0 @@
-```release-note:bug
-core/activity: de-duplicate namespaces when historical and current month data are mixed
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/transit: Allow configuring the possible salt lengths for RSA PSS signatures.
-```

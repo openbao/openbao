@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix cleanup of storage entries from cubbyholes within namespaces.
-```

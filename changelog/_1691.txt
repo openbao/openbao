@@ -1,5 +1,0 @@
-```release-note: improvement
-replication (enterprise): The log shipper is now memory
-as well as length bound, and length and size can be
-separately configured.
-```

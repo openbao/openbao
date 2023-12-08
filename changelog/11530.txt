@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Redesign of KV 2 Delete toolbar.
-```

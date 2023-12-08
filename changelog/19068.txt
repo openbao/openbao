@@ -1,3 +1,0 @@
-```release-note:change
-sdk: Remove version package, make useragent.String versionless.
-```

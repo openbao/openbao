@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/ldap: include support for an optional user filter field when searching for users
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-api/plugins: add `tls-server-name` arg for plugin registration
-```

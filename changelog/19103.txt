@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/database: Adds error message requiring password on root crednetial rotation.
-```

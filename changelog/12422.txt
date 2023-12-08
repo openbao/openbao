@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: updated client tracking config view
-```

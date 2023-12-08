@@ -1,3 +1,0 @@
-```release-note:bug
-core: fix byte printing for diagnose disk checks
-```

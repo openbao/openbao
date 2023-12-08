@@ -1,3 +1,0 @@
-```release-note:improvement
-agent/template: Added static_secret_render_interval to specify how often to fetch non-leased secrets
-```

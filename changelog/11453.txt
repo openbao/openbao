@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix race that allowed remounting on path used by another mount
-```

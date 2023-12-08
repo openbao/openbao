@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fixes list password policy to include those with names containing / characters.
-```

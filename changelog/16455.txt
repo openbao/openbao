@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/aws: PKCS7 signatures will now use SHA256 by default in prep for Go 1.18
-```

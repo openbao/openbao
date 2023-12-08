@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Automatically refresh the page when user logs out
-```

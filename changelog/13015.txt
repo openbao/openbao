@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Display badge for all versions in secrets engine header
-```

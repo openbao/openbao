@@ -1,3 +1,0 @@
-```release-note:improvement
-cli/vault: warn when policy name contains upper-case letter
-```

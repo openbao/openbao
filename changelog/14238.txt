@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Restrict issuance of wildcard certificates via role parameter (`allow_wildcard_certificates`)
-```

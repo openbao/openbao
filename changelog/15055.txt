@@ -1,3 +1,0 @@
-```release-note:bug
-identity: deduplicate policies when creating/updating identity groups
-```

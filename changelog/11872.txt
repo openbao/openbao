@@ -1,3 +1,0 @@
-```release-note:bug
-mongo-db: default username template now strips invalid '.' characters
-```

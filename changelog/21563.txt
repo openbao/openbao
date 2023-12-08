@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Better mount points for kv-v1 and kv-v2 in openapi.json
-```

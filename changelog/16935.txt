@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add a new flag to issue/sign APIs which can filter out root CAs from the returned ca_chain field
-```

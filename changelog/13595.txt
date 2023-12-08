@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/kubernetes: Added support for dynamically reloading short-lived tokens for better Kubernetes 1.21+ compatibility
-```

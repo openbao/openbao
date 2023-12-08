@@ -1,3 +1,0 @@
-```release-note:feature
-cli/snapshot: Add CLI tool to inspect Vault snapshots
-```

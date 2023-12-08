@@ -1,3 +1,0 @@
-```release-note:bug
-core/identity: Allow updates of only the custom-metadata for entity alias.
-```

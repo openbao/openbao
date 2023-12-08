@@ -1,3 +1,0 @@
-```release-note:improvement
-command/server: add `-dev-tls` and `-dev-tls-cert-dir` subcommands to create a Vault dev server with generated certificates and private key.
-```

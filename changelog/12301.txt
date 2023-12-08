@@ -1,3 +1,0 @@
-```release-note:bug
-database/couchbase: change default template to truncate username at 128 characters
-```

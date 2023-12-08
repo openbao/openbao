@@ -1,3 +1,0 @@
-```release-note:improvement
-identity/oidc: allows filtering the list providers response by an allowed_client_id
-```

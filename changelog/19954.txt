@@ -1,3 +1,0 @@
-```release-note:improvement
-database/mongodb: upgrade mongo driver to 1.11
-```

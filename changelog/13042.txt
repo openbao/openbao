@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix warnings logged on perf standbys re stored versions
-```

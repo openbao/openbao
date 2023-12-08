@@ -1,3 +1,0 @@
-```release-note:bug
-auth: Deduplicate policies prior to ACL generation
-```

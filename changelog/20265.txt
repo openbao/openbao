@@ -1,3 +1,0 @@
-```release-note:improvement
-* api: Add Config.TLSConfig method to fetch the TLS configuration from a client config.
-```

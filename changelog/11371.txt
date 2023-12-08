@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix goroutine leak when updating rate limit quota
-```

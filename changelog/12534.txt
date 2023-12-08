@@ -1,3 +1,0 @@
-```release-note:bug
-agent: Avoid possible `unexpected fault address` panic when using persistent cache.
-```

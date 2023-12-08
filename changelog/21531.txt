@@ -1,3 +1,0 @@
-```release-note:bug 
-ui: Fixes styling of private key input when configuring an SSH key
-```

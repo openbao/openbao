@@ -1,3 +1,0 @@
-```release-note:improvement
-agent: Added `disable_keep_alives` configuration to disable keep alives in auto-auth, caching and templating.
-```

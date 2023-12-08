@@ -1,3 +1,0 @@
-```release-note:improvement
-cli/pki: Added "Reissue" command which allows extracting fields from an existing certificate to create a new certificate.
-```

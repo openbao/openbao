@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Removes empty rows from DB config views
-```

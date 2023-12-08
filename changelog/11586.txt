@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Add regex validation to Transform Template pattern input
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fix issue where UI incorrectly handled API errors when mounting backends
-```

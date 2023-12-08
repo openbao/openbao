@@ -1,3 +1,0 @@
-```release-note:bug
-plugin/reload:  Fix a possible data race with rollback manager and plugin reload
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Adds `claims_supported` to discovery document.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/db/mysql: Add `tls_server_name` and `tls_skip_verify` parameters
-```

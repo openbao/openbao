@@ -1,3 +1,0 @@
-```release-note:change
-auth/azure: Update plugin to v0.16.0
-```

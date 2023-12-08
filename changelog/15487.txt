@@ -1,3 +1,0 @@
-```release-note:improvement
-audit: added entity_created boolean to audit log, set when login operations create an entity
-```

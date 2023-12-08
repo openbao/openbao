@@ -1,3 +1,0 @@
-```release-note:bug
-core/config: Only ask the system about network interfaces when address configs contain a template having the format: {{ ... }}
-```

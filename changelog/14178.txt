@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add not_before_duration to root CA generation, intermediate CA signing paths.
-```

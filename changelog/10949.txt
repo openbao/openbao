@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Customize MongoDB input fields on Database Secrets Engine
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-quotas/lease-count (enterprise) : Fix quotas enforcing old lease count quota paths
-```

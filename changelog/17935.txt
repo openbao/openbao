@@ -1,3 +1,0 @@
-```release-note:bug
-core/activity: return partial month counts when querying a historical date range and no historical data exists.
-```

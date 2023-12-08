@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Fixes duplicate otherName in certificates created by the sign-verbatim endpoint.
-```

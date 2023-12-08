@@ -1,3 +1,0 @@
-```release-note:bug
-core: Avoid deadlocks by ensuring that if grabLockOrStop returns stopped=true, the lock will not be held.
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-raft: change freelist type to map and set nofreelistsync to true
-```

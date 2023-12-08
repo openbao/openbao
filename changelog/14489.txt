@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Fixes caching issue on kv new version create
-```

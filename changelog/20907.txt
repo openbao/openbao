@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes key_bits and signature_bits reverting to default values when editing a pki role
-```

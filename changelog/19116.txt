@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Allows license-banners to be dismissed. Saves preferences in localStorage.
-```

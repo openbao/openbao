@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/ldap: Add username to alias metadata
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-mongo-db: allow non-admin database for root credential rotation
-```

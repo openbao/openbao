@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/oci: Add support for role resolution.
-```

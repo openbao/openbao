@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: fix race between tidy's cert counting and tidy status reporting.
-```

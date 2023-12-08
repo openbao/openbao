@@ -1,3 +1,0 @@
-```release-note:improvement
-auth: Globally scoped Login MFA method Get/List endpoints
-```

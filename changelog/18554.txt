@@ -1,3 +1,0 @@
-```release-note:bug
-openapi: Fix many incorrect details in generated API spec, by using better techniques to parse path regexps
-```

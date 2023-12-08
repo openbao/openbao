@@ -1,3 +1,0 @@
-```release-note:improvement
-secrets/pki: Add support for per-issuer Authority Information Access (AIA) URLs
-```

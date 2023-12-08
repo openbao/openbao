@@ -1,3 +1,0 @@
-```release-note:improvement
-activity: return nil response months in activity log API when no month data exists
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fixes query parameters not passed in api explorer test requests
-```

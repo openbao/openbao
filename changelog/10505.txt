@@ -1,3 +1,0 @@
-```release-note:improvement
-sdk: Add helper for decoding root tokens
-```

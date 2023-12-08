@@ -1,3 +1,0 @@
-```release-note:bug
-identity/oidc: Fixes validation of the `request` and `request_uri` parameters.
-```

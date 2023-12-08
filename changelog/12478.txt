@@ -1,3 +1,0 @@
-```release-note:bug
-ui: fix missing navbar items on login to namespace
-```

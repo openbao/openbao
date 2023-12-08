@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix panic when the plugin catalog returns neither a plugin nor an error.
-```

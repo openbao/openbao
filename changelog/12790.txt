@@ -1,3 +1,0 @@
-```release-note:improvement
-audit: The audit logs now contain the port used by the client
-```

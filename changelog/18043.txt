@@ -1,3 +1,0 @@
-```release-note:improvement
-auth/cert: Support listing provisioned CRLs within the mount.
-```

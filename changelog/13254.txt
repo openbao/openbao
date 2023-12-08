@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/pki: Skip signature bits validation for ed25519 curve key type
-```

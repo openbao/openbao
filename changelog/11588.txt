@@ -1,3 +1,0 @@
-```release-note:improvement
-core: Add a small (<1s) exponential backoff to failed TCP listener Accept failures.
-```

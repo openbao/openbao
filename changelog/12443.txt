@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/database/cassandra: change connect_timeout to 5s as documentation says
-```

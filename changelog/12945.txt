@@ -1,3 +1,0 @@
-```release-note:feature
-**Postgres in the UI**: Postgres DB is now supported by the UI
-```

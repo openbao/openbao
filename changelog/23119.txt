@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Added allowed_domains_template field for CA type role in SSH engine
-```

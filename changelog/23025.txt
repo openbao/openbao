@@ -1,3 +1,0 @@
-```release-note:bug
-ui (enterprise): Fix error message when generating SSH credential with control group
-```

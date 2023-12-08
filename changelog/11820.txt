@@ -1,3 +1,0 @@
-```release-note:improvement
-db/cassandra: Added tls_server_name to specify server name for TLS validation
-```

@@ -1,3 +1,0 @@
-```release-note:change
-core: Revert #19676 (VAULT_GRPC_MIN_CONNECT_TIMEOUT env var) as we decided it was unnecessary.
-```

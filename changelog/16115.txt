@@ -1,3 +1,0 @@
-```release-note:improvement
-core/quotas: Added ability to add role information for rate-limit resource quotas, to limit login requests on auth mounts made using that role
-```

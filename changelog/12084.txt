@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Render dashes for secret empty states
-```

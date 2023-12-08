@@ -1,3 +1,0 @@
-```release-note:improvement
-ui: Click to copy database static role last rotation value in tooltip 
-```

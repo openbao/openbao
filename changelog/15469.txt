@@ -1,3 +1,0 @@
-```release-note:improvement
-auth: forward cached MFA auth response to the leader using RPC instead of forwarding all login requests
-```

@@ -1,3 +1,0 @@
-```release-note:bug
-quotas/lease-count: Fix lease-count quotas on mounts not properly being enforced when the lease generating request is a read
-```

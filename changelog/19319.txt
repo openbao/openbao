@@ -1,3 +1,0 @@
-```release-note:improvement
-openapi: Improve operationId/request/response naming strategy
-```

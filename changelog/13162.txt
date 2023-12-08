@@ -1,3 +1,0 @@
-```release-note:bug
-core: authentication to "login" endpoint for non-existent mount path returns permission denied with status code 403
-```

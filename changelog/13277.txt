@@ -1,3 +1,0 @@
-```release-note:bug
-secrets/azure: Fixes service principal generation when assigning roles that have [DataActions](https://docs.microsoft.com/en-us/azure/role-based-access-control/role-definitions#dataactions). 
-```

@@ -1,3 +1,0 @@
-```release-note:improvement
-raft: Improve raft batch size selection
-```

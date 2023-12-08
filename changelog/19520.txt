@@ -1,3 +1,0 @@
-```release-note:improvement
-http: Support responding to HEAD operation from plugins
-```

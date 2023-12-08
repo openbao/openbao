@@ -1,3 +1,0 @@
-```release-note:improvement
-storage/aerospike: Upgrade `aerospike-client-go` to v5.6.0.
-```

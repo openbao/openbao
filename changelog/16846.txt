@@ -1,3 +1,0 @@
-```release-note:improvement
-plugins: Add Deprecation Status method to builtinregistry.
-```

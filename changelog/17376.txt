@@ -1,3 +1,0 @@
-```release-note:bug
-ui: Remove default value of 30 to TtlPicker2 if no value is passed in.
-```

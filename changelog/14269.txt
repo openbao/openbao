@@ -1,3 +1,0 @@
-```release-note:bug
- api/sys/raft: Update RaftSnapshotRestore to use net/http client allowing bodies larger than allocated memory to be streamed
-```

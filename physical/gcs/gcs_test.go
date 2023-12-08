@@ -14,8 +14,8 @@ import (
 
 	"cloud.google.com/go/storage"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 	"google.golang.org/api/googleapi"
 )
 

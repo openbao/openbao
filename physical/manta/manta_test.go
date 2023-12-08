@@ -17,8 +17,8 @@ import (
 	"github.com/joyent/triton-go/authentication"
 	tt "github.com/joyent/triton-go/errors"
 	"github.com/joyent/triton-go/storage"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestMantaBackend(t *testing.T) {

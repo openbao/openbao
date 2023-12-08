@@ -20,13 +20,13 @@ import (
 	"golang.org/x/net/http2"
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/lf-edge/openbao/api"
-	credCert "github.com/lf-edge/openbao/builtin/credential/cert"
-	"github.com/lf-edge/openbao/builtin/logical/transit"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/keysutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	credCert "github.com/openbao/openbao/builtin/credential/cert"
+	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestHTTP_Fallback_Bad_Address(t *testing.T) {

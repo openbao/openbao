@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/vault"
-	"github.com/lf-edge/openbao/version"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/version"
 )
 
 func handleSysHealth(core *vault.Core) http.Handler {

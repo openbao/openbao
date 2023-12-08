@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/identity"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func waitForReplicationState(context.Context, *Core, *logical.Request) (*sync.WaitGroup, error) {

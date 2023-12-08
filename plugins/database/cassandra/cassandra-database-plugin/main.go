@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/lf-edge/openbao/plugins/database/cassandra"
-	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/plugins/database/cassandra"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
 )
 
 func main() {

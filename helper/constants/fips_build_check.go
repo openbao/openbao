@@ -11,7 +11,7 @@ import "C"
 // without implementation in any imported or built library. This results in
 // a linker err if the above build constraints are satisfied:
 //
-//	/home/cipherboy/GitHub/cipherboy/vault-enterprise/helper/constants/fips_build_check.go:10: undefined reference to `github.com/lf-edge/openbao/helper/constants.VaultFIPSBuildRequiresVersionAgnosticTagAndOneVersionTag'
+//	/home/cipherboy/GitHub/cipherboy/vault-enterprise/helper/constants/fips_build_check.go:10: undefined reference to `github.com/openbao/openbao/helper/constants.VaultFIPSBuildRequiresVersionAgnosticTagAndOneVersionTag'
 //
 // This indicates that a build error has occurred due to mismatched tags.
 //

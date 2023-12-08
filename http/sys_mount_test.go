@@ -12,10 +12,10 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
-	"github.com/lf-edge/openbao/helper/versions"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysMounts(t *testing.T) {

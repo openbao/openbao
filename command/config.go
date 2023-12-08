@@ -4,7 +4,7 @@
 package command
 
 import (
-	"github.com/lf-edge/openbao/command/config"
+	"github.com/openbao/openbao/command/config"
 )
 
 const (

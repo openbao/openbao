@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 // some tests rely on the ordering of items from this method

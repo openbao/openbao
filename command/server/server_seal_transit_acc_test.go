@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/docker"
 )
 
 func TestTransitWrapper_Lifecycle(t *testing.T) {

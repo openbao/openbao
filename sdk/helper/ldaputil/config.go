@@ -13,7 +13,7 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/framework"
 
 	"github.com/hashicorp/errwrap"
 

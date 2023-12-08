@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 
 	"github.com/stretchr/testify/require"
 )

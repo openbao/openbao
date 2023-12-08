@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/random"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/random"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTransit_Random(t *testing.T) {

@@ -30,7 +30,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/serviceregistration/kubernetes/client"
+	"github.com/openbao/openbao/serviceregistration/kubernetes/client"
 )
 
 var (

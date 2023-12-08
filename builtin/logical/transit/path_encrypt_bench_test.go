@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func BenchmarkTransit_BatchEncryption1(b *testing.B) {

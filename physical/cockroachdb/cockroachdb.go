@@ -18,7 +18,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 
 	// CockroachDB uses the Postgres SQL driver
 	_ "github.com/jackc/pgx/v4/stdlib"

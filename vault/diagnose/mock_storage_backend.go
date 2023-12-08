@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lf-edge/openbao/physical/raft"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

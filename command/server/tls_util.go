@@ -18,7 +18,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 )
 
 type CaCert struct {

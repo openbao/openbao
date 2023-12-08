@@ -9,9 +9,9 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/constants"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault/activity"
+	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault/activity"
 )
 
 // InjectActivityLogDataThisMonth populates the in-memory client store

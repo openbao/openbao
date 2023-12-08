@@ -12,7 +12,7 @@ import (
 	"cloud.google.com/go/spanner"
 	metrics "github.com/armon/go-metrics"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 )

@@ -16,8 +16,8 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/providers"
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault-plugin-auth-alicloud/tools"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 /*

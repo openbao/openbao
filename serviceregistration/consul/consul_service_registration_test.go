@@ -13,12 +13,12 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/helper/testhelpers/consul"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/sdk/physical/inmem"
-	sr "github.com/lf-edge/openbao/serviceregistration"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/testhelpers/consul"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	sr "github.com/openbao/openbao/serviceregistration"
+	"github.com/openbao/openbao/vault"
 )
 
 type consulConf map[string]string

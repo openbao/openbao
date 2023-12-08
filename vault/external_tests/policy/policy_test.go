@@ -10,13 +10,13 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/builtin/credential/ldap"
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	ldaphelper "github.com/lf-edge/openbao/helper/testhelpers/ldap"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/builtin/credential/ldap"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	ldaphelper "github.com/openbao/openbao/helper/testhelpers/ldap"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestPolicy_NoDefaultPolicy(t *testing.T) {

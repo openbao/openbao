@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/version"
+	"github.com/openbao/openbao/version"
 	"github.com/mitchellh/cli"
 )
 

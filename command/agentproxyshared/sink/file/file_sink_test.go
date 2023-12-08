@@ -12,8 +12,8 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/command/agentproxyshared/sink"
+	"github.com/openbao/openbao/sdk/helper/logging"
 )
 
 const (

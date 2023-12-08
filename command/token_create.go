@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

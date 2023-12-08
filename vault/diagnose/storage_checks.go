@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

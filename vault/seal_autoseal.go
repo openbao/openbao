@@ -19,8 +19,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/vault/seal"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // barrierTypeUpgradeCheck checks for backwards compat on barrier type, not

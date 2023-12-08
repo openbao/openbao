@@ -13,11 +13,11 @@ import (
 
 	stdmysql "github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	mysqlhelper "github.com/lf-edge/openbao/helper/testhelpers/mysql"
-	dbplugin "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/lf-edge/openbao/sdk/database/helper/credsutil"
-	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
+	mysqlhelper "github.com/openbao/openbao/helper/testhelpers/mysql"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/database/helper/credsutil"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
 	"github.com/stretchr/testify/require"
 )
 

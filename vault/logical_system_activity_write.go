@@ -6,7 +6,7 @@
 package vault
 
 import (
-	"github.com/lf-edge/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/framework"
 )
 
 func (b *SystemBackend) activityWritePath() *framework.Path { return nil }

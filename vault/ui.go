@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

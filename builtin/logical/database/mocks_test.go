@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	v4 "github.com/lf-edge/openbao/sdk/database/dbplugin"
-	v5 "github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
+	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/stretchr/testify/mock"
 )
 

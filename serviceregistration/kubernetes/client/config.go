@@ -10,7 +10,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 )
 
 const (

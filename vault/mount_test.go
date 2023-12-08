@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/audit"
-	"github.com/lf-edge/openbao/helper/metricsutil"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/versions"
-	"github.com/lf-edge/openbao/sdk/helper/compressutil"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/sdk/helper/compressutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestMount_ReadOnlyViewDuringMount(t *testing.T) {

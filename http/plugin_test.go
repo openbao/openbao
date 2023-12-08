@@ -12,17 +12,17 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	bplugin "github.com/lf-edge/openbao/builtin/plugin"
-	"github.com/lf-edge/openbao/helper/benchhelpers"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/pluginutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/sdk/physical/inmem"
-	"github.com/lf-edge/openbao/sdk/plugin"
-	"github.com/lf-edge/openbao/sdk/plugin/mock"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	bplugin "github.com/openbao/openbao/builtin/plugin"
+	"github.com/openbao/openbao/helper/benchhelpers"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/vault"
 )
 
 func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluster, *vault.TestClusterCore) {

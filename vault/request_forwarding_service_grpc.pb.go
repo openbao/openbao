@@ -4,7 +4,7 @@ package vault
 
 import (
 	context "context"
-	forwarding "github.com/lf-edge/openbao/helper/forwarding"
+	forwarding "github.com/openbao/openbao/helper/forwarding"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

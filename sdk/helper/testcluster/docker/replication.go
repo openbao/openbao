@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
 )
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {

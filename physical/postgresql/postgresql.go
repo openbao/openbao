@@ -17,8 +17,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"github.com/lf-edge/openbao/sdk/database/helper/dbutil"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

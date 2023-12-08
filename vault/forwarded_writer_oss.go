@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Our forwarded writer has two components: a reference to Core, allowing

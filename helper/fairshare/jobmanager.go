@@ -14,8 +14,8 @@ import (
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/helper/metricsutil"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
 )
 
 type JobManager struct {

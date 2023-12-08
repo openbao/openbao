@@ -11,16 +11,16 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	credAppRole "github.com/lf-edge/openbao/builtin/credential/approle"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
-	agentAppRole "github.com/lf-edge/openbao/command/agentproxyshared/auth/approle"
-	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
-	"github.com/lf-edge/openbao/command/agentproxyshared/sink/file"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	agentAppRole "github.com/openbao/openbao/command/agentproxyshared/auth/approle"
+	"github.com/openbao/openbao/command/agentproxyshared/sink"
+	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestTokenPreload_UsingAutoAuth(t *testing.T) {

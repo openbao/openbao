@@ -11,12 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/constants"
+	"github.com/openbao/openbao/helper/constants"
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/lf-edge/openbao/sdk/helper/keysutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

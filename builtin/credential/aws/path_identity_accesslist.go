@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const identityAccessListStorage = "whitelist/identity/"

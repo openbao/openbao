@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/mitchellh/cli"
 )
 

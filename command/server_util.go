@@ -4,8 +4,8 @@
 package command
 
 import (
-	"github.com/lf-edge/openbao/command/server"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/vault"
 )
 
 var (

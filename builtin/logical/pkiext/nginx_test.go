@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/builtin/logical/pki"
-	"github.com/lf-edge/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/builtin/logical/pki"
+	"github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 

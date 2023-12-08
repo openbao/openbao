@@ -7,8 +7,8 @@ import (
 	"context"
 	"testing"
 
-	saltpkg "github.com/lf-edge/openbao/sdk/helper/salt"
-	"github.com/lf-edge/openbao/sdk/logical"
+	saltpkg "github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestPathMap(t *testing.T) {

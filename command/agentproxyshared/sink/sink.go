@@ -14,9 +14,9 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/dhutil"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/dhutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 type Sink interface {

@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/testcluster"
-	"github.com/lf-edge/openbao/sdk/helper/testcluster/docker"
-	rafttest "github.com/lf-edge/openbao/vault/external_tests/raft"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
+	rafttest "github.com/openbao/openbao/vault/external_tests/raft"
 )
 
 // TestRaft_Configuration_Docker is a variant of TestRaft_Configuration that

@@ -13,8 +13,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/pgpkeys"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/vault"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"

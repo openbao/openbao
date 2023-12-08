@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/errutil"
-	"github.com/lf-edge/openbao/sdk/helper/wrapping"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTranslation_Errors(t *testing.T) {

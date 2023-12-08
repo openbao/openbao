@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/helper/xor"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/vault"
 	"github.com/mitchellh/cli"
 )
 

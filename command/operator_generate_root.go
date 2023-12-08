@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/helper/pgpkeys"
-	"github.com/lf-edge/openbao/sdk/helper/roottoken"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/pgpkeys"
+	"github.com/openbao/openbao/sdk/helper/roottoken"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

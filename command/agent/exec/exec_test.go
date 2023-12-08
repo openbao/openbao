@@ -19,9 +19,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
 
-	"github.com/lf-edge/openbao/command/agent/config"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/command/agent/config"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/helper/pointerutil"
 )
 
 func fakeVaultServer(t *testing.T) *httptest.Server {

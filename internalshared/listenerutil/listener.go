@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/jefferai/isbadcipher"
-	"github.com/lf-edge/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/mitchellh/cli"
 )
 

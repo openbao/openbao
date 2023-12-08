@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/vault/cluster"
+	"github.com/openbao/openbao/vault/cluster"
 )
 
 type mockClusterHook struct {

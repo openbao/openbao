@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/lf-edge/openbao/version"
+	"github.com/openbao/openbao/version"
 )
 
 var (

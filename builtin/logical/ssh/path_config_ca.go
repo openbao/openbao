@@ -18,8 +18,8 @@ import (
 	"io"
 
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/mikesmitty/edkey"

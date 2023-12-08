@@ -34,17 +34,17 @@ import (
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	vaulthttp "github.com/lf-edge/openbao/http"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
 
 	rootcerts "github.com/hashicorp/go-rootcerts"
-	"github.com/lf-edge/openbao/builtin/logical/pki"
-	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
-	"github.com/lf-edge/openbao/sdk/helper/tokenutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/builtin/logical/pki"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 	"github.com/mitchellh/mapstructure"
 )
 

@@ -10,10 +10,10 @@ import (
 	"net/url"
 
 	"github.com/google/go-github/github"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/cidrutil"
-	"github.com/lf-edge/openbao/sdk/helper/policyutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/helper/policyutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func pathLogin(b *backend) *framework.Path {

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 )
 
 type VaultPkiMount struct {

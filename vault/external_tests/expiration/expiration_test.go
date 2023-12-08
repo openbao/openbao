@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/namespace"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {

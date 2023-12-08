@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
 )
 

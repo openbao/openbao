@@ -8,7 +8,7 @@ package vault
 import (
 	"context"
 
-	"github.com/lf-edge/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Namespace, error) {

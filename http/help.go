@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func wrapHelpHandler(h http.Handler, core *vault.Core) http.Handler {

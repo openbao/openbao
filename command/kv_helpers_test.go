@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 )
 
 // TestAddPrefixToKVPath tests the addPrefixToKVPath helper function

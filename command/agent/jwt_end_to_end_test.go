@@ -13,17 +13,17 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
-	agentjwt "github.com/lf-edge/openbao/command/agentproxyshared/auth/jwt"
-	"github.com/lf-edge/openbao/command/agentproxyshared/sink"
-	"github.com/lf-edge/openbao/command/agentproxyshared/sink/file"
-	"github.com/lf-edge/openbao/helper/dhutil"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	agentjwt "github.com/openbao/openbao/command/agentproxyshared/auth/jwt"
+	"github.com/openbao/openbao/command/agentproxyshared/sink"
+	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
+	"github.com/openbao/openbao/helper/dhutil"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestJWTEndToEnd(t *testing.T) {

@@ -24,10 +24,10 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"k8s.io/utils/strings/slices"
 
-	"github.com/lf-edge/openbao/command/agentproxyshared"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/command/agentproxyshared"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/pointerutil"
 )
 
 // Config is the configuration for Vault Agent.

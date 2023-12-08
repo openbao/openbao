@@ -15,9 +15,9 @@ import (
 	"time"
 
 	consulapi "github.com/hashicorp/consul/api"
-	"github.com/lf-edge/openbao/helper/testhelpers/consul"
-	logicaltest "github.com/lf-edge/openbao/helper/testhelpers/logical"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/helper/testhelpers/consul"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

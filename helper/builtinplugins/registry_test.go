@@ -11,9 +11,9 @@ import (
 	"regexp"
 	"testing"
 
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	dbMysql "github.com/lf-edge/openbao/plugins/database/mysql"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
+	"github.com/openbao/openbao/sdk/helper/consts"
 
 	"golang.org/x/exp/slices"
 )

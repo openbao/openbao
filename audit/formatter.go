@@ -7,7 +7,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Formatter is an interface that is responsible for formatting a

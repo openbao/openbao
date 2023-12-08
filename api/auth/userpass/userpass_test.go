@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 )
 
 // testHTTPServer creates a test HTTP server that handles requests until

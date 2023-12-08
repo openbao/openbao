@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/lf-edge/openbao/helper/testhelpers/cassandra"
-	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/lf-edge/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/helper/testhelpers/cassandra"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 	"github.com/stretchr/testify/require"
 )
 

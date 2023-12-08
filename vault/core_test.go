@@ -13,17 +13,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/command/server"
+	"github.com/openbao/openbao/command/server"
 
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	logicalDb "github.com/lf-edge/openbao/builtin/logical/database"
+	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 
-	"github.com/lf-edge/openbao/builtin/plugin"
+	"github.com/openbao/openbao/builtin/plugin"
 
-	"github.com/lf-edge/openbao/builtin/audit/syslog"
+	"github.com/openbao/openbao/builtin/audit/syslog"
 
-	"github.com/lf-edge/openbao/builtin/audit/file"
-	"github.com/lf-edge/openbao/builtin/audit/socket"
+	"github.com/openbao/openbao/builtin/audit/file"
+	"github.com/openbao/openbao/builtin/audit/socket"
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
@@ -31,17 +31,17 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/lf-edge/openbao/audit"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/testhelpers/corehelpers"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/sdk/physical"
-	"github.com/lf-edge/openbao/sdk/physical/inmem"
-	"github.com/lf-edge/openbao/version"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/version"
 	"github.com/sasha-s/go-deadlock"
 )
 

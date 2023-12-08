@@ -27,11 +27,11 @@ import (
 	"github.com/axiomhq/hyperloglog"
 	"github.com/go-test/deep"
 	"github.com/golang/protobuf/proto"
-	"github.com/lf-edge/openbao/helper/constants"
-	"github.com/lf-edge/openbao/helper/namespace"
-	"github.com/lf-edge/openbao/helper/timeutil"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault/activity"
+	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/timeutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault/activity"
 	"github.com/mitchellh/mapstructure"
 )
 

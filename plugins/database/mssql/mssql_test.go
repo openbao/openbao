@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	mssqlhelper "github.com/lf-edge/openbao/helper/testhelpers/mssql"
-	"github.com/lf-edge/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/lf-edge/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/lf-edge/openbao/sdk/helper/dbtxn"
+	mssqlhelper "github.com/openbao/openbao/helper/testhelpers/mssql"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/helper/dbtxn"
 	"github.com/stretchr/testify/assert"
 )
 

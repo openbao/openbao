@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/lf-edge/openbao/command/server"
-	"github.com/lf-edge/openbao/internalshared/configutil"
-	"github.com/lf-edge/openbao/internalshared/listenerutil"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 )
 
 type ListenerBundle struct {

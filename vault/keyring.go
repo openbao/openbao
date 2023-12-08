@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 const (

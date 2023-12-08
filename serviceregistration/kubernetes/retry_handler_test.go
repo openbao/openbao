@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	sr "github.com/lf-edge/openbao/serviceregistration"
-	"github.com/lf-edge/openbao/serviceregistration/kubernetes/client"
-	kubetest "github.com/lf-edge/openbao/serviceregistration/kubernetes/testing"
+	sr "github.com/openbao/openbao/serviceregistration"
+	"github.com/openbao/openbao/serviceregistration/kubernetes/client"
+	kubetest "github.com/openbao/openbao/serviceregistration/kubernetes/testing"
 )
 
 func TestRetryHandlerSimple(t *testing.T) {

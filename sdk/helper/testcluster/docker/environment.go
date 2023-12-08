@@ -36,10 +36,10 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/api"
-	dockhelper "github.com/lf-edge/openbao/sdk/helper/docker"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/api"
+	dockhelper "github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
 	uberAtomic "go.uber.org/atomic"
 	"golang.org/x/net/http2"
 )
@@ -1144,8 +1144,8 @@ COPY vault /bin/vault
 - run the test container like
     docker run --rm -it --network testvault \
       -v /var/run/docker.sock.raw:/var/run/docker.sock \
-      -v $(pwd):/home/circleci/go/src/github.com/lf-edge/openbao/ \
-      -w /home/circleci/go/src/github.com/lf-edge/openbao/ \
+      -v $(pwd):/home/circleci/go/src/github.com/openbao/openbao/ \
+      -w /home/circleci/go/src/github.com/openbao/openbao/ \
       "docker.mirror.hashicorp.services/cimg/go:1.19.2" /bin/bash
 - in the container you may need to chown/chmod /var/run/docker.sock; use `docker ps`
   to test if it's working

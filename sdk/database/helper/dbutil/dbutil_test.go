@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lf-edge/openbao/sdk/database/dbplugin"
+	"github.com/openbao/openbao/sdk/database/dbplugin"
 )
 
 func TestStatementCompatibilityHelper(t *testing.T) {

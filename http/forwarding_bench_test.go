@@ -13,13 +13,13 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/builtin/logical/transit"
-	"github.com/lf-edge/openbao/helper/benchhelpers"
-	"github.com/lf-edge/openbao/helper/forwarding"
-	"github.com/lf-edge/openbao/sdk/helper/consts"
-	"github.com/lf-edge/openbao/sdk/helper/logging"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/helper/benchhelpers"
+	"github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
 )
 

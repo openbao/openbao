@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 // NewLoginMFAPriorityQueue initializes the internal data structures and returns a new

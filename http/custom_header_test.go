@@ -6,7 +6,7 @@ package http
 import (
 	"testing"
 
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 var defaultCustomHeaders = map[string]string{

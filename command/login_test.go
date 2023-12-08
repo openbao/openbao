@@ -12,12 +12,12 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/lf-edge/openbao/api"
-	credToken "github.com/lf-edge/openbao/builtin/credential/token"
-	credUserpass "github.com/lf-edge/openbao/builtin/credential/userpass"
-	"github.com/lf-edge/openbao/command/token"
-	"github.com/lf-edge/openbao/helper/testhelpers"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	credToken "github.com/openbao/openbao/builtin/credential/token"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/command/token"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/vault"
 )
 
 // minTokenLengthExternal is the minimum size of SSC

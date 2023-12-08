@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/lf-edge/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/sdk/helper/wrapping"
 )
 
 const (

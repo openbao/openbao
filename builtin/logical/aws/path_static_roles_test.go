@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lf-edge/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/queue"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hashicorp/go-secure-stdlib/awsutil"
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // TestStaticRolesValidation verifies that valid requests pass validation and that invalid requests fail validation.

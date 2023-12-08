@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // BarrierView wraps a SecurityBarrier and ensures all access is automatically

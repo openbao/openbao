@@ -21,7 +21,7 @@ import (
 	"github.com/joyent/triton-go/authentication"
 	"github.com/joyent/triton-go/errors"
 	"github.com/joyent/triton-go/storage"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const mantaDefaultRootStore = "/stor"

@@ -13,7 +13,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/lf-edge/openbao/internal"
+	"github.com/openbao/openbao/internal"
 )
 
 func init() {

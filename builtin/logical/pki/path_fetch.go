@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lf-edge/openbao/helper/constants"
+	"github.com/openbao/openbao/helper/constants"
 
-	"github.com/lf-edge/openbao/sdk/framework"
-	"github.com/lf-edge/openbao/sdk/helper/errutil"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var pathFetchReadSchema = map[int][]framework.Response{

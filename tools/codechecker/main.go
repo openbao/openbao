@@ -4,8 +4,8 @@
 package main
 
 import (
-	"github.com/lf-edge/openbao/tools/codechecker/pkg/godoctests"
-	"github.com/lf-edge/openbao/tools/codechecker/pkg/gonilnilfunctions"
+	"github.com/openbao/openbao/tools/codechecker/pkg/godoctests"
+	"github.com/openbao/openbao/tools/codechecker/pkg/gonilnilfunctions"
 	"golang.org/x/tools/go/analysis/multichecker"
 )
 

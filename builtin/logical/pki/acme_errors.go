@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/lf-edge/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Error prefix; see RFC 8555 Section 6.7. Errors.

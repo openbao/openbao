@@ -7,14 +7,14 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/api"
-	vaulthttp "github.com/lf-edge/openbao/http"
-	"github.com/lf-edge/openbao/sdk/logical"
-	"github.com/lf-edge/openbao/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 // Tests the regression in
-// https://github.com/lf-edge/openbao/pull/6920
+// https://github.com/openbao/openbao/pull/6920
 func TestRecoverFromPanic(t *testing.T) {
 	logger := hclog.New(nil)
 	coreConfig := &vault.CoreConfig{

@@ -17,8 +17,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	"github.com/oracle/oci-go-sdk/common"
 	ociAuth "github.com/oracle/oci-go-sdk/common/auth"
 )

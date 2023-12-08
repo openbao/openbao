@@ -16,7 +16,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lf-edge/openbao/api"
+	"github.com/openbao/openbao/api"
 
 	"github.com/google/tink/go/kwp/subtle"
 

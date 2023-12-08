@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 // ErrReadOnly is returned when a backend does not support

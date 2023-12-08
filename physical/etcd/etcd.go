@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/lf-edge/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 	"go.etcd.io/etcd/client/v2"
 )
 

@@ -2,7 +2,7 @@
 
 ----
 
-**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in Vault, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](openbao-security@lists.lfedge.org).
+**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](openbao-security@lists.lfedge.org).
 
 ----
 
@@ -54,7 +54,7 @@ Documentation, Getting Started, and Certification Exams
 
 <!-- Documentation is available on the [OpenBao website](https://www.openbao.org/docs/). -->
 
-Developing Vault
+Developing OpenBao
 --------------------
 
 If you wish to work on OpenBao itself or any of its built-in systems, you'll
@@ -82,7 +82,7 @@ $ bin/bao
 ...
 ```
 
-To compile a development version of Vault with the UI, run `make static-dist dev-ui`. This will
+To compile a development version of OpenBao with the UI, run `make static-dist dev-ui`. This will
 put the OpenBao binary in the `bin` and `$GOPATH/bin` folders:
 
 ```sh

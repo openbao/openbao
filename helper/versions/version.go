@@ -10,8 +10,8 @@ import (
 	"sync"
 
 	semver "github.com/hashicorp/go-version"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/version"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/version"
 )
 
 const (
@@ -50,7 +50,7 @@ func GetBuiltinVersion(pluginType consts.PluginType, pluginName string) string {
 		// Repos use "secrets", pluginType.String() is "secret".
 		t = "secrets"
 	}
-	pluginModulePath := fmt.Sprintf("github.com/hashicorp/vault-plugin-%s-%s", t, pluginName)
+	pluginModulePath := fmt.Sprintf("github.com/openbao/openbao-plugin-%s-%s", t, pluginName)
 
 	for _, dep := range buildInfo.Deps {
 		if dep.Path == pluginModulePath {

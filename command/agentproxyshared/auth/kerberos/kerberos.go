@@ -11,10 +11,10 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	kerberos "github.com/hashicorp/vault-plugin-auth-kerberos"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
 	"github.com/jcmturner/gokrb5/v8/spnego"
+	kerberos "github.com/openbao/openbao-plugin-auth-kerberos"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 type kerberosMethod struct {

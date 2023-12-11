@@ -15,9 +15,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, error) {
@@ -143,7 +143,7 @@ func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, err
 	default:
 		// Ensure that the file can be successfully opened for writing;
 		// otherwise it will be too late to catch later without problems
-		// (ref: https://github.com/hashicorp/vault/issues/550)
+		// (ref: https://github.com/openbao/openbao/issues/550)
 		if err := b.open(); err != nil {
 			return nil, fmt.Errorf("sanity check failed; unable to open %q for writing: %w", path, err)
 		}

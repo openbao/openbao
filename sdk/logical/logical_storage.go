@@ -6,7 +6,7 @@ package logical
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 type LogicalStorage struct {

@@ -32,8 +32,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type Executor struct {

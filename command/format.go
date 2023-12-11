@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 	"github.com/ryanuber/columnize"
 )
 
@@ -301,7 +301,7 @@ func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data interface{}) {
 type TableFormatter struct{}
 
 // We don't use this due to the TableFormatter introducing a bug when the -field flag is supplied:
-// https://github.com/hashicorp/vault/commit/b24cf9a8af2190e96c614205b8cdf06d8c4b6718 .
+// https://github.com/openbao/openbao/commit/b24cf9a8af2190e96c614205b8cdf06d8c4b6718 .
 func (t TableFormatter) Format(data interface{}) ([]byte, error) {
 	return nil, nil
 }

@@ -11,9 +11,9 @@ import (
 	"sync"
 
 	gsyslog "github.com/hashicorp/go-syslog"
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func Factory(ctx context.Context, conf *audit.BackendConfig) (audit.Backend, error) {

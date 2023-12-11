@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/builtin/logical/pki/dnstest"
+	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
 
 	"github.com/stretchr/testify/require"
 )

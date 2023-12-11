@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/version"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/version"
 )
 
 func testVersionHistoryCommand(tb testing.TB) (*cli.MockUi, *VersionHistoryCommand) {

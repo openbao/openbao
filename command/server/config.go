@@ -19,13 +19,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/hashicorp/vault/helper/experiments"
-	"github.com/hashicorp/vault/helper/osutil"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/helper/experiments"
+	"github.com/openbao/openbao/helper/osutil"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/strutil"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
 )
 
 const (

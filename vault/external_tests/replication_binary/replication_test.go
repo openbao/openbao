@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/testcluster/docker"
+	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
 )
 
 // TestStandardPerfReplication_Docker tests that we can create two 3-node

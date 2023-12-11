@@ -12,10 +12,10 @@ import (
 	"os"
 	"time"
 
-	cf "github.com/hashicorp/vault-plugin-auth-cf"
-	"github.com/hashicorp/vault-plugin-auth-cf/signatures"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
+	cf "github.com/openbao/openbao-plugin-auth-cf"
+	"github.com/openbao/openbao-plugin-auth-cf/signatures"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
 type cfMethod struct {

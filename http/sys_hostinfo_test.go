@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/hostutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/helper/hostutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysHostInfo(t *testing.T) {

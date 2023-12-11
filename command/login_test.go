@@ -12,12 +12,12 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/hashicorp/vault/api"
-	credToken "github.com/hashicorp/vault/builtin/credential/token"
-	credUserpass "github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/command/token"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	credToken "github.com/openbao/openbao/builtin/credential/token"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/command/token"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/vault"
 )
 
 // minTokenLengthExternal is the minimum size of SSC

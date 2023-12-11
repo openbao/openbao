@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/hashicorp/vault/physical/raft"
+	"github.com/openbao/openbao/physical/raft"
 )
 
 const (

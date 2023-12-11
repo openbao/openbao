@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func testLeaseRenewCommand(tb testing.TB) (*cli.MockUi, *LeaseRenewCommand) {

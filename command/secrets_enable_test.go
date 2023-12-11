@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/helper/builtinplugins"
-	"github.com/hashicorp/vault/sdk/helper/consts"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/helper/builtinplugins"
+	"github.com/openbao/openbao/sdk/helper/consts"
 )
 
 // logicalBackendAdjustmentFactor is set to plus 1 for the database backend

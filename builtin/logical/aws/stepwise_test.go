@@ -8,10 +8,10 @@ import (
 	"sync"
 	"testing"
 
-	stepwise "github.com/hashicorp/vault-testing-stepwise"
-	dockerEnvironment "github.com/hashicorp/vault-testing-stepwise/environments/docker"
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/mapstructure"
+	stepwise "github.com/openbao/openbao-testing-stepwise"
+	dockerEnvironment "github.com/openbao/openbao-testing-stepwise/environments/docker"
+	"github.com/openbao/openbao/api"
 )
 
 var stepwiseSetup sync.Once

@@ -10,10 +10,10 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	raftlib "github.com/hashicorp/raft"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/vault"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/vault"
 )
 
 // ReusableStorage is a physical backend that can be re-used across

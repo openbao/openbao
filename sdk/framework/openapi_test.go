@@ -15,9 +15,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestOpenAPI_Regex(t *testing.T) {
@@ -119,7 +119,7 @@ func TestOpenAPI_ExpandPattern(t *testing.T) {
 			"roles",
 		}},
 		// Non-optional trailing slashes remain... although don't do this, it breaks HelpOperation!
-		// (Existing real examples of this pattern being fixed via https://github.com/hashicorp/vault/pull/18571)
+		// (Existing real examples of this pattern being fixed via https://github.com/openbao/openbao/pull/18571)
 		{"accessors/$", []string{
 			"accessors/",
 		}},

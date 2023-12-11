@@ -16,7 +16,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 
 	"github.com/google/tink/go/kwp/subtle"
 

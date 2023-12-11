@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin"
-	bplugin "github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin"
+	bplugin "github.com/openbao/openbao/sdk/plugin"
 )
 
 // Backend returns an instance of the backend, either as a plugin if external

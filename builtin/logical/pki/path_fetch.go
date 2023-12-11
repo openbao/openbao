@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/helper/constants"
+	"github.com/openbao/openbao/helper/constants"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var pathFetchReadSchema = map[int][]framework.Response{

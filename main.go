@@ -1,13 +1,13 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package main // import "github.com/hashicorp/vault"
+package main // import "github.com/openbao/openbao"
 
 import (
 	"os"
 
-	"github.com/hashicorp/vault/command"
-	"github.com/hashicorp/vault/internal"
+	"github.com/openbao/openbao/command"
+	"github.com/openbao/openbao/internal"
 )
 
 func init() {

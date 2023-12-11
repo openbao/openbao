@@ -12,8 +12,8 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/vault"
 )
 
 func handleSysRaftBootstrap(core *vault.Core) http.Handler {

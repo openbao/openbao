@@ -16,14 +16,14 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/builtin/credential/approle"
-	"github.com/hashicorp/vault/plugins/database/mysql"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/salt"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/builtin/credential/approle"
+	"github.com/openbao/openbao/plugins/database/mysql"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var externalPlugins = []string{"transform", "kmip", "keymgmt"}

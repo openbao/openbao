@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	semver "github.com/hashicorp/go-version"
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 	"github.com/posener/complete"
 )
 

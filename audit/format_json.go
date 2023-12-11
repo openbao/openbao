@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hashicorp/vault/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/helper/salt"
 )
 
 // JSONFormatWriter is an AuditFormatWriter implementation that structures data into

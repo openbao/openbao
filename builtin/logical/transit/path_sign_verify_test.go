@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/constants"
+	"github.com/openbao/openbao/helper/constants"
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // The outcome of processing a request includes

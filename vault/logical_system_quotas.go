@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/vault/quotas"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault/quotas"
 )
 
 // quotasPaths returns paths that enable quota management

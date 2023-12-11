@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hashicorp/vault/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/errutil"
 )
 
 func prettyIssuer(issuerIdEntryMap map[issuerID]*issuerEntry, issuer issuerID) string {

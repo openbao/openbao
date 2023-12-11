@@ -14,13 +14,13 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/helper/identity"
-	"github.com/hashicorp/vault/helper/identity/mfa"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/storagepacker"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/identity/mfa"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/storagepacker"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func entityPathFields() map[string]*framework.FieldSchema {

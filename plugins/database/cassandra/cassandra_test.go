@@ -13,9 +13,9 @@ import (
 
 	backoff "github.com/cenkalti/backoff/v3"
 	"github.com/gocql/gocql"
-	"github.com/hashicorp/vault/helper/testhelpers/cassandra"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	dbtesting "github.com/hashicorp/vault/sdk/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/helper/testhelpers/cassandra"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
 )
 
 func getCassandra(t *testing.T, protocolVersion interface{}) (*Cassandra, func()) {

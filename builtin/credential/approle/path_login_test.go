@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestAppRole_BoundCIDRLogin(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/hashicorp/vault/version"
+	"github.com/openbao/openbao/version"
 )
 
 var (

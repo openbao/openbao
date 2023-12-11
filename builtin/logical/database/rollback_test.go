@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	postgreshelper "github.com/hashicorp/vault/helper/testhelpers/postgresql"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

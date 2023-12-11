@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/timeutil"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // activityQueryPath is available in every namespace

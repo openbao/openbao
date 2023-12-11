@@ -16,8 +16,8 @@ import (
 	metrics "github.com/armon/go-metrics"
 	"github.com/gammazero/workerpool"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

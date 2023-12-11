@@ -33,11 +33,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/teststorage"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
 
-	"github.com/hashicorp/vault/helper/testhelpers"
+	"github.com/openbao/openbao/helper/testhelpers"
 
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 
 	"github.com/stretchr/testify/require"
 
@@ -45,15 +45,15 @@ import (
 	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/userpass"
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	logicaltest "github.com/hashicorp/vault/helper/testhelpers/logical"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
+	auth "github.com/openbao/openbao/api/auth/userpass"
+	"github.com/openbao/openbao/builtin/credential/userpass"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/idna"
 )
 
@@ -5101,7 +5101,7 @@ func TestBackend_ConfigCA_WithECParams(t *testing.T) {
 	// Generated key with OpenSSL:
 	// $ openssl ecparam -out p256.key -name prime256v1 -genkey
 	//
-	// Regression test for https://github.com/hashicorp/vault/issues/16667
+	// Regression test for https://github.com/openbao/openbao/issues/16667
 	resp, err := CBWrite(b, s, "config/ca", map[string]interface{}{
 		"pem_bundle": `
 -----BEGIN EC PARAMETERS-----

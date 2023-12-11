@@ -17,15 +17,15 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/builtin/plugin"
-	"github.com/hashicorp/vault/helper/experiments"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/copystructure"
+	"github.com/openbao/openbao/builtin/plugin"
+	"github.com/openbao/openbao/helper/experiments"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

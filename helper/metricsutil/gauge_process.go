@@ -11,7 +11,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/timeutil"
+	"github.com/openbao/openbao/helper/timeutil"
 )
 
 // GaugeLabelValues is one gauge in a set sharing a single key, that

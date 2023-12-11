@@ -12,8 +12,8 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestAliCloudOSSBackend(t *testing.T) {

@@ -11,9 +11,9 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/timeutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func NewTestQueryStore(t *testing.T) *PrecomputedQueryStore {

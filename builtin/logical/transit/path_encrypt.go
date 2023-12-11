@@ -12,13 +12,13 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/hashicorp/vault/helper/constants"
+	"github.com/openbao/openbao/helper/constants"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // BatchRequestItem represents a request item for batch processing
@@ -203,7 +203,7 @@ func decodeDecryptBatchRequestItems(src interface{}, dst *[]BatchRequestItem) er
 // decodeBatchRequestItems is a fast path alternative to mapstructure.Decode to decode []BatchRequestItem.
 // It aims to behave as closely possible to the original mapstructure.Decode and will return the same errors.
 // Note, however, that an error will also be returned if one of the required fields is missing.
-// https://github.com/hashicorp/vault/pull/8775/files#r437709722
+// https://github.com/openbao/openbao/pull/8775/files#r437709722
 func decodeBatchRequestItems(src interface{}, requirePlaintext bool, requireCiphertext bool, dst *[]BatchRequestItem) error {
 	if src == nil || dst == nil {
 		return nil
@@ -275,7 +275,7 @@ func decodeBatchRequestItems(src interface{}, requirePlaintext bool, requireCiph
 			} else if casted, ok := v.(int); ok {
 				(*dst)[i].KeyVersion = casted
 			} else if js, ok := v.(json.Number); ok {
-				// https://github.com/hashicorp/vault/issues/10232
+				// https://github.com/openbao/openbao/issues/10232
 				// Because API server parses json request with UseNumber=true, logical.Request.Data can include json.Number for a number field.
 				if casted, err := js.Int64(); err == nil {
 					(*dst)[i].KeyVersion = int(casted)

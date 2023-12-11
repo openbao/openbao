@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysMountConfig(t *testing.T) {

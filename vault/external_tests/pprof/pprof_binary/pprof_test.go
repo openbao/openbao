@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/testcluster"
-	"github.com/hashicorp/vault/vault/external_tests/pprof"
+	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/vault/external_tests/pprof"
 )
 
 // TestSysPprof_Exec is the same as TestSysPprof, but using a Vault binary

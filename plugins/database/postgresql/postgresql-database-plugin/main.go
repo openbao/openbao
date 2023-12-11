@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/hashicorp/vault/plugins/database/postgresql"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/plugins/database/postgresql"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
 )
 
 func main() {

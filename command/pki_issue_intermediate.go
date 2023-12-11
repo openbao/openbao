@@ -11,7 +11,7 @@ import (
 	paths "path"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 	"github.com/posener/complete"
 )
 

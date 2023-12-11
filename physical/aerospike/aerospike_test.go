@@ -11,9 +11,9 @@ import (
 
 	aero "github.com/aerospike/aerospike-client-go/v5"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestAerospikeBackend(t *testing.T) {

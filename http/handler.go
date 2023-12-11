@@ -28,14 +28,14 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/pathmanager"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
 	gziphandler "github.com/klauspost/compress/gzhttp"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 const (

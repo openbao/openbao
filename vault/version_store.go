@@ -11,9 +11,9 @@ import (
 	"time"
 
 	semver "github.com/hashicorp/go-version"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/version"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/version"
 )
 
 const (

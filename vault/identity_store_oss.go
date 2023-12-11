@@ -8,7 +8,7 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/vault/helper/identity"
+	"github.com/openbao/openbao/helper/identity"
 )
 
 func (c *Core) SendGroupUpdate(context.Context, *identity.Group) (bool, error) {

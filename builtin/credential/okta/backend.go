@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/okta/okta-sdk-golang/v2/okta"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/patrickmn/go-cache"
 )
 

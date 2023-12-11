@@ -8,8 +8,8 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type entPolicyStore struct{}

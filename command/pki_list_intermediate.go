@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 
 	"github.com/ghodss/yaml"
 	"github.com/ryanuber/columnize"

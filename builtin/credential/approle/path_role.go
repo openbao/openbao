@@ -14,14 +14,14 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/parseip"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/helper/policyutil"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/parseip"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/locksutil"
+	"github.com/openbao/openbao/sdk/helper/policyutil"
+	"github.com/openbao/openbao/sdk/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // roleStorageEntry stores all the options that are set on an role

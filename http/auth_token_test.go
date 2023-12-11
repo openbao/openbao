@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestAuthTokenCreate(t *testing.T) {

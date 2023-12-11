@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 )
 
 var errMissingStorage = errors.New("missing storage implementation: this method should not be called during plugin Setup, but only during and after Initialize")

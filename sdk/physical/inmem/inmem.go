@@ -15,7 +15,7 @@ import (
 
 	"github.com/armon/go-radix"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // Verify interfaces are satisfied

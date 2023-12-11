@@ -16,7 +16,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func getFSM(t testing.TB) (*FSM, string) {

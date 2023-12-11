@@ -4,7 +4,7 @@
 package command
 
 import (
-	"github.com/hashicorp/vault/command/config"
+	"github.com/openbao/openbao/command/config"
 )
 
 const (

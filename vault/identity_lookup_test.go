@@ -6,8 +6,8 @@ package vault
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityStore_Lookup_Entity(t *testing.T) {

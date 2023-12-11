@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/physical"
-	physInmem "github.com/hashicorp/vault/sdk/physical/inmem"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/sdk/physical"
+	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
 

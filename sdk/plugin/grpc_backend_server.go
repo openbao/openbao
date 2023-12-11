@@ -11,9 +11,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	"google.golang.org/grpc"
 )
 

@@ -12,11 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTransit_MissingPlaintext(t *testing.T) {

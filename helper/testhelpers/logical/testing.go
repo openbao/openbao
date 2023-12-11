@@ -14,14 +14,14 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	"github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/vault"
 )
 
 // TestEnvVar must be set to a non-empty value for acceptance tests to run.

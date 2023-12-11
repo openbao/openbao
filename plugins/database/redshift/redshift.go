@@ -12,12 +12,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/connutil"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/helper/dbtxn"
-	"github.com/hashicorp/vault/sdk/helper/template"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/database/helper/connutil"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/helper/dbtxn"
+	"github.com/openbao/openbao/sdk/helper/template"
 )
 
 const (

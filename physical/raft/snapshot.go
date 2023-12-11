@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	"github.com/rboyer/safeio"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/atomic"

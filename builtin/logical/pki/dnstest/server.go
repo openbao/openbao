@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	"github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 

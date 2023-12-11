@@ -16,9 +16,9 @@ import (
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers/consul"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/helper/testhelpers/consul"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 	"github.com/stretchr/testify/require"
 )
 

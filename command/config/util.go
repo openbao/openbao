@@ -4,7 +4,7 @@
 package config
 
 import (
-	"github.com/hashicorp/vault/command/token"
+	"github.com/openbao/openbao/command/token"
 )
 
 // DefaultTokenHelper returns the token helper that is configured for Vault.

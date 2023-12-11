@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const WrappingKeyName = "wrapping-key"

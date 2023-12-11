@@ -15,14 +15,14 @@ import (
 
 	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/physical"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/vault/vault/seal"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 const (

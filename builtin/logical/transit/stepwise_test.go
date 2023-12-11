@@ -9,11 +9,11 @@ import (
 	"os"
 	"testing"
 
-	stepwise "github.com/hashicorp/vault-testing-stepwise"
-	dockerEnvironment "github.com/hashicorp/vault-testing-stepwise/environments/docker"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
 	"github.com/mitchellh/mapstructure"
+	stepwise "github.com/openbao/openbao-testing-stepwise"
+	dockerEnvironment "github.com/openbao/openbao-testing-stepwise/environments/docker"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
 )
 
 // TestBackend_basic_docker is an example test using the Docker Environment

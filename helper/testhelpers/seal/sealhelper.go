@@ -8,16 +8,16 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/logical/transit"
-	"github.com/hashicorp/vault/helper/testhelpers/teststorage"
-	"github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/seal"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/builtin/logical/transit"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
+	"github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 type TransitSealServer struct {

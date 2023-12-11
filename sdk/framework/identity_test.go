@@ -6,7 +6,7 @@ package framework
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityTemplating(t *testing.T) {

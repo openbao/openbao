@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/storage"
-	"github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/docker"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -20,7 +20,7 @@ import (
 // In principle we don't need docker for fake-gcs-server, we could run it in
 // memory instead.  However I had an error trying to use it:
 //  go: finding module for package google.golang.org/grpc/naming
-//  github.com/hashicorp/vault/vault imports
+//  github.com/openbao/openbao/vault imports
 //        google.golang.org/grpc/naming: module google.golang.org/grpc@latest found (v1.32.0), but does not contain package google.golang.org/grpc/naming
 // so it seemed easiest to go this route.  Vault already has too many deps anyway.
 

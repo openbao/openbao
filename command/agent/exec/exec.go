@@ -15,10 +15,10 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"golang.org/x/exp/slices"
 
-	"github.com/hashicorp/vault/command/agent/config"
-	"github.com/hashicorp/vault/command/agent/internal/ctmanager"
-	"github.com/hashicorp/vault/helper/useragent"
-	"github.com/hashicorp/vault/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/command/agent/config"
+	"github.com/openbao/openbao/command/agent/internal/ctmanager"
+	"github.com/openbao/openbao/helper/useragent"
+	"github.com/openbao/openbao/sdk/helper/pointerutil"
 )
 
 type childProcessState uint8

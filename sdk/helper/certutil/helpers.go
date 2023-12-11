@@ -29,9 +29,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"golang.org/x/crypto/cryptobyte"
 	cbasn1 "golang.org/x/crypto/cryptobyte/asn1"
 )

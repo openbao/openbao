@@ -11,17 +11,17 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	vaultoci "github.com/hashicorp/vault-plugin-auth-oci"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	agentoci "github.com/hashicorp/vault/command/agentproxyshared/auth/oci"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink/file"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	vaultoci "github.com/openbao/openbao-plugin-auth-oci"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	agentoci "github.com/openbao/openbao/command/agentproxyshared/auth/oci"
+	"github.com/openbao/openbao/command/agentproxyshared/sink"
+	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
+	"github.com/openbao/openbao/helper/testhelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 const (

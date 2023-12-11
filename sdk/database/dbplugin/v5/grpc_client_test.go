@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5/proto"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5/proto"
 	"google.golang.org/grpc"
 )
 

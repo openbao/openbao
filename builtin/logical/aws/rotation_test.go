@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/hashicorp/go-secure-stdlib/awsutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 // TestRotation verifies that the rotation code and priority queue correctly selects and rotates credentials

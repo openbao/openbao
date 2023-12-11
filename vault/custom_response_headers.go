@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type ListenerCustomHeaders struct {

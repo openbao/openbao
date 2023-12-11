@@ -6,8 +6,8 @@ package http
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestInFlightRequestUnauthenticated(t *testing.T) {

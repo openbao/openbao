@@ -6,8 +6,8 @@ package plugin
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	"google.golang.org/grpc"
 )
 

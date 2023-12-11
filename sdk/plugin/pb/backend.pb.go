@@ -10,7 +10,7 @@
 package pb
 
 import (
-	logical "github.com/hashicorp/vault/sdk/logical"
+	logical "github.com/openbao/openbao/sdk/logical"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"

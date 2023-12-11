@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/hashicorp/vault/helper/forwarding"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/vault/replication"
+	"github.com/openbao/openbao/helper/forwarding"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/vault/replication"
 )
 
 type forwardedRequestRPCServer struct {

@@ -11,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5/proto"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5/proto"
+	"github.com/openbao/openbao/sdk/helper/pluginutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"

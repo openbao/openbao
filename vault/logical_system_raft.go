@@ -15,13 +15,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/helper/constants"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // raftStoragePaths returns paths for use when raft is the storage mechanism.

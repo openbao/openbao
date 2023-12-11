@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var (

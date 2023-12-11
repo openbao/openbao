@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	"github.com/hashicorp/vault/helper/versions"
-	"github.com/hashicorp/vault/sdk/helper/consts"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/openbao/openbao/helper/versions"
+	"github.com/openbao/openbao/sdk/helper/consts"
 )
 
 func testPluginInfoCommand(tb testing.TB) (*cli.MockUi, *PluginInfoCommand) {

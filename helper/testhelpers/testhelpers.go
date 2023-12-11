@@ -19,13 +19,13 @@ import (
 
 	"github.com/armon/go-metrics"
 	raftlib "github.com/hashicorp/raft"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/helper/xor"
-	"github.com/hashicorp/vault/vault"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/vault"
 )
 
 type GenerateRootKind int

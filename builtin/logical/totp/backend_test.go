@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	logicaltest "github.com/hashicorp/vault/helper/testhelpers/logical"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/helper/namespace"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 )

@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault/helper/versions"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/openbao/openbao/helper/versions"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/queue"
 )
 
 func pathRotateRootCredentials(b *databaseBackend) []*framework.Path {

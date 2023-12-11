@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/api"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestBackend_CA_Steps(t *testing.T) {

@@ -12,9 +12,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/helper/template"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/helper/template"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"

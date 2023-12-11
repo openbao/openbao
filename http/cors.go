@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 var allowedMethods = []string{

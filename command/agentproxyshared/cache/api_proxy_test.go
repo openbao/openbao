@@ -12,18 +12,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/useragent"
+	"github.com/openbao/openbao/helper/useragent"
 
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/builtin/credential/userpass"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/logging"
 )
 
 const policyAdmin = `

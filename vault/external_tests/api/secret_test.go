@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 func TestParseSecret(t *testing.T) {

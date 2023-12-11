@@ -19,18 +19,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"golang.org/x/crypto/acme"
 
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 
 	"github.com/armon/go-metrics"
 
-	"github.com/hashicorp/vault/api"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 
 	"github.com/stretchr/testify/require"
 )

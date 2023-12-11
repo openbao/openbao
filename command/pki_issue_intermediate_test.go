@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 func TestPKIIssueIntermediate(t *testing.T) {

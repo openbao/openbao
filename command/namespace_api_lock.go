@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/helper/namespace"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/posener/complete"
 )
 

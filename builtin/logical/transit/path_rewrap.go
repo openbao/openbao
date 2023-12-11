@@ -9,12 +9,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hashicorp/vault/helper/constants"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var ErrNonceNotAllowed = errors.New("provided nonce not allowed for this key")

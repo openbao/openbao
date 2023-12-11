@@ -8,14 +8,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/helper/versions"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/versions"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 // reloadMatchingPluginMounts reloads provided mounts, regardless of

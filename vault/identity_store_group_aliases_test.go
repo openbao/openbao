@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	credLdap "github.com/hashicorp/vault/builtin/credential/ldap"
-	credUserpass "github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/helper/identity"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/kr/pretty"
+	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {

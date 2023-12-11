@@ -4,7 +4,7 @@
 package vault
 
 import (
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func (c *Core) addBackendWriteForwardedPaths(backend logical.Backend, viewPath string) {

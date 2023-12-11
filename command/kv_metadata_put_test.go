@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func testKVMetadataPutCommand(tb testing.TB) (*cli.MockUi, *KVMetadataPutCommand) {

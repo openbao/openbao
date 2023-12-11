@@ -9,8 +9,8 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	v4 "github.com/hashicorp/vault/sdk/database/dbplugin"
+	"github.com/openbao/openbao/api"
+	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
 )
 
 const mockV4Type = "mockv4"

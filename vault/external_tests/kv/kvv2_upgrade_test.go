@@ -12,18 +12,18 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/vault"
 	"github.com/kr/pretty"
+	logicalKv "github.com/openbao/openbao-plugin-secrets-kv"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/vault"
 )
 
 // Tests the regression in
-// https://github.com/hashicorp/vault-plugin-secrets-kv/pull/31
+// https://github.com/openbao/openbao-plugin-secrets-kv/pull/31
 func TestKVv2_UpgradePaths(t *testing.T) {
 	m := new(sync.Mutex)
 	logOut := new(bytes.Buffer)

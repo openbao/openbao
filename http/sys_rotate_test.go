@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysRotate(t *testing.T) {

@@ -13,11 +13,11 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
-	v5 "github.com/hashicorp/vault/builtin/plugin/v5"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
-	bplugin "github.com/hashicorp/vault/sdk/plugin"
+	v5 "github.com/openbao/openbao/builtin/plugin/v5"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
+	bplugin "github.com/openbao/openbao/sdk/plugin"
 )
 
 var (

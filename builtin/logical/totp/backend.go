@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 	cache "github.com/patrickmn/go-cache"
 )
 

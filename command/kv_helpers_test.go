@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 // TestAddPrefixToKVPath tests the addPrefixToKVPath helper function

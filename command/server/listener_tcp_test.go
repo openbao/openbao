@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/hashicorp/vault/internalshared/configutil"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/pires/go-proxyproto"
 )
 

@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // For speed, all keys are ECDSA.

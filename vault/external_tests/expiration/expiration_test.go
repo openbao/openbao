@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/helper/namespace"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestExpiration_irrevocableLeaseCountsAPI(t *testing.T) {

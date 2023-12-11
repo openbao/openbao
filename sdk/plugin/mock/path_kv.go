@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // kvPaths is used to test CRUD and List operations. It is a simplified

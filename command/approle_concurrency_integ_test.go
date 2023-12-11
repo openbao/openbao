@@ -9,12 +9,12 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/approle"
-	credAppRole "github.com/hashicorp/vault/builtin/credential/approle"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	auth "github.com/openbao/openbao/api/auth/approle"
+	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {

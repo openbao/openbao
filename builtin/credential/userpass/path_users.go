@@ -10,9 +10,9 @@ import (
 	"time"
 
 	sockaddr "github.com/hashicorp/go-sockaddr"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/tokenutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func pathUsersList(b *backend) *framework.Path {

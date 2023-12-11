@@ -7,8 +7,8 @@ import (
 	"context"
 	"sort"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Capabilities is used to fetch the capabilities of the given token on the

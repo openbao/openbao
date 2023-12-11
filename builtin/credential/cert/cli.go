@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 )
 
 type CLIHandler struct{}

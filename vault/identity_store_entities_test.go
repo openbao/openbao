@@ -12,11 +12,11 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
-	credGithub "github.com/hashicorp/vault/builtin/credential/github"
-	"github.com/hashicorp/vault/helper/identity"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/strutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	credGithub "github.com/openbao/openbao/builtin/credential/github"
+	"github.com/openbao/openbao/helper/identity"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/strutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {

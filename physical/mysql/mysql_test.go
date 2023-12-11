@@ -11,13 +11,13 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 
 	_ "github.com/go-sql-driver/mysql"
 	mysql "github.com/go-sql-driver/mysql"
 
-	mysqlhelper "github.com/hashicorp/vault/helper/testhelpers/mysql"
+	mysqlhelper "github.com/openbao/openbao/helper/testhelpers/mysql"
 )
 
 func TestMySQLPlaintextCatch(t *testing.T) {
@@ -163,8 +163,8 @@ func TestMySQLHABackend(t *testing.T) {
 }
 
 // TestMySQLHABackend_LockFailPanic is a regression test for the panic shown in
-// https://github.com/hashicorp/vault/issues/8203 and patched in
-// https://github.com/hashicorp/vault/pull/8229
+// https://github.com/openbao/openbao/issues/8203 and patched in
+// https://github.com/openbao/openbao/pull/8229
 func TestMySQLHABackend_LockFailPanic(t *testing.T) {
 	cleanup, connURL := mysqlhelper.PrepareTestContainer(t, false, "secret")
 
@@ -255,7 +255,7 @@ func TestMySQLHABackend_LockFailPanic(t *testing.T) {
 	// using the configuration. If that connection cannot be created, there was a
 	// panic due to not returning with the connection error. Here we intentionally
 	// break the config for b2, so a new connection can't be made, which would
-	// trigger the panic shown in https://github.com/hashicorp/vault/issues/8203
+	// trigger the panic shown in https://github.com/openbao/openbao/issues/8203
 	cleanup()
 
 	stopCh2 := make(chan struct{})

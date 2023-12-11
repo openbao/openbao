@@ -19,7 +19,7 @@ import (
 	metrics "github.com/armon/go-metrics"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // CouchDBBackend allows the management of couchdb users

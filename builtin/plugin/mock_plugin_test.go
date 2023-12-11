@@ -4,7 +4,7 @@
 package plugin
 
 import (
-	_ "github.com/hashicorp/vault-plugin-mock"
+	_ "github.com/openbao/openbao-plugin-mock"
 )
 
 // This file exists to force an import of vault-plugin-mock (which itself does nothing),

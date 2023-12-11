@@ -18,11 +18,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/tlsutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/tlsutil"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/consts"
 	"golang.org/x/net/http2"
 )
 

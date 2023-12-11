@@ -11,16 +11,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/api"
-	upAuth "github.com/hashicorp/vault/api/auth/userpass"
-	"github.com/hashicorp/vault/audit"
-	"github.com/hashicorp/vault/builtin/credential/userpass"
-	"github.com/hashicorp/vault/builtin/logical/totp"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/helper/testhelpers/corehelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	upAuth "github.com/openbao/openbao/api/auth/userpass"
+	"github.com/openbao/openbao/audit"
+	"github.com/openbao/openbao/builtin/credential/userpass"
+	"github.com/openbao/openbao/builtin/logical/totp"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func doTwoPhaseLogin(t *testing.T, client *api.Client, totpCodePath, methodID, username string) {

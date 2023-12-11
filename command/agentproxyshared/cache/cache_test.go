@@ -17,16 +17,16 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/cache/cachememdb"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink/mock"
-	"github.com/hashicorp/vault/helper/namespace"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	kv "github.com/openbao/openbao-plugin-secrets-kv"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
+	"github.com/openbao/openbao/command/agentproxyshared/sink/mock"
+	"github.com/openbao/openbao/helper/namespace"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 func tokenRevocationValidation(t *testing.T, sampleSpace map[string]string, expected map[string]string, leaseCache *LeaseCache) {

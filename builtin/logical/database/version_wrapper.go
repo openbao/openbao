@@ -9,11 +9,11 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault/helper/versions"
-	v4 "github.com/hashicorp/vault/sdk/database/dbplugin"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/versions"
+	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // DEPRECATED: Don't use this. It's too inflexible, nearly impossible to use

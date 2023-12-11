@@ -7,7 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/hashicorp/vault/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/helper/xor"
 )
 
 // EncodeToken gets a token and an OTP and encodes the token.

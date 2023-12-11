@@ -6,7 +6,7 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/vault/helper/namespace"
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 var NamespaceByID func(context.Context, string, *Core) (*namespace.Namespace, error) = namespaceByID

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault/physical/raft"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/physical/raft"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

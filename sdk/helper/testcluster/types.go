@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 type VaultClusterNode interface {

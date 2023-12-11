@@ -10,8 +10,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/hashicorp/go-plugin"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 )
 
 func TestStorage_GRPC_ReturnsErrIfStorageNil(t *testing.T) {

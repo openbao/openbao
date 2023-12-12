@@ -112,7 +112,7 @@ $ make test TEST=./vault
 ### Importing Vault
 
 This repository publishes two libraries that may be imported by other projects:
-`github.com/openboa/openbao/api` and `github.com/openbao/openbao/sdk`.
+`github.com/openbao/openbao/api` and `github.com/openbao/openbao/sdk`.
 
 Note that this repository also contains Vault (the product), and as with most Go
 projects, Vault uses Go modules to manage its dependencies. The mechanism to do

@@ -17,8 +17,10 @@ import (
 )
 
 var (
+	// Add your test values in these vars when manually running these tests.
 	org_name  = "<okta org name>"
 	api_token = "<okta api token>"
+	username  = "<okta username>"
 )
 
 var identityOktaMFACoreConfig = &vault.CoreConfig{
@@ -86,7 +88,7 @@ path "secret/foo" {
 		"name":     "test-entity",
 		"policies": "mfa_policy",
 		"metadata": map[string]string{
-			"email": "<okta username>",
+			"email": username,
 		},
 	})
 	if err != nil {
@@ -200,7 +202,7 @@ func mfaGenerateOktaLoginMFATest(client *api.Client) error {
 	secret, err := client.Logical().Write("identity/entity", map[string]interface{}{
 		"name": "test-entity",
 		"metadata": map[string]string{
-			"email": "<okta username>",
+			"email": username,
 		},
 	})
 	if err != nil {

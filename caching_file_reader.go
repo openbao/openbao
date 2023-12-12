@@ -4,7 +4,7 @@
 package kubeauth
 
 import (
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 )
@@ -58,7 +58,7 @@ func (r *cachingFileReader) ReadFile() (string, error) {
 	r.l.Lock()
 	defer r.l.Unlock()
 
-	buf, err := ioutil.ReadFile(r.path)
+	buf, err := os.ReadFile(r.path)
 	if err != nil {
 		return "", err
 	}

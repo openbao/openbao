@@ -30,20 +30,35 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	matchLabelsKeyValue = `{
+	"matchLabels": {
+		"key": "value"
+	}
+}`
+	mismatchLabelsKeyValue = `{
+	"matchLabels": {
+		"foo": "bar"
+	}
+}`
+)
+
 var (
-	testNamespace   = "default"
-	testName        = "vault-auth"
-	testUID         = "d77f89bc-9055-11e7-a068-0800276d99bf"
-	testMockFactory = mockTokenReviewFactory(testName, testNamespace, testUID)
+	testNamespace                    = "default"
+	testName                         = "vault-auth"
+	testUID                          = "d77f89bc-9055-11e7-a068-0800276d99bf"
+	testMockTokenReviewFactory       = mockTokenReviewFactory(testName, testNamespace, testUID)
+	testMockNamespaceValidateFactory = mockNamespaceValidateFactory(
+		map[string]string{"key": "value", "other": "label"})
 
 	testGlobbedNamespace = "def*"
 	testGlobbedName      = "vault-*"
 
 	// Projected ServiceAccount tokens have name "default", and require a
 	// different mock token reviewer
-	testProjectedName        = "default"
-	testProjectedUID         = "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
-	testProjectedMockFactory = mockTokenReviewFactory(testProjectedName, testNamespace, testProjectedUID)
+	testProjectedName                   = "default"
+	testProjectedUID                    = "77c81ad7-1bea-4d94-9ca5-f5d7f3632331"
+	testProjectedMockTokenReviewFactory = mockTokenReviewFactory(testProjectedName, testNamespace, testProjectedUID)
 
 	testDefaultPEMs      []string
 	ecdsaPrivateKey      *ecdsa.PrivateKey
@@ -210,18 +225,20 @@ func jwtSign(header string, payload string, privateKey *ecdsa.PrivateKey) string
 }
 
 type testBackendConfig struct {
-	pems            []string
-	saName          string
-	saNamespace     string
-	aliasNameSource string
+	pems                []string
+	saName              string
+	saNamespace         string
+	saNamespaceSelector string
+	aliasNameSource     string
 }
 
 func defaultTestBackendConfig() *testBackendConfig {
 	return &testBackendConfig{
-		pems:            testDefaultPEMs,
-		saName:          testName,
-		saNamespace:     testNamespace,
-		aliasNameSource: aliasNameSourceDefault,
+		pems:                testDefaultPEMs,
+		saName:              testName,
+		saNamespace:         testNamespace,
+		saNamespaceSelector: "",
+		aliasNameSource:     aliasNameSourceDefault,
 	}
 }
 
@@ -248,14 +265,15 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 	}
 
 	data = map[string]interface{}{
-		"bound_service_account_names":      config.saName,
-		"bound_service_account_namespaces": config.saNamespace,
-		"policies":                         "test",
-		"period":                           "3s",
-		"ttl":                              "1s",
-		"num_uses":                         12,
-		"max_ttl":                          "5s",
-		"alias_name_source":                config.aliasNameSource,
+		"bound_service_account_names":              config.saName,
+		"bound_service_account_namespaces":         config.saNamespace,
+		"bound_service_account_namespace_selector": config.saNamespaceSelector,
+		"policies":          "test",
+		"period":            "3s",
+		"ttl":               "1s",
+		"num_uses":          12,
+		"max_ttl":           "5s",
+		"alias_name_source": config.aliasNameSource,
 	}
 
 	req = &logical.Request{
@@ -270,7 +288,8 @@ func setupBackend(t *testing.T, config *testBackendConfig) (logical.Backend, log
 		t.Fatalf("err:%s resp:%#v\n", err, resp)
 	}
 
-	b.(*kubeAuthBackend).reviewFactory = testMockFactory
+	b.(*kubeAuthBackend).reviewFactory = testMockTokenReviewFactory
+	b.(*kubeAuthBackend).namespaceValidatorFactory = testMockNamespaceValidateFactory
 	return b, storage
 }
 
@@ -758,6 +777,68 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 	}
 }
 
+func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
+	testCases := map[string]struct {
+		saNamespaceSelector string
+		errExpected         bool
+		expectedErrCode     int
+	}{
+		"matchNamespaceSelector": {
+			saNamespaceSelector: matchLabelsKeyValue,
+		},
+		"mismatchNamespaceSelector": {
+			saNamespaceSelector: mismatchLabelsKeyValue,
+			errExpected:         true,
+			expectedErrCode:     http.StatusForbidden,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			config := defaultTestBackendConfig()
+			config.saName = "*"
+			config.saNamespace = "non-default"
+			config.saNamespaceSelector = tc.saNamespaceSelector
+			b, storage := setupBackend(t, config)
+
+			data := map[string]interface{}{
+				"role": "plugin-test",
+				"jwt":  jwtGoodDataToken,
+			}
+
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "login",
+				Storage:   storage,
+				Data:      data,
+				Connection: &logical.Connection{
+					RemoteAddr: "127.0.0.1",
+				},
+			}
+
+			resp, err := b.HandleRequest(context.Background(), req)
+			if tc.errExpected {
+				var actual error
+				if err != nil {
+					actual = err
+				} else if resp != nil && resp.IsError() {
+					actual = resp.Error()
+				} else {
+					t.Fatalf("expected error")
+				}
+
+				if tc.expectedErrCode != 0 {
+					requireErrorCode(t, actual, tc.expectedErrCode)
+				}
+			} else {
+				if err != nil || (resp != nil && resp.IsError()) {
+					t.Fatalf("err:%s resp:%#v\n", err, resp)
+				}
+			}
+		})
+	}
+}
+
 func TestAliasLookAhead(t *testing.T) {
 	testCases := map[string]struct {
 		role              string
@@ -1079,29 +1160,29 @@ func TestLoginProjectedToken(t *testing.T) {
 		"normal": {
 			role:        "plugin-test",
 			jwt:         jwtGoodDataToken,
-			tokenReview: testMockFactory,
+			tokenReview: testMockTokenReviewFactory,
 		},
 		"fail": {
 			role:        "plugin-test-x",
 			jwt:         jwtGoodDataToken,
-			tokenReview: testMockFactory,
+			tokenReview: testMockTokenReviewFactory,
 			e:           roleNameError,
 		},
 		"projected-token": {
 			role:        "plugin-test",
 			jwt:         jwtProjectedData,
-			tokenReview: testProjectedMockFactory,
+			tokenReview: testProjectedMockTokenReviewFactory,
 		},
 		"projected-token-expired": {
 			role:        "plugin-test",
 			jwt:         jwtProjectedDataExpired,
-			tokenReview: testProjectedMockFactory,
+			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           errors.New("invalid expiration time (exp) claim: token is expired"),
 		},
 		"projected-token-invalid-role": {
 			role:        "plugin-test-x",
 			jwt:         jwtProjectedData,
-			tokenReview: testProjectedMockFactory,
+			tokenReview: testProjectedMockTokenReviewFactory,
 			e:           roleNameError,
 		},
 	}

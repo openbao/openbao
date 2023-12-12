@@ -198,7 +198,7 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 			for idx, config := range tt.configs {
 				t.Run(fmt.Sprintf("config-%d", idx), func(t *testing.T) {
 					if config.localCACert != "" {
-						if err := os.WriteFile(localFile, []byte(config.localCACert), 0600); err != nil {
+						if err := os.WriteFile(localFile, []byte(config.localCACert), 0o600); err != nil {
 							t.Fatalf("failed to write local file %q", localFile)
 						}
 						t.Cleanup(func() {
@@ -324,7 +324,6 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 			err := b.initialize(ctx, tt.req)
 			if tt.wantErr && err == nil {
 				t.Errorf("initialize() error = %v, wantErr %v", err, tt.wantErr)
-
 			}
 
 			if !reflect.DeepEqual(err, tt.expectErr) {
@@ -442,7 +441,6 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 			err := b.runTLSConfigUpdater(ctx, tt.storage, tt.horizon)
 			if tt.wantErr && err == nil {
 				t.Errorf("runTLSConfigUpdater() error = %v, wantErr %v", err, tt.wantErr)
-
 			}
 
 			if !reflect.DeepEqual(err, tt.expectErr) {
@@ -506,7 +504,6 @@ func assertTLSConfigEquals(t *testing.T, actual, expected *tls.Config) {
 		t.Errorf("updateTLSConfig() actual MinVersion = %v, expected MinVersion %v",
 			actual.MinVersion, expected.MinVersion)
 	}
-
 }
 
 func assertValidTransport(t *testing.T, b *kubeAuthBackend, expected *tls.Config) {

@@ -124,7 +124,13 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		return nil, errors.New("could not load backend configuration")
 	}
 
-	serviceAccount, err := b.parseAndValidateJWT(jwtStr, role, config)
+	client, err := b.getHTTPClient()
+	if err != nil {
+		b.Logger().Error("Failed to get the HTTP client", "err", err)
+		return nil, logical.ErrUnrecoverable
+	}
+
+	serviceAccount, err := b.parseAndValidateJWT(ctx, client, jwtStr, role, config)
 	if err != nil {
 		if err == jose.ErrCryptoFailure || strings.Contains(err.Error(), "verifying token signature") {
 			b.Logger().Debug(`login unauthorized`, "err", err)
@@ -136,12 +142,6 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 	aliasName, err := b.getAliasName(role, serviceAccount)
 	if err != nil {
 		return nil, err
-	}
-
-	client, err := b.getHTTPClient()
-	if err != nil {
-		b.Logger().Error(`Failed to get the HTTP client`, "err", err)
-		return nil, logical.ErrUnrecoverable
 	}
 
 	// look up the JWT token in the kubernetes API
@@ -247,7 +247,13 @@ func (b *kubeAuthBackend) aliasLookahead(ctx context.Context, req *logical.Reque
 	}
 	// validation of the JWT against the provided role ensures alias look ahead requests
 	// are authentic.
-	sa, err := b.parseAndValidateJWT(jwtStr, role, config)
+	client, err := b.getHTTPClient()
+	if err != nil {
+		b.Logger().Error("Failed to get the HTTP client", "err", err)
+		return nil, logical.ErrUnrecoverable
+	}
+
+	sa, err := b.parseAndValidateJWT(ctx, client, jwtStr, role, config)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +288,8 @@ func (keySet DontVerifySignature) VerifySignature(_ context.Context, token strin
 }
 
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
-func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
+func (b *kubeAuthBackend) parseAndValidateJWT(ctx context.Context, client *http.Client, jwtStr string,
+	role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
 	expected := capjwt.Expected{
 		SigningAlgorithms: supportedJwtAlgs,
 	}
@@ -332,19 +339,35 @@ func (b *kubeAuthBackend) parseAndValidateJWT(jwtStr string, role *roleStorageEn
 		return nil, err
 	}
 
-	// verify the namespace is allowed
-	if len(role.ServiceAccountNamespaces) > 1 || role.ServiceAccountNamespaces[0] != "*" {
-		if !strutil.StrListContainsGlob(role.ServiceAccountNamespaces, sa.namespace()) {
-			return nil, logical.CodedError(http.StatusForbidden, "namespace not authorized")
-		}
-	}
-
 	// verify the service account name is allowed
 	if len(role.ServiceAccountNames) > 1 || role.ServiceAccountNames[0] != "*" {
 		if !strutil.StrListContainsGlob(role.ServiceAccountNames, sa.name()) {
 			return nil, logical.CodedError(http.StatusForbidden,
 				fmt.Sprintf("service account name not authorized"))
 		}
+	}
+
+	// verify the namespace is allowed
+	var allowed bool
+	if len(role.ServiceAccountNamespaces) > 0 {
+		if role.ServiceAccountNamespaces[0] == "*" || strutil.StrListContainsGlob(role.ServiceAccountNamespaces, sa.namespace()) {
+			allowed = true
+		}
+	}
+
+	// verify the namespace selector matches the namespace
+	if !allowed && role.ServiceAccountNamespaceSelector != "" {
+		allowed, err = b.namespaceValidatorFactory(config).validateLabels(ctx,
+			client, sa.namespace(), role.ServiceAccountNamespaceSelector)
+	}
+
+	if !allowed {
+		errMsg := "namespace not authorized"
+		if err != nil {
+			errMsg = fmt.Sprintf("%s err=%s", errMsg, err)
+		}
+		codedErr := logical.CodedError(http.StatusForbidden, errMsg)
+		return nil, codedErr
 	}
 
 	// If we don't have any public keys to verify, return the sa and end early.

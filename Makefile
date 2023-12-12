@@ -51,6 +51,7 @@ vault-image:
 setup-integration-test: teardown-integration-test vault-image
 	kind --name $(KIND_CLUSTER_NAME) load docker-image hashicorp/vault:dev
 	kubectl --context="kind-$(KIND_CLUSTER_NAME)" create namespace test
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" label namespaces test target=integration-test other=label
 	helm upgrade --install vault vault --repo https://helm.releases.hashicorp.com --version=0.25.0 \
 		--kube-context="kind-$(KIND_CLUSTER_NAME)" \
 		--wait --timeout=5m \
@@ -63,6 +64,7 @@ setup-integration-test: teardown-integration-test vault-image
 		--set server.extraArgs="-dev-plugin-dir=/vault/plugin_directory"
 	kubectl --context="kind-$(KIND_CLUSTER_NAME)" apply --namespace=test -f integrationtest/vault/tokenReviewerServiceAccount.yaml
 	kubectl --context="kind-$(KIND_CLUSTER_NAME)" apply -f integrationtest/vault/tokenReviewerBinding.yaml
+	kubectl --context="kind-$(KIND_CLUSTER_NAME)" apply -f integrationtest/vault/namespaceControllerBinding.yaml
 	kubectl --context="kind-$(KIND_CLUSTER_NAME)" wait --namespace=test --for=condition=Ready --timeout=5m pod -l app.kubernetes.io/name=vault
 
 .PHONY: teardown-integration-test

@@ -18,6 +18,29 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+const (
+	validJSONSelector = `{
+	"matchLabels": {
+		"stage": "prod",
+		"app": "vault"
+	}
+}`
+
+	invalidJSONSelector = `{
+	"matchLabels":
+		"stage"
+}`
+
+	validYAMLSelector = `matchLabels:
+  stage: prod
+  app: vault
+`
+	invalidYAMLSelector = `matchLabels:
+- stage: prod
+- app: vault
+`
+)
+
 func getBackend(t *testing.T) (logical.Backend, logical.Storage) {
 	defaultLeaseTTLVal := time.Hour * 12
 	maxLeaseTTLVal := time.Hour * 24
@@ -68,15 +91,16 @@ func TestPath_Create(t *testing.T) {
 					TokenNumUses:    12,
 					TokenBoundCIDRs: nil,
 				},
-				Policies:                 []string{"test"},
-				Period:                   3 * time.Second,
-				ServiceAccountNames:      []string{"name"},
-				ServiceAccountNamespaces: []string{"namespace"},
-				TTL:                      1 * time.Second,
-				MaxTTL:                   5 * time.Second,
-				NumUses:                  12,
-				BoundCIDRs:               nil,
-				AliasNameSource:          aliasNameSourceDefault,
+				Policies:                        []string{"test"},
+				Period:                          3 * time.Second,
+				ServiceAccountNames:             []string{"name"},
+				ServiceAccountNamespaces:        []string{"namespace"},
+				ServiceAccountNamespaceSelector: "",
+				TTL:                             1 * time.Second,
+				MaxTTL:                          5 * time.Second,
+				NumUses:                         12,
+				BoundCIDRs:                      nil,
+				AliasNameSource:                 aliasNameSourceDefault,
 			},
 		},
 		"alias_name_source_serviceaccount_name": {
@@ -99,15 +123,81 @@ func TestPath_Create(t *testing.T) {
 					TokenNumUses:    12,
 					TokenBoundCIDRs: nil,
 				},
-				Policies:                 []string{"test"},
-				Period:                   3 * time.Second,
-				ServiceAccountNames:      []string{"name"},
-				ServiceAccountNamespaces: []string{"namespace"},
-				TTL:                      1 * time.Second,
-				MaxTTL:                   5 * time.Second,
-				NumUses:                  12,
-				BoundCIDRs:               nil,
-				AliasNameSource:          aliasNameSourceSAName,
+				Policies:                        []string{"test"},
+				Period:                          3 * time.Second,
+				ServiceAccountNames:             []string{"name"},
+				ServiceAccountNamespaces:        []string{"namespace"},
+				ServiceAccountNamespaceSelector: "",
+				TTL:                             1 * time.Second,
+				MaxTTL:                          5 * time.Second,
+				NumUses:                         12,
+				BoundCIDRs:                      nil,
+				AliasNameSource:                 aliasNameSourceSAName,
+			},
+		},
+		"namespace_selector": {
+			data: map[string]interface{}{
+				"bound_service_account_names":              "name",
+				"bound_service_account_namespace_selector": validJSONSelector,
+				"policies":          "test",
+				"period":            "3s",
+				"ttl":               "1s",
+				"num_uses":          12,
+				"max_ttl":           "5s",
+				"alias_name_source": aliasNameSourceDefault,
+			},
+			expected: &roleStorageEntry{
+				TokenParams: tokenutil.TokenParams{
+					TokenPolicies:   []string{"test"},
+					TokenPeriod:     3 * time.Second,
+					TokenTTL:        1 * time.Second,
+					TokenMaxTTL:     5 * time.Second,
+					TokenNumUses:    12,
+					TokenBoundCIDRs: nil,
+				},
+				Policies:                        []string{"test"},
+				Period:                          3 * time.Second,
+				ServiceAccountNames:             []string{"name"},
+				ServiceAccountNamespaces:        []string(nil),
+				ServiceAccountNamespaceSelector: validJSONSelector,
+				TTL:                             1 * time.Second,
+				MaxTTL:                          5 * time.Second,
+				NumUses:                         12,
+				BoundCIDRs:                      nil,
+				AliasNameSource:                 aliasNameSourceDefault,
+			},
+		},
+		"namespace_selector_with_namespaces": {
+			data: map[string]interface{}{
+				"bound_service_account_names":              "name",
+				"bound_service_account_namespaces":         "namespace1,namespace2",
+				"bound_service_account_namespace_selector": validYAMLSelector,
+				"policies":          "test",
+				"period":            "3s",
+				"ttl":               "1s",
+				"num_uses":          12,
+				"max_ttl":           "5s",
+				"alias_name_source": aliasNameSourceDefault,
+			},
+			expected: &roleStorageEntry{
+				TokenParams: tokenutil.TokenParams{
+					TokenPolicies:   []string{"test"},
+					TokenPeriod:     3 * time.Second,
+					TokenTTL:        1 * time.Second,
+					TokenMaxTTL:     5 * time.Second,
+					TokenNumUses:    12,
+					TokenBoundCIDRs: nil,
+				},
+				Policies:                        []string{"test"},
+				Period:                          3 * time.Second,
+				ServiceAccountNames:             []string{"name"},
+				ServiceAccountNamespaces:        []string{"namespace1", "namespace2"},
+				ServiceAccountNamespaceSelector: validYAMLSelector,
+				TTL:                             1 * time.Second,
+				MaxTTL:                          5 * time.Second,
+				NumUses:                         12,
+				BoundCIDRs:                      nil,
+				AliasNameSource:                 aliasNameSourceDefault,
 			},
 		},
 		"invalid_alias_name_source": {
@@ -123,6 +213,30 @@ func TestPath_Create(t *testing.T) {
 			},
 			wantErr: errInvalidAliasNameSource,
 		},
+		"invalid_namespace_label_selector_in_json": {
+			data: map[string]interface{}{
+				"bound_service_account_names":              "name",
+				"bound_service_account_namespace_selector": invalidJSONSelector,
+				"policies": "test",
+				"period":   "3s",
+				"ttl":      "1s",
+				"num_uses": 12,
+				"max_ttl":  "5s",
+			},
+			wantErr: errors.New(`invalid "bound_service_account_namespace_selector" configured`),
+		},
+		"invalid_namespace_label_selector_in_yaml": {
+			data: map[string]interface{}{
+				"bound_service_account_names":              "name",
+				"bound_service_account_namespace_selector": invalidYAMLSelector,
+				"policies": "test",
+				"period":   "3s",
+				"ttl":      "1s",
+				"num_uses": 12,
+				"max_ttl":  "5s",
+			},
+			wantErr: errors.New(`invalid "bound_service_account_namespace_selector" configured`),
+		},
 		"no_service_account_names": {
 			data: map[string]interface{}{
 				"policies": "test",
@@ -134,7 +248,7 @@ func TestPath_Create(t *testing.T) {
 				"bound_service_account_names": "name",
 				"policies":                    "test",
 			},
-			wantErr: errors.New(`"bound_service_account_namespaces" can not be empty`),
+			wantErr: errors.New(`"bound_service_account_namespaces" can not be empty if "bound_service_account_namespace_selector" is not set`),
 		},
 		"mixed_splat_values_names": {
 			data: map[string]interface{}{
@@ -202,33 +316,35 @@ func TestPath_Read(t *testing.T) {
 	b, storage := getBackend(t)
 
 	configData := map[string]interface{}{
-		"bound_service_account_names":      "name",
-		"bound_service_account_namespaces": "namespace",
-		"policies":                         "test",
-		"period":                           "3s",
-		"ttl":                              "1s",
-		"num_uses":                         12,
-		"max_ttl":                          "5s",
+		"bound_service_account_names":              "name",
+		"bound_service_account_namespaces":         "namespace",
+		"bound_service_account_namespace_selector": validJSONSelector,
+		"policies": "test",
+		"period":   "3s",
+		"ttl":      "1s",
+		"num_uses": 12,
+		"max_ttl":  "5s",
 	}
 
 	expected := map[string]interface{}{
-		"bound_service_account_names":      []string{"name"},
-		"bound_service_account_namespaces": []string{"namespace"},
-		"token_policies":                   []string{"test"},
-		"policies":                         []string{"test"},
-		"token_period":                     int64(3),
-		"period":                           int64(3),
-		"token_ttl":                        int64(1),
-		"ttl":                              int64(1),
-		"token_num_uses":                   12,
-		"num_uses":                         12,
-		"token_max_ttl":                    int64(5),
-		"max_ttl":                          int64(5),
-		"token_bound_cidrs":                []string{},
-		"token_type":                       logical.TokenTypeDefault.String(),
-		"token_explicit_max_ttl":           int64(0),
-		"token_no_default_policy":          false,
-		"alias_name_source":                aliasNameSourceDefault,
+		"bound_service_account_names":              []string{"name"},
+		"bound_service_account_namespaces":         []string{"namespace"},
+		"bound_service_account_namespace_selector": validJSONSelector,
+		"token_policies":                           []string{"test"},
+		"policies":                                 []string{"test"},
+		"token_period":                             int64(3),
+		"period":                                   int64(3),
+		"token_ttl":                                int64(1),
+		"ttl":                                      int64(1),
+		"token_num_uses":                           12,
+		"num_uses":                                 12,
+		"token_max_ttl":                            int64(5),
+		"max_ttl":                                  int64(5),
+		"token_bound_cidrs":                        []string{},
+		"token_type":                               logical.TokenTypeDefault.String(),
+		"token_explicit_max_ttl":                   int64(0),
+		"token_no_default_policy":                  false,
+		"alias_name_source":                        aliasNameSourceDefault,
 	}
 
 	req := &logical.Request{

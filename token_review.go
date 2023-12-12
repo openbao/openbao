@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -72,14 +72,7 @@ func (t *tokenReviewAPI) Review(ctx context.Context, client *http.Client, jwt st
 	if len(t.config.TokenReviewerJWT) > 0 {
 		bearer = fmt.Sprintf("Bearer %s", t.config.TokenReviewerJWT)
 	}
-	bearer = strings.TrimSpace(bearer)
-
-	// Set the JWT as the Bearer token
-	req.Header.Set("Authorization", bearer)
-
-	// Set the MIME type headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	setRequestHeader(req, bearer)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -144,7 +137,7 @@ func (t *tokenReviewAPI) Review(ctx context.Context, client *http.Client, jwt st
 // parseResponse takes the API response and either returns the appropriate error
 // or the TokenReview Object.
 func parseResponse(resp *http.Response) (*authv1.TokenReview, error) {
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

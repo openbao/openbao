@@ -6,7 +6,6 @@ package kubeauth
 import (
 	"context"
 	"crypto"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
@@ -16,7 +15,7 @@ import (
 )
 
 func setupLocalFiles(t *testing.T, b logical.Backend) func() {
-	cert, err := ioutil.TempFile("", "ca.crt")
+	cert, err := os.CreateTemp("", "ca.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +25,7 @@ func setupLocalFiles(t *testing.T, b logical.Backend) func() {
 	}
 	cert.Close()
 
-	token, err := ioutil.TempFile("", "token")
+	token, err := os.CreateTemp("", "token")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -473,7 +472,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	defer cleanup()
 
 	// Create temp file that will be used as token.
-	f, err := ioutil.TempFile("", "renewed-token")
+	f, err := os.CreateTemp("", "renewed-token")
 	if err != nil {
 		t.Error(err)
 	}
@@ -490,7 +489,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	token2 := "after-renewal"
 
 	// Write initial token to the temp file.
-	err = ioutil.WriteFile(f.Name(), []byte(token1), 0o644)
+	err = os.WriteFile(f.Name(), []byte(token1), 0o644)
 	if err != nil {
 		t.Error(err)
 	}
@@ -522,7 +521,7 @@ func TestConfig_LocalJWTRenewal(t *testing.T) {
 	}
 
 	// Write new value to the token file to simulate renewal.
-	err = ioutil.WriteFile(f.Name(), []byte(token2), 0o644)
+	err = os.WriteFile(f.Name(), []byte(token2), 0o644)
 	if err != nil {
 		t.Error(err)
 	}

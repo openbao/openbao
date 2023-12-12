@@ -16,6 +16,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	matchLabelsKeyValue = `{
+	"matchLabels": {
+		"target": "integration-test"
+	}
+}`
+	mismatchLabelsKeyValue = `{
+	"matchLabels": {
+		"target": "not-integration-test"
+	}
+}`
+)
+
 // Set the environment variable INTEGRATION_TESTS to any non-empty value to run
 // the tests in this package. The test assumes it has available:
 // - A Kubernetes cluster in which:
@@ -146,6 +159,44 @@ func TestSuccessWithTokenReviewerJwt(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Expected successful login but got: %v", err)
+	}
+}
+
+func TestSuccessWithNamespaceLabels(t *testing.T) {
+	roleConfigOverride := map[string]interface{}{
+		"bound_service_account_names":              "vault",
+		"bound_service_account_namespace_selector": matchLabelsKeyValue,
+	}
+	client, cleanup := setupKubernetesAuth(t, "vault", nil, roleConfigOverride)
+	defer cleanup()
+
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+		"role": "test-role",
+		"jwt":  createToken(t, "vault", nil),
+	})
+	if err != nil {
+		t.Fatalf("Expected successful login but got: %v", err)
+	}
+}
+
+func TestFailWithMismatchNamespaceLabels(t *testing.T) {
+	roleConfigOverride := map[string]interface{}{
+		"bound_service_account_names":              "vault",
+		"bound_service_account_namespace_selector": mismatchLabelsKeyValue,
+	}
+	client, cleanup := setupKubernetesAuth(t, "vault", nil, roleConfigOverride)
+	defer cleanup()
+
+	_, err := client.Logical().Write("auth/kubernetes/login", map[string]interface{}{
+		"role": "test-role",
+		"jwt":  createToken(t, "vault", nil),
+	})
+	respErr, ok := err.(*api.ResponseError)
+	if !ok {
+		t.Fatalf("Expected api.ResponseError but was: %T", err)
+	}
+	if respErr.StatusCode != http.StatusForbidden {
+		t.Fatalf("Expected 403 but was %d: %s", respErr.StatusCode, respErr.Error())
 	}
 }
 

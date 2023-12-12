@@ -4,7 +4,7 @@ Describe in detail the changes you are proposing, and the rationale.
 
 See the contributing guide:
 
-https://github.com/lf-edge/openbao/blob/development/CONTRIBUTING.md
+https://github.com/openbao/openbao/blob/development/CONTRIBUTING.md
 
 -->
 

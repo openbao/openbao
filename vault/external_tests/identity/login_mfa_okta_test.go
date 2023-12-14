@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -30,6 +31,9 @@ import (
 // user in OKTA_USERNAME should not be configured with it.  Currently
 // test3@example.com is not a member of testgroup, which is the group with
 // the profile that requires MFA.
+//
+// To test with Okta TOTP (instead of Okta push verify), set:
+// OKTA_PROMPT_FOR_TOTP=1
 
 var identityOktaMFACoreConfig = &vault.CoreConfig{
 	CredentialBackends: map[string]logical.Factory{
@@ -249,11 +253,22 @@ func mfaGenerateOktaLoginMFATest(client *api.Client, mountAccessor, entityID str
 		}
 	}
 
+	// gather info from test user if needed
+	var passcodes []string
+	if os.Getenv("OKTA_PROMPT_FOR_TOTP") != "" {
+		log("Okta TOTP for test (will be hidden): ")
+		totp, err := password.Read(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("failed to prompt for test Okta TOTP: %v", err)
+		}
+		passcodes = []string{totp}
+	}
+
 	// validation
 	secret, err = client.Sys().MFAValidateWithContext(context.Background(),
 		secret.Auth.MFARequirement.MFARequestID,
 		map[string]interface{}{
-			methodID: []string{},
+			methodID: passcodes,
 		},
 	)
 	if err != nil {

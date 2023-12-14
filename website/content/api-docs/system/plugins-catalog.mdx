@@ -7,7 +7,7 @@ description: The `/sys/plugins/catalog` endpoint is used to manage plugins.
 # `/sys/plugins/catalog`
 
 The `/sys/plugins/catalog` endpoint is used to read, register, update, and
-remove plugins in Vault's catalog. Plugins must be registered before use, and
+remove plugins in OpenBao's catalog. Plugins must be registered before use, and
 once registered backends can use the plugin by querying the catalog.
 
 ## LIST plugins
@@ -50,7 +50,7 @@ $ curl \
                 "deprecation_status": "supported",
                 "name": "aws",
                 "type": "auth",
-                "version": "v1.12.0+builtin.vault"
+                "version": "v1.12.0+builtin.openbao"
             },
             ...
             {
@@ -58,7 +58,7 @@ $ curl \
                 "deprecation_status": "supported",
                 "name": "cassandra-database-plugin",
                 "type": "database",
-                "version": "v1.12.0+builtin.vault"
+                "version": "v1.12.0+builtin.openbao"
             },
             ...
             {
@@ -66,7 +66,7 @@ $ curl \
                 "deprecation_status": "supported",
                 "name": "aws",
                 "type": "secret",
-                "version": "v1.12.0+builtin.vault"
+                "version": "v1.12.0+builtin.openbao"
             },
             ...
         ],
@@ -211,7 +211,7 @@ $ curl \
   "data": {
     "args": [],
     "builtin": false,
-    "command": "/tmp/vault-plugins/mysql-database-plugin",
+    "command": "/tmp/openbao-plugins/mysql-database-plugin",
     "name": "example-plugin",
     "sha256": "0TC5oPv93vlwnY/5Ll5gU8zSRreGMvwDuFSEVwJpYek=",
     "version": "v1.0.0"

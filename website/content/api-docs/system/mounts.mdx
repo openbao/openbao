@@ -1,12 +1,12 @@
 ---
 layout: api
 page_title: /sys/mounts - HTTP API
-description: The `/sys/mounts` endpoint is used to manage secrets engines in Vault.
+description: The `/sys/mounts` endpoint is used to manage secrets engines in OpenBao.
 ---
 
 # `/sys/mounts`
 
-The `/sys/mounts` endpoint is used to manage secrets engines in Vault.
+The `/sys/mounts` endpoint is used to manage secrets engines in OpenBao.
 
 ## List mounted secrets engines
 
@@ -45,7 +45,7 @@ $ curl \
       "local": true,
       "options": null,
       "plugin_version": "",
-      "running_plugin_version": "v1.12.0+builtin.vault",
+      "running_plugin_version": "v1.12.0+builtin.openbao",
       "running_sha256": "",
       "seal_wrap": false,
       "type": "cubbyhole",
@@ -63,7 +63,7 @@ $ curl \
       "local": false,
       "options": null,
       "plugin_version": "",
-      "running_plugin_version": "v1.12.0+builtin.vault",
+      "running_plugin_version": "v1.12.0+builtin.openbao",
       "running_sha256": "",
       "seal_wrap": false,
       "type": "identity",
@@ -103,7 +103,7 @@ $ curl \
       "local": false,
       "options": null,
       "plugin_version": "",
-      "running_plugin_version": "v1.12.0+builtin.vault",
+      "running_plugin_version": "v1.12.0+builtin.openbao",
       "running_sha256": "",
       "seal_wrap": false,
       "type": "system",
@@ -182,7 +182,7 @@ This endpoint enables a new secrets engine at the given path.
   - `version` `(string: "1")` - The version of the KV to mount. Set to "2" for mount
     KV v2.
 
-Additionally, the following options are allowed in Vault open-source, but
+Additionally, the following options are allowed in OpenBao open-source, but
 relevant functionality is only supported in Vault Enterprise:
 
 - `local` `(bool: false)` – Specifies if the secrets engine is a local mount
@@ -193,7 +193,7 @@ relevant functionality is only supported in Vault Enterprise:
   values stored by the mount to be wrapped by the seal's encryption capability.
 
 - `external_entropy_access` `(bool: false)` - Enable the secrets engine to access
-  Vault's external entropy source.
+  OpenBao's external entropy source.
 
 ### Sample payload
 
@@ -245,7 +245,7 @@ disable the secrets engine once the underlying issue is resolved. Often, this ca
 simple as increasing the timeout (in the event of timeout errors).
 
 For recovery situations where the secret was manually removed from the
-secrets backing service, one can force a secrets engine disable in Vault by
+secrets backing service, one can force a secrets engine disable in OpenBao by
 performing a [force revoke](/vault/api-docs/system/leases)
 on the mount prefix, followed by a secrets disable when that completes.
 If the underlying secrets were not manually cleaned up, this method might result
@@ -300,7 +300,7 @@ $ curl \
     "local": true,
     "options": null,
     "plugin_version": "",
-    "running_plugin_version": "v1.12.0+builtin.vault",
+    "running_plugin_version": "v1.12.0+builtin.openbao",
     "running_sha256": "",
     "seal_wrap": false,
     "type": "cubbyhole",

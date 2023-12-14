@@ -2,12 +2,12 @@
 layout: api
 page_title: /sys/internal/counters - HTTP API
 description: >-
-  The `/sys/internal/counters` endpoints are used to return data about Vault usage.
+  The `/sys/internal/counters` endpoints are used to return data about OpenBao usage.
 ---
 
 # `/sys/internal/counters`
 
-The `/sys/internal/counters` endpoints are used to return data about the number of Tokens and Entities in Vault. They return information for the entire cluster.
+The `/sys/internal/counters` endpoints are used to return data about the number of Tokens and Entities in OpenBao. They return information for the entire cluster.
 
 ## Entities
 
@@ -95,7 +95,7 @@ There are a few things to keep in mind while using this API.
 - For Vault versions before 1.11, the activity information only accounts for
 the activity of the latest contiguous months in the billing period.
 For example, if the billing period is from Jan 2022 to June 2022, and the
-activity subsystem in Vault was not capturing data for the months Jan to March,
+activity subsystem in OpenBao was not capturing data for the months Jan to March,
 the response will only include information for May and June. Note that if no
 `start_time` and `end_time` parameters are specified, the billing period defaults
 to 12 months, so the endpoint will return activity information from the end of the
@@ -107,9 +107,9 @@ the specified billing period.
 - As of 1.12, the `end_time` can be the current month.
 
 - The response contains the total activity for the billing period and the
-attributions of the total activity against specific components in Vault. This
+attributions of the total activity against specific components in OpenBao. This
 helps in understanding the total activity better by knowing which components in
-Vault lead to that top-level activity count. First-level of attribution
+OpenBao lead to that top-level activity count. First-level of attribution
 breakdowns are by namespaces and months, under the `by_namespaces` and `months`
 JSON block, respectively.
 
@@ -208,7 +208,7 @@ clients differs for each combination of `start_time` and `end_time`.
 
 - The `new_clients` block within the `months` breakdown will also be further
 broken down by namespaces and mounts for visibility into which components in
-Vault lead to the new clients for each month.
+OpenBao lead to the new clients for each month.
 
 ```json
 {
@@ -727,7 +727,7 @@ and new clients information.
 The time period is from the start of the current month, up until the time that
 this request was made.
 
-Note: the client count may be inaccurate in the moments following a Vault
+Note: the client count may be inaccurate in the moments following a OpenBao
 reboot, or leadership change. The estimate will stabilize when background
 loading of client data has completed.
 

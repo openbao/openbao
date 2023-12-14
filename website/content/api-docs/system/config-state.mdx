@@ -8,7 +8,7 @@ description: The '/sys/config/state' endpoint is used to retrieve the configurat
 
 @include 'alerts/restricted-root.mdx'
 
-The endpoints under `sys/config/state` return Vault's configuration state.
+The endpoints under `sys/config/state` return OpenBao's configuration state.
 Currently, it only supports returning a sanitized version of the configuration.
 
 ## Get sanitized configuration state
@@ -63,7 +63,7 @@ $ curl \
   "log_level": "",
   "max_lease_ttl": 0,
   "pid_file": "",
-  "plugin_directory": "/opt/vault/plugins",
+  "plugin_directory": "/opt/openbao/plugins",
   "raw_storage_endpoint": false,
   "seals": [
     {

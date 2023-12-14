@@ -4,7 +4,7 @@ page_title: /sys/storage/raft/snapshot-auto - HTTP API
 description: |-
 
   The `/sys/storage/raft/snapshot-auto` endpoints are used to manage automated
-  snapshots with Vault's Raft storage backend.
+  snapshots with OpenBao's Raft storage backend.
 ---
 
 # `/sys/storage/raft/snapshot-auto`
@@ -14,7 +14,7 @@ description: |-
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/storage/raft/snapshot-auto` endpoints are used to manage automated
-snapshots with Vault's Raft storage backend.
+snapshots with OpenBao's Raft storage backend.
 
 ## Create/update an automated snapshots config
 
@@ -50,7 +50,7 @@ environment variables or files on disk in predefined locations.
   Types `azure-blob` and `google-gcs` require a trailing `/` (slash).
   Types `local` and `aws-s3` the trailing `/` is optional.
 
-- `file_prefix` `(string: "vault-snapshot")` - Within the directory or bucket
+- `file_prefix` `(string: "openbao-snapshot")` - Within the directory or bucket
   prefix given by `path_prefix`, the file or object name of snapshot files
   will start with this string.
 
@@ -143,7 +143,7 @@ environment variables or files on disk in predefined locations.
 {
   "interval": "24h",
   "retain": 7,
-  "path_prefix": "/opt/vault/snapshots/",
+  "path_prefix": "/opt/openbao/snapshots/",
   "storage_type": "local",
   "local_max_space": 10000000
 }
@@ -211,10 +211,10 @@ $ curl \
 ```json
 {
   "data": {
-    "file_prefix": "vault-snapshot",
+    "file_prefix": "openbao-snapshot",
     "interval": 86400,
     "local_max_space": 10000000,
-    "path_prefix": "/opt/vault/snapshots/",
+    "path_prefix": "/opt/openbao/snapshots/",
     "retain": 7,
     "storage_type": "local"
   }
@@ -264,9 +264,9 @@ $ curl \
     "last_snapshot_end": "2020-10-28T11:17:21-04:00",
     "last_snapshot_error": "",
     "last_snapshot_start": "2020-10-28T11:17:21-04:00",
-    "last_snapshot_url": "file:///opt/vault/snapshots/vault-snapshot-1603898241699731000.snap",
+    "last_snapshot_url": "file:///opt/openbao/snapshots/openbao-snapshot-1603898241699731000.snap",
     "snapshot_start": "2020-10-28T11:17:21-04:00",
-    "snapshot_url": "file:///opt/vault/snapshots/vault-snapshot-1603898241699731000.snap"
+    "snapshot_url": "file:///opt/openbao/snapshots/openbao-snapshot-1603898241699731000.snap"
   }
 }
 ```

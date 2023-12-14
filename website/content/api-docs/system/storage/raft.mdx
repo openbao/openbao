@@ -3,7 +3,7 @@ layout: api
 page_title: /sys/storage/raft - HTTP API
 description: |-
 
-  The `/sys/storage/raft` endpoints are used to manage Vault's Raft storage
+  The `/sys/storage/raft` endpoints are used to manage OpenBao's Raft storage
   backend.
 ---
 
@@ -11,13 +11,13 @@ description: |-
 
 @include 'alerts/restricted-root.mdx'
 
-The `/sys/storage/raft` endpoints are used to manage Vault's Raft storage
+The `/sys/storage/raft` endpoints are used to manage OpenBao's Raft storage
 backend.
 
 ## Join a raft cluster
 
 This endpoint joins a new server node to the Raft cluster. When using Shamir
-seal, as soon as the Vault server is brought up, this API should be invoked
+seal, as soon as the OpenBao server is brought up, this API should be invoked
 instead of `sys/init`. This API completes in 2 phases. Once this is invoked,
 the joining node will receive a challenge from the Raft's leader node. This
 challenge can be answered by the joining node only after a successful unseal.
@@ -49,7 +49,7 @@ leader node.
   Should match one of the names in the DNS SANs of the remote server certificate.
 
 - `auto_join` `(string: "")` - Defines any cloud auto-join metadata. If
-  supplied, Vault will attempt to automatically discover peers in addition to what
+  supplied, OpenBao will attempt to automatically discover peers in addition to what
   can be provided via 'leader_api_addr'.
 
 - `auto_join_scheme` `(string: "https")` - URI scheme to be used for `auto_join`.
@@ -61,11 +61,11 @@ leader node.
   stream. This can be used to add read scalability to a cluster in cases where a
   high volume of reads to servers are needed. The default is false.
 
-Additionally, the following options are allowed in Vault open-source, but
+Additionally, the following options are allowed in OpenBao open-source, but
 relevant functionality is only supported in Vault Enterprise:
 
 - `non_voter` `(bool: false)` - Joins the node to the cluster in non-voter mode
-  which results in Vault's data being replicated to it, but does not contribute
+  which results in OpenBao's data being replicated to it, but does not contribute
   to the quorum count.
 
 ### Sample payload
@@ -234,7 +234,7 @@ $ curl \
 
 When a node uses Raft exclusively for `ha_storage`, this endpoint is used to activate
 Raft.  It is analogous to using `sys/init` to initialize storage, in that it
-only needs to be done once per cluster, after which `vault operator raft join`
+only needs to be done once per cluster, after which `openbao operator raft join`
 is used to add more nodes to the Raft cluster.
 
 | Method | Path                         |

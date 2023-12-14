@@ -1,19 +1,19 @@
 ---
 layout: api
 page_title: LDAP - Auth Methods - HTTP API
-description: This is the API documentation for the Vault LDAP auth method.
+description: This is the API documentation for the OpenBao LDAP auth method.
 ---
 
 # LDAP auth method (API)
 
 @include 'x509-sha1-deprecation.mdx'
 
-This is the API documentation for the Vault LDAP auth method. For
+This is the API documentation for the OpenBao LDAP auth method. For
 general information about the usage and operation of the LDAP method, please
-see the [Vault LDAP method documentation](/vault/docs/auth/ldap).
+see the [OpenBao LDAP method documentation](/vault/docs/auth/ldap).
 
 This documentation assumes the LDAP method is mounted at the `/auth/ldap`
-path in Vault. Since it is possible to enable auth methods at any location,
+path in OpenBao. Since it is possible to enable auth methods at any location,
 please update your API calls accordingly.
 
 ## Configure LDAP
@@ -56,7 +56,7 @@ This endpoint configures the LDAP auth method.
 - `client_tls_key` `(string "")` - Client certificate key to provide to the LDAP
   server, must be x509 PEM encoded (optional).
 - `binddn` `(string: "")` – Distinguished name of object to bind when performing
-  user search. Example: `cn=vault,ou=Users,dc=example,dc=com`
+  user search. Example: `cn=openbao,ou=Users,dc=example,dc=com`
 - `bindpass` `(string: "")` – Password to use along with `binddn` when performing
   user search.
 - `userdn` `(string: "")` – Base DN under which to perform user search. Example:
@@ -69,7 +69,7 @@ This endpoint configures the LDAP auth method.
   authentication when providing an empty password.
 - `upndomain` `(string: "")` – The userPrincipalDomain used to construct the UPN
   string for the authenticating user. The constructed UPN will appear as
-  `[username]@UPNDomain`. Example: `example.com`, which will cause vault to bind
+  `[username]@UPNDomain`. Example: `example.com`, which will cause openbao to bind
   as `username@example.com`.
 - `userfilter` `(string: "")` – An optional LDAP user search filter.
   The template can access the following context variables: UserAttr, Username.
@@ -121,7 +121,7 @@ $ curl \
 
 ```json
 {
-  "binddn": "cn=vault,ou=Users,dc=example,dc=com",
+  "binddn": "cn=openbao,ou=Users,dc=example,dc=com",
   "deny_null_bind": true,
   "discoverdn": false,
   "groupattr": "cn",
@@ -163,7 +163,7 @@ $ curl \
   "warnings": null,
   "wrap_info": null,
   "data": {
-    "binddn": "cn=vault,ou=Users,dc=example,dc=com",
+    "binddn": "cn=openbao,ou=Users,dc=example,dc=com",
     "bindpass": "",
     "certificate": "",
     "deny_null_bind": true,

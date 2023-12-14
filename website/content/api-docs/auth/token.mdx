@@ -1,14 +1,14 @@
 ---
 layout: api
 page_title: Token - Auth Methods - HTTP API
-description: This is the API documentation for the Vault token auth method.
+description: This is the API documentation for the OpenBao token auth method.
 ---
 
 # Token auth method (API)
 
-This is the API documentation for the Vault token auth method. For
+This is the API documentation for the OpenBao token auth method. For
 general information about the usage and operation of the token method, please
-see the [Vault Token method documentation](/vault/docs/auth/token).
+see the [OpenBao Token method documentation](/vault/docs/auth/token).
 
 ## List accessors
 
@@ -340,7 +340,7 @@ if there is a lease associated with it.
   or the body.
 - `increment` `(string: "")` - An optional requested increment duration can be
   provided. This increment may not be honored, for instance in the case of periodic tokens.
-  If not supplied, Vault will use the default TTL. This is specified as a numeric string
+  If not supplied, OpenBao will use the default TTL. This is specified as a numeric string
   with suffix like "30s" or "5m".
 
 ### Sample payload
@@ -391,7 +391,7 @@ possible only if there is a lease associated with it.
 
 - `increment` `(string: "")` - An optional requested increment duration can be
   provided. This increment may not be honored, for instance in the case of periodic tokens.
-  If not supplied, Vault will use the default TTL. This is specified as a numeric string
+  If not supplied, OpenBao will use the default TTL. This is specified as a numeric string
   with suffix like "30s" or "5m".
 
 ### Sample payload
@@ -794,11 +794,11 @@ suggest it. There are two potential dangers to running tidy: first, this will
 perform a lot of read I/O to the storage method, as it will essentially reload the
 entirety of the token store into memory. Depending on how much cleanup is
 required (usually very little) there may also be a large number of writes.
-Second, this will cause Vault's memory usage to balloon up, because the default
-Vault internal cache is unlimited in size and every value read from storage will
+Second, this will cause OpenBao's memory usage to balloon up, because the default
+OpenBao internal cache is unlimited in size and every value read from storage will
 be cached. Listing the `/auth/token/accessors` endpoint is a good way to get
 some sense of the potential impact: tidy does this and more, so if this call creates problems
-for your cluster, it would be wise to give Vault more resources before attempting
+for your cluster, it would be wise to give OpenBao more resources before attempting
 tidy. Note that the request may time out depending on
 [max duration](/vault/docs/configuration#default_max_request_duration)
 and your client's timeout configuration, make sure to allow it run to completion
@@ -844,7 +844,7 @@ $ curl \
   "data": null,
   "wrap_info": null,
   "warnings": [
-    "Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs."
+    "Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs."
   ],
   "auth": null
 }

@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
-	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/builtin/credential/userpass"
@@ -35,7 +36,7 @@ import (
 // the profile that requires MFA.
 //
 // To test with Okta TOTP (instead of Okta push verify), set:
-// OKTA_PROMPT_FOR_TOTP=1
+// OKTA_USE_TOTP=1
 
 var identityOktaMFACoreConfig = &vault.CoreConfig{
 	CredentialBackends: map[string]logical.Factory{
@@ -187,13 +188,15 @@ func TestInteg_LoginMFAOkta(t *testing.T) {
 			},
 		})
 
-	err := mfaGenerateOktaLoginMFATest(entityClient, mountAccessor, entityID, t.Log)
+	err := mfaGenerateOktaLoginMFATest(t, entityClient, mountAccessor, entityID)
 	if err != nil {
 		t.Fatalf("Okta failed: %s", err)
 	}
 }
 
-func mfaGenerateOktaLoginMFATest(client *api.Client, mountAccessor, entityID string, log func(...any)) error {
+func mfaGenerateOktaLoginMFATest(t *testing.T, client *api.Client, mountAccessor, entityID string) error {
+	t.Helper()
+
 	var methodID string
 	var userpassToken string
 	// login MFA
@@ -258,15 +261,36 @@ func mfaGenerateOktaLoginMFATest(client *api.Client, mountAccessor, entityID str
 		}
 	}
 
-	// gather info from test user if needed
+	// get totp from file if requested by test runner
 	var passcodes []string
-	if os.Getenv("OKTA_PROMPT_FOR_TOTP") != "" {
-		log("Okta TOTP for test (will be hidden): ")
-		totp, err := password.Read(os.Stdin)
-		if err != nil {
-			return fmt.Errorf("failed to prompt for test Okta TOTP: %v", err)
+	if os.Getenv("OKTA_USE_TOTP") != "" {
+		// generate tmp file path
+		tempDir := t.TempDir()
+		totpFile := tempDir + string(os.PathSeparator) + "totp.txt"
+
+		t.Logf("Please save your totp to: %s", totpFile)
+
+		// Try to read the file 10x per second or until 5 minutes have passed.
+		timer := time.NewTimer(5 * time.Minute)
+		defer timer.Stop()
+		for {
+			totpFileContents, err := os.ReadFile(totpFile)
+			if err != nil {
+				select {
+				case <-timer.C:
+					break
+				default:
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				// Should this Skip instead of Failing the test due to lack of user interaction?
+				return fmt.Errorf("the TOTP file did not exist after 5 min: %s", totpFile)
+			}
+
+			totp := strings.TrimSpace(string(totpFileContents))
+			passcodes = []string{totp}
+			break
 		}
-		passcodes = []string{totp}
 	}
 
 	// validation

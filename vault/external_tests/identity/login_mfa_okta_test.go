@@ -12,8 +12,10 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/testhelpers"
+	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
@@ -26,9 +28,9 @@ import (
 // OKTA_USERNAME=test3@example.com
 //
 // You will need to install the Okta client app on your mobile device and
-// setup MFA in order to use the Okta web UI.  This test does not exercise
+// setup MFA in order to use the Okta web UI. This test does not exercise
 // MFA however (which is an enterprise feature), and therefore the test
-// user in OKTA_USERNAME should not be configured with it.  Currently
+// user in OKTA_USERNAME should not be configured with it. Currently,
 // test3@example.com is not a member of testgroup, which is the group with
 // the profile that requires MFA.
 //
@@ -42,8 +44,11 @@ var identityOktaMFACoreConfig = &vault.CoreConfig{
 }
 
 func TestInteg_PolicyMFAOkta(t *testing.T) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if os.Getenv(logicaltest.TestEnvVar) == "" {
 		t.Skip("This test requires manual intervention and OKTA verify on cellphone is needed")
+	}
+	if !constants.IsEnterprise {
+		t.Skip("PolicyMFA is an enterprise-only feature")
 	}
 
 	// Ensure each cred is populated.
@@ -149,7 +154,7 @@ path "secret/foo" {
 }
 
 func TestInteg_LoginMFAOkta(t *testing.T) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if os.Getenv(logicaltest.TestEnvVar) == "" {
 		t.Skip("This test requires manual intervention and OKTA verify on cellphone is needed")
 	}
 

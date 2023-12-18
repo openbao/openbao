@@ -1,22 +1,23 @@
 ## 1.14.x (unreleased)
+
 ### Month X, 2024
 
 FEATURES:
 
-* description
+- description
 
 CHANGES:
 
-* component: description
+- component: description
 
 BUG FIXES:
 
-* component: description
+- component: description
 
 SECURITY:
 
-* component: description
+- component: description
 
 IMPROVEMENTS:
 
-* component: description
+- component: description

@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/hcl/hcl/token"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/configutil"
 )
 
 var DefaultCustomHeaders = map[string]map[string]string{

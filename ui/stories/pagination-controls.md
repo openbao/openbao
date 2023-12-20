@@ -20,7 +20,7 @@ PaginationControls components are used to paginate through item lists
 
 **See**
 
-- [Uses of PaginationControls](https://github.com/hashicorp/vault/search?l=Handlebars&q=PaginationControls+OR+pagination-controls)
-- [PaginationControls Source Code](https://github.com/hashicorp/vault/blob/master/ui/app/components/pagination-controls.js)
+- [Uses of PaginationControls](https://github.com/openbao/openbao/search?l=Handlebars&q=PaginationControls+OR+pagination-controls)
+- [PaginationControls Source Code](https://github.com/openbao/openbao/blob/master/ui/app/components/pagination-controls.js)
 
 ---

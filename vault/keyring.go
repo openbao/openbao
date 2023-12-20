@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 const (

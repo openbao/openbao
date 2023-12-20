@@ -27,10 +27,10 @@ import (
 	"golang.org/x/crypto/acme"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/builtin/logical/pkiext"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	hDocker "github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/openbao/openbao/builtin/logical/pkiext"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	hDocker "github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 

@@ -12,7 +12,7 @@ import (
 
 	consulapi "github.com/hashicorp/consul/api"
 	goversion "github.com/hashicorp/go-version"
-	"github.com/hashicorp/vault/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/helper/docker"
 )
 
 // LatestConsulVersion is the most recent version of Consul which is used unless

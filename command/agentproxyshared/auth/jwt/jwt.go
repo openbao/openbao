@@ -16,9 +16,9 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	"github.com/hashicorp/vault/sdk/helper/parseutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/sdk/helper/parseutil"
 )
 
 type jwtMethod struct {

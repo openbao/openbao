@@ -9,7 +9,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	v5 "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 )
 
 const mockV5Type = "mockv5"

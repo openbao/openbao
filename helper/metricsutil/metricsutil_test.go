@@ -6,7 +6,7 @@ package metricsutil
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestFormatFromRequest(t *testing.T) {

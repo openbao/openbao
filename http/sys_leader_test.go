@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysLeader_get(t *testing.T) {

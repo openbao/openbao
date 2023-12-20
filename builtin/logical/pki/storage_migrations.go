@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // This allows us to record the version of the migration code within the log entry

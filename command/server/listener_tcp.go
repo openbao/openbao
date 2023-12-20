@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/internalshared/listenerutil"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/mitchellh/cli"
 )
 

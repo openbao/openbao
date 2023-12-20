@@ -12,8 +12,8 @@ import (
 
 	"github.com/fatih/structs"
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/pgpkeys"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )

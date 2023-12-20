@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/errutil"
 )
 
 const (

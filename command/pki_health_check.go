@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/command/healthcheck"
+	"github.com/openbao/openbao/command/healthcheck"
 
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/cli"

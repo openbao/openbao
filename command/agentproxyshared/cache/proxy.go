@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 // SendRequest is the input for Proxier.Send.

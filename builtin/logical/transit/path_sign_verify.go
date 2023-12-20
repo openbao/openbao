@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

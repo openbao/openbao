@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 var MaxChallengeTimeout = 1 * time.Minute

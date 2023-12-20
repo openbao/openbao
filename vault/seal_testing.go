@@ -6,8 +6,8 @@ package vault
 import (
 	"context"
 
-	"github.com/hashicorp/vault/vault/seal"
-	vaultseal "github.com/hashicorp/vault/vault/seal"
+	"github.com/openbao/openbao/vault/seal"
+	vaultseal "github.com/openbao/openbao/vault/seal"
 	testing "github.com/mitchellh/go-testing-interface"
 )
 

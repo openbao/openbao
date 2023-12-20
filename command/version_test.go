@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/version"
+	"github.com/openbao/openbao/version"
 	"github.com/mitchellh/cli"
 )
 

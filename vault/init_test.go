@@ -10,9 +10,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
 )
 
 func TestCore_Init(t *testing.T) {

@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/storage"
 	metrics "github.com/armon/go-metrics"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 	"github.com/pkg/errors"
 	"google.golang.org/api/googleapi"
 )

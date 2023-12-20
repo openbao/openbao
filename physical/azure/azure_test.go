@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers/azurite"
+	"github.com/openbao/openbao/helper/testhelpers/azurite"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 /// These tests run against an Azurite docker container, unless AZURE_ACCOUNT_NAME is given.

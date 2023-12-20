@@ -26,7 +26,7 @@ import (
 	metrics "github.com/armon/go-metrics"
 	mysql "github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 // Verify MySQLBackend satisfies the correct interfaces

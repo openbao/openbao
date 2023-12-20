@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/mitchellh/mapstructure"
 )
 

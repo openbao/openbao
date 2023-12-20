@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 type mockUi struct {

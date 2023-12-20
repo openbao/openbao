@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 	"github.com/oracle/oci-go-sdk/common"
 	"github.com/oracle/oci-go-sdk/objectstorage"
 )

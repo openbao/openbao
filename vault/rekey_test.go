@@ -12,10 +12,10 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/vault/seal"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 func TestCore_Rekey_Lifecycle(t *testing.T) {

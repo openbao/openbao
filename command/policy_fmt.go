@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/hcl/printer"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/vault"
 	"github.com/mitchellh/cli"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/posener/complete"

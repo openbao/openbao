@@ -6,7 +6,7 @@ package framework
 import (
 	"context"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/ryanuber/go-glob"
 )
 

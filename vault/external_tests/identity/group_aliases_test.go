@@ -6,12 +6,12 @@ package identity
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/api"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 
-	credLdap "github.com/hashicorp/vault/builtin/credential/ldap"
+	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 )
 
 func TestIdentityStore_GroupAliasLocalMount(t *testing.T) {

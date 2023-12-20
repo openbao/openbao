@@ -12,17 +12,17 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	bplugin "github.com/hashicorp/vault/builtin/plugin"
-	"github.com/hashicorp/vault/helper/benchhelpers"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/pluginutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/sdk/plugin"
-	"github.com/hashicorp/vault/sdk/plugin/mock"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/api"
+	bplugin "github.com/openbao/openbao/builtin/plugin"
+	"github.com/openbao/openbao/helper/benchhelpers"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/vault"
 )
 
 func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluster, *vault.TestClusterCore) {

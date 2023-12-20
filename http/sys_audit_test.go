@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysAudit(t *testing.T) {

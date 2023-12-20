@@ -38,10 +38,10 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/helper/kdf"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/kdf"
+	"github.com/openbao/openbao/sdk/logical"
 
 	"github.com/google/tink/go/kwp/subtle"
 )

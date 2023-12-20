@@ -11,8 +11,8 @@ import (
 
 	"github.com/go-zookeeper/zk"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 func TestZooKeeperBackend(t *testing.T) {

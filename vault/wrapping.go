@@ -15,12 +15,12 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/go-jose/go-jose/v3"
 	"github.com/go-jose/go-jose/v3/jwt"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/certutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

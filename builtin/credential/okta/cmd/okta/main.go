@@ -7,9 +7,9 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/builtin/credential/okta"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/builtin/credential/okta"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {

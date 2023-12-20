@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/hashicorp/vault/vault/hcp_link/proto/meta";
+option go_package = "github.com/lf-edge/openbao/vault/hcp_link/proto/meta";
 
 package meta;
 

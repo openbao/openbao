@@ -10,12 +10,12 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/license"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/vault/quotas"
-	"github.com/hashicorp/vault/vault/replication"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/license"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/vault/quotas"
+	"github.com/openbao/openbao/vault/replication"
 )
 
 const (

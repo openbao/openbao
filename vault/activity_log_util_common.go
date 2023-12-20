@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/axiomhq/hyperloglog"
-	"github.com/hashicorp/vault/helper/timeutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault/activity"
+	"github.com/openbao/openbao/helper/timeutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault/activity"
 	"google.golang.org/protobuf/proto"
 )
 

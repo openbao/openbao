@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/logical"
 	"golang.org/x/crypto/ssh"
 )
 

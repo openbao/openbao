@@ -9,8 +9,8 @@ import (
 	"context"
 	"path"
 
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func addPathCheckers(c *Core, entry *MountEntry, backend logical.Backend, viewPath string) {

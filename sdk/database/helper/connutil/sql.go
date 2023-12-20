@@ -14,8 +14,8 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/vault/sdk/database/dbplugin"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/database/dbplugin"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
 	"github.com/mitchellh/mapstructure"
 )
 

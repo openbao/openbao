@@ -16,9 +16,9 @@ import (
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/sdk/database/helper/dbutil"
-	"github.com/hashicorp/vault/sdk/physical"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 const (

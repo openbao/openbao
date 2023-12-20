@@ -43,8 +43,8 @@ mkdir -p bin/
 echo "==> Building..."
 ${GO_CMD} build \
     -gcflags "${GCFLAGS}" \
-    -ldflags "${LD_FLAGS} -X github.com/hashicorp/vault/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/hashicorp/vault/version.BuildDate=${BUILD_DATE}" \
-    -o "bin/vault" \
+    -ldflags "${LD_FLAGS} -X github.com/openbao/openbao/version.GitCommit='${GIT_COMMIT}${GIT_DIRTY}' -X github.com/openbao/openbao/version.BuildDate=${BUILD_DATE}" \
+    -o "bin/bao" \
     -tags "${BUILD_TAGS}" \
     .
 

@@ -12,7 +12,7 @@ import (
 	scada "github.com/hashicorp/hcp-scada-provider"
 	cloud "github.com/hashicorp/hcp-sdk-go/clients/cloud-shared/v1/models"
 	sdkConfig "github.com/hashicorp/hcp-sdk-go/config"
-	"github.com/hashicorp/vault/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/configutil"
 )
 
 const ServiceName = "vault-link"

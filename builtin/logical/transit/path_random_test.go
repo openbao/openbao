@@ -11,8 +11,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/helper/random"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/random"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTransit_Random(t *testing.T) {

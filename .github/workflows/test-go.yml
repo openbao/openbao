@@ -391,7 +391,7 @@ jobs:
           # This jq query filters out successful tests, leaving only the failures.
           # Then, it formats the results into rows of a Markdown table.
           # An example row will resemble this:
-          # | github.com/hashicorp/vault/package | TestName | fips | 0 | 2 | [view results](github.com/link-to-logs) |
+          # | github.com/openbao/openbao/package | TestName | fips | 0 | 2 | [view results](github.com/link-to-logs) |
           jq -r -n 'inputs
           | select(.Action == "fail")
           | "| ${{inputs.name}} | \(.Package) | \(.Test // "-") | \(.Elapsed) | ${{ matrix.id }} | [view test results :scroll:](${{ env.GH_JOB_URL }}) |"' \

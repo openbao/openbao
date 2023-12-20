@@ -6,9 +6,9 @@ package transit
 import (
 	"context"
 
-	"github.com/hashicorp/vault/helper/random"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/random"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func (b *backend) pathRandom() *framework.Path {

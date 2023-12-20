@@ -11,8 +11,8 @@ import (
 
 	stepwise "github.com/hashicorp/vault-testing-stepwise"
 	dockerEnvironment "github.com/hashicorp/vault-testing-stepwise/environments/docker"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/keysutil"
 	"github.com/mitchellh/mapstructure"
 )
 

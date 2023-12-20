@@ -1,4 +1,4 @@
-module github.com/hashicorp/vault/sdk
+module github.com/openbao/openbao/sdk
 
 go 1.19
 
@@ -35,7 +35,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/hcl v1.0.1-vault-5
-	github.com/hashicorp/vault/api v1.9.1
+	github.com/openbao/openbao/api v1.9.1
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/mitchellh/mapstructure v1.5.0

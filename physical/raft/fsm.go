@@ -25,9 +25,9 @@ import (
 	"github.com/hashicorp/go-raftchunking"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/raft"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
-	"github.com/hashicorp/vault/sdk/physical"
-	"github.com/hashicorp/vault/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/plugin/pb"
 	bolt "go.etcd.io/bbolt"
 )
 

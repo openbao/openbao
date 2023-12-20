@@ -37,8 +37,8 @@ Vault 1.6 or later. To determine if a plugin is using version 4 or version 5, th
 list of changes in no particular order that you can check against your plugin to determine
 the version:
 
-1. The import path for version 4 is `github.com/hashicorp/vault/sdk/database/dbplugin`
-   whereas the import path for version 5 is `github.com/hashicorp/vault/sdk/database/dbplugin/v5`
+1. The import path for version 4 is `github.com/openbao/openbao/sdk/database/dbplugin`
+   whereas the import path for version 5 is `github.com/openbao/openbao/sdk/database/dbplugin/v5`
 2. Version 4 has the following functions: `Initialize`, `Init`, `CreateUser`, `RenewUser`,
    `RevokeUser`, `SetCredentials`, `RotateRootCredentials`, `Type`, and `Close`. You can see the
    full function signatures in `sdk/database/dbplugin/plugin.go`.
@@ -53,8 +53,8 @@ for upgrading to version 5.
    the case with version 5. Vault is responsible for generating passwords and passing them to
    the plugin via `NewUserRequest.Password` and `UpdateUserRequest.Password.NewPassword`.
 
-1. Change the import path from `github.com/hashicorp/vault/sdk/database/dbplugin` to
-   `github.com/hashicorp/vault/sdk/database/dbplugin/v5`. The package name is the same, so any
+1. Change the import path from `github.com/openbao/openbao/sdk/database/dbplugin` to
+   `github.com/openbao/openbao/sdk/database/dbplugin/v5`. The package name is the same, so any
    references to `dbplugin` can remain as long as those symbols exist within the new package
    (such as the `Serve` function).
 2. An easy way to see what functions need to be implemented is to put the following as a

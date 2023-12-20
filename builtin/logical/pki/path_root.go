@@ -22,11 +22,11 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func pathGenerateRoot(b *backend) *framework.Path {

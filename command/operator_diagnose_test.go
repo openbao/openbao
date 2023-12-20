@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/vault/diagnose"
+	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/mitchellh/cli"
 )
 

@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/helper/testhelpers/teststorage"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/helper/testhelpers/teststorage"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/vault"
 )
 
 type testFunc func(t *testing.T, logger hclog.Logger, storage teststorage.ReusableStorage, basePort int)

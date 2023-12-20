@@ -680,7 +680,7 @@ the `region` argument in your login request with a matching value, i.e. `region=
 
 An example of how to generate the required request values for the `login` method
 can be found found in the [vault cli
-source code](https://github.com/hashicorp/vault/blob/main/builtin/credential/aws/cli.go).
+source code](https://github.com/lf-edge/openbao/blob/main/builtin/credential/aws/cli.go).
 Using an approach such as this, the request parameters can be generated and
 passed to the `login` method:
 
@@ -776,8 +776,8 @@ import (
 	"context"
 	"fmt"
 
-	vault "github.com/hashicorp/vault/api"
-	auth "github.com/hashicorp/vault/api/auth/aws"
+	vault "github.com/lf-edge/openbao/api"
+	auth "github.com/lf-edge/openbao/api/auth/aws"
 )
 
 // Fetches a key-value secret (kv-v2) after authenticating to Vault via AWS IAM,

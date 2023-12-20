@@ -4,8 +4,8 @@
 package command
 
 import (
-	"github.com/hashicorp/vault/command/server"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/vault"
 )
 
 var (

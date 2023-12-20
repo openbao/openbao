@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 type UserpassAuth struct {

@@ -13,9 +13,9 @@ import (
 	"time"
 
 	nomadapi "github.com/hashicorp/nomad/api"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/sdk/helper/docker"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 )
 

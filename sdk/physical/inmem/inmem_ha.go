@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/physical"
+	"github.com/openbao/openbao/sdk/physical"
 )
 
 type InmemHABackend struct {

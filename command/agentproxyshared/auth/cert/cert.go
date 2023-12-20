@@ -10,9 +10,9 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/command/agentproxyshared/auth"
-	"github.com/hashicorp/vault/sdk/helper/consts"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/agentproxyshared/auth"
+	"github.com/openbao/openbao/sdk/helper/consts"
 )
 
 type certMethod struct {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // N.B.: While we could use textproto to get the canonical mime header, HTTP/2

@@ -6,7 +6,7 @@
 package testhelpers
 
 import (
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 	"github.com/mitchellh/go-testing-interface"
 )
 

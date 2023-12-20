@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/errutil"
-	"github.com/hashicorp/vault/sdk/helper/wrapping"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTranslation_Errors(t *testing.T) {

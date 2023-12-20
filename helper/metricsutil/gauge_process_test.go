@@ -15,7 +15,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/timeutil"
+	"github.com/openbao/openbao/helper/timeutil"
 )
 
 // SimulatedTime maintains a virtual clock so the test isn't

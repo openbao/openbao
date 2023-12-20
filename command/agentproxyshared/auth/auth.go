@@ -14,8 +14,8 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
 
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 const (

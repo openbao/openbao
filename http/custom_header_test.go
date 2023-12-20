@@ -6,7 +6,7 @@ package http
 import (
 	"testing"
 
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/vault"
 )
 
 var defaultCustomHeaders = map[string]string{

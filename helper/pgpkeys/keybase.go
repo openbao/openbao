@@ -11,7 +11,7 @@ import (
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/vault/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/jsonutil"
 )
 
 const (

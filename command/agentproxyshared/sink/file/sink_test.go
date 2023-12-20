@@ -15,8 +15,8 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/hashicorp/vault/command/agentproxyshared/sink"
-	"github.com/hashicorp/vault/sdk/helper/logging"
+	"github.com/openbao/openbao/command/agentproxyshared/sink"
+	"github.com/openbao/openbao/sdk/helper/logging"
 )
 
 func TestSinkServer(t *testing.T) {

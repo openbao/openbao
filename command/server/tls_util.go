@@ -18,7 +18,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/helper/certutil"
 )
 
 type CaCert struct {

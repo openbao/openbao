@@ -12,11 +12,11 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
-	"github.com/hashicorp/vault/helper/locking"
-	"github.com/hashicorp/vault/helper/metricsutil"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/helper/pathmanager"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/helper/locking"
+	"github.com/openbao/openbao/helper/metricsutil"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 // Type represents the quota kind

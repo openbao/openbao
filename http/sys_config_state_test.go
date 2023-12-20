@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/command/server"
-	"github.com/hashicorp/vault/internalshared/configutil"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/command/server"
+	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysConfigState_Sanitized(t *testing.T) {

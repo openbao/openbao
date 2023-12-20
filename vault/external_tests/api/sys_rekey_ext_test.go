@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/helper/testhelpers"
-	vaulthttp "github.com/hashicorp/vault/http"
-	"github.com/hashicorp/vault/sdk/helper/logging"
-	"github.com/hashicorp/vault/sdk/physical/inmem"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/seal"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/helper/testhelpers"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 func TestSysRekey_Verification(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 
-	"github.com/hashicorp/vault/vault/seal"
+	"github.com/openbao/openbao/vault/seal"
 )
 
 // SealAccess is a wrapper around Seal that exposes accessor methods

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/helper/testhelpers"
-	"github.com/hashicorp/vault/vault"
+	"github.com/openbao/openbao/helper/testhelpers"
+	"github.com/openbao/openbao/vault"
 )
 
 func TestSysMonitorUnknownLogLevel(t *testing.T) {

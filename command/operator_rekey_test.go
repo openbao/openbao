@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/helper/roottoken"
+	"github.com/openbao/openbao/sdk/helper/roottoken"
 
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
 )
 

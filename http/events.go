@@ -14,10 +14,10 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/helper/namespace"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/vault"
-	"github.com/hashicorp/vault/vault/eventbus"
+	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
+	"github.com/openbao/openbao/vault/eventbus"
 	"nhooyr.io/websocket"
 )
 

@@ -11,12 +11,12 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
+	"github.com/mitchellh/mapstructure"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/logical"
-	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
-	"github.com/mitchellh/mapstructure"
 )
 
 const (

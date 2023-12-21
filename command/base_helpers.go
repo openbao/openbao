@@ -13,9 +13,9 @@ import (
 
 	kvbuilder "github.com/hashicorp/go-secure-stdlib/kv-builder"
 	"github.com/kr/text"
-	"github.com/openbao/openbao/api"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 	"github.com/pkg/errors"
 	"github.com/ryanuber/columnize"
 )

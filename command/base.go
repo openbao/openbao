@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mattn/go-isatty"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/token"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/mattn/go-isatty"
-	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )

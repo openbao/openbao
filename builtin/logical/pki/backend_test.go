@@ -45,6 +45,7 @@ import (
 	"github.com/fatih/structs"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api"
 	auth "github.com/openbao/openbao/api/auth/userpass"
 	"github.com/openbao/openbao/builtin/credential/userpass"
@@ -53,7 +54,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/certutil"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
-	"github.com/mitchellh/mapstructure"
 	"golang.org/x/net/idna"
 )
 

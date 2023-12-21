@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func testAuthMoveCommand(tb testing.TB) (*cli.MockUi, *AuthMoveCommand) {

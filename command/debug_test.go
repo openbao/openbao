@@ -16,9 +16,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
 	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func testDebugCommand(tb testing.TB) (*cli.MockUi, *DebugCommand) {

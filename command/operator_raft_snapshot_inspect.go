@@ -22,9 +22,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
+	"github.com/mitchellh/cli"
 	protoio "github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/plugin/pb"
-	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 

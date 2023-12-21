@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/database/dbplugin"
 	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

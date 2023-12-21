@@ -35,6 +35,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	raftlib "github.com/hashicorp/raft"
+	"github.com/mitchellh/copystructure"
+	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
@@ -58,8 +60,6 @@ import (
 	backendplugin "github.com/openbao/openbao/sdk/plugin"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/seal"
-	"github.com/mitchellh/copystructure"
-	"github.com/mitchellh/go-testing-interface"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/net/http2"
 )

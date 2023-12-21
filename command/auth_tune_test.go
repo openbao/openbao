@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-	"github.com/mitchellh/cli"
 )
 
 func testAuthTuneCommand(tb testing.TB) (*cli.MockUi, *AuthTuneCommand) {

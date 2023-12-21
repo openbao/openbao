@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	mongodbatlas "github.com/hashicorp/vault-plugin-database-mongodbatlas"
 	_ "github.com/jackc/pgx/v4"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
@@ -33,7 +34,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
-	"github.com/mitchellh/mapstructure"
 )
 
 func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {

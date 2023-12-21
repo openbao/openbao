@@ -14,11 +14,11 @@ import (
 
 	"github.com/openbao/openbao/helper/constants"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/errutil"
 	"github.com/openbao/openbao/sdk/helper/keysutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 // BatchRequestItem represents a request item for batch processing

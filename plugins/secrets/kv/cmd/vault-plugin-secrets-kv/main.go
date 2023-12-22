@@ -4,8 +4,8 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	kv "github.com/openbao/openbao-plugin-secrets-kv"
 	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

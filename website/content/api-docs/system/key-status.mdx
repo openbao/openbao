@@ -3,7 +3,7 @@ layout: api
 page_title: /sys/key-status - HTTP API
 description: |-
   The `/sys/key-status` endpoint is used to query info about the current
-  encryption key of Vault.
+  encryption key of OpenBao.
 ---
 
 # `/sys/key-status`
@@ -11,12 +11,12 @@ description: |-
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/key-status` endpoint is used to query info about the current
-encryption key of Vault.
+encryption key of OpenBao.
 
 ## Get encryption key status
 
 This endpoint returns information about the current encryption key used by
-Vault.
+OpenBao.
 
 | Method | Path              |
 | :----- | :---------------- |
@@ -48,6 +48,6 @@ number of encryptions made by the key including those on other cluster
 nodes.  
 
 Note that the estimated encryption count is aggregated from secondary 
-Vault nodes to the primary but not in the other direction.  Thus the
+OpenBao nodes to the primary but not in the other direction.  Thus the
 count only accurately reflects the cluster-wide estimate when queried
 on the primary.

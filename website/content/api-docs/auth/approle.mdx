@@ -1,17 +1,17 @@
 ---
 layout: api
 page_title: AppRole - Auth Methods - HTTP API
-description: This is the API documentation for the Vault AppRole auth method.
+description: This is the API documentation for the OpenBao AppRole auth method.
 ---
 
 # AppRole auth method (API)
 
-This is the API documentation for the Vault AppRole auth method. For
+This is the API documentation for the OpenBao AppRole auth method. For
 general information about the usage and operation of the AppRole method, please
-see the [Vault AppRole method documentation](/vault/docs/auth/approle).
+see the [OpenBao AppRole method documentation](/vault/docs/auth/approle).
 
 This documentation assumes the AppRole method is mounted at the `/auth/approle`
-path in Vault. Since it is possible to enable auth methods at any location,
+path in OpenBao. Since it is possible to enable auth methods at any location,
 please update your API calls accordingly.
 
 ## List roles
@@ -619,7 +619,7 @@ $ curl \
 
 ## Login with AppRole
 
-Issues a Vault token based on the presented credentials. `role_id` is always
+Issues a OpenBao token based on the presented credentials. `role_id` is always
 required; if `bind_secret_id` is enabled (the default) on the AppRole,
 `secret_id` is required too. Any other bound authentication values on the
 AppRole (such as client IP CIDR) are also evaluated.
@@ -677,7 +677,7 @@ $ curl \
 Updates the respective property in the existing AppRole. All of these
 parameters of the AppRole can be updated using the `/auth/approle/role/:role_name`
 endpoint directly. The endpoints for each field is provided separately
-to be able to delegate specific endpoints using Vault's ACL system.
+to be able to delegate specific endpoints using OpenBao's ACL system.
 
 | Method            | Path                                                  |
 | :---------------- | :---------------------------------------------------- | --------- |
@@ -724,7 +724,7 @@ $ curl \
   "data": null,
   "wrap_info": null,
   "warnings": [
-    "Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs."
+    "Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs."
   ],
   "auth": null
 }

@@ -1,22 +1,22 @@
 ---
 layout: api
 page_title: /sys/monitor - HTTP API
-description: The `/sys/monitor` endpoint is used to receive streaming logs from the Vault server.
+description: The `/sys/monitor` endpoint is used to receive streaming logs from the OpenBao server.
 ---
 
 # `/sys/monitor`
 
 @include 'alerts/restricted-admin.mdx'
 
-The `/sys/monitor` endpoint is used to receive streaming logs from the Vault server.
+The `/sys/monitor` endpoint is used to receive streaming logs from the OpenBao server.
 
-If Vault is emitting log messages faster than a receiver can process them, then
+If OpenBao is emitting log messages faster than a receiver can process them, then
 some log lines will be dropped.
 
 ## Monitor system logs
 
-This endpoint streams logs back to the client from Vault. Note that unlike most API endpoints in Vault, this one
-does not return JSON by default. This will send back data in whatever log format Vault has been configured with. By
+This endpoint streams logs back to the client from OpenBao. Note that unlike most API endpoints in OpenBao, this one
+does not return JSON by default. This will send back data in whatever log format OpenBao has been configured with. By
 default, this is text.
 
 | Method | Path           |

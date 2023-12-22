@@ -1,17 +1,17 @@
 ---
 layout: api
 page_title: GitHub - Auth Methods - HTTP API
-description: This is the API documentation for the Vault GitHub auth method.
+description: This is the API documentation for the OpenBao GitHub auth method.
 ---
 
 # GitHub auth method (API)
 
-This is the API documentation for the Vault GitHub auth method. For
+This is the API documentation for the OpenBao GitHub auth method. For
 general information about the usage and operation of the GitHub method, please
-see the [Vault GitHub method documentation](/vault/docs/auth/github).
+see the [OpenBao GitHub method documentation](/vault/docs/auth/github).
 
 This documentation assumes the GitHub method is enabled at the `/auth/github`
-path in Vault. Since it is possible to enable auth methods at any location,
+path in OpenBao. Since it is possible to enable auth methods at any location,
 please update your API calls accordingly.
 
 ## Configure method
@@ -28,7 +28,7 @@ distinction between the `create` and `update` capabilities inside ACL policies.
 - `organization` `(string: <required>)` - The organization users must be part
   of.
 - `organization_id` `(int: 0)` - The ID of the organization users must be part
-  of. Vault will attempt to fetch and set this value if it is not provided.
+  of. OpenBao will attempt to fetch and set this value if it is not provided.
 - `base_url` `(string: "")` - The API endpoint to use. Useful if you are running
   GitHub Enterprise or an API-compatible authentication server.
 

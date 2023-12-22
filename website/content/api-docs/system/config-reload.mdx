@@ -1,14 +1,14 @@
 ---
 layout: api
 page_title: /sys/config/reload - HTTP API
-description: The '/sys/config/reload' endpoint is used to reload specific parts of Vault's configuration.
+description: The '/sys/config/reload' endpoint is used to reload specific parts of OpenBao's configuration.
 ---
 
 # `/sys/config/reload`
 
 @include 'alerts/restricted-root.mdx'
 
-The `sys/config/reload` endpoint allows reloading specific parts of Vault's configuration.
+The `sys/config/reload` endpoint allows reloading specific parts of OpenBao's configuration.
 Currently, it only supports reloading license information from files on disk.
 
 | Method | Path                          |
@@ -17,7 +17,7 @@ Currently, it only supports reloading license information from files on disk.
 
 ### Parameters
 
-- `subsystem` `(string: <required>)` - Specifies the subsystem for Vault to reload. This is part of the request URL.
+- `subsystem` `(string: <required>)` - Specifies the subsystem for OpenBao to reload. This is part of the request URL.
 
 ## Reload license file <EnterpriseAlert product="vault" inline />
 

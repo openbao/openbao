@@ -9,11 +9,11 @@ description: The '/sys/host-info' endpoint is used to retrieve host information
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/host-info` endpoint is used retrieve information about the
-host instance that the Vault server is running on.
+host instance that the OpenBao server is running on.
 
 ## Collect host information
 
-This endpoint returns information about the host instance that the Vault
+This endpoint returns information about the host instance that the OpenBao
 server is running on. The data returned includes CPU information, CPU
 times, disk usage, host info, and memory statistics.
 
@@ -66,7 +66,7 @@ $ curl \
       ...
     ],
     "host": {
-      "hostname": "vault-server-1",
+      "hostname": "openbao-server-1",
       "uptime": 28618,
       "bootTime": 1570114491,
       "procs": 439,

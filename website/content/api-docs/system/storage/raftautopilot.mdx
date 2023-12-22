@@ -3,7 +3,7 @@ layout: api
 page_title: /sys/storage/raft/autopilot - HTTP API
 description: |-
 
-  The `/sys/storage/raft/autopilot` endpoints are used to manage raft clusters using autopilot with Vault's Integrated Storage backend.
+  The `/sys/storage/raft/autopilot` endpoints are used to manage raft clusters using autopilot with OpenBao's Integrated Storage backend.
 
 ---
 
@@ -12,7 +12,7 @@ description: |-
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/storage/raft/autopilot` endpoints are used to manage raft clusters using autopilot
-with Vault's [Integrated Storage backend](/vault/docs/internals/integrated-storage).
+with OpenBao's [Integrated Storage backend](/vault/docs/internals/integrated-storage).
 Refer to the [Integrated Storage Autopilot](/vault/tutorials/raft/raft-autopilot) tutorial to learn how to manage raft clusters using autopilot.
 
 ## Get cluster state
@@ -93,70 +93,70 @@ automated upgrade progress (if any), and optimistic failure tolerance.
 {
   "failure_tolerance": 0,
   "healthy": true,
-  "leader": "vault_1",
+  "leader": "openbao_1",
   "optimistic_failure_tolerance": 3,
   "redundancy_zones": {
     "a": {
       "servers": [
-        "vault_1",
-        "vault_2",
-        "vault_5"
+        "openbao_1",
+        "openbao_2",
+        "openbao_5"
       ],
       "voters": [
-        "vault_1"
+        "openbao_1"
       ],
       "failure_tolerance": 2
     },
     "b": {
       "servers": [
-        "vault_3",
-        "vault_4"
+        "openbao_3",
+        "openbao_4"
       ],
       "voters": [
-        "vault_3"
+        "openbao_3"
       ],
       "failure_tolerance": 1
     }
   },
   "upgrade_info": {
     "other_version_non_voters": [
-      "vault_2",
-      "vault_4"
+      "openbao_2",
+      "openbao_4"
     ],
     "other_version_voters": [
-      "vault_1",
-      "vault_3"
+      "openbao_1",
+      "openbao_3"
     ],
     "redundancy_zones": {
       "a": {
         "target_version_non_voters": [
-          "vault_5"
+          "openbao_5"
         ],
         "other_version_voters": [
-          "vault_1"
+          "openbao_1"
         ],
         "other_version_non_voters": [
-          "vault_2"
+          "openbao_2"
         ]
       },
       "b": {
         "other_version_voters": [
-          "vault_3"
+          "openbao_3"
         ],
         "other_version_non_voters": [
-          "vault_4"
+          "openbao_4"
         ]
       }
     },
     "status": "await-new-voters",
     "target_version": "1.12.0",
     "target_version_non_voters": [
-      "vault_5"
+      "openbao_5"
     ]
   },
   "voters": [
-    "vault_1",
-    "vault_3"
+    "openbao_1",
+    "openbao_3"
   ]
 }
 ```
@@ -225,7 +225,7 @@ This endpoint is used to modify the configuration of the autopilot subsystem of 
 - `server_stabilization_time` `(string: "10s")` - Minimum amount of time a server must
   be in a stable, healthy state before it can be added to the cluster.
 
-- `disable_upgrade_migration` `(bool: false)` - Disables automatically upgrading Vault using
+- `disable_upgrade_migration` `(bool: false)` - Disables automatically upgrading OpenBao using
   autopilot. (Enterprise-only)
 
 ### Sample request

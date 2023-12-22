@@ -40,7 +40,7 @@ $ curl \
     "type": "file",
     "description": "Store logs in a file",
     "options": {
-      "file_path": "/var/log/vault.log"
+      "file_path": "/var/log/openbao.log"
     }
   }
 }
@@ -72,7 +72,7 @@ single word name or a more complex, nested path.
 - `type` `(string: <required>)` – Specifies the type of the audit device.
   Valid types are `file`, `socket` and `syslog`.
 
-Additionally, the following options are allowed in Vault open-source, but
+Additionally, the following options are allowed in OpenBao open-source, but
 relevant functionality is only supported in Vault Enterprise:
 
 - `local` `(bool: false)` – Specifies if the audit device is local within the cluster only. Local
@@ -84,7 +84,7 @@ relevant functionality is only supported in Vault Enterprise:
 {
   "type": "file",
   "options": {
-    "file_path": "/var/log/vault/log"
+    "file_path": "/var/log/openbao/log"
   }
 }
 ```

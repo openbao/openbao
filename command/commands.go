@@ -41,8 +41,8 @@ import (
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 
 	physAerospike "github.com/openbao/openbao/physical/aerospike"
 	physAliCloudOSS "github.com/openbao/openbao/physical/alicloudoss"

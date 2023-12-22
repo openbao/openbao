@@ -17,12 +17,12 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/command/agentproxyshared/sink/mock"
 	"github.com/openbao/openbao/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/http"
+	kv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/sdk/logical"

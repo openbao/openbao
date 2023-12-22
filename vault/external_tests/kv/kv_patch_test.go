@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	vaulthttp "github.com/openbao/openbao/http"
+	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
 )

@@ -15,8 +15,8 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 
 	"github.com/openbao/openbao/builtin/plugin"
 

@@ -30,6 +30,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
@@ -48,7 +49,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/wrapping"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/version"
-	"github.com/mitchellh/mapstructure"
 	"golang.org/x/crypto/sha3"
 )
 

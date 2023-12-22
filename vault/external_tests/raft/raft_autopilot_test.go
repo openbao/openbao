@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/kr/pretty"
+	testingintf "github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers"
@@ -24,7 +25,6 @@ import (
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/version"
-	testingintf "github.com/mitchellh/go-testing-interface"
 	"github.com/stretchr/testify/require"
 )
 

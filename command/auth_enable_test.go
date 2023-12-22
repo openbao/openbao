@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/mitchellh/cli"
 )
 
 func testAuthEnableCommand(tb testing.TB) (*cli.MockUi, *AuthEnableCommand) {

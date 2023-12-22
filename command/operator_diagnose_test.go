@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/vault/diagnose"
 )
 
 func testOperatorDiagnoseCommand(tb testing.TB) *OperatorDiagnoseCommand {

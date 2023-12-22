@@ -7,10 +7,10 @@ import (
 	"context"
 	"fmt"
 
+	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/template"
 	"github.com/openbao/openbao/sdk/logical"
-	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
 )
 
 const (

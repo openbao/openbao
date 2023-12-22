@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -32,7 +33,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/locksutil"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 func TestTokenStore_CreateOrphanResponse(t *testing.T) {

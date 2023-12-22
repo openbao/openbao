@@ -17,6 +17,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
+	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -25,7 +26,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/copystructure"
 )
 
 const (

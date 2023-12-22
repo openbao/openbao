@@ -22,6 +22,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
+	"github.com/mitchellh/cli"
 	cserver "github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -36,7 +37,6 @@ import (
 	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/openbao/openbao/vault/hcp_link"
 	"github.com/openbao/openbao/version"
-	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 )
 

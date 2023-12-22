@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/sdk/helper/consts"
 )
 
 var (

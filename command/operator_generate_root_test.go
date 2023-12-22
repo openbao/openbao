@@ -13,9 +13,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/sdk/helper/xor"
 	"github.com/openbao/openbao/vault"
-	"github.com/mitchellh/cli"
 )
 
 func testOperatorGenerateRootCommand(tb testing.TB) (*cli.MockUi, *OperatorGenerateRootCommand) {

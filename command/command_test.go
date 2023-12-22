@@ -14,6 +14,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/logical/pki"
@@ -26,7 +27,6 @@ import (
 	"github.com/openbao/openbao/sdk/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
-	"github.com/mitchellh/cli"
 
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"

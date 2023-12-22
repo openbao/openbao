@@ -14,8 +14,8 @@ import (
 
 	"github.com/openbao/openbao/sdk/helper/roottoken"
 
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func testOperatorRekeyCommand(tb testing.TB) (*cli.MockUi, *OperatorRekeyCommand) {

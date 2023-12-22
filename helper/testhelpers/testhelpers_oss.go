@@ -6,8 +6,8 @@
 package testhelpers
 
 import (
-	"github.com/openbao/openbao/vault"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/vault"
 )
 
 // WaitForActiveNodeAndStandbys does nothing more than wait for the active node

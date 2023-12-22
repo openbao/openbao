@@ -14,10 +14,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
 )

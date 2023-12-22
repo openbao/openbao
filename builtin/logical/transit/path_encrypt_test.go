@@ -15,8 +15,8 @@ import (
 	"github.com/openbao/openbao/sdk/helper/keysutil"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestTransit_MissingPlaintext(t *testing.T) {

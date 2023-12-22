@@ -15,9 +15,9 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/helper/keysutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 // The outcome of processing a request includes

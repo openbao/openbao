@@ -6,8 +6,8 @@ package command
 import (
 	"strings"
 
-	"github.com/openbao/openbao/version"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 )
 

@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
@@ -17,7 +18,6 @@ import (
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
-	"github.com/mitchellh/go-testing-interface"
 )
 
 type TransitSealServer struct {

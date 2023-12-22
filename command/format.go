@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/ghodss/yaml"
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 	"github.com/ryanuber/columnize"
 )
 

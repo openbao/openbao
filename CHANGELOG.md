@@ -21,6 +21,7 @@
 ### Improvements
 
 * Support bound service account namespace selector [GH-218](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/218)
+* Indicate that token reviewer JWT is set on config read [GH-221](https://github.com/hashicorp/vault-plugin-auth-kubernetes/pull/221)
 
 ## 0.17.1 (Sept 7, 2023)
 

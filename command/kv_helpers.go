@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 )
 
 func kvReadRequest(client *api.Client, path string, params map[string]string) (*api.Secret, error) {

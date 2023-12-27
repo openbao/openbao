@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
 	"github.com/posener/complete"
 )
 

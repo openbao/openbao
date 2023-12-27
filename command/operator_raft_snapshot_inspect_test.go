@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/physical"
-	"github.com/mitchellh/cli"
 )
 
 func testOperatorRaftSnapshotInspectCommand(tb testing.TB) (*cli.MockUi, *OperatorRaftSnapshotInspectCommand) {

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/version"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/version"
 )
 
 func testVersionCommand(tb testing.TB) (*cli.MockUi, *VersionCommand) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
@@ -27,7 +28,6 @@ import (
 	physFile "github.com/openbao/openbao/sdk/physical/file"
 	"github.com/openbao/openbao/sdk/physical/inmem"
 	"github.com/openbao/openbao/vault"
-	"github.com/mitchellh/go-testing-interface"
 )
 
 func MakeInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {

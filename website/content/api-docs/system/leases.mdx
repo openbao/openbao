@@ -6,7 +6,7 @@ description: The `/sys/leases` endpoints are used to view and manage leases.
 
 # `/sys/leases`
 
-The `/sys/leases` endpoints are used to view and manage leases in Vault.
+The `/sys/leases` endpoints are used to view and manage leases in OpenBao.
 
 ## Read lease
 
@@ -172,7 +172,7 @@ encountered during revocation. This is _potentially very dangerous_ and should
 only be used in specific emergency situations where errors in the backend or the
 connected backend service prevent normal revocation.
 
-By ignoring these errors, Vault abdicates responsibility for ensuring that the
+By ignoring these errors, OpenBao abdicates responsibility for ensuring that the
 issued credentials or secrets are properly revoked and/or cleaned up. Access to
 this endpoint should be tightly controlled.
 
@@ -229,7 +229,7 @@ $ curl \
 ## Tidy leases
 
 This endpoint cleans up the dangling storage entries for leases: for each lease
-entry in storage, Vault will verify that it has an associated valid non-expired
+entry in storage, OpenBao will verify that it has an associated valid non-expired
 token in storage, and if not, the lease will be revoked.
 
 Generally, running this is not needed unless upgrade notes or support personnel

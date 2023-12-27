@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	"github.com/mitchellh/cli"
 )
 
 func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, reloadutil.ReloadFunc, error) {

@@ -2,7 +2,7 @@
 layout: api
 page_title: /sys/config/cors - HTTP API
 description: >-
-  The '/sys/config/cors' endpoint configures how the Vault server responds to
+  The '/sys/config/cors' endpoint configures how the OpenBao server responds to
   cross-origin requests.
 ---
 
@@ -63,7 +63,7 @@ cross-origin requests, as well as headers that are allowed on cross-origin reque
 
 - `allowed_origins` `(string or string array: <required>)` – A wildcard (`*`), comma-delimited string, or array of strings specifying the origins that are permitted to make cross-origin requests.
 
-- `allowed_headers` `(string or string array: "" or [])` – A comma-delimited string or array of strings specifying headers that are permitted to be on cross-origin requests. Headers set via this parameter will be appended to the list of headers that Vault allows by default.
+- `allowed_headers` `(string or string array: "" or [])` – A comma-delimited string or array of strings specifying headers that are permitted to be on cross-origin requests. Headers set via this parameter will be appended to the list of headers that OpenBao allows by default.
 
 ### Sample payload
 

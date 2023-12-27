@@ -1,12 +1,12 @@
 ---
 layout: api
 page_title: /sys/namespaces - HTTP API
-description: The `/sys/namespaces` endpoint is used manage namespaces in Vault.
+description: The `/sys/namespaces` endpoint is used manage namespaces in OpenBao.
 ---
 
 # `/sys/namespaces`
 
-The `/sys/namespaces` endpoint is used manage namespaces in Vault.
+The `/sys/namespaces` endpoint is used manage namespaces in OpenBao.
 
 ## List namespaces
 
@@ -171,7 +171,7 @@ $ curl \
 ## Lock namespace
 
 This endpoint locks the API for the current namespace path or optional subpath.
-The behavior when interacting with Vault from a locked namespace is described in
+The behavior when interacting with OpenBao from a locked namespace is described in
 [API Locked Response](/vault/docs/concepts/namespace-api-lock#api-locked-response).
 
 | Method | Path                    |

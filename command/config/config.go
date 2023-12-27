@@ -10,8 +10,8 @@ import (
 
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/openbao/openbao/sdk/helper/hclutil"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/openbao/openbao/sdk/helper/hclutil"
 )
 
 const (

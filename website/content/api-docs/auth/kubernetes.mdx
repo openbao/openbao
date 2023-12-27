@@ -1,19 +1,19 @@
 ---
 layout: api
 page_title: Kubernetes - Auth Methods - HTTP API
-description: This is the API documentation for the Vault Kubernetes auth method plugin.
+description: This is the API documentation for the OpenBao Kubernetes auth method plugin.
 ---
 
 # Kubernetes auth method (API)
 
 @include 'x509-sha1-deprecation.mdx'
 
-This is the API documentation for the Vault Kubernetes auth method plugin. To
+This is the API documentation for the OpenBao Kubernetes auth method plugin. To
 learn more about the usage and operation, see the
-[Vault Kubernetes auth method](/vault/docs/auth/kubernetes).
+[OpenBao Kubernetes auth method](/vault/docs/auth/kubernetes).
 
 This documentation assumes the Kubernetes method is mounted at the
-`/auth/kubernetes` path in Vault. Since it is possible to enable auth methods at
+`/auth/kubernetes` path in OpenBao. Since it is possible to enable auth methods at
 any location, please update your API calls accordingly.
 
 ## Configure method
@@ -54,13 +54,13 @@ See [these instructions](/vault/docs/auth/kubernetes#discovering-the-service-acc
 
 ### Caveats
 
-If Vault is running in a Kubernetes Pod, the `kubernetes_ca_cert` and
+If OpenBao is running in a Kubernetes Pod, the `kubernetes_ca_cert` and
 `token_reviewer_jwt` parameters will automatically default to the local CA cert
 (`/var/run/secrets/kubernetes.io/serviceaccount/ca.crt`) and local service
 account JWT (`/var/run/secrets/kubernetes.io/serviceaccount/token`). This
 behavior may be disabled by setting `disable_local_ca_jwt` to `true`.
 
-When Vault is running in a non-Kubernetes environment, either
+When OpenBao is running in a non-Kubernetes environment, either
 `kubernetes_ca_cert` or `pem_keys` must be set by the user.
 
 ### Sample payload
@@ -134,7 +134,7 @@ entities attempting to login.
 - `alias_name_source` `(string: "serviceaccount_uid")` - Configures how identity aliases are generated.
   Valid choices are: `serviceaccount_uid`, `serviceaccount_name`
   When `serviceaccount_uid` is specified, the machine generated UID from the service account will be used as the identity alias name.
-  When `serviceaccount_name` is specified, the service account's namespace and name will be used as the identity alias name e.g `vault/vault-auth`.
+  When `serviceaccount_name` is specified, the service account's namespace and name will be used as the identity alias name e.g `openbao/openbao-auth`.
   While it is strongly advised that you use `serviceaccount_uid`, you may also use `serviceaccount_name` in cases where
   you want to set the alias ahead of time, and the risks are mitigated or otherwise acceptable given your use case.
   It is very important to limit who is able to delete/create service accounts within a given cluster.
@@ -147,7 +147,7 @@ entities attempting to login.
 
 ```json
 {
-  "bound_service_account_names": "vault-auth",
+  "bound_service_account_names": "openbao-auth",
   "bound_service_account_namespaces": "default",
   "policies": ["dev", "prod"],
   "max_ttl": 1800000
@@ -189,7 +189,7 @@ $ curl \
 ```json
 {
   "data": {
-    "bound_service_account_names": "vault-auth",
+    "bound_service_account_names": "openbao-auth",
     "bound_service_account_namespaces": "default",
     "max_ttl": 1800000,
     "ttl": 0,
@@ -294,9 +294,9 @@ $ curl \
     "policies": ["default"],
     "metadata": {
       "role": "test",
-      "service_account_name": "vault-auth",
+      "service_account_name": "openbao-auth",
       "service_account_namespace": "default",
-      "service_account_secret_name": "vault-auth-token-pd21c",
+      "service_account_secret_name": "openbao-auth-token-pd21c",
       "service_account_uid": "aa9aa8ff-98d0-11e7-9bb7-0800276d99bf"
     },
     "lease_duration": 2764800,

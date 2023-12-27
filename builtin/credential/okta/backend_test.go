@@ -12,13 +12,13 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/okta/okta-sdk-golang/v2/okta"
+	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/openbao/openbao/helper/testhelpers"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/sdk/helper/policyutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/okta/okta-sdk-golang/v2/okta"
-	"github.com/okta/okta-sdk-golang/v2/okta/query"
 	"github.com/stretchr/testify/require"
 )
 

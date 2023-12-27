@@ -14,11 +14,11 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/helper/policyutil"
 	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 func (b *backend) requestNoErr(t *testing.T, req *logical.Request) *logical.Response {

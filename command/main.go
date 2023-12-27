@@ -15,10 +15,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/command/token"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/command/token"
 )
 
 type VaultUI struct {

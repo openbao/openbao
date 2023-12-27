@@ -1,7 +1,7 @@
 ---
 layout: api
 page_title: /sys/auth - HTTP API
-description: The `/sys/auth` endpoint is used to manage auth methods in Vault.
+description: The `/sys/auth` endpoint is used to manage auth methods in OpenBao.
 ---
 
 # `/sys/auth`
@@ -49,7 +49,7 @@ $ curl \
       "local": false,
       "options": null,
       "plugin_version": "",
-      "running_plugin_version": "v1.12.0+builtin.vault",
+      "running_plugin_version": "v1.12.0+builtin.openbao",
       "running_sha256": "",
       "seal_wrap": false,
       "type": "github",
@@ -68,7 +68,7 @@ $ curl \
       "local": false,
       "options": null,
       "plugin_version": "",
-      "running_plugin_version": "v1.12.0+builtin.vault",
+      "running_plugin_version": "v1.12.0+builtin.openbao",
       "running_sha256": "",
       "seal_wrap": false,
       "type": "token",
@@ -139,7 +139,7 @@ For example, enable the "foo" auth method will make it accessible at
     unversioned plugin that may have been registered, the latest versioned plugin
     registered, or a built-in plugin in that order of precendence.
 
-Additionally, the following options are allowed in Vault open-source, but
+Additionally, the following options are allowed in OpenBao open-source, but
 relevant functionality is only supported in Vault Enterprise:
 
 - `local` `(bool: false)` – Specifies if the auth method is local only. Local
@@ -220,7 +220,7 @@ $ curl \
     "local": false,
     "options": null,
     "plugin_version": "",
-    "running_plugin_version": "v1.12.0+builtin.vault",
+    "running_plugin_version": "v1.12.0+builtin.openbao",
     "running_sha256": "",
     "seal_wrap": false,
     "type": "github",

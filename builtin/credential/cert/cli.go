@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openbao/openbao/api"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 )
 
 type CLIHandler struct{}

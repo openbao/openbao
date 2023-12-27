@@ -24,12 +24,12 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	goversion "github.com/hashicorp/go-version"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault/seal"
-	"github.com/mitchellh/mapstructure"
 	"golang.org/x/net/http2"
 )
 

@@ -2,18 +2,18 @@
 layout: api
 page_title: Google Cloud - Auth Methods - HTTP API
 description: |-
-  This is the API documentation for the Vault Google Cloud authentication
+  This is the API documentation for the OpenBao Google Cloud authentication
   method.
 ---
 
 # Google Cloud auth method (API)
 
-This is the API documentation for the Vault Google Cloud auth method. To learn
+This is the API documentation for the OpenBao Google Cloud auth method. To learn
 more about the usage and operation, see the
-[Vault Google Cloud method documentation](/vault/docs/auth/gcp).
+[OpenBao Google Cloud method documentation](/vault/docs/auth/gcp).
 
 This documentation assumes the plugin method is mounted at the
-`/auth/gcp` path in Vault. Since it is possible to enable auth methods
+`/auth/gcp` path in OpenBao. Since it is possible to enable auth methods
 at any location, please update your API calls accordingly.
 
 ## Configure
@@ -32,12 +32,12 @@ to confirm signed JWTs passed in during login.
 - `credentials` `(string: "")` - A JSON string containing the contents of a GCP
   service account credentials file. The service account associated with the credentials
   file must have the following [permissions](/vault/docs/auth/gcp#required-gcp-permissions).
-  If this value is empty, Vault will try to use [Application Default Credentials][gcp-adc]
-  from the machine on which the Vault server is running.
+  If this value is empty, OpenBao will try to use [Application Default Credentials][gcp-adc]
+  from the machine on which the OpenBao server is running.
 
 - `iam_alias` `(string: "role_id")` - Must be either `unique_id` or `role_id`.
   If `unique_id` is specified, the service account's unique ID will be used for
-  alias names during login. If `role_id` is specified, the ID of the Vault role
+  alias names during login. If `role_id` is specified, the ID of the OpenBao role
   will be used. Only used if role `type` is `iam`.
 
 - `iam_metadata` `(string: "default")` - The metadata to include on the token
@@ -52,7 +52,7 @@ to confirm signed JWTs passed in during login.
 
 - `gce_alias` `(string: "role_id")` - Must be either `instance_id` or `role_id`.
   If `instance_id` is specified, the GCE instance ID will be used for alias names
-  during login. If `role_id` is specified, the ID of the Vault role will be used.
+  during login. If `role_id` is specified, the ID of the OpenBao role will be used.
   Only used if role `type` is `gce`.
 
 - `gce_metadata` `(string: "default")` - The metadata to include on the token
@@ -160,7 +160,7 @@ entities attempting to login.
   generated under this token will have associated group aliases, namely
   `project-$PROJECT_ID`, `folder-$PROJECT_ID`, and `organization-$ORG_ID`
   for the entities project and all its folder or organization ancestors. This
-  requires Vault to have IAM permission `resourcemanager.projects.get`.
+  requires OpenBao to have IAM permission `resourcemanager.projects.get`.
 
 @include 'tokenfields.mdx'
 
@@ -171,7 +171,7 @@ The following parameters are only valid when the role is of type `"iam"`:
 - `max_jwt_exp` `(string: "15m")` - The number of seconds past the time of
   authentication that the login param JWT must expire within. For example, if a
   user attempts to login with a token that expires within an hour and this is
-  set to 15 minutes, Vault will return an error prompting the user to create a
+  set to 15 minutes, OpenBao will return an error prompting the user to create a
   new signed JWT with a shorter `exp`. The GCE metadata tokens currently do not
   allow the `exp` claim to be customized.
 
@@ -414,7 +414,7 @@ $ curl \
 
 ## Login
 
-Login to retrieve a Vault token. This endpoint takes a signed JSON Web Token
+Login to retrieve a OpenBao token. This endpoint takes a signed JSON Web Token
 (JWT) and a role name for some entity. It verifies the JWT signature with Google
 Cloud to authenticate that entity and then authorizes the entity for the given
 role.

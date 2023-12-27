@@ -1,18 +1,18 @@
 ---
 layout: api
 page_title: /sys/init - HTTP API
-description: The `/sys/init` endpoint is used to initialize a new Vault.
+description: The `/sys/init` endpoint is used to initialize a new OpenBao.
 ---
 
 # `/sys/init`
 
 @include 'alerts/restricted-root.mdx'
 
-The `/sys/init` endpoint is used to initialize a new Vault.
+The `/sys/init` endpoint is used to initialize a new OpenBao.
 
 ## Read initialization status
 
-This endpoint returns the initialization status of Vault.
+This endpoint returns the initialization status of OpenBao.
 
 | Method | Path        |
 | :----- | :---------- |
@@ -35,7 +35,7 @@ $ curl \
 
 ## Start initialization
 
-This endpoint initializes a new Vault. The Vault must not have been previously
+This endpoint initializes a new OpenBao. The OpenBao must not have been previously
 initialized. The recovery options, as well as the stored shares option, are only
 available when using [Auto Unseal](/vault/docs/concepts/seal#auto-unseal).
 
@@ -112,7 +112,6 @@ provided) root keys, base 64 encoded root keys and initial root token:
 
 -> **Warning:** Please be reminded that recovery keys are used as an 
 authentication flow for rekeying and regeneration of root credentials and cannot 
-be used to unseal Vault in the case of the unavailability of the seal mechanism.
+be used to unseal OpenBao in the case of the unavailability of the seal mechanism.
 Refer to the full warning in the documentation for 
 [Auto Unseal](/vault/docs/concepts/seal#auto-unseal).
-

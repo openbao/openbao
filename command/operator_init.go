@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/mitchellh/cli"
 	"github.com/posener/complete"
 
 	consulapi "github.com/hashicorp/consul/api"

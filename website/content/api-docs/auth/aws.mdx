@@ -1,7 +1,7 @@
 ---
 layout: api
 page_title: AWS - Auth Methods - HTTP API
-description: This is the API documentation for the Vault AWS auth method.
+description: This is the API documentation for the OpenBao AWS auth method.
 ---
 
 # AWS auth method (API)
@@ -10,12 +10,12 @@ description: This is the API documentation for the Vault AWS auth method.
 
 @include 'aws-sha1-deprecation.mdx'
 
-This is the API documentation for the Vault AWS auth method. For
+This is the API documentation for the OpenBao AWS auth method. For
 general information about the usage and operation of the AWS method, please
-see the [Vault AWS method documentation](/vault/docs/auth/aws).
+see the [OpenBao AWS method documentation](/vault/docs/auth/aws).
 
 This documentation assumes the AWS method is mounted at the `/auth/aws`
-path in Vault. Since it is possible to enable auth methods at any location,
+path in OpenBao. Since it is possible to enable auth methods at any location,
 please update your API calls accordingly.
 
 ~> **Vault 1.7** deprecated several AWS Auth URLs. The full
@@ -72,7 +72,7 @@ capabilities, the credentials are fetched automatically.
   the headers of login requests, and further this header must be among the
   signed headers validated by AWS. This is to protect against different types of
   replay attacks, for example a signed request sent to a dev server being resent
-  to a production server. Consider setting this to the Vault server's DNS name.
+  to a production server. Consider setting this to the OpenBao server's DNS name.
 - `allowed_sts_header_values` `(string: "")` A comma separated list of
   additional request headers permitted when providing the iam_request_headers for
   an IAM based login call. In any case, a default list of headers AWS STS
@@ -147,14 +147,14 @@ $ curl \
 
 ## Rotate root credentials
 
-When you have configured Vault with static credentials, you can use this
-endpoint to have Vault rotate the access key it used. Note that, due to AWS
-eventual consistency, after calling this endpoint, subsequent calls from Vault
+When you have configured OpenBao with static credentials, you can use this
+endpoint to have OpenBao rotate the access key it used. Note that, due to AWS
+eventual consistency, after calling this endpoint, subsequent calls from OpenBao
 to AWS may fail for a few seconds until AWS becomes consistent again.
 
-In order to call this endpoint, Vault's AWS access key MUST be the only access
+In order to call this endpoint, OpenBao's AWS access key MUST be the only access
 key on the IAM user; otherwise, generation of a new access key will fail. Once
-this method is called, Vault will now be the only entity that knows the AWS
+this method is called, OpenBao will now be the only entity that knows the AWS
 secret key is used to access AWS.
 
 | Method | Path                           |
@@ -183,12 +183,12 @@ There are no parameters to this operation.
 }
 ```
 
-The new access key Vault uses is returned by this operation.
+The new access key OpenBao uses is returned by this operation.
 
 ## Configure identity integration
 
-This configures the way that Vault interacts with the
-[Identity](/vault/docs/secrets/identity) store. The default (as of Vault
+This configures the way that OpenBao interacts with the
+[Identity](/vault/docs/secrets/identity) store. The default (as of OpenBao
 1.0.3) is `role_id` for both values.
 
 | Method | Path                        |
@@ -208,7 +208,7 @@ This configures the way that Vault interacts with the
   `arn:aws:iam::<account_id>:user/<optional_path/><user_name>` or
   `arn:aws:sts::<account_id>:assumed-role/<role_name_without_path>/<role_session_name>`.
   **Note**: if you select `full_arn` and then delete and recreate the IAM role,
-  Vault won't be aware and any identity aliases set up for the role name will
+  OpenBao won't be aware and any identity aliases set up for the role name will
   still be valid.
 
 - `iam_metadata` `(string: "default")` - The metadata to include on the token
@@ -285,7 +285,7 @@ $ curl \
 
 Registers an AWS public key to be used to verify the instance identity
 documents. Indicate the type of the public key using the `type` parameter.
-Vault has the default
+OpenBao has the default
 [documented](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html)
 set of AWS certificates built-in.
 
@@ -416,8 +416,8 @@ $ curl \
 ## Create STS role
 
 Allows the explicit association of STS roles to satellite AWS accounts
-(i.e. those which are not the account in which the Vault server is
-running.) Vault will use credentials obtained by assuming these STS roles
+(i.e. those which are not the account in which the OpenBao server is
+running.) OpenBao will use credentials obtained by assuming these STS roles
 when validating IAM principals or EC2 instances in the particular AWS account.
 
 | Method | Path                               |
@@ -427,10 +427,10 @@ when validating IAM principals or EC2 instances in the particular AWS account.
 ### Parameters
 
 - `account_id` `(string: <required>)` - AWS account ID to be associated with
-  STS role. If set, Vault will use assumed credentials to verify any login
+  STS role. If set, OpenBao will use assumed credentials to verify any login
   attempts from EC2 instances in this account.
 - `sts_role` `(string: <required>)` - AWS ARN for STS role to be assumed when
-  interacting with the account specified. The Vault server must have
+  interacting with the account specified. The OpenBao server must have
   permissions to assume this role.
 
 ### Sample payload
@@ -707,11 +707,11 @@ list in order to satisfy that constraint.
 
 ### Parameters
 
-- `role` `(string: <required>)` - Name of the role. Vault normalizes all role
+- `role` `(string: <required>)` - Name of the role. OpenBao normalizes all role
   names to lower case. If you create two roles, "Web-Workers" and "WEB-WORKERS",
   they will both be normalized to "web-workers" and will be regarded as the same role.
   This is to prevent unexpected behavior due to casing differences. At all points,
-  Vault can be provided the role in any casing, and it will internally handle
+  OpenBao can be provided the role in any casing, and it will internally handle
   sending it to lower case and seeking it inside its storage engine.
 - `auth_type` `(string: "iam")` - The auth type permitted for this role. Valid
   choices are "ec2" or "iam". If no value is specified, then it will default to
@@ -780,8 +780,8 @@ list in order to satisfy that constraint.
   the iam auth method. Wildcards are supported at the end of the ARN, e.g.,
   "arn:aws:iam::123456789012:role/\*" will match all roles in the AWS account.
   This is a comma-separated string or JSON array.
-- `inferred_entity_type` `(string: "")` - When set, instructs Vault to turn on
-  inferencing. The only current valid value is "ec2_instance" instructing Vault
+- `inferred_entity_type` `(string: "")` - When set, instructs OpenBao to turn on
+  inferencing. The only current valid value is "ec2_instance" instructing OpenBao
   to infer that the role comes from an EC2 instance in an IAM instance profile.
   This only applies to the iam auth method. If you set this on an existing role
   where it had not previously been set, tokens that had been created prior will
@@ -794,27 +794,27 @@ list in order to satisfy that constraint.
   [AWS Unique ID](http://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers#identifiers-unique-ids)
   for the bound principal ARN. This field is ignored when
   `bound_iam_principal_arn` ends with a wildcard character.
-  This requires Vault to be able to call `iam:GetUser` or `iam:GetRole` on the
+  This requires OpenBao to be able to call `iam:GetUser` or `iam:GetRole` on the
   `bound_iam_principal_arn` that is being bound. Resolving to internal AWS IDs
   more closely mimics the behavior of AWS services in that if an IAM user or
   role is deleted and a new one is recreated with the same name, those new users
-  or roles won't get access to roles in Vault that were permissioned to the
+  or roles won't get access to roles in OpenBao that were permissioned to the
   prior principals of the same name. The default value for new roles is true,
   while the default value for roles that existed prior to this option existing
   is false (you can check the value for a given role using the GET method on the
   role). Any authentication tokens created prior to this being supported won't
   verify the unique ID upon token renewal. When this is changed from false to
-  true on an existing role, Vault will attempt to resolve the role's bound IAM
+  true on an existing role, OpenBao will attempt to resolve the role's bound IAM
   ARN to the unique ID and, if unable to do so, will fail to enable this option.
   Changing this from `true` to `false` is not supported; if absolutely
   necessary, you would need to delete the role and recreate it explicitly
   setting it to `false`. However; the instances in which you would want to do
   this should be rare. If the role creation (or upgrading to use this) succeed,
-  then Vault has already been able to resolve internal IDs, and it doesn't need
+  then OpenBao has already been able to resolve internal IDs, and it doesn't need
   any further IAM permissions to authenticate users. If a role has been deleted
-  and recreated, and Vault has cached the old unique ID, you should just call
+  and recreated, and OpenBao has cached the old unique ID, you should just call
   this endpoint specifying the same `bound_iam_principal_arn` and, as long as
-  Vault still has the necessary IAM permissions to resolve the unique ID, Vault
+  OpenBao still has the necessary IAM permissions to resolve the unique ID, OpenBao
   will update the unique ID. (If it does not have the necessary permissions to
   resolve the unique ID, then it will fail to update.) If this option is set to
   false, then you MUST leave out the path component in `bound_iam_principal_arn`
@@ -1013,7 +1013,7 @@ $ curl \
 {
   "data": {
     "tag_value": "v1:09Vp0qGuyB8=:r=dev-role:p=default,dev-api:d=false:t=300h0m0s:uPLKCQxqsefRhrp1qmVa1wsQVUXXJG8UZP/pJIdVyOI=",
-    "tag_key": "VaultRole"
+    "tag_key": "OpenBaoRole"
   }
 }
 ```
@@ -1090,7 +1090,7 @@ for more information on the signature types.
   Base64-encoded, JSON-serialized string, or a JSON object of key/value pairs. The
   JSON serialization assumes that each header key maps to either a string value or
   an array of string values (though the length of that array will probably only be
-  one). If the `iam_server_id_header_value` is configured in Vault for the aws
+  one). If the `iam_server_id_header_value` is configured in OpenBao for the aws
   auth mount, then the headers must include the X-Vault-AWS-IAM-Server-ID header,
   its value must match the value configured, and the header must be included in
   the signed headers. This is required when using the iam auth method.

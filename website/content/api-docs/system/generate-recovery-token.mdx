@@ -3,7 +3,7 @@ layout: api
 page_title: /sys/generate-recovery-token - HTTP API
 description: |-
   The `/sys/generate-recovery-token/` endpoints are used to create a new
-  recovery token for Vault.  They are only active in recovery mode.
+  recovery token for OpenBao.  They are only active in recovery mode.
 ---
 
 # `/sys/generate-recovery-token`
@@ -11,7 +11,7 @@ description: |-
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/generate-recovery-token` endpoint is used to create a new recovery
-token for Vault.
+token for OpenBao.
 
 ## Read recovery token generation progress
 
@@ -120,11 +120,11 @@ $ curl \
 
 This endpoint is used to enter a single root key share to progress the
 recovery token generation attempt. If the threshold number of root key shares
-is reached, Vault will complete the recovery token generation and issue the new
+is reached, OpenBao will complete the recovery token generation and issue the new
 token. Otherwise, this API must be called multiple times until that threshold
 is met. The attempt nonce must be provided with each call.
 
-Note that once a token has been issued, Vault is unsealed. The token lives
+Note that once a token has been issued, OpenBao is unsealed. The token lives
 only in memory and thus will only be valid until the next restart.
 
 | Method | Path                                  |

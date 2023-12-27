@@ -2,7 +2,7 @@
 layout: api
 page_title: JWT/OIDC - Auth Methods - HTTP API
 description: |-
-  This is the API documentation for the Vault JWT/OIDC authentication
+  This is the API documentation for the OpenBao JWT/OIDC authentication
   method plugin.
 ---
 
@@ -10,12 +10,12 @@ description: |-
 
 @include 'x509-sha1-deprecation.mdx'
 
-This is the API documentation for the Vault JWT/OIDC auth method
+This is the API documentation for the OpenBao JWT/OIDC auth method
 plugin. To learn more about the usage and operation, see the
-[Vault JWT/OIDC method documentation](/vault/docs/auth/jwt).
+[OpenBao JWT/OIDC method documentation](/vault/docs/auth/jwt).
 
 This documentation assumes the plugin method is mounted at the
-`/auth/jwt` path in Vault. Since it is possible to enable auth methods
+`/auth/jwt` path in OpenBao. Since it is possible to enable auth methods
 at any location, please update your API calls accordingly.
 
 ## Configure
@@ -44,7 +44,7 @@ set.
 - `jwt_supported_algs` `(comma-separated string, or array of strings: <optional>)` - A list of supported signing algorithms. Defaults to [RS256] for OIDC roles. Defaults to all [available algorithms](https://github.com/hashicorp/cap/blob/main/jwt/algs.go) for JWT roles.
 - `default_role` `(string: <optional>)` - The default role to use if none is provided during login.
 - `provider_config` `(map: <optional>)` - Configuration options for provider-specific handling. Providers with specific handling include: Azure, Google, SecureAuth, IBM ISAM. The options are described in each provider's section in [OIDC Provider Setup](/vault/docs/auth/jwt/oidc-providers).
-- `namespace_in_state` `(bool: true)` - Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in Vault and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.
+- `namespace_in_state` `(bool: true)` - Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in OpenBao and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.
 
 ### Sample payload
 
@@ -170,8 +170,8 @@ entities attempting to login. At least one of the bound values must be set.
   "policies": ["dev", "prod"],
   "bound_subject": "sl29dlldsfj3uECzsU3Sbmh0F29Fios1@clients",
   "bound_audiences": "https://myco.test",
-  "user_claim": "https://vault/user",
-  "groups_claim": "https://vault/groups",
+  "user_claim": "https://openbao/user",
+  "groups_claim": "https://openbao/groups",
   "bound_claims": {
     "department": "engineering",
     "sector": "7g"
@@ -223,8 +223,8 @@ $ curl \
       "https://myco.test"
     ],
     "bound_cidrs": [],
-    "user_claim": "https://vault/user",
-    "groups_claim": "https://vault/groups",
+    "user_claim": "https://openbao/user",
+    "groups_claim": "https://openbao/groups",
     "policies": [
       "dev",
       "prod"
@@ -293,7 +293,7 @@ $ curl \
 
 ## OIDC authorization URL request
 
-Obtain an authorization URL from Vault to start an OIDC login flow.
+Obtain an authorization URL from OpenBao to start an OIDC login flow.
 
 | Method | Path                      |
 | :----- | :------------------------ |
@@ -304,8 +304,8 @@ Obtain an authorization URL from Vault to start an OIDC login flow.
 - `role` `(string: <optional>)` - Name of the role against which the login is being
   attempted. Defaults to configured `default_role` if not provided.
 - `redirect_uri` `(string: <required>)` - Path to the callback to complete the login. This will be
-  of the form, "https&#x3A;//.../oidc/callback" where the leading portion is dependent on your Vault
-  server location, port, and the mount of the JWT plugin. This must be configured with Vault and the
+  of the form, "https&#x3A;//.../oidc/callback" where the leading portion is dependent on your OpenBao
+  server location, port, and the mount of the JWT plugin. This must be configured with OpenBao and the
   provider. See [Redirect URIs](/vault/docs/auth/jwt#redirect-uris) for more information.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that
   must match the `client_nonce` value provided during a subsequent request to the
@@ -316,7 +316,7 @@ Obtain an authorization URL from Vault to start an OIDC login flow.
 ```json
 {
   "role": "dev-role",
-  "redirect_uri": "https://vault.myco.com:8200/ui/vault/auth/jwt/oidc/callback"
+  "redirect_uri": "https://openbao.myco.com:8200/ui/openbao/auth/jwt/oidc/callback"
 }
 ```
 
@@ -335,7 +335,7 @@ $ curl \
 {
   "request_id": "c701169c-64f8-26cc-0315-078e8c3ce897",
   "data": {
-    "auth_url": "https://myco.auth0.com/authorize?client_id=r3qXcK2bezU3Sbmh0K16fatW6&nonce=851b69a9bfa5a6a5668111314414e3687891a599&redirect_uri=https%3A%2F%2Fvault.myco.com3A8200%2Fui%2Fvault%2Fauth%2Fjwt%2Foidc%2Fcallback&response_type=code&scope=openid+email+profile&state=1011e726d24960e09cfca2e04b36b38593cb6a22"
+    "auth_url": "https://myco.auth0.com/authorize?client_id=r3qXcK2bezU3Sbmh0K16fatW6&nonce=851b69a9bfa5a6a5668111314414e3687891a599&redirect_uri=https%3A%2F%2Fopenbao.myco.com3A8200%2Fui%2Fopenbao%2Fauth%2Fjwt%2Foidc%2Fcallback&response_type=code&scope=openid+email+profile&state=1011e726d24960e09cfca2e04b36b38593cb6a22"
   },
   ...
 }
@@ -344,7 +344,7 @@ $ curl \
 ## OIDC callback
 
 Exchange an authorization code for an OIDC ID Token. The ID token will be further validated
-against any bound claims, and if valid a Vault token will be returned.
+against any bound claims, and if valid a OpenBao token will be returned.
 
 | Method | Path                      |
 | :----- | :------------------------ |
@@ -356,7 +356,7 @@ against any bound claims, and if valid a Vault token will be returned.
   be included in the the redirect following successful authentication on the provider.
 - `nonce` `(string: <required>)` - Opaque nonce that is part of the Authorization URL and will
   be included in the the redirect following successful authentication on the provider.
-- `code` `(string: <required>)` - Provider-generated authorization code that Vault will exchange for
+- `code` `(string: <required>)` - Provider-generated authorization code that OpenBao will exchange for
   an ID token.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the

@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
+	"github.com/oklog/run"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/helper/certutil"
 	"github.com/openbao/openbao/sdk/helper/consts"
@@ -27,7 +28,6 @@ import (
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/physical"
 	"github.com/openbao/openbao/vault/seal"
-	"github.com/oklog/run"
 )
 
 const (

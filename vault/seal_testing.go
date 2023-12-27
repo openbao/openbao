@@ -6,9 +6,9 @@ package vault
 import (
 	"context"
 
+	testing "github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
-	testing "github.com/mitchellh/go-testing-interface"
 )
 
 func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealConfig) (*Core, [][]byte, [][]byte, string) {

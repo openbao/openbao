@@ -27,12 +27,12 @@ import (
 	"github.com/axiomhq/hyperloglog"
 	"github.com/go-test/deep"
 	"github.com/golang/protobuf/proto"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/timeutil"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault/activity"
-	"github.com/mitchellh/mapstructure"
 )
 
 // TestActivityLog_Creation calls AddEntityToFragment and verifies that it appears correctly in a.fragment.

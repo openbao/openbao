@@ -10,9 +10,9 @@ import (
 
 	stepwise "github.com/hashicorp/vault-testing-stepwise"
 	dockerEnvironment "github.com/hashicorp/vault-testing-stepwise/environments/docker"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/mitchellh/mapstructure"
 )
 
 func TestAccBackend_stepwise_UserCrud(t *testing.T) {

@@ -21,9 +21,9 @@ hash function and salt. This endpoint can be used to discover whether a given
 plaintext string (the `input` parameter) appears in the audit log in obfuscated
 form.
 
-The audit log records requests and responses. Since the Vault API is JSON-based,
+The audit log records requests and responses. Since the OpenBao API is JSON-based,
 any binary data returned from an API call (such as a DER-format certificate) is
-base64-encoded by the Vault server in the response. As a result such information
+base64-encoded by the OpenBao server in the response. As a result such information
 should also be base64-encoded to supply into the `input` parameter.
 
 | Method | Path                    |
@@ -41,7 +41,7 @@ should also be base64-encoded to supply into the `input` parameter.
 
 ```json
 {
-  "input": "my-secret-vault"
+  "input": "my-secret-openbao"
 }
 ```
 

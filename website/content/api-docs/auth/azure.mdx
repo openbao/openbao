@@ -2,18 +2,18 @@
 layout: api
 page_title: Azure - Auth Methods - HTTP API
 description: |-
-  This is the API documentation for the Vault Azure authentication
+  This is the API documentation for the OpenBao Azure authentication
   method plugin.
 ---
 
 # Azure auth method (API)
 
-This is the API documentation for the Vault Azure auth method
+This is the API documentation for the OpenBao Azure auth method
 plugin. To learn more about the usage and operation, see the
-[Vault Azure method documentation](/vault/docs/auth/azure).
+[OpenBao Azure method documentation](/vault/docs/auth/azure).
 
 This documentation assumes the plugin method is mounted at the
-`/auth/azure` path in Vault. Since it is possible to enable auth methods
+`/auth/azure` path in OpenBao. Since it is possible to enable auth methods
 at any location, please update your API calls accordingly.
 
 ## Configure
@@ -114,7 +114,7 @@ $ curl \
 ## Rotate root
 
 This endpoint generates a new client secret for the root account defined in the config. The
-value generated will only be known by Vault.
+value generated will only be known by OpenBao.
 
 | Method | Path                 |
 | :----- | :------------------- |
@@ -168,7 +168,7 @@ entities attempting to login.
   "token_policies": ["default", "dev", "prod"],
   "max_ttl": 1800000,
   "max_jwt_exp": 10000,
-  "bound_resource_groups": ["vault-dev", "vault-staging", "vault-prod"]
+  "bound_resource_groups": ["openbao-dev", "openbao-staging", "openbao-prod"]
 }
 ```
 
@@ -215,9 +215,9 @@ $ curl \
     "max_ttl": 1800000,
     "max_jwt_exp": 10000,
     "bound_resource_groups": [
-        "vault-dev",
-        "vault-staging",
-        "vault-prod"
+        "openbao-dev",
+        "openbao-staging",
+        "openbao-prod"
     ]
   },
   ...

@@ -3,7 +3,7 @@ layout: api
 page_title: /sys/rekey-recovery-key - HTTP API
 description: >-
   The `/sys/rekey-recovery-key` endpoints are used to rekey the recovery keys
-  for Vault.
+  for OpenBao.
 ---
 
 # `/sys/rekey-recovery-key`
@@ -11,7 +11,7 @@ description: >-
 @include 'alerts/restricted-root.mdx'
 
 The `/sys/rekey-recovery-key` endpoints are used to rekey the recovery keys for
-Vault. Rekey endpoints only apply to seals that support recovery keys.
+OpenBao. Rekey endpoints only apply to seals that support recovery keys.
 
 ## Read rekey progress
 
@@ -80,7 +80,7 @@ nonce.
   array must be the same as `secret_shares`.
 
 - `backup` `(bool: false)` – Specifies if using PGP-encrypted keys, whether
-  Vault should also store a plaintext backup of the PGP-encrypted keys at
+  OpenBao should also store a plaintext backup of the PGP-encrypted keys at
   `core/recovery-keys-backup` in the physical storage backend. These can then
   be retrieved and removed via the `sys/rekey-recovery-key/backup` endpoint.
 
@@ -183,7 +183,7 @@ $ curl \
 ## Submit key
 
 This endpoint is used to enter a single recovery key share to progress the rekey
-of the Vault. If the threshold number of recovery key shares is reached, Vault
+of the OpenBao. If the threshold number of recovery key shares is reached, OpenBao
 will complete the rekey. Otherwise, this API must be called multiple times until
 that threshold is met. The rekey nonce operation must be provided with each
 call.
@@ -313,7 +313,7 @@ $ curl \
 
 This endpoint is used to enter a single new key share to progress the rekey
 verification operation. If the threshold number of new key shares is reached,
-Vault will complete the rekey by performing the actual rotation of the recovery
+OpenBao will complete the rekey by performing the actual rotation of the recovery
 key. Otherwise, this API must be called multiple times until that threshold is
 met. The nonce must be provided with each call.
 

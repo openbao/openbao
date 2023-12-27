@@ -3,12 +3,12 @@ layout: api
 page_title: /sys/policies/ - HTTP API
 description: >-
   The `/sys/policies/` endpoints are used to manage ACL, RGP, and EGP policies
-  in Vault.
+  in OpenBao.
 ---
 
 # `/sys/policies/`
 
-The `/sys/policies` endpoints are used to manage ACL, RGP, and EGP policies in Vault.
+The `/sys/policies` endpoints are used to manage ACL, RGP, and EGP policies in OpenBao.
 
 <Note>
 <code>/sys/policies</code> endpoints are only available in Vault version 0.9+.
@@ -254,7 +254,7 @@ This endpoint lists all configured EGP policies. Since EGP policies act on a
 path, this endpoint returns two identifiers:
 
 - `keys` contains a mapping of names to associated paths in a format that
-  `vault list` understands
+  `openbao list` understands
 - `name_path_map` contains an object mapping names to paths and glob status in
   a more machine-friendly format
 

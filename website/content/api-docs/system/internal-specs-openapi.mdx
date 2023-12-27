@@ -10,10 +10,10 @@ description: >-
 
 The `/sys/internal/specs/openapi` endpoint is used to generate an OpenAPI document of the mounted backends.
 The response conforms to the [OpenAPI V3 specification](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.2.md),
-with path names matching the mount names used by the Vault server (i.e. customizations with `-path` will be reflected).
+with path names matching the mount names used by the OpenBao server (i.e. customizations with `-path` will be reflected).
 The set of included paths is based on the permissions of the request token.
 
-The response may include Vault-specific [extensions](https://github.com/oai/openapi-specification/blob/master/versions/3.0.2.md#specification-extensions). Three are currently defined:
+The response may include OpenBao-specific [extensions](https://github.com/oai/openapi-specification/blob/master/versions/3.0.2.md#specification-extensions). Three are currently defined:
 
 - `x-vault-sudo` - Endpoint requires [sudo](/vault/docs/concepts/policies#sudo) privileges.
 - `x-vault-unauthenticated` - Endpoint is unauthenticated.
@@ -48,8 +48,8 @@ $ curl http://127.0.0.1:8200/v1/sys/internal/specs/openapi?generic_mount_paths=f
 {
   "openapi": "3.0.2",
   "info": {
-    "title": "HashiCorp Vault API",
-    "description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
+    "title": "OpenBao API",
+    "description": "HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.",
     "version": "1.0.0",
     "license": {
       "name": "Mozilla Public License 2.0",

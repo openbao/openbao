@@ -6,9 +6,9 @@ package vault
 import (
 	"github.com/hashicorp/go-hclog"
 	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	testing "github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/vault/seal"
-	testing "github.com/mitchellh/go-testing-interface"
 )
 
 func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {

@@ -13,9 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/database/helper/connutil"
 	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/mitchellh/mapstructure"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"

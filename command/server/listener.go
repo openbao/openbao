@@ -13,9 +13,9 @@ import (
 	// certificates that use it can be parsed.
 
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/proxyutil"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/mitchellh/cli"
 )
 
 // ListenerFactory is the factory function to create a listener.

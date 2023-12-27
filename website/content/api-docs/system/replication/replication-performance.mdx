@@ -106,7 +106,7 @@ result in data loss!
 - `primary_cluster_addr` `(string: "")` – Specifies the cluster address that the
   primary gives to secondary nodes. Useful if the primary's cluster address is
   not directly accessible and must be accessed via an alternate path/address,
-  such as through a TCP-based load balancer. If not set, uses vault's configured
+  such as through a TCP-based load balancer. If not set, uses openbao's configured
   cluster address.
 
 ### Sample payload
@@ -495,7 +495,7 @@ token.
 - `token` `(string: <required>)` – Specifies the secondary activation token
   fetched from the primary.
 
-- `primary_api_addr` `(string: "")` – Set this to the API address (normal Vault
+- `primary_api_addr` `(string: "")` – Set this to the API address (normal OpenBao
   address) to override the value embedded in the token. This can be useful if
   the primary's redirect address is not accessible directly from this cluster
   (e.g. through a load balancer).
@@ -629,7 +629,7 @@ clusters and `update_primary_addrs` on performance secondary clusters.
   attempt to connect to the previous primary). This can be useful if the primary
   is down to stop the secondary from trying to reconnect to it.
 
-- `primary_api_addr` `(string: )` – Specifies the API address (normal Vault
+- `primary_api_addr` `(string: )` – Specifies the API address (normal OpenBao
   address) to override the value embedded in the token. This can be useful if
   the primary's redirect address is not accessible directly from this cluster.
 

@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/mitchellh/mapstructure"
 )
 
 func GetPerformanceToken(pri VaultCluster, id, secondaryPublicKey string) (string, error) {

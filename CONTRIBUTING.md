@@ -91,7 +91,7 @@ Please include a file within your PR named `changelog/#.txt`, where `#` is your
 pull request ID. There are many examples under [changelog](changelog/), but
 the general format is
 
-````
+````txt
 ```release-note:CATEGORY
 COMPONENT: summary of change
 ```
@@ -161,7 +161,7 @@ git rebase --signoff master
 
 This will add a line similar to the following at the end of your commit:
 
-```
+```txt
 Signed-off-by: Alex Smith <alex@example.com>
 ```
 

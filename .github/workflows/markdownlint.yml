@@ -5,12 +5,14 @@ on:
       - main
     paths:
       - "**/*.md"
+      - "**/*.mdx"
       - ".markdownlint-cli2.jsonc"
       - ".github/workflows/markdownlint.yml"
       - ".github/workflows/markdownlint-problem-matcher.json"
   pull_request:
     paths:
       - "**/*.md"
+      - "**/*.mdx"
       - ".markdownlint-cli2.jsonc"
       - ".github/workflows/markdownlint.yml"
       - ".github/workflows/markdownlint-problem-matcher.json"
@@ -29,4 +31,4 @@ jobs:
         run: |
           echo "::add-matcher::.github/workflows/markdownlint-problem-matcher.json"
           npm i -g markdownlint-cli2
-          markdownlint-cli2 "**/*.md"
+          markdownlint-cli2 "**/*.{md,mdx,markdown}"

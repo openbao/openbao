@@ -8,14 +8,18 @@ _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge
 
 ----
 
+<!-- markdownlint-disable line-length -->
 <!-- -	Website: https://www.openbao.org -->
 - Announcement list: [Mailing List](https://lists.lfedge.org/g/openbao)
 - Discussion forum: [GitHub Discussions](https://github.com/openbao/openbao/discussions)
 <!-- - Documentation: [https://www.openbao.org/docs/](https://www.openbao.org/docs/) -->
+<!-- markdownlint-enable line-length -->
 
+<!-- markdownlint-disable no-inline-html -->
 <p align="center">
   <img width="300" alt="OpenBao Mascot" src="bao.svg">
 </p>
+<!-- markdownlint-enable no-inline-html -->
 
 **OpenBao exists to provide a software solution to manage, store, and distribute
 sensitive data including secrets, certificates, and keys. The OpenBao community
@@ -59,6 +63,7 @@ The key features of OpenBao are:
 
 ## Documentation, Getting Started, and Certification Exams
 
+<!-- markdownlint-disable-next-line MD013 -->
 <!-- Documentation is available on the [OpenBao website](https://www.openbao.org/docs/). -->
 
 ## Developing OpenBao
@@ -126,8 +131,8 @@ that is the [go.mod](./go.mod) file. As it happens, the presence of that file
 also makes it theoretically possible to import Vault as a dependency into other
 projects. Some other projects have made a practice of doing so in order to take
 advantage of testing tooling that was developed for testing Vault itself. This
-is not, and has never been, a supported way to use the Vault project. We aren't 
-likely to fix bugs relating to failure to import `github.com/hashicorp/vault` 
+is not, and has never been, a supported way to use the Vault project. We aren't
+likely to fix bugs relating to failure to import `github.com/hashicorp/vault`
 into your project.
 
 See also the section "Docker-based tests" below.
@@ -230,12 +235,12 @@ func Test_Custom_Build_With_Docker(t *testing.T) {
 ```
 
 There are a variety of helpers in the `github.com/openbao/openbao/sdk/helper/testcluster`
-package, e.g. these tests below will create a pair of 3-node clusters and link them using
-PR or DR replication respectively, and fail if the replication state doesn't become healthy
-before the passed context expires.
+package, e.g. these tests below will create a pair of 3-node clusters and link them
+using PR or DR replication respectively, and fail if the replication state doesn't
+become healthy before the passed context expires.
 
-Again, as written, these depend on having a Vault Enterprise binary locally and the env
-var VAULT_BINARY set to point to it, as well as having VAULT_LICENSE_CI set.
+Again, as written, these depend on having a Vault Enterprise binary locally and the
+env var VAULT_BINARY set to point to it, as well as having VAULT_LICENSE_CI set.
 
 ```go
 func TestStandardPerfReplication_Docker(t *testing.T) {

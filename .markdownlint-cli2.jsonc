@@ -1,4 +1,9 @@
 {
-  "config": {},
-  "ignores": [".github/"]
+  "config": {
+    "default": true,
+    "MD024": false,
+    "MD025": false,
+    "MD041": false
+  },
+  "ignores": [".github/", "node_modules", "ui/stories/*"]
 }

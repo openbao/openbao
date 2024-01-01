@@ -5,5 +5,5 @@
     "MD025": false,
     "MD041": false
   },
-  "ignores": [".github/", "node_modules", "ui/stories/*"]
+  "ignores": [".github/", "node_modules", "ui/stories/*", "website/"]
 }

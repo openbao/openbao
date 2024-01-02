@@ -1,10 +1,27 @@
 ## Unreleased
 
+## v0.18.0
+
+IMPROVEMENTS:
+* Include role name in Entity Alias metadata https://github.com/hashicorp/vault-plugin-auth-jwt/pull/160
+* Updated dependencies:
+  * `github.com/hashicorp/cap` v0.3.4 -> v0.4.0
+  * `github.com/hashicorp/go-sockaddr` v1.0.2 -> v1.0.5
+  * `github.com/hashicorp/vault/api` v1.9.2 -> v1.10.0
+  * `github.com/hashicorp/vault/sdk` v0.9.2 -> v0.10.0
+  * `golang.org/x/oauth2` v0.11.0 -> v0.12.0
+  * `google.golang.org/api` v0.138.0 -> v0.143.0
+
+FIXES:
+* Add missing error check for parsing CLI flags https://github.com/hashicorp/vault-plugin-auth-jwt/pull/245
+
 ## 0.17.2
+
 FIXES:
 * Ensure SIGTSTP is only used in unix builds [[GH-255](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/255)]
 
 ## 0.17.1
+
 IMPROVEMENTS:
 * Close HTTP listener if stop or kill signal is received [[GH-251](https://github.com/hashicorp/vault-plugin-auth-jwt/pull/251)]
 

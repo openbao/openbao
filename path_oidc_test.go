@@ -790,6 +790,7 @@ func TestOIDC_Callback(t *testing.T) {
 				Alias: &logical.Alias{
 					Name: "bob@example.com",
 					Metadata: map[string]string{
+						"role":  "test",
 						"color": "green",
 						"size":  "medium",
 					},

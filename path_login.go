@@ -162,7 +162,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("audience claim found in JWT but no audiences bound to the role"), nil
 	}
 
-	alias, groupAliases, err := b.createIdentity(ctx, allClaims, role, nil)
+	alias, groupAliases, err := b.createIdentity(ctx, allClaims, roleName, role, nil)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -171,7 +171,7 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
-	tokenMetadata := map[string]string{"role": roleName}
+	tokenMetadata := make(map[string]string)
 	for k, v := range alias.Metadata {
 		tokenMetadata[k] = v
 	}
@@ -217,7 +217,7 @@ func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Reques
 
 // createIdentity creates an alias and set of groups aliases based on the role
 // definition and received claims.
-func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[string]interface{}, role *jwtRole, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
+func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[string]interface{}, roleName string, role *jwtRole, tokenSource oauth2.TokenSource) (*logical.Alias, []*logical.Alias, error) {
 	var userClaimRaw interface{}
 	if role.UserClaimJSONPointer {
 		userClaimRaw = getClaim(b.Logger(), allClaims, role.UserClaim)
@@ -246,6 +246,8 @@ func (b *jwtAuthBackend) createIdentity(ctx context.Context, allClaims map[strin
 	if err != nil {
 		return nil, nil, err
 	}
+	// add role name to the Entity Alias metadata
+	metadata["role"] = roleName
 
 	alias := &logical.Alias{
 		Name:     userName,

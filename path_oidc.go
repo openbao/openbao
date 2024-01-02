@@ -318,7 +318,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		}
 	}
 
-	alias, groupAliases, err := b.createIdentity(ctx, allClaims, role, tokenSource)
+	alias, groupAliases, err := b.createIdentity(ctx, allClaims, roleName, role, tokenSource)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
 	}
@@ -327,7 +327,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
-	tokenMetadata := map[string]string{"role": roleName}
+	tokenMetadata := make(map[string]string)
 	for k, v := range alias.Metadata {
 		tokenMetadata[k] = v
 	}

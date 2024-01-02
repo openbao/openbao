@@ -409,6 +409,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			metadata := map[string]string{
 				"name":        "jeff2",
 				"primary_org": "engineering",
+				"role":        "plugin-test",
 			}
 
 			if diff := deep.Equal(auth.Alias.Metadata, metadata); diff != nil {
@@ -416,7 +417,6 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			}
 
 			// check token metadata
-			metadata["role"] = "plugin-test"
 			if diff := deep.Equal(auth.Metadata, metadata); diff != nil {
 				t.Fatal(diff)
 			}

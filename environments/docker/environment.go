@@ -34,7 +34,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	uuid "github.com/hashicorp/go-uuid"
 	stepwise "github.com/hashicorp/vault-testing-stepwise"
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 	"golang.org/x/net/http2"
 )
 

@@ -13,17 +13,12 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
-	"github.com/openbao/openbao/command/agentproxyshared/auth/alicloud"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/aws"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/azure"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/cert"
-	"github.com/openbao/openbao/command/agentproxyshared/auth/cf"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/gcp"
-	"github.com/openbao/openbao/command/agentproxyshared/auth/jwt"
-	"github.com/openbao/openbao/command/agentproxyshared/auth/kerberos"
 	"github.com/openbao/openbao/command/agentproxyshared/auth/kubernetes"
-	"github.com/openbao/openbao/command/agentproxyshared/auth/oci"
 	token_file "github.com/openbao/openbao/command/agentproxyshared/auth/token-file"
 	"github.com/openbao/openbao/command/agentproxyshared/cache"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cacheboltdb"
@@ -36,32 +31,20 @@ import (
 // the method type is invalid.
 func GetAutoAuthMethodFromConfig(autoAuthMethodType string, authConfig *auth.AuthConfig, vaultAddress string) (auth.AuthMethod, error) {
 	switch autoAuthMethodType {
-	case "alicloud":
-		return alicloud.NewAliCloudAuthMethod(authConfig)
 	case "aws":
 		return aws.NewAWSAuthMethod(authConfig)
 	case "azure":
 		return azure.NewAzureAuthMethod(authConfig)
 	case "cert":
 		return cert.NewCertAuthMethod(authConfig)
-	case "cf":
-		return cf.NewCFAuthMethod(authConfig)
 	case "gcp":
 		return gcp.NewGCPAuthMethod(authConfig)
-	case "jwt":
-		return jwt.NewJWTAuthMethod(authConfig)
-	case "kerberos":
-		return kerberos.NewKerberosAuthMethod(authConfig)
 	case "kubernetes":
 		return kubernetes.NewKubernetesAuthMethod(authConfig)
 	case "approle":
 		return approle.NewApproleAuthMethod(authConfig)
-	case "oci":
-		return oci.NewOCIAuthMethod(authConfig, vaultAddress)
 	case "token_file":
 		return token_file.NewTokenFileAuthMethod(authConfig)
-	case "pcf": // Deprecated.
-		return cf.NewCFAuthMethod(authConfig)
 	default:
 		return nil, errors.New(fmt.Sprintf("unknown auth method %q", autoAuthMethodType))
 	}

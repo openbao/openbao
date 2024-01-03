@@ -46,6 +46,8 @@ replace github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 => ../go-kms-wr
 
 replace github.com/hashicorp/consul-template => ../consul-template
 
+replace github.com/hashicorp/vault-testing-stepwise => ../vault-testing-stepwise
+
 replace github.com/hashicorp/vault/api v1.9.2 => github.com/openbao/openbao/api v0.0.0-20231222185543-009633ab13d1
 
 replace github.com/hashicorp/vault/sdk v1.9.2 => github.com/openbao/openbao/sdk v0.0.0-20231222185543-009633ab13d1

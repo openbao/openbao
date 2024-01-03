@@ -26,13 +26,6 @@ import (
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
-	credAliCloud "github.com/hashicorp/vault-plugin-auth-alicloud"
-	credCentrify "github.com/hashicorp/vault-plugin-auth-centrify"
-	credCF "github.com/hashicorp/vault-plugin-auth-cf"
-	credGcp "github.com/hashicorp/vault-plugin-auth-gcp/plugin"
-	credOIDC "github.com/hashicorp/vault-plugin-auth-jwt"
-	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
-	credOCI "github.com/hashicorp/vault-plugin-auth-oci"
 	credAws "github.com/openbao/openbao/builtin/credential/aws"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credGitHub "github.com/openbao/openbao/builtin/credential/github"
@@ -223,19 +216,11 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"alicloud": &credAliCloud.CLIHandler{},
-		"aws":      &credAws.CLIHandler{},
-		"centrify": &credCentrify.CLIHandler{},
-		"cert":     &credCert.CLIHandler{},
-		"cf":       &credCF.CLIHandler{},
-		"gcp":      &credGcp.CLIHandler{},
-		"github":   &credGitHub.CLIHandler{},
-		"kerberos": &credKerb.CLIHandler{},
-		"ldap":     &credLdap.CLIHandler{},
-		"oci":      &credOCI.CLIHandler{},
-		"oidc":     &credOIDC.CLIHandler{},
-		"okta":     &credOkta.CLIHandler{},
-		"pcf":      &credCF.CLIHandler{}, // Deprecated.
+		"aws":    &credAws.CLIHandler{},
+		"cert":   &credCert.CLIHandler{},
+		"github": &credGitHub.CLIHandler{},
+		"ldap":   &credLdap.CLIHandler{},
+		"okta":   &credOkta.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},

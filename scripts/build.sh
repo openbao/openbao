@@ -55,8 +55,8 @@ IFS=$OLDIFS
 
 # Ensure the go bin folder exists
 mkdir -p ${BIN_PATH}
-rm -f ${BIN_PATH}/vault
-cp bin/vault ${BIN_PATH}
+rm -f ${BIN_PATH}/bao
+cp bin/bao ${BIN_PATH}
 
 # Done!
 echo

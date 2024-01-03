@@ -17,7 +17,6 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	mongodbatlas "github.com/hashicorp/vault-plugin-database-mongodbatlas"
 	_ "github.com/jackc/pgx/v4"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/builtinplugins"
@@ -58,8 +57,6 @@ func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {
 	vault.TestAddTestPlugin(t, cores[0].Core, "postgresql-database-plugin-muxed", consts.PluginTypeDatabase, "", "TestBackend_PluginMain_PostgresMultiplexed", []string{}, "")
 	vault.TestAddTestPlugin(t, cores[0].Core, "mongodb-database-plugin", consts.PluginTypeDatabase, "", "TestBackend_PluginMain_Mongo", []string{}, "")
 	vault.TestAddTestPlugin(t, cores[0].Core, "mongodb-database-plugin-muxed", consts.PluginTypeDatabase, "", "TestBackend_PluginMain_MongoMultiplexed", []string{}, "")
-	vault.TestAddTestPlugin(t, cores[0].Core, "mongodbatlas-database-plugin", consts.PluginTypeDatabase, "", "TestBackend_PluginMain_MongoAtlas", []string{}, "")
-	vault.TestAddTestPlugin(t, cores[0].Core, "mongodbatlas-database-plugin-muxed", consts.PluginTypeDatabase, "", "TestBackend_PluginMain_MongoAtlasMultiplexed", []string{}, "")
 
 	return cluster, sys
 }
@@ -104,27 +101,6 @@ func TestBackend_PluginMain_MongoMultiplexed(t *testing.T) {
 	}
 
 	v5.ServeMultiplex(mongodb.New)
-}
-
-func TestBackend_PluginMain_MongoAtlas(t *testing.T) {
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" {
-		return
-	}
-
-	dbType, err := mongodbatlas.New()
-	if err != nil {
-		t.Fatalf("Failed to initialize mongodbatlas: %s", err)
-	}
-
-	v5.Serve(dbType.(v5.Database))
-}
-
-func TestBackend_PluginMain_MongoAtlasMultiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" {
-		return
-	}
-
-	v5.ServeMultiplex(mongodbatlas.New)
 }
 
 func TestBackend_RoleUpgrade(t *testing.T) {

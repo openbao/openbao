@@ -18,7 +18,6 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
@@ -26,6 +25,7 @@ import (
 	proxyConfig "github.com/openbao/openbao/command/proxy/config"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
+	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"

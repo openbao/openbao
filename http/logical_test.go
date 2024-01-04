@@ -18,12 +18,12 @@ import (
 	"testing"
 	"time"
 
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/openbao/openbao/api"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
+	kv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/sdk/logical"

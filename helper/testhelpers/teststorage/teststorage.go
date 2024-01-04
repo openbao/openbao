@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
@@ -23,6 +22,7 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
+	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/physical"
 	physFile "github.com/openbao/openbao/sdk/physical/file"

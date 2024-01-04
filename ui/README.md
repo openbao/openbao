@@ -1,4 +1,4 @@
-**Table of Contents**
+# Table of Contents
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -34,14 +34,16 @@ This README outlines the details of collaborating on this Ember application.
 
 You will need the following things properly installed on your computer.
 
-* [Git](https://git-scm.com/)
-* [Node.js](https://nodejs.org/)
-* [Yarn](https://yarnpkg.com/)
-* [Ember CLI](https://cli.emberjs.com/release/)
-* [Google Chrome](https://google.com/chrome/)
+- [Git](https://git-scm.com/)
+- [Node.js](https://nodejs.org/)
+- [Yarn](https://yarnpkg.com/)
+- [Ember CLI](https://cli.emberjs.com/release/)
+- [Google Chrome](https://google.com/chrome/)
 
-In order to enforce the same version of `yarn` across installs, the `yarn` binary is included in the repo
-in the `.yarn/releases` folder. To update to a different version of `yarn`, use the `yarn policies set-version VERSION` command. For more information on this, see the [documentation](https://yarnpkg.com/en/docs/cli/policies).
+In order to enforce the same version of `yarn` across installs, the `yarn` binary
+is included in the repoi n the `.yarn/releases` folder. To update to a different
+version of `yarn`, use the `yarn policies set-version VERSION` command. For
+more information on this, see the [documentation](https://yarnpkg.com/en/docs/cli/policies).
 
 ## Running a Vault Server
 
@@ -85,7 +87,10 @@ Where `handlername` is one of the options exported in `mirage/handlers/index`
 
 ### Code Generators
 
-Make use of the many generators for code, try `ember help generate` for more details. If you're using a component that can be widely-used, consider making it an `addon` component instead (see [this PR](https://github.com/hashicorp/vault/pull/6629) for more details)
+Make use of the many generators for code, try `ember help generate` for more details.
+If you're using a component that can be widely-used, consider making it an `addon`
+component instead (see [this PR](https://github.com/hashicorp/vault/pull/6629) for
+more details)
 
 eg. a reusable component named foo that you'd like in the core engine
 
@@ -100,8 +105,8 @@ acceptance tests then run, proxing requests back to that server.
 
 - `yarn run test:oss`
 - `yarn run test:oss -s` to keep the test server running after the initial run.
-- `yarn run test -f="policies"` to filter the tests that are run. `-f` gets passed into
-  [QUnit's `filter` config](https://api.qunitjs.com/config/QUnit.config#qunitconfigfilter-string--default-undefined)
+- `yarn run test -f="policies"` to filter the tests that are run. `-f` gets passed
+  into [QUnit's `filter` config](https://api.qunitjs.com/config/QUnit.config#qunitconfigfilter-string--default-undefined)
 
 ### Linting
 
@@ -123,8 +128,8 @@ setting `VAULT_UI` environment variable.
 
 ## Further Reading / Useful Links
 
-* [ember.js](https://emberjs.com/)
-* [ember-cli](https://cli.emberjs.com/release/)
-* Development Browser Extensions
-  * [ember inspector for chrome](https://chrome.google.com/webstore/detail/ember-inspector/bmdblncegkenkacieihfhpjfppoconhi)
-  * [ember inspector for firefox](https://addons.mozilla.org/en-US/firefox/addon/ember-inspector/)
+- [ember.js](https://emberjs.com/)
+- [ember-cli](https://cli.emberjs.com/release/)
+- Development Browser Extensions
+  - [ember inspector for chrome](https://chrome.google.com/webstore/detail/ember-inspector/bmdblncegkenkacieihfhpjfppoconhi)
+  - [ember inspector for firefox](https://addons.mozilla.org/en-US/firefox/addon/ember-inspector/)

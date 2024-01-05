@@ -10,12 +10,12 @@ description: >-
 
 @include 'x509-sha1-deprecation.mdx'
 
-The `jwt` auth method can be used to authenticate with Vault using
+The `jwt` auth method can be used to authenticate with OpenBao using
 [OIDC](https://en.wikipedia.org/wiki/OpenID_Connect) or by providing a
 [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token).
 
 The OIDC method allows authentication via a configured OIDC provider using the
-user's web browser. This method may be initiated from the Vault UI or the
+user's web browser. This method may be initiated from the OpenBao UI or the
 command line. Alternatively, a JWT can be provided directly. The JWT is
 cryptographically verified using locally-provided keys, or, if configured, an
 OIDC Discovery service can be used to fetch the appropriate keys. The choice of
@@ -33,35 +33,35 @@ familiarity with [OIDC concepts](https://developer.okta.com/blog/2017/07/25/oidc
 is assumed. The Authorization Code flow makes use of the Proof Key for Code
 Exchange (PKCE) extension.
 
-Vault includes two built-in OIDC login flows: the Vault UI, and the CLI
-using a `vault login`.
+OpenBao includes two built-in OIDC login flows: the OpenBao UI, and the CLI
+using a `openbao login`.
 
 ### Redirect URIs
 
 An important part of OIDC role configuration is properly setting redirect URIs. This must be
-done both in Vault and with the OIDC provider, and these configurations must align. The
+done both in OpenBao and with the OIDC provider, and these configurations must align. The
 redirect URIs are specified for a role with the `allowed_redirect_uris` parameter. There are
-different redirect URIs to configure the Vault UI and CLI flows, so one or both will need to
+different redirect URIs to configure the OpenBao UI and CLI flows, so one or both will need to
 be set up depending on the installation.
 
 **CLI**
 
-If you plan to support authentication via `vault login -method=oidc`, a localhost redirect URI
+If you plan to support authentication via `openbao login -method=oidc`, a localhost redirect URI
 must be set. This can usually be: `http://localhost:8250/oidc/callback`. Logins via the CLI may
 specify a different host and/or listening port if needed, and a URI with this host/port must match one
 of the configured redirected URIs. These same "localhost" URIs must be added to the provider as well.
 
-**Vault UI**
+**OpenBao UI**
 
-Logging in via the Vault UI requires a redirect URI of the form:
+Logging in via the OpenBao UI requires a redirect URI of the form:
 
 `https://{host:port}/ui/vault/auth/{path}/oidc/callback`
 
-The "host:port" must be correct for the Vault server, and "path" must match the path the JWT
+The "host:port" must be correct for the OpenBao server, and "path" must match the path the JWT
 backend is mounted at (e.g. "oidc" or "jwt").
 
 If the [oidc_response_mode](/vault/api-docs/auth/jwt#oidc_response_mode) is set to `form_post`, then
-logging in via the Vault UI requires a redirect URI of the form:
+logging in via the OpenBao UI requires a redirect URI of the form:
 
 `https://{host:port}/v1/auth/{path}/oidc/callback`
 
@@ -75,7 +75,7 @@ parameter in the redirect URI, if
 [`namespace_in_state`](/vault/api-docs/auth/jwt#namespace_in_state) is set to `true`,
 which is the default for new configs.
 
-### OIDC login (Vault UI)
+### OIDC login (OpenBao UI)
 
 1. Select the "OIDC" login method.
 1. Enter a role name if necessary.
@@ -87,7 +87,7 @@ The CLI login defaults to path of `/oidc`. If this auth method was enabled at a
 different path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ vault login -method=oidc port=8400 role=test
+$ openbao login -method=oidc port=8400 role=test
 
 Complete the login via your OIDC provider. Launching browser to:
 
@@ -113,7 +113,7 @@ not required to be set:
 ### OIDC provider configuration
 
 The OIDC authentication flow has been successfully tested with a number of providers. A full
-guide to configuring OAuth/OIDC applications is beyond the scope of Vault documentation, but a
+guide to configuring OAuth/OIDC applications is beyond the scope of OpenBao documentation, but a
 collection of provider configuration steps has been collected to help get started:
 [OIDC Provider Setup](/vault/docs/auth/jwt/oidc-providers)
 
@@ -123,11 +123,11 @@ This amount of configuration required for OIDC is relatively small, but it can b
 why things aren't working. Some tips for setting up OIDC:
 
 - If a role parameter (e.g. `bound_claims`) requires a map value, it can't be set individually using
-  the Vault CLI. In these cases the best approach is to write the entire configuration as a single
+  the OpenBao CLI. In these cases the best approach is to write the entire configuration as a single
   JSON object:
 
 ```text
-vault write auth/oidc/role/demo -<<EOF
+openbao write auth/oidc/role/demo -<<EOF
 {
   "user_claim": "sub",
   "bound_audiences": "abc123",
@@ -139,9 +139,9 @@ vault write auth/oidc/role/demo -<<EOF
 EOF
 ```
 
-- Monitor Vault's log output. Important information about OIDC validation failures will be emitted.
+- Monitor OpenBao's log output. Important information about OIDC validation failures will be emitted.
 
-- Ensure Redirect URIs are correct in Vault and on the provider. They need to match exactly. Check:
+- Ensure Redirect URIs are correct in OpenBao and on the provider. They need to match exactly. Check:
   http/https, 127.0.0.1/localhost, port numbers, whether trailing slashes are present.
 
 - Start simple. The only claim configuration a role requires is `user_claim`. After authentication is
@@ -173,7 +173,7 @@ EOF
 
 ## JWT authentication
 
-The authentication flow for roles of type "jwt" is simpler than OIDC since Vault
+The authentication flow for roles of type "jwt" is simpler than OIDC since OpenBao
 only needs to validate the provided JWT.
 
 ### JWT verification
@@ -199,7 +199,7 @@ The default path is `/jwt`. If this auth method was enabled at a
 different path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ vault write auth/jwt/login role=demo jwt=...
+$ openbao write auth/jwt/login role=demo jwt=...
 ```
 
 ### Via the API
@@ -241,17 +241,17 @@ management tool.
    backend will be mounted at the chosen name.
 
    ```text
-   $ vault auth enable jwt
+   $ openbao auth enable jwt
      or
-   $ vault auth enable oidc
+   $ openbao auth enable oidc
    ```
 
-1. Use the `/config` endpoint to configure Vault. To support JWT roles, either local keys, a JWKS URL, or an OIDC
+1. Use the `/config` endpoint to configure OpenBao. To support JWT roles, either local keys, a JWKS URL, or an OIDC
    Discovery URL must be present. For OIDC roles, OIDC Discovery URL, OIDC Client ID and OIDC Client Secret are required. For the
    list of available configuration options, please see the [API documentation](/vault/api-docs/auth/jwt).
 
    ```text
-   $ vault write auth/jwt/config \
+   $ openbao write auth/jwt/config \
        oidc_discovery_url="https://myco.auth0.com/" \
        oidc_client_id="m5i8bj3iofytj" \
        oidc_client_secret="f4ubv72nfiu23hnsj" \
@@ -261,7 +261,7 @@ management tool.
    If you need to perform JWT verification with JWT token validation, then leave the `oidc_client_id` and `oidc_client_secret` blank. 
 
    ```text
-   $ vault write auth/jwt/config \
+   $ openbao write auth/jwt/config \
       oidc_discovery_url="https://MYDOMAIN.eu.auth0.com/" \
       oidc_client_id="" \
       oidc_client_secret="" \
@@ -270,7 +270,7 @@ management tool.
 1. Create a named role:
 
    ```text
-   vault write auth/jwt/role/demo \
+   openbao write auth/jwt/role/demo \
        allowed_redirect_uris="http://localhost:8250/oidc/callback" \
        bound_subject="r3qX9DljwFIWhsiqwFiu38209F10atW6@clients" \
        bound_audiences="https://vault.plugin.auth.jwt.test" \

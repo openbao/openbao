@@ -1,17 +1,17 @@
 ---
 layout: docs
-page_title: Vault Agent and Vault Proxy
+page_title: OpenBao Agent and OpenBao Proxy
 description: |-
-  Vault Agent and Vault Proxy are daemons that can be used to perform some Vault
+  OpenBao Agent and OpenBao Proxy are daemons that can be used to perform some OpenBao
   functionality automatically.
 ---
 
-# Vault agent and Vault proxy
+# OpenBao agent and OpenBao proxy
 
-A valid client token must accompany most requests to Vault. This
-includes all API requests, as well as via the Vault CLI and other libraries.
-Therefore, Vault clients must first authenticate with Vault to acquire a token.
-Vault provides several authentication methods to assist in
+A valid client token must accompany most requests to OpenBao. This
+includes all API requests, as well as via the OpenBao CLI and other libraries.
+Therefore, OpenBao clients must first authenticate with OpenBao to acquire a token.
+OpenBao provides several authentication methods to assist in
 delivering this initial token.
 
 ![Client authentication](/img/diagram-vault-agent.png)
@@ -20,12 +20,12 @@ If the client can securely acquire the token, all subsequent requests (e.g., req
 database credentials, read key/value secrets) are processed based on the
 trust established by a successful authentication.
 
-This means that client application must invoke the Vault API to authenticate
-with Vault and manage the acquired token, in addition to invoking the API to
-request secrets from Vault. This implies code changes to client applications
+This means that client application must invoke the OpenBao API to authenticate
+with OpenBao and manage the acquired token, in addition to invoking the API to
+request secrets from OpenBao. This implies code changes to client applications
 along with additional testing and maintenance of the application.
 
-The following code example implements Vault API to authenticate with Vault
+The following code example implements OpenBao API to authenticate with OpenBao
 through [AppRole auth method](/vault/docs/auth/approle#code-example), and then uses
 the returned client token to read secrets at `kv-v2/data/creds`.
 
@@ -34,14 +34,14 @@ package main
 
 import (
     ...snip...
-    vault "github.com/lf-edge/openbao/api"
+    openbao "github.com/lf-edge/openbao/api"
 )
 
 // Fetches a key-value secret (kv-v2) after authenticating via AppRole
 func getSecretWithAppRole() (string, error) {
-    config := vault.DefaultConfig()
+    config := openbao.DefaultConfig()
 
-    client := vault.NewClient(config)
+    client := openbao.NewClient(config)
     wrappingToken := ioutil.ReadFile("path/to/wrapping-token")
     unwrappedToken := client.Logical().Unwrap(strings.TrimSuffix(string(wrappingToken), "\n"))
 
@@ -66,36 +66,36 @@ func getSecretWithAppRole() (string, error) {
 }
 ```
 
-For some Vault deployments, making (and maintaining) these changes to
+For some OpenBao deployments, making (and maintaining) these changes to
 applications may not be a problem, and may actually be preferred. This may be
 applied to scenarios where you have a small number of applications, or you want
 to keep strict, customized control over how each application interacts with
-Vault. However, in other situations where you have a large number of
+OpenBao. However, in other situations where you have a large number of
 applications, as in large enterprises, you may not have the resources or expertise
-to update and maintain the Vault integration code for every application. When
+to update and maintain the OpenBao integration code for every application. When
 third party applications are being deployed by the application, it is prohibited
-to add the Vault integration code.
+to add the OpenBao integration code.
 
-### Introduce Vault agent and Vault proxy to the workflow
+### Introduce OpenBao agent and OpenBao proxy to the workflow
 
-[Vault Agent][vaultagent] and [Vault Proxy][vaultproxy] aim to remove this initial hurdle to adopt Vault by providing a
-more scalable and simpler way for applications to integrate with Vault. Vault Agent can
-obtain secrets and provide them to applications, and Vault Proxy can act as
-a proxy between Vault and the application, optionally simplifying the authentication process
+[OpenBao Agent][openbaoagent] and [OpenBao Proxy][openbaoproxy] aim to remove this initial hurdle to adopt OpenBao by providing a
+more scalable and simpler way for applications to integrate with OpenBao. OpenBao Agent can
+obtain secrets and provide them to applications, and OpenBao Proxy can act as
+a proxy between OpenBao and the application, optionally simplifying the authentication process
 and caching requests.
 
 
-| Capability                                                                               |    Vault Agent     | Vault Proxy |
+| Capability                                                                               |    OpenBao Agent     | OpenBao Proxy |
 |------------------------------------------------------------------------------------------|:------------------:|:-----------:|
-| [Auto-Auth][autoauth] to authenticate with Vault                                         |         x          |      x      |
+| [Auto-Auth][autoauth] to authenticate with OpenBao                                         |         x          |      x      |
 | [Caching][caching] the newly created tokens and leases                                   |         x          |      x      |
 | Run as a [Windows Service][winsvc]                                                       |         x          |             |
 | [Templating][template] to render user-supplied templates                                 |         x          |             |
-| [API Proxy][apiproxy] to act as a proxy for Vault API                                    | Will be deprecated |      x      |
+| [API Proxy][apiproxy] to act as a proxy for OpenBao API                                    | Will be deprecated |      x      |
 | [Process Supervisor][exec] for injecting secrets as environment variables into a process |         x          |             |
 
-To learn more, refer to the [Vault Agent][vaultagent] or [Vault
-Proxy][vaultproxy] documentation page.
+To learn more, refer to the [OpenBao Agent][openbaoagent] or [OpenBao
+Proxy][openbaoproxy] documentation page.
 
 
 [autoauth]: /vault/docs/agent-and-proxy/autoauth
@@ -104,6 +104,6 @@ Proxy][vaultproxy] documentation page.
 [template]: /vault/docs/agent-and-proxy/agent/template
 [exec]: /vault/docs/agent-and-proxy/agent/process-supervisor
 [template-config]: /vault/docs/agent-and-proxy/agent/template#template-configurations
-[vaultagent]: /vault/docs/agent-and-proxy/agent
-[vaultproxy]: /vault/docs/agent-and-proxy/proxy
+[openbaoagent]: /vault/docs/agent-and-proxy/agent
+[openbaoproxy]: /vault/docs/agent-and-proxy/proxy
 [winsvc]: /vault/docs/agent-and-proxy/agent/winsvc

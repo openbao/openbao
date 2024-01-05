@@ -7,7 +7,7 @@ description: The AliCloud auth method allows automated authentication of AliClou
 # AliCloud auth method
 
 The `alicloud` auth method provides an automated mechanism to retrieve
-a Vault token for AliCloud entities. Unlike most Vault auth methods, this
+a OpenBao token for AliCloud entities. Unlike most OpenBao auth methods, this
 method does not require manual first-deploying, or provisioning
 security-sensitive credentials (tokens, username/password, client certificates,
 etc), by operators. It treats AliCloud as a Trusted Third Party and uses a
@@ -25,8 +25,8 @@ The AliCloud STS API includes a method,
 which allows you to validate the identity of a client. The client signs
 a `GetCallerIdentity` query using the [AliCloud signature
 algorithm](https://www.alibabacloud.com/help/doc-detail/67332.htm). It then
-submits 2 pieces of information to the Vault server to recreate a valid signed
-request: the request URL, and the request headers. The Vault server then
+submits 2 pieces of information to the OpenBao server to recreate a valid signed
+request: the request URL, and the request headers. The OpenBao server then
 reconstructs the query and forwards it on to the AliCloud STS service and validates
 the result back.
 
@@ -42,20 +42,20 @@ the risk of replay attacks.
 It's also important to note that AliCloud does NOT include any sort
 of authorization around calls to `GetCallerIdentity`. For example, if you have
 a RAM policy on your credential that requires all access to be MFA authenticated,
-non-MFA authenticated credentials will still be able to authenticate to Vault
+non-MFA authenticated credentials will still be able to authenticate to OpenBao
 using this method. It does not appear possible to enforce a RAM principal to be
-MFA authenticated while authenticating to Vault.
+MFA authenticated while authenticating to OpenBao.
 
 ## Authorization workflow
 
 The basic mechanism of operation is per-role.
 
 Roles are associated with a role ARN that has been pre-created in AliCloud.
-AliCloud's console displays each role's ARN. A role in Vault has a 1:1 relationship
+AliCloud's console displays each role's ARN. A role in OpenBao has a 1:1 relationship
 with a role in AliCloud, and must bear the same name.
 
-When a client assumes that role and sends its `GetCallerIdentity` request to Vault,
-Vault matches the arn of its assumed role with that of a pre-created role in Vault.
+When a client assumes that role and sends its `GetCallerIdentity` request to OpenBao,
+OpenBao matches the arn of its assumed role with that of a pre-created role in OpenBao.
 It then checks what policies have been associated with the role, and grants a
 token accordingly.
 
@@ -63,32 +63,32 @@ token accordingly.
 
 ### Via the CLI
 
-#### Enable AliCloud authentication in Vault.
+#### Enable AliCloud authentication in OpenBao.
 
 ```shell-session
-$ vault auth enable alicloud
+$ openbao auth enable alicloud
 ```
 
 #### Configure the policies on the role.
 
 ```shell-session
-$ vault write auth/alicloud/role/dev-role arn='acs:ram::5138828231865461:role/dev-role'
+$ openbao write auth/alicloud/role/dev-role arn='acs:ram::5138828231865461:role/dev-role'
 ```
 
 #### Perform the login operation
 
 ```shell-session
-$ vault write auth/alicloud/login \
+$ openbao write auth/alicloud/login \
         role=dev-role \
         identity_request_url=$IDENTITY_REQUEST_URL_BASE_64 \
         identity_request_headers=$IDENTITY_REQUEST_HEADERS_BASE_64
 ```
 
 For the RAM auth method, generating the signed request is a non-standard
-operation. The Vault CLI supports generating this for you:
+operation. The OpenBao CLI supports generating this for you:
 
 ```shell-session
-$ vault login -method=alicloud access_key=... secret_key=... security_token=... region=...
+$ openbao login -method=alicloud access_key=... secret_key=... security_token=... region=...
 ```
 
 This assumes you have the AliCloud credentials you would find on an ECS instance using the
@@ -103,7 +103,7 @@ on the instance.
 
 An example of how to generate the required request values for the `login` method
 can be found found in the
-[Vault CLI source code](https://github.com/hashicorp/vault-plugin-auth-alicloud/blob/master/tools/tools.go).
+[OpenBao CLI source code](https://github.com/hashicorp/vault-plugin-auth-alicloud/blob/master/tools/tools.go).
 
 ## API
 

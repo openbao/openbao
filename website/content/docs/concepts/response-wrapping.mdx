@@ -11,10 +11,10 @@ introduced in Vault 0.8 and may not be available in earlier releases.
 
 ## Overview
 
-In many Vault deployments, clients can access Vault directly and consume
+In many OpenBao deployments, clients can access OpenBao directly and consume
 returned secrets. In other situations, it may make sense to or be desired to
 separate privileges such that one trusted entity is responsible for interacting
-with most of the Vault API and passing secrets to the end consumer.
+with most of the OpenBao API and passing secrets to the end consumer.
 
 However, the more relays a secret travels through, the more possibilities for
 accidental disclosure, especially if the secret is being transmitted in
@@ -22,8 +22,8 @@ plaintext. For instance, you may wish to get a TLS private key to a machine
 that has been cold-booted, but since you do not want to store a decryption key
 in persistent storage, you cannot encrypt this key in transit.
 
-To help address this problem, Vault includes a feature called _response
-wrapping_. When requested, Vault can take the response it would have sent to an
+To help address this problem, OpenBao includes a feature called _response
+wrapping_. When requested, OpenBao can take the response it would have sent to an
 HTTP client and instead insert it into the
 [`cubbyhole`](/vault/docs/secrets/cubbyhole) of a single-use token,
 returning that single-use token instead.
@@ -31,7 +31,7 @@ returning that single-use token instead.
 Logically speaking, the response is
 wrapped by the token, and retrieving it requires an unwrap operation against
 this token. Functionally speaking, the token provides authorization to use
-an encryption key from Vault's keyring to decrypt the data.
+an encryption key from OpenBao's keyring to decrypt the data.
 
 This provides a powerful mechanism for information sharing in many
 environments. In the types of scenarios, described above, often the best
@@ -47,7 +47,7 @@ secret's exposure. Response wrapping performs all three of these duties:
   ever unwrap the token and see what's inside. A client receiving a token that
   cannot be unwrapped can trigger an immediate security incident. In addition,
   a client can inspect a given token before unwrapping to ensure that its
-  origin is from the expected location in Vault.
+  origin is from the expected location in OpenBao.
 - It _limits the lifetime_ of secret exposure because the response-wrapping
   token has a lifetime that is separate from the wrapped secret (and often can
   be much shorter), so if a client fails to come up and unwrap the token, the
@@ -55,7 +55,7 @@ secret's exposure. Response wrapping performs all three of these duties:
 
 ## Response-Wrapping tokens
 
-When a response is wrapped, the normal API response from Vault does not contain
+When a response is wrapped, the normal API response from OpenBao does not contain
 the original secret, but rather contains a set of information related to the
 response-wrapping token:
 
@@ -64,22 +64,22 @@ response-wrapping token:
 - Creation Time: The time that the response-wrapping token was created
 - Creation Path: The API path that was called in the original request
 - Wrapped Accessor: If the wrapped response is an authentication response
-  containing a Vault token, this is the value of the wrapped token's accessor.
+  containing a OpenBao token, this is the value of the wrapped token's accessor.
   This is useful for orchestration systems (such as Nomad) to be able to control
   the lifetime of secrets based on their knowledge of the lifetime of jobs,
   without having to actually unwrap the response-wrapping token or gain
   knowledge of the token ID inside.
 
-Vault currently does not provide signed response-wrapping tokens, as it
-provides little extra protection. If you are being pointed to the correct Vault
+OpenBao currently does not provide signed response-wrapping tokens, as it
+provides little extra protection. If you are being pointed to the correct OpenBao
 server, token validation is performed by interacting with the server itself; a
 signed token does not remove the need to validate the token with the server,
 since the token is not carrying data but merely an access mechanism and the
 server will not release data without validating it. If you are being attacked
-and pointed to the wrong Vault server, the same attacker could trivially give
-you the wrong signing public key that corresponds to the wrong Vault server.
+and pointed to the wrong OpenBao server, the same attacker could trivially give
+you the wrong signing public key that corresponds to the wrong OpenBao server.
 You could cache a previously valid key, but could also cache a previously valid
-address (and in most cases the Vault address will not change or will be set via
+address (and in most cases the OpenBao address will not change or will be set via
 a service discovery mechanism). As such, we rely on the fact that the token
 itself is not carrying authoritative data and do not sign it.
 
@@ -109,15 +109,15 @@ tokens:
 - Wrap (`sys/wrapping/wrap`): A helper endpoint that echoes back the data sent
   to it in a response-wrapping token. Note that blocking access to this
   endpoint does not remove the ability for arbitrary data to be wrapped, as it
-  can be done elsewhere in Vault.
+  can be done elsewhere in OpenBao.
 
 ## Response-Wrapping token creation
 
-Response wrapping is per-request and is triggered by providing to Vault the
+Response wrapping is per-request and is triggered by providing to OpenBao the
 desired TTL for a response-wrapping token for that request. This is set by the
 client using the `X-Vault-Wrap-TTL` header and can be either an integer number
 of seconds or a string duration of seconds (`15s`), minutes (`20m`), or hours
-(`25h`). When using the Vault CLI, you can set this via the `-wrap-ttl`
+(`25h`). When using the OpenBao CLI, you can set this via the `-wrap-ttl`
 parameter. When using the Go API, wrapping is triggered by [setting a helper
 function](https://godoc.org/github.com/lf-edge/openbao/api#Client.SetWrappingLookupFunc)
 that tells the API the conditions under which to request wrapping, by mapping
@@ -153,7 +153,7 @@ Validation is best performed by the following steps:
    revoked). If the lookup indicates that a token is invalid, it does not
    necessarily mean that the data was intercepted (for instance, perhaps the
    client took a long time to start up and the TTL expired) but should trigger
-   an alert for immediate investigation, likely with the assistance of Vault's
+   an alert for immediate investigation, likely with the assistance of OpenBao's
    audit logs to see if the token really was unwrapped.
 3. With the token information in hand, validate that the creation path matches
    expectations. If you expect to find a TLS key/certificate inside, chances

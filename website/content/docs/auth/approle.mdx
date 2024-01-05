@@ -3,18 +3,18 @@ layout: docs
 page_title: AppRole - Auth Methods
 description: |-
   The AppRole auth method allows machines and services to authenticate with
-  Vault.
+  OpenBao.
 ---
 
 # AppRole auth method
 
 The `approle` auth method allows machines or _apps_ to authenticate with
-Vault-defined _roles_. The open design of `AppRole` enables a varied set of
+OpenBao-defined _roles_. The open design of `AppRole` enables a varied set of
 workflows and configurations to handle large numbers of apps. This auth method
 is oriented to automated workflows (machines and services), and is less useful
 for human operators.
 
-An "AppRole" represents a set of Vault policies and login constraints that must
+An "AppRole" represents a set of OpenBao policies and login constraints that must
 be met to receive a token with those policies. The scope can be as narrow or
 broad as desired. An AppRole can be created for a particular machine, or even
 a particular user on that machine, or a service spread across machines. The
@@ -29,7 +29,7 @@ The default path is `/approle`. If this auth method was enabled at a different
 path, specify `auth/my-path/login` instead.
 
 ```shell-session
-$ vault write auth/approle/login \
+$ openbao write auth/approle/login \
     role_id=db02de05-fa39-4855-059b-67221c5c2f63 \
     secret_id=6a174c20-f6de-a53c-74d2-6018fcceff64
 
@@ -70,7 +70,7 @@ The response will contain the token at `auth.client_token`:
 ```
 
 -> **Application Integration:** See the [Code Example](#code-example) section
-for a code snippet demonstrating the authentication with Vault using the
+for a code snippet demonstrating the authentication with OpenBao using the
 AppRole auth method.
 
 ## Configuration
@@ -84,13 +84,13 @@ management tool.
 1. Enable the AppRole auth method:
 
    ```shell-session
-   $ vault auth enable approle
+   $ openbao auth enable approle
    ```
 
 1. Create a named role:
 
    ```shell-session
-   $ vault write auth/approle/role/my-role \
+   $ openbao write auth/approle/role/my-role \
        secret_id_ttl=10m \
        token_num_uses=10 \
        token_ttl=20m \
@@ -106,14 +106,14 @@ documentation.
 1. Fetch the RoleID of the AppRole:
 
    ```shell-session
-   $ vault read auth/approle/role/my-role/role-id
+   $ openbao read auth/approle/role/my-role/role-id
    role_id     db02de05-fa39-4855-059b-67221c5c2f63
    ```
 
 1. Get a SecretID issued against the AppRole:
 
    ```shell-session
-   $ vault write -f auth/approle/role/my-role/secret-id
+   $ openbao write -f auth/approle/role/my-role/secret-id
    secret_id               6a174c20-f6de-a53c-74d2-6018fcceff64
    secret_id_accessor      c454f7e5-996e-7230-6074-6ef26b7bcf86
    secret_id_ttl           10m
@@ -266,22 +266,22 @@ import (
 	"fmt"
 	"os"
 
-	vault "github.com/lf-edge/openbao/api"
+	openbao "github.com/lf-edge/openbao/api"
 	auth "github.com/lf-edge/openbao/api/auth/approle"
 )
 
 // Fetches a key-value secret (kv-v2) after authenticating via AppRole.
 func getSecretWithAppRole() (string, error) {
-	config := vault.DefaultConfig() // modify for more granular configuration
+	config := openbao.DefaultConfig() // modify for more granular configuration
 
-	client, err := vault.NewClient(config)
+	client, err := openbao.NewClient(config)
 	if err != nil {
-		return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+		return "", fmt.Errorf("unable to initialize OpenBao client: %w", err)
 	}
 
-	// A combination of a Role ID and Secret ID is required to log in to Vault
+	// A combination of a Role ID and Secret ID is required to log in to OpenBao
 	// with an AppRole.
-	// First, let's get the role ID given to us by our Vault administrator.
+	// First, let's get the role ID given to us by our OpenBao administrator.
 	roleID := os.Getenv("APPROLE_ROLE_ID")
 	if roleID == "" {
 		return "", fmt.Errorf("no role ID was provided in APPROLE_ROLE_ID env var")

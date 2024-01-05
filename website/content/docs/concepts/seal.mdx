@@ -2,36 +2,36 @@
 layout: docs
 page_title: Seal/Unseal
 description: >-
-  A Vault must be unsealed before it can access its data. Likewise, it can be
+  A OpenBao must be unsealed before it can access its data. Likewise, it can be
   sealed to lock it down.
 ---
 
 # Seal/Unseal
 
-When a Vault server is started, it starts in a _sealed_ state. In this
-state, Vault is configured to know where and how to access the physical
+When a OpenBao server is started, it starts in a _sealed_ state. In this
+state, OpenBao is configured to know where and how to access the physical
 storage, but doesn't know how to decrypt any of it.
 
 _Unsealing_ is the process of obtaining the plaintext root key necessary to
-read the decryption key to decrypt the data, allowing access to the Vault.
+read the decryption key to decrypt the data, allowing access to the OpenBao.
 
-Prior to unsealing, almost no operations are possible with Vault. For
+Prior to unsealing, almost no operations are possible with OpenBao. For
 example authentication, managing the mount tables, etc. are all not possible.
-The only possible operations are to unseal the Vault and check the status
+The only possible operations are to unseal the OpenBao and check the status
 of the seal.
 
 ## Why?
 
-The data stored by Vault is encrypted. Vault needs the _encryption key_ in order
+The data stored by OpenBao is encrypted. OpenBao needs the _encryption key_ in order
 to decrypt the data. The encryption key is also stored with the data
 (in the _keyring_), but encrypted with another encryption key known as the _root key_.
 
-Therefore, to decrypt the data, Vault must decrypt the encryption key
+Therefore, to decrypt the data, OpenBao must decrypt the encryption key
 which requires the root key. Unsealing is the process of getting access to
-this root key. The root key is stored alongside all other Vault data,
+this root key. The root key is stored alongside all other OpenBao data,
 but is encrypted by yet another mechanism: the unseal key.
 
-To recap: most Vault data is encrypted using the encryption key in the keyring;
+To recap: most OpenBao data is encrypted using the encryption key in the keyring;
 the keyring is encrypted by the root key; and the root key is encrypted by
 the unseal key.
 
@@ -39,8 +39,8 @@ the unseal key.
 
 ![Shahir seals](/img/vault-shamir-seal.png)
 
-The default Vault config uses a Shamir seal. Instead of distributing the unseal
-key as a single key to an operator, Vault uses an algorithm known as
+The default OpenBao config uses a Shamir seal. Instead of distributing the unseal
+key as a single key to an operator, OpenBao uses an algorithm known as
 [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing)
 to split the key into shares. A certain threshold of shares is required to
 reconstruct the unseal key, which is then used to decrypt the root key.
@@ -51,7 +51,7 @@ decrypt the root key.
 
 ## Unsealing
 
-The unseal process is done by running `vault operator unseal` or via the API.
+The unseal process is done by running `openbao operator unseal` or via the API.
 This process is stateful: each key can be entered via multiple mechanisms from
 multiple client machines and it will work. This allows each shares of the root
 key to be on a distinct client machine for better security.
@@ -60,26 +60,26 @@ Note that when using the Shamir seal with multiple nodes, each node must be
 unsealed with the required threshold of shares. Partial unsealing of each node
 is not distributed across the cluster.
 
-Once a Vault node is unsealed, it remains unsealed until one of these things happens:
+Once a OpenBao node is unsealed, it remains unsealed until one of these things happens:
 
 1. It is resealed via the API (see below).
 
 2. The server is restarted.
 
-3. Vault's storage layer encounters an unrecoverable error.
+3. OpenBao's storage layer encounters an unrecoverable error.
 
--> **Note:** Unsealing makes the process of automating a Vault install
-difficult. Automated tools can easily install, configure, and start Vault,
+-> **Note:** Unsealing makes the process of automating a OpenBao install
+difficult. Automated tools can easily install, configure, and start OpenBao,
 but unsealing it using Shamir is a very manual process. For most users
 Auto Unseal will provide a better experience.
 
 ## Sealing
 
-There is also an API to seal the Vault. This will throw away the root
+There is also an API to seal the OpenBao. This will throw away the root
 key in memory and require another unseal process to restore it. Sealing
 only requires a single operator with root privileges.
 
-This way, if there is a detected intrusion, the Vault data can be locked
+This way, if there is a detected intrusion, the OpenBao data can be locked
 quickly to try to minimize damages. It can't be accessed again without
 access to the root key shares.
 
@@ -88,12 +88,12 @@ access to the root key shares.
 Auto Unseal was developed to aid in reducing the operational complexity of
 keeping the unseal key secure. This feature delegates the responsibility of
 securing the unseal key from users to a trusted device or service. At startup
-Vault will connect to the device or service implementing the seal and ask it
-to decrypt the root key Vault read from storage.
+OpenBao will connect to the device or service implementing the seal and ask it
+to decrypt the root key OpenBao read from storage.
 
 ![Auto Unseal](/img/vault-auto-unseal.png)
 
-There are certain operations in Vault besides unsealing that
+There are certain operations in OpenBao besides unsealing that
 require a quorum of users to perform, e.g. generating a root token. When
 using a Shamir seal the unseal keys must be provided to authorize these
 operations. When using Auto Unseal these operations require _recovery
@@ -102,7 +102,7 @@ keys_ instead.
 Just as the initialization process with a Shamir seal yields unseal keys,
 initializing with an Auto Unseal yields recovery keys.
 
-It is still possible to seal a Vault node using the API. In this case Vault
+It is still possible to seal a OpenBao node using the API. In this case OpenBao
 will remain sealed until restarted, or the unseal API is used, which with Auto
 Unseal requires the recovery key fragments instead of the unseal key fragments
 that would be provided with Shamir. The process remains the same.
@@ -111,13 +111,13 @@ For a list of examples and supported providers, please see the
 [seal documentation](/vault/docs/configuration/seal).
 
 -> **Warning:** Recovery keys cannot decrypt the root key, and thus are not
-sufficient to unseal Vault if the Auto Unseal mechanism isn't working. They
+sufficient to unseal OpenBao if the Auto Unseal mechanism isn't working. They
 are purely an authorization mechanism.  Using Auto Unseal 
-creates a strict Vault lifecycle dependency on the underlying seal mechanism. 
+creates a strict OpenBao lifecycle dependency on the underlying seal mechanism. 
 This means that if the seal mechanism (such as the Cloud KMS key) becomes unavailable, 
 or deleted before the seal is migrated, then there is no ability to recover 
-access to the Vault cluster until the mechanism is available again. **If the seal 
-mechanism or its keys are permanently deleted, then the Vault cluster cannot be recovered, even
+access to the OpenBao cluster until the mechanism is available again. **If the seal 
+mechanism or its keys are permanently deleted, then the OpenBao cluster cannot be recovered, even
 from backups.**
 To mitigate this risk, we recommend careful controls around management of the seal
 mechanism, for example using 
@@ -131,10 +131,10 @@ be lost.
 
 ## Recovery key
 
-When Vault is initialized while using an HSM or KMS, rather than unseal keys
+When OpenBao is initialized while using an HSM or KMS, rather than unseal keys
 being returned to the operator, recovery keys are returned. These are generated
 from an internal recovery key that is split via Shamir's Secret Sharing, similar
-to Vault's treatment of unseal keys when running without an HSM or KMS.
+to OpenBao's treatment of unseal keys when running without an HSM or KMS.
 
 Details about initialization and rekeying follow. When performing an operation
 that uses recovery keys, such as `generate-root`, selection of the recovery
@@ -156,7 +156,7 @@ and their API equivalents in the [/sys/init](/vault/api-docs/system/init) endpoi
   API endpoint, although as with `pgp_keys` the object in the API endpoint is
   an array, not a string.
 
-Additionally, Vault will refuse to initialize if the option has not been set to
+Additionally, OpenBao will refuse to initialize if the option has not been set to
 generate a key, and no key is found. See
 [Configuration](/vault/docs/configuration/seal/pkcs11) for more details.
 
@@ -164,7 +164,7 @@ generate a key, and no key is found. See
 
 #### Unseal key
 
-Vault's unseal key can be rekeyed using a normal `vault operator rekey`
+OpenBao's unseal key can be rekeyed using a normal `openbao operator rekey`
 operation from the CLI or the matching API calls. The rekey operation is
 authorized by meeting the threshold of recovery keys. After rekeying, the new
 barrier key is wrapped by the HSM or KMS and stored like the previous key; it is not
@@ -177,8 +177,8 @@ returned to the users that submitted their recovery keys.
 #### Recovery key
 
 The recovery key can be rekeyed to change the number of shares/threshold or to
-target different key holders via different PGP keys. When using the Vault CLI,
-this is performed by using the `-target=recovery` flag to `vault operator rekey`.
+target different key holders via different PGP keys. When using the OpenBao CLI,
+this is performed by using the `-target=recovery` flag to `openbao operator rekey`.
 
 Via the API, the rekey operation is performed with the same parameters as the
 [normal `/sys/rekey`
@@ -273,14 +273,14 @@ All unseal commands must specify the `-migrate` flag. Once the required
 threshold of unseal keys are entered, unseal keys will be migrated to recovery
 keys.
 
-`$ vault operator unseal -migrate`
+`$ openbao operator unseal -migrate`
 
 #### Migration from auto unseal to shamir
 
 To migrate from Auto Unseal to Shamir keys, take your server cluster offline
 and update the [seal configuration](/vault/docs/configuration/seal) and add `disabled
 = "true"` to the seal block. This allows the migration to use this information
-to decrypt the key but will not unseal Vault. When you bring your server back
+to decrypt the key but will not unseal OpenBao. When you bring your server back
 up, run the unseal process with the `-migrate` flag and use the Recovery Keys
 to perform the migration. All unseal commands must specify the `-migrate` flag.
 Once the required threshold of recovery keys are entered, the recovery keys

@@ -11,11 +11,11 @@ returns group membership claims as a space-separated list of strings (e.g.
 `groups: "group-1 group-2"`) instead of a list of strings.
 
 To properly obtain group membership when using IBMISAM as the identity provider for
-Vault's OIDC Auth Method, the `ibmisam` provider must be explicitly configured as
+OpenBao's OIDC Auth Method, the `ibmisam` provider must be explicitly configured as
 shown below.
 
 ```shell
-vault write auth/oidc/config -<<"EOH"
+openbao write auth/oidc/config -<<"EOH"
 {
    "oidc_client_id": "your_client_id",
    "oidc_client_secret": "your_client_secret",

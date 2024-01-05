@@ -2,22 +2,22 @@
 layout: docs
 page_title: login - Command
 description: |-
-  The "login" command authenticates users or machines to Vault using the
-  provided arguments. A successful authentication results in a Vault token -
+  The "login" command authenticates users or machines to OpenBao using the
+  provided arguments. A successful authentication results in a OpenBao token -
   conceptually similar to a session token on a website.
 ---
 
 # login
 
-The `login` command authenticates users or machines to Vault using the provided
-arguments. A successful authentication results in a Vault token - conceptually
+The `login` command authenticates users or machines to OpenBao using the provided
+arguments. A successful authentication results in a OpenBao token - conceptually
 similar to a session token on a website. By default, this token is cached on the
 local machine for future requests.
 
 The `-method` flag allows using other auth methods, such as userpass,
 github, or cert. For these, additional "K=V" pairs may be required. For more
 information about the list of configuration parameters available for a given
-auth method, use the "vault auth help TYPE" command. You can also use "vault
+auth method, use the "openbao auth help TYPE" command. You can also use "openbao
 auth list" to see the list of enabled auth methods.
 
 If an auth method is enabled at a non-standard path, the `-method`
@@ -38,11 +38,11 @@ the returned token is automatically unwrapped unless:
 By default, login uses a "token" method and reads from stdin:
 
 ```shell-session
-$ vault login
+$ openbao login
 Token (will be hidden):
 Success! You are now authenticated. The token information displayed below
-is already stored in the token helper. You do NOT need to run "vault login"
-again. Future Vault requests will automatically use this token.
+is already stored in the token helper. You do NOT need to run "openbao login"
+again. Future OpenBao requests will automatically use this token.
 
 Key                  Value
 ---                  -----
@@ -59,10 +59,10 @@ Alternatively, the token may be provided as a command line argument (note that
 this may be captured by shell history or process listings):
 
 ```shell-session
-$ vault login s.3jnbMAKl1i4YS3QoKdbHzGXq
+$ openbao login s.3jnbMAKl1i4YS3QoKdbHzGXq
 Success! You are now authenticated. The token information displayed below
-is already stored in the token helper. You do NOT need to run "vault login"
-again. Future Vault requests will automatically use this token.
+is already stored in the token helper. You do NOT need to run "openbao login"
+again. Future OpenBao requests will automatically use this token.
 
 Key                  Value
 ---                  -----
@@ -78,10 +78,10 @@ policies             ["admin" "default"]
 To login with a different method, use `-method`:
 
 ```shell-session
-$ vault login -method=userpass username=my-username
+$ openbao login -method=userpass username=my-username
 Password (will be hidden):
 Success! You are now authenticated. The token information below is already
-stored in the token helper. You do NOT need to run "vault login" again. Future
+stored in the token helper. You do NOT need to run "openbao login" again. Future
 requests will use this token automatically.
 
 Key                    Value
@@ -102,9 +102,9 @@ argument (`username=my-username`).
 If a github auth method was enabled at the path "github-prod":
 
 ```shell-session
-$ vault login -method=github -path=github-prod
+$ openbao login -method=github -path=github-prod
 Success! You are now authenticated. The token information below is already
-stored in the token helper. You do NOT need to run "vault login" again. Future
+stored in the token helper. You do NOT need to run "openbao login" again. Future
 requests will use this token automatically.
 
 Key                    Value
@@ -148,7 +148,7 @@ flags](/vault/docs/commands) included on all commands.
   (usually the local filesystem) after authentication for use in future
   requests. The token will only be displayed in the command output.
 
-- `-path` `(string: "")` - Remote path in Vault where the auth method
+- `-path` `(string: "")` - Remote path in OpenBao where the auth method
   is enabled. This defaults to the TYPE of method (e.g. userpass -> userpass/).
 
 - `-token-only` `(bool: false)` - Output only the token with no verification.

@@ -2,26 +2,26 @@
 layout: docs
 page_title: patch - Command
 description: |-
-  The "patch" command updates data in Vault at the given path. The data can be
+  The "patch" command updates data in OpenBao at the given path. The data can be
   credentials, secrets, configuration, or arbitrary data. The specific behavior
   of this command is determined at the thing mounted at the path.
 ---
 
 # patch
 
-The `patch` command updates data in Vault at the given path (wrapper command for
+The `patch` command updates data in OpenBao at the given path (wrapper command for
 HTTP PATCH using the [JSON Patch format](https://datatracker.ietf.org/doc/html/rfc6902)).
 The data can be credentials, secrets, configuration, or arbitrary data. The specific
 behavior of the `patch` command is determined at the thing mounted at the path.
 
 Data is specified as "**key=value**" pairs on the command line. If the value begins
-with an "**@**", then it is loaded from a file. If the value for a key is "**-**", Vault
+with an "**@**", then it is loaded from a file. If the value for a key is "**-**", OpenBao
 will read the value from stdin rather than the command line.
 
 Some API fields require more advanced structures such as maps. These cannot
 directly be represented on the command line. However, direct control of the
 request parameters can be achieved by using `-` as the only data argument.
-This causes `vault patch` to read a JSON blob containing all request parameters
+This causes `openbao patch` to read a JSON blob containing all request parameters
 from stdin. This argument will be ignored if used in conjunction with any
 "key=value" pairs.
 
@@ -36,7 +36,7 @@ modifies data specified on the command line.
 Updates a PKI role to modify a single parameter:
 
 ```shell-session
-$ vault patch pki/roles/example allow_localhost=false
+$ openbao patch pki/roles/example allow_localhost=false
 ```
 
 ### API versus CLI
@@ -44,7 +44,7 @@ $ vault patch pki/roles/example allow_localhost=false
 Updates a PKI role to modify the `allow_localhost` parameter:
 
 ```shell-session
-$ vault patch pki/roles/example allow_localhost=false
+$ openbao patch pki/roles/example allow_localhost=false
 ```
 
 Equivalent cURL command for this operation:
@@ -63,7 +63,7 @@ $ curl --header "X-Vault-Token: $VAULT_TOKEN" \
     $VAULT_ADDR/v1/pki/roles/example
 ```
 
-The `vault patch` command simplifies the API call.
+The `openbao patch` command simplifies the API call.
 
 ## Usage
 

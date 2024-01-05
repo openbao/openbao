@@ -5,7 +5,7 @@ description: |-
   The "operator rekey" command generates a new set of unseal keys. This can
   optionally change the total number of key shares or the required threshold of
   those key shares to reconstruct the root key. This operation is zero
-  downtime, but it requires the Vault is unsealed and a quorum of existing
+  downtime, but it requires the OpenBao is unsealed and a quorum of existing
   unseal keys are provided.
 ---
 
@@ -14,7 +14,7 @@ description: |-
 The `operator rekey` command generates a new set of unseal keys. This can
 optionally change the total number of key shares or the required threshold of
 those key shares to reconstruct the root key. This operation is zero downtime,
-but it requires the Vault is unsealed and a quorum of existing unseal keys are
+but it requires the OpenBao is unsealed and a quorum of existing unseal keys are
 provided.
 
 An unseal key may be provided directly on the command line as an argument to the
@@ -29,16 +29,16 @@ step-by-step instructions.
 Initialize a rekey:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -init \
     -key-shares=15 \
     -key-threshold=9
 ```
 
-Initialize a rekey when Auto Unseal is used for the Vault cluster:
+Initialize a rekey when Auto Unseal is used for the OpenBao cluster:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -target=recovery \
     -init \
     -key-shares=15 \
@@ -48,7 +48,7 @@ $ vault operator rekey \
 Initialize a rekey and activate the verification process:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -init \
     -key-shares=15 \
     -key-threshold=9 \
@@ -58,17 +58,17 @@ $ vault operator rekey \
 Rekey and encrypt the resulting unseal keys with PGP:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -init \
     -key-shares=3 \
     -key-threshold=2 \
     -pgp-keys="keybase:hashicorp,keybase:jefferai,keybase:sethvargo"
 ```
 
-Rekey an Auto Unseal vault and encrypt the resulting recovery keys with PGP:
+Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -target=recovery \
     -init \
     -pgp-keys=keybase:grahamhashicorp
@@ -76,10 +76,10 @@ $ vault operator rekey \
     -key-threshold=1
 ```
 
-Store encrypted PGP keys in Vault's core:
+Store encrypted PGP keys in OpenBao's core:
 
 ```shell-session
-$ vault operator rekey \
+$ openbao operator rekey \
     -init \
     -pgp-keys="..." \
     -backup
@@ -88,19 +88,19 @@ $ vault operator rekey \
 Retrieve backed-up unseal keys:
 
 ```shell-session
-$ vault operator rekey -backup-retrieve
+$ openbao operator rekey -backup-retrieve
 ```
 
 Delete backed-up unseal keys:
 
 ```shell-session
-$ vault operator rekey -backup-delete
+$ openbao operator rekey -backup-delete
 ```
 
 Perform the verification of the rekey using the verification nonce:
 
 ```shell-session
-$ vault operator rekey -verify -nonce="..."
+$ openbao operator rekey -verify -nonce="..."
 ```
 
 ## Usage
@@ -152,7 +152,7 @@ flags](/vault/docs/commands) included on all commands.
 ### Backup options
 
 - `-backup` `(bool: false)` - Store a backup of the current PGP encrypted unseal
-  keys in Vault's core. The encrypted values can be recovered in the event of
+  keys in OpenBao's core. The encrypted values can be recovered in the event of
   failure or discarded after success. See the -backup-delete and
   \-backup-retrieve options for more information. This option only applies when
   the existing unseal keys were PGP encrypted.

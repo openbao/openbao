@@ -10,7 +10,7 @@ description: >-
 
 The `seal` stanza configures the seal type to use for additional data
 protection, such as using HSM or Cloud KMS solutions to encrypt and decrypt the
-root key. This stanza is optional, and in the case of the root key, Vault
+root key. This stanza is optional, and in the case of the root key, OpenBao
 will use the Shamir algorithm to cryptographically split the root key if this
 is not configured.
 
@@ -24,7 +24,7 @@ Seal wrap is enabled by default for Vault Enterprise. Refer to the
 
 ## Configuration
 
-Seal configuration can be done through the Vault configuration file using the
+Seal configuration can be done through the OpenBao configuration file using the
 `seal` stanza:
 
 ```hcl

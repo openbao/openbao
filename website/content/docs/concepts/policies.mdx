@@ -2,84 +2,84 @@
 layout: docs
 page_title: Policies
 description: >-
-  Policies are how authorization is done in Vault, allowing you to restrict
-  which parts of Vault a user can access.
+  Policies are how authorization is done in OpenBao, allowing you to restrict
+  which parts of OpenBao a user can access.
 ---
 
 # Policies
 
-Everything in Vault is path-based, and policies are no exception. Policies
+Everything in OpenBao is path-based, and policies are no exception. Policies
 provide a declarative way to grant or forbid access to certain paths and
-operations in Vault. This section discusses policy workflows and syntaxes.
+operations in OpenBao. This section discusses policy workflows and syntaxes.
 
 Policies are **deny by default**, so an empty policy grants no permission in the
 system.
 
 ## Policy-authorization workflow
 
-Before a human or machine can gain access, an administrator must configure Vault
+Before a human or machine can gain access, an administrator must configure OpenBao
 with an [auth method](/vault/docs/concepts/auth). Authentication is
 the process by which human or machine-supplied information is verified against
 an internal or external system.
 
 Consider the following diagram, which illustrates the steps a security team
-would take to configure Vault to authenticate using a corporate LDAP or
+would take to configure OpenBao to authenticate using a corporate LDAP or
 ActiveDirectory installation. Even though this example uses LDAP, the concept
 applies to all auth methods.
 
-[![Vault Auth Workflow](/img/vault-policy-workflow.svg)](/img/vault-policy-workflow.svg)
+[![OpenBao Auth Workflow](/img/vault-policy-workflow.svg)](/img/vault-policy-workflow.svg)
 
-1. The security team configures Vault to connect to an auth method.
-   This configuration varies by auth method. In the case of LDAP, Vault
+1. The security team configures OpenBao to connect to an auth method.
+   This configuration varies by auth method. In the case of LDAP, OpenBao
    needs to know the address of the LDAP server and whether to connect using TLS.
-   It is important to note that Vault does not store a copy of the LDAP database -
-   Vault will delegate the authentication to the auth method.
+   It is important to note that OpenBao does not store a copy of the LDAP database -
+   OpenBao will delegate the authentication to the auth method.
 
 1. The security team authors a policy (or uses an existing policy) which grants
-   access to paths in Vault. Policies are written in HCL in your editor of
+   access to paths in OpenBao. Policies are written in HCL in your editor of
    preference and saved to disk.
 
-1. The policy's contents are uploaded and stored in Vault and referenced by name.
+1. The policy's contents are uploaded and stored in OpenBao and referenced by name.
    You can think of the policy's name as a pointer or symlink to its set of rules.
 
 1. Most importantly, the security team maps data in the auth method to a policy.
    For example, the security team might create mappings like:
 
-   > Members of the OU group "dev" map to the Vault policy named "readonly-dev".
+   > Members of the OU group "dev" map to the OpenBao policy named "readonly-dev".
 
    or
 
-   > Members of the OU group "ops" map to the Vault policies "admin" and "auditor".
+   > Members of the OU group "ops" map to the OpenBao policies "admin" and "auditor".
 
-Now Vault has an internal mapping between a backend authentication system and
-internal policy. When a user authenticates to Vault, the actual authentication
+Now OpenBao has an internal mapping between a backend authentication system and
+internal policy. When a user authenticates to OpenBao, the actual authentication
 is delegated to the auth method. As a user, the flow looks like:
 
-[![Vault Auth Workflow](/img/vault-auth-workflow.svg)](/img/vault-auth-workflow.svg)
+[![OpenBao Auth Workflow](/img/vault-auth-workflow.svg)](/img/vault-auth-workflow.svg)
 
-1. A user attempts to authenticate to Vault using their LDAP credentials,
-   providing Vault with their LDAP username and password.
+1. A user attempts to authenticate to OpenBao using their LDAP credentials,
+   providing OpenBao with their LDAP username and password.
 
-1. Vault establishes a connection to LDAP and asks the LDAP server to verify the
+1. OpenBao establishes a connection to LDAP and asks the LDAP server to verify the
    given credentials. Assuming this is successful, the LDAP server returns the
    information about the user, including the OU groups.
 
-1. Vault maps the result from the LDAP server to policies inside Vault using the
-   mapping configured by the security team in the previous section. Vault then
+1. OpenBao maps the result from the LDAP server to policies inside OpenBao using the
+   mapping configured by the security team in the previous section. OpenBao then
    generates a token and attaches the matching policies.
 
-1. Vault returns the token to the user. This token has the correct policies
+1. OpenBao returns the token to the user. This token has the correct policies
    assigned, as dictated by the mapping configuration that was setup by the
    security team in advance.
 
-The user then uses this Vault token for future operations. If the user performs
+The user then uses this OpenBao token for future operations. If the user performs
 the authentication steps again, they will get a _new_ token. The token will have
 the same permissions, but the actual token will be different. Authenticating a
 second time does not invalidate the original token.
 
 ## Policy syntax
 
-Policies are written in [HCL][hcl] or JSON and describe which paths in Vault a
+Policies are written in [HCL][hcl] or JSON and describe which paths in OpenBao a
 user or machine is allowed to access.
 
 [hcl]: https://github.com/hashicorp/hcl
@@ -96,7 +96,7 @@ path "secret/foo" {
 When this policy is assigned to a token, the token can read from `"secret/foo"`.
 However, the token cannot update or delete `"secret/foo"`, since the
 capabilities do not allow it. Because policies are **deny by default**, the
-token would have no other access in Vault.
+token would have no other access in OpenBao.
 
 Here is a more detailed policy, and it is documented inline:
 
@@ -127,7 +127,7 @@ path "secret/restricted" {
 
 Policies use path-based matching to test the set of capabilities against a
 request. A policy `path` may specify an exact path to match, or it could specify
-a glob pattern which instructs Vault to use a prefix match:
+a glob pattern which instructs OpenBao to use a prefix match:
 
 ```ruby
 # Permit reading only "secret/foo". an attached token cannot read "secret/food"
@@ -164,12 +164,12 @@ path "secret/+/+/teamb" {
 }
 ```
 
-Vault's architecture is similar to a filesystem. Every action in Vault has a
-corresponding path and capability - even Vault's internal core configuration
+OpenBao's architecture is similar to a filesystem. Every action in OpenBao has a
+corresponding path and capability - even OpenBao's internal core configuration
 endpoints live under the `"sys/"` path. Policies define access to these paths and
-capabilities, which controls a token's access to credentials in Vault.
+capabilities, which controls a token's access to credentials in OpenBao.
 
-~> **Note:** The policy rules that Vault applies are determined by the most-specific match
+~> **Note:** The policy rules that OpenBao applies are determined by the most-specific match
 available, using the priority rules described below. This may be an exact match
 or the longest-prefix match of a glob. If the same pattern appears in multiple
 policies, we take the union of the capabilities. If different patterns appear in
@@ -195,7 +195,7 @@ _lower_ priority.
 It _is not a regular expression_ and is only supported **as the last character of the path**!
 
 When providing `list` capability, it is important to note that since listing
-always operates on a prefix, policies must operate on a prefix because Vault
+always operates on a prefix, policies must operate on a prefix because OpenBao
 will sanitize request paths to be prefixes.
 
 ### Capabilities
@@ -211,14 +211,14 @@ To determine the capabilities needed to perform a specific operation, the `-outp
 The list of capabilities include the following:
 
 - `create` (`POST/PUT`) - Allows creating data at the given path. Very few
-  parts of Vault distinguish between `create` and `update`, so most operations
-  require both `create` and `update` capabilities. Parts of Vault that
+  parts of OpenBao distinguish between `create` and `update`, so most operations
+  require both `create` and `update` capabilities. Parts of OpenBao that
   provide such a distinction are noted in documentation.
 
 - `read` (`GET`) - Allows reading the data at the given path.
 
 - `update` (`POST/PUT`) - Allows changing the data at the given path. In most
-  parts of Vault, this implicitly includes the ability to create the initial
+  parts of OpenBao, this implicitly includes the ability to create the initial
   value at the path.
 
 - `patch` (`PATCH`) -  Allows partial updates to the data at a given path.
@@ -317,7 +317,7 @@ templates, you will need to get its _mount accessor_ and access it via the
 You can get the mount accessor value using the following command:
 
 ```shellsession
-$> vault auth list
+$> openbao auth list
 Path           Type          Accessor                    Description
 ----           ----          --------                    -----------
 kubernetes/    kubernetes    auth_kubernetes_xxxx        n/a
@@ -335,7 +335,7 @@ path "secret/data/{{identity.entity.aliases.auth_kubernetes_xxxx.metadata.servic
 
 ## Fine-grained control
 
-In addition to the standard set of capabilities, Vault offers finer-grained
+In addition to the standard set of capabilities, OpenBao offers finer-grained
 control over permissions at a given path. The capabilities associated with a
 path take precedence over permissions on parameters.
 
@@ -384,7 +384,7 @@ constrain requests, using the following options:
      Templating](/vault/tutorials/policies/policy-templating)
      tutorial demonstrates the use of `allowed_parameters` to permit a user to
      update the user's password when using the [userpass auth
-     method](/vault/docs/auth/userpass) to log in with Vault.
+     method](/vault/docs/auth/userpass) to log in with OpenBao.
 
   - Setting a parameter with a value of a populated list allows the parameter
     to contain only those values.
@@ -510,7 +510,7 @@ path "secret/foo" {
 The following operation will error, because "no_store" is set to false:
 
 ```shell-session
-$ vault write secret/foo no_store=false value=bar
+$ openbao write secret/foo no_store=false value=bar
 ```
 
 Whereas the following operation will succeed, even if the "no_store"
@@ -518,7 +518,7 @@ parameter must be a boolean, and it defaults to false:
 
 ```shell-session
 # Succeeds because "no_store=false" isn't present in the parameters
-$ vault write secret/foo value=bar
+$ openbao write secret/foo value=bar
 ```
 
 This is because the policy evaluator does not know what the default value is for
@@ -541,7 +541,7 @@ The following command, which previously succeeded, will now fail under the new p
 because there is no "no_store" parameter:
 
 ```shell-session
-$ vault write secret/foo value=bar
+$ openbao write secret/foo value=bar
 ```
 
 ##### Globbing
@@ -603,34 +603,34 @@ keeping token lifetimes as short as possible.
 
 ## Built-in policies
 
-Vault has two built-in policies: `default` and `root`. This section describes
+OpenBao has two built-in policies: `default` and `root`. This section describes
 the two built-in policies.
 
 ### Default policy
 
-The `default` policy is a built-in Vault policy that cannot be removed. By
+The `default` policy is a built-in OpenBao policy that cannot be removed. By
 default, it is attached to all tokens, but may be explicitly excluded at token
 creation time by supporting authentication methods.
 
 The policy contains basic functionality such as the ability for the token to
-look up data about itself and to use its cubbyhole data. However, Vault is not
-prescriptive about its contents. It can be modified to suit your needs; Vault
+look up data about itself and to use its cubbyhole data. However, OpenBao is not
+prescriptive about its contents. It can be modified to suit your needs; OpenBao
 will never overwrite your modifications. If you want to stay up-to-date with
 the latest upstream version of the `default` policy, simply read the contents
 of the policy from an up-to-date `dev` server, and write those contents into
-your Vault's `default` policy.
+your OpenBao's `default` policy.
 
-To view all permissions granted by the default policy on your Vault
+To view all permissions granted by the default policy on your OpenBao
 installation, run:
 
 ```shell-session
-$ vault read sys/policy/default
+$ openbao read sys/policy/default
 ```
 
 To disable attachment of the default policy:
 
 ```shell-session
-$ vault token create -no-default-policy
+$ openbao token create -no-default-policy
 ```
 
 or via the API:
@@ -640,25 +640,25 @@ $ curl \
   --request POST \
   --header "X-Vault-Token: ..." \
   --data '{"no_default_policy": "true"}' \
-  https://vault.hashicorp.rocks/v1/auth/token/create
+  https://openbao.hashicorp.rocks/v1/auth/token/create
 ```
 
 ### Root policy
 
-The `root` policy is a built-in Vault policy that cannot be modified or removed.
+The `root` policy is a built-in OpenBao policy that cannot be modified or removed.
 Any user associated with this policy becomes a root user. A root user can do
-_anything_ within Vault. As such, it is **highly recommended** that you revoke
-any root tokens before running Vault in production.
+_anything_ within OpenBao. As such, it is **highly recommended** that you revoke
+any root tokens before running OpenBao in production.
 
-When a Vault server is first initialized, there always exists one root user.
-This user is used to do the initial configuration and setup of Vault. After
+When a OpenBao server is first initialized, there always exists one root user.
+This user is used to do the initial configuration and setup of OpenBao. After
 configured, the initial root token should be revoked and more strictly
 controlled users and authentication should be used.
 
 To revoke a root token, run:
 
 ```shell-session
-$ vault token revoke "<token>"
+$ openbao token revoke "<token>"
 ```
 
 or via the API:
@@ -668,7 +668,7 @@ $ curl \
   --request POST \
   --header "X-Vault-Token: ..." \
   --data '{"token": "<token>"}' \
-  https://vault.hashicorp.rocks/v1/auth/token/revoke
+  https://openbao.hashicorp.rocks/v1/auth/token/revoke
 ```
 
 For more information, please read:
@@ -680,14 +680,14 @@ For more information, please read:
 
 Policies are authored (written) in your editor of choice. They can be authored
 in HCL or JSON, and the syntax is described in detail above. Once saved,
-policies must be uploaded to Vault before they can be used.
+policies must be uploaded to OpenBao before they can be used.
 
 ### Listing policies
 
-To list all registered policies in Vault:
+To list all registered policies in OpenBao:
 
 ```shell-session
-$ vault read sys/policy
+$ openbao read sys/policy
 ```
 
 or via the API:
@@ -695,20 +695,20 @@ or via the API:
 ```shell-session
 $ curl \
   --header "X-Vault-Token: ..." \
-  https://vault.hashicorp.rocks/v1/sys/policy
+  https://openbao.hashicorp.rocks/v1/sys/policy
 ```
 
-~> **Note:** You may also see the CLI command `vault policies`. This is a convenience
+~> **Note:** You may also see the CLI command `openbao policies`. This is a convenience
 wrapper around reading the sys endpoint directly. It provides the same
 functionality but formats the output in a special manner.
 
 ### Creating policies
 
 Policies may be created (uploaded) via the CLI or via the API. To create a new
-policy in Vault:
+policy in OpenBao:
 
 ```shell-session
-$ vault policy write policy-name policy-file.hcl
+$ openbao policy write policy-name policy-file.hcl
 ```
 
 or via the API:
@@ -718,7 +718,7 @@ $ curl \
   --request POST \
   --header "X-Vault-Token: ..." \
   --data '{"policy":"path \"...\" {...} "}' \
-  https://vault.hashicorp.rocks/v1/sys/policy/policy-name
+  https://openbao.hashicorp.rocks/v1/sys/policy/policy-name
 ```
 
 In both examples, the name of the policy is "policy-name". You can think of this
@@ -728,11 +728,11 @@ name, which are then mapped to the set of rules corresponding to that name.
 ### Updating policies
 
 Existing policies may be updated to change permissions via the CLI or via the
-API. To update an existing policy in Vault, follow the same steps as creating a
+API. To update an existing policy in OpenBao, follow the same steps as creating a
 policy, but use an existing policy name:
 
 ```shell-session
-$ vault write sys/policy/my-existing-policy policy=@updated-policy.json
+$ openbao write sys/policy/my-existing-policy policy=@updated-policy.json
 ```
 
 or via the API:
@@ -742,7 +742,7 @@ $ curl \
   --request POST \
   --header "X-Vault-Token: ..." \
   --data '{"policy":"path \"...\" {...} "}' \
-  https://vault.hashicorp.rocks/v1/sys/policy/my-existing-policy
+  https://openbao.hashicorp.rocks/v1/sys/policy/my-existing-policy
 ```
 
 ### Deleting policies
@@ -750,7 +750,7 @@ $ curl \
 Existing policies may be deleted via the CLI or API. To delete a policy:
 
 ```shell-session
-$ vault delete sys/policy/policy-name
+$ openbao delete sys/policy/policy-name
 ```
 
 or via the API:
@@ -759,47 +759,47 @@ or via the API:
 $ curl \
   --request DELETE \
   --header "X-Vault-Token: ..." \
-  https://vault.hashicorp.rocks/v1/sys/policy/policy-name
+  https://openbao.hashicorp.rocks/v1/sys/policy/policy-name
 ```
 
-This is an idempotent operation. Vault will not return an error when deleting a
+This is an idempotent operation. OpenBao will not return an error when deleting a
 policy that does not exist.
 
 ## Associating policies
 
-Vault can automatically associate a set of policies to a token based on an
+OpenBao can automatically associate a set of policies to a token based on an
 authorization. This configuration varies significantly between authentication
-backends. For simplicity, this example will use Vault's built-in userpass
+backends. For simplicity, this example will use OpenBao's built-in userpass
 auth method.
 
-A Vault administrator or someone from the security team would create the user in
-Vault with a list of associated policies:
+A OpenBao administrator or someone from the security team would create the user in
+OpenBao with a list of associated policies:
 
 ```shell-session
-$ vault write auth/userpass/users/sethvargo \
+$ openbao write auth/userpass/users/sethvargo \
     password="s3cr3t!" \
     policies="dev-readonly,logs"
 ```
 
 This creates an authentication mapping to the policy such that, when the user
-authenticates successfully to Vault, they will be given a token which has the list
+authenticates successfully to OpenBao, they will be given a token which has the list
 of policies attached.
 
 The user wishing to authenticate would run
 
 ```shell-session
-$ vault login -method="userpass" username="sethvargo"
+$ openbao login -method="userpass" username="sethvargo"
 Password (will be hidden): ...
 ```
 
-If the provided information is correct, Vault will generate a token, assign the
+If the provided information is correct, OpenBao will generate a token, assign the
 list of configured policies to the token, and return that token to the
 authenticated user.
 
 ## Root protected API endpoints
 
-~> **Note:** Vault treats the HTTP POST and PUT verbs as equivalent, so for each mention
-   of POST in the table above, PUT may also be used. Vault uses the non-standard LIST HTTP
+~> **Note:** OpenBao treats the HTTP POST and PUT verbs as equivalent, so for each mention
+   of POST in the table above, PUT may also be used. OpenBao uses the non-standard LIST HTTP
    verb, but also allows list requests to be made using the GET verb along with `?list=true`
    as a query parameter, so for each mention of LIST in the table above, GET with `?list=true`
    may also be used.
@@ -808,7 +808,7 @@ The following paths requires a root token or `sudo` capability in the policy:
 
 | Path                                                                                                                                                   | HTTP verb         | Description                                                                                                                                         |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [auth/token/accessors](/vault/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current Vault service tokens                                                                                           |
+| [auth/token/accessors](/vault/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
 | [auth/token/create](/vault/api-docs/auth/token#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
 | [pki/root](/vault/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](/vault/docs/secrets/pki))                                                                           |
 | [pki/root/sign-self-issued](/vault/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](/vault/docs/secrets/pki))                                 |
@@ -821,19 +821,19 @@ The following paths requires a root token or `sudo` capability in the policy:
 | [sys/config/cors](/vault/api-docs/system/config-cors)                                                                                                  | GET, POST, DELETE | Configure CORS setting                                                                                                                              |
 | [sys/config/ui/headers](/vault/api-docs/system/config-ui)                                                                                              | GET, LIST         | Configure the UI settings                                                                                                                           |
 | [sys/config/ui/headers/:name](/vault/api-docs/system/config-ui#name)                                                                                   | POST, DELETE      | Configure custom HTTP headers to be served with the UI                                                                                              |
-| [sys/internal/inspect/router/:tag](/vault/api-docs/system/inspect/router)                                                                              | GET               | Inspect the internal components of Vault's router. `tag` must be one of root, uuid, accessor, or storage                                            |
+| [sys/internal/inspect/router/:tag](/vault/api-docs/system/inspect/router)                                                                              | GET               | Inspect the internal components of OpenBao's router. `tag` must be one of root, uuid, accessor, or storage                                            |
 | [sys/leases/lookup/:prefix](/vault/api-docs/system/leases#list-leases)                                                                                 | LIST              | List lease IDs                                                                                                                                      |
 | [sys/leases/revoke-force/:prefix](/vault/api-docs/system/leases#revoke-force)                                                                          | POST              | Revoke all secrets or tokens ignoring backend errors                                                                                                |
 | [sys/leases/revoke-prefix/:prefix](/vault/api-docs/system/leases#revoke-prefix)                                                                        | POST              | Revoke all secrets generated under a given prefix                                                                                                   |
 | [sys/plugins/catalog/:type/:name](/vault/api-docs/system/plugins-catalog#register-plugin)                                                              | GET, POST, DELETE | Register a new plugin, or read/remove an existing plugin                                                                                            |
-| [sys/raw:path](/vault/api-docs/system/raw)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in Vault                                                                                                    |
+| [sys/raw:path](/vault/api-docs/system/raw)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in OpenBao                                                                                                    |
 | [sys/raw:prefix](/vault/api-docs/system/raw#list-raw)                                                                                                  | GET, LIST         | Returns a list keys for a given path prefix                                                                                                         |
 | [sys/remount](/vault/api-docs/system/remount)                                                                                                          | POST              | Moves an already-mounted backend to a new mount point                                                                                               |
 | [sys/replication/reindex](/vault/api-docs/system/replication#reindex-replication)                                                                      | POST              | Reindex the local data storage                                                                                                                      |
 | [sys/replication/performance/primary/secondary-token](/vault/api-docs/system/replication/replication-performance#generate-performance-secondary-token) | POST              | Generate a performance secondary activation token                                                                                                   |
 | [sys/replication/dr/primary/secondary-token](/vault/api-docs/system/replication/replication-dr#generate-dr-secondary-token)                            | POST              | Generate a DR secondary activation token                                                                                                            |
 | [sys/rotate](/vault/api-docs/system/rotate)                                                                                                            | POST              | Trigger a rotation of the backend encryption key                                                                                                    |
-| [sys/seal](/vault/api-docs/system/seal)                                                                                                                | POST              | Seals the Vault                                                                                                                                     |
+| [sys/seal](/vault/api-docs/system/seal)                                                                                                                | POST              | Seals the OpenBao                                                                                                                                     |
 | [sys/step-down](/vault/api-docs/system/step-down)                                                                                                      | POST              | Forces a node to give up active status                                                                                                              |
 | [sys/storage/raft/snapshot-auto/config](/vault/api-docs/system/storage/raftautosnapshots#list-automated-snapshots-configs)                             | LIST              | Lists named configurations                                                                                                                          |
 | [sys/storage/raft/snapshot-auto/config/:name](/vault/api-docs/system/storage/raftautosnapshots)                                                        | GET, POST, DELETE | Creates or updates a named configuration                                                                                                            |
@@ -850,7 +850,7 @@ the underlying entities, groups, and group memberships.
 Tokens are associated with their policies at creation time. For example:
 
 ```shell-session
-$ vault token create -policy=dev-readonly -policy=logs
+$ openbao token create -policy=dev-readonly -policy=logs
 ```
 
 Normally the only policies that may be specified are those which are present
@@ -863,11 +863,11 @@ new set of policies.
 
 However, the _contents_ of policies are parsed in real-time whenever the token is used.
 As a result, if a policy is modified, the modified rules will be in force the
-next time a token, with that policy attached, is used to make a call to Vault.
+next time a token, with that policy attached, is used to make a call to OpenBao.
 
 ## Tutorial
 
 Refer to the following tutorials for further learning:
 
-- [Vault Policies](/vault/tutorials/policies/policies)
+- [OpenBao Policies](/vault/tutorials/policies/policies)
 - [ACL Policy Path Templating](/vault/tutorials/policies/policy-templating)

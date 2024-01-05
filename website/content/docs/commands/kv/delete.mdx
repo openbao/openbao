@@ -17,14 +17,14 @@ normal get requests.
 Delete the latest version of the key "creds":
 
 ```shell-session
-$ vault kv delete -mount=secret creds
+$ openbao kv delete -mount=secret creds
 Success! Data deleted (if it existed) at: secret/creds
 ```
 
 **[K/V Version 2]** Delete version 11 of key "creds":
 
 ```shell-session
-$ vault kv delete -mount=secret -versions=11 creds
+$ openbao kv delete -mount=secret -versions=11 creds
 Success! Data deleted (if it existed) at: secret/data/creds
 ```
 

@@ -2,14 +2,14 @@
 layout: docs
 page_title: Google Cloud - Auth Methods
 description: |-
-  The "gcp" auth method allows users and machines to authenticate to Vault using
+  The "gcp" auth method allows users and machines to authenticate to OpenBao using
   Google Cloud service accounts.
 ---
 
 # Google Cloud auth method
 
 The `gcp` auth method allows Google Cloud Platform entities to authenticate to
-Vault. Vault treats Google Cloud as a trusted third party and verifies
+OpenBao. OpenBao treats Google Cloud as a trusted third party and verifies
 authenticating entities against the Google Cloud APIs. This backend allows for
 authentication of:
 
@@ -22,7 +22,7 @@ against Google.
 
 This plugin is developed in a separate GitHub repository at
 [hashicorp/vault-plugin-auth-gcp][repo],
-but is automatically bundled in Vault releases. Please file all feature
+but is automatically bundled in OpenBao releases. Please file all feature
 requests, bugs, and pull requests specific to the GCP plugin under that
 repository.
 
@@ -30,12 +30,12 @@ repository.
 
 ### Via the CLI helper
 
-Vault includes a CLI helper that obtains a signed JWT locally and sends the
-request to Vault.
+OpenBao includes a CLI helper that obtains a signed JWT locally and sends the
+request to OpenBao.
 
 ```shell-session
-# Authentication to vault outside of Google Cloud
-$ vault login -method=gcp \
+# Authentication to openbao outside of Google Cloud
+$ openbao login -method=gcp \
     role="my-role" \
     service_account="authenticating-account@my-project.iam.gserviceaccount.com" \
     jwt_exp="15m" \
@@ -43,11 +43,11 @@ $ vault login -method=gcp \
 ```
 
 ```shell-session
-# Authentication to vault inside of Google Cloud
-$ vault login -method=gcp role="my-role"
+# Authentication to openbao inside of Google Cloud
+$ openbao login -method=gcp role="my-role"
 ```
 
-For more usage information, run `vault auth help gcp`.
+For more usage information, run `openbao auth help gcp`.
 
 -> **Note:** The `project` parameter has been removed in Vault 1.5.9+, 1.6.5+, and 1.7.2+.
 It is no longer needed for configuration and will be ignored if provided.
@@ -55,7 +55,7 @@ It is no longer needed for configuration and will be ignored if provided.
 ### Via the CLI
 
 ```shell-session
-$ vault write -field=token auth/gcp/login \
+$ openbao write -field=token auth/gcp/login \
     role="my-role" \
     jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
@@ -82,13 +82,13 @@ management tool.
 1. Enable the Google Cloud auth method:
 
    ```shell-session
-   $ vault auth enable gcp
+   $ openbao auth enable gcp
    ```
 
-1. Configure the auth method credentials if Vault is not running on Google Cloud:
+1. Configure the auth method credentials if OpenBao is not running on Google Cloud:
 
    ```text
-   $ vault write auth/gcp/config \
+   $ openbao write auth/gcp/config \
        credentials=@/path/to/credentials.json
    ```
 
@@ -105,7 +105,7 @@ management tool.
    For an `iam`-type role:
 
    ```shell-session
-   $ vault write auth/gcp/role/my-iam-role \
+   $ openbao write auth/gcp/role/my-iam-role \
        type="iam" \
        policies="dev,prod" \
        bound_service_accounts="my-service@my-project.iam.gserviceaccount.com"
@@ -114,7 +114,7 @@ management tool.
    For a `gce`-type role:
 
    ```shell-session
-   $ vault write auth/gcp/role/my-gce-role \
+   $ openbao write auth/gcp/role/my-gce-role \
        type="gce" \
        policies="dev,prod" \
        bound_projects="my-project1,my-project2" \
@@ -130,7 +130,7 @@ management tool.
 
 ## GCP credentials
 
-The Google Cloud Vault auth method uses the official Google Cloud Golang SDK.
+The Google Cloud OpenBao auth method uses the official Google Cloud Golang SDK.
 This means it supports the common ways of [providing credentials to Google
 Cloud][cloud-creds].
 
@@ -165,17 +165,17 @@ The GCP project must have the following APIs enabled:
 - [cloudresourcemanager.googleapis.com](https://console.cloud.google.com/flows/enableapi?apiid=cloudresourcemanager.googleapis.com)
   for `iam` and `gce` type roles that set [`add_group_aliases`](/vault/api-docs/auth/gcp#add_group_aliases) to true.
 
-#### Vault server permissions
+#### OpenBao server permissions
 
-**For `iam`-type Vault roles**, the service account [`credentials`](/vault/api-docs/auth/gcp#credentials)
-given to Vault can have the following role:
+**For `iam`-type OpenBao roles**, the service account [`credentials`](/vault/api-docs/auth/gcp#credentials)
+given to OpenBao can have the following role:
 
 ```text
 roles/iam.serviceAccountKeyAdmin
 ```
 
-**For `gce`-type Vault roles**, the service account [`credentials`](/vault/api-docs/auth/gcp#credentials)
-given to Vault can have the following role:
+**For `gce`-type OpenBao roles**, the service account [`credentials`](/vault/api-docs/auth/gcp#credentials)
+given to OpenBao can have the following role:
 
 ```text
 roles/compute.viewer
@@ -191,7 +191,7 @@ compute.instances.get
 compute.instanceGroups.list
 ```
 
-These allow Vault to:
+These allow OpenBao to:
 
 - verify the service account, either directly authenticating or associated with
   authenticating GCE instance, exists
@@ -204,14 +204,14 @@ These allow Vault to:
 If you are using Group Aliases as described below, you will also need to add the
 `resourcemanager.projects.get` permission.
 
-#### Permissions for authenticating against Vault
+#### Permissions for authenticating against OpenBao
 
-If you are authenticating to Vault from Google Cloud, you can skip the following step as
-Vault will generate and present the identity token of the service account configured
+If you are authenticating to OpenBao from Google Cloud, you can skip the following step as
+OpenBao will generate and present the identity token of the service account configured
 on the instance or the pod.
 
-Note that the previously mentioned permissions are given to the _Vault servers_.
-The IAM service account or GCE instance that is **authenticating against Vault**
+Note that the previously mentioned permissions are given to the _OpenBao servers_.
+The IAM service account or GCE instance that is **authenticating against OpenBao**
 must have the following role:
 
 ```text
@@ -229,7 +229,7 @@ for more information.
 As of Vault 1.0, roles can specify an `add_group_aliases` boolean parameter
 that adds [group aliases][identity-group-aliases] to the auth response. These
 aliases can aid in building reusable policies since they are available as
-interpolated values in Vault's policy engine. Once enabled, the auth response
+interpolated values in OpenBao's policy engine. Once enabled, the auth response
 will include the following aliases:
 
 ```json
@@ -241,36 +241,36 @@ will include the following aliases:
 ]
 ```
 
-If you are using a custom role for Vault server, you will need to add the
+If you are using a custom role for OpenBao server, you will need to add the
 `resourcemanager.projects.get` permission to your custom role.
 
 ## Implementation details
 
-This section describes the implementation details for how Vault communicates
+This section describes the implementation details for how OpenBao communicates
 with Google Cloud to authenticate and authorize JWT tokens. This information is
 provided for those who are curious, but these details are not
 required knowledge for using the auth method.
 
 ### IAM login
 
-IAM login applies only to roles of type `iam`. The Vault authentication workflow
+IAM login applies only to roles of type `iam`. The OpenBao authentication workflow
 for IAM service accounts looks like this:
 
-[![Vault Google Cloud IAM Login Workflow](/img/vault-gcp-iam-auth-workflow.svg)](/img/vault-gcp-iam-auth-workflow.svg)
+[![OpenBao Google Cloud IAM Login Workflow](/img/vault-gcp-iam-auth-workflow.svg)](/img/vault-gcp-iam-auth-workflow.svg)
 
 1. The client generates a signed JWT using the Service Account Credentials
    [`projects.serviceAccounts.signJwt`][signjwt-method] API method. For examples
    of how to do this, see the [Generating JWTs](#generating-jwts) section.
 
-2. The client sends this signed JWT to Vault along with a role name.
+2. The client sends this signed JWT to OpenBao along with a role name.
 
-3. Vault extracts the `kid` header value, which contains the ID of the
+3. OpenBao extracts the `kid` header value, which contains the ID of the
    key-pair used to generate the JWT, and the `sub` ID/email to find the service
    account key. If the service account does not exist or the key is not linked to
-   the service account, Vault denies authentication.
+   the service account, OpenBao denies authentication.
 
-4. Vault authorizes the confirmed service account against the given role. If
-   that is successful, a Vault token with the proper policies is returned.
+4. OpenBao authorizes the confirmed service account against the given role. If
+   that is successful, a OpenBao token with the proper policies is returned.
 
 ### GCE login
 
@@ -278,20 +278,20 @@ GCE login only applies to roles of type `gce` and **must be completed on an
 infrastructure running on Google Cloud**. These steps will not work from your 
 local laptop or another cloud provider.
 
-[![Vault Google Cloud GCE Login Workflow](/img/vault-gcp-gce-auth-workflow.svg)](/img/vault-gcp-gce-auth-workflow.svg)
+[![OpenBao Google Cloud GCE Login Workflow](/img/vault-gcp-gce-auth-workflow.svg)](/img/vault-gcp-gce-auth-workflow.svg)
 
 1. The client obtains an [instance identity metadata token][instance-identity]
    on a GCE instance.
 
-2. The client sends this JWT to Vault along with a role name.
+2. The client sends this JWT to OpenBao along with a role name.
 
-3. Vault extracts the `kid` header value, which contains the ID of the
+3. OpenBao extracts the `kid` header value, which contains the ID of the
    key-pair used to generate the JWT, to find the OAuth2 public cert to verify
    this JWT.
 
-4. Vault authorizes the confirmed instance against the given role, ensuring
+4. OpenBao authorizes the confirmed instance against the given role, ensuring
    the instance matches the bound zones, regions, or instance groups. If that is
-   successful, a Vault token with the proper policies is returned.
+   successful, a OpenBao token with the proper policies is returned.
 
 ## Generating JWTs
 
@@ -301,13 +301,13 @@ tokens.
 ### Service account credentials API
 
 This describes how to use the GCP Service Account Credentials [API method][signjwt-method]
-directly to generate the signed JWT with the claims that Vault expects. Note the CLI
+directly to generate the signed JWT with the claims that OpenBao expects. Note the CLI
 does this process for you and is much easier, and that there is very little
 reason to do this yourself.
 
 #### curl example
 
-Vault requires the following minimum claim set:
+OpenBao requires the following minimum claim set:
 
 ```json
 {
@@ -318,12 +318,12 @@ Vault requires the following minimum claim set:
 ```
 
 For the API method, providing the expiration claim `exp` is required. If it is omitted,
-it will not be added automatically and Vault will deny authentication. Expiration must
+it will not be added automatically and OpenBao will deny authentication. Expiration must
 be specified as a [NumericDate](https://tools.ietf.org/html/rfc7519#section-2) value
 (seconds from Epoch). This value must be before the max JWT expiration allowed for a
 role. This defaults to 15 minutes and cannot be more than 1 hour.
 
-If a user generates a token that expires after 15 minutes, and the gcp role has `max_jwt_exp` set to the default, Vault will return the following error: `Expiration date must be set to no more that 15 mins in JWT_CLAIM, otherwise the login request returns error "role requires that service account JWTs expire within 900 seconds`. In this case, the user must create a new signed JWT with a shorter expiration, or set `max_jwt_exp` to a higher value in the gcp role.
+If a user generates a token that expires after 15 minutes, and the gcp role has `max_jwt_exp` set to the default, OpenBao will return the following error: `Expiration date must be set to no more that 15 mins in JWT_CLAIM, otherwise the login request returns error "role requires that service account JWTs expire within 900 seconds`. In this case, the user must create a new signed JWT with a shorter expiration, or set `max_jwt_exp` to a higher value in the gcp role.
 
 One you have all this information, the JWT token can be signed using curl and
 [oauth2l](https://github.com/google/oauth2l):
@@ -366,11 +366,11 @@ You can autogenerate this token in Vault versions 1.8.2 or higher.
 
 GCE tokens **can only be generated from a GCE instance**.
 
-1.  Vault can automatically discover the identity token on a GCE/GKE instance. This simplifies
-    authenticating to Vault like so:
+1.  OpenBao can automatically discover the identity token on a GCE/GKE instance. This simplifies
+    authenticating to OpenBao like so:
 
     ```shell-session
-    $ vault login \
+    $ openbao login \
       -method=gcp \
       role="my-gce-role"
     ```
@@ -408,7 +408,7 @@ The GCP Auth Plugin has a full HTTP API. Please see the
 ## Code example
 
 The following example demonstrates the Google Cloud auth method to authenticate
-with Vault.
+with OpenBao.
 
 <CodeTabs>
 
@@ -422,27 +422,27 @@ import (
 	"fmt"
 	"os"
 
-	vault "github.com/lf-edge/openbao/api"
+	openbao "github.com/lf-edge/openbao/api"
 	auth "github.com/lf-edge/openbao/api/auth/gcp"
 )
 
-// Fetches a key-value secret (kv-v2) after authenticating to Vault
+// Fetches a key-value secret (kv-v2) after authenticating to OpenBao
 // via GCP IAM, one of two auth methods used to authenticate with
 // GCP (the other is GCE auth).
 func getSecretWithGCPAuthIAM() (string, error) {
-	config := vault.DefaultConfig() // modify for more granular configuration
+	config := openbao.DefaultConfig() // modify for more granular configuration
 
-	client, err := vault.NewClient(config)
+	client, err := openbao.NewClient(config)
 	if err != nil {
-		return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+		return "", fmt.Errorf("unable to initialize OpenBao client: %w", err)
 	}
 
 	// For IAM-style auth, the environment variable GOOGLE_APPLICATION_CREDENTIALS
 	// must be set with the path to a valid credentials JSON file, otherwise
-	// Vault will fall back to Google's default instance credentials.
+	// OpenBao will fall back to Google's default instance credentials.
 	// Learn about authenticating to GCS with service account credentials at https://cloud.google.com/docs/authentication/production
 	if pathToCreds := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"); pathToCreds == "" {
-		fmt.Printf("WARNING: Environment variable GOOGLE_APPLICATION_CREDENTIALS was not set. IAM client for JWT signing and Vault server IAM client will both fall back to default instance credentials.\n")
+		fmt.Printf("WARNING: Environment variable GOOGLE_APPLICATION_CREDENTIALS was not set. IAM client for JWT signing and OpenBao server IAM client will both fall back to default instance credentials.\n")
 	}
 
 	svcAccountEmail := fmt.Sprintf("%s@%s.iam.gserviceaccount.com", os.Getenv("GCP_SERVICE_ACCOUNT_NAME"), os.Getenv("GOOGLE_CLOUD_PROJECT"))

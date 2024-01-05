@@ -20,7 +20,7 @@ Main reference: [Using OAuth 2.0 to Access Google APIs](https://developers.googl
 ### Optional google-specific configuration
 
 Google-specific configuration is available when using Google as an identity provider from the
-Vault JWT/OIDC auth method. The configuration allows Vault to obtain Google Workspace group membership and
+OpenBao JWT/OIDC auth method. The configuration allows OpenBao to obtain Google Workspace group membership and
 user information during the JWT/OIDC authentication flow. The group membership obtained from Google Workspace
 may be used for Identity group alias association. The user information obtained from Google Workspace can be
 used to copy claims data into resulting auth token and alias metadata via [claim_mappings](/vault/api-docs/auth/jwt#claim_mappings).
@@ -35,9 +35,9 @@ To set up the Google-specific handling, you'll need:
 - To enable the [Admin SDK API](https://console.developers.google.com/apis/api/admin.googleapis.com/overview).
 - An OAuth 2.0 application with an [internal user type](https://support.google.com/cloud/answer/10311615#user-type).
   We **do not** recommend using an external user type since it would allow _any user_ with a
-  Google account to authenticate with Vault.
+  Google account to authenticate with OpenBao.
 
-The Google-specific handling that's used to fetch Google Workspace groups and user information in Vault uses
+The Google-specific handling that's used to fetch Google Workspace groups and user information in OpenBao uses
 Google Workspace Domain-Wide Delegation of Authority for authentication and authorization. You need to follow
 **all steps** in the [guide](https://developers.google.com/workspace/guides/create-credentials#service-account)
 to obtain the key file for a Google service account capable of making requests to the Google Workspace
@@ -59,7 +59,7 @@ that enable the feature.
 - `provider` `(string: <required>)` - Name of the provider. Must be set to "gsuite".
 - `gsuite_service_account` `(string: <required>)` - Either the path to or the contents of a Google service
   account key file in JSON format. If given as a file path, it must refer to a file that's readable on
-  the host that Vault is running on. If given directly as JSON contents, the JSON must be properly escaped.
+  the host that OpenBao is running on. If given directly as JSON contents, the JSON must be properly escaped.
 - `gsuite_admin_impersonate` `(string: <required>)` - Email address of a Google Workspace admin to impersonate.
 - `fetch_groups` `(bool: false)` - If set to true, groups will be fetched from Google Workspace.
 - `fetch_user_info` `(bool: false)` - If set to true, user info will be fetched from Google Workspace using the configured [user_custom_schemas](#user_custom_schemas).
@@ -70,7 +70,7 @@ that enable the feature.
 Example configuration:
 
 ```
-vault write auth/oidc/config -<<EOF
+openbao write auth/oidc/config -<<EOF
 {
     "oidc_discovery_url": "https://accounts.google.com",
     "oidc_client_id": "your_client_id",
@@ -98,7 +98,7 @@ queries to succeed.
 Example role:
 
 ```
-vault write auth/oidc/role/your_default_role \
+openbao write auth/oidc/role/your_default_role \
     allowed_redirect_uris="http://localhost:8200/ui/vault/auth/oidc/oidc/callback,http://localhost:8250/oidc/callback" \
     user_claim="sub" \
     groups_claim="groups" \

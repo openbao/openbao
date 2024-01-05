@@ -8,23 +8,23 @@ description: The cf auth method allows automated authentication of Cloud Foundry
 
 @include 'x509-sha1-deprecation.mdx'
 
-The `cf` auth method provides an automated mechanism to retrieve a Vault token
+The `cf` auth method provides an automated mechanism to retrieve a OpenBao token
 for CF instances. It leverages CF's [App and Container Identity Assurance](https://content.pivotal.io/blog/new-in-pcf-2-1-app-container-identity-assurance-via-automatic-cert-rotation).
 At a high level, this works as follows:
 
-1. You construct a request to Vault including your `CF_INSTANCE_CERT`, signed by your `CF_INSTANCE_KEY`.
-2. Vault validates that the signature is no more than 300 seconds old, or 60 seconds in the future.
-3. Vault validates that the cert was issued by the CA certificate you've pre-configured.
-4. Vault validates that the request was signed by the private key for the `CF_INSTANCE_CERT`.
-5. Vault validates that the `CF_INSTANCE_CERT` application ID, space ID, and org ID presently exist.
-6. If all checks pass, Vault issues an appropriately-scoped token.
+1. You construct a request to OpenBao including your `CF_INSTANCE_CERT`, signed by your `CF_INSTANCE_KEY`.
+2. OpenBao validates that the signature is no more than 300 seconds old, or 60 seconds in the future.
+3. OpenBao validates that the cert was issued by the CA certificate you've pre-configured.
+4. OpenBao validates that the request was signed by the private key for the `CF_INSTANCE_CERT`.
+5. OpenBao validates that the `CF_INSTANCE_CERT` application ID, space ID, and org ID presently exist.
+6. If all checks pass, OpenBao issues an appropriately-scoped token.
 
 ## Known risks
 
-This authentication engine uses CF's instance identity service to authenticate users to Vault. Because
+This authentication engine uses CF's instance identity service to authenticate users to OpenBao. Because
 CF makes its CA certificate and private key available to certain users at any time, it's possible for
-someone with access to them to self-issue identity certificates that meet the criteria for a Vault role,
-allowing them to gain unintended access to Vault.
+someone with access to them to self-issue identity certificates that meet the criteria for a OpenBao role,
+allowing them to gain unintended access to OpenBao.
 
 For this reason, we recommend that if you enable this auth method, you carefully guard access to the
 private key for your instance identity CA certificate. In CredHub, it can be obtained through the
@@ -175,19 +175,19 @@ use the [cf](https://docs.cloudfoundry.org/cf-cli/install-go-cli.html) command-l
 
 First, while in the directory containing the `metadata` file you used earlier to authenticate
 to CF, run `$ pcf target`. This points the `cf` tool at the same place as the `pcf` tool. Next,
-run `$ cf api` to view the API endpoint that Vault will use.
+run `$ cf api` to view the API endpoint that OpenBao will use.
 
-Next, configure a user for Vault to use. This plugin was tested with Org Manager level
+Next, configure a user for OpenBao to use. This plugin was tested with Org Manager level
 permissions, but lower level permissions _may_ be usable.
 
 ```shell-session
-$ cf create-user vault pa55w0rd
+$ cf create-user openbao pa55w0rd
 $ cf orgs
 $ cf org-users my-example-org
-$ cf set-org-role vault my-example-org OrgManager
+$ cf set-org-role openbao my-example-org OrgManager
 ```
 
-Specifically, the `vault` user created here will need to be able to perform the following API calls:
+Specifically, the `openbao` user created here will need to be able to perform the following API calls:
 
 - Method: "GET", endpoint: "/v2/info"
 - Method: "POST", endpoint: "/oauth/token"
@@ -226,20 +226,20 @@ you name this file `cfapi.crt`.
 
 ### Walkthrough
 
-After obtaining the information described above, a Vault operator will configure the CF auth method
+After obtaining the information described above, a OpenBao operator will configure the CF auth method
 like so:
 
 ```shell-session
-$ vault auth enable cf
+$ openbao auth enable cf
 
-$ vault write auth/cf/config \
+$ openbao write auth/cf/config \
       identity_ca_certificates=@ca.crt \
       cf_api_addr=https://api.dev.cfdev.sh \
-      cf_username=vault \
+      cf_username=openbao \
       cf_password=pa55w0rd \
       cf_api_trusted_certificates=@cfapi.crt
 
-$ vault write auth/cf/roles/my-role \
+$ openbao write auth/cf/roles/my-role \
     bound_application_ids=2d3e834a-3a25-4591-974c-fa5626d5d0a1 \
     bound_space_ids=3d2eba6b-ef19-44d5-91dd-1975b0db5cc9 \
     bound_organization_ids=34a878d0-c2f9-4521-ba73-a9f664e82c7bf \
@@ -250,10 +250,10 @@ Once configured, from a CF instance containing real values for the `CF_INSTANCE_
 `CF_INSTANCE_KEY`, login can be performed using:
 
 ```shell-session
-$ vault login -method=cf role=test-role
+$ openbao login -method=cf role=test-role
 ```
 
-For CF, we do also offer an agent that, once configured, can be used to obtain a Vault token on
+For CF, we do also offer an agent that, once configured, can be used to obtain a OpenBao token on
 your behalf.
 
 ### Enabling mutual TLS with the CF API
@@ -264,10 +264,10 @@ The CF API can be configured to require mutual TLS with clients. This plugin sup
 <CodeBlockConfig highlight="7-8">
 
 ```shell-session
-$ vault write auth/cf/config \
+$ openbao write auth/cf/config \
       identity_ca_certificates=@ca.crt \
       cf_api_addr=https://api.dev.cfdev.sh \
-      cf_username=vault \
+      cf_username=openbao \
       cf_password=pa55w0rd \
       cf_api_trusted_certificates=@cfapi.crt \
       cf_api_mutual_tls_certificate=@cfmutualtls.crt \
@@ -289,10 +289,10 @@ valid.
 ```shell-session
 $ CURRENT=$(cat /path/to/current-ca.crt)
 $ FUTURE=$(cat /path/to/future-ca.crt)
-$ vault write auth/vault-plugin-auth-cf/config identity_ca_certificates="$CURRENT" identity_ca_certificates="$FUTURE"
+$ openbao write auth/vault-plugin-auth-cf/config identity_ca_certificates="$CURRENT" identity_ca_certificates="$FUTURE"
 ```
 
-If Vault receives a `CF_INSTANCE_CERT` matching _any_ of the `identity_ca_certificates`,
+If OpenBao receives a `CF_INSTANCE_CERT` matching _any_ of the `identity_ca_certificates`,
 the instance cert will be considered valid.
 
 A similar approach can be taken to update the `cf_api_trusted_certificates`.
@@ -319,7 +319,7 @@ $ openssl verify -CAfile ca.crt -untrusted intermediate.crt identity.crt
 ```
 
 This should show a success response. If it doesn't, try to identify the root cause, be it
-an expired certificate, an incorrect `ca.crt`, or a Vault configuration that doesn't
+an expired certificate, an incorrect `ca.crt`, or a OpenBao configuration that doesn't
 match the certificates you're checking.
 
 ## API

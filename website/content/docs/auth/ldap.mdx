@@ -2,7 +2,7 @@
 layout: docs
 page_title: LDAP - Auth Methods
 description: |-
-  The "ldap" auth method allows users to authenticate with Vault using LDAP
+  The "ldap" auth method allows users to authenticate with OpenBao using LDAP
   credentials.
 ---
 
@@ -11,11 +11,11 @@ description: |-
 @include 'x509-sha1-deprecation.mdx'
 
 The `ldap` auth method allows authentication using an existing LDAP
-server and user/password credentials. This allows Vault to be integrated
+server and user/password credentials. This allows OpenBao to be integrated
 into environments using LDAP without duplicating the user/pass configuration
 in multiple places.
 
-The mapping of groups and users in LDAP to Vault policies is managed by using
+The mapping of groups and users in LDAP to OpenBao policies is managed by using
 the `users/` and `groups/` paths.
 
 ## A note on escaping
@@ -44,7 +44,7 @@ Directory](http://social.technet.microsoft.com/wiki/contents/articles/5312.activ
 ### Via the CLI
 
 ```shell-session
-$ vault login -method=ldap username=mitchellh
+$ openbao login -method=ldap username=mitchellh
 Password (will be hidden):
 Successfully authenticated! The policies that are associated
 with this token are listed below:
@@ -92,7 +92,7 @@ management tool.
 1. Enable the ldap auth method:
 
    ```text
-   $ vault auth enable ldap
+   $ openbao auth enable ldap
    ```
 
 1. Configure connection details for your LDAP server, information on how to
@@ -114,7 +114,7 @@ There are two alternate methods of resolving the user object used to authenticat
 
 #### Binding - authenticated search
 
-- `binddn` (string, optional) - Distinguished name of object to bind when performing user and group search. Example: `cn=vault,ou=Users,dc=example,dc=com`
+- `binddn` (string, optional) - Distinguished name of object to bind when performing user and group search. Example: `cn=openbao,ou=Users,dc=example,dc=com`
 - `bindpass` (string, optional) - Password to use along with `binddn` when performing user search.
 - `userdn` (string, optional) - Base DN under which to perform user search. Example: `ou=Users,dc=example,dc=com`
 - `userattr` (string, optional) - Attribute on user attribute object matching the username passed when authenticating. Examples: `sAMAccountName`, `cn`, `uid`
@@ -139,7 +139,7 @@ There are two alternate methods of resolving the user object used to authenticat
 
 #### Binding - user principal name (AD)
 
-- `upndomain` (string, optional) - userPrincipalDomain used to construct the UPN string for the authenticating user. The constructed UPN will appear as `[username]@UPNDomain`. Example: `example.com`, which will cause vault to bind as `username@example.com`.
+- `upndomain` (string, optional) - userPrincipalDomain used to construct the UPN string for the authenticating user. The constructed UPN will appear as `[username]@UPNDomain`. Example: `example.com`, which will cause OpenBao to bind as `username@example.com`.
 
 ### Group membership resolution
 
@@ -151,7 +151,7 @@ Once a user has been authenticated, the LDAP auth method must know how to resolv
 
 _Note_: When using _Authenticated Search_ for binding parameters (see above) the distinguished name defined for `binddn` is used for the group search. Otherwise, the authenticating user is used to perform the group search.
 
-Use `vault path-help` for more details.
+Use `openbao path-help` for more details.
 
 ### Other
 
@@ -171,7 +171,7 @@ Use `vault path-help` for more details.
 - Group names are identified using their `cn` attribute.
 
 ```shell-session
-$ vault write auth/ldap/config \
+$ openbao write auth/ldap/config \
     url="ldap://ldap.example.com" \
     userdn="ou=Users,dc=example,dc=com" \
     groupdn="ou=Groups,dc=example,dc=com" \
@@ -190,20 +190,20 @@ $ vault write auth/ldap/config \
 - Server supports `STARTTLS` command to initiate encryption on the standard port.
 - CA Certificate stored in file named `ldap_ca_cert.pem`
 - Server does not allow anonymous binds for performing user search.
-- Bind account used for searching is `cn=vault,ou=users,dc=example,dc=com` with password `My$ecrt3tP4ss`.
+- Bind account used for searching is `cn=openbao,ou=users,dc=example,dc=com` with password `My$ecrt3tP4ss`.
 - User objects are under the `ou=Users,dc=example,dc=com` organizational unit.
-- Username passed to vault when authenticating maps to the `sAMAccountName` attribute.
+- Username passed to openbao when authenticating maps to the `sAMAccountName` attribute.
 - Group membership will be resolved via the `memberOf` attribute of _user_ objects. That search will begin under `ou=Users,dc=example,dc=com`.
 
 ```shell-session
-$ vault write auth/ldap/config \
+$ openbao write auth/ldap/config \
     url="ldap://ldap.example.com" \
     userattr=sAMAccountName \
     userdn="ou=Users,dc=example,dc=com" \
     groupdn="ou=Users,dc=example,dc=com" \
     groupfilter="(&(objectClass=person)(uid={{.Username}}))" \
     groupattr="memberOf" \
-    binddn="cn=vault,ou=users,dc=example,dc=com" \
+    binddn="cn=openbao,ou=users,dc=example,dc=com" \
     bindpass='My$ecrt3tP4ss' \
     certificate=@ldap_ca_cert.pem \
     insecure_tls=false \
@@ -216,13 +216,13 @@ $ vault write auth/ldap/config \
 - LDAP server running on `ldap.example.com`, port 636 (LDAPS)
 - CA Certificate stored in file named `ldap_ca_cert.pem`
 - User objects are under the `ou=Users,dc=example,dc=com` organizational unit.
-- Username passed to vault when authenticating maps to the `uid` attribute.
+- Username passed to OpenBao when authenticating maps to the `uid` attribute.
 - User bind DN will be auto-discovered using anonymous binding.
 - Group membership will be resolved via any one of `memberUid`, `member`, or `uniqueMember` attributes. That search will begin under `ou=Groups,dc=example,dc=com`.
 - Group names are identified using the `cn` attribute.
 
 ```shell-session
-$ vault write auth/ldap/config \
+$ openbao write auth/ldap/config \
     url="ldaps://ldap.example.com" \
     userattr="uid" \
     userdn="ou=Users,dc=example,dc=com" \
@@ -236,29 +236,29 @@ $ vault write auth/ldap/config \
 
 ## LDAP group -> policy mapping
 
-Next we want to create a mapping from an LDAP group to a Vault policy:
+Next we want to create a mapping from an LDAP group to a OpenBao policy:
 
 ```shell-session
-$ vault write auth/ldap/groups/scientists policies=foo,bar
+$ openbao write auth/ldap/groups/scientists policies=foo,bar
 ```
 
-This maps the LDAP group "scientists" to the "foo" and "bar" Vault policies.
+This maps the LDAP group "scientists" to the "foo" and "bar" OpenBao policies.
 We can also add specific LDAP users to additional (potentially non-LDAP)
 groups. Note that policies can also be specified on LDAP users as well.
 
 ```shell-session
-$ vault write auth/ldap/groups/engineers policies=foobar
-$ vault write auth/ldap/users/tesla groups=engineers policies=zoobar
+$ openbao write auth/ldap/groups/engineers policies=foobar
+$ openbao write auth/ldap/users/tesla groups=engineers policies=zoobar
 ```
 
 This adds the LDAP user "tesla" to the "engineers" group, which maps to
-the "foobar" Vault policy. User "tesla" itself is associated with "zoobar"
+the "foobar" OpenBao policy. User "tesla" itself is associated with "zoobar"
 policy.
 
 Finally, we can test this by authenticating:
 
 ```shell-session
-$ vault login -method=ldap username=tesla
+$ openbao login -method=ldap username=tesla
 Password (will be hidden):
 Successfully authenticated! The policies that are associated
 with this token are listed below:

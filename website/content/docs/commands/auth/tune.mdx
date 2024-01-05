@@ -24,7 +24,7 @@ Before tuning the auth method configuration, view the current configuration of t
 auth method enabled at `github/`.
 
 ```shell-session
-$ vault read sys/auth/github/tune
+$ openbao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    768h
@@ -38,7 +38,7 @@ The default lease for the auth method enabled at `github/` is currently set to
 768 hours. Tune this value to 72 hours.
 
 ```shell-session
-$ vault auth tune -default-lease-ttl=72h github/
+$ openbao auth tune -default-lease-ttl=72h github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -47,7 +47,7 @@ Verify the updated configuration.
 <CodeBlockConfig highlight="1,4">
 
 ```shell-session
-$ vault read sys/auth/github/tune
+$ openbao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    72h
@@ -62,7 +62,7 @@ token_type           default-service
 To restore back to the system default, you can use `-1`. 
 
 ```shell-session
-$ vault auth tune -default-lease-ttl=-1 github/
+$ openbao auth tune -default-lease-ttl=-1 github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -71,7 +71,7 @@ Verify the updated configuration.
 <CodeBlockConfig highlight="1,4">
 
 ```shell-session
-$ vault read sys/auth/github/tune
+$ openbao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    768h
@@ -86,7 +86,7 @@ token_type           default-service
 You can specify multiple audit non-hmac request keys.
 
 ```shell-session
-$ vault auth tune -audit-non-hmac-request-keys=value1 -audit-non-hmac-request-keys=value2 github/
+$ openbao auth tune -audit-non-hmac-request-keys=value1 -audit-non-hmac-request-keys=value2 github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -100,7 +100,7 @@ Tune the `userpass/` auth method to lock out the user after 10 failed login
 attempts within 10 minutes.
 
 ```shell-session
-$ vault auth tune -user-lockout-threshold=10  -user-lockout-duration=10m userpass/
+$ openbao auth tune -user-lockout-threshold=10  -user-lockout-duration=10m userpass/
 Success! Tuned the auth method at: userpass/
 ```
 
@@ -109,7 +109,7 @@ View the current configuration of the auth method enabled at `userpass/`.
 <CodeBlockConfig highlight="1,11-13">
 
 ```shell-session
-$ vault read sys/auth/userpass/tune
+$ openbao read sys/auth/userpass/tune
 
 Key                  Value
 ---                  -----
@@ -144,7 +144,7 @@ flags](/vault/docs/commands) included on all commands.
   specified by providing this option multiple times, each time with 1 key.
 
 - `-default-lease-ttl` `(duration: "")` - The default lease TTL for this auth
-  method. If unspecified, this defaults to the Vault server's globally
+  method. If unspecified, this defaults to the OpenBao server's globally
   configured default lease TTL, or a previously configured value for the auth
   method.
 
@@ -156,7 +156,7 @@ flags](/vault/docs/commands) included on all commands.
   Passing empty string leaves the current setting unchanged.
 
 - `-max-lease-ttl` `(duration: "")` - The maximum lease TTL for this auth
-  method. If unspecified, this defaults to the Vault server's globally
+  method. If unspecified, this defaults to the OpenBao server's globally
   configured [maximum lease TTL](/vault/docs/configuration#max_lease_ttl), or a
   previously configured value for the auth method. This value is allowed to
   override the server's global max TTL; it can be longer or shorter.

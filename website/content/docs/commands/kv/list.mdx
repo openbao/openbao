@@ -2,7 +2,7 @@
 layout: docs
 page_title: kv list - Command
 description: |-
-  The "kv list" command lists data from Vault's K/V secrets engine at the given
+  The "kv list" command lists data from OpenBao's K/V secrets engine at the given
   path.
 ---
 
@@ -21,7 +21,7 @@ Use this command to list all existing key names at a specific path.
 List values under the key "my-app":
 
 ```shell-session
-$ vault kv list -mount=secret my-app/
+$ openbao kv list -mount=secret my-app/
 Keys
 ----
 admin_creds

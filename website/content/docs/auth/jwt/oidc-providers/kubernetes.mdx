@@ -6,13 +6,13 @@ description: OIDC provider configuration for Kubernetes
 
 ## Kubernetes
 
-Kubernetes can function as an OIDC provider such that Vault can validate its
+Kubernetes can function as an OIDC provider such that OpenBao can validate its
 service account tokens using JWT/OIDC auth.
 
 -> **Note:** The JWT auth engine does **not** use Kubernetes' `TokenReview` API
 during authentication, and instead uses public key cryptography to verify the
 contents of JWTs. This means tokens that have been revoked by Kubernetes will
-still be considered valid by Vault until their expiry time. To mitigate this
+still be considered valid by OpenBao until their expiry time. To mitigate this
 risk, use short TTLs for service account tokens or use
 [Kubernetes auth](/vault/docs/auth/kubernetes) which _does_ use the `TokenReview` API.
 
@@ -28,7 +28,7 @@ Kubernetes cluster requirements:
 * [`ServiceAccountIssuerDiscovery`][k8s-sa-issuer-discovery] feature enabled.
   * Present from 1.18, defaults to enabled from 1.20.
 * kube-apiserver's `--service-account-issuer` flag is set to a URL that is
-  reachable from Vault. Public by default for most managed Kubernetes solutions.
+  reachable from OpenBao. Public by default for most managed Kubernetes solutions.
 * Must use short-lived service account tokens when logging in.
   * Tokens mounted into pods default to short-lived from 1.21.
 
@@ -49,26 +49,26 @@ Configuration steps:
    ISSUER="$(kubectl get --raw /.well-known/openid-configuration | jq -r '.issuer')"
    ```
 
-1. Enable and configure JWT auth in Vault.
+1. Enable and configure JWT auth in OpenBao.
 
-  1. If Vault is running in Kubernetes:
+  1. If OpenBao is running in Kubernetes:
 
      ```bash
-     kubectl exec vault-0 -- vault auth enable jwt
-     kubectl exec vault-0 -- vault write auth/jwt/config \
+     kubectl exec openbao-0 -- openbao auth enable jwt
+     kubectl exec openbao-0 -- openbao write auth/jwt/config \
         oidc_discovery_url=https://kubernetes.default.svc.cluster.local \
         oidc_discovery_ca_pem=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
      ```
 
-  1. Alternatively, if Vault is _not_ running in Kubernetes:
+  1. Alternatively, if OpenBao is _not_ running in Kubernetes:
 
-     -> **Note:** When Vault is outside the cluster, the `$ISSUER` endpoint below may
+     -> **Note:** When OpenBao is outside the cluster, the `$ISSUER` endpoint below may
      or may not be reachable. If not, you can configure JWT auth using
      [`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
 
      ```bash
-     vault auth enable jwt
-     vault write auth/jwt/config oidc_discovery_url="${ISSUER}"
+     openbao auth enable jwt
+     openbao write auth/jwt/config oidc_discovery_url="${ISSUER}"
      ```
 
 1. Configure a role and log in as detailed [below](#creating-a-role-and-logging-in).
@@ -77,7 +77,7 @@ Configuration steps:
 
 ### Using JWT validation public keys
 
-This method can be useful if Kubernetes' API is not reachable from Vault or if
+This method can be useful if Kubernetes' API is not reachable from OpenBao or if
 you would like a single JWT auth mount to service multiple Kubernetes clusters
 by chaining their public signing keys.
 
@@ -107,7 +107,7 @@ Configuration steps:
 1. Configure the JWT auth mount with those public keys.
 
    ```bash
-   vault write auth/jwt/config \
+   openbao write auth/jwt/config \
       jwt_validation_pubkeys="-----BEGIN PUBLIC KEY-----
    MIIBIjANBgkqhkiG9...
    -----END PUBLIC KEY-----","-----BEGIN PUBLIC KEY-----
@@ -149,7 +149,7 @@ below if you'd like to control the audience or TTL.
    `default` namespace can use.
 
    ```bash
-   vault write auth/jwt/role/my-role \
+   openbao write auth/jwt/role/my-role \
       role_type="jwt" \
       bound_audiences="<AUDIENCE-FROM-PREVIOUS-STEP>" \
       user_claim="sub" \
@@ -161,7 +161,7 @@ below if you'd like to control the audience or TTL.
 1. Pods or other clients with access to a service account JWT can then log in.
 
    ```bash
-   vault write auth/jwt/login \
+   openbao write auth/jwt/login \
       role=my-role \
       jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token
    # OR equivalent to:
@@ -181,8 +181,8 @@ admission injected token. This is especially relevant if you are unable to
 disable the [--service-account-extend-token-expiration][k8s-extended-tokens]
 flag for `kube-apiserver` and want to use short TTLs.
 
-When using the resulting token, you will need to set `bound_audiences=vault`
-when creating roles in Vault's JWT auth mount.
+When using the resulting token, you will need to set `bound_audiences=openbao`
+when creating roles in OpenBao's JWT auth mount.
 
 ```yaml
 apiVersion: v1
@@ -209,7 +209,7 @@ spec:
       - serviceAccountToken:
           path: token
           expirationSeconds: 600 # 10 minutes is the minimum TTL
-          audience: vault        # Must match your JWT role's `bound_audiences`
+          audience: openbao        # Must match your JWT role's `bound_audiences`
       # The remaining sources are included to mimic the rest of the default
       # admission injected volume.
       - configMap:

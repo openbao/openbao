@@ -2,18 +2,18 @@
 layout: docs
 page_title: operator diagnose - Command
 description: |-
-  "vault operator diagnose" is a new operator-centric command, focused on providing a clear description 
-  of what is working in Vault, and what is not working. The command focuses on why Vault cannot serve requests,
+  "openbao operator diagnose" is a new operator-centric command, focused on providing a clear description 
+  of what is working in OpenBao, and what is not working. The command focuses on why OpenBao cannot serve requests,
   but will also warn on configurations or statuses that it deems to be unsafe in some way. 
 
 ---
 
 # operator diagnose
 
-The operator diagnose command should be used primarily when vault is down or 
+The operator diagnose command should be used primarily when OpenBao is down or 
 partially inoperational. The command can be used safely regardless of the state 
-vault is in, but may return meaningless results for some of the test cases if the 
-vault server is already running. 
+OpenBao is in, but may return meaningless results for some of the test cases if the 
+OpenBao server is already running. 
 
 Note: if you run the diagnose command proactively, either before a server 
 starts or while a server is operational, please consult the documentation 
@@ -38,7 +38,7 @@ Each line will begin with a prefix in parenthesis. These are:.
 
 - `[ success ]` - Denotes that the check was successful.
 - `[ warning ]` - Denotes that the check has passed, but that there may be potential
-issues to look into that may relate to the issues vault is experiencing. Diagnose warns 
+issues to look into that may relate to the issues OpenBao is experiencing. Diagnose warns 
 frequently. These warnings are meant to serve as starting points in the debugging process. 
 - `[ failure ]` - Denotes that the check has failed. Failures are critical issues in the eyes 
 of the diagnose command.
@@ -53,8 +53,8 @@ the Storage check fails, the `[ failure ]` prefix will bubble up to the Storage 
 
 ### Command options
 
-- `-config` `(string; "")` - The path to the vault configuration file used by 
-the vault server on startup. 
+- `-config` `(string; "")` - The path to the OpenBao configuration file used by 
+the OpenBao server on startup. 
 
 ### Diagnose checks
 
@@ -63,14 +63,14 @@ will be separated by slashes to denote that they are nested, when applicable. Fo
 documented as `A / B` will show up as `B` in the `operator diagnose` output, and will be nested
 (indented) under `A`. 
 
-#### Vault diagnose
+#### OpenBao diagnose
 
-`Vault Diagnose` is the top level check that contains the rest of the checks. It will report the status
+`OpenBao Diagnose` is the top level check that contains the rest of the checks. It will report the status
 of the check 
 
 #### Check operating system / check open file limit
 
-`Check Open File Limit` verifies that the open file limit value is set high enough for vault 
+`Check Open File Limit` verifies that the open file limit value is set high enough for OpenBao 
 to run effectively. We recommend setting these limits to at least 1024768. 
 
 This check will be skipped on openbsd, arm, and windows. 
@@ -84,7 +84,7 @@ This check will be skipped on openbsd and arm.
 
 #### Parse configuration
 
-`Parse Configuration` will check the vault server config file for syntax errors. It will check
+`Parse Configuration` will check the OpenBao server config file for syntax errors. It will check
 for extra values in the configuration file, repeated stanzas, and stanzas that do not belong 
 in the configuration file (for example a "tcpp" listener as opposed to a tcp listener). 
 
@@ -92,7 +92,7 @@ Currently, the `storage` stanza is not checked.
 
 #### Check storage / create storage backend
 
-`Create Storage Backend` ensures that the storage stanza configured in the vault server config
+`Create Storage Backend` ensures that the storage stanza configured in the OpenBao server config
 has enough information to create a storage object internally. Common errors will have to do
 with misconfigured fields in the storage stanza. 
 
@@ -104,7 +104,7 @@ certificates, and checks each one for correctness.
 
 #### Check storage / check consul direct storage access
 
-`Check Consul Direct Storage Access` is a consul-specific check that ensures Vault is not accessing
+`Check Consul Direct Storage Access` is a consul-specific check that ensures OpenBao is not accessing
 the consul server directly, but rather through a local agent. 
 
 #### Check storage / check raft folder permissions
@@ -122,7 +122,7 @@ This check will be skipped on windows.
 
 #### Check storage / check raft folder ownership
 
-`Check Raft Folder Ownership` ensures that vault does not need to run as root to access the boltDB folder. 
+`Check Raft Folder Ownership` ensures that OpenBao does not need to run as root to access the boltDB folder. 
 
 Note that this check will warn that a raft file has not been created if diagnose is run without any
 pre-existing server runs. 
@@ -132,7 +132,7 @@ This check will be skipped on windows.
 #### Check storage / check for raft quorum
 
 `Check For Raft Quorum` uses the FSM to ensure that there were an odd number of voters in the raft quorum when 
-vault was last running. 
+OpenBao was last running. 
 
 Note that this check will warn that there are 0 voters if diagnose is run without any pre-existing server runs. 
 
@@ -154,12 +154,12 @@ entire check takes longer than 30s.
 
 #### Check service discovery / check consul direct service discovery
 
-`Check Consul Direct Service Discovery` is a consul-specific check that ensures Vault
+`Check Consul Direct Service Discovery` is a consul-specific check that ensures OpenBao
 is not accessing the consul server directly, but rather through a local agent. 
 
-#### Create Vault server configuration seals
+#### Create OpenBao server configuration seals
 
-`Create Vault Server Configuration Seals` creates seals from the vault configuration 
+`Create OpenBao Server Configuration Seals` creates seals from the OpenBao configuration 
 stanza and verifies they can be initialized and finalized. 
 
 #### Check transit seal TLS
@@ -169,36 +169,36 @@ provided in a transit seal stanza (if one exists) for correctness.
 
 #### Create core configuration / initialize randomness for core
 
-`Initialize Randomness for Core` ensures that vault has access to the randReader that 
-the vault core uses. 
+`Initialize Randomness for Core` ensures that OpenBao has access to the randReader that 
+the OpenBao core uses. 
 
 #### HA storage
 
 This check and any nested checks will be the same as the `Check Storage` checks.
 The only difference is that the checks here will be run on whatever is specified in the 
-`ha_storage` section of the vault configuration, as opposed to the `storage` section. 
+`ha_storage` section of the OpenBao configuration, as opposed to the `storage` section. 
 
 #### Determine redirect address
 
 Ensures that one of the `VAULT_API_ADDR`, `VAULT_REDIRECT_ADDR`, or `VAULT_ADVERTISE_ADDR` 
-environment variables are set, or that the redirect address is specified in the vault 
+environment variables are set, or that the redirect address is specified in the OpenBao 
 configuration.
 
 #### Check cluster address
 
 Parses the cluster address from the `VAULT_CLUSTER_ADDR` environment variable, or from the 
-redirect address or cluster address specified in the vault configuration, and checks that 
+redirect address or cluster address specified in the OpenBao configuration, and checks that 
 the address is of the form `host:port`. 
 
 #### Check core creation
 
-`Check Core Creation` verifies the logical configuration checks that vault does when it 
+`Check Core Creation` verifies the logical configuration checks that OpenBao does when it 
 creates a core object. These are runtime checks, meaning any errors thrown by this diagnose
-test will also be thrown by the vault server itself when it is run. 
+test will also be thrown by the OpenBao server itself when it is run. 
 
 #### Check for autoloaded license
 
-`Check For Autoloaded License` is an enterprise diagnose check, which verifies that vault 
+`Check For Autoloaded License` is an enterprise diagnose check, which verifies that OpenBao 
 has access to a valid autoloaded license that will not expire in the next 30 days.
 
 #### Start listeners / check listener TLS
@@ -206,7 +206,7 @@ has access to a valid autoloaded license that will not expire in the next 30 day
 `Check Listener TLS` verifies the server certificate file and key are valid and matching. 
 It also checks the client CA file, if one is provided, for a valid certificate, and performs
 the standard runtime listener checks on the listener configuration stanza, such as verifying 
-that the minimum and maximum TLS versions are within the bounds of what vault supports. 
+that the minimum and maximum TLS versions are within the bounds of what OpenBao supports. 
 
 Like all the other Diagnose TLS checks, it will warn if any of the certificates provided are 
 set to expire within the next month. 

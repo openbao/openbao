@@ -17,21 +17,21 @@ be used to control the behavior of the revocation.
 Revoke a token and all the token's children:
 
 ```shell-session
-$ vault token revoke 96ddf4bc-d217-f3ba-f9bd-017055595017
+$ openbao token revoke 96ddf4bc-d217-f3ba-f9bd-017055595017
 Success! Revoked token (if it existed)
 ```
 
 Revoke a token leaving the token's children:
 
 ```shell-session
-$ vault token revoke -mode=orphan 96ddf4bc-d217-f3ba-f9bd-017055595017
+$ openbao token revoke -mode=orphan 96ddf4bc-d217-f3ba-f9bd-017055595017
 Success! Revoked token (if it existed)
 ```
 
 Revoke a token by accessor:
 
 ```shell-session
-$ vault token revoke -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
+$ openbao token revoke -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
 Success! Revoked token (if it existed)
 ```
 
@@ -43,8 +43,8 @@ flags](/vault/docs/commands) included on all commands.
 - `-accessor` `(bool: false)` - Treat the argument as an accessor instead of a
   token.
 
-- `-mode` `(string: "")` - Type of revocation to perform. If unspecified, Vault
-  will revoke the token and all of the token's children. If "orphan", Vault will
+- `-mode` `(string: "")` - Type of revocation to perform. If unspecified, OpenBao
+  will revoke the token and all of the token's children. If "orphan", OpenBao will
   revoke only the token, leaving the children as orphans. If "path", tokens
   created from the given authentication path prefix are deleted along with their
   children.

@@ -2,19 +2,19 @@
 layout: docs
 page_title: Service Registration - Configuration
 description: |-
-  The optional `service_registration` stanza configures Vault's mechanism for
+  The optional `service_registration` stanza configures OpenBao's mechanism for
   service registration.
 ---
 
 # `service_registration` stanza
 
-The optional `service_registration` stanza configures Vault's mechanism for
+The optional `service_registration` stanza configures OpenBao's mechanism for
 service registration. The `service_registration` stanza is designed for use cases
 where you would like to use a system like [Consul][consul] for [service
 discovery][consul-discovery], but use a different system for the [storage
 backend][storage-backend].
 
-When Consul is configured as the [storage backend][consul-backend], Vault
+When Consul is configured as the [storage backend][consul-backend], OpenBao
 implicitly uses Consul for service registration, so the `service_registration` stanza
 is not needed.
 
@@ -37,7 +37,7 @@ For information about a specific service registration provider, visit the [Consu
 
 ## Configuration
 
-Service registration configuration is done through the Vault configuration file
+Service registration configuration is done through the OpenBao configuration file
 using the `service_registration` stanza:
 
 ```hcl

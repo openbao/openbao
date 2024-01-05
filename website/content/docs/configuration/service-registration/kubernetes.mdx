@@ -2,14 +2,14 @@
 layout: docs
 page_title: Kubernetes - Service Registration - Configuration
 description: >-
-  Kubernetes Service Registration labels Vault pods with their current status
+  Kubernetes Service Registration labels OpenBao pods with their current status
   for use with selectors.
 ---
 
 # Kubernetes service registration
 
-Kubernetes Service Registration tags Vault pods with their current status for
-use with selectors. Service registration is only available when Vault is running in
+Kubernetes Service Registration tags OpenBao pods with their current status for
+use with selectors. Service registration is only available when OpenBao is running in
 [High Availability mode](/vault/docs/concepts/ha).
 
 - **HashiCorp Supported** – Kubernetes Service Registration is officially supported
@@ -40,16 +40,16 @@ you're using Kubernetes must still exist to indicate your intentions:
 service_registration "kubernetes" {}
 ```
 
-For service registration to succeed, Vault must be able to apply labels to pods
+For service registration to succeed, OpenBao must be able to apply labels to pods
 in Kubernetes. The following RBAC rules are required to allow the service account
-associated with the Vault pods to update its own pod specification:
+associated with the OpenBao pods to update its own pod specification:
 
 ```
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: mynamespace
-  name: vault-service-account
+  name: openbao-service-account
 rules:
 - apiGroups: [""]
   resources: ["pods"]
@@ -65,7 +65,7 @@ to come up with the following labels:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: vault
+  name: openbao
   labels:
     vault-active: "false"
     vault-initialized: "true"
@@ -74,13 +74,13 @@ metadata:
     vault-version: 1.14.0
 ```
 
-After shutdowns, Vault pods will bear the following labels:
+After shutdowns, OpenBao pods will bear the following labels:
 
 ```
 apiVersion: v1
 kind: Pod
 metadata:
-  name: vault
+  name: openbao
   labels:
     vault-active: "false"
     vault-initialized: "false"
@@ -91,35 +91,35 @@ metadata:
 
 ## Label definitions
 
-- `vault-active` `(string: "true"/"false")` – Vault active is updated dynamically each time Vault's active status changes.
-  True indicates that this Vault pod is currently the leader. False indicates that this Vault pod is currently a standby.
-- `vault-initialized` `(string: "true"/"false")` – Vault initialized is updated dynamically each time Vault's initialization
-  status changes. True indicates that Vault is currently initialized. False indicates the Vault is currently uninitialized.
+- `vault-active` `(string: "true"/"false")` – Vault active is updated dynamically each time OpenBao's active status changes.
+  True indicates that this OpenBao pod is currently the leader. False indicates that this OpenBao pod is currently a standby.
+- `vault-initialized` `(string: "true"/"false")` – Vault initialized is updated dynamically each time OpenBao's initialization
+  status changes. True indicates that OpenBao is currently initialized. False indicates the OpenBao is currently uninitialized.
 - `vault-perf-standby` `(string: "true"/"false")` – Vault performance standby is updated dynamically each
-  time Vault's leader/standby status changes. **This field is only valuable if the pod is a member of a performance standby cluster**,
-  it will simply be set to "false" when it's not applicable. True indicates that this Vault pod is currently a performance standby. False indicates
-  that this Vault pod is currently a performance leader.
+  time OpenBao's leader/standby status changes. **This field is only valuable if the pod is a member of a performance standby cluster**,
+  it will simply be set to "false" when it's not applicable. True indicates that this OpenBao pod is currently a performance standby. False indicates
+  that this OpenBao pod is currently a performance leader.
 - `vault-sealed` `(string: "true"/"false")` – Vault sealed is updated dynamically each
-  time Vault's sealed/unsealed status changes. True indicates that Vault is currently sealed. False indicates that Vault
+  time OpenBao's sealed/unsealed status changes. True indicates that OpenBao is currently sealed. False indicates that OpenBao
   is currently unsealed.
 - `vault-version` `(string: "1.14.0")` – Vault version is a string that will not change during a pod's lifecycle.
 
-## Working with vault's service discovery labels
+## Working with OpenBao's service discovery labels
 
 ### Example service
 
-With labels applied to the pod, services can be created using selectors to filter pods with specific Vault HA roles,
-effectively allowing direct communication with subsets of Vault pods. Note the `vault-active: "true"` line below.
+With labels applied to the pod, services can be created using selectors to filter pods with specific OpenBao HA roles,
+effectively allowing direct communication with subsets of OpenBao pods. Note the `vault-active: "true"` line below.
 
 ```
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/instance: vault
-    app.kubernetes.io/name: vault
-    helm.sh/chart: vault-0.1.2
-  name: vault-active-us-east
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/name: openbao
+    helm.sh/chart: openbao-0.1.2
+  name: openbao-active-us-east
   namespace: default
 spec:
   clusterIP: 10.7.254.51
@@ -134,8 +134,8 @@ spec:
     targetPort: 8201
   publishNotReadyAddresses: false
   selector:
-    app.kubernetes.io/instance: vault
-    app.kubernetes.io/name: vault
+    app.kubernetes.io/instance: openbao
+    app.kubernetes.io/name: openbao
     component: server
     vault-active: "true"
   type: ClusterIP
@@ -144,11 +144,11 @@ spec:
 Also, by setting `publishNotReadyAddresses: false` above, pods that have failed will be removed from the service pool.
 
 With this active service in place, we now have a dedicated endpoint that will always reach the active node. When
-setting up Vault replication, it can be used as the primary address:
+setting up OpenBao replication, it can be used as the primary address:
 
 ```shell-session
-$ vault write -f sys/replication/performance/primary/enable \
-    primary_cluster_addr='https://vault-active-us-east:8201'
+$ openbao write -f sys/replication/performance/primary/enable \
+    primary_cluster_addr='https://openbao-active-us-east:8201'
 ```
 
 ### Example upgrades
@@ -156,7 +156,7 @@ $ vault write -f sys/replication/performance/primary/enable \
 In conjunction with the pod labels and the `OnDelete` upgrade strategy, upgrades are much easier to orchestrate:
 
 ```shell-session
-$ helm upgrade vault --set='server.image.tag=1.14.0'
+$ helm upgrade openbao --set='server.image.tag=1.14.0'
 
 $ kubectl delete pod --selector=vault-active=false \
     --selector=vault-version=1.2.3

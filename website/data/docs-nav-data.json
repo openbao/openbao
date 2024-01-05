@@ -1,7 +1,7 @@
 [
   {
-    "title": "What is Vault?",
-    "path": "what-is-vault"
+    "title": "What is OpenBao?",
+    "path": "what-is-openbao"
   },
   {
     "title": "Use Cases",
@@ -34,7 +34,7 @@
   },
 
   {
-    "title": "Installing Vault",
+    "title": "Installing Openbao",
     "path": "install"
   },
   {
@@ -343,7 +343,7 @@
             "path": "configuration/seal/pkcs11"
           },
           {
-            "title": "Vault Transit",
+            "title": "Openbao Transit",
             "path": "configuration/seal/transit"
           }
         ]
@@ -956,7 +956,7 @@
     ]
   },
   {
-    "title": "Vault Agent and Vault Proxy",
+    "title": "Openbao Agent and Openbao Proxy",
     "routes": [
       {
         "title": "Overview",
@@ -1042,7 +1042,7 @@
         ]
       },
       {
-        "title": "Vault Proxy",
+        "title": "Openbao Proxy",
         "routes": [
           {
             "title": "Overview",
@@ -1081,7 +1081,7 @@
         ]
       },
       {
-        "title": "Vault Agent",
+        "title": "Openbao Agent",
         "routes": [
           {
             "title": "Overview",
@@ -1968,7 +1968,7 @@
         "path": "upgrading"
       },
       {
-        "title": "Upgrade Vault HA installations",
+        "title": "Upgrade Openbao HA installations",
         "path": "upgrading/vault-ha-upgrade"
       },
       {

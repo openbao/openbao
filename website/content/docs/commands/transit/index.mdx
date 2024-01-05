@@ -2,13 +2,13 @@
 layout: docs
 page_title: transit - Command
 description: |-
-  The "transit" command groups subcommands for interacting with Vault's Transit
+  The "transit" command groups subcommands for interacting with OpenBao's Transit
   secrets engine.
 ---
 
 # transit
 
-The `transit` command groups subcommands for interacting with Vault's
+The `transit` command groups subcommands for interacting with OpenBao's
 [Transit Secrets Engine](/vault/docs/secrets/transit).
 
 ## Syntax
@@ -19,14 +19,14 @@ Option flags for a given subcommand are provided after the subcommand, but befor
 
 To [import](/vault/docs/commands/transit/import) keys into a mount via the
 [Transit BYOK](/vault/docs/secrets/transit#bring-your-own-key-byok)
-mechanism, use the `vault transit import <path> <key>` or
-`vault transit import-version <path> <key>` commands:
+mechanism, use the `openbao transit import <path> <key>` or
+`openbao transit import-version <path> <key>` commands:
 
 ```
-$ vault transit import transit/keys/test-key @test-key type=rsa-2048
+$ openbao transit import transit/keys/test-key @test-key type=rsa-2048
 Retrieving transit wrapping key.
 Wrapping source key with ephemeral key.
 Encrypting ephemeral key with transit wrapping key.
-Submitting wrapped key to Vault transit.
+Submitting wrapped key to OpenBao transit.
 Success!
 ```

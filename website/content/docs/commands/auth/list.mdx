@@ -37,7 +37,7 @@ version was overwritten in the catalog.
 List all auth methods:
 
 ```shell-session
-$ vault auth list
+$ openbao auth list
 Path         Type        Description
 ----         ----        -----------
 token/       token       token based credentials
@@ -47,7 +47,7 @@ userpass/    userpass    n/a
 List detailed auth method information:
 
 ```shell-session
-$ vault auth list -detailed
+$ openbao auth list -detailed
 Path        Plugin     Accessor                 Default TTL    Max TTL    Token Type         Replication    Seal Wrap    External Entropy Access    Options    Description                UUID                                    Deprecation Status
 ----        ------     --------                 -----------    -------    ----------         -----------    ---------    -----------------------    -------    -----------                ----                                    ------------------
 app-id/     app-id     auth_app-id_c88ad56f     system         system     default-service    replicated     false        false                      map[]      n/a                        a7c702b4-0dba-02b6-483c-2fd6be33240a    pending removal

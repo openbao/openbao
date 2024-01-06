@@ -56,6 +56,7 @@ func TestTransit_Export_KeyVersion_ExportsCorrectVersion(t *testing.T) {
 	verifyExportsCorrectVersion(t, "encryption-key", "aes128-gcm96")
 	verifyExportsCorrectVersion(t, "encryption-key", "aes256-gcm96")
 	verifyExportsCorrectVersion(t, "encryption-key", "chacha20-poly1305")
+	verifyExportsCorrectVersion(t, "encryption-key", "xchacha20-poly1305")
 	verifyExportsCorrectVersion(t, "encryption-key", "rsa-2048")
 	verifyExportsCorrectVersion(t, "encryption-key", "rsa-3072")
 	verifyExportsCorrectVersion(t, "encryption-key", "rsa-4096")
@@ -69,6 +70,7 @@ func TestTransit_Export_KeyVersion_ExportsCorrectVersion(t *testing.T) {
 	verifyExportsCorrectVersion(t, "hmac-key", "aes128-gcm96")
 	verifyExportsCorrectVersion(t, "hmac-key", "aes256-gcm96")
 	verifyExportsCorrectVersion(t, "hmac-key", "chacha20-poly1305")
+	verifyExportsCorrectVersion(t, "hmac-key", "xchacha20-poly1305")
 	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p256")
 	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p384")
 	verifyExportsCorrectVersion(t, "hmac-key", "ecdsa-p521")
@@ -381,6 +383,7 @@ func TestTransit_Export_PublicKeyDoesNotSupportEncryption_ReturnsError(t *testin
 	t.Parallel()
 
 	testTransit_Export_PublicKeyNotSupported_ReturnsError(t, "chacha20-poly1305")
+	testTransit_Export_PublicKeyNotSupported_ReturnsError(t, "xchacha20-poly1305")
 	testTransit_Export_PublicKeyNotSupported_ReturnsError(t, "aes128-gcm96")
 	testTransit_Export_PublicKeyNotSupported_ReturnsError(t, "aes256-gcm96")
 	testTransit_Export_PublicKeyNotSupported_ReturnsError(t, "hmac")

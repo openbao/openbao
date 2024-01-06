@@ -954,7 +954,7 @@ func TestShouldWarnAboutNonceUsage(t *testing.T) {
 	}{
 		{
 			name:                 "-NoConvergent-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305},
+			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
 			nonce:                []byte("testnonce"),
 			convergentEncryption: false,
 			convergentVersion:    -1,
@@ -962,7 +962,7 @@ func TestShouldWarnAboutNonceUsage(t *testing.T) {
 		},
 		{
 			name:                 "-NoConvergent-NoNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305},
+			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
 			nonce:                []byte{},
 			convergentEncryption: false,
 			convergentVersion:    -1,
@@ -970,7 +970,7 @@ func TestShouldWarnAboutNonceUsage(t *testing.T) {
 		},
 		{
 			name:                 "-Convergentv1-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305},
+			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
 			nonce:                []byte("testnonce"),
 			convergentEncryption: true,
 			convergentVersion:    1,
@@ -978,7 +978,7 @@ func TestShouldWarnAboutNonceUsage(t *testing.T) {
 		},
 		{
 			name:                 "-Convergentv2-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305},
+			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
 			nonce:                []byte("testnonce"),
 			convergentEncryption: true,
 			convergentVersion:    2,
@@ -986,7 +986,7 @@ func TestShouldWarnAboutNonceUsage(t *testing.T) {
 		},
 		{
 			name:                 "-Convergentv3-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305},
+			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
 			nonce:                []byte("testnonce"),
 			convergentEncryption: true,
 			convergentVersion:    3,

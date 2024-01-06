@@ -436,6 +436,8 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			polReq.KeyType = keysutil.KeyType_AES256_GCM96
 		case "chacha20-poly1305":
 			polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+		case "xchacha20-poly1305":
+			polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		case "ecdsa-p256", "ecdsa-p384", "ecdsa-p521":
 			return logical.ErrorResponse(fmt.Sprintf("key type %v not supported for this operation", keyType)), logical.ErrInvalidRequest
 		case "managed_key":
@@ -580,7 +582,7 @@ func nonceAllowed(p *keysutil.Policy) bool {
 	switch p.Type {
 	case keysutil.KeyType_MANAGED_KEY:
 		return true
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
+	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305:
 		supportedKeyType = true
 	default:
 		supportedKeyType = false
@@ -631,7 +633,7 @@ func shouldWarnAboutNonceUsage(p *keysutil.Policy, userSuppliedNonce []byte) boo
 
 	var supportedKeyType bool
 	switch p.Type {
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
+	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305:
 		supportedKeyType = true
 	default:
 		supportedKeyType = false

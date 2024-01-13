@@ -28,21 +28,21 @@ endif
 
 default: dev
 
-# bin generates the releasable binaries for Vault
+# bin generates the releasable binaries for OpenBao
 bin: prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh'"
 
-# dev creates binaries for testing Vault locally. These are put
+# dev creates binaries for testing OpenBao locally. These are put
 # into ./bin/ as well as $GOPATH/bin
 dev: BUILD_TAGS+=testonly
 dev: prep
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS)' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 dev-ui: BUILD_TAGS+=testonly
 dev-ui: assetcheck prep
-	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 dev-dynamic: BUILD_TAGS+=testonly
 dev-dynamic: prep
-	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' VAULT_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+	@CGO_ENABLED=1 BUILD_TAGS='$(BUILD_TAGS)' OPENBAO_DEV_BUILD=1 sh -c "'$(CURDIR)/scripts/build.sh'"
 
 # *-mem variants will enable memory profiling which will write snapshots of heap usage
 # to $TMP/vaultprof every 5 minutes. These can be analyzed using `$ go tool pprof <profile_file>`.
@@ -55,14 +55,14 @@ dev-dynamic-mem: BUILD_TAGS+=memprofiler
 dev-dynamic-mem: dev-dynamic
 
 # Creates a Docker image by adding the compiled linux/amd64 binary found in ./bin.
-# The resulting image is tagged "vault:dev".
+# The resulting image is tagged "openbao:dev".
 docker-dev: BUILD_TAGS+=testonly
 docker-dev: prep
-	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t vault:dev .
+	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t openbao:dev .
 
 docker-dev-ui: BUILD_TAGS+=testonly
 docker-dev-ui: prep
-	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t vault:dev-ui .
+	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
 
 # test runs the unit tests and vets the code
 test: BUILD_TAGS+=testonly
@@ -176,9 +176,9 @@ bootstrap: ci-bootstrap
 	go generate -tags tools tools/tools.go
 
 # Note: if you have plugins in GOPATH you can update all of them via something like:
-# for i in $(ls | grep vault-plugin-); do cd $i; git remote update; git reset --hard origin/master; dep ensure -update; git add .; git commit; git push; cd ..; done
+# for i in $(ls | grep openbao-plugin-); do cd $i; git remote update; git reset --hard origin/master; dep ensure -update; git add .; git commit; git push; cd ..; done
 update-plugins:
-	grep vault-plugin- go.mod | cut -d ' ' -f 1 | while read -r P; do echo "Updating $P..."; go get -v "$P"; done
+	grep openbao-plugin- go.mod | cut -d ' ' -f 1 | while read -r P; do echo "Updating $P..."; go get -v "$P"; done
 
 static-assets-dir:
 	@mkdir -p ./http/web_ui
@@ -195,10 +195,10 @@ test-ember-enos: install-ui-dependencies
 	@echo "--> Running ember tests with a real backend"
 	@cd ui && yarn run test:enos
 
-check-vault-in-path:
-	@VAULT_BIN=$$(command -v vault) || { echo "vault command not found"; exit 1; }; \
-		[ -x "$$VAULT_BIN" ] || { echo "$$VAULT_BIN not executable"; exit 1; }; \
-		printf "Using Vault at %s:\n\$$ vault version\n%s\n" "$$VAULT_BIN" "$$(vault version)"
+check-openbao-in-path:
+	@OPENBAO_BIN=$$(command -v openbao) || { echo "openbao command not found"; exit 1; }; \
+		[ -x "$$OPENBAO_BIN" ] || { echo "$$OPENBAO_BIN not executable"; exit 1; }; \
+		printf "Using OpenBao at %s:\n\$$ openbao version\n%s\n" "$$OPENBAO_BIN" "$$(openbao version)"
 
 ember-dist: install-ui-dependencies
 	@cd ui && npm rebuild node-sass
@@ -285,7 +285,7 @@ hana-database-plugin:
 mongodb-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mongodb-database-plugin ./plugins/database/mongodb/mongodb-database-plugin
 
-.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-vault-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-openbao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 

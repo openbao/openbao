@@ -32,7 +32,7 @@ _testmain.go
 /http/web_ui/*.*
 /http/web_ui/**/*.*
 
-# Vault-specific
+# OpenBao-specific
 example.hcl
 example.vault.d
 

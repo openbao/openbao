@@ -13,7 +13,7 @@ REM Run target.
 for %%a in (%_TARGETS%) do (if x%1==x%%a goto %%a)
 goto usage
 
-REM bin generates the releasable binaries for Vault
+REM bin generates the releasable binaries for OpenBao
 :bin
 	call :generate
 	call .\scripts\windows\build.bat "%CD%"
@@ -24,7 +24,7 @@ REM bootstrap downloads required build tools
     for %%t in (%_EXTERNAL_TOOLS%) do (go get -u -v %%t)
 	goto :eof
 
-REM dev creates binaries for testing Vault locally. These are put
+REM dev creates binaries for testing OpenBao locally. These are put
 REM into ./bin/ as well as %GOPATH%/bin
 :dev
 	call :generate

@@ -18,7 +18,7 @@ DIR="$( cd -P "$SOURCE_DIR/.." && pwd )"
 cd "$DIR"
 
 # Set build tags
-BUILD_TAGS="${BUILD_TAGS:-"vault"}"
+BUILD_TAGS="${BUILD_TAGS:-"openbao"}"
 
 # Get the git commit
 GIT_COMMIT="$("$SOURCE_DIR"/ci-helper.sh revision)"
@@ -55,8 +55,8 @@ IFS=$OLDIFS
 
 # Ensure the go bin folder exists
 mkdir -p ${BIN_PATH}
-rm -f ${BIN_PATH}/vault
-cp bin/vault ${BIN_PATH}
+rm -f ${BIN_PATH}/openbao
+cp bin/openbao ${BIN_PATH}
 
 # Done!
 echo

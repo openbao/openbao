@@ -37,7 +37,7 @@ ENV PATH $GOROOT/bin:$GOPATH/bin:$PATH
 WORKDIR /go/src/github.com/hashicorp/vault
 COPY . .
 RUN make bootstrap static-dist \
-  && CGO_ENABLED=$CGO_ENABLED BUILD_TAGS="${BUILD_TAGS} ui" VAULT_DEV_BUILD=1 GOOS=linux GOARCH=amd64 sh -c "'./scripts/build.sh'"
+  && CGO_ENABLED=$CGO_ENABLED BUILD_TAGS="${BUILD_TAGS} ui" OPENBAO_DEV_BUILD=1 GOOS=linux GOARCH=amd64 sh -c "'./scripts/build.sh'"
 
 # Docker Image
 

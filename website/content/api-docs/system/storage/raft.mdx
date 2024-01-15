@@ -9,8 +9,6 @@ description: |-
 
 # `/sys/storage/raft`
 
-@include 'alerts/restricted-root.mdx'
-
 The `/sys/storage/raft` endpoints are used to manage OpenBao's Raft storage
 backend.
 
@@ -55,18 +53,6 @@ leader node.
 - `auto_join_scheme` `(string: "https")` - URI scheme to be used for `auto_join`.
 
 - `auto_join_port` `(int: 8200)` - Port to be used for `auto_join`.
-
-- `non_voter` `(bool: false) (enterprise)` - If set, will make the server not
-  participate in the Raft quorum, and have it only receive the data replication
-  stream. This can be used to add read scalability to a cluster in cases where a
-  high volume of reads to servers are needed. The default is false.
-
-Additionally, the following options are allowed in OpenBao open-source, but
-relevant functionality is only supported in Vault Enterprise:
-
-- `non_voter` `(bool: false)` - Joins the node to the cluster in non-voter mode
-  which results in OpenBao's data being replicated to it, but does not contribute
-  to the quorum count.
 
 ### Sample payload
 

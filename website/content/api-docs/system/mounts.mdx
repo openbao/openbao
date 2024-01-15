@@ -171,9 +171,6 @@ This endpoint enables a new secrets engine at the given path.
     unversioned plugin that may have been registered, the latest versioned plugin
     registered, or a built-in plugin in that order of precendence.
 
-  - `allowed_managed_keys` `(array: [])` - List of managed key registry entry names
-    that the mount in question is allowed to access.
-
 - `options` `(map<string|string>: nil)` - Specifies mount type specific options
   that are passed to the backend.
 
@@ -181,19 +178,6 @@ This endpoint enables a new secrets engine at the given path.
 
   - `version` `(string: "1")` - The version of the KV to mount. Set to "2" for mount
     KV v2.
-
-Additionally, the following options are allowed in OpenBao open-source, but
-relevant functionality is only supported in Vault Enterprise:
-
-- `local` `(bool: false)` – Specifies if the secrets engine is a local mount
-  only. Local mounts are not replicated nor (if a secondary) removed by
-  replication.
-
-- `seal_wrap` `(bool: false)` - Enable seal wrapping for the mount, causing
-  values stored by the mount to be wrapped by the seal's encryption capability.
-
-- `external_entropy_access` `(bool: false)` - Enable the secrets engine to access
-  OpenBao's external entropy source.
 
 ### Sample payload
 
@@ -376,9 +360,6 @@ This endpoint tunes configuration parameters for a given mount point.
 
 - `allowed_response_headers` `(array: [])` - List of headers to allow,
   allowing a plugin to include them in the response.
-
-- `allowed_managed_keys` `(array: [])` - List of managed key registry entry names
-  that the mount in question is allowed to access.
 
 - `plugin_version` `(string: "")` – Specifies the semantic version of the plugin
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.

@@ -329,8 +329,6 @@ is unknown.
 
 This endpoint was added in Vault 1.6.
 
-@include 'alerts/restricted-root.mdx'
-
 | Method | Path                              |
 | :----- | :-------------------------------- |
 | `GET`  | `/sys/internal/counters/activity` |
@@ -733,8 +731,6 @@ loading of client data has completed.
 
 This endpoint was added in Vault 1.7.
 
-@include 'alerts/restricted-root.mdx'
-
 | Method | Path                                      |
 | :----- | :---------------------------------------- |
 | `GET`  | `/sys/internal/counters/activity/monthly` |
@@ -865,8 +861,6 @@ $ curl \
 
 ## Update the client count configuration
 
-@include 'alerts/restricted-root.mdx'
-
 The `/sys/internal/counters/config` endpoint is used to configure logging of active clients.
 
 | Method | Path                            |
@@ -877,8 +871,8 @@ The `/sys/internal/counters/config` endpoint is used to configure logging of act
 
 - `default_report_months` `(integer: 12)` - The number of months to report if no `start_time` is specified in a query.
 - `enabled` `(string: enable, disable, default)` - Enable or disable counting of client activity. When set to `default`, the client
-  counts are enabled on Enterprise builds and disabled on community builds. Disabling the feature during the middle of a month will
-  discard any data recorded for that month, but does not delete previous months.
+  counts are disabled. Disabling the feature during the middle of a month will discard any data recorded for that month, 
+  but does not delete previous months.
 - `retention_months` `(integer: 24)` - The number of months of history to retain.
 
 Any missing parameters are left at their existing value.
@@ -964,8 +958,6 @@ information returned by this API will include activity for this month, however
 it may be up to 20 minutes delayed.
 
 This endpoint was added in Vault 1.11.
-
-@include 'alerts/restricted-root.mdx'
 
 | Method | Path                                      |
 | :----- | :---------------------------------------- |

@@ -73,8 +73,7 @@ to specify where the configuration is.
   [seal wrapping][sealwrap] as an additional layer of data protection.
 
 - `cluster_name` `(string: <generated>)` – Specifies the identifier for the
-  OpenBao cluster. If omitted, OpenBao will generate a value. When connecting to
-  Vault Enterprise, this value will be used in the interface.
+  OpenBao cluster. If omitted, OpenBao will generate a value.
 
 - `cache_size` `(string: "131072")` – Specifies the size of the read cache used
   by the physical storage subsystem. The value is in number of entries, so the
@@ -253,27 +252,9 @@ The following parameters are used on backends that support [high availability][h
   will disable these features _only when that node is the active node_. This
   parameter cannot be set to `true` if `raft` is the storage type.
 
-### Vault enterprise parameters
-
-The following parameters are only used with Vault Enterprise
-
-- `disable_sealwrap` `(bool: false)` – Disables using [seal wrapping][sealwrap]
-  for any value except the root key. If this value is toggled, the new
-  behavior will happen lazily (as values are read or written).
-
-- `disable_performance_standby` `(bool: false)` – Specifies whether performance
-  standbys should be disabled on this node. Setting this to true on one Vault
-  node will disable this feature when this node is Active or Standby. It's
-  recommended to sync this setting across all nodes in the cluster.
-
-- `license_path` `(string: "")` - Path to license file. This can also be
-  provided via the environment variable `VAULT_LICENSE_PATH`, or the license
-  itself can be provided in the environment variable `VAULT_LICENSE`.
-
 [storage-backend]: /vault/docs/configuration/storage
 [listener]: /vault/docs/configuration/listener
 [seal]: /vault/docs/configuration/seal
-[sealwrap]: /vault/docs/enterprise/sealwrap
 [telemetry]: /vault/docs/configuration/telemetry
 [sentinel]: /vault/docs/configuration/sentinel
 [high-availability]: /vault/docs/concepts/ha

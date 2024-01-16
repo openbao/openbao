@@ -13,9 +13,7 @@ storage backend is untrusted storage used purely to keep encrypted information.
 
 ## Supported storage backends
 
-@include 'ent-supported-storage.mdx'
-
-Many other options for storage are available with community support for OpenBao - see our
+Many other options for storage are available for OpenBao - see our
 [Storage Configuration](/vault/docs/configuration/storage) section for more
 information.
 
@@ -62,18 +60,15 @@ study](https://www.hashicorp.com/resources/oh-no-i-deleted-my-vault-secret).
 We do not recommend backups as protection against the failure of an individual
 machine. OpenBao servers can run in clusters, so to protect against server
 failure, we recommend running OpenBao in [HA
-mode](/vault/docs/internals/high-availability). With community features, a
-OpenBao cluster can extend across multiple availability zones within a region.
+mode](/vault/docs/internals/high-availability). An  OpenBao cluster can extend
+across multiple availability zones within a region.
 
-Vault Enterprise supports replicated clusters and disaster recovery for data
-center failure. When using OpenBao in [HA
-Mode](/vault/docs/internals/high-availability), a backup can help guard against the
-failure of a data center.
+When using OpenBao in [HA Mode](/vault/docs/internals/high-availability), a
+backup can help guard against the failure of a data center.
 
-Ultimately, backups are not a replacement for running in HA, or for using
-replication with Vault Enterprise. As you develop a plan for recovering from or
-guarding against failure, you should consider both backups and HA as critical
-components of that plan.
+Ultimately, backups are not a replacement for running in HA. As you develop a
+plan for recovering from or guarding against failure, you should consider both
+backups and HA as critical components of that plan.
 
 ### Backing up OpenBao's persisted data
 
@@ -93,12 +88,6 @@ restoring backups.
 
 - Integrated Storage [snapshots](/vault/docs/commands/operator/raft#snapshot)
 - Consul [snapshots](/consul/commands/snapshot)
-
-#### Backing up multiple clusters
-
-If you are using Vault Enterprise [Performance
-Replication](/vault/docs/enterprise/replication#performance-replication-and-disaster-recovery-dr-replication),
-you should plan to take backups of the active node on each of your clusters.
 
 ### Configuration
 

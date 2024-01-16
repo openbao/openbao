@@ -79,14 +79,11 @@ information when debug is running. By default, it captures all information.
 | `server-status`      | Health and seal status.                                                           |
 
 Note that the `config`, `host`,`metrics`, and `pprof` targets are only queried
-on active and performance standby nodes due to the the fact that the information
+on active nodes due to the the fact that the information
 pertains to the local node and the request should not be forwarded.
 
 Additionally, host information is not available on the OpenBSD platform due to
 library limitations in fetching the data without enabling `cgo`.
-
-[Enterprise] Telemetry can be gathered from a DR Secondary active node via the
-`metrics` target if [unauthenticated_metrics_access](/vault/docs/configuration/listener/tcp#unauthenticated_metrics_access) is enabled.
 
 ## Output layout
 

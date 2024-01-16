@@ -21,9 +21,7 @@ leader, leader-only, or discovered via service discovery), etc.
 If you are running on Vault 1.11+ with Integrated Storage and wish to enable the
 Autopilot upgrade automation features, read to the [automated
 upgrades](/vault/docs/concepts/integrated-storage/autopilot#automated-upgrades)
-documentation for details and the [Automate Upgrades with Vault
-Enterprise](/vault/tutorials/raft/raft-upgrade-automation) tutorial for
-additional guidance.
+documentation for details.
 
 
 ## HA installations
@@ -40,12 +38,9 @@ backend).
 
 If you are currently running on Vault 1.11+ with Integrated Storage and have
 chosen to opt-out the Autopilot automated upgrade features, please disable the
-default automated upgrade migrations feature of the Vault. To disable this
-feature, follow the [Automate Upgrades with Vault Enterprise Autopilot
-configuration](/vault/tutorials/raft/raft-upgrade-automation#autopilot-configuration)
-tutorial for more details. Without disabling this feature, you may run into Lost
-Quorum issue as described in the [Quorum lost while upgrading the vault from
-1.11.0 to later version of
+default automated upgrade migrations feature of the Vault. Without disabling
+this feature, you may run into Lost Quorum issue as described in the [Quorum
+lost while upgrading the vault from 1.11.0 to later version of
 it](https://support.hashicorp.com/hc/en-us/articles/7122445204755-Quorum-lost-while-upgrading-the-vault-from-1-11-0-to-later-version-of-it)
 article.
 
@@ -94,7 +89,3 @@ takes over active duty.
 
 Be sure to also read and follow any instructions in the version-specific
 upgrade notes.
-
-## Enterprise replication installations
-
-See the main [upgrading](/vault/docs/upgrading#enterprise-replication-installations) page.

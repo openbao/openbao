@@ -9,13 +9,11 @@ description: |-
 # operator step-down
 
 The `operator step-down` forces the active OpenBao node within an [HA cluster](/vault/docs/concepts/ha)
-to step down from active duty. When executed against a non-active node, i.e. a 
-standby or [performance standby](/vault/docs/enterprise/performance-standby) node, 
-the request will be forwarded to the active node.  While the 
-affected node will have a delay before attempting to acquire 
-the leader lock again, if no other OpenBao nodes acquire the
-lock beforehand, it is possible for the same node to re-acquire
-the lock and become active again.
+to step down from active duty. When executed against a  standby node,  the
+request will be forwarded to the active node.  While the  affected node will
+have a delay before attempting to acquire  the leader lock again, if no other
+OpenBao nodes acquire the lock beforehand, it is possible for the same node to
+re-acquire the lock and become active again.
 
 ## Examples
 

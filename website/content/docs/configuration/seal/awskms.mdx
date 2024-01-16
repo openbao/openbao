@@ -8,18 +8,6 @@ description: |-
 
 # `awskms` seal
 
-<Note title="Seal wrapping requires Vault Enterprise">
-
-  All OpenBao versions support **auto-unseal** for AWS, but **seal wrapping**
-  requires Vault Enterprise.
-  
-  Vault Enterprise enables seal wrapping by default, which means the KMS service
-  must be available at runtime and not just during the unseal process. Refer to
-  the [Seal wrap](/vault/docs/enterprise/sealwrap) overview for more
-  information.
-
-</Note>
-
 The AWS KMS seal configures OpenBao to use AWS KMS as the seal wrapping mechanism.
 The AWS KMS seal is activated by one of the following:
 

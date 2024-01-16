@@ -229,12 +229,10 @@ Here are the options for the `retry` stanza:
   A value of `-1` disables retries. The environment variable `VAULT_MAX_RETRIES`
   overrides this setting.
 
-There are a few subtleties to be aware of here. First, requests originating
-from the proxy cache will only be retried if they resulted in specific HTTP
-result codes: any 50x code except 501 ("not implemented"), as well as 412
-("precondition failed"); 412 is used in Vault Enterprise 1.7+ to indicate a
-stale read due to eventual consistency. Requests coming from the template
-subsystem are retried regardless of the failure.
+There are a few subtleties to be aware of here. First, requests originating from
+the proxy cache will only be retried if they resulted in specific HTTP result
+codes: any 50x code except 501 ("not implemented"). Requests coming from the
+template subsystem are retried regardless of the failure.
 
 Second, templating retries may be performed by both the templating engine _and_
 the cache proxy if OpenBao Agent [persistent

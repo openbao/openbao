@@ -75,13 +75,6 @@ The following flags are available for the `operator raft join` command.
 
 - `-leader-client-key` `(string: "")` - Client key to authenticate to Raft leader.
 
-- `-non-voter` `(bool: false) (enterprise)` - This flag is used to make the
-  server not participate in the Raft quorum, and have it only receive the data
-  replication stream. This can be used to add read scalability to a cluster in
-  cases where a high volume of reads to servers are needed. The default is false.
-  See [`retry_join_as_non_voter`](/vault/docs/configuration/storage/raft#retry_join_as_non_voter)
-  for the equivalent config option when using `retry_join` stanzas instead.
-
 - `-retry` `(bool: false)` - Continuously retry joining the Raft cluster upon
   failures. The default is false.
 
@@ -221,8 +214,7 @@ and how many nodes could fail before the cluster becomes unhealthy ("Failure Tol
 State includes a list of all servers by nodeID and IP address. Last Index
 indicates how close the state on each node is to the leader's.
 
-A node can have a status of "leader", "voter", and
-"[non-voter](/vault/docs/concepts/integrated-storage#non-voting-nodes-enterprise-only)".
+A node can have a status of "leader" or "voter".
 
 ```text
 Usage: bao operator raft autopilot state
@@ -261,39 +253,6 @@ Servers:
       Last Contact:    2.514176729s
       Last Term:       3
       Last Index:      38
-```
-Vault Enterprise will include additional output related to automated upgrades and redundancy zones.
-
-#### Example Vault enterprise output
-
-```text
-Redundancy Zones:
-   a
-      Servers: vault_1, vault_2, vault_5
-      Voters: vault_1
-      Failure Tolerance: 2
-   b
-      Servers: vault_3, vault_4
-      Voters: vault_3
-      Failure Tolerance: 1
-Upgrade Info:
-   Status: await-new-voters
-   Target Version: 1.12.0
-   Target Version Voters:
-   Target Version Non-Voters: vault_5
-   Other Version Voters: vault_1, vault_3
-   Other Version Non-Voters: vault_2, vault_4
-   Redundancy Zones:
-      a
-         Target Version Voters:
-         Target Version Non-Voters: vault_5
-         Other Version Voters: vault_1
-         Other Version Non-Voters: vault_2
-      b
-         Target Version Voters:
-         Target Version Non-Voters:
-         Other Version Voters: vault_3
-         Other Version Non-Voters: vault_4
 ```
 
 ### autopilot get-config
@@ -346,6 +305,3 @@ Flags applicable to this command are the following:
 - `server-stabilization-time` `(string)` - Minimum amount of time a server must be in a healthy state before it
   can become a voter. Until that happens, it will be visible as a peer in the cluster, but as a non-voter, meaning it
   won't contribute to quorum. Defaults to `10s`.
-
-- `disable-upgrade-migration` `(bool)` - Controls whether to disable automated
-  upgrade migrations, an Enterprise-only feature. Defaults to `false`.

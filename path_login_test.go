@@ -123,6 +123,7 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 	if cfg.boundClaims {
 		data["bound_claims"] = map[string]interface{}{
 			"color": "green",
+			"pnum":  json.Number("123"),
 		}
 	}
 	if cfg.boundCIDRs {
@@ -348,17 +349,19 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			}
 
 			privateCl := struct {
-				User      string   `json:"https://vault/user"`
-				Groups    []string `json:"https://vault/groups"`
-				FirstName string   `json:"first_name"`
-				Org       orgs     `json:"org"`
-				Color     string   `json:"color"`
+				User          string   `json:"https://vault/user"`
+				Groups        []string `json:"https://vault/groups"`
+				FirstName     string   `json:"first_name"`
+				Org           orgs     `json:"org"`
+				Color         string   `json:"color"`
+				ProjectNumber int      `json:"pnum"`
 			}{
 				"jeff",
 				[]string{"foo", "bar"},
 				"jeff2",
 				orgs{"engineering"},
 				"green",
+				123,
 			}
 
 			jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)

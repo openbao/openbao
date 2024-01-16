@@ -3,6 +3,7 @@
 ## v0.18.0
 
 IMPROVEMENTS:
+* Add support for numeric claims in bound_claims https://github.com/hashicorp/vault-plugin-auth-jwt/pull/265
 * Include role name in Entity Alias metadata https://github.com/hashicorp/vault-plugin-auth-jwt/pull/160
 * Updated dependencies:
   * `github.com/hashicorp/cap` v0.3.4 -> v0.4.0

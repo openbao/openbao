@@ -4,8 +4,10 @@
 package jwtauth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
@@ -53,16 +55,14 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 	// The claims unmarshalled by go-oidc don't use UseNumber, so there will
 	// be mismatches if they're coming in as float64 since Vault's config will
 	// be represented as json.Number. If the operator can coerce claims data to
-	// be in string form, there is no problem. Alternatively, we could try to
-	// intelligently convert float64 to json.Number, e.g.:
-	//
-	// switch v := val.(type) {
-	// case float64:
-	// 	val = json.Number(strconv.Itoa(int(v)))
-	// }
-	//
-	// Or we fork and/or PR go-oidc.
-
+	// be in string form, there is no problem. As an alternative, we try to
+	// intelligently convert float32 and float64 to json.Number:
+	switch v := val.(type) {
+	case float32:
+		return json.Number(strconv.Itoa(int(v)))
+	case float64:
+		return json.Number(strconv.Itoa(int(v)))
+	}
 	return val
 }
 
@@ -122,12 +122,12 @@ func validateBoundClaims(logger log.Logger, boundClaimsType string, boundClaims,
 
 		actVals, ok := normalizeList(actValue)
 		if !ok {
-			return fmt.Errorf("received claim is not a string or list: %v", actValue)
+			return fmt.Errorf("received claim is not a string, bool, int or list: %v", actValue)
 		}
 
 		expVals, ok := normalizeList(expValue)
 		if !ok {
-			return fmt.Errorf("bound claim is not a string or list: %v", expValue)
+			return fmt.Errorf("bound claim is not a string, bool, int or list: %v", expValue)
 		}
 
 		found, err := matchFound(expVals, actVals, useGlobs)
@@ -168,7 +168,7 @@ func matchFound(expVals, actVals []interface{}, useGlobs bool) (bool, error) {
 	return false, nil
 }
 
-// normalizeList takes a string, bool or list and returns a list. This is useful when
+// normalizeList takes a string, bool, json.Number or list and returns a list. This is useful when
 // providers are expected to return a list (typically of strings) but reduce it
 // to a string type when the list count is 1.
 func normalizeList(raw interface{}) ([]interface{}, bool) {
@@ -177,7 +177,7 @@ func normalizeList(raw interface{}) ([]interface{}, bool) {
 	switch v := raw.(type) {
 	case []interface{}:
 		normalized = v
-	case string, bool:
+	case string, bool, json.Number:
 		normalized = []interface{}{v}
 	default:
 		return nil, false

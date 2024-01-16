@@ -249,24 +249,6 @@ operation on a remote service, the OpenBao client will see a failure.
 The environment variable [`VAULT_CLIENT_TIMEOUT`](/vault/docs/commands#vault_client_timeout) sets a client-side maximum duration as well,
 which is 60 seconds by default.
 
-### Cluster and replication limits
-
-There are no implementation limits on the maximum size of a cluster,
-or the maximum number of replicas associated with a primary. However,
-each replica or performance standby adds considerable overhead to the
-active node, as each write must be duplicated to all standbys. The overhead of
-resyncing multiple replicas at once is also high.
-
-Monitor the active OpenBao node's CPU and network utilization, as well as
-the lag between the last WAL and replica WAL, to determine if the
-maximum number of replicas has been exceeded.
-
-|                                        | Limit                                  |
-| -------------------------------------- | -------------------------------------- |
-| Maximum cluster size                   | no limit, up to active node capability |
-| Maximum number of DR replicas          | no limit, up to active node capability |
-| Maximum number of performance replicas | no limit, up to active node capability |
-
 ### Lease limits
 
 A systemwide [maximum TTL](/vault/docs/configuration#max_lease_ttl), and a

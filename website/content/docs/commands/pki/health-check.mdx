@@ -173,24 +173,6 @@ Use `bao write` to enable CRL auto-rebuild:
 $ bao write <mount>/config/crl auto_rebuild=true
 ```
 
-### Hardware-Backed root certificate
-
-**Name**: `hardware_backed_root`
-
-**APIs**:
-
- - `LIST /issuers` (unauthenticated)
- - `READ /issuer/:issuer_ref`
- - `READ /key/:key_ref`
-
-**Config Parameters**:
-
- - `enabled` `(boolean: false)` - defaults to not being run.
-
-This health check checks issuers for root CAs backed by software keys. While OpenBao is secure, for production root certificates, we'd recommend the additional integrity of KMS-backed keys. This is an informational check only. When all roots are KMS-backed, we'll return OK; when no issuers are roots, we'll return not applicable.
-
-Read more about hardware-backed keys within [Vault Enterprise Managed Keys](/vault/docs/enterprise/managed-keys)
-
 ### Root certificate issued Non-CA leaves
 
 **Name**: `root_issued_leaves`

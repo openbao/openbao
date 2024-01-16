@@ -65,16 +65,6 @@ logging in via the OpenBao UI requires a redirect URI of the form:
 
 `https://{host:port}/v1/auth/{path}/oidc/callback`
 
-Prior to Vault 1.6, if [namespaces](/vault/docs/enterprise/namespaces) are in use,
-they must be added as query parameters, for example:
-
-`https://vault.example.com:8200/ui/vault/auth/oidc/oidc/callback?namespace=my_ns`
-
-For Vault 1.6+, it is no longer necessary to add the namespace as a query
-parameter in the redirect URI, if
-[`namespace_in_state`](/vault/api-docs/auth/jwt#namespace_in_state) is set to `true`,
-which is the default for new configs.
-
 ### OIDC login (OpenBao UI)
 
 1. Select the "OIDC" login method.

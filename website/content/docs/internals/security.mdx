@@ -97,12 +97,10 @@ require that a client provides a client token for every request which is used
 to identify the client. A client that does not provide their token is only
 permitted to make login requests.
 
-All server-to-server traffic between OpenBao instances within a cluster (i.e,
-high availability, enterprise replication or integrated storage) uses
+All server-to-server traffic between OpenBao instances within a cluster uses
 mutually-authenticated TLS to ensure the confidentiality and integrity of data
 in transit. Nodes are authenticated prior to joining the cluster by an
-[unseal challenge](/vault/docs/concepts/integrated-storage#vault-networking-recap) or
-a [one-time-use activation token](/vault/docs/enterprise/replication#security-model).
+[unseal challenge](/vault/docs/concepts/integrated-storage#vault-networking-recap).
 
 The storage backends used by OpenBao are also untrusted by design. OpenBao uses a
 security barrier for all requests made to the backend. The security barrier

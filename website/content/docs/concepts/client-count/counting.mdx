@@ -11,8 +11,7 @@ OpenBao provides usage telemetry for the number of clients based on the number o
 unique entity assignments within a OpenBao cluster over a given billing period:
 
 - Standard entity assignments based on authentication method for active entities. 
-- Constructed entity assignments for active non-entity tokens, including batch
-  tokens created by performance standby nodes.
+- Constructed entity assignments for active non-entity tokens.
 - Certificate entity assignments for ACME connections.
 
 ```markdown
@@ -20,9 +19,6 @@ CLIENT_COUNT_PER_CLUSTER = UNIQUE_STANDARD_ENTITIES +
                            UNIQUE_CONSTRUCTED_ENTITIES +
                            UNIQUE CERTIFICATE_ENTITIES
 ```
-
-OpenBao does not aggregate or de-duplicate clients across clusters, but all logs
-and precomputed reports are included in DR replication.
 
 <Note heading="Certificate entities currently reported as non-entity clients">
 

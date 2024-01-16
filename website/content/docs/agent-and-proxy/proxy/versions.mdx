@@ -36,4 +36,3 @@ Auto-auth:
 
 Proxy:
 - since Proxy simply mirrors the incoming requests, it is unlikely that incompatibilities would surface in proxying, but new functionality may not be available
-- example: When client-controlled consistency support was added to Proxy, it started looking for X-Vault-Index headers in responses, and started providing X-Vault-Index headers in proxied requests.  Older Vault Enterprise servers that don't make use of these headers would ignore the new request header and not emit them either.  Proxy proxying behaviour continued unchanged, unable to take advantage of the new functionality, but also not impeded in its previously existing behavior.

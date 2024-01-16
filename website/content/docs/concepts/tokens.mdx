@@ -265,8 +265,6 @@ batch tokens.
 | Has Cubbyhole                                       |                                                     Yes |                                              No |
 | Revoked with Parent (if not orphan)                 |                                                     Yes |                                   Stops Working |
 | Dynamic Secrets Lease Assignment                    |                                                    Self |                          Parent (if not orphan) |
-| Can be Used Across Performance Replication Clusters |                                                      No |                                 Yes (if orphan) |
-| Creation Scales with Performance Standby Node Count |                                                      No |                                             Yes |
 | Cost                                                | Heavyweight; multiple storage writes per token creation | Lightweight; no storage cost for token creation |
 
 ### Service vs. batch token lease handling
@@ -283,7 +281,3 @@ batch tokens and, if the batch token is not an orphan, are tracked by the
 parent. They are revoked when the batch token's TTL expires, or when the batch
 token's parent is revoked (at which point the batch token is also denied access
 to OpenBao).
-
-As a corollary, batch tokens can be used across performance replication
-clusters, but only if they are orphan, since non-orphan tokens will not be able
-to ensure the validity of the parent token.

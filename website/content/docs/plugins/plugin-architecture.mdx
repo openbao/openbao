@@ -23,9 +23,8 @@ curated collection of official, partner, and community OpenBao plugins.
 
 OpenBao external plugins are long-running processes that remain running once they are
 spawned by OpenBao, the parent process. Plugin processes can be started by OpenBao's
-active node and performance standby nodes. Additionally, there are cases where
-plugin processes may be terminated by OpenBao. These cases include, but are not
-limited to:
+active node. Additionally, there are cases where plugin processes may be
+terminated by OpenBao. These cases include, but are not limited to:
 
 - OpenBao active node step-down
 - OpenBao barrier seal
@@ -45,17 +44,6 @@ within OpenBao as well. Since OpenBao manages and tracks the lifecycle of its
 plugins, these processes should not be terminated by anything other than OpenBao.
 If a plugin process is shutdown out-of-band, the plugin process will be lazily
 loaded when a request that requires the plugin is received by OpenBao.
-
-### External plugin scaling characteristics
-
-External plugins can leverage [Performance Standbys](/vault/docs/enterprise/performance-standby)
-without any explicit action by a plugin author. The default behavior of Vault
-Enterprise is to attempt to handle all requests, including requests to plugins,
-on performance standbys. If the plugin request makes any attempt to modify
-storage, the request will receive a readonly error, and the request routing
-code will then forward the full original request transparently to the active
-node. In other words, plugins can scale horizontally on Vault Enterprise
-without any effort on the plugin author's part.
 
 ## Plugin communication
 

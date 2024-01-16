@@ -123,11 +123,6 @@ To mitigate this risk, we recommend careful controls around management of the se
 mechanism, for example using 
 [AWS Service Control Policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)
 or similar.  
-With Vault Enterprise secondary clusters (disaster or performance) can have a
-seal configured independently of the primary, and when properly configured guards 
-against *some* of this risk.  Unreplicated items such as local mounts could still 
-be lost.
-
 
 ## Recovery key
 
@@ -169,10 +164,6 @@ operation from the CLI or the matching API calls. The rekey operation is
 authorized by meeting the threshold of recovery keys. After rekeying, the new
 barrier key is wrapped by the HSM or KMS and stored like the previous key; it is not
 returned to the users that submitted their recovery keys.
-
-<EnterpriseAlert product="vault">
-  Seal wrapping requires Vault Enterprise
-</EnterpriseAlert>
 
 #### Recovery key
 
@@ -246,9 +237,7 @@ any storage backend.
 1. The new active node will perform the migration. Monitor the server log in
    the active node to witness the completion of the seal migration process.
    Wait for a little while for the migration information to replicate to all the
-   nodes in case of Integrated Storage. In enterprise Vault, switching an Auto seal
-   implies that the seal wrapped storage entries get re-wrapped. Monitor the log
-   and wait until this process is complete (look for `seal re-wrap completed`).
+   nodes in case of Integrated Storage.
 
 1. Seal migration is now completed. Take down the old active node, update its
    configuration to use the new seal blocks (completely unaware of the old seal type)

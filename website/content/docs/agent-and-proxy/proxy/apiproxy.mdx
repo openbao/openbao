@@ -55,17 +55,6 @@ configuration will be overridden and the token in the request will be used to
 forward the request to the OpenBao server. If set to `"force"` Agent will use the
 auto-auth token, overwriting the attached OpenBao token if set.
 
-The following two `api_proxy` options are only useful when making requests to a Vault
-Enterprise cluster, and are documented as part of its
-[Eventual Consistency](/vault/docs/enterprise/consistency#vault-agent-and-consistency-headers)
-page.
-
-- `enforce_consistency` `(string: "never")` - Set to one of `"always"`
-or `"never"`.
-
-- `when_inconsistent` `(string: optional)` - Set to one of `"fail"`, `"retry"`,
-or `"forward"`.
-
 ### Example configuration
 
 Here is an example of a `listener` configuration alongside `api_proxy` configuration to force the use of the auto_auth token
@@ -77,7 +66,6 @@ and enforce consistency.
 
 api_proxy {
   use_auto_auth_token = "force"
-  enforce_consistency = "always"
 }
 
 listener "tcp" {

@@ -48,9 +48,6 @@ storage](/vault/docs/configuration/storage/raft) for most use cases rather than
 configuring another system to store OpenBao data externally. (Integrated Storage is
 an **embedded OpenBao data storage** available in Vault 1.4 or later.) Prior to Vault 1.4, Consul was the recommended OpenBao storage.
 
--> **NOTE:** [HCP Vault](https://cloud.hashicorp.com/products/vault) clusters
-use Integrated Storage as their storage backend.
-
 The table below compares the characteristics of Integrated Storage and External
 Storage. Suppose you decide that the additional operational complexity of external storage is worth it for your use case. In that case, there are several external storage options to choose from (e.g., [Consul](/vault/docs/configuration/storage/consul), [DynamoDB](/vault/docs/configuration/storage/dynamodb), etc.).
 

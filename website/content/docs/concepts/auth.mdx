@@ -138,12 +138,6 @@ import (
 //
 // Production applications may also wish to be more tolerant of failures and
 // retry rather than exiting.
-//
-// Additionally, enterprise OpenBao users should be aware that due to eventual
-// consistency, the API may return unexpected errors when running OpenBao with
-// performance standbys or performance replication, despite the client having
-// a freshly renewed token. See https://www.vaultproject.io/docs/enterprise/consistency#vault-1-7-mitigations
-// for several ways to mitigate this which are outside the scope of this code sample.
 func renewToken(client *openbao.Client) {
 	for {
 		openbaoLoginResp, err := login(client)

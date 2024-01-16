@@ -95,10 +95,6 @@ metadata:
   True indicates that this OpenBao pod is currently the leader. False indicates that this OpenBao pod is currently a standby.
 - `vault-initialized` `(string: "true"/"false")` – Vault initialized is updated dynamically each time OpenBao's initialization
   status changes. True indicates that OpenBao is currently initialized. False indicates the OpenBao is currently uninitialized.
-- `vault-perf-standby` `(string: "true"/"false")` – Vault performance standby is updated dynamically each
-  time OpenBao's leader/standby status changes. **This field is only valuable if the pod is a member of a performance standby cluster**,
-  it will simply be set to "false" when it's not applicable. True indicates that this OpenBao pod is currently a performance standby. False indicates
-  that this OpenBao pod is currently a performance leader.
 - `vault-sealed` `(string: "true"/"false")` – Vault sealed is updated dynamically each
   time OpenBao's sealed/unsealed status changes. True indicates that OpenBao is currently sealed. False indicates that OpenBao
   is currently unsealed.
@@ -143,13 +139,7 @@ spec:
 
 Also, by setting `publishNotReadyAddresses: false` above, pods that have failed will be removed from the service pool.
 
-With this active service in place, we now have a dedicated endpoint that will always reach the active node. When
-setting up OpenBao replication, it can be used as the primary address:
-
-```shell-session
-$ bao write -f sys/replication/performance/primary/enable \
-    primary_cluster_addr='https://openbao-active-us-east:8201'
-```
+With this active service in place, we now have a dedicated endpoint that will always reach the active node. 
 
 ### Example upgrades
 

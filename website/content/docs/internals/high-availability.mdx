@@ -35,18 +35,6 @@ Please note that only _unsealed_ OpenBao servers may act as a standby.
 If a server is in a sealed state, it cannot act as a standby. Servers in a sealed state cannot
  serve any requests if the active server fails.
 
-# Performance standby nodes (Enterprise)
-
-Performance Standby Nodes service read-only requests from users or applications.
-Read-only requests are requests that do not modify OpenBao's storage. OpenBao quickly scales its ability to service these operations,
-providing a near-linear request-per-second scaling for most scenarios and secrets engines like K/V and Transit. Traffic is distributed across performance standby nodes, allowing clients to scale these IOPS horizontally, and control high traffic workloads.
-
-If a request comes into a Performance Standby Node that causes a storage to write
-the request, the request is forwarded to the active server. Read-only requests are serviced locally on the Performance Standby.
-
-Like traditional HA standbys, a Performance Standby Node becomes the active instance when the active node is sealed, fails, or loses
-network connectivity.
-
 # Tutorial 
 
 Refer to the following tutorials to learn more.
@@ -54,5 +42,4 @@ Refer to the following tutorials to learn more.
 - [OpenBao with Integrated Storage Reference Architecture](/vault/tutorials/day-one-raft/raft-reference-architecture)
 - [OpenBao HA Cluster with Integrated Storage](/vault/tutorials/raft/raft-storage)
 - [OpenBao High Availability with Consul](/vault/tutorials/day-one-consul/ha-with-consul)
-- [Performance Standby Nodes](/vault/tutorials/enterprise/performance-standbys)
 

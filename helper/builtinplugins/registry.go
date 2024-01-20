@@ -43,6 +43,7 @@ import (
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
+	dbRedis "github.com/openbao/openbao/plugins/database/redis"
 	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/consts"

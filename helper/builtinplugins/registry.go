@@ -15,19 +15,12 @@ import (
 	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credKube "github.com/hashicorp/vault-plugin-auth-kubernetes"
 	credOCI "github.com/hashicorp/vault-plugin-auth-oci"
-	dbCouchbase "github.com/hashicorp/vault-plugin-database-couchbase"
-	dbElastic "github.com/hashicorp/vault-plugin-database-elasticsearch"
-	dbMongoAtlas "github.com/hashicorp/vault-plugin-database-mongodbatlas"
-	dbRedis "github.com/hashicorp/vault-plugin-database-redis"
-	dbRedisElastiCache "github.com/hashicorp/vault-plugin-database-redis-elasticache"
-	dbSnowflake "github.com/hashicorp/vault-plugin-database-snowflake"
 	logicalAd "github.com/hashicorp/vault-plugin-secrets-ad/plugin"
 	logicalAlicloud "github.com/hashicorp/vault-plugin-secrets-alicloud"
 	logicalAzure "github.com/hashicorp/vault-plugin-secrets-azure"
 	logicalGcp "github.com/hashicorp/vault-plugin-secrets-gcp/plugin"
 	logicalGcpKms "github.com/hashicorp/vault-plugin-secrets-gcpkms"
 	logicalKube "github.com/hashicorp/vault-plugin-secrets-kubernetes"
-	logicalMongoAtlas "github.com/hashicorp/vault-plugin-secrets-mongodbatlas"
 	logicalLDAP "github.com/hashicorp/vault-plugin-secrets-openldap"
 	logicalTerraform "github.com/hashicorp/vault-plugin-secrets-terraform"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
@@ -47,13 +40,9 @@ import (
 	logicalTotp "github.com/openbao/openbao/builtin/logical/totp"
 	logicalTransit "github.com/openbao/openbao/builtin/logical/transit"
 	dbCass "github.com/openbao/openbao/plugins/database/cassandra"
-	dbHana "github.com/openbao/openbao/plugins/database/hana"
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
-	dbMongo "github.com/openbao/openbao/plugins/database/mongodb"
-	dbMssql "github.com/openbao/openbao/plugins/database/mssql"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
-	dbRedshift "github.com/openbao/openbao/plugins/database/redshift"
 	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/consts"
@@ -134,19 +123,10 @@ func newRegistry() *registry {
 			"mysql-rds-database-plugin":    {Factory: dbMysql.New(dbMysql.DefaultLegacyUserNameTemplate)},
 			"mysql-legacy-database-plugin": {Factory: dbMysql.New(dbMysql.DefaultLegacyUserNameTemplate)},
 
-			"cassandra-database-plugin":         {Factory: dbCass.New},
-			"couchbase-database-plugin":         {Factory: dbCouchbase.New},
-			"elasticsearch-database-plugin":     {Factory: dbElastic.New},
-			"hana-database-plugin":              {Factory: dbHana.New},
-			"influxdb-database-plugin":          {Factory: dbInflux.New},
-			"mongodb-database-plugin":           {Factory: dbMongo.New},
-			"mongodbatlas-database-plugin":      {Factory: dbMongoAtlas.New},
-			"mssql-database-plugin":             {Factory: dbMssql.New},
-			"postgresql-database-plugin":        {Factory: dbPostgres.New},
-			"redshift-database-plugin":          {Factory: dbRedshift.New},
-			"redis-database-plugin":             {Factory: dbRedis.New},
-			"redis-elasticache-database-plugin": {Factory: dbRedisElastiCache.New},
-			"snowflake-database-plugin":         {Factory: dbSnowflake.New},
+			"cassandra-database-plugin":  {Factory: dbCass.New},
+			"influxdb-database-plugin":   {Factory: dbInflux.New},
+			"postgresql-database-plugin": {Factory: dbPostgres.New},
+			"redis-database-plugin":      {Factory: dbRedis.New},
 		},
 		logicalBackends: map[string]logicalBackend{
 			"ad": {

@@ -28,7 +28,6 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	physconsul "github.com/openbao/openbao/physical/consul"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
@@ -328,28 +327,6 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 				diagnose.RaftFileChecks(ctx, path)
 			}
 			diagnose.RaftStorageQuorum(ctx, (*backend).(*raft.RaftBackend))
-		}
-
-		// Consul storage checks
-		if config.Storage != nil && config.Storage.Type == storageTypeConsul {
-			diagnose.Test(ctx, "Check Consul TLS", func(ctx context.Context) error {
-				err := physconsul.SetupSecureTLS(ctx, api.DefaultConfig(), config.Storage.Config, server.logger, true)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-
-			diagnose.Test(ctx, "Check Consul Direct Storage Access", func(ctx context.Context) error {
-				dirAccess := diagnose.ConsulDirectAccess(config.Storage.Config)
-				if dirAccess != "" {
-					diagnose.Warn(ctx, dirAccess)
-				}
-				if dirAccess == diagnose.DirAccessErr {
-					diagnose.Advise(ctx, diagnose.DirAccessAdvice)
-				}
-				return nil
-			})
 		}
 
 		// Attempt to use storage backend

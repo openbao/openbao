@@ -44,27 +44,7 @@ import (
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 
-	physAerospike "github.com/openbao/openbao/physical/aerospike"
-	physAliCloudOSS "github.com/openbao/openbao/physical/alicloudoss"
-	physAzure "github.com/openbao/openbao/physical/azure"
-	physCassandra "github.com/openbao/openbao/physical/cassandra"
-	physCockroachDB "github.com/openbao/openbao/physical/cockroachdb"
-	physConsul "github.com/openbao/openbao/physical/consul"
-	physCouchDB "github.com/openbao/openbao/physical/couchdb"
-	physDynamoDB "github.com/openbao/openbao/physical/dynamodb"
-	physEtcd "github.com/openbao/openbao/physical/etcd"
-	physFoundationDB "github.com/openbao/openbao/physical/foundationdb"
-	physGCS "github.com/openbao/openbao/physical/gcs"
-	physManta "github.com/openbao/openbao/physical/manta"
-	physMSSQL "github.com/openbao/openbao/physical/mssql"
-	physMySQL "github.com/openbao/openbao/physical/mysql"
-	physOCI "github.com/openbao/openbao/physical/oci"
-	physPostgreSQL "github.com/openbao/openbao/physical/postgresql"
 	physRaft "github.com/openbao/openbao/physical/raft"
-	physS3 "github.com/openbao/openbao/physical/s3"
-	physSpanner "github.com/openbao/openbao/physical/spanner"
-	physSwift "github.com/openbao/openbao/physical/swift"
-	physZooKeeper "github.com/openbao/openbao/physical/zookeeper"
 	physFile "github.com/openbao/openbao/sdk/physical/file"
 	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
 
@@ -183,34 +163,13 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"aerospike":              physAerospike.NewAerospikeBackend,
-		"alicloudoss":            physAliCloudOSS.NewAliCloudOSSBackend,
-		"azure":                  physAzure.NewAzureBackend,
-		"cassandra":              physCassandra.NewCassandraBackend,
-		"cockroachdb":            physCockroachDB.NewCockroachDBBackend,
-		"consul":                 physConsul.NewConsulBackend,
-		"couchdb_transactional":  physCouchDB.NewTransactionalCouchDBBackend,
-		"couchdb":                physCouchDB.NewCouchDBBackend,
-		"dynamodb":               physDynamoDB.NewDynamoDBBackend,
-		"etcd":                   physEtcd.NewEtcdBackend,
 		"file_transactional":     physFile.NewTransactionalFileBackend,
 		"file":                   physFile.NewFileBackend,
-		"foundationdb":           physFoundationDB.NewFDBBackend,
-		"gcs":                    physGCS.NewBackend,
 		"inmem_ha":               physInmem.NewInmemHA,
 		"inmem_transactional_ha": physInmem.NewTransactionalInmemHA,
 		"inmem_transactional":    physInmem.NewTransactionalInmem,
 		"inmem":                  physInmem.NewInmem,
-		"manta":                  physManta.NewMantaBackend,
-		"mssql":                  physMSSQL.NewMSSQLBackend,
-		"mysql":                  physMySQL.NewMySQLBackend,
-		"oci":                    physOCI.NewBackend,
-		"postgresql":             physPostgreSQL.NewPostgreSQLBackend,
-		"s3":                     physS3.NewS3Backend,
-		"spanner":                physSpanner.NewBackend,
-		"swift":                  physSwift.NewSwiftBackend,
 		"raft":                   physRaft.NewRaftBackend,
-		"zookeeper":              physZooKeeper.NewZooKeeperBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{

@@ -87,7 +87,6 @@ require (
 	github.com/hashicorp/raft-autopilot v0.2.0
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c
 	github.com/hashicorp/raft-snapshot v1.0.4
-	github.com/hashicorp/vault-plugin-auth-kerberos v0.10.0
 	github.com/hashicorp/vault-plugin-mock v0.16.1
 	github.com/hashicorp/vault-plugin-secrets-kv v0.15.0
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
@@ -100,6 +99,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.19
+	github.com/mediocregopher/radix/v4 v4.1.4
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/michaelklishin/rabbit-hole/v2 v2.12.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
@@ -337,6 +337,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
+	github.com/tilinna/clock v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect

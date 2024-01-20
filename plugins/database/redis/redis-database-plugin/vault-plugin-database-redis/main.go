@@ -7,7 +7,7 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	redis "github.com/hashicorp/vault-plugin-database-redis"
+	redis "github.com/openbao/openbao/plugins/database/redis"
 	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 )
 

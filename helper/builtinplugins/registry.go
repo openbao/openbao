@@ -9,12 +9,6 @@ import (
 	credJWT "github.com/hashicorp/vault-plugin-auth-jwt"
 	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credKube "github.com/hashicorp/vault-plugin-auth-kubernetes"
-	logicalAd "github.com/hashicorp/vault-plugin-secrets-ad/plugin"
-	logicalAlicloud "github.com/hashicorp/vault-plugin-secrets-alicloud"
-	logicalAzure "github.com/hashicorp/vault-plugin-secrets-azure"
-	logicalGcp "github.com/hashicorp/vault-plugin-secrets-gcp/plugin"
-	logicalGcpKms "github.com/hashicorp/vault-plugin-secrets-gcpkms"
-	logicalTerraform "github.com/hashicorp/vault-plugin-secrets-terraform"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
@@ -105,32 +99,13 @@ func newRegistry() *registry {
 			"redis-database-plugin":      {Factory: dbRedis.New},
 		},
 		logicalBackends: map[string]logicalBackend{
-			"ad": {
-				Factory:           logicalAd.Factory,
-				DeprecationStatus: consts.Deprecated,
-			},
-			"alicloud": {Factory: logicalAlicloud.Factory},
-			"azure":    {Factory: logicalAzure.Factory},
 			"cassandra": {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
-			"gcp":        {Factory: logicalGcp.Factory},
-			"gcpkms":     {Factory: logicalGcpKms.Factory},
 			"kubernetes": {Factory: logicalKube.Factory},
 			"kv":         {Factory: logicalKv.Factory},
 			"mongodb": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			// The mongodbatlas secrets engine is not the same as the database plugin equivalent
-			// (`mongodbatlas-database-plugin`), and thus will not be deprecated at this time.
-			"mongodbatlas": {Factory: logicalMongoAtlas.Factory},
-			"mssql": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"mysql": {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
@@ -141,11 +116,10 @@ func newRegistry() *registry {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
-			"rabbitmq":  {Factory: logicalRabbit.Factory},
-			"ssh":       {Factory: logicalSsh.Factory},
-			"terraform": {Factory: logicalTerraform.Factory},
-			"totp":      {Factory: logicalTotp.Factory},
-			"transit":   {Factory: logicalTransit.Factory},
+			"rabbitmq": {Factory: logicalRabbit.Factory},
+			"ssh":      {Factory: logicalSsh.Factory},
+			"totp":     {Factory: logicalTotp.Factory},
+			"transit":  {Factory: logicalTransit.Factory},
 		},
 	}
 

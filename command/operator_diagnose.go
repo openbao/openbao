@@ -542,15 +542,6 @@ SEALFAIL:
 			}
 			return nil
 		})
-		if config.HAStorage != nil && config.HAStorage.Type == storageTypeConsul {
-			diagnose.Test(ctx, "Check Consul TLS", func(ctx context.Context) error {
-				err = physconsul.SetupSecureTLS(ctx, api.DefaultConfig(), config.HAStorage.Config, server.logger, true)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		}
 		return nil
 	})
 

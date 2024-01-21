@@ -14,11 +14,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/alicloudkms/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/gcpckms/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/ocikms/v2"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -175,23 +170,6 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 	case wrapping.WrapperTypeAead:
 		wrapper, kmsInfo, err = GetAEADKMSFunc(configKMS, opts...)
 
-	case wrapping.WrapperTypeAliCloudKms:
-		wrapper, kmsInfo, err = GetAliCloudKMSFunc(configKMS, opts...)
-
-	case wrapping.WrapperTypeAwsKms:
-		wrapper, kmsInfo, err = GetAWSKMSFunc(configKMS, opts...)
-
-	case wrapping.WrapperTypeAzureKeyVault:
-		wrapper, kmsInfo, err = GetAzureKeyVaultKMSFunc(configKMS, opts...)
-
-	case wrapping.WrapperTypeGcpCkms:
-		wrapper, kmsInfo, err = GetGCPCKMSKMSFunc(configKMS, opts...)
-
-	case wrapping.WrapperTypeOciKms:
-		if keyId, ok := configKMS.Config["key_id"]; ok {
-			opts = append(opts, wrapping.WithKeyId(keyId))
-		}
-		wrapper, kmsInfo, err = GetOCIKMSKMSFunc(configKMS, opts...)
 	case wrapping.WrapperTypeTransit:
 		wrapper, kmsInfo, err = GetTransitKMSFunc(configKMS, opts...)
 
@@ -229,99 +207,6 @@ func GetAEADKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[st
 			str = fmt.Sprintf("%v %s", kms.Purpose, str)
 		}
 		info[str] = wrapperInfo.Metadata["aead_type"]
-	}
-	return wrapper, info, nil
-}
-
-func GetAliCloudKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := alicloudkms.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		// If the error is any other than logical.KeyNotFoundError, return the error
-		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
-			return nil, nil, err
-		}
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		info["AliCloud KMS Region"] = wrapperInfo.Metadata["region"]
-		info["AliCloud KMS KeyID"] = wrapperInfo.Metadata["kms_key_id"]
-		if domain, ok := wrapperInfo.Metadata["domain"]; ok {
-			info["AliCloud KMS Domain"] = domain
-		}
-	}
-	return wrapper, info, nil
-}
-
-var GetAWSKMSFunc = func(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := awskms.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		// If the error is any other than logical.KeyNotFoundError, return the error
-		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
-			return nil, nil, err
-		}
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		info["AWS KMS Region"] = wrapperInfo.Metadata["region"]
-		info["AWS KMS KeyID"] = wrapperInfo.Metadata["kms_key_id"]
-		if endpoint, ok := wrapperInfo.Metadata["endpoint"]; ok {
-			info["AWS KMS Endpoint"] = endpoint
-		}
-	}
-	return wrapper, info, nil
-}
-
-func GetAzureKeyVaultKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := azurekeyvault.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		// If the error is any other than logical.KeyNotFoundError, return the error
-		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
-			return nil, nil, err
-		}
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		info["Azure Environment"] = wrapperInfo.Metadata["environment"]
-		info["Azure Vault Name"] = wrapperInfo.Metadata["vault_name"]
-		info["Azure Key Name"] = wrapperInfo.Metadata["key_name"]
-	}
-	return wrapper, info, nil
-}
-
-func GetGCPCKMSKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := gcpckms.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		// If the error is any other than logical.KeyNotFoundError, return the error
-		if !errwrap.ContainsType(err, new(logical.KeyNotFoundError)) {
-			return nil, nil, err
-		}
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		info["GCP KMS Project"] = wrapperInfo.Metadata["project"]
-		info["GCP KMS Region"] = wrapperInfo.Metadata["region"]
-		info["GCP KMS Key Ring"] = wrapperInfo.Metadata["key_ring"]
-		info["GCP KMS Crypto Key"] = wrapperInfo.Metadata["crypto_key"]
-	}
-	return wrapper, info, nil
-}
-
-func GetOCIKMSKMSFunc(kms *KMS, opts ...wrapping.Option) (wrapping.Wrapper, map[string]string, error) {
-	wrapper := ocikms.NewWrapper()
-	wrapperInfo, err := wrapper.SetConfig(context.Background(), append(opts, wrapping.WithConfigMap(kms.Config))...)
-	if err != nil {
-		return nil, nil, err
-	}
-	info := make(map[string]string)
-	if wrapperInfo != nil {
-		info["OCI KMS KeyID"] = wrapperInfo.Metadata[ocikms.KmsConfigKeyId]
-		info["OCI KMS Crypto Endpoint"] = wrapperInfo.Metadata[ocikms.KmsConfigCryptoEndpoint]
-		info["OCI KMS Management Endpoint"] = wrapperInfo.Metadata[ocikms.KmsConfigManagementEndpoint]
-		info["OCI KMS Principal Type"] = wrapperInfo.Metadata["principal_type"]
 	}
 	return wrapper, info, nil
 }

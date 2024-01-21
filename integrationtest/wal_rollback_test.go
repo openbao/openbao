@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v3"
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

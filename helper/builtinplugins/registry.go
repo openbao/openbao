@@ -6,11 +6,11 @@ package builtinplugins
 import (
 	"context"
 
-	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credKube "github.com/hashicorp/vault-plugin-auth-kubernetes"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credJWT "github.com/openbao/openbao/builtin/credential/jwt"
+	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credRadius "github.com/openbao/openbao/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"

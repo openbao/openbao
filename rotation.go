@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/consts"
-	"github.com/hashicorp/vault/sdk/helper/locksutil"
-	"github.com/hashicorp/vault/sdk/logical"
-	"github.com/hashicorp/vault/sdk/queue"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/helper/locksutil"
+	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/queue"
 	"github.com/mitchellh/mapstructure"
 )
 

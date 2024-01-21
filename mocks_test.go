@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/mock"
 )
 

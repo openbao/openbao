@@ -11,9 +11,9 @@ require (
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
-	github.com/hashicorp/vault/api v1.9.2
-	github.com/hashicorp/vault/sdk v0.9.2
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/openbao/openbao/api v1.9.2
+	github.com/openbao/openbao/sdk v0.9.2
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/text v0.12.0
 )

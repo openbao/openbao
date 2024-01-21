@@ -8,8 +8,8 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	ldap "github.com/hashicorp/vault-plugin-secrets-openldap"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {

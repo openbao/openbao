@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestCheckOutHandlerStorageLayer(t *testing.T) {

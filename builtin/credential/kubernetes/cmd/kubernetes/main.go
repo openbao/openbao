@@ -8,8 +8,8 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
-	kubeauth "github.com/hashicorp/vault-plugin-auth-kubernetes"
 	"github.com/openbao/openbao/api"
+	kubeauth "github.com/openbao/openbao/builtin/credential/kubernetes"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

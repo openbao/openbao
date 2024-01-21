@@ -746,8 +746,6 @@ github.com/hashicorp/vault-plugin-auth-alicloud v0.15.0 h1:R2SVwOeVLG5DXzUx42UWh
 github.com/hashicorp/vault-plugin-auth-alicloud v0.15.0/go.mod h1:YQXpa2s4rGYKm3Oa/Nkgh5SuGVfHFNEIUwDDYWyhloE=
 github.com/hashicorp/vault-plugin-auth-cf v0.15.0 h1:zIVGlYXCRBY/ElucWdFC9xF27d2QMGMQPm9wSezGREI=
 github.com/hashicorp/vault-plugin-auth-cf v0.15.0/go.mod h1:FEIjQkYmzno4MfU36MAjFUG9/JUWeMPxvBG5DRTMYVM=
-github.com/hashicorp/vault-plugin-auth-kubernetes v0.16.0 h1:vuXNJvtMyoqQ01Sfwf2TNcJNkGcxP1vD3C7gpvuVkCU=
-github.com/hashicorp/vault-plugin-auth-kubernetes v0.16.0/go.mod h1:onx9W/rDwENQkN+1yEnJvS51PVkkGAPOBXasne7lnnk=
 github.com/hashicorp/vault-plugin-auth-oci v0.14.0 h1:B7uyigqgUAO3gebvi8mMmsq7l4QAG0bLEP6rAKyDVuw=
 github.com/hashicorp/vault-plugin-auth-oci v0.14.0/go.mod h1:SYdTtQhzMxqOCbdC0E0UOrkc4eGXXcJmXXbe1MHVPtE=
 github.com/hashicorp/vault-plugin-mock v0.16.1 h1:5QQvSUHxDjEEbrd2REOeacqyJnCLPD51IQzy71hx8P0=

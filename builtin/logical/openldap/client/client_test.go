@@ -11,7 +11,7 @@ import (
 	"github.com/openbao/openbao/sdk/helper/ldaputil"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/hashicorp/vault-plugin-secrets-openldap/ldapifc"
+	"github.com/openbao/openbao/builtin/logical/openldap/ldapifc"
 )
 
 func TestSearch(t *testing.T) {

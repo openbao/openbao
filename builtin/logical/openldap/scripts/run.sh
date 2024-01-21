@@ -4,7 +4,7 @@
 
 set -e
 
-PLUGIN_NAME="vault-plugin-secrets-openldap"
+PLUGIN_NAME="openldap"
 PLUGIN_CATALOG_NAME="openldap"
 
 #

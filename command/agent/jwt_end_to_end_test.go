@@ -12,8 +12,8 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
 	"github.com/openbao/openbao/api"
+	vaultjwt "github.com/openbao/openbao/builtin/credential/jwt"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	agentjwt "github.com/openbao/openbao/command/agentproxyshared/auth/jwt"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"

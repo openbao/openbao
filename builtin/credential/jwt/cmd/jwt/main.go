@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	jwtauth "github.com/hashicorp/vault-plugin-auth-jwt"
 	"github.com/openbao/openbao/api"
+	jwtauth "github.com/openbao/openbao/builtin/credential/jwt"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

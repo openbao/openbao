@@ -8,8 +8,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	kerberosauth "github.com/hashicorp/vault-plugin-auth-kerberos"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {

@@ -24,7 +24,7 @@ Before tuning the auth method configuration, view the current configuration of t
 auth method enabled at `github/`.
 
 ```shell-session
-$ openbao read sys/auth/github/tune
+$ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    768h
@@ -38,7 +38,7 @@ The default lease for the auth method enabled at `github/` is currently set to
 768 hours. Tune this value to 72 hours.
 
 ```shell-session
-$ openbao auth tune -default-lease-ttl=72h github/
+$ bao auth tune -default-lease-ttl=72h github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -47,7 +47,7 @@ Verify the updated configuration.
 <CodeBlockConfig highlight="1,4">
 
 ```shell-session
-$ openbao read sys/auth/github/tune
+$ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    72h
@@ -62,7 +62,7 @@ token_type           default-service
 To restore back to the system default, you can use `-1`. 
 
 ```shell-session
-$ openbao auth tune -default-lease-ttl=-1 github/
+$ bao auth tune -default-lease-ttl=-1 github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -71,7 +71,7 @@ Verify the updated configuration.
 <CodeBlockConfig highlight="1,4">
 
 ```shell-session
-$ openbao read sys/auth/github/tune
+$ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
 default_lease_ttl    768h
@@ -86,7 +86,7 @@ token_type           default-service
 You can specify multiple audit non-hmac request keys.
 
 ```shell-session
-$ openbao auth tune -audit-non-hmac-request-keys=value1 -audit-non-hmac-request-keys=value2 github/
+$ bao auth tune -audit-non-hmac-request-keys=value1 -audit-non-hmac-request-keys=value2 github/
 Success! Tuned the auth method at: github/
 ```
 
@@ -100,7 +100,7 @@ Tune the `userpass/` auth method to lock out the user after 10 failed login
 attempts within 10 minutes.
 
 ```shell-session
-$ openbao auth tune -user-lockout-threshold=10  -user-lockout-duration=10m userpass/
+$ bao auth tune -user-lockout-threshold=10  -user-lockout-duration=10m userpass/
 Success! Tuned the auth method at: userpass/
 ```
 
@@ -109,7 +109,7 @@ View the current configuration of the auth method enabled at `userpass/`.
 <CodeBlockConfig highlight="1,11-13">
 
 ```shell-session
-$ openbao read sys/auth/userpass/tune
+$ bao read sys/auth/userpass/tune
 
 Key                  Value
 ---                  -----

@@ -19,11 +19,11 @@ Option flags for a given subcommand are provided after the subcommand, but befor
 
 To [import](/vault/docs/commands/transit/import) keys into a mount via the
 [Transit BYOK](/vault/docs/secrets/transit#bring-your-own-key-byok)
-mechanism, use the `openbao transit import <path> <key>` or
-`openbao transit import-version <path> <key>` commands:
+mechanism, use the `bao transit import <path> <key>` or
+`bao transit import-version <path> <key>` commands:
 
 ```
-$ openbao transit import transit/keys/test-key @test-key type=rsa-2048
+$ bao transit import transit/keys/test-key @test-key type=rsa-2048
 Retrieving transit wrapping key.
 Wrapping source key with ephemeral key.
 Encrypting ephemeral key with transit wrapping key.

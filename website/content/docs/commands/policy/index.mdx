@@ -19,25 +19,25 @@ documentation](/vault/docs/concepts/policies).
 List all enabled policies:
 
 ```shell-session
-$ openbao policy list
+$ bao policy list
 ```
 
 Create a policy named "my-policy" from contents on local disk:
 
 ```shell-session
-$ openbao policy write my-policy ./my-policy.hcl
+$ bao policy write my-policy ./my-policy.hcl
 ```
 
 Delete the policy named my-policy:
 
 ```shell-session
-$ openbao policy delete my-policy
+$ bao policy delete my-policy
 ```
 
 ## Usage
 
 ```text
-Usage: openbao policy <subcommand> [options] [args]
+Usage: bao policy <subcommand> [options] [args]
 
   # ...
 

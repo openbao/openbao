@@ -15,7 +15,7 @@ OpenBao's OIDC Auth Method, the `ibmisam` provider must be explicitly configured
 shown below.
 
 ```shell
-openbao write auth/oidc/config -<<"EOH"
+bao write auth/oidc/config -<<"EOH"
 {
    "oidc_client_id": "your_client_id",
    "oidc_client_secret": "your_client_secret",

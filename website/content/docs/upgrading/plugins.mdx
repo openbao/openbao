@@ -26,7 +26,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    Skip this step if your initial plugin is built-in or already registered.
 
     ```shell-session
-    $ openbao plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         secret \
         my-secret-plugin
@@ -36,7 +36,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    is already mounted.
 
     ```shell-session
-    $ openbao secrets enable my-secret-plugin
+    $ bao secrets enable my-secret-plugin
     ```
 
 1. Register a second version of your plugin. You **must** use the same plugin
@@ -44,7 +44,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    true regardless of whether the plugin being upgraded is built-in or external.
 
     ```shell-session
-    $ openbao plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         -command=my-secret-plugin-1.0.1 \
         -version=v1.0.1 \
@@ -55,14 +55,14 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
 1. Tune the existing mount to configure it to use the newly registered version.
 
    ```shell-session
-   $ openbao secrets tune -plugin-version=v1.0.1 my-secret-plugin
+   $ bao secrets tune -plugin-version=v1.0.1 my-secret-plugin
    ```
 
 1. If you wish, you can check the updated configuration. Notice the "Version" is
    now different from the "Running Version".
 
    ```shell-session
-   $ openbao secrets list -detailed
+   $ bao secrets list -detailed
    ```
 
 1. Finally, trigger a [plugin reload](/vault/docs/commands/plugin/reload) to reload all
@@ -70,13 +70,13 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    with either the `plugin` or `mounts` flag respectively.
 
     ```shell-session
-    $ openbao plugin reload -plugin my-secret-plugin
+    $ bao plugin reload -plugin my-secret-plugin
     ```
 
 Until the last step, the mount will still run the first version of `my-secret-plugin`. When
 the reload is triggered, OpenBao will kill `my-secret-plugin`’s process and start the
 new plugin process for `my-secret-plugin` version 1.0.1. The "Running Version" should also
-now match the "Version" when you run `openbao secrets list -detailed`.
+now match the "Version" when you run `bao secrets list -detailed`.
 
 -> **Important:** Plugin reload of a new plugin binary must be
 performed on each OpenBao instance. Performing a plugin upgrade on a single
@@ -90,7 +90,7 @@ by setting the 'scope' parameter of the reload to 'global'.
    Skip this step if your initial plugin is built-in or already registered.
 
     ```shell-session
-    $ openbao plugin register
+    $ bao plugin register
         -sha256=<SHA256 Hex value of the plugin binary> \
         database \
         my-db-plugin
@@ -100,8 +100,8 @@ by setting the 'scope' parameter of the reload to 'global'.
    is already mounted.
 
     ```shell-session
-    $ openbao secrets enable database
-    $ openbao write database/config/my-db \
+    $ bao secrets enable database
+    $ bao write database/config/my-db \
         plugin_name=my-db-plugin \
         # ...
     ```
@@ -111,7 +111,7 @@ by setting the 'scope' parameter of the reload to 'global'.
    true regardless of whether the plugin being upgraded is built-in or external.
 
     ```shell-session
-    $ openbao plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         -command=my-db-plugin-1.0.1 \
         -version=v1.0.1 \
@@ -124,7 +124,7 @@ by setting the 'scope' parameter of the reload to 'global'.
    config parameters will not be updated.
 
     ```shell-session
-    $ openbao write database/config/my-db \
+    $ bao write database/config/my-db \
         plugin_version=v1.0.1
     ```
 
@@ -138,7 +138,7 @@ Plugin downgrades follow the same procedure as upgrades. You can use the OpenBao
 plugin list command to check what plugin versions are available to downgrade to:
 
 ```shell-session
-$ openbao plugin list secret
+$ bao plugin list secret
 Name                Version
 ----                -------
 ad                  v0.14.0+builtin

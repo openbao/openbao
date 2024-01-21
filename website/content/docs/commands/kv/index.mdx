@@ -16,9 +16,9 @@ Version 2](/vault/docs/secrets/kv/kv-v2).
 
 Option flags for a given subcommand are provided after the subcommand, but before the arguments.
 
-The path to where the secrets engine is mounted can be indicated with the `-mount` flag, such as `openbao kv get -mount=secret creds`.
+The path to where the secrets engine is mounted can be indicated with the `-mount` flag, such as `bao kv get -mount=secret creds`.
 
-The deprecated path-like syntax can also be used (e.g. `openbao kv get secret/creds`), but this should be avoided
+The deprecated path-like syntax can also be used (e.g. `bao kv get secret/creds`), but this should be avoided
 for KV v2, because it is not actually the full API path to the secret 
 (secret/data/foo) and may cause confusion.
 
@@ -32,7 +32,7 @@ Create or update the key named "creds" in the K/V Version 2 enabled at "secret"
 with the value "passcode=my-long-passcode":
 
 ```shell-session
-$ openbao kv put -mount=secret creds passcode=my-long-passcode
+$ bao kv put -mount=secret creds passcode=my-long-passcode
 == Secret Path ==
 secret/data/creds
 
@@ -49,7 +49,7 @@ version            1
 Read this value back:
 
 ```shell-session
-$ openbao kv get -mount=secret creds
+$ bao kv get -mount=secret creds
 == Secret Path ==
 secret/data/creds
 
@@ -71,7 +71,7 @@ passcode    my-long-passcode
 Get metadata for the key named "creds":
 
 ```shell-session
-$ openbao kv metadata get -mount=secret creds
+$ bao kv metadata get -mount=secret creds
 === Metadata Path ===
 secret/metadata/creds
 
@@ -98,7 +98,7 @@ destroyed        false
 Get a specific version of the key named "creds":
 
 ```shell-session
-$ openbao kv get -mount=secret -version=1 creds
+$ bao kv get -mount=secret -version=1 creds
 == Secret Path ==
 secret/data/creds
 
@@ -120,7 +120,7 @@ passcode    my-long-passcode
 ## Usage
 
 ```text
-Usage: openbao kv <subcommand> [options] [args]
+Usage: bao kv <subcommand> [options] [args]
 
   # ...
 

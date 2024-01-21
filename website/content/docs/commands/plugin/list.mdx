@@ -20,13 +20,13 @@ below. All non-builtin plugins will show a `Deprecation Status` of "n/a".
 List all available plugins in the catalog.
 
 ```shell-session
-$ openbao plugin list
+$ bao plugin list
 Name                                 Type        Version
 ----                                 ----        -------
 alicloud                             auth        v0.13.0+builtin
 # ...
 
-$ openbao plugin list database
+$ bao plugin list database
 Name                                 Version
 ----                                 -------
 cassandra-database-plugin            v1.13.0+builtin.vault
@@ -36,7 +36,7 @@ cassandra-database-plugin            v1.13.0+builtin.vault
 List detailed plugin information:
 
 ```shell-session
-$ openbao plugin list -detailed
+$ bao plugin list -detailed
 Name                             Type        Version                                          Deprecation Status
 ----                             ----        -------                                          ------------------
 alicloud                         auth        v0.12.0+builtin                                  supported

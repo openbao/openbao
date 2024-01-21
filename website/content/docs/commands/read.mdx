@@ -18,13 +18,13 @@ credentials, get configuration details, and more.
 Read entity details of a given ID:
 
 ```shell-session
-$ openbao read identity/entity/id/2f09126d-d161-abb8-2241-555886491d97
+$ bao read identity/entity/id/2f09126d-d161-abb8-2241-555886491d97
 ```
 
 Generate dynamic AWS credentials for a `my-role`:
 
 ```shell-session
-$ openbao read aws/creds/my-role
+$ bao read aws/creds/my-role
 ```
 
 ### API versus CLI
@@ -34,7 +34,7 @@ Assuming that you have K/V version 2 (`kv-v2`) secrets engine enabled at
 API path:
 
 ```shell-session
-$ openbao read secret/data/customers
+$ bao read secret/data/customers
 ```
 
 This is equivalent to:
@@ -49,11 +49,11 @@ Since K/V secrets engine is a commonly used feature, OpenBao CLI provides the
 path using the `kv` CLI command:
 
 ```shell-session
-$ openbao kv get -mount=secret customers
+$ bao kv get -mount=secret customers
 ```
 
 -> **Comparison:** All three commands retrieve the same data, but display the
-output in a different format. By default, `openbao read` prints output in
+output in a different format. By default, `bao read` prints output in
 key-value format. The `curl` command prints the response in JSON. Since the
 `kv` command is designed to handle operations associated with K/V secrets
 engine, it prints the output in more structured format that is easy to read.

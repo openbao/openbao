@@ -26,7 +26,7 @@ toward users while others are targeted toward machines. Most authentication
 backends must be enabled before use. To enable an auth method:
 
 ```shell-session
-$ openbao write sys/auth/my-auth type=userpass
+$ bao write sys/auth/my-auth type=userpass
 ```
 
 This enables the "userpass" auth method at the path "my-auth". This
@@ -36,7 +36,7 @@ authentications at the same path as their name, but this is not a requirement.
 To learn more about this authentication, use the built-in `path-help` command:
 
 ```shell-session
-$ openbao path-help auth/my-auth
+$ bao path-help auth/my-auth
 # ...
 ```
 
@@ -66,11 +66,11 @@ revoking tokens, and renewing tokens. This is all covered on the
 
 ### Via the CLI
 
-To authenticate with the CLI, `openbao login` is used. This supports many
+To authenticate with the CLI, `bao login` is used. This supports many
 of the built-in auth methods. For example, with GitHub:
 
 ```shell-session
-$ openbao login -method=github token=<token>
+$ bao login -method=github token=<token>
 ...
 ```
 
@@ -89,11 +89,11 @@ must be used.
 ### Via the API
 
 API authentication is generally used for machine authentication. Each
-auth method implements its own login endpoint. Use the `openbao path-help`
+auth method implements its own login endpoint. Use the `bao path-help`
 mechanism to find the proper endpoint.
 
 For example, the GitHub login endpoint is located at `auth/github/login`.
-And to determine the arguments needed, `openbao path-help auth/github/login` can
+And to determine the arguments needed, `bao path-help auth/github/login` can
 be used.
 
 ## Auth leases
@@ -108,7 +108,7 @@ the specific auth method in use. It is specific to each backend
 how leasing is implemented.
 
 And just like secrets, identities can be renewed without having to
-completely reauthenticate. Just use `openbao token renew <token>` with the
+completely reauthenticate. Just use `bao token renew <token>` with the
 leased token associated with your identity to renew it.
 
 ## Code example

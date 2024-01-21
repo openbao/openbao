@@ -21,7 +21,7 @@ will read the value from stdin rather than the command line.
 Some API fields require more advanced structures such as maps. These cannot
 directly be represented on the command line. However, direct control of the
 request parameters can be achieved by using `-` as the only data argument.
-This causes `openbao patch` to read a JSON blob containing all request parameters
+This causes `bao patch` to read a JSON blob containing all request parameters
 from stdin. This argument will be ignored if used in conjunction with any
 "key=value" pairs.
 
@@ -36,7 +36,7 @@ modifies data specified on the command line.
 Updates a PKI role to modify a single parameter:
 
 ```shell-session
-$ openbao patch pki/roles/example allow_localhost=false
+$ bao patch pki/roles/example allow_localhost=false
 ```
 
 ### API versus CLI
@@ -44,7 +44,7 @@ $ openbao patch pki/roles/example allow_localhost=false
 Updates a PKI role to modify the `allow_localhost` parameter:
 
 ```shell-session
-$ openbao patch pki/roles/example allow_localhost=false
+$ bao patch pki/roles/example allow_localhost=false
 ```
 
 Equivalent cURL command for this operation:
@@ -63,7 +63,7 @@ $ curl --header "X-Vault-Token: $VAULT_TOKEN" \
     $VAULT_ADDR/v1/pki/roles/example
 ```
 
-The `openbao patch` command simplifies the API call.
+The `bao patch` command simplifies the API call.
 
 ## Usage
 

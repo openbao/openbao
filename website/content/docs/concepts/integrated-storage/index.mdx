@@ -135,7 +135,7 @@ command](/vault/docs/commands/operator/raft/#join) or the API to join a node. Th
 active node's API address will need to be specified:
 
 ```shell-session
-$ openbao operator raft join https://node1.openbao.local:8200
+$ bao operator raft join https://node1.openbao.local:8200
 ```
 
 #### Non-Voting nodes (Enterprise only)
@@ -147,7 +147,7 @@ Standby](/vault/docs/enterprise/performance-standby/) nodes to add read scalabil
 a cluster in cases where a high volume of reads to servers are needed.
 
 ```shell-session
-$ openbao operator raft join -non-voter https://node1.openbao.local:8200
+$ bao operator raft join -non-voter https://node1.openbao.local:8200
 ```
 
 ### Removing peers
@@ -163,7 +163,7 @@ To remove the peer you can issue a
 node ID you wish to remove:
 
 ```shell-session
-$ openbao operator raft remove-peer node1
+$ bao operator raft remove-peer node1
 Peer removed successfully!
 ```
 
@@ -175,7 +175,7 @@ nodes that are listed here contribute to the quorum and a majority must be alive
 for Integrated Storage to continue to operate.
 
 ```shell-session
-$ openbao operator raft list-peers
+$ bao operator raft list-peers
 Node     Address                   State       Voter
 ----     -------                   -----       -----
 node1    node1.openbao.local:8201    follower    true

@@ -30,8 +30,8 @@ install.
 To install the precompiled binary, [download](/vault/downloads) the applicable
 package for your system. OpenBao is packaged as a zip file.
 
-Once the zip is downloaded, unzip the file into your designated directory. The `openbao` binary
-inside is all that is necessary to run OpenBao (or `openbao.exe` for Windows). No
+Once the zip is downloaded, unzip the file into your designated directory. The `bao` binary
+inside is all that is necessary to run OpenBao (or `bao.exe` for Windows). No
 additional files are required to run OpenBao.
 
 Copy the binary to your system. If you intend to access it from the
@@ -62,7 +62,7 @@ $ make bootstrap
 ```
 
 Build OpenBao for your current system and put the binary in `./bin/` (relative to
-the git checkout). The `make dev` target is just a shortcut that builds `openbao`
+the git checkout). The `make dev` target is just a shortcut that builds `bao`
 for only your local build environment (no cross-compiled targets).
 
 ```shell-session
@@ -71,12 +71,12 @@ $ make dev
 
 ## Verifying the installation
 
-To verify OpenBao is installed, run `openbao -h` on your system. You should
+To verify OpenBao is installed, run `bao -h` on your system. You should
 see the help output. If you are executing it from the command line, ensure it is
 on your `PATH` to avoid receiving an error that OpenBao is not found.
 
 ```shell-session
-$ openbao -h
+$ bao -h
 ```
 
 ## Tutorial

@@ -24,14 +24,14 @@ concepts](/vault/docs/concepts/policies) page for more information.
 Enable the auth method "userpass" enabled at "userpass/":
 
 ```shell-session
-$ openbao auth enable userpass
+$ bao auth enable userpass
 Success! Enabled the userpass auth method at: userpass/
 ```
 
 Create a user:
 
 ```shell-session
-$ openbao write auth/userpass/users/sethvargo password=secret
+$ bao write auth/userpass/users/sethvargo password=secret
 Success! Data written to: auth/userpass/users/sethvargo
 ```
 

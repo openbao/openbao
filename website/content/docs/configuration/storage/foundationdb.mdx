@@ -106,7 +106,7 @@ the location of the primary client library.
 ```shell-session
 $ export LD_LIBRARY_PATH=/dest/dir/for/primary:$LD_LIBRARY_PATH
 $ export FDB_NETWORK_OPTION_EXTERNAL_CLIENT_DIRECTORY=/dest/dir/for/secondary
-$ /path/to/bin/openbao ...
+$ /path/to/bin/bao ...
 ```
 
 #### Client setup with `RPATH`
@@ -115,9 +115,9 @@ When running OpenBao with mlock, the OpenBao binary must have capabilities set t
 allow the use of mlock.
 
 ```
-# setcap cap_ipc_lock=+ep /path/to/bin/openbao
-$ getcap /path/to/bin/openbao
-/path/to/bin/openbao = cap_ipc_lock+ep
+# setcap cap_ipc_lock=+ep /path/to/bin/bao
+$ getcap /path/to/bin/bao
+/path/to/bin/bao = cap_ipc_lock+ep
 ```
 
 The presence of the capabilities will cause the linker to ignore
@@ -138,14 +138,14 @@ $ make dev FDB_ENABLED=1 LD_FLAGS="-r /dest/dir/for/primary "
 You can verify `RPATH` is set on the OpenBao binary using `readelf`:
 
 ```shell-session
-$ readelf -d /path/to/bin/openbao | grep RPATH
+$ readelf -d /path/to/bin/bao | grep RPATH
  0x000000000000000f (RPATH)              Library rpath: [/dest/dir/for/primary]
 ```
 
 With the client libraries installed:
 
 ```shell-session
-$ ldd /path/to/bin/openbao
+$ ldd /path/to/bin/bao
 ...
     libfdb_c.so => /dest/dir/for/primary/libfdb_c.so (0x00007f270ad05000)
 ...
@@ -155,7 +155,7 @@ Now run OpenBao:
 
 ```shell-session
 $ export FDB_NETWORK_OPTION_EXTERNAL_CLIENT_DIRECTORY=/dest/dir/for/secondary
-$ /path/to/bin/openbao ...
+$ /path/to/bin/bao ...
 ```
 
 [foundationdb]: https://www.foundationdb.org

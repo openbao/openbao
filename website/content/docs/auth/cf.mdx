@@ -230,16 +230,16 @@ After obtaining the information described above, a OpenBao operator will configu
 like so:
 
 ```shell-session
-$ openbao auth enable cf
+$ bao auth enable cf
 
-$ openbao write auth/cf/config \
+$ bao write auth/cf/config \
       identity_ca_certificates=@ca.crt \
       cf_api_addr=https://api.dev.cfdev.sh \
       cf_username=openbao \
       cf_password=pa55w0rd \
       cf_api_trusted_certificates=@cfapi.crt
 
-$ openbao write auth/cf/roles/my-role \
+$ bao write auth/cf/roles/my-role \
     bound_application_ids=2d3e834a-3a25-4591-974c-fa5626d5d0a1 \
     bound_space_ids=3d2eba6b-ef19-44d5-91dd-1975b0db5cc9 \
     bound_organization_ids=34a878d0-c2f9-4521-ba73-a9f664e82c7bf \
@@ -250,7 +250,7 @@ Once configured, from a CF instance containing real values for the `CF_INSTANCE_
 `CF_INSTANCE_KEY`, login can be performed using:
 
 ```shell-session
-$ openbao login -method=cf role=test-role
+$ bao login -method=cf role=test-role
 ```
 
 For CF, we do also offer an agent that, once configured, can be used to obtain a OpenBao token on
@@ -264,7 +264,7 @@ The CF API can be configured to require mutual TLS with clients. This plugin sup
 <CodeBlockConfig highlight="7-8">
 
 ```shell-session
-$ openbao write auth/cf/config \
+$ bao write auth/cf/config \
       identity_ca_certificates=@ca.crt \
       cf_api_addr=https://api.dev.cfdev.sh \
       cf_username=openbao \
@@ -289,7 +289,7 @@ valid.
 ```shell-session
 $ CURRENT=$(cat /path/to/current-ca.crt)
 $ FUTURE=$(cat /path/to/future-ca.crt)
-$ openbao write auth/vault-plugin-auth-cf/config identity_ca_certificates="$CURRENT" identity_ca_certificates="$FUTURE"
+$ bao write auth/vault-plugin-auth-cf/config identity_ca_certificates="$CURRENT" identity_ca_certificates="$FUTURE"
 ```
 
 If OpenBao receives a `CF_INSTANCE_CERT` matching _any_ of the `identity_ca_certificates`,

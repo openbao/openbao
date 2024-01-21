@@ -21,7 +21,7 @@ Kubernetes auth.
 
 -> **Note:** If you are upgrading to Kubernetes v1.21+, ensure the config option
 `disable_iss_validation` is set to true. Assuming the default mount path, you
-can check with `openbao read -field disable_iss_validation auth/kubernetes/config`.
+can check with `bao read -field disable_iss_validation auth/kubernetes/config`.
 See [Kubernetes 1.21](#kubernetes-1-21) below for more details.
 
 ## Authentication
@@ -32,7 +32,7 @@ The default path is `/kubernetes`. If this auth method was enabled at a
 different path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ openbao write auth/kubernetes/login role=demo jwt=...
+$ bao write auth/kubernetes/login role=demo jwt=...
 ```
 
 ### Via the API
@@ -77,7 +77,7 @@ management tool.
 1. Enable the Kubernetes auth method:
 
   ```bash
-  openbao auth enable kubernetes
+  bao auth enable kubernetes
   ```
 
 1. Use the `/config` endpoint to configure OpenBao to talk to Kubernetes. Use
@@ -86,7 +86,7 @@ management tool.
   [API documentation](/vault/api-docs/auth/kubernetes).
 
   ```bash
-  openbao write auth/kubernetes/config \
+  bao write auth/kubernetes/config \
       token_reviewer_jwt="<your reviewer service account JWT>" \
       kubernetes_host=https://192.168.99.100:<your TCP port or blank for 443> \
       kubernetes_ca_cert=@ca.crt
@@ -103,7 +103,7 @@ management tool.
 1. Create a named role:
 
   ```text
-  openbao write auth/kubernetes/role/demo \
+  bao write auth/kubernetes/role/demo \
       bound_service_account_names=myapp \
       bound_service_account_namespaces=default \
       policies=default \
@@ -180,7 +180,7 @@ OpenBao will attempt to load them from `token` and `ca.crt` respectively inside
 the default mount folder `/var/run/secrets/kubernetes.io/serviceaccount/`.
 
 ```bash
-openbao write auth/kubernetes/config \
+bao write auth/kubernetes/config \
     kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
 ```
 
@@ -281,7 +281,7 @@ kubectl get --raw /.well-known/openid-configuration | jq -r .issuer
 This value is then used when configuring Kubernetes auth, e.g.:
 
 ```bash
-openbao write auth/kubernetes/config \
+bao write auth/kubernetes/config \
   kubernetes_host="https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT" \
   issuer="\"test-aks-cluster-dns-d6cbb78e.hcp.uksouth.azmk8s.io\""
 ```

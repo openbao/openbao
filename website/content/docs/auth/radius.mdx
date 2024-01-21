@@ -19,7 +19,7 @@ path, specify `-path=/my-path` in the CLI.
 ### Via the CLI
 
 ```shell-session
-$ openbao login -method=radius username=sethvargo
+$ bao login -method=radius username=sethvargo
 ```
 
 ### Via the API
@@ -55,13 +55,13 @@ The response will contain a token at `auth.client_token`:
 1. Enable the radius auth method:
 
    ```text
-   $ openbao auth enable radius
+   $ bao auth enable radius
    ```
 
 1. Configure connection details for your RADIUS server.
 
    ```text
-   $ openbao write auth/radius/users/mitchellh policies=admins
+   $ bao write auth/radius/users/mitchellh policies=admins
    ```
 
    For the complete list of configuration options, please see the API

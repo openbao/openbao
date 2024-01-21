@@ -317,7 +317,7 @@ templates, you will need to get its _mount accessor_ and access it via the
 You can get the mount accessor value using the following command:
 
 ```shellsession
-$> openbao auth list
+$> bao auth list
 Path           Type          Accessor                    Description
 ----           ----          --------                    -----------
 kubernetes/    kubernetes    auth_kubernetes_xxxx        n/a
@@ -510,7 +510,7 @@ path "secret/foo" {
 The following operation will error, because "no_store" is set to false:
 
 ```shell-session
-$ openbao write secret/foo no_store=false value=bar
+$ bao write secret/foo no_store=false value=bar
 ```
 
 Whereas the following operation will succeed, even if the "no_store"
@@ -518,7 +518,7 @@ parameter must be a boolean, and it defaults to false:
 
 ```shell-session
 # Succeeds because "no_store=false" isn't present in the parameters
-$ openbao write secret/foo value=bar
+$ bao write secret/foo value=bar
 ```
 
 This is because the policy evaluator does not know what the default value is for
@@ -541,7 +541,7 @@ The following command, which previously succeeded, will now fail under the new p
 because there is no "no_store" parameter:
 
 ```shell-session
-$ openbao write secret/foo value=bar
+$ bao write secret/foo value=bar
 ```
 
 ##### Globbing
@@ -624,13 +624,13 @@ To view all permissions granted by the default policy on your OpenBao
 installation, run:
 
 ```shell-session
-$ openbao read sys/policy/default
+$ bao read sys/policy/default
 ```
 
 To disable attachment of the default policy:
 
 ```shell-session
-$ openbao token create -no-default-policy
+$ bao token create -no-default-policy
 ```
 
 or via the API:
@@ -658,7 +658,7 @@ controlled users and authentication should be used.
 To revoke a root token, run:
 
 ```shell-session
-$ openbao token revoke "<token>"
+$ bao token revoke "<token>"
 ```
 
 or via the API:
@@ -687,7 +687,7 @@ policies must be uploaded to OpenBao before they can be used.
 To list all registered policies in OpenBao:
 
 ```shell-session
-$ openbao read sys/policy
+$ bao read sys/policy
 ```
 
 or via the API:
@@ -698,7 +698,7 @@ $ curl \
   https://openbao.hashicorp.rocks/v1/sys/policy
 ```
 
-~> **Note:** You may also see the CLI command `openbao policies`. This is a convenience
+~> **Note:** You may also see the CLI command `bao policies`. This is a convenience
 wrapper around reading the sys endpoint directly. It provides the same
 functionality but formats the output in a special manner.
 
@@ -708,7 +708,7 @@ Policies may be created (uploaded) via the CLI or via the API. To create a new
 policy in OpenBao:
 
 ```shell-session
-$ openbao policy write policy-name policy-file.hcl
+$ bao policy write policy-name policy-file.hcl
 ```
 
 or via the API:
@@ -732,7 +732,7 @@ API. To update an existing policy in OpenBao, follow the same steps as creating 
 policy, but use an existing policy name:
 
 ```shell-session
-$ openbao write sys/policy/my-existing-policy policy=@updated-policy.json
+$ bao write sys/policy/my-existing-policy policy=@updated-policy.json
 ```
 
 or via the API:
@@ -750,7 +750,7 @@ $ curl \
 Existing policies may be deleted via the CLI or API. To delete a policy:
 
 ```shell-session
-$ openbao delete sys/policy/policy-name
+$ bao delete sys/policy/policy-name
 ```
 
 or via the API:
@@ -776,7 +776,7 @@ A OpenBao administrator or someone from the security team would create the user 
 OpenBao with a list of associated policies:
 
 ```shell-session
-$ openbao write auth/userpass/users/sethvargo \
+$ bao write auth/userpass/users/sethvargo \
     password="s3cr3t!" \
     policies="dev-readonly,logs"
 ```
@@ -788,7 +788,7 @@ of policies attached.
 The user wishing to authenticate would run
 
 ```shell-session
-$ openbao login -method="userpass" username="sethvargo"
+$ bao login -method="userpass" username="sethvargo"
 Password (will be hidden): ...
 ```
 
@@ -850,7 +850,7 @@ the underlying entities, groups, and group memberships.
 Tokens are associated with their policies at creation time. For example:
 
 ```shell-session
-$ openbao token create -policy=dev-readonly -policy=logs
+$ bao token create -policy=dev-readonly -policy=logs
 ```
 
 Normally the only policies that may be specified are those which are present

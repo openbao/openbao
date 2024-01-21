@@ -23,7 +23,7 @@ same entry.
 ### Via the CLI
 
 ```shell-session
-$ openbao login -method=userpass \
+$ bao login -method=userpass \
     username=mitchellh \
     password=foo
 ```
@@ -66,19 +66,19 @@ management tool.
 1. Enable the userpass auth method:
 
    ```shell-session
-   $ openbao auth enable userpass
+   $ bao auth enable userpass
    ```
 
    This enables the userpass auth method at `auth/userpass`. To enable it at a different path, use the `-path` flag:
 
    ```shell-session
-   $ openbao auth enable -path=<path> userpass
+   $ bao auth enable -path=<path> userpass
    ```
 
 1. Configure it with users that are allowed to authenticate:
 
    ```shell-session
-   $ openbao write auth/<userpass:path>/users/mitchellh \
+   $ bao write auth/<userpass:path>/users/mitchellh \
        password=foo \
        policies=admins
    ```

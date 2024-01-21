@@ -27,7 +27,7 @@ will not allow starting the server if a migration is in progress.
 Migrate all keys:
 
 ```shell-session
-$ openbao operator migrate -config migrate.hcl
+$ bao operator migrate -config migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey
@@ -41,7 +41,7 @@ exits before completion (e.g. due to a connection error with a storage backend),
 it may be resumed from an arbitrary key prefix:
 
 ```shell-session
-$ openbao operator migrate -config migrate.hcl -start "data/logical/fd"
+$ bao operator migrate -config migrate.hcl -start "data/logical/fd"
 ```
 
 ## Configuration
@@ -98,7 +98,7 @@ OpenBao will need to be offline during the migration process. First, stop OpenBa
 Then, run the migration on the server you wish to become a the new OpenBao node.
 
 ```shell-session
-$ openbao operator migrate -config migrate.hcl
+$ bao operator migrate -config migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey

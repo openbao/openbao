@@ -55,7 +55,7 @@ and confirmed working, you will be ready to use Kerberos with OpenBao.
 - Enable Kerberos authentication in OpenBao:
 
 ```shell-session
-$ openbao auth enable \
+$ bao auth enable \
     -passthrough-request-headers=Authorization \
     -allowed-response-headers=www-authenticate \
     kerberos
@@ -89,7 +89,7 @@ $ base64 openbao.keytab > openbao.keytab.base64
   requests:
 
 ```shell-session
-$ openbao write auth/kerberos/config \
+$ bao write auth/kerberos/config \
     keytab=@openbao.keytab.base64 \
     service_account="openbao_svc"
 ```
@@ -101,7 +101,7 @@ $ openbao write auth/kerberos/config \
   a tool like `ldapsearch`.
 
 ```shell-session
-$ openbao write auth/kerberos/config/ldap \
+$ bao write auth/kerberos/config/ldap \
     binddn=openbao_svc@MATRIX.LAN \
     bindpass=$OPENBAO_SVC_PASSWORD \
     groupattr=sAMAccountName \
@@ -125,7 +125,7 @@ for further discussion of available parameters.
   for further discussion.
 
 ```shell-session
-$ openbao write auth/kerberos/groups/engineering-team \
+$ bao write auth/kerberos/groups/engineering-team \
     policies=engineers
 ```
 
@@ -139,7 +139,7 @@ From a client machine with a valid `krb5.conf` and `keytab`, perform a command
 like the following:
 
 ```shell-session
-$ openbao login -method=kerberos \
+$ bao login -method=kerberos \
     username=grace \
     service=HTTP/my-service \
     realm=MATRIX.LAN \
@@ -191,7 +191,7 @@ is outside of your company. For instance, if you expect that you should
 be able to login using a command like:
 
 ```shell-session
-$ openbao login -method=kerberos \
+$ bao login -method=kerberos \
     username=my-name \
     service=HTTP/my-service \
     realm=EXAMPLE.COM \

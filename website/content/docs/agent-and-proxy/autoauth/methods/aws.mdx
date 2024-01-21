@@ -56,7 +56,7 @@ parameters unset in your configuration.
 - `header_value` `(string: optional)` - If configured in OpenBao, the value to use for
   [`iam_server_id_header_value`](/vault/api-docs/auth/aws#iam_server_id_header_value).
 
-- `nonce` `(string: optional)` - If not provided, OpenBao will generate a new UUID every time `openbao agent` runs.
+- `nonce` `(string: optional)` - If not provided, OpenBao will generate a new UUID every time `bao agent` runs.
   If set, make sure you understand the importance of generating a good, unique `nonce` and protecting it.
   See [Client Nonce](/vault/docs/auth/aws#client-nonce) for more information.
 

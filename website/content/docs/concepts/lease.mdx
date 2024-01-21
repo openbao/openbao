@@ -30,7 +30,7 @@ example, with the [AWS secrets engine](/vault/docs/secrets/aws), the
 access keys will be deleted from AWS the moment a lease is revoked. This
 renders the access keys invalid from that point forward.
 
-Revocation can happen manually via the API, via the `openbao lease revoke` cli command,
+Revocation can happen manually via the API, via the `bao lease revoke` cli command,
 the user interface (UI) under the Access tab, or automatically by OpenBao. When a lease
 is expired, OpenBao will automatically revoke that lease. When a token is revoked,
 OpenBao will revoke all leases that were created using that token.
@@ -41,8 +41,8 @@ lease duration; see the documentation for more information.
 
 ## Lease IDs
 
-When reading a dynamic secret, such as via `openbao read`, OpenBao always returns a
-`lease_id`. This is the ID used with commands such as `openbao lease renew` and `openbao lease revoke` to manage the lease of the secret.
+When reading a dynamic secret, such as via `bao read`, OpenBao always returns a
+`lease_id`. This is the ID used with commands such as `bao lease renew` and `bao lease revoke` to manage the lease of the secret.
 
 ## Lease durations and renewal
 
@@ -53,7 +53,7 @@ consumer of this secret must renew the lease within that time.
 When renewing the lease, the user can request a specific amount of time they
 want remaining on the lease, termed the `increment`. This is not an increment
 at the end of the current TTL; it is an increment _from the current time_. For
-example, `openbao lease renew -increment=3600 my-lease-id` would request that the TTL of the lease
+example, `bao lease renew -increment=3600 my-lease-id` would request that the TTL of the lease
 be adjusted to 1 hour (3600 seconds). Having the increment be rooted at the
 current time instead of the end of the lease makes it easy for users to reduce
 the length of leases if they don't actually need credentials for the full
@@ -78,7 +78,7 @@ can revoke multiple secrets based on their lease ID prefix.
 
 Lease IDs are structured in a way that their prefix is always the path where
 the secret was requested from. This lets you revoke trees of secrets. For
-example, to revoke all AWS access keys, you can do `openbao lease revoke -prefix aws/`.
+example, to revoke all AWS access keys, you can do `bao lease revoke -prefix aws/`.
 For more information about revoke command please check
 [cli's lease revoke](/vault/docs/commands/lease/revoke#lease-revoke)
 command docs.

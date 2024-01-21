@@ -17,13 +17,13 @@ The help system is the easiest way to learn how to use the various systems
 in OpenBao, and also allows you to discover new paths.
 
 Before using `path-help`, it is important to understand "paths" within OpenBao.
-Paths are the parameters used for `openbao read`, `openbao write`, etc. An example
+Paths are the parameters used for `bao read`, `bao write`, etc. An example
 path is `secret/foo`, or `aws/config/root`. The paths available depend on the
 secrets engines in use. Because of this, the interactive help is an
 indispensable tool to finding what paths are supported.
 
-To discover what paths are supported, use `openbao path-help PATH`. For example,
-if you enabled the AWS secrets engine, you can use `openbao path-help aws` to find
+To discover what paths are supported, use `bao path-help PATH`. For example,
+if you enabled the AWS secrets engine, you can use `bao path-help aws` to find
 the paths supported by that backend. The paths are shown with regular
 expressions, which can make them hard to parse, but they are also extremely
 exact.
@@ -33,7 +33,7 @@ exact.
 Get help output for the KV secrets engine:
 
 ```shell-session
-$ openbao path-help secret
+$ bao path-help secret
 ## DESCRIPTION
 
 The KV backend reads and writes arbitrary secrets to the backend.
@@ -57,11 +57,11 @@ you may or may not be able to access certain paths.
         read/write arbitrary data into secret storage.
 ```
 
-Once you've found a path you like, you can learn more about it by using `openbao path-help <path>` where "path" is a path that matches one of the regular
+Once you've found a path you like, you can learn more about it by using `bao path-help <path>` where "path" is a path that matches one of the regular
 expressions from the backend help.
 
 ```shell-session
-$ openbao path-help secret/password
+$ bao path-help secret/password
 Request:        password
 Matching Route: ^.*$
 

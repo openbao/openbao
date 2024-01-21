@@ -22,11 +22,11 @@ Collect telemetry data from your OpenBao installation.
 ## Step 2: Enable at least one audit device
 
 To include audit-related metrics, you must enable auditing on at least one device
-with the `openbao audit enable` command. For example, to enable auditing for the
+with the `bao audit enable` command. For example, to enable auditing for the
 `file` device and save the logs to `/var/log/openbao_audit.log`:
 
 ```shell-session
-$ openbao audit enable file file_path=/var/log/openbao_audit.log
+$ bao audit enable file file_path=/var/log/openbao_audit.log
 ```
 
 By default, Enterprise installations replicate audit devices to the secondary
@@ -34,7 +34,7 @@ performance nodes in a cluster. To limit performance replication for an audit
 device, use the `local` flag to mark the device as local to the current node:
 
 ```shell-session
-$ openbao audit enable file -local file_path=/var/log/openbao_audit.log
+$ bao audit enable file -local file_path=/var/log/openbao_audit.log
 ```
 
 

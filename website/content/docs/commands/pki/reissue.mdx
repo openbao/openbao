@@ -15,7 +15,7 @@ OpenBao as a template, but allowing modifications to the desired attributes.
 
 ## Usage
 
-Usage: `openbao pki reissue [flags] <parent> <template> <child_mount> [options]`
+Usage: `bao pki reissue [flags] <parent> <template> <child_mount> [options]`
 
 - `[flags]` are optional arguments described below.
 
@@ -81,7 +81,7 @@ following API endpoints, each representing a step in the process:
 ## Examples
 
 ```shell-session
-$ openbao pki reissue -issuer_name="SecondDepartment" /pki_root/issuer/default /pki_int/issuer/FirstDepartment /pki_int_2/ common_name="second-department.example.com"
+$ bao pki reissue -issuer_name="SecondDepartment" /pki_root/issuer/default /pki_int/issuer/FirstDepartment /pki_int_2/ common_name="second-department.example.com"
 Key                               Value
 ---                               -----
 ca_chain                          [-----BEGIN CERTIFICATE-----

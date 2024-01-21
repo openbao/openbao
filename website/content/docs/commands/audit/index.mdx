@@ -19,14 +19,14 @@ documentation](/vault/docs/audit)
 Enable an audit device:
 
 ```shell-session
-$ openbao audit enable file file_path=/tmp/my-file.txt
+$ bao audit enable file file_path=/tmp/my-file.txt
 Success! Enabled the file audit device at: file/
 ```
 
 List all audit devices:
 
 ```shell-session
-$ openbao audit list
+$ bao audit list
 Path     Type    Description
 ----     ----    -----------
 file/    file    n/a
@@ -35,7 +35,7 @@ file/    file    n/a
 Disable an audit device:
 
 ```shell-session
-$ openbao audit disable file/
+$ bao audit disable file/
 Success! Disabled audit device (if it was enabled) at: file/
 ```
 
@@ -46,7 +46,7 @@ the audit device at the same path, as a new salt will be created for hashing.
 ## Usage
 
 ```text
-Usage: openbao audit <subcommand> [options] [args]
+Usage: bao audit <subcommand> [options] [args]
 
   # ...
 

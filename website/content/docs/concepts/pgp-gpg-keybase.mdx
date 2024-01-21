@@ -52,7 +52,7 @@ To generate unseal keys for Keybase users, OpenBao accepts the `keybase:` prefix
 to the `-pgp-keys` argument:
 
 ```shell-session
-$ openbao operator init -key-shares=3 -key-threshold=2 \
+$ bao operator init -key-shares=3 -key-threshold=2 \
     -pgp-keys="keybase:jefferai,keybase:vishalnayak,keybase:sethvargo"
 ```
 
@@ -101,7 +101,7 @@ This is your unseal key in plain-text and should be guarded the same way you
 guard a password. Now you can enter your key to the `unseal` command:
 
 ```shell-session
-$ openbao operator unseal
+$ bao operator unseal
 Key (will be hidden): ...
 ```
 
@@ -137,7 +137,7 @@ without ASCII armoring) or binary. Once saved to disk, the path to these files
 can be specified as an argument to the `-pgp-keys` flag.
 
 ```shell-session
-$ openbao operator init -key-shares=3 -key-threshold=2 \
+$ bao operator init -key-shares=3 -key-threshold=2 \
     -pgp-keys="jeff.asc,vishal.asc,seth.asc"
 ```
 
@@ -183,6 +183,6 @@ This is your unseal key in plain-text and should be guarded the same way you
 guard a password. Now you can enter your key to the `unseal` command:
 
 ```shell-session
-$ openbao operator unseal
+$ bao operator unseal
 Key (will be hidden): ...
 ```

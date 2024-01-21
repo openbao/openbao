@@ -206,7 +206,7 @@ $ curl \
 A user is also able to use the CLI write command to validate the login request.
 
 ```shell-session
-$ openbao write sys/mfa/validate -format=json @payload.json
+$ bao write sys/mfa/validate -format=json @payload.json
 ```
 
 #### Interactive CLI for login MFA
@@ -221,7 +221,7 @@ This alleviates a user from sending the second request separately to validate a 
 To disable the interactive login experience, a user needs to pass in the `non-interactive` flag to the login request.
 
 ```shell-session
-$ openbao write -non-interactive sys/mfa/validate -format=json @payload.json
+$ bao write -non-interactive sys/mfa/validate -format=json @payload.json
 ```
 
 To get started with Login MFA, refer to the [Login MFA](/vault/tutorials/auth-methods/multi-factor-authentication) tutorial.

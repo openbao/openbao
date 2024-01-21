@@ -18,7 +18,7 @@ with the name but has no data, nothing is returned.
 Retrieve the data of the key "creds":
 
 ```shell-session
-$ openbao kv get -mount=secret creds
+$ bao kv get -mount=secret creds
 == Secret Path ==
 secret/data/creds
 
@@ -41,7 +41,7 @@ If K/V Version 1 secrets engine is enabled at "secret", the output has no
 metadata since there is no versioning information associated with the data:
 
 ```shell-session
-$ openbao kv get -mount=secret creds
+$ bao kv get -mount=secret creds
 ====== Data ======
 Key         Value
 ---         -----
@@ -51,7 +51,7 @@ passcode    my-long-passcode
 Return only the "creds" "passcode" key:
 
 ```shell-session
-$ openbao kv get -mount=secret -field=passcode creds
+$ bao kv get -mount=secret -field=passcode creds
 my-long-passcode
 ```
 

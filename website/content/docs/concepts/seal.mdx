@@ -51,7 +51,7 @@ decrypt the root key.
 
 ## Unsealing
 
-The unseal process is done by running `openbao operator unseal` or via the API.
+The unseal process is done by running `bao operator unseal` or via the API.
 This process is stateful: each key can be entered via multiple mechanisms from
 multiple client machines and it will work. This allows each shares of the root
 key to be on a distinct client machine for better security.
@@ -164,7 +164,7 @@ generate a key, and no key is found. See
 
 #### Unseal key
 
-OpenBao's unseal key can be rekeyed using a normal `openbao operator rekey`
+OpenBao's unseal key can be rekeyed using a normal `bao operator rekey`
 operation from the CLI or the matching API calls. The rekey operation is
 authorized by meeting the threshold of recovery keys. After rekeying, the new
 barrier key is wrapped by the HSM or KMS and stored like the previous key; it is not
@@ -178,7 +178,7 @@ returned to the users that submitted their recovery keys.
 
 The recovery key can be rekeyed to change the number of shares/threshold or to
 target different key holders via different PGP keys. When using the OpenBao CLI,
-this is performed by using the `-target=recovery` flag to `openbao operator rekey`.
+this is performed by using the `-target=recovery` flag to `bao operator rekey`.
 
 Via the API, the rekey operation is performed with the same parameters as the
 [normal `/sys/rekey`
@@ -273,7 +273,7 @@ All unseal commands must specify the `-migrate` flag. Once the required
 threshold of unseal keys are entered, unseal keys will be migrated to recovery
 keys.
 
-`$ openbao operator unseal -migrate`
+`$ bao operator unseal -migrate`
 
 #### Migration from auto unseal to shamir
 

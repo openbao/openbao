@@ -17,7 +17,7 @@ local machine for future requests.
 The `-method` flag allows using other auth methods, such as userpass,
 github, or cert. For these, additional "K=V" pairs may be required. For more
 information about the list of configuration parameters available for a given
-auth method, use the "openbao auth help TYPE" command. You can also use "openbao
+auth method, use the "bao auth help TYPE" command. You can also use "bao
 auth list" to see the list of enabled auth methods.
 
 If an auth method is enabled at a non-standard path, the `-method`
@@ -38,10 +38,10 @@ the returned token is automatically unwrapped unless:
 By default, login uses a "token" method and reads from stdin:
 
 ```shell-session
-$ openbao login
+$ bao login
 Token (will be hidden):
 Success! You are now authenticated. The token information displayed below
-is already stored in the token helper. You do NOT need to run "openbao login"
+is already stored in the token helper. You do NOT need to run "bao login"
 again. Future OpenBao requests will automatically use this token.
 
 Key                  Value
@@ -59,9 +59,9 @@ Alternatively, the token may be provided as a command line argument (note that
 this may be captured by shell history or process listings):
 
 ```shell-session
-$ openbao login s.3jnbMAKl1i4YS3QoKdbHzGXq
+$ bao login s.3jnbMAKl1i4YS3QoKdbHzGXq
 Success! You are now authenticated. The token information displayed below
-is already stored in the token helper. You do NOT need to run "openbao login"
+is already stored in the token helper. You do NOT need to run "bao login"
 again. Future OpenBao requests will automatically use this token.
 
 Key                  Value
@@ -78,10 +78,10 @@ policies             ["admin" "default"]
 To login with a different method, use `-method`:
 
 ```shell-session
-$ openbao login -method=userpass username=my-username
+$ bao login -method=userpass username=my-username
 Password (will be hidden):
 Success! You are now authenticated. The token information below is already
-stored in the token helper. You do NOT need to run "openbao login" again. Future
+stored in the token helper. You do NOT need to run "bao login" again. Future
 requests will use this token automatically.
 
 Key                    Value
@@ -102,9 +102,9 @@ argument (`username=my-username`).
 If a github auth method was enabled at the path "github-prod":
 
 ```shell-session
-$ openbao login -method=github -path=github-prod
+$ bao login -method=github -path=github-prod
 Success! You are now authenticated. The token information below is already
-stored in the token helper. You do NOT need to run "openbao login" again. Future
+stored in the token helper. You do NOT need to run "bao login" again. Future
 requests will use this token automatically.
 
 Key                    Value

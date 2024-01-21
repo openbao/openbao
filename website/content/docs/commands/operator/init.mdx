@@ -27,13 +27,13 @@ Refer to the [Seal/Unseal](/vault/docs/concepts/seal#seal-unseal) documentation 
 Start initialization with the default options:
 
 ```shell-session
-$ openbao operator init
+$ bao operator init
 ```
 
 Initialize, but encrypt the unseal keys with pgp keys:
 
 ```shell-session
-$ openbao operator init \
+$ bao operator init \
     -key-shares=3 \
     -key-threshold=2 \
     -pgp-keys="keybase:hashicorp,keybase:jefferai,keybase:sethvargo"
@@ -42,7 +42,7 @@ $ openbao operator init \
 Initialize Auto Unseal with a non-default threshold and number of recovery keys, and encrypt the recovery keys with pgp keys:
 
 ```shell-session
-$ openbao operator init \
+$ bao operator init \
     -recovery-shares=7 \
     -recovery-threshold=4 \
     -recovery-pgp-keys="keybase:jeff,keybase:chris,keybase:brian,keybase:calvin,keybase:matthew,keybase:vishal,keybase:nick"
@@ -51,7 +51,7 @@ $ openbao operator init \
 Encrypt the initial root token using a pgp key:
 
 ```shell-session
-$ openbao operator init -root-token-pgp-key="keybase:hashicorp"
+$ bao operator init -root-token-pgp-key="keybase:hashicorp"
 ```
 
 ## Usage

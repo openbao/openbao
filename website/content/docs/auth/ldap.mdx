@@ -44,7 +44,7 @@ Directory](http://social.technet.microsoft.com/wiki/contents/articles/5312.activ
 ### Via the CLI
 
 ```shell-session
-$ openbao login -method=ldap username=mitchellh
+$ bao login -method=ldap username=mitchellh
 Password (will be hidden):
 Successfully authenticated! The policies that are associated
 with this token are listed below:
@@ -92,7 +92,7 @@ management tool.
 1. Enable the ldap auth method:
 
    ```text
-   $ openbao auth enable ldap
+   $ bao auth enable ldap
    ```
 
 1. Configure connection details for your LDAP server, information on how to
@@ -151,7 +151,7 @@ Once a user has been authenticated, the LDAP auth method must know how to resolv
 
 _Note_: When using _Authenticated Search_ for binding parameters (see above) the distinguished name defined for `binddn` is used for the group search. Otherwise, the authenticating user is used to perform the group search.
 
-Use `openbao path-help` for more details.
+Use `bao path-help` for more details.
 
 ### Other
 
@@ -171,7 +171,7 @@ Use `openbao path-help` for more details.
 - Group names are identified using their `cn` attribute.
 
 ```shell-session
-$ openbao write auth/ldap/config \
+$ bao write auth/ldap/config \
     url="ldap://ldap.example.com" \
     userdn="ou=Users,dc=example,dc=com" \
     groupdn="ou=Groups,dc=example,dc=com" \
@@ -196,7 +196,7 @@ $ openbao write auth/ldap/config \
 - Group membership will be resolved via the `memberOf` attribute of _user_ objects. That search will begin under `ou=Users,dc=example,dc=com`.
 
 ```shell-session
-$ openbao write auth/ldap/config \
+$ bao write auth/ldap/config \
     url="ldap://ldap.example.com" \
     userattr=sAMAccountName \
     userdn="ou=Users,dc=example,dc=com" \
@@ -222,7 +222,7 @@ $ openbao write auth/ldap/config \
 - Group names are identified using the `cn` attribute.
 
 ```shell-session
-$ openbao write auth/ldap/config \
+$ bao write auth/ldap/config \
     url="ldaps://ldap.example.com" \
     userattr="uid" \
     userdn="ou=Users,dc=example,dc=com" \
@@ -239,7 +239,7 @@ $ openbao write auth/ldap/config \
 Next we want to create a mapping from an LDAP group to a OpenBao policy:
 
 ```shell-session
-$ openbao write auth/ldap/groups/scientists policies=foo,bar
+$ bao write auth/ldap/groups/scientists policies=foo,bar
 ```
 
 This maps the LDAP group "scientists" to the "foo" and "bar" OpenBao policies.
@@ -247,8 +247,8 @@ We can also add specific LDAP users to additional (potentially non-LDAP)
 groups. Note that policies can also be specified on LDAP users as well.
 
 ```shell-session
-$ openbao write auth/ldap/groups/engineers policies=foobar
-$ openbao write auth/ldap/users/tesla groups=engineers policies=zoobar
+$ bao write auth/ldap/groups/engineers policies=foobar
+$ bao write auth/ldap/users/tesla groups=engineers policies=zoobar
 ```
 
 This adds the LDAP user "tesla" to the "engineers" group, which maps to
@@ -258,7 +258,7 @@ policy.
 Finally, we can test this by authenticating:
 
 ```shell-session
-$ openbao login -method=ldap username=tesla
+$ bao login -method=ldap username=tesla
 Password (will be hidden):
 Successfully authenticated! The policies that are associated
 with this token are listed below:

@@ -70,7 +70,7 @@ that enable the feature.
 Example configuration:
 
 ```
-openbao write auth/oidc/config -<<EOF
+bao write auth/oidc/config -<<EOF
 {
     "oidc_discovery_url": "https://accounts.google.com",
     "oidc_client_id": "your_client_id",
@@ -98,7 +98,7 @@ queries to succeed.
 Example role:
 
 ```
-openbao write auth/oidc/role/your_default_role \
+bao write auth/oidc/role/your_default_role \
     allowed_redirect_uris="http://localhost:8200/ui/vault/auth/oidc/oidc/callback,http://localhost:8250/oidc/callback" \
     user_claim="sub" \
     groups_claim="groups" \

@@ -17,13 +17,13 @@ The `socket` audit device writes to a TCP, UDP, or UNIX socket.
 Enable at the default path:
 
 ```shell-session
-$ openbao audit enable socket
+$ bao audit enable socket
 ```
 
 Supply configuration parameters via K=V pairs:
 
 ```shell-session
-$ openbao audit enable socket address=127.0.0.1:9090 socket_type=tcp
+$ bao audit enable socket address=127.0.0.1:9090 socket_type=tcp
 ```
 
 ## Configuration

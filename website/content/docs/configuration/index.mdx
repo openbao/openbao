@@ -36,7 +36,7 @@ telemetry {
 }
 ```
 
-After the configuration is written, use the `-config` flag with `openbao server`
+After the configuration is written, use the `-config` flag with `bao server`
 to specify where the configuration is.
 
 ## Parameters
@@ -112,7 +112,7 @@ to specify where the configuration is.
   syscall without running the process as root, run:
 
   ```shell
-  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which openbao))
+  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which bao))
   ```
 
   ~> Note: Since each plugin runs as a separate process, you need to do the same
@@ -200,7 +200,7 @@ can have a negative effect on performance due to the tracking of each lock attem
   Supported values (in order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`.
   This can also be specified via the `VAULT_LOG_LEVEL` environment variable.
 
-  ~> Note: On SIGHUP (`sudo kill -s HUP` _pid of openbao_), if a valid value is specified, OpenBao will update the existing log level,
+  ~> Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
   overriding (even if specified) both the CLI flag and environment variable.
 
   ~> Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,

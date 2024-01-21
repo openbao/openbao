@@ -25,7 +25,7 @@ in the past, or no data has yet been collected since the feature was enabled.
 Retrieve the client counts for the default reporting period:
 
 ```shell-session
-$ openbao operator usage
+$ bao operator usage
 Period start: 2019-11-01T00:00:00Z
 Period end: 2020-10-31T23:59:59Z
 
@@ -39,7 +39,7 @@ Total            1581                332                 1913
 Retrieve the client counts for a specific month in the past:
 
 ```shell-session
-$ openbao operator usage -start-time=2020-01 -end-time=2020-01
+$ bao operator usage -start-time=2020-01 -end-time=2020-01
 Period start: 2020-01-01T00:00:00Z
 Period end: 2020-01-31T23:59:59Z
 

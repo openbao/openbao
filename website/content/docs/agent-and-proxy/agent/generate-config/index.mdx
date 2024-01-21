@@ -40,13 +40,13 @@ unless a path is specified as an argument.
 Before generating a configuration file, let's insert a secret `foo`:
 
 ```shell-session
-$ openbao kv put -mount=secret foo user="admin" password="s3cr3t"
+$ bao kv put -mount=secret foo user="admin" password="s3cr3t"
 ```
 
 Generate an agent configuration file which will reference `secret/foo`:
 
 ```shell-session
-$ openbao agent generate-config \
+$ bao agent generate-config \
          -type="env-template" \
          -exec="./my-app arg1 arg2" \
          -namespace="my/ns/" \

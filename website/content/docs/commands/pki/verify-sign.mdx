@@ -29,7 +29,7 @@ This command returns five fields of information:
 
 ## Usage
 
-Usage: `openbao pki verify-sign <parent> <child>`
+Usage: `bao pki verify-sign <parent> <child>`
 
 - `<parent>` is the fully name-spaced path to the issuer certificate which will be
 used to verify the `<child>` certificate
@@ -42,7 +42,7 @@ A fully namespaced path looks like, for instance, 'ns1/mount1/issuer/issuerName/
 ## Example
 
 ```shell-session
-$ openbao pki verify-sign pki_root/issuer/root pki_int/issuer/FirstDepartment
+$ bao pki verify-sign pki_root/issuer/root pki_int/issuer/FirstDepartment
 issuer:pki_root/issuer/root
 issued:pki_int/issuer/FirstDepartment
 

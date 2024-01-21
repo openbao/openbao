@@ -17,20 +17,20 @@ Get information about the locally authenticated token (this uses the
 `/auth/token/lookup-self` endpoint and permission):
 
 ```shell-session
-$ openbao token lookup
+$ bao token lookup
 ```
 
 Get information about a particular token (this uses the `/auth/token/lookup`
 endpoint and permission):
 
 ```shell-session
-$ openbao token lookup 96ddf4bc-d217-f3ba-f9bd-017055595017
+$ bao token lookup 96ddf4bc-d217-f3ba-f9bd-017055595017
 ```
 
 Get information about a token via its accessor:
 
 ```shell-session
-$ openbao token lookup -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
+$ bao token lookup -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
 ```
 
 ## Usage

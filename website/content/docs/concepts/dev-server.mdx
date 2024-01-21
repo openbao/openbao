@@ -8,8 +8,8 @@ description: >-
 
 # "Dev" server mode
 
-You can start OpenBao as a server in "dev" mode like so: `openbao server -dev`.
-This dev-mode server requires no further setup, and your local `openbao` CLI will
+You can start OpenBao as a server in "dev" mode like so: `bao server -dev`.
+This dev-mode server requires no further setup, and your local `bao` CLI will
 be authenticated to talk to it. This makes it easy to experiment with OpenBao or
 start a OpenBao instance for development. Every feature of OpenBao is available in
 "dev" mode. The `-dev` flag just short-circuits a lot of setup to insecure
@@ -25,7 +25,7 @@ The properties of the dev server (some can be overridden with command line
 flags or by specifying a configuration file):
 
 - **Initialized and unsealed** - The server will be automatically initialized
-  and unsealed. You don't need to use `openbao operator unseal`. It is ready
+  and unsealed. You don't need to use `bao operator unseal`. It is ready
   for use immediately.
 
 - **In-memory storage** - All data is stored (encrypted) in-memory. OpenBao
@@ -35,7 +35,7 @@ flags or by specifying a configuration file):
   `127.0.0.1:8200` (the default server address) _without_ TLS.
 
 - **Automatically Authenticated** - The server stores your root access
-  token so `openbao` CLI access is ready to go. If you are accessing OpenBao
+  token so `bao` CLI access is ready to go. If you are accessing OpenBao
   via the API, you'll need to authenticate using the token printed out.
 
 - **Single unseal key** - The server is initialized with a single unseal

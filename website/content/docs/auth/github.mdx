@@ -29,7 +29,7 @@ The default path is `/github`. If this auth method was enabled at a different
 path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ openbao login -method=github token="MY_TOKEN"
+$ bao login -method=github token="MY_TOKEN"
 ```
 
 ### Via the API
@@ -71,13 +71,13 @@ management tool.
 1. Enable the GitHub auth method:
 
    ```text
-   $ openbao auth enable github
+   $ bao auth enable github
    ```
 
 1. Use the `/config` endpoint to configure OpenBao to talk to GitHub.
 
    ```text
-   $ openbao write auth/github/config organization=hashicorp
+   $ bao write auth/github/config organization=hashicorp
    ```
 
    For the complete list of configuration options, please see the API
@@ -87,7 +87,7 @@ management tool.
    names must be "slugified":
 
    ```text
-   $ openbao write auth/github/map/teams/dev value=dev-policy
+   $ bao write auth/github/map/teams/dev value=dev-policy
    ```
 
    In this example, when members of the team "dev" in the organization
@@ -100,7 +100,7 @@ management tool.
    endpoint:
 
    ```text
-   $ openbao write auth/github/map/users/sethvargo value=sethvargo-policy
+   $ bao write auth/github/map/users/sethvargo value=sethvargo-policy
    ```
 
    In this example, a user with the GitHub username `sethvargo` will be

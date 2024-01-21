@@ -16,7 +16,7 @@ For more information, please see the [auth method
 documentation](/vault/docs/auth) or the [authentication
 concepts](/vault/docs/concepts/auth) page.
 
-To authenticate to OpenBao as a user or machine, use the [`openbao login`](/vault/docs/commands/login) command instead. This command is for
+To authenticate to OpenBao as a user or machine, use the [`bao login`](/vault/docs/commands/login) command instead. This command is for
 interacting with the auth methods themselves, not authenticating to OpenBao.
 
 ## Examples
@@ -24,14 +24,14 @@ interacting with the auth methods themselves, not authenticating to OpenBao.
 Enable an auth method:
 
 ```shell-session
-$ openbao auth enable userpass
+$ bao auth enable userpass
 Success! Enabled userpass auth method at: userpass/
 ```
 
 List all auth methods:
 
 ```shell-session
-$ openbao auth list
+$ bao auth list
 Path         Type        Description
 ----         ----        -----------
 token/       token       token based credentials
@@ -41,29 +41,29 @@ userpass/    userpass    n/a
 Get help about how to authenticate to a particular auth method:
 
 ```shell-session
-$ openbao auth help userpass/
-Usage: openbao login -method=userpass [CONFIG K=V...]
+$ bao auth help userpass/
+Usage: bao login -method=userpass [CONFIG K=V...]
 # ...
 ```
 
 Disable an auth method:
 
 ```shell-session
-$ openbao auth disable userpass/
+$ bao auth disable userpass/
 Success! Disabled the auth method (if it existed) at: userpass/
 ```
 
 Tune an auth method:
 
 ```shell-session
-$ openbao auth tune -max-lease-ttl=30m userpass/
+$ bao auth tune -max-lease-ttl=30m userpass/
 Success! Tuned the auth method at: userpass/
 ```
 
 ## Usage
 
 ```text
-Usage: openbao auth <subcommand> [options] [args]
+Usage: bao auth <subcommand> [options] [args]
 
   # ...
 

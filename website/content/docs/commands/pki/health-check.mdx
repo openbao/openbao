@@ -22,13 +22,13 @@ Mounts need to be specified with any namespaces prefixed in the path, e.g.,
 Performs a basic health check against the `pki-root` mount:
 
 ```shell-session
-$ openbao pki health-check pki-root/
+$ bao pki health-check pki-root/
 ```
 
 Configuration can be specified using the `-health-config` flag:
 
 ```shell-session
-$ openbao pki health-check -health-config=mycorp-root.json pki-root/
+$ bao pki health-check -health-config=mycorp-root.json pki-root/
 ```
 
 Using the `-list` flag will show the list of health checks and any
@@ -36,7 +36,7 @@ known configuration values (with their defaults) that will be run
 against this mount:
 
 ```shell-session
-$ openbao pki health-check -list pki-root/
+$ bao pki health-check -list pki-root/
 ```
 
 ## Usage
@@ -142,7 +142,7 @@ This health check will check each issuer in the mount for validity status, retur
    to check for CAs that are about to expire.
 1. Migrate from expiring CAs to new CAs.
 1. Delete any expired CAs with one of the following options:
-  - Run [tidy](/vault/api-docs/secret/pki#tidy) manually with `openbao write <mount>/tidy tidy_expired_issuers=true`.
+  - Run [tidy](/vault/api-docs/secret/pki#tidy) manually with `bao write <mount>/tidy tidy_expired_issuers=true`.
   - Use the OpenBao API to call [delete issuer](/vault/api-docs/secret/pki#delete-issuer).
 
 ### CRL validity period
@@ -167,10 +167,10 @@ For informational purposes, it reads the CRL config and suggests enabling auto-r
 
 **Remediation steps**:
 
-Use `openbao write` to enable CRL auto-rebuild:
+Use `bao write` to enable CRL auto-rebuild:
 
 ```shell-session
-$ openbao write <mount>/config/crl auto_rebuild=true
+$ bao write <mount>/config/crl auto_rebuild=true
 ```
 
 ### Hardware-Backed root certificate
@@ -312,10 +312,10 @@ This health check checks whether audit information is accessible to log consumer
 
 **Remediation steps**:
 
-Use `openbao secrets tune` to set the desired audit parameters:
+Use `bao secrets tune` to set the desired audit parameters:
 
 ```shell-session
-$ openbao secrets tune \
+$ bao secrets tune \
   -audit-non-hmac-response-keys=certificate \
   -audit-non-hmac-response-keys=issuing_ca \
   -audit-non-hmac-response-keys=serial_number \
@@ -379,19 +379,19 @@ This health check verifies if the `If-Modified-Since` header has been added to `
 **Remediation steps**:
 
 1. Update `allowed_response_headers` and `passthrough_request_headers` for all
-   policies with `openbao secrets tune`:
+   policies with `bao secrets tune`:
 
   ```shell-session
-  $ openbao secrets tune \
+  $ bao secrets tune \
       -passthrough-request-headers="If-Modified-Since" \
       -allowed-response-headers="Last-Modified" \
       <mount>
   ```
 
-1. Update ACME-specific headers with `openbao secrets tune` (if you are using ACME):
+1. Update ACME-specific headers with `bao secrets tune` (if you are using ACME):
 
   ```shell-session
-  $ openbao secrets tune \
+  $ bao secrets tune \
       -passthrough-request-headers="If-Modified-Since" \
       -allowed-response-headers="Last-Modified" \
       -allowed-response-headers="Replay-Nonce" \
@@ -419,10 +419,10 @@ This health check verifies that auto-tidy is enabled, with sane defaults for int
 
 **Remediation steps**
 
-Use `openbao write` to enable auto-tidy with the recommended defaults:
+Use `bao write` to enable auto-tidy with the recommended defaults:
 
 ```shell-session
-$ openbao write <mount>/config/auto-tidy \
+$ bao write <mount>/config/auto-tidy \
     enabled=true \
     tidy_cert_store=true \
     tidy_revoked_certs=true \
@@ -449,10 +449,10 @@ This health check verifies that tidy has run within the last run window. This ca
 
 **Remediation steps**:
 
-1. Schedule a manual run of tidy with `openbao write`:
+1. Schedule a manual run of tidy with `bao write`:
 
   ```shell-session
-  $ openbao write <mount>/tidy \
+  $ bao write <mount>/tidy \
       tidy_cert_store=true \
       tidy_revoked_certs=true \
       tidy_acme=true \
@@ -461,7 +461,7 @@ This health check verifies that tidy has run within the last run window. This ca
       tidy_revoked_cert_issuer_associations=true
   ```
 
-1. Review the tidy status endpoint, `openbao read <mount>/tidy-status` for
+1. Review the tidy status endpoint, `bao read <mount>/tidy-status` for
    additional information.
 1. Re-configure auto-tidy based on the log information and results of your
    manual run.
@@ -485,13 +485,13 @@ This health check verifies that this cluster has a reasonable number of certific
 
 **Remediation steps**:
 
-1. Verify that tidy ran recently with `openbao read`:
+1. Verify that tidy ran recently with `bao read`:
     ```shell-session
-    $ openbao read <mount>/tidy-status
+    $ bao read <mount>/tidy-status
     ````
-1. Schedule a manual run of tidy with `openbao write`:
+1. Schedule a manual run of tidy with `bao write`:
     ```shell-session
-    $ openbao write <mount>/tidy \
+    $ bao write <mount>/tidy \
       tidy_cert_store=true \
       tidy_revoked_certs=true \
       tidy_acme=true \
@@ -538,9 +538,9 @@ This health check verifies if the `"Replay-Nonce`, `Link`, and `Location` header
 
 **Remediation steps**:
 
-Use `openbao secrets tune` to add the missing headers to `allowed_response_headers`:
+Use `bao secrets tune` to add the missing headers to `allowed_response_headers`:
 ```shell-session
-$ openbao secrets tune \
+$ bao secrets tune \
   -allowed-response-headers="Last-Modified" \
   -allowed-response-headers="Replay-Nonce" \
   -allowed-response-headers="Link" \

@@ -147,7 +147,7 @@ With this active service in place, we now have a dedicated endpoint that will al
 setting up OpenBao replication, it can be used as the primary address:
 
 ```shell-session
-$ openbao write -f sys/replication/performance/primary/enable \
+$ bao write -f sys/replication/performance/primary/enable \
     primary_cluster_addr='https://openbao-active-us-east:8201'
 ```
 

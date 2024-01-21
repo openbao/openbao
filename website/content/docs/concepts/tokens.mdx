@@ -16,7 +16,7 @@ can be used directly or [auth methods](/vault/docs/concepts/auth)
 can be used to dynamically generate tokens based on external identities.
 
 If you've gone through the getting started guide, you probably noticed that
-`openbao server -dev` (or `openbao operator init` for a non-dev server) outputs an
+`bao server -dev` (or `bao operator init` for a non-dev server) outputs an
 initial "root token." This is the first method of authentication for OpenBao.
 It is also the only auth method that cannot be disabled.
 
@@ -61,11 +61,11 @@ type of token within OpenBao that can be set to never expire without any renewal
 needed. As a result, it is purposefully hard to create root tokens; in fact
 there are only three ways to create root tokens:
 
-1. The initial root token generated at `openbao operator init` time -- this token has no
+1. The initial root token generated at `bao operator init` time -- this token has no
    expiration
 1. By using another root token; a root token with an expiration cannot create a
    root token that never expires
-1. By using `openbao operator generate-root` ([example](/vault/tutorials/operations/generate-root))
+1. By using `bao operator generate-root` ([example](/vault/tutorials/operations/generate-root))
    with the permission of a quorum of unseal key holders
 
 Root tokens are useful in development but should be extremely carefully guarded
@@ -146,7 +146,7 @@ current TTL is up, the token will no longer function -- it, and its associated
 leases, are revoked.
 
 If the token is renewable, OpenBao can be asked to extend the token validity
-period using `openbao token renew` or the appropriate renewal endpoint. At this
+period using `bao token renew` or the appropriate renewal endpoint. At this
 time, various factors come into play. What happens depends upon whether the
 token is a periodic token (available for creation by `root`/`sudo` users, token
 store roles, or some auth methods), has an explicit maximum TTL

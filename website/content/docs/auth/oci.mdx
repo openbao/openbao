@@ -55,7 +55,7 @@ Follow the steps below to add policies to your tenancy that allow the OCI comput
 First, enable the OCI Auth method.
 
 ```shell-session
-$ openbao auth enable oci
+$ bao auth enable oci
 ```
 
 Then, configure your home tenancy in the OpenBao, so that only users or instances from your tenancy will be allowed to log into OpenBao through the OCI Auth method. 
@@ -112,7 +112,7 @@ For both methods to work:
 #### Log in with instance principals
 
 ```shell-session
-$ openbao login -method=oci auth_type=instance role=openbaoadminrole
+$ bao login -method=oci auth_type=instance role=openbaoadminrole
 ```
 
 This assumes that the compute instance that you are logging in from should be a part of a dynamic group that was added to the OpenBao admin role. If logging on from a different compute instance than the one on which OpenBao is running on, the compute should have connectivity to the endpoint specified in VAULT_ADDR. 
@@ -120,7 +120,7 @@ This assumes that the compute instance that you are logging in from should be a 
 #### Log in with an API key
 
 ```shell-session
-$ openbao login -method=oci auth_type=apikey role=openbaoadminrole
+$ bao login -method=oci auth_type=apikey role=openbaoadminrole
 ```
 
 This assumes you have an OCI API key.
@@ -155,7 +155,7 @@ If you don't have an API key:
 3.  Login to OpenBao assuming the devrole.
 
    ```shell-session
-   $ openbao login -method=oci auth_type=instance role=devrole
+   $ bao login -method=oci auth_type=instance role=devrole
    ```
 
 ## Authentication
@@ -167,13 +167,13 @@ You can authenticate with the OpenBao CLI or by communicating with the API direc
 With Compute Instance credentials:
 
 ```shell-session
-$ openbao login -method=oci auth_type=instance role=devrole
+$ bao login -method=oci auth_type=instance role=devrole
 ```
 
 With User credentials ([SDK configuration](https://docs.cloud.oracle.com/iaas/Content/API/Concepts/sdkconfig.htm)):
 
 ```shell-session
-$ openbao login -method=oci auth_type=apikey role=devrole
+$ bao login -method=oci auth_type=apikey role=devrole
 ```
 
 ### Via the API

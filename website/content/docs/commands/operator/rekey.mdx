@@ -29,7 +29,7 @@ step-by-step instructions.
 Initialize a rekey:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -init \
     -key-shares=15 \
     -key-threshold=9
@@ -38,7 +38,7 @@ $ openbao operator rekey \
 Initialize a rekey when Auto Unseal is used for the OpenBao cluster:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -target=recovery \
     -init \
     -key-shares=15 \
@@ -48,7 +48,7 @@ $ openbao operator rekey \
 Initialize a rekey and activate the verification process:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -init \
     -key-shares=15 \
     -key-threshold=9 \
@@ -58,7 +58,7 @@ $ openbao operator rekey \
 Rekey and encrypt the resulting unseal keys with PGP:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -init \
     -key-shares=3 \
     -key-threshold=2 \
@@ -68,7 +68,7 @@ $ openbao operator rekey \
 Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -target=recovery \
     -init \
     -pgp-keys=keybase:grahamhashicorp
@@ -79,7 +79,7 @@ $ openbao operator rekey \
 Store encrypted PGP keys in OpenBao's core:
 
 ```shell-session
-$ openbao operator rekey \
+$ bao operator rekey \
     -init \
     -pgp-keys="..." \
     -backup
@@ -88,19 +88,19 @@ $ openbao operator rekey \
 Retrieve backed-up unseal keys:
 
 ```shell-session
-$ openbao operator rekey -backup-retrieve
+$ bao operator rekey -backup-retrieve
 ```
 
 Delete backed-up unseal keys:
 
 ```shell-session
-$ openbao operator rekey -backup-delete
+$ bao operator rekey -backup-delete
 ```
 
 Perform the verification of the rekey using the verification nonce:
 
 ```shell-session
-$ openbao operator rekey -verify -nonce="..."
+$ bao operator rekey -verify -nonce="..."
 ```
 
 ## Usage

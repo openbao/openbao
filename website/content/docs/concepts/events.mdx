@@ -19,7 +19,7 @@ Events can be enabled via the `events.alpha1` [experiment option](/vault/docs/co
 configuration or on the command-line:
 
 ```shell-session
-$ openbao server -experiment events.alpha1
+$ bao server -experiment events.alpha1
 ```
 
 -> Note: Experiments can only be enabled at startup, and cannot be disabled or enabled at runtime.
@@ -132,7 +132,7 @@ By default, the events are delivered in protobuf binary format.
 The endpoint can also format the data as JSON if the `json` query parameter is set to `true`:
 
 ```shell-session
-$ wscat -H "X-Vault-Token: $(openbao print token)" --connect 'ws://127.0.0.1:8200/v1/sys/events/subscribe/kv-v2/data-write?json=true
+$ wscat -H "X-Vault-Token: $(bao print token)" --connect 'ws://127.0.0.1:8200/v1/sys/events/subscribe/kv-v2/data-write?json=true
 {"id":"901f2388-aabb-a385-7bc0-0b09d5fa060b","source":"https://vaultproject.io/","specversion":"1.0","type":"*","data":{"event":{"id":"901f2388-aabb-a385-7bc0-0b09d5fa060b","metadata":{"current_version":"1","oldest_version":"0","path":"data/foo"}},"event_type":"kv-v2/data-write","plugin_info":{"mount_class":"secret","mount_accessor":"kv_a6081d01","mount_path":"secret/","plugin":"kv"}},"datacontentype":"application/cloudevents","time":"2023-02-17T13:11:39.227341-08:00"}
 ...
 ```
@@ -141,7 +141,7 @@ The OpenBao CLI support this endpoint via the `events subscribe` command, which 
 JSON for the requested events (one line per event):
 
 ```shell-session
-$ openbao events subscribe kv-v2/data-write
+$ bao events subscribe kv-v2/data-write
 {"id":"901f2388-aabb-a385-7bc0-0b09d5fa060b","source":"https://vaultproject.io/","specversion":"1.0","type":"*","data":{"event":{"id":"901f2388-aabb-a385-7bc0-0b09d5fa060b","metadata":{"current_version":"1","oldest_version":"0","path":"data/foo"}},"event_type":"kv-v2/data-write","plugin_info":{"mount_class":"secret","mount_accessor":"kv_a6081d01","mount_path":"secret/","plugin":"kv"}},"datacontentype":"application/cloudevents","time":"2023-02-17T13:11:39.227341-08:00"}
 ...
 ```

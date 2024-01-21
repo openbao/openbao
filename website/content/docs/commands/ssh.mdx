@@ -23,19 +23,19 @@ SSH using the OTP mode (requires [sshpass](https://linux.die.net/man/1/sshpass)
 for full automation):
 
 ```shell-session
-$ openbao ssh -mode=otp -role=my-role user@1.2.3.4
+$ bao ssh -mode=otp -role=my-role user@1.2.3.4
 ```
 
 SSH using the CA mode:
 
 ```shell-session
-$ openbao ssh -mode=ca -role=my-role user@1.2.3.4
+$ bao ssh -mode=ca -role=my-role user@1.2.3.4
 ```
 
 SSH using CA mode with host key verification:
 
 ```shell-session
-$ openbao ssh \
+$ bao ssh \
     -mode=ca \
     -role=my-role \
     -host-key-mount-point=host-signer \

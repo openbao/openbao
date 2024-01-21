@@ -134,20 +134,20 @@ openbao-debug-2019-10-15T21-44-49Z/
 Start debug using reasonable defaults:
 
 ```shell-session
-$ openbao debug
+$ bao debug
 ```
 
 Start debug with different duration, intervals, and metrics interval values, and
 skip compression:
 
 ```shell-session
-$ openbao debug -duration=1m -interval=10s -metrics-interval=5s -compress=false
+$ bao debug -duration=1m -interval=10s -metrics-interval=5s -compress=false
 ```
 
 Start debug with specific targets:
 
 ```shell-session
-$ openbao debug -target=host -target=metrics
+$ bao debug -target=host -target=metrics
 ```
 
 ## Usage

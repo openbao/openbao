@@ -35,7 +35,7 @@ request to OpenBao.
 
 ```shell-session
 # Authentication to openbao outside of Google Cloud
-$ openbao login -method=gcp \
+$ bao login -method=gcp \
     role="my-role" \
     service_account="authenticating-account@my-project.iam.gserviceaccount.com" \
     jwt_exp="15m" \
@@ -44,10 +44,10 @@ $ openbao login -method=gcp \
 
 ```shell-session
 # Authentication to openbao inside of Google Cloud
-$ openbao login -method=gcp role="my-role"
+$ bao login -method=gcp role="my-role"
 ```
 
-For more usage information, run `openbao auth help gcp`.
+For more usage information, run `bao auth help gcp`.
 
 -> **Note:** The `project` parameter has been removed in Vault 1.5.9+, 1.6.5+, and 1.7.2+.
 It is no longer needed for configuration and will be ignored if provided.
@@ -55,7 +55,7 @@ It is no longer needed for configuration and will be ignored if provided.
 ### Via the CLI
 
 ```shell-session
-$ openbao write -field=token auth/gcp/login \
+$ bao write -field=token auth/gcp/login \
     role="my-role" \
     jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 ```
@@ -82,13 +82,13 @@ management tool.
 1. Enable the Google Cloud auth method:
 
    ```shell-session
-   $ openbao auth enable gcp
+   $ bao auth enable gcp
    ```
 
 1. Configure the auth method credentials if OpenBao is not running on Google Cloud:
 
    ```text
-   $ openbao write auth/gcp/config \
+   $ bao write auth/gcp/config \
        credentials=@/path/to/credentials.json
    ```
 
@@ -105,7 +105,7 @@ management tool.
    For an `iam`-type role:
 
    ```shell-session
-   $ openbao write auth/gcp/role/my-iam-role \
+   $ bao write auth/gcp/role/my-iam-role \
        type="iam" \
        policies="dev,prod" \
        bound_service_accounts="my-service@my-project.iam.gserviceaccount.com"
@@ -114,7 +114,7 @@ management tool.
    For a `gce`-type role:
 
    ```shell-session
-   $ openbao write auth/gcp/role/my-gce-role \
+   $ bao write auth/gcp/role/my-gce-role \
        type="gce" \
        policies="dev,prod" \
        bound_projects="my-project1,my-project2" \
@@ -370,7 +370,7 @@ GCE tokens **can only be generated from a GCE instance**.
     authenticating to OpenBao like so:
 
     ```shell-session
-    $ openbao login \
+    $ bao login \
       -method=gcp \
       role="my-gce-role"
     ```

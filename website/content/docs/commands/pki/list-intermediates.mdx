@@ -13,7 +13,7 @@ parent certificate.
 
 ## Usage
 
-Usage: `openbao pki list-intermediates [flags] <parent> [child] [child] [child...`
+Usage: `bao pki list-intermediates [flags] <parent> [child] [child] [child...`
 
 Lists the set of intermediate CAs issued by this parent issuer.
 
@@ -78,7 +78,7 @@ the parent
 ## Examples
 
 ```shell-session
-$ openbao pki list-intermediates /pki_root/issuer/default
+$ bao pki list-intermediates /pki_root/issuer/default
 intermediate                                             match?
 ------------                                             ------
 pki_int_2/issuer/d4404ccc-3ad4-83a9-f5df-398637654b3b    true

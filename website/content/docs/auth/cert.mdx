@@ -83,7 +83,7 @@ can be omitted if the CA used to issue the OpenBao server certificate is trusted
 by the local system executing this command.
 
 ```shell-session
-$ openbao login \
+$ bao login \
     -method=cert \
     -ca-cert=openbao-ca.pem \
     -client-cert=cert.pem \
@@ -122,13 +122,13 @@ management tool.
 1. Enable the certificate auth method:
 
    ```text
-   $ openbao auth enable cert
+   $ bao auth enable cert
    ```
 
 1. Configure it with trusted certificates that are allowed to authenticate:
 
    ```text
-   $ openbao write auth/cert/certs/web \
+   $ bao write auth/cert/certs/web \
        display_name=web \
        policies=web,prod \
        certificate=@web-cert.pem \

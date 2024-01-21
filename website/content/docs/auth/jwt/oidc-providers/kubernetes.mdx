@@ -54,8 +54,8 @@ Configuration steps:
   1. If OpenBao is running in Kubernetes:
 
      ```bash
-     kubectl exec openbao-0 -- openbao auth enable jwt
-     kubectl exec openbao-0 -- openbao write auth/jwt/config \
+     kubectl exec openbao-0 -- bao auth enable jwt
+     kubectl exec openbao-0 -- bao write auth/jwt/config \
         oidc_discovery_url=https://kubernetes.default.svc.cluster.local \
         oidc_discovery_ca_pem=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
      ```
@@ -67,8 +67,8 @@ Configuration steps:
      [`jwt_validation_pubkeys`](#using-jwt-validation-public-keys) instead.
 
      ```bash
-     openbao auth enable jwt
-     openbao write auth/jwt/config oidc_discovery_url="${ISSUER}"
+     bao auth enable jwt
+     bao write auth/jwt/config oidc_discovery_url="${ISSUER}"
      ```
 
 1. Configure a role and log in as detailed [below](#creating-a-role-and-logging-in).
@@ -107,7 +107,7 @@ Configuration steps:
 1. Configure the JWT auth mount with those public keys.
 
    ```bash
-   openbao write auth/jwt/config \
+   bao write auth/jwt/config \
       jwt_validation_pubkeys="-----BEGIN PUBLIC KEY-----
    MIIBIjANBgkqhkiG9...
    -----END PUBLIC KEY-----","-----BEGIN PUBLIC KEY-----
@@ -149,7 +149,7 @@ below if you'd like to control the audience or TTL.
    `default` namespace can use.
 
    ```bash
-   openbao write auth/jwt/role/my-role \
+   bao write auth/jwt/role/my-role \
       role_type="jwt" \
       bound_audiences="<AUDIENCE-FROM-PREVIOUS-STEP>" \
       user_claim="sub" \
@@ -161,7 +161,7 @@ below if you'd like to control the audience or TTL.
 1. Pods or other clients with access to a service account JWT can then log in.
 
    ```bash
-   openbao write auth/jwt/login \
+   bao write auth/jwt/login \
       role=my-role \
       jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token
    # OR equivalent to:

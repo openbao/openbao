@@ -11,8 +11,8 @@ description: |-
 
 The `server` command starts a OpenBao server that responds to API requests. By
 default, OpenBao will start in a "sealed" state. The OpenBao cluster must be
-initialized before use, usually by the `openbao operator init` command. Each OpenBao
-server must also be unsealed using the `openbao operator unseal` command or the
+initialized before use, usually by the `bao operator init` command. Each OpenBao
+server must also be unsealed using the `bao operator unseal` command or the
 API before the server can respond to requests.
 
 For more information, please see:
@@ -31,13 +31,13 @@ For more information, please see:
 Start a server with a configuration file:
 
 ```shell-session
-$ openbao server -config=/etc/openbao/config.hcl
+$ bao server -config=/etc/openbao/config.hcl
 ```
 
 Run in "dev" mode with a custom initial root token:
 
 ```shell-session
-$ openbao server -dev -dev-root-token-id="root"
+$ bao server -dev -dev-root-token-id="root"
 ```
 
 ## Usage

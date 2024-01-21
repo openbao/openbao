@@ -22,7 +22,7 @@ description: OIDC provider configuration for ForgeRock
 1. Configure the OIDC auth method with the `oidc_client_id` (client ID), `oidc_client_secret`
    (client secret), and `oidc_discovery_url` (endpoint URL) from ForgeRock.
    ```shell
-   openbao write auth/oidc/config \
+   bao write auth/oidc/config \
       oidc_client_id="your_client_id" \
       oidc_client_secret="your_client_secret" \
       default_role="your_default_role" \
@@ -34,7 +34,7 @@ description: OIDC provider configuration for ForgeRock
   - `allowed_redirect_uris` should be the two redirect URIs for OpenBao CLI and UI access.
   - `oidc_scopes` should be set to the OIDC scopes.
    ```shell
-   openbao write auth/oidc/role/your_default_role \
+   bao write auth/oidc/role/your_default_role \
       user_claim="sub" \
       allowed_redirect_uris="http://localhost:8250/oidc/callback,https://online_version_hostname:port_number/ui/vault/auth/oidc/oidc/callback"  \
       oidc_scopes="your_oidc_scopes" \

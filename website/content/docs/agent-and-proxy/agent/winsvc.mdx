@@ -35,7 +35,7 @@ of OpenBao Agent as a service, using "OpenBao Agent" as the display name, and st
 The `binPath` argument should include the fully qualified path to the OpenBao executable, as well as any arguments required.
 
 ```shell-session
-PS C:\Windows\system32> sc.exe create OpenBaoAgent binPath="C:\openbao\openbao.exe agent -config=C:\openbao\agent-config.hcl" displayName="OpenBao Agent" start=auto
+PS C:\Windows\system32> sc.exe create OpenBaoAgent binPath="C:\openbao\bao.exe agent -config=C:\openbao\agent-config.hcl" displayName="OpenBao Agent" start=auto
 [SC] CreateService SUCCESS
 ```
 
@@ -52,7 +52,7 @@ The syntax is slightly different for `New-Service`, but the gist is the same. Th
 `sc.exe` one above.
 
 ```shell-session
-PS C:\Windows\system32> New-Service -Name "OpenBaoAgent" -BinaryPathName "C:\openbao\openbao.exe agent -config=C:\openbao\agent-config.hcl" -DisplayName "OpenBao Agent" -StartupType "Automatic"
+PS C:\Windows\system32> New-Service -Name "OpenBaoAgent" -BinaryPathName "C:\openbao\bao.exe agent -config=C:\openbao\agent-config.hcl" -DisplayName "OpenBao Agent" -StartupType "Automatic"
 
 Status   Name               DisplayName
 ------   ----               -----------
@@ -63,7 +63,7 @@ As mentioned previously, `New-Service` is easier to use if the path to your Open
 Below is an example of how to configure OpenBao Agent as a service using a path with spaces.
 
 ```shell-session
-PS C:\Windows\system32> New-Service -Name "OpenBaoAgent" -BinaryPathName '"C:\my dir\openbao.exe" agent -config="C:\my dir\agent-config.hcl"' -DisplayName "OpenBao Agent" -StartupType "Automatic"
+PS C:\Windows\system32> New-Service -Name "OpenBaoAgent" -BinaryPathName '"C:\my dir\bao.exe" agent -config="C:\my dir\agent-config.hcl"' -DisplayName "OpenBao Agent" -StartupType "Automatic"
 
 Status   Name               DisplayName
 ------   ----               -----------

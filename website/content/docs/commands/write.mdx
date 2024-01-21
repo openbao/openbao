@@ -21,7 +21,7 @@ will read the value from stdin rather than the command line.
 Some API fields require more advanced structures such as maps. These cannot
 directly be represented on the command line. However, direct control of the
 request parameters can be achieved by using `-` as the only data argument.
-This causes `openbao write` to read a JSON blob containing all request parameters
+This causes `bao write` to read a JSON blob containing all request parameters
 from stdin. This argument will be ignored if used in conjunction with any
 "key=value" pairs.
 
@@ -33,13 +33,13 @@ corresponds to the secrets engines in use.
 Store an arbitrary secrets in the token's cubbyhole.
 
 ```shell-session
-$ openbao write cubbyhole/git-credentials username="student01" password="p@$$w0rd"
+$ bao write cubbyhole/git-credentials username="student01" password="p@$$w0rd"
 ```
 
 Create a new encryption key in the transit secrets engine:
 
 ```shell-session
-$ openbao write -force transit/keys/my-key
+$ bao write -force transit/keys/my-key
 ```
 
 The `-force` flag allows the write operation without input data. (See [command
@@ -48,13 +48,13 @@ options](#command-options).)
 Upload an AWS IAM policy from a file on disk:
 
 ```shell-session
-$ openbao write aws/roles/ops policy=@policy.json
+$ bao write aws/roles/ops policy=@policy.json
 ```
 
 Configure access to Consul by providing an access token:
 
 ```shell-session
-$ echo $MY_TOKEN | openbao write consul/config/access token=-
+$ echo $MY_TOKEN | bao write consul/config/access token=-
 ```
 
 ### API versus CLI
@@ -63,7 +63,7 @@ Create a token with TTL set to 8 hours, limited to 3 uses, and attach `admin`
 and `secops` policies.
 
 ```shell-session
-$ openbao write auth/token/create policies="admin" policies="secops" ttl=8h num_uses=3
+$ bao write auth/token/create policies="admin" policies="secops" ttl=8h num_uses=3
 ```
 
 Equivalent cURL command for this operation:
@@ -83,16 +83,16 @@ $ curl --header "X-Vault-Token: $OPENBAO_TOKEN" \
     $OPENBAO_ADDR/v1/auth/token/create
 ```
 
-The `openbao write` command simplifies the API call.
+The `bao write` command simplifies the API call.
 
 Since token management is a common task, OpenBao CLI provides a
 [`token`](/vault/docs/commands/token) command with
 [`create`](/vault/docs/commands/token/create) subcommand. The CLI command simplifies
-the token creation. Use the `openbao create` command with options to set the token
+the token creation. Use the `bao create` command with options to set the token
 TTL, policies, and use limit.
 
 ```shell-session
-$ openbao token create -policy=admin -policy=secops -ttl=8h -use-limit=3
+$ bao token create -policy=admin -policy=secops -ttl=8h -use-limit=3
 ```
 
 -> **Syntax:** The command options start with `-` (e.g. `-ttl`) while API path

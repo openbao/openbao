@@ -54,7 +54,7 @@ You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the
 1. Configure the OIDC auth method with the `oidc_client_id` (application ID), `oidc_client_secret`
    (client secret), and `oidc_discovery_url` (endpoint URL) you recorded from Azure.
    ```shell
-   openbao write auth/oidc/config \
+   bao write auth/oidc/config \
       oidc_client_id="your_client_id" \
       oidc_client_secret="your_client_secret" \
       default_role="your_default_role" \
@@ -71,7 +71,7 @@ You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the
    - `oidc_scopes` should be set to `"https://graph.microsoft.com/.default"`.
    
    ```shell
-   openbao write auth/oidc/role/your_default_role \
+   bao write auth/oidc/role/your_default_role \
       user_claim="sub" \
       allowed_redirect_uris="http://localhost:8250/oidc/callback,https://online_version_hostname:port_number/ui/vault/auth/oidc/oidc/callback"  \
       groups_claim="groups" \
@@ -91,7 +91,7 @@ You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the
 1. In OpenBao, create a [group alias](/vault/api-docs/secret/identity/group-alias)
    for the external group and set the `objectId` as the group alias name.
    ```shell
-   openbao write identity/group-alias \
+   bao write identity/group-alias \
       name="your_ad_group_object_id" \
       mount_accessor="openbao_oidc_accessor_id" \
       canonical_id="openbao_external_group_id"
@@ -131,7 +131,7 @@ To set the proper permissions on the Azure app:
 1. Check the "Grant admin consent for Default Directory" checkbox
 1. Configure the OIDC auth method in OpenBao by setting `"provider_config"` to Azure.
    ```shell
-   openbao write auth/oidc/config -<<"EOH"
+   bao write auth/oidc/config -<<"EOH"
    {
      "oidc_client_id": "your_client_id",
      "oidc_client_secret": "your_client_secret",
@@ -146,7 +146,7 @@ To set the proper permissions on the Azure app:
 
 1. Add `"profile"` to `oidc_scopes` so the user's ID comes back on the JWT.
    ```shell
-   openbao write auth/oidc/role/your_default_role \
+   bao write auth/oidc/role/your_default_role \
     user_claim="email" \
     allowed_redirect_uris="http://localhost:8250/oidc/callback,https://online_version_hostname:port_number/ui/vault/auth/oidc/oidc/callback"  \
     groups_claim="groups" \

@@ -23,7 +23,7 @@ The default path is `/okta`. If this auth method was enabled at a different
 path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ openbao login -method=okta username=my-username
+$ bao login -method=okta username=my-username
 ```
 
 ### Via the API
@@ -58,14 +58,14 @@ Okta Verify Push and TOTP MFA methods, and Google TOTP are supported during logi
 passcode may be provided via the `totp` parameter:
 
 ```shell-session
-$ openbao login -method=okta username=my-username totp=123456
+$ bao login -method=okta username=my-username totp=123456
 ```
 
 If both Okta TOTP and Google TOTP are enabled in your Okta account, make sure to pass in
 the `provider` name to which the `totp` code belong.
 
 ```shell-session
-$ openbao login -method=okta username=my-username totp=123456 provider=GOOGLE
+$ bao login -method=okta username=my-username totp=123456 provider=GOOGLE
 ```
 
 If `totp` is not set and MFA Push is configured in Okta, a Push will be sent during login.
@@ -88,13 +88,13 @@ management tool.
 1. Enable the Okta auth method:
 
   ```shell-session
-  $ openbao auth enable okta
+  $ bao auth enable okta
   ```
 
 1. Configure OpenBao to communicate with your Okta account:
 
   ```shell-session
-  $ openbao write auth/okta/config \
+  $ bao write auth/okta/config \
      base_url="okta.com" \
      org_name="dev-123456" \
      api_token="00abcxyz..."
@@ -111,7 +111,7 @@ management tool.
 1. Map an Okta group to a OpenBao policy:
 
   ```shell-session
-  $ openbao write auth/okta/groups/scientists policies=nuclear-reactor
+  $ bao write auth/okta/groups/scientists policies=nuclear-reactor
   ```
 
   In this example, anyone who successfully authenticates via Okta who is a
@@ -121,8 +121,8 @@ management tool.
 1. It is also possible to add users directly:
 
   ```shell-session
-  $ openbao write auth/okta/groups/engineers policies=autopilot
-  $ openbao write auth/okta/users/tesla groups=engineers
+  $ bao write auth/okta/groups/engineers policies=autopilot
+  $ bao write auth/okta/users/tesla groups=engineers
   ```
 
   This adds the Okta user "tesla" to the "engineers" group, which maps to

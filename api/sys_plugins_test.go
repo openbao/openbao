@@ -50,15 +50,15 @@ func TestListPlugins(t *testing.T) {
 		"no type specified": {
 			input: ListPluginsInput{},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeCredential: {"alicloud"},
+				PluginTypeCredential: {"jwt"},
 				PluginTypeDatabase:   {"cassandra-database-plugin"},
-				PluginTypeSecrets:    {"ad", "alicloud"},
+				PluginTypeSecrets:    {"kv", "pki"},
 			},
 		},
 		"only auth plugins": {
 			input: ListPluginsInput{Type: PluginTypeCredential},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeCredential: {"alicloud"},
+				PluginTypeCredential: {"jwt"},
 			},
 		},
 		"only database plugins": {
@@ -70,7 +70,7 @@ func TestListPlugins(t *testing.T) {
 		"only secret plugins": {
 			input: ListPluginsInput{Type: PluginTypeSecrets},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeSecrets: {"ad", "alicloud"},
+				PluginTypeSecrets: {"pki", "transit"},
 			},
 		},
 	} {
@@ -264,14 +264,14 @@ const listUntypedResponse = `{
   "lease_duration": 0,
   "data": {
     "auth": [
-      "alicloud"
+      "jwt"
     ],
     "database": [
       "cassandra-database-plugin"
     ],
     "secret": [
-      "ad",
-      "alicloud"
+      "kv",
+      "pki"
     ],
     "some_other_unexpected_key": [
       {
@@ -284,7 +284,7 @@ const listUntypedResponse = `{
     "detailed": [
       {
         "type": "auth",
-        "name": "alicloud",
+        "name": "jwt",
         "version": "v0.13.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"
@@ -298,14 +298,14 @@ const listUntypedResponse = `{
       },
       {
         "type": "secret",
-        "name": "ad",
+        "name": "kv",
         "version": "v0.14.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"
       },
       {
         "type": "secret",
-        "name": "alicloud",
+        "name": "pki",
         "version": "v0.13.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"

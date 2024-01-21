@@ -269,7 +269,7 @@ Finally, here's an example of running an existing OSS docker test with a custom 
 
 ```bash
 $ GOOS=linux make dev
-$ VAULT_BINARY=$(pwd)/bin/vault go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
+$ VAULT_BINARY=$(pwd)/bin/bao go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
 ok      github.com/openbao/openbao/vault/external_tests/raft/raft_binary        20.960s
 ```
 -->

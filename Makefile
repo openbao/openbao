@@ -106,7 +106,7 @@ cover:
 # any common errors.
 vet:
 	@$(GO_CMD) list -f '{{.Dir}}' ./... | grep -v /vendor/ \
-		| grep -v '.*github.com/hashicorp/vault$$' \
+		| grep -v '.*github.com/openbao/openbao$$' \
 		| xargs $(GO_CMD) vet ; if [ $$? -eq 1 ]; then \
 			echo ""; \
 			echo "Vet found suspicious constructs. Please check the reported constructs"; \
@@ -195,10 +195,10 @@ test-ember-enos: install-ui-dependencies
 	@echo "--> Running ember tests with a real backend"
 	@cd ui && yarn run test:enos
 
-check-vault-in-path:
-	@VAULT_BIN=$$(command -v vault) || { echo "vault command not found"; exit 1; }; \
+check-bao-in-path:
+	@VAULT_BIN=$$(command -v bao) || { echo "bao command not found"; exit 1; }; \
 		[ -x "$$VAULT_BIN" ] || { echo "$$VAULT_BIN not executable"; exit 1; }; \
-		printf "Using Vault at %s:\n\$$ vault version\n%s\n" "$$VAULT_BIN" "$$(vault version)"
+		printf "Using Vault at %s:\n\$$ bao version\n%s\n" "$$VAULT_BIN" "$$(bao version)"
 
 ember-dist: install-ui-dependencies
 	@cd ui && npm rebuild node-sass
@@ -286,7 +286,7 @@ hana-database-plugin:
 mongodb-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mongodb-database-plugin ./plugins/database/mongodb/mongodb-database-plugin
 
-.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-vault-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
+.PHONY: bin default prep test vet bootstrap ci-bootstrap fmt fmtcheck mysql-database-plugin mysql-legacy-database-plugin cassandra-database-plugin influxdb-database-plugin postgresql-database-plugin mssql-database-plugin hana-database-plugin mongodb-database-plugin ember-dist ember-dist-dev static-dist static-dist-dev assetcheck check-bao-in-path packages build build-ci semgrep semgrep-ci vet-godoctests ci-vet-godoctests
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 

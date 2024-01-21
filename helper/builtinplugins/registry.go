@@ -31,9 +31,6 @@ import (
 	credOkta "github.com/openbao/openbao/builtin/credential/okta"
 	credRadius "github.com/openbao/openbao/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
-	logicalAws "github.com/openbao/openbao/builtin/logical/aws"
-	logicalConsul "github.com/openbao/openbao/builtin/logical/consul"
-	logicalNomad "github.com/openbao/openbao/builtin/logical/nomad"
 	logicalPki "github.com/openbao/openbao/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/builtin/logical/rabbitmq"
 	logicalSsh "github.com/openbao/openbao/builtin/logical/ssh"
@@ -135,13 +132,11 @@ func newRegistry() *registry {
 				DeprecationStatus: consts.Deprecated,
 			},
 			"alicloud": {Factory: logicalAlicloud.Factory},
-			"aws":      {Factory: logicalAws.Factory},
 			"azure":    {Factory: logicalAzure.Factory},
 			"cassandra": {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
-			"consul":     {Factory: logicalConsul.Factory},
 			"gcp":        {Factory: logicalGcp.Factory},
 			"gcpkms":     {Factory: logicalGcpKms.Factory},
 			"kubernetes": {Factory: logicalKube.Factory},
@@ -161,7 +156,6 @@ func newRegistry() *registry {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
-			"nomad":    {Factory: logicalNomad.Factory},
 			"openldap": {Factory: logicalLDAP.Factory},
 			"ldap":     {Factory: logicalLDAP.Factory},
 			"pki":      {Factory: logicalPki.Factory},

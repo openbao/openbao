@@ -1,4 +1,4 @@
-module github.com/hashicorp/vault-plugin-secrets-openldap/tools
+module github.com/openbao/openbao/builtin/logical/openldap/tools
 
 go 1.17
 

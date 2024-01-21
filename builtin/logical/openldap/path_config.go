@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
+	"github.com/openbao/openbao/builtin/logical/openldap/client"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/ldaputil"
 	"github.com/openbao/openbao/sdk/logical"

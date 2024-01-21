@@ -10,11 +10,11 @@ import (
 
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
+	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/builtin/logical/openldap/client"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/template"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 	"golang.org/x/text/encoding/unicode"
 )
 

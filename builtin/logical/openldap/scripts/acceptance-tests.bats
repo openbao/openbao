@@ -164,7 +164,7 @@ setup_file() {
   start_openldap
   start_vault
 
-  vault secrets enable -path openldap vault-plugin-secrets-openldap
+  vault secrets enable -path openldap openldap
 }
 
 teardown_file() {

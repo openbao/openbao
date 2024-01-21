@@ -6,15 +6,9 @@ package builtinplugins
 import (
 	"context"
 
-	credAliCloud "github.com/hashicorp/vault-plugin-auth-alicloud"
-	credAzure "github.com/hashicorp/vault-plugin-auth-azure"
-	credCentrify "github.com/hashicorp/vault-plugin-auth-centrify"
-	credCF "github.com/hashicorp/vault-plugin-auth-cf"
-	credGcp "github.com/hashicorp/vault-plugin-auth-gcp/plugin"
 	credJWT "github.com/hashicorp/vault-plugin-auth-jwt"
 	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credKube "github.com/hashicorp/vault-plugin-auth-kubernetes"
-	credOCI "github.com/hashicorp/vault-plugin-auth-oci"
 	logicalAd "github.com/hashicorp/vault-plugin-secrets-ad/plugin"
 	logicalAlicloud "github.com/hashicorp/vault-plugin-secrets-alicloud"
 	logicalAzure "github.com/hashicorp/vault-plugin-secrets-azure"
@@ -22,11 +16,8 @@ import (
 	logicalGcpKms "github.com/hashicorp/vault-plugin-secrets-gcpkms"
 	logicalTerraform "github.com/hashicorp/vault-plugin-secrets-terraform"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
-	credAws "github.com/openbao/openbao/builtin/credential/aws"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
-	credGitHub "github.com/openbao/openbao/builtin/credential/github"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
-	credOkta "github.com/openbao/openbao/builtin/credential/okta"
 	credRadius "github.com/openbao/openbao/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	logicalKube "github.com/openbao/openbao/builtin/logical/kubernetes"
@@ -86,32 +77,19 @@ func removedFactory(ctx context.Context, config *logical.BackendConfig) (logical
 func newRegistry() *registry {
 	reg := &registry{
 		credentialBackends: map[string]credentialBackend{
-			"alicloud": {Factory: credAliCloud.Factory},
 			"app-id": {
 				Factory:           removedFactory,
 				DeprecationStatus: consts.Removed,
 			},
 			"approle":    {Factory: credAppRole.Factory},
-			"aws":        {Factory: credAws.Factory},
-			"azure":      {Factory: credAzure.Factory},
-			"centrify":   {Factory: credCentrify.Factory},
 			"cert":       {Factory: credCert.Factory},
-			"cf":         {Factory: credCF.Factory},
-			"gcp":        {Factory: credGcp.Factory},
-			"github":     {Factory: credGitHub.Factory},
 			"jwt":        {Factory: credJWT.Factory},
 			"kerberos":   {Factory: credKerb.Factory},
 			"kubernetes": {Factory: credKube.Factory},
 			"ldap":       {Factory: credLdap.Factory},
-			"oci":        {Factory: credOCI.Factory},
 			"oidc":       {Factory: credJWT.Factory},
-			"okta":       {Factory: credOkta.Factory},
-			"pcf": {
-				Factory:           credCF.Factory,
-				DeprecationStatus: consts.Deprecated,
-			},
-			"radius":   {Factory: credRadius.Factory},
-			"userpass": {Factory: credUserpass.Factory},
+			"radius":     {Factory: credRadius.Factory},
+			"userpass":   {Factory: credUserpass.Factory},
 		},
 		databasePlugins: map[string]databasePlugin{
 			// These four plugins all use the same mysql implementation but with

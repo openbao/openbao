@@ -13,7 +13,6 @@ import (
 
 	"github.com/openbao/openbao/api"
 	auth "github.com/openbao/openbao/api/auth/userpass"
-	"github.com/openbao/openbao/builtin/credential/github"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -21,6 +20,8 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin.
 func TestIdentityStore_ListAlias(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -178,6 +179,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 		}
 	}
 }
+*/
 
 // TestIdentityStore_RenameAlias_CannotMergeEntity verifies that an error is
 // returned on an attempt to rename an alias to match another alias with the
@@ -345,6 +347,8 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 	}
 }
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -561,6 +565,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		t.Fatalf("Did not identify mount accessor %s as being reason for conflict. Error: %v", mountAccessorGitHub, err)
 	}
 }
+*/
 
 func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawRequest(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
@@ -843,6 +848,8 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 	}
 }
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin.
 func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -952,3 +959,4 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatalf("did not error for the right reason. Error: %v", err)
 	}
 }
+*/

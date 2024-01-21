@@ -12,10 +12,11 @@ import (
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
 
-	"github.com/openbao/openbao/builtin/credential/github"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 )
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_ListGroupAlias(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
@@ -149,6 +150,7 @@ func TestIdentityStore_ListGroupAlias(t *testing.T) {
 		t.Fatalf("bad mount type: %v", alias["mount_type"])
 	}
 }
+*/
 
 // Testing the fix for GH-4351
 func TestIdentityStore_ExternalGroupMembershipsAcrossMounts(t *testing.T) {

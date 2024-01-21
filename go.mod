@@ -36,7 +36,6 @@ require (
 	github.com/aws/aws-sdk-go v1.44.269
 	github.com/axiomhq/hyperloglog v0.0.0-20220105174342-98591331716a
 	github.com/cenkalti/backoff/v3 v3.2.2
-	github.com/chrismalek/oktasdk-go v0.0.0-20181212195951-3430665dfaa0
 	github.com/client9/misspell v0.3.4
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/duosecurity/duo_api_golang v0.0.0-20190308151101-6c680f768e74
@@ -57,7 +56,6 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/google/tink/go v1.7.0
 	github.com/hashicorp/cap v0.3.0
@@ -81,7 +79,6 @@ require (
 	github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/fileutil v0.1.0
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
@@ -283,6 +280,7 @@ require (
 	github.com/hashicorp/cronexpr v1.1.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
 	github.com/hashicorp/net-rpc-msgpackrpc/v2 v2.0.0 // indirect

@@ -13,13 +13,9 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
-	"github.com/golang/protobuf/ptypes"
 	uuid "github.com/hashicorp/go-uuid"
-	credGithub "github.com/openbao/openbao/builtin/credential/github"
-	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/logical"
 )
 
@@ -78,6 +74,8 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	require.Len(t, entity.Aliases, 0)
 }
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	err := AddTestCredentialBackend("github", credGithub.Factory)
 	if err != nil {
@@ -173,6 +171,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		t.Fatal("still sealed")
 	}
 }
+*/
 
 func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 	// Enable GitHub auth and initialize
@@ -535,6 +534,8 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 	}
 }
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	err := AddTestCredentialBackend("github", credGithub.Factory)
 	if err != nil {
@@ -716,6 +717,7 @@ func testIdentityStoreWithGithubUserpassAuth(ctx context.Context, t *testing.T) 
 
 	return c.identityStore, githubMe.Accessor, userpassMe.Accessor, c
 }
+*/
 
 func TestIdentityStore_MetadataKeyRegex(t *testing.T) {
 	key := "validVALID012_-=+/"
@@ -760,6 +762,8 @@ func expectSingleCount(t *testing.T, sink *metrics.InmemSink, keyPrefix string) 
 	}
 }
 
+/*
+// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	// Add github credential factory to core config
 	err := AddTestCredentialBackend("github", credGithub.Factory)
@@ -808,6 +812,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 
 	expectSingleCount(t, sink, "identity.entity.creation")
 }
+*/
 
 func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 	entity := &identity.Entity{

@@ -10,8 +10,8 @@ description: The aws auth method allows automated authentication of AWS entities
 
 @include 'aws-sha1-deprecation.mdx'
 
-The `aws` auth method provides an automated mechanism to retrieve a Vault token
-for IAM principals and AWS EC2 instances. Unlike most Vault auth methods, this
+The `aws` auth method provides an automated mechanism to retrieve a OpenBao token
+for IAM principals and AWS EC2 instances. Unlike most OpenBao auth methods, this
 method does not require manual first-deploying, or provisioning
 security-sensitive credentials (tokens, username/password, client certificates,
 etc), by operators under many circumstances.
@@ -24,7 +24,7 @@ There are two authentication types present in the aws auth method: `iam` and
 With the `iam` method, a special AWS request signed with AWS IAM credentials is
 used for authentication. The IAM credentials are automatically supplied to AWS
 instances in IAM instance profiles, Lambda functions, and others, and it is
-this information already provided by AWS which Vault can use to authenticate
+this information already provided by AWS which OpenBao can use to authenticate
 clients.
 
 With the `ec2` method, AWS is treated as a Trusted Third Party and
@@ -32,7 +32,7 @@ cryptographically signed dynamic metadata information that uniquely represents
 each EC2 instance is used for authentication. This metadata information is
 automatically supplied by AWS to all EC2 instances.
 
-Based on how you attempt to authenticate, Vault will determine if you are
+Based on how you attempt to authenticate, OpenBao will determine if you are
 attempting to use the `iam` or `ec2` type. Each has a different authentication
 workflow, and each can solve different use cases.
 
@@ -42,27 +42,27 @@ as it is more flexible and aligns with best practices to perform access
 control and authentication. See the section on comparing the two auth methods
 below for more information.
 
--> **Usage:** See the [Authentication](#authentication) section for Vault CLI
+-> **Usage:** See the [Authentication](#authentication) section for OpenBao CLI
 and API usage examples. The [Code Example](#code-example) section provides a
-code snippet demonstrating the authentication with Vault using the AWS auth
+code snippet demonstrating the authentication with OpenBao using the AWS auth
 method.
 
 ### IAM auth method
 
-The AWS STS API includes a method, [`sts:GetCallerIdentity`](http://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html), which allows you to validate the identity of a client. The client signs a `GetCallerIdentity` query using the [AWS Signature v4 algorithm](http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html) and sends it to the Vault server. The credentials used to sign the GetCallerIdentity request can come from the EC2 instance metadata service for an EC2 instance, or from the AWS environment variables in an AWS Lambda function execution, which obviates the need for an operator to manually provision some sort of identity material first. However, the credentials can, in principle, come from anywhere, not just from the locations AWS has provided for you.
+The AWS STS API includes a method, [`sts:GetCallerIdentity`](http://docs.aws.amazon.com/STS/latest/APIReference/API_GetCallerIdentity.html), which allows you to validate the identity of a client. The client signs a `GetCallerIdentity` query using the [AWS Signature v4 algorithm](http://docs.aws.amazon.com/general/latest/gr/sigv4_signing.html) and sends it to the OpenBao server. The credentials used to sign the GetCallerIdentity request can come from the EC2 instance metadata service for an EC2 instance, or from the AWS environment variables in an AWS Lambda function execution, which obviates the need for an operator to manually provision some sort of identity material first. However, the credentials can, in principle, come from anywhere, not just from the locations AWS has provided for you.
 
-The `GetCallerIdentity` query consists of four pieces of information: the request URL, the request body, the request headers, and the request method, as the AWS signature is computed over those fields. The Vault server reconstructs the query using this information and forwards it on to the AWS STS service. Depending on the response from the STS service, the server authenticates the client.
+The `GetCallerIdentity` query consists of four pieces of information: the request URL, the request body, the request headers, and the request method, as the AWS signature is computed over those fields. The OpenBao server reconstructs the query using this information and forwards it on to the AWS STS service. Depending on the response from the STS service, the server authenticates the client.
 
 Notably, clients don't need network-level access themselves to talk
 to the AWS STS API endpoint; they merely need access to the credentials to sign
-the request. However, it means that the Vault server does need network-level
+the request. However, it means that the OpenBao server does need network-level
 access to send requests to the STS endpoint.
 
 Each signed AWS request includes the current timestamp to mitigate the risk of
-replay attacks. In addition, Vault allows you to require an additional header,
+replay attacks. In addition, OpenBao allows you to require an additional header,
 `X-Vault-AWS-IAM-Server-ID`, to be present to mitigate against different types
 of replay attacks (such as a signed `GetCallerIdentity` request stolen from a
-dev Vault instance and used to authenticate to a prod Vault instance). Vault
+dev OpenBao instance and used to authenticate to a prod OpenBao instance). OpenBao
 further requires that this header be one of the headers included in the AWS
 signature and relies upon AWS to authenticate that signature.
 
@@ -77,32 +77,32 @@ authorization around calls to `GetCallerIdentity`. For example, if you have an
 IAM policy on your credential that requires all access to be MFA authenticated,
 non-MFA authenticated credentials (i.e., raw credentials, not those retrieved
 by calling `GetSessionToken` and supplying an MFA code) will still be able to
-authenticate to Vault using this method. It does not appear possible to enforce
-an IAM principal to be MFA authenticated while authenticating to Vault.
+authenticate to OpenBao using this method. It does not appear possible to enforce
+an IAM principal to be MFA authenticated while authenticating to OpenBao.
 
 ### EC2 auth method
 
 Amazon EC2 instances have access to metadata which describes the instance. The
-Vault EC2 auth method leverages the components of this metadata to authenticate
-and distribute an initial Vault token to an EC2 instance. The data flow (which
+OpenBao EC2 auth method leverages the components of this metadata to authenticate
+and distribute an initial OpenBao token to an EC2 instance. The data flow (which
 is also represented in the graphic below) is as follows:
 
-[![Vault AWS EC2 Authentication Flow](/img/vault-aws-ec2-auth-flow.png)](/img/vault-aws-ec2-auth-flow.png)
+[![OpenBao AWS EC2 Authentication Flow](/img/vault-aws-ec2-auth-flow.png)](/img/vault-aws-ec2-auth-flow.png)
 
 1. An AWS EC2 instance fetches its [AWS Instance Identity Document][aws-iid]
    from the [EC2 Metadata Service][aws-ec2-mds]. In addition to data itself, AWS
    also provides the PKCS#7 signature of the data, and publishes the public keys
    (by region) which can be used to verify the signature.
 
-1. The AWS EC2 instance makes a request to Vault with the PKCS#7 signature.
+1. The AWS EC2 instance makes a request to OpenBao with the PKCS#7 signature.
    The PKCS#7 signature contains the Instance Identity Document.
 
-1. Vault verifies the signature on the PKCS#7 document, ensuring the information
+1. OpenBao verifies the signature on the PKCS#7 document, ensuring the information
    is certified accurate by AWS. This process validates both the validity and
-   integrity of the document data. As an added security measure, Vault verifies
+   integrity of the document data. As an added security measure, OpenBao verifies
    that the instance is currently running using the public EC2 API endpoint.
 
-1. Provided all steps are successful, Vault returns the initial Vault token to
+1. Provided all steps are successful, OpenBao returns the initial OpenBao token to
    the EC2 instance. This token is mapped to any configured policies based on the
    instance metadata.
 
@@ -128,13 +128,13 @@ specific list of AMIs can only be used for login by EC2 instances that are
 deployed to one of the AMIs that the role is bound to.
 
 The iam auth method allows you to specify bound IAM principal ARNs.
-Clients authenticating to Vault must have an ARN that matches one of the ARNs bound to
+Clients authenticating to OpenBao must have an ARN that matches one of the ARNs bound to
 the role they are attempting to login to. The bound ARN allows specifying a
 wildcard at the end of the bound ARN. For example, if the bound ARN were
 `arn:aws:iam::123456789012:*` it would allow any principal in AWS account
 123456789012 to login to it. Similarly, if it were
 `arn:aws:iam::123456789012:role/*` it would allow any IAM role in the AWS
-account to login to it. If you wish to specify a wildcard, you must give Vault
+account to login to it. If you wish to specify a wildcard, you must give OpenBao
 `iam:GetUser` and `iam:GetRole` permissions to properly resolve the full user
 path.
 
@@ -164,11 +164,11 @@ has been found to be distributed outside of its intended set of machines.
 
 ## IAM authentication inferences
 
-With the iam auth method, normally Vault will see the IAM principal that
+With the iam auth method, normally OpenBao will see the IAM principal that
 authenticated, either the IAM user or role. However, when you have an EC2
-instance in an IAM instance profile, Vault can actually see the instance ID of
+instance in an IAM instance profile, OpenBao can actually see the instance ID of
 the instance and can "infer" that it's an EC2 instance. However, there are
-important security caveats to be aware of before configuring Vault to make that
+important security caveats to be aware of before configuring OpenBao to make that
 inference.
 
 Each AWS IAM role has a "trust policy" which specifies which entities are
@@ -181,23 +181,23 @@ have a role with an ARN `arn:aws:iam::123456789012:role/MyRole`, then the
 credentials returned by calling AssumeRole on that role will be
 `arn:aws:sts::123456789012:assumed-role/MyRole/RoleSessionName` where
 RoleSessionName is the session name in the AssumeRole API call. It is this
-latter value which Vault actually sees.
+latter value which OpenBao actually sees.
 
 When you have an EC2 instance in an instance profile, the corresponding role's
 trust policy specifies that the principal `"Service": "ec2.amazonaws.com"` is
 trusted to call AssumeRole. When this is configured, EC2 calls AssumeRole on
 behalf of your instance, with a RoleSessionName corresponding to the
-instance's instance ID. Thus, it is possible for Vault to extract the instance
+instance's instance ID. Thus, it is possible for OpenBao to extract the instance
 ID out of the value it sees when an EC2 instance in an instance profile
-authenticates to Vault with the iam auth method. This is known as
-"inferencing." Vault can be configured, on a role-by-role basis, to infer that a
+authenticates to OpenBao with the iam auth method. This is known as
+"inferencing." OpenBao can be configured, on a role-by-role basis, to infer that a
 caller is an EC2 instance and, if so, apply further bindings that apply
 specifically to EC2 instances -- most of the bindings available to the ec2
 auth method.
 
 However, it is very important to note that if any entity other than an AWS
 service is permitted to call AssumeRole on your role, then that entity can
-simply pass in your instance's instance ID and spoof your instance to Vault.
+simply pass in your instance's instance ID and spoof your instance to OpenBao.
 This also means that anybody who is able to modify your role's trust policy
 (e.g., via
 [`iam:UpdateAssumeRolePolicy`](http://docs.aws.amazon.com/IAM/latest/APIReference/API_UpdateAssumeRolePolicy.html),
@@ -207,15 +207,15 @@ who is able to call AssumeRole on the role, tightly restrict who is able to call
 UpdateAssumeRolePolicy on the role, and monitor CloudTrail logs for calls to
 AssumeRole and UpdateAssumeRolePolicy. All of these caveats apply equally to
 using the iam auth method without inferencing; the point is merely
-that Vault cannot offer an iron-clad guarantee about the inference and it is up
+that OpenBao cannot offer an iron-clad guarantee about the inference and it is up
 to operators to determine, based on their own AWS controls and use cases,
 whether or not it's appropriate to configure inferencing.
 
 ## Mixing authentication types
 
-Vault allows you to configure using either the ec2 auth method or the iam auth
+OpenBao allows you to configure using either the ec2 auth method or the iam auth
 method, but not both auth methods. Further, **assumed roles are not supported**
-and Vault prevents you from enforcing restrictions that it cannot enforce given
+and OpenBao prevents you from enforcing restrictions that it cannot enforce given
 the chosen auth type for a role. Some examples of how this works in practice:
 
 1. You configure a role with the ec2 auth type, with a bound AMI ID. A
@@ -225,12 +225,12 @@ the chosen auth type for a role. Some examples of how this works in practice:
 3. You configure a role with the iam auth type and further configure
    inferencing. You have a bound AMI ID and a bound IAM principal ARN. A client
    must login using the iam method; the RoleSessionName must be a valid instance
-   ID viewable by Vault, and the instance must have come from the bound AMI ID.
+   ID viewable by OpenBao, and the instance must have come from the bound AMI ID.
 
 ## Comparison of the IAM and EC2 methods
 
 The iam and ec2 auth methods serve similar and somewhat overlapping
-functionality, in that both authenticate some type of AWS entity to Vault.
+functionality, in that both authenticate some type of AWS entity to OpenBao.
 Here are some comparisons that illustrate why `iam` method is preferred over
 `ec2`.
 
@@ -249,13 +249,13 @@ Here are some comparisons that illustrate why `iam` method is preferred over
   - The ec2 auth method authenticates instances by making use of the EC2
     instance identity document, which is a cryptographically signed document
     containing metadata about the instance. This document changes relatively
-    infrequently, so Vault adds a number of other constructs to mitigate against
+    infrequently, so OpenBao adds a number of other constructs to mitigate against
     replay attacks, such as client nonces, role tags, instance migrations, etc.
     Because the instance identity document is signed by AWS, you have a strong
     guarantee that it came from an EC2 instance.
   - The iam auth method authenticates by having clients provide a specially
     signed AWS API request which the method then passes on to AWS to validate
-    the signature and tell Vault who created it. The actual secret (i.e.,
+    the signature and tell OpenBao who created it. The actual secret (i.e.,
     the AWS secret access key) is never transmitted over the wire, and the
     AWS signature algorithm automatically expires requests after 15 minutes,
     providing simple and robust protection against replay attacks. The use of
@@ -278,15 +278,15 @@ Here are some comparisons that illustrate why `iam` method is preferred over
     instances (such as filtering based off the AMI the instance was launched
     from), then you would need to use the ec2 auth method, change the instance
     profile associated with your EC2 instances so they have unique IAM roles
-    for each different Vault role you would want them to authenticate
+    for each different OpenBao role you would want them to authenticate
     to, or make use of inferencing. If you need to make use of role tags, then
     you will need to use the ec2 auth method.
 
-## Recommended Vault IAM policy
+## Recommended OpenBao IAM policy
 
 This specifies the recommended IAM policy needed by the AWS auth method. Note
 that if you are using the same credentials for the AWS auth and secret methods
-(e.g., if you're running Vault on an EC2 instance in an IAM instance profile),
+(e.g., if you're running OpenBao on an EC2 instance in an IAM instance profile),
 then you will need to add additional permissions as required by the AWS secret
 method.
 
@@ -307,7 +307,7 @@ method.
     {
       "Effect": "Allow",
       "Action": ["sts:AssumeRole"],
-      "Resource": ["arn:aws:iam::<AccountId>:role/<VaultRole>"]
+      "Resource": ["arn:aws:iam::<AccountId>:role/<OpenBaoRole>"]
     },
     {
       "Sid": "ManageOwnAccessKeys",
@@ -326,16 +326,16 @@ method.
 }
 ```
 
-Here are some of the scenarios in which Vault would need to use each of these
+Here are some of the scenarios in which OpenBao would need to use each of these
 permissions. This isn't intended to be an exhaustive list of all the scenarios
-in which Vault might make an AWS API call, but rather illustrative of why these
+in which OpenBao might make an AWS API call, but rather illustrative of why these
 are needed.
 
 - `ec2:DescribeInstances` is necessary when you are using the `ec2` auth method
   or when you are inferring an `ec2_instance` entity type to validate that the
   EC2 instance meets binding requirements of the role
 - `iam:GetInstanceProfile` is used when you have a `bound_iam_role_arn` in the
-  `ec2` auth method. Vault needs to determine which IAM role is attached to the
+  `ec2` auth method. OpenBao needs to determine which IAM role is attached to the
   instance profile.
 - `iam:GetUser` and `iam:GetRole` are used when using the iam auth method and
   binding to an IAM user or role principal to determine the [AWS IAM Unique Identifiers](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html#identifiers-unique-ids)
@@ -346,7 +346,7 @@ are needed.
   all the roles for which you have configured cross-account access, and each of
   those roles should have this IAM policy attached (except for the
   `sts:AssumeRole` statement).
-- The `ManageOwnAccessKeys` stanza is necessary when you have configured Vault
+- The `ManageOwnAccessKeys` stanza is necessary when you have configured OpenBao
   with static credentials, and wish to rotate these credentials with the
   [Rotate Root Credentials](/vault/api-docs/auth/aws#rotate-root-credentials)
   API call.
@@ -357,7 +357,7 @@ Note: this only applies to the ec2 auth method.
 
 If an unintended party gains access to the PKCS#7 signature of the identity
 document (which by default is available to every process and user that gains
-access to an EC2 instance), it can impersonate that instance and fetch a Vault
+access to an EC2 instance), it can impersonate that instance and fetch a OpenBao
 token. The method addresses this problem by using a Trust On First Use (TOFU)
 mechanism that allows the first client to present the PKCS#7 signature of the
 document to be authenticated and denying the rest. An important property of
@@ -445,7 +445,7 @@ allows only manipulation (revocation, renewal, lookup) of the existing token, pl
 access to its [cubbyhole](/vault/docs/secrets/cubbyhole).
 This can be useful to allow instances access to a secure "scratch space" for
 storing data (via the token's cubbyhole) but without granting any access to
-other resources provided by or resident in Vault.
+other resources provided by or resident in OpenBao.
 
 ### Handling lost client nonces
 
@@ -490,7 +490,7 @@ role tag has no effect.
 
 Note: this only applies to the ec2 auth method.
 
-If in a given organization's architecture, a client fetches a long-lived Vault
+If in a given organization's architecture, a client fetches a long-lived OpenBao
 token and has no need to rotate the token, all future logins for that instance
 ID can be disabled. If the option `disallow_reauthentication` is set, only one
 login will be allowed per instance. If the intended client successfully
@@ -553,15 +553,15 @@ Note: this only applies to the ec2 auth method.
 
 The AWS public certificate, which contains the public key used to verify the
 PKCS#7 signature, varies for different AWS regions. The primary AWS public
-certificate, which covers most AWS regions, is already included in Vault and
+certificate, which covers most AWS regions, is already included in OpenBao and
 does not need to be added. Instances whose PKCS#7 signatures cannot be
-verified by the default public certificate included in Vault can register a
+verified by the default public certificate included in OpenBao can register a
 different public certificate which can be found [here](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html),
 via the `auth/aws/config/certificate/<cert_name>` endpoint.
 
 ### Dangling tokens
 
-An EC2 instance, after authenticating itself with the method, gets a Vault token.
+An EC2 instance, after authenticating itself with the method, gets a OpenBao token.
 After that, if the instance terminates or goes down for any reason, the method
 will not be aware of such events. The token issued will still be valid, until
 it expires. The token will likely be expired sooner than its lifetime when the
@@ -569,20 +569,20 @@ instance fails to renew the token on time.
 
 ### Cross account access
 
-To allow Vault to authenticate IAM principals and EC2 instances in other
-accounts, Vault supports using AWS STS (Security Token Service) to assume AWS
+To allow OpenBao to authenticate IAM principals and EC2 instances in other
+accounts, OpenBao supports using AWS STS (Security Token Service) to assume AWS
 IAM Roles in other accounts. For each target AWS account ID, you configure the
-IAM Role for Vault to assume using the `auth/aws/config/sts/<account_id>` and
-Vault will use credentials from assuming that role to validate IAM principals
+IAM Role for OpenBao to assume using the `auth/aws/config/sts/<account_id>` and
+OpenBao will use credentials from assuming that role to validate IAM principals
 and EC2 instances in the target account.
 
-The account in which Vault is running (i.e. the master account) must be listed as
+The account in which OpenBao is running (i.e. the master account) must be listed as
 a trusted entity in the IAM Role being assumed on the remote account. The Role itself
-should allow the permissions specified in the [Recommended Vault IAM
-Policy](#recommended-vault-iam-policy) except it doesn't need any further
+should allow the permissions specified in the [Recommended OpenBao IAM
+Policy](#recommended-openbao-iam-policy) except it doesn't need any further
 `sts:AssumeRole` permissions.
 
-Furthermore, in the master account, Vault must be granted the action `sts:AssumeRole`
+Furthermore, in the master account, OpenBao must be granted the action `sts:AssumeRole`
 for the IAM Role to be assumed.
 
 ### AWS instance metadata timeout
@@ -593,15 +593,15 @@ for the IAM Role to be assumed.
 
 ### Via the CLI
 
-#### Enable AWS EC2 authentication in Vault.
+#### Enable AWS EC2 authentication in OpenBao.
 
 ```shell-session
-$ vault auth enable aws
+$ bao auth enable aws
 ```
 
 #### Configure the credentials required to make AWS API calls
 
-If not specified, Vault will attempt to use standard environment variables
+If not specified, OpenBao will attempt to use standard environment variables
 (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) or IAM EC2 instance role
 credentials if available.
 
@@ -610,22 +610,22 @@ The IAM account or role to which the credentials map must allow the
 `bound_iam_role_arn` below), `iam:GetInstanceProfile` must also be allowed.
 
 ```shell-session
-$ vault write auth/aws/config/client secret_key=vCtSM8ZUEQ3mOFVlYPBQkf2sO6F/W7a5TVzrl3Oj access_key=VKIAJBRHKH6EVTTNXDHA
+$ bao write auth/aws/config/client secret_key=vCtSM8ZUEQ3mOFVlYPBQkf2sO6F/W7a5TVzrl3Oj access_key=VKIAJBRHKH6EVTTNXDHA
 ```
 
 #### Configure the policies on the role.
 
 ```shell-session
-$ vault write auth/aws/role/dev-role auth_type=ec2 bound_ami_id=ami-fce3c696 policies=prod,dev max_ttl=500h
+$ bao write auth/aws/role/dev-role auth_type=ec2 bound_ami_id=ami-fce3c696 policies=prod,dev max_ttl=500h
 
-$ vault write auth/aws/role/dev-role-iam auth_type=iam \
+$ bao write auth/aws/role/dev-role-iam auth_type=iam \
               bound_iam_principal_arn=arn:aws:iam::123456789012:role/MyRole policies=prod,dev max_ttl=500h
 ```
 
 #### Configure a required X-Vault-AWS-IAM-Server-ID header (recommended)
 
 ```shell-session
-$ vault write auth/aws/config/client iam_server_id_header_value=vault.example.com
+$ bao write auth/aws/config/client iam_server_id_header_value=openbao.example.com
 ```
 
 #### Perform the login operation
@@ -639,15 +639,15 @@ $ SIGNATURE=$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/rs
 then set the signature on the login endpoint:
 
 ```shell-session
-$ vault write auth/aws/login role=dev-role \
+$ bao write auth/aws/login role=dev-role \
   pkcs7=$SIGNATURE
 ```
 
 For the iam auth method, generating the signed request is a non-standard
-operation. The Vault cli supports generating this for you:
+operation. The OpenBao cli supports generating this for you:
 
 ```shell-session
-$ vault login -method=aws header_value=vault.example.com role=dev-role-iam
+$ bao login -method=aws header_value=openbao.example.com role=dev-role-iam
 ```
 
 This assumes you have AWS credentials configured in the standard locations AWS
@@ -658,7 +658,7 @@ in on the command line (though this is not recommended), omitting
 `aws_security_token` if not applicable.
 
 ```shell-session
-$ vault login -method=aws header_value=vault.example.com role=dev-role-iam \
+$ bao login -method=aws header_value=openbao.example.com role=dev-role-iam \
         aws_access_key_id=<access_key> \
         aws_secret_access_key=<secret_key> \
         aws_security_token=<security_token>
@@ -667,10 +667,10 @@ $ vault login -method=aws header_value=vault.example.com role=dev-role-iam \
 The region used defaults to `us-east-1`, but you can specify a custom region like so:
 
 ```shell-session
-$ vault login -method=aws region=us-west-2 role=dev-role-iam
+$ bao login -method=aws region=us-west-2 role=dev-role-iam
 ```
 
-If the region is specified as `auto`, the Vault CLI will determine the region based
+If the region is specified as `auto`, the OpenBao CLI will determine the region based
 on standard AWS credentials precedence as described earlier. Whichever method is used,
 be sure the designated region corresponds to that of the STS endpoint you're using.
 
@@ -679,13 +679,13 @@ and `sts_region` role parameters to `us-gov-west-1` / `us-gov-east-1` then you m
 the `region` argument in your login request with a matching value, i.e. `region=us-gov-west-1`.
 
 An example of how to generate the required request values for the `login` method
-can be found found in the [vault cli
+can be found found in the [bao cli
 source code](https://github.com/lf-edge/openbao/blob/main/builtin/credential/aws/cli.go).
 Using an approach such as this, the request parameters can be generated and
 passed to the `login` method:
 
 ```shell-session
-$ vault write auth/aws/login role=dev-role-iam \
+$ bao write auth/aws/login role=dev-role-iam \
         iam_http_request_method=POST \
         iam_request_url=aHR0cHM6Ly9zdHMuYW1hem9uYXdzLmNvbS8= \
         iam_request_body=QWN0aW9uPUdldENhbGxlcklkZW50aXR5JlZlcnNpb249MjAxMS0wNi0xNQ== \
@@ -694,7 +694,7 @@ $ vault write auth/aws/login role=dev-role-iam \
 
 ### Via the API
 
-#### Enable AWS authentication in Vault.
+#### Enable AWS authentication in OpenBao.
 
 ```
 curl -X POST -H "X-Vault-Token:123" "http://127.0.0.1:8200/v1/sys/auth/aws" -d '{"type":"aws"}'
@@ -763,7 +763,7 @@ details.
 
 ## Code example
 
-The following example demonstrates the AWS (IAM) auth method to authenticate with Vault.
+The following example demonstrates the AWS (IAM) auth method to authenticate with OpenBao.
 
 <CodeTabs>
 
@@ -776,22 +776,22 @@ import (
 	"context"
 	"fmt"
 
-	vault "github.com/lf-edge/openbao/api"
+	openbao "github.com/lf-edge/openbao/api"
 	auth "github.com/lf-edge/openbao/api/auth/aws"
 )
 
-// Fetches a key-value secret (kv-v2) after authenticating to Vault via AWS IAM,
+// Fetches a key-value secret (kv-v2) after authenticating to OpenBao via AWS IAM,
 // one of two auth methods used to authenticate with AWS (the other is EC2 auth).
 func getSecretWithAWSAuthIAM() (string, error) {
-	config := vault.DefaultConfig() // modify for more granular configuration
+	config := openbao.DefaultConfig() // modify for more granular configuration
 
-	client, err := vault.NewClient(config)
+	client, err := openbao.NewClient(config)
 	if err != nil {
-		return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+		return "", fmt.Errorf("unable to initialize OpenBao client: %w", err)
 	}
 
 	awsAuth, err := auth.NewAWSAuth(
-		auth.WithRole("dev-role-iam"), // if not provided, Vault will fall back on looking for a role with the IAM role name if you're using the iam auth type, or the EC2 instance's AMI id if using the ec2 auth type
+		auth.WithRole("dev-role-iam"), // if not provided, OpenBao will fall back on looking for a role with the IAM role name if you're using the iam auth type, or the EC2 instance's AMI id if using the ec2 auth type
 	)
 	if err != nil {
 		return "", fmt.Errorf("unable to initialize AWS auth method: %w", err)

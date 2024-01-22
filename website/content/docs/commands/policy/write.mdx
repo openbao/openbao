@@ -21,13 +21,13 @@ documentation](/vault/docs/concepts/policies).
 Upload a policy named "my-policy" from "/tmp/policy.hcl" on the local disk:
 
 ```shell-session
-$ vault policy write my-policy /tmp/policy.hcl
+$ bao policy write my-policy /tmp/policy.hcl
 ```
 
 Upload a policy from stdin:
 
 ```shell-session
-$ cat my-policy.hcl | vault policy write my-policy -
+$ cat my-policy.hcl | bao policy write my-policy -
 ```
 
 ## Usage

@@ -2,16 +2,16 @@
 layout: docs
 page_title: Okta - Auth Methods
 description: |-
-  The Okta auth method allows users to authenticate with Vault using Okta
+  The Okta auth method allows users to authenticate with OpenBao using Okta
   credentials.
 ---
 
 # Okta auth method
 
 The `okta` auth method allows authentication using Okta and user/password
-credentials. This allows Vault to be integrated into environments using Okta.
+credentials. This allows OpenBao to be integrated into environments using Okta.
 
-The mapping of groups in Okta to Vault policies is managed by using the
+The mapping of groups in Okta to OpenBao policies is managed by using the
 [users](/vault/api-docs/auth/okta#register-user) and [groups](/vault/api-docs/auth/okta#register-group)
 APIs.
 
@@ -23,7 +23,7 @@ The default path is `/okta`. If this auth method was enabled at a different
 path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ vault login -method=okta username=my-username
+$ bao login -method=okta username=my-username
 ```
 
 ### Via the API
@@ -58,14 +58,14 @@ Okta Verify Push and TOTP MFA methods, and Google TOTP are supported during logi
 passcode may be provided via the `totp` parameter:
 
 ```shell-session
-$ vault login -method=okta username=my-username totp=123456
+$ bao login -method=okta username=my-username totp=123456
 ```
 
 If both Okta TOTP and Google TOTP are enabled in your Okta account, make sure to pass in
 the `provider` name to which the `totp` code belong.
 
 ```shell-session
-$ vault login -method=okta username=my-username totp=123456 provider=GOOGLE
+$ bao login -method=okta username=my-username totp=123456 provider=GOOGLE
 ```
 
 If `totp` is not set and MFA Push is configured in Okta, a Push will be sent during login.
@@ -88,13 +88,13 @@ management tool.
 1. Enable the Okta auth method:
 
   ```shell-session
-  $ vault auth enable okta
+  $ bao auth enable okta
   ```
 
-1. Configure Vault to communicate with your Okta account:
+1. Configure OpenBao to communicate with your Okta account:
 
   ```shell-session
-  $ vault write auth/okta/config \
+  $ bao write auth/okta/config \
      base_url="okta.com" \
      org_name="dev-123456" \
      api_token="00abcxyz..."
@@ -108,25 +108,25 @@ management tool.
   For the complete list of configuration options, please see the
   [API documentation](/vault/api-docs/auth/okta).
 
-1. Map an Okta group to a Vault policy:
+1. Map an Okta group to a OpenBao policy:
 
   ```shell-session
-  $ vault write auth/okta/groups/scientists policies=nuclear-reactor
+  $ bao write auth/okta/groups/scientists policies=nuclear-reactor
   ```
 
   In this example, anyone who successfully authenticates via Okta who is a
-  member of the "scientists" group will receive a Vault token with the
+  member of the "scientists" group will receive a OpenBao token with the
   "nuclear-reactor" policy attached.
 
 1. It is also possible to add users directly:
 
   ```shell-session
-  $ vault write auth/okta/groups/engineers policies=autopilot
-  $ vault write auth/okta/users/tesla groups=engineers
+  $ bao write auth/okta/groups/engineers policies=autopilot
+  $ bao write auth/okta/users/tesla groups=engineers
   ```
 
   This adds the Okta user "tesla" to the "engineers" group, which maps to
-  the "autopilot" Vault policy.
+  the "autopilot" OpenBao policy.
 
   -> **Note**: The user-policy mapping via group membership happens at token _creation
   time_. Any changes in group membership in Okta will not affect existing

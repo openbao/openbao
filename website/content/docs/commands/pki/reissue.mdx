@@ -3,34 +3,34 @@ layout: docs
 page_title: pki reissue - Command
 description: |-
   The "pki reissue" command issues a new intermediate ("issuer") certificate,
-  using an existing certificate in vault as a template, and using a parent
-  certificate in vault to issue the new certificate.
+  using an existing certificate in OpenBao as a template, and using a parent
+  certificate in OpenBao to issue the new certificate.
 ---
 
 # pki reissue
 
 Frequently, a reissued CA certificate is to be very similar to another.
 This command enables reissuing a CA, using an existing issuer within
-Vault as a template, but allowing modifications to the desired attributes.
+OpenBao as a template, but allowing modifications to the desired attributes.
 
 ## Usage
 
-Usage: `vault pki reissue [flags] <parent> <template> <child_mount> [options]`
+Usage: `bao pki reissue [flags] <parent> <template> <child_mount> [options]`
 
 - `[flags]` are optional arguments described below.
 
-- `<parent>` is the fully qualified path of the Certificate Authority in vault
+- `<parent>` is the fully qualified path of the Certificate Authority in OpenBao
   which will issue the new intermediate certificate.
 
-- `<template>` is the fully qualified path of an intermediate certificate in vault
+- `<template>` is the fully qualified path of an intermediate certificate in OpenBao
   which will be used to populate certificate fields not overridden by `[options]`.
 
-~> **Note**: not all possible certificate fields are supported by Vault, and
-  this template reader covers only those vault generates as a best effort.  If
-  unknown fields are set, such as when an external CA was imported into Vault,
+~> **Note**: not all possible certificate fields are supported by OpenBao, and
+  this template reader covers only those OpenBao generates as a best effort.  If
+  unknown fields are set, such as when an external CA was imported into OpenBao,
   there may not be a warning that those are missing from the new issuer.
 
-- `<child_mount>` is the path of the mount in vault where the new issuer is saved.
+- `<child_mount>` is the path of the mount in OpenBao where the new issuer is saved.
 
 - `[options]` are the superset of the k=v options passed to generate/intermediate
   and sign-intermediate commands.  See [below](/vault/docs/commands/pki/reissue#options).
@@ -42,7 +42,7 @@ issuer entry.
 
 - `-type` `(string: "internal")` - This determines the type of key use for the
    newly created certificate.  Valid types are `"existing"` - where we link to
-   a key already present in the vault-backend to be used - `"internal"` - to
+   a key already present in the OpenBao-backend to be used - `"internal"` - to
    generate a new key for this certificate - or `"kms"` - to link to an external
    key.  Exported keys are not available through this API.
 
@@ -64,7 +64,7 @@ all options provided to the
 
 ### Accessed APIs
 
-Note that the vault user running this command will need to have access to the
+Note that the OpenBao user running this command will need to have access to the
 following API endpoints, each representing a step in the process:
 
  - `READ /:parent` - used to check validity
@@ -81,7 +81,7 @@ following API endpoints, each representing a step in the process:
 ## Examples
 
 ```shell-session
-$ vault pki reissue -issuer_name="SecondDepartment" /pki_root/issuer/default /pki_int/issuer/FirstDepartment /pki_int_2/ common_name="second-department.example.com"
+$ bao pki reissue -issuer_name="SecondDepartment" /pki_root/issuer/default /pki_int/issuer/FirstDepartment /pki_int_2/ common_name="second-department.example.com"
 Key                               Value
 ---                               -----
 ca_chain                          [-----BEGIN CERTIFICATE-----

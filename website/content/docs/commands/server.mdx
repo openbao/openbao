@@ -2,42 +2,42 @@
 layout: docs
 page_title: server - Command
 description: |-
-  The "server" command starts a Vault server that responds to API requests. By
-  default, Vault will start in a "sealed" state. The Vault cluster must be
+  The "server" command starts a OpenBao server that responds to API requests. By
+  default, OpenBao will start in a "sealed" state. The OpenBao cluster must be
   initialized before use.
 ---
 
 # server
 
-The `server` command starts a Vault server that responds to API requests. By
-default, Vault will start in a "sealed" state. The Vault cluster must be
-initialized before use, usually by the `vault operator init` command. Each Vault
-server must also be unsealed using the `vault operator unseal` command or the
+The `server` command starts a OpenBao server that responds to API requests. By
+default, OpenBao will start in a "sealed" state. The OpenBao cluster must be
+initialized before use, usually by the `bao operator init` command. Each OpenBao
+server must also be unsealed using the `bao operator unseal` command or the
 API before the server can respond to requests.
 
 For more information, please see:
 
 - [`operator init` command](/vault/docs/commands/operator/init) for information
-  on initializing a Vault server.
+  on initializing a OpenBao server.
 
 - [`operator unseal` command](/vault/docs/commands/operator/unseal) for
   information on providing unseal keys.
 
-- [Vault configuration](/vault/docs/configuration) for the syntax and
-  various configuration options for a Vault server.
+- [OpenBao configuration](/vault/docs/configuration) for the syntax and
+  various configuration options for a OpenBao server.
 
 ## Examples
 
 Start a server with a configuration file:
 
 ```shell-session
-$ vault server -config=/etc/vault/config.hcl
+$ bao server -config=/etc/openbao/config.hcl
 ```
 
 Run in "dev" mode with a custom initial root token:
 
 ```shell-session
-$ vault server -dev -dev-root-token-id="root"
+$ bao server -dev -dev-root-token-id="root"
 ```
 
 ## Usage
@@ -60,16 +60,16 @@ flags](/vault/docs/commands) included on all commands.
   are `standard` and `json`. This can also be specified via the
   `VAULT_LOG_FORMAT` environment variable.
 
-- `-log-file` ((#\_log_file)) - the absolute path where Vault should save log
+- `-log-file` ((#\_log_file)) - the absolute path where OpenBao should save log
   messages in addition to other, existing outputs like journald / stdout. Paths
-  that end with a path separator use the default file name, `vault.log`. Paths
+  that end with a path separator use the default file name, `openbao.log`. Paths
   that do not end with a file extension use the default `.log` extension. If the
-  log file rotates, Vault appends the current timestamp to the file name
+  log file rotates, OpenBao appends the current timestamp to the file name
   at the time of rotation. For example:
 
   `log-file` | Full log file | Rotated log file
   ---------- | ------------- | ----------------
-  `/var/log` | `/var/log/vault.log` | `/var/log/vault-{timestamp}.log`
+  `/var/log` | `/var/log/openbao.log` | `/var/log/openbao-{timestamp}.log`
   `/var/log/my-diary` | `/var/log/my-diary.log` | `/var/log/my-diary-{timestamp}.log`
   `/var/log/my-diary.txt` | `/var/log/my-diary.txt` | `/var/log/my-diary-{timestamp}.txt`
 
@@ -93,20 +93,20 @@ flags](/vault/docs/commands) included on all commands.
   [`experiments`](/vault/docs/configuration#experiments) config key.
 
 - `VAULT_ALLOW_PENDING_REMOVAL_MOUNTS` `(bool: false)` - (environment variable)
-  Allow Vault to be started with builtin engines which have the `Pending Removal`
+  Allow OpenBao to be started with builtin engines which have the `Pending Removal`
   deprecation state. This is a temporary stopgap in place in order to perform an
   upgrade and disable these engines. Once these engines are marked `Removed` (in
-  the next major release of Vault), the environment variable will no longer work
+  the next major release of OpenBao), the environment variable will no longer work
   and a downgrade must be performed in order to remove the offending engines. For
   more information, see the [deprecation faq](/vault/docs/deprecation/faq/#q-what-are-the-phases-of-deprecation).
 
 ### Dev options
 
-- `-dev` `(bool: false)` - Enable development mode. In this mode, Vault runs
+- `-dev` `(bool: false)` - Enable development mode. In this mode, OpenBao runs
   in-memory and starts unsealed. As the name implies, do not run "dev" mode in
   production.
 
-- `-dev-tls` `(bool: false)` - Enable TLS development mode. In this mode, Vault runs
+- `-dev-tls` `(bool: false)` - Enable TLS development mode. In this mode, OpenBao runs
   in-memory and starts unsealed with a generated TLS CA, certificate and key.
   As the name implies, do not run "dev" mode in production.
 

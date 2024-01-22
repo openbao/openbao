@@ -2,16 +2,16 @@
 layout: docs
 page_title: agent generate-config - Command
 description: |-
-  Generates a simple Vault Agent configuration file from the given parameters.
+  Generates a simple OpenBao Agent configuration file from the given parameters.
 ---
 
 # agent generate-config
 
-Generates a simple Vault Agent configuration file from the given parameters.
+Generates a simple OpenBao Agent configuration file from the given parameters.
 
 Currently, the only supported configuration type is `env-template`, which
 helps you generate a configuration file with environment variable templates
-for running Vault Agent in
+for running OpenBao Agent in
 [process supervisor](/vault/docs/agent-and-proxy/agent/process-supervisor)
 mode.
 
@@ -24,7 +24,7 @@ only [kv-v1](/vault/docs/secrets/kv/kv-v1) and
 [kv-v2](/vault/docs/secrets/kv/kv-v2) paths are supported.
 
 The command specified in the `-exec` option will be used to generate an
-`exec` entry, which will tell Vault Agent which child process to run.
+`exec` entry, which will tell OpenBao Agent which child process to run.
 
 In addition to the `env_template` entries, the command generates an `auto_auth`
 section with `token_file` authentication method. While this method is very
@@ -40,13 +40,13 @@ unless a path is specified as an argument.
 Before generating a configuration file, let's insert a secret `foo`:
 
 ```shell-session
-$ vault kv put -mount=secret foo user="admin" password="s3cr3t"
+$ bao kv put -mount=secret foo user="admin" password="s3cr3t"
 ```
 
 Generate an agent configuration file which will reference `secret/foo`:
 
 ```shell-session
-$ vault agent generate-config \
+$ bao agent generate-config \
          -type="env-template" \
          -exec="./my-app arg1 arg2" \
          -namespace="my/ns/" \
@@ -123,6 +123,6 @@ flags](/vault/docs/commands) included in all commands.
 
 ## Tutorial
 
-Refer to the [Vault Agent - secrets as environment
+Refer to the [OpenBao Agent - secrets as environment
 variables](/vault/tutorials/vault-agent/agent-env-vars) tutorial for an
 end-to-end example.

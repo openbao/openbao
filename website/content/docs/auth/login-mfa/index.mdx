@@ -8,19 +8,19 @@ description: |-
 
 # Login MFA
 
-Vault supports Multi-factor Authentication (MFA) for authenticating to
+OpenBao supports Multi-factor Authentication (MFA) for authenticating to
 an auth method using different authentication types. We use the term `Login MFA` to distinguish
 this feature and the [Vault Enterprise MFA](/vault/docs/enterprise/mfa).
-Login MFA is built on top of the Identity system of Vault.
+Login MFA is built on top of the Identity system of OpenBao.
 
 ## MFA types
 
-MFA in Vault includes the following login types:
+MFA in OpenBao includes the following login types:
 
 - `Time-based One-time Password (TOTP)` - If configured and enabled on a login path,
-  this would require a TOTP passcode along with a Vault token to be presented
+  this would require a TOTP passcode along with a OpenBao token to be presented
   while invoking the API login request. The passcode will be validated against the
-  TOTP key present in the caller's identify in Vault.
+  TOTP key present in the caller's identify in OpenBao.
 
 - `Okta` - If Okta push is configured and enabled on a login path, then the enrolled
   device of the user will receive a push notification to either approve or deny access
@@ -39,7 +39,7 @@ MFA in Vault includes the following login types:
 
 ## Login MFA procedure
 
-~> **NOTE:** Vault's built-in Login MFA feature does not protect against brute forcing of
+~> **NOTE:** OpenBao's built-in Login MFA feature does not protect against brute forcing of
 TOTP passcodes by default. We recommend that per-client [rate limits](/vault/docs/concepts/resource-quotas)
 are applied to the relevant login and/or mfa paths (e.g. `/sys/mfa/validate`). External MFA
 methods (`Duo`, `Ping` and `Okta`) may already provide configurable rate limiting. Rate limiting of
@@ -206,12 +206,12 @@ $ curl \
 A user is also able to use the CLI write command to validate the login request.
 
 ```shell-session
-$ vault write sys/mfa/validate -format=json @payload.json
+$ bao write sys/mfa/validate -format=json @payload.json
 ```
 
 #### Interactive CLI for login MFA
 
-Vault supports an interactive way of authenticating to an auth method using CLI only if the
+OpenBao supports an interactive way of authenticating to an auth method using CLI only if the
 login request is subject to a single MFA method validation. In this situation, if the MFA method
 is configured to use passcodes, after sending a regular login request, the user is prompted to
 insert the passcode. Upon successful MFA validation, a client token is returned.
@@ -221,7 +221,7 @@ This alleviates a user from sending the second request separately to validate a 
 To disable the interactive login experience, a user needs to pass in the `non-interactive` flag to the login request.
 
 ```shell-session
-$ vault write -non-interactive sys/mfa/validate -format=json @payload.json
+$ bao write -non-interactive sys/mfa/validate -format=json @payload.json
 ```
 
 To get started with Login MFA, refer to the [Login MFA](/vault/tutorials/auth-methods/multi-factor-authentication) tutorial.
@@ -230,7 +230,7 @@ To get started with Login MFA, refer to the [Login MFA](/vault/tutorials/auth-me
 ### TOTP passcode validation rate limit
 
 Rate limiting of Login MFA paths are enforced by default in Vault 1.10.1 and above.
-By default, Vault allows for 5 consecutive failed TOTP passcode validation.
+By default, OpenBao allows for 5 consecutive failed TOTP passcode validation.
 This value can also be configured by adding `max_validation_attempts` to the TOTP configuration.
 If the number of consecutive failed TOTP passcode validation exceeds the configured value, the user
 needs to wait until a fresh TOTP passcode is available.

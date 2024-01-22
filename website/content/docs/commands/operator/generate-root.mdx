@@ -35,19 +35,19 @@ step-by-step instructions.
 Generate an OTP code for the final token:
 
 ```shell-session
-$ vault operator generate-root -generate-otp
+$ bao operator generate-root -generate-otp
 ```
 
 Start a root token generation:
 
 ```shell-session
-$ vault operator generate-root -init -otp="..."
+$ bao operator generate-root -init -otp="..."
 ```
 
 Enter an unseal key to progress root token generation:
 
 ```shell-session
-$ vault operator generate-root -otp="..."
+$ bao operator generate-root -otp="..."
 ```
 
 ## Usage

@@ -3,7 +3,7 @@ layout: docs
 page_title: User Lockout - Configuration
 description: |-
   The user_lockout stanza specifies various configurations for user lockout behaviour for
-  failed logins in vault. 
+  failed logins in OpenBao. 
 ---
 # User lockout
 
@@ -12,7 +12,7 @@ description: |-
 ## `user_lockout` stanza
 
 The `user_lockout` stanza specifies various configurations for user lockout 
-behaviour for failed logins in vault. They can be configured for all supported auth methods
+behaviour for failed logins in OpenBao. They can be configured for all supported auth methods
 (userpass, ldap and approle) using "all" user_lockout stanza name or for a specific auth method 
 using the auth method name in stanza. 
 
@@ -23,7 +23,7 @@ for all auth methods using "all" user_lockout stanza name in the config file.
 
 ## Configuration
 
-User lockouts configuration is done through the Vault configuration file using
+User lockouts configuration is done through the OpenBao configuration file using
 the `user_lockout` stanza:
 
 ```hcl

@@ -1,13 +1,13 @@
 ---
 layout: docs
-page_title: Install Vault
+page_title: Install OpenBao
 description: |-
   Download a precompiled binary, compile from source, or use a package.
 ---
 
-# Installing Vault
+# Installing OpenBao
 
-There are several options to install Vault:
+There are several options to install OpenBao:
 
 1. Install from a [Package Manager](#package-manager).
 
@@ -20,25 +20,25 @@ There are several options to install Vault:
 
 ## Package manager
 
-HashiCorp manages packages for Ubuntu, Debian, Fedora, RHEL, Amazon
-Linux, and other distributions. Follow the instructions at [HashiCorp
+OpenBao manages packages for Ubuntu, Debian, Fedora, RHEL, Amazon
+Linux, and other distributions. Follow the instructions at [OpenBao
 Tutorials][learn-vault-install] to add our PGP key, add a repository, and
 install.
 
 ## Precompiled binaries
 
 To install the precompiled binary, [download](/vault/downloads) the applicable
-package for your system. Vault is packaged as a zip file.
+package for your system. OpenBao is packaged as a zip file.
 
-Once the zip is downloaded, unzip the file into your designated directory. The `vault` binary
-inside is all that is necessary to run Vault (or `vault.exe` for Windows). No
-additional files are required to run Vault.
+Once the zip is downloaded, unzip the file into your designated directory. The `bao` binary
+inside is all that is necessary to run OpenBao (or `bao.exe` for Windows). No
+additional files are required to run OpenBao.
 
 Copy the binary to your system. If you intend to access it from the
 command-line, ensure that you place the binary somewhere on your `PATH`.
 
-Refer to the [HashiCorp Tutorials][learn-vault-dev-server] to start a server, `put`
-your first secret, and use other features of Vault.
+Refer to the [OpenBao Tutorials][learn-vault-dev-server] to start a server, `put`
+your first secret, and use other features of OpenBao.
 
 ## Compiling from source
 
@@ -46,23 +46,23 @@ To compile from source, you will need [Go](https://golang.org) installed and
 properly configured (including a `GOPATH` environment variable set), as well as
 a copy of [`git`](https://www.git-scm.com/) in your `PATH`.
 
-Clone the Vault repository from GitHub into your `GOPATH`:
+Clone the OpenBao repository from GitHub into your `GOPATH`:
 
 ```shell-session
-$ mkdir -p $GOPATH/src/github.com/hashicorp && cd $_
-$ git clone https://github.com/hashicorp/vault.git
-$ cd vault
+$ mkdir -p $GOPATH/src/github.com/openbao && cd $_
+$ git clone https://github.com/openbao/openbao.git
+$ cd openbao
 ```
 
 Bootstrap the project. This will download and compile libraries and tools needed
-to compile Vault:
+to compile OpenBao:
 
 ```shell-session
 $ make bootstrap
 ```
 
-Build Vault for your current system and put the binary in `./bin/` (relative to
-the git checkout). The `make dev` target is just a shortcut that builds `vault`
+Build OpenBao for your current system and put the binary in `./bin/` (relative to
+the git checkout). The `make dev` target is just a shortcut that builds `bao`
 for only your local build environment (no cross-compiled targets).
 
 ```shell-session
@@ -71,12 +71,12 @@ $ make dev
 
 ## Verifying the installation
 
-To verify Vault is installed, run `vault -h` on your system. You should
+To verify OpenBao is installed, run `bao -h` on your system. You should
 see the help output. If you are executing it from the command line, ensure it is
-on your `PATH` to avoid receiving an error that Vault is not found.
+on your `PATH` to avoid receiving an error that OpenBao is not found.
 
 ```shell-session
-$ vault -h
+$ bao -h
 ```
 
 ## Tutorial

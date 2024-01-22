@@ -2,16 +2,16 @@
 layout: docs
 page_title: debug - Command
 description: |-
-  The "debug" command monitors a Vault server, probing information about
+  The "debug" command monitors a OpenBao server, probing information about
   it for a certain duration.
 ---
 
 # debug
 
-The `debug` command starts a process that monitors a Vault server, probing
+The `debug` command starts a process that monitors a OpenBao server, probing
 information about it for a certain duration.
 
-Gathering information about the state of the Vault cluster often requires the
+Gathering information about the state of the OpenBao cluster often requires the
 operator to access all necessary information via various API calls and terminal
 commands. The `debug` command aims to provide a simple workflow that produces a
 consistent output to help operators retrieve and share information about the
@@ -96,8 +96,8 @@ in a single file. For each of those targets collection is represented as a JSON
 array object, with each entry captured at each interval as a JSON object.
 
 ```shell-session
-$ tree vault-debug-2019-10-15T21-44-49Z/
-vault-debug-2019-10-15T21-44-49Z/
+$ tree openbao-debug-2019-10-15T21-44-49Z/
+openbao-debug-2019-10-15T21-44-49Z/
 ├── 2019-10-15T21-44-49Z
 │   ├── goroutine.prof
 │   ├── heap.prof
@@ -134,20 +134,20 @@ vault-debug-2019-10-15T21-44-49Z/
 Start debug using reasonable defaults:
 
 ```shell-session
-$ vault debug
+$ bao debug
 ```
 
 Start debug with different duration, intervals, and metrics interval values, and
 skip compression:
 
 ```shell-session
-$ vault debug -duration=1m -interval=10s -metrics-interval=5s -compress=false
+$ bao debug -duration=1m -interval=10s -metrics-interval=5s -compress=false
 ```
 
 Start debug with specific targets:
 
 ```shell-session
-$ vault debug -target=host -target=metrics
+$ bao debug -target=host -target=metrics
 ```
 
 ## Usage

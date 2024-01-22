@@ -2,19 +2,19 @@
 layout: docs
 page_title: Telemetry
 description: |-
-  Learn about the telemetry data available in Vault
+  Learn about the telemetry data available in OpenBao
 ---
 
 # Telemetry
 
-The Vault server process collects various runtime metrics about the performance
+The OpenBao server process collects various runtime metrics about the performance
 of different libraries and subsystems. These metrics are aggregated on a
 10-second interval and retained for one minute in memory. High-cardinality
 metrics, like `vault.kv.secret.count`, report every 10 minutes or at an interval
 configured with in the `telemetry` stanza.
 
-Telemetry from Vault must be streamed and stored in metrics aggregation
-software to monitor Vault and collect durable metrics.
+Telemetry from OpenBao must be streamed and stored in metrics aggregation
+software to monitor OpenBao and collect durable metrics.
 
 @include 'telemetry/supported-aggregation-agents.mdx'
 
@@ -22,7 +22,7 @@ software to monitor Vault and collect durable metrics.
 
   The [Well-Architected Framework](/well-architected-framework) documentation
   includes a best practices guide on
-  [key Vault metrics for common health checks](/well-architected-framework/reliability/reliability-vault-monitoring-key-metrics).
+  [key OpenBao metrics for common health checks](/well-architected-framework/reliability/reliability-vault-monitoring-key-metrics).
   We recommend reviewing the key metric recommendations to identify metrics you
   may want to start monitoring immediately.
 
@@ -30,8 +30,8 @@ software to monitor Vault and collect durable metrics.
 
 ## Working with raw telemetry data
 
-You can view raw telemetry data for debugging purposes by interrupting the Vault
-process with `USR1` (on *nix) or `BREAK` (on Windows). When the Vault process
+You can view raw telemetry data for debugging purposes by interrupting the OpenBao
+process with `USR1` (on *nix) or `BREAK` (on Windows). When the OpenBao process
 receives this signal, it dumps telemetry data for the last 10 seconds to
 `stderr`.
 

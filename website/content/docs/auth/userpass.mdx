@@ -2,13 +2,13 @@
 layout: docs
 page_title: Userpass - Auth Methods
 description: >-
-  The "userpass" auth method allows users to authenticate with Vault using a
+  The "userpass" auth method allows users to authenticate with OpenBao using a
   username and password.
 ---
 
 # Userpass auth method
 
-The `userpass` auth method allows users to authenticate with Vault using
+The `userpass` auth method allows users to authenticate with OpenBao using
 a username and password combination.
 
 The username/password combinations are configured directly to the auth
@@ -23,7 +23,7 @@ same entry.
 ### Via the CLI
 
 ```shell-session
-$ vault login -method=userpass \
+$ bao login -method=userpass \
     username=mitchellh \
     password=foo
 ```
@@ -66,19 +66,19 @@ management tool.
 1. Enable the userpass auth method:
 
    ```shell-session
-   $ vault auth enable userpass
+   $ bao auth enable userpass
    ```
 
    This enables the userpass auth method at `auth/userpass`. To enable it at a different path, use the `-path` flag:
 
    ```shell-session
-   $ vault auth enable -path=<path> userpass
+   $ bao auth enable -path=<path> userpass
    ```
 
 1. Configure it with users that are allowed to authenticate:
 
    ```shell-session
-   $ vault write auth/<userpass:path>/users/mitchellh \
+   $ bao write auth/<userpass:path>/users/mitchellh \
        password=foo \
        policies=admins
    ```

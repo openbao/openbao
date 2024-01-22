@@ -31,7 +31,7 @@ If a role is specified, the role may override parameters specified here.
 Create a token attached to specific policies:
 
 ```shell-session
-$ vault token create -policy=my-policy -policy=other-policy
+$ bao token create -policy=my-policy -policy=other-policy
 Key                Value
 ---                -----
 token              95eba8ed-f6fc-958a-f490-c7fd0eda5e9e
@@ -44,7 +44,7 @@ token_policies     [default my-policy other-policy]
 Create a periodic token:
 
 ```shell-session
-$ vault token create -period=30m
+$ bao token create -period=30m
 Key                Value
 ---                -----
 token              fdb90d58-af87-024f-fdcd-9f95039e353a
@@ -110,7 +110,7 @@ flags](/vault/docs/commands) included on all commands.
   TTL.
 
 - `-role` `(string: "")` - Name of the role to create the token against.
-  Specifying -role may override other arguments. The locally authenticated Vault
+  Specifying -role may override other arguments. The locally authenticated OpenBao
   token must have permission for `auth/token/create/<role>`.
 
 - `-ttl` `(duration: "")` - Initial TTL to associate with the token. Token
@@ -124,6 +124,6 @@ flags](/vault/docs/commands) included on all commands.
   an unlimited number of times until their expiration.
 
 - `-wrap-ttl` `(duration: "")` -  Wraps the response in a cubbyhole token with the
-  requested TTL. The response is available via the "vault unwrap" command. The TTL
+  requested TTL. The response is available via the "bao unwrap" command. The TTL
   is specified as a numeric string with suffix like "30s" or "5m". This can also be
   specified via the `VAULT_WRAP_TTL` environment variable.

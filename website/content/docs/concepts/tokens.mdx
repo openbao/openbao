@@ -1,7 +1,7 @@
 ---
 layout: docs
 page_title: Tokens
-description: Tokens are a core auth method in Vault. Concepts and important features.
+description: Tokens are a core auth method in OpenBao. Concepts and important features.
 ---
 
 # Tokens
@@ -11,13 +11,13 @@ description: Tokens are a core auth method in Vault. Concepts and important feat
   Scripts and automations that rely on the internal structure of a token in scripts will break.
 </Warning>
 
-Tokens are the core method for _authentication_ within Vault. Tokens
+Tokens are the core method for _authentication_ within OpenBao. Tokens
 can be used directly or [auth methods](/vault/docs/concepts/auth)
 can be used to dynamically generate tokens based on external identities.
 
 If you've gone through the getting started guide, you probably noticed that
-`vault server -dev` (or `vault operator init` for a non-dev server) outputs an
-initial "root token." This is the first method of authentication for Vault.
+`bao server -dev` (or `bao operator init` for a non-dev server) outputs an
+initial "root token." This is the first method of authentication for OpenBao.
 It is also the only auth method that cannot be disabled.
 
 As stated in the [authentication concepts](/vault/docs/concepts/auth),
@@ -25,10 +25,10 @@ all external authentication mechanisms, such as GitHub, map down to dynamically
 created tokens. These tokens have all the same properties as a normal manually
 created token.
 
-Within Vault, tokens map to information. The most important information mapped
+Within OpenBao, tokens map to information. The most important information mapped
 to a token is a set of one or more attached
 [policies](/vault/docs/concepts/policies). These policies control what the token
-holder is allowed to do within Vault. Other mapped information includes
+holder is allowed to do within OpenBao. Other mapped information includes
 metadata that can be viewed and is added to the audit log, such as creation
 time, last renewal time, and more.
 
@@ -56,20 +56,20 @@ capability -- all actions require existing authenticated tokens.
 ## Root tokens
 
 Root tokens are tokens that have the `root` policy attached to them. Root
-tokens can do anything in Vault. _Anything_. In addition, they are the only
-type of token within Vault that can be set to never expire without any renewal
+tokens can do anything in OpenBao. _Anything_. In addition, they are the only
+type of token within OpenBao that can be set to never expire without any renewal
 needed. As a result, it is purposefully hard to create root tokens; in fact
 there are only three ways to create root tokens:
 
-1. The initial root token generated at `vault operator init` time -- this token has no
+1. The initial root token generated at `bao operator init` time -- this token has no
    expiration
 1. By using another root token; a root token with an expiration cannot create a
    root token that never expires
-1. By using `vault operator generate-root` ([example](/vault/tutorials/operations/generate-root))
+1. By using `bao operator generate-root` ([example](/vault/tutorials/operations/generate-root))
    with the permission of a quorum of unseal key holders
 
 Root tokens are useful in development but should be extremely carefully guarded
-in production. In fact, the Vault team recommends that root tokens are only
+in production. In fact, the OpenBao team recommends that root tokens are only
 used for just enough initial setup (usually, setting up auth methods
 and policies necessary to allow administrators to acquire more limited tokens)
 or in emergencies, and are revoked immediately after they are no longer needed.
@@ -145,8 +145,8 @@ but the TTL may also be 0, indicating a token that never expires). After the
 current TTL is up, the token will no longer function -- it, and its associated
 leases, are revoked.
 
-If the token is renewable, Vault can be asked to extend the token validity
-period using `vault token renew` or the appropriate renewal endpoint. At this
+If the token is renewable, OpenBao can be asked to extend the token validity
+period using `bao token renew` or the appropriate renewal endpoint. At this
 time, various factors come into play. What happens depends upon whether the
 token is a periodic token (available for creation by `root`/`sudo` users, token
 store roles, or some auth methods), has an explicit maximum TTL
@@ -160,7 +160,7 @@ compared to the maximum TTL. This maximum TTL value is dynamically generated
 and can change from renewal to renewal, so the value cannot be displayed when a
 token's information is looked up. It is based on a combination of factors:
 
-1. The system max TTL, which is 32 days but can be changed in Vault's
+1. The system max TTL, which is 32 days but can be changed in OpenBao's
    configuration file.
 1. The max TTL set on a mount using [mount
    tuning](/vault/api-docs/system/mounts). This value
@@ -177,7 +177,7 @@ using the current values. It is also why it is important to always ensure that
 the TTL returned from a renewal operation is within an allowed range; if this
 value is not extending, likely the TTL of the token cannot be extended past its
 current value and the client may want to reauthenticate and acquire a new
-token. However, outside of direct operator interaction, Vault will never revoke
+token. However, outside of direct operator interaction, OpenBao will never revoke
 a token before the returned TTL has expired.
 
 ### Explicit max TTLs
@@ -205,7 +205,7 @@ At issue time, the TTL of a periodic token will be equal to the configured
 period. At every renewal time, the TTL will be reset back to this configured
 period, and as long as the token is successfully renewed within each of these
 periods of time, it will never expire. Outside of `root` tokens, it is
-currently the only way for a token in Vault to have an unlimited lifetime.
+currently the only way for a token in OpenBao to have an unlimited lifetime.
 
 The idea behind periodic tokens is that it is easy for systems and services to
 perform an action relatively frequently -- for instance, every two hours, or
@@ -237,14 +237,14 @@ There are currently two types of tokens.
 
 ### Service tokens
 
-Service tokens are what users will generally think of as "normal" Vault tokens.
+Service tokens are what users will generally think of as "normal" OpenBao tokens.
 They support all features, such as renewal, revocation, creating child tokens,
 and more. They are correspondingly heavyweight to create and track.
 
 ### Batch tokens
 
 Batch tokens are encrypted blobs that carry enough information for them to
-be used for Vault actions, but they require no storage on disk to track them.
+be used for OpenBao actions, but they require no storage on disk to track them.
 As a result they are extremely lightweight and scalable, but lack most of the
 flexibility and features of service tokens.
 
@@ -282,7 +282,7 @@ Leases created by batch tokens are constrained to the remaining TTL of the
 batch tokens and, if the batch token is not an orphan, are tracked by the
 parent. They are revoked when the batch token's TTL expires, or when the batch
 token's parent is revoked (at which point the batch token is also denied access
-to Vault).
+to OpenBao).
 
 As a corollary, batch tokens can be used across performance replication
 clusters, but only if they are orphan, since non-orphan tokens will not be able

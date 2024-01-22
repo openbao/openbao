@@ -2,24 +2,24 @@
 layout: docs
 page_title: Unix - Listeners - Configuration
 description: |-
-  The Unix listener configures Vault to listen on the specified Unix domain socket.
+  The Unix listener configures OpenBao to listen on the specified Unix domain socket.
 ---
 
 # `unix` listener
 
-The Unix listener configures Vault to listen on the specified Unix domain socket.
+The Unix listener configures OpenBao to listen on the specified Unix domain socket.
 
 ```hcl
 listener "unix" {
-  address = "/run/vault.sock"
+  address = "/run/openbao.sock"
 }
 ```
 
-The `listener` stanza may be specified more than once to make Vault listen on
+The `listener` stanza may be specified more than once to make OpenBao listen on
 multiple sockets.
 
 ## `unix` listener parameters
-- `address` `(string: "/run/vault.sock", <required>)` – Specifies the address to bind the Unix socket.
+- `address` `(string: "/run/openbao.sock", <required>)` – Specifies the address to bind the Unix socket.
 
 - `socket_mode` `(string: "", <optional>)` – Changes the access
   permissions and the special mode flags of the Unix socket.
@@ -33,23 +33,23 @@ multiple sockets.
 
 ### Listening on multiple sockets
 
-This example shows Vault listening on a specified socket, as well as the default.
+This example shows OpenBao listening on a specified socket, as well as the default.
 
 ```hcl
 listener "unix" {}
 
 listener "unix" {
-  address = "/var/run/vault.sock"
+  address = "/var/run/openbao.sock"
 }
 ```
 
 ### Listening on multiple interfaces
 
-This example shows Vault listening on TCP localhost, as well as Unix socket.
+This example shows OpenBao listening on TCP localhost, as well as Unix socket.
 
 ```hcl
 listener "unix" {
-  address = "/var/run/vault.sock"
+  address = "/var/run/openbao.sock"
 }
 
 listener "tcp" {
@@ -61,7 +61,7 @@ listener "tcp" {
 This example shows changing access permissions and ownership of the Unix socket.
 ```hcl
 listener "unix" {
-  address = "/var/run/vault.sock"
+  address = "/var/run/openbao.sock"
   socket_mode = "644"
   socket_user = "1000"
   socket_group = "1000"

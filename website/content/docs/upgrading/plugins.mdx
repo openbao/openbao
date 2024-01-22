@@ -1,10 +1,10 @@
 ---
 layout: docs
 page_title: Upgrading Plugins - Guides
-description: These are general upgrade instructions for Vault plugins.
+description: These are general upgrade instructions for OpenBao plugins.
 ---
 
-# Upgrading Vault plugins
+# Upgrading OpenBao plugins
 
 ## Plugin upgrade procedure
 
@@ -26,7 +26,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    Skip this step if your initial plugin is built-in or already registered.
 
     ```shell-session
-    $ vault plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         secret \
         my-secret-plugin
@@ -36,7 +36,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    is already mounted.
 
     ```shell-session
-    $ vault secrets enable my-secret-plugin
+    $ bao secrets enable my-secret-plugin
     ```
 
 1. Register a second version of your plugin. You **must** use the same plugin
@@ -44,7 +44,7 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    true regardless of whether the plugin being upgraded is built-in or external.
 
     ```shell-session
-    $ vault plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         -command=my-secret-plugin-1.0.1 \
         -version=v1.0.1 \
@@ -55,14 +55,14 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
 1. Tune the existing mount to configure it to use the newly registered version.
 
    ```shell-session
-   $ vault secrets tune -plugin-version=v1.0.1 my-secret-plugin
+   $ bao secrets tune -plugin-version=v1.0.1 my-secret-plugin
    ```
 
 1. If you wish, you can check the updated configuration. Notice the "Version" is
    now different from the "Running Version".
 
    ```shell-session
-   $ vault secrets list -detailed
+   $ bao secrets list -detailed
    ```
 
 1. Finally, trigger a [plugin reload](/vault/docs/commands/plugin/reload) to reload all
@@ -70,16 +70,16 @@ an auth plugin, just replace all usages of `secrets` or `secret` with `auth`.
    with either the `plugin` or `mounts` flag respectively.
 
     ```shell-session
-    $ vault plugin reload -plugin my-secret-plugin
+    $ bao plugin reload -plugin my-secret-plugin
     ```
 
 Until the last step, the mount will still run the first version of `my-secret-plugin`. When
-the reload is triggered, Vault will kill `my-secret-plugin`’s process and start the
+the reload is triggered, OpenBao will kill `my-secret-plugin`’s process and start the
 new plugin process for `my-secret-plugin` version 1.0.1. The "Running Version" should also
-now match the "Version" when you run `vault secrets list -detailed`.
+now match the "Version" when you run `bao secrets list -detailed`.
 
 -> **Important:** Plugin reload of a new plugin binary must be
-performed on each Vault instance. Performing a plugin upgrade on a single
+performed on each OpenBao instance. Performing a plugin upgrade on a single
 instance or through a load balancer can result in mismatched
 plugin binaries within a cluster. On a replicated cluster this may be accomplished
 by setting the 'scope' parameter of the reload to 'global'.
@@ -90,7 +90,7 @@ by setting the 'scope' parameter of the reload to 'global'.
    Skip this step if your initial plugin is built-in or already registered.
 
     ```shell-session
-    $ vault plugin register
+    $ bao plugin register
         -sha256=<SHA256 Hex value of the plugin binary> \
         database \
         my-db-plugin
@@ -100,8 +100,8 @@ by setting the 'scope' parameter of the reload to 'global'.
    is already mounted.
 
     ```shell-session
-    $ vault secrets enable database
-    $ vault write database/config/my-db \
+    $ bao secrets enable database
+    $ bao write database/config/my-db \
         plugin_name=my-db-plugin \
         # ...
     ```
@@ -111,7 +111,7 @@ by setting the 'scope' parameter of the reload to 'global'.
    true regardless of whether the plugin being upgraded is built-in or external.
 
     ```shell-session
-    $ vault plugin register \
+    $ bao plugin register \
         -sha256=<SHA256 Hex value of the plugin binary> \
         -command=my-db-plugin-1.0.1 \
         -version=v1.0.1 \
@@ -124,21 +124,21 @@ by setting the 'scope' parameter of the reload to 'global'.
    config parameters will not be updated.
 
     ```shell-session
-    $ vault write database/config/my-db \
+    $ bao write database/config/my-db \
         plugin_version=v1.0.1
     ```
 
 Until the last step, the mount will still run the first version of `my-db-plugin`. When
-the reload is triggered, Vault will kill `my-db-plugin`’s process and start the
+the reload is triggered, OpenBao will kill `my-db-plugin`’s process and start the
 new plugin process for `my-db-plugin` version 1.0.1.
 
 ### Downgrading plugins
 
-Plugin downgrades follow the same procedure as upgrades. You can use the Vault
+Plugin downgrades follow the same procedure as upgrades. You can use the OpenBao
 plugin list command to check what plugin versions are available to downgrade to:
 
 ```shell-session
-$ vault plugin list secret
+$ bao plugin list secret
 Name                Version
 ----                -------
 ad                  v0.14.0+builtin
@@ -174,14 +174,14 @@ transit             v1.12.0+builtin.vault
   they'll all start using the new binary if you overwrite it. We recommend
   treating plugin versions in the catalog as immutable, much like version control
   tags.
-* Each plugin has its own data within Vault storage. While it is rare for HashiCorp
+* Each plugin has its own data within OpenBao storage. While it is rare for OpenBao 
   maintained plugins to update their storage schema, it is up to plugin authors
   to manage schema upgrades and downgrades. Check the plugin release notes for
   any unsupported upgrade or downgrade transitions, especially before moving to
   a new major version or downgrading.
-* Existing Vault [leases](/vault/docs/concepts/lease) and [tokens](/vault/docs/concepts/tokens)
+* Existing OpenBao [leases](/vault/docs/concepts/lease) and [tokens](/vault/docs/concepts/tokens)
   are generally unaffected by plugin upgrades and reloads. This is because the lifecycle
-  of leases and tokens is handled by core systems within Vault. The plugin itself only
+  of leases and tokens is handled by core systems within OpenBao. The plugin itself only
   handles renewal and revocation of them when it’s requested by those core systems.
 
 [plugin_reload_api]: /vault/api-docs/system/plugins-reload-backend

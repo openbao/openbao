@@ -10,9 +10,9 @@ description: |-
 
 @include 'x509-sha1-deprecation.mdx'
 
-The `kubernetes` auth method can be used to authenticate with Vault using a
+The `kubernetes` auth method can be used to authenticate with OpenBao using a
 Kubernetes Service Account Token. This method of authentication makes it easy to
-introduce a Vault token into a Kubernetes Pod.
+introduce a OpenBao token into a Kubernetes Pod.
 
 You can also use a Kubernetes Service Account Token to [log in via JWT auth][k8s-jwt-auth].
 See the section on [How to work with short-lived Kubernetes tokens][short-lived-tokens]
@@ -21,7 +21,7 @@ Kubernetes auth.
 
 -> **Note:** If you are upgrading to Kubernetes v1.21+, ensure the config option
 `disable_iss_validation` is set to true. Assuming the default mount path, you
-can check with `vault read -field disable_iss_validation auth/kubernetes/config`.
+can check with `bao read -field disable_iss_validation auth/kubernetes/config`.
 See [Kubernetes 1.21](#kubernetes-1-21) below for more details.
 
 ## Authentication
@@ -32,7 +32,7 @@ The default path is `/kubernetes`. If this auth method was enabled at a
 different path, specify `-path=/my-path` in the CLI.
 
 ```shell-session
-$ vault write auth/kubernetes/login role=demo jwt=...
+$ bao write auth/kubernetes/login role=demo jwt=...
 ```
 
 ### Via the API
@@ -77,24 +77,24 @@ management tool.
 1. Enable the Kubernetes auth method:
 
   ```bash
-  vault auth enable kubernetes
+  bao auth enable kubernetes
   ```
 
-1. Use the `/config` endpoint to configure Vault to talk to Kubernetes. Use
+1. Use the `/config` endpoint to configure OpenBao to talk to Kubernetes. Use
   `kubectl cluster-info` to validate the Kubernetes host address and TCP port.
   For the list of available configuration options, please see the
   [API documentation](/vault/api-docs/auth/kubernetes).
 
   ```bash
-  vault write auth/kubernetes/config \
+  bao write auth/kubernetes/config \
       token_reviewer_jwt="<your reviewer service account JWT>" \
       kubernetes_host=https://192.168.99.100:<your TCP port or blank for 443> \
       kubernetes_ca_cert=@ca.crt
   ```
 
-  !> **Note:** The pattern Vault uses to authenticate Pods depends on sharing
+  !> **Note:** The pattern OpenBao uses to authenticate Pods depends on sharing
   the JWT token over the network. Given the [security model of
-  Vault](/vault/docs/internals/security), this is allowable because Vault is
+  OpenBao](/vault/docs/internals/security), this is allowable because OpenBao is
   part of the trusted compute base. In general, Kubernetes applications should
   **not** share this JWT with other applications, as it allows API calls to be
   made on behalf of the Pod and can result in unintended access being granted
@@ -103,7 +103,7 @@ management tool.
 1. Create a named role:
 
   ```text
-  vault write auth/kubernetes/role/demo \
+  bao write auth/kubernetes/role/demo \
       bound_service_account_names=myapp \
       bound_service_account_namespaces=default \
       policies=default \
@@ -130,20 +130,20 @@ The changes to token lifetime are important when configuring the
 [`token_reviewer_jwt`](/vault/api-docs/auth/kubernetes#token_reviewer_jwt) option.
 If a short-lived token is used,
 Kubernetes will revoke it as soon as the pod or service account are deleted, or
-if the expiry time passes, and Vault will no longer be able to use the
+if the expiry time passes, and OpenBao will no longer be able to use the
 `TokenReview` API. See [How to work with short-lived Kubernetes tokens][short-lived-tokens]
 below for details on handling this change.
 
 In response to the issuer changes, Kubernetes auth has been updated in Vault
 1.9.0 to not validate the issuer by default. The Kubernetes API does the same
-validation when reviewing tokens, so enabling issuer validation on the Vault
-side is duplicated work. Without disabling Vault's issuer validation, it is not
+validation when reviewing tokens, so enabling issuer validation on the OpenBao
+side is duplicated work. Without disabling OpenBao's issuer validation, it is not
 possible for a single Kubernetes auth configuration to work for default mounted
 pod tokens with both Kubernetes 1.20 and 1.21. Note that auth mounts created
 before Vault 1.9 will maintain the old default, and you will need to explicitly
 set `disable_iss_validation=true` before upgrading Kubernetes to 1.21. See
 [Discovering the service account `issuer`](#discovering-the-service-account-issuer)
-below for guidance if you wish to enable issuer validation in Vault.
+below for guidance if you wish to enable issuer validation in OpenBao.
 
 [k8s-1.21-changelog]: https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.21.md#api-change-2
 [short-lived-tokens]: #how-to-work-with-short-lived-kubernetes-tokens
@@ -172,15 +172,15 @@ short-lived tokens. If you would like to disable this, set
 
 #### Use local service account token as the reviewer JWT
 
-When running Vault in a Kubernetes pod the recommended option is to use the pod's local
-service account token. Vault will periodically re-read the file to support
+When running OpenBao in a Kubernetes pod the recommended option is to use the pod's local
+service account token. OpenBao will periodically re-read the file to support
 short-lived tokens. To use the local token and CA certificate, omit
 `token_reviewer_jwt` and `kubernetes_ca_cert` when configuring the auth method.
-Vault will attempt to load them from `token` and `ca.crt` respectively inside
+OpenBao will attempt to load them from `token` and `ca.crt` respectively inside
 the default mount folder `/var/run/secrets/kubernetes.io/serviceaccount/`.
 
 ```bash
-vault write auth/kubernetes/config \
+bao write auth/kubernetes/config \
     kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
 ```
 
@@ -189,20 +189,20 @@ token and CA certificate is read once and stored in Vault storage.
 When the service account token expires or is revoked, Vault will no longer be
 able to use the `TokenReview` API and client authentication will fail.
 
-#### Use the Vault client's JWT as the reviewer JWT
+#### Use the OpenBao client's JWT as the reviewer JWT
 
-When configuring Kubernetes auth, you can omit the `token_reviewer_jwt`, and Vault
-will use the Vault client's JWT as its own auth token when communicating with
-the Kubernetes `TokenReview` API. If Vault is running in Kubernetes, you also need
+When configuring Kubernetes auth, you can omit the `token_reviewer_jwt`, and OpenBao
+will use the OpenBao client's JWT as its own auth token when communicating with
+the Kubernetes `TokenReview` API. If OpenBao is running in Kubernetes, you also need
 to set `disable_local_ca_jwt=true`.
 
-This means Vault does not store any JWTs and allows you to use short-lived tokens
+This means OpenBao does not store any JWTs and allows you to use short-lived tokens
 everywhere but adds some operational overhead to maintain the cluster role
 bindings on the set of service accounts you want to be able to authenticate with
-Vault. Each client of Vault would need the `system:auth-delegator` ClusterRole:
+OpenBao. Each client of OpenBao would need the `system:auth-delegator` ClusterRole:
 
 ```bash
-kubectl create clusterrolebinding vault-client-auth-delegator \
+kubectl create clusterrolebinding openbao-client-auth-delegator \
   --clusterrole=system:auth-delegator \
   --group=group1 \
   --serviceaccount=default:svcaccount1 \
@@ -212,7 +212,7 @@ kubectl create clusterrolebinding vault-client-auth-delegator \
 #### Continue using long-lived tokens
 
 You can create a long-lived secret using the instructions [here][k8s-create-secret]
-and use that as the `token_reviewer_jwt`. In this example, the `vault` service
+and use that as the `token_reviewer_jwt`. In this example, the `openbao` service
 account would need the `system:auth-delegator` ClusterRole:
 
 ```bash
@@ -220,9 +220,9 @@ kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: vault-k8s-auth-secret
+  name: openbao-k8s-auth-secret
   annotations:
-    kubernetes.io/service-account.name: vault
+    kubernetes.io/service-account.name: openbao
 type: kubernetes.io/service-account-token
 EOF
 ```
@@ -281,7 +281,7 @@ kubectl get --raw /.well-known/openid-configuration | jq -r .issuer
 This value is then used when configuring Kubernetes auth, e.g.:
 
 ```bash
-vault write auth/kubernetes/config \
+bao write auth/kubernetes/config \
   kubernetes_host="https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT" \
   issuer="\"test-aks-cluster-dns-d6cbb78e.hcp.uksouth.azmk8s.io\""
 ```
@@ -311,7 +311,7 @@ roleRef:
   name: system:auth-delegator
 subjects:
   - kind: ServiceAccount
-    name: vault-auth
+    name: openbao-auth
     namespace: default
 ```
 
@@ -325,7 +325,7 @@ The Kubernetes Auth Plugin has a full HTTP API. Please see the
 ## Code example
 
 The following example demonstrates the Kubernetes auth method to authenticate
-with Vault.
+with OpenBao.
 
 <CodeTabs>
 
@@ -338,20 +338,20 @@ import (
 	"fmt"
 	"os"
 
-	vault "github.com/lf-edge/openbao/api"
+	openbao "github.com/lf-edge/openbao/api"
 	auth "github.com/lf-edge/openbao/api/auth/kubernetes"
 )
 
-// Fetches a key-value secret (kv-v2) after authenticating to Vault with a Kubernetes service account.
+// Fetches a key-value secret (kv-v2) after authenticating to OpenBao with a Kubernetes service account.
 // For a more in-depth setup explanation, please see the relevant readme in the hashicorp/vault-examples repo.
 func getSecretWithKubernetesAuth() (string, error) {
 	// If set, the VAULT_ADDR environment variable will be the address that
-	// your pod uses to communicate with Vault.
-	config := vault.DefaultConfig() // modify for more granular configuration
+	// your pod uses to communicate with OpenBao.
+	config := openbao.DefaultConfig() // modify for more granular configuration
 
-	client, err := vault.NewClient(config)
+	client, err := openbao.NewClient(config)
 	if err != nil {
-		return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+		return "", fmt.Errorf("unable to initialize OpenBao client: %w", err)
 	}
 
 	// The service-account token will be read from the path where the token's
@@ -376,7 +376,7 @@ func getSecretWithKubernetesAuth() (string, error) {
 		return "", fmt.Errorf("no auth info was returned after login")
 	}
 
-	// get secret from Vault, from the default mount path for KV v2 in dev mode, "secret"
+	// get secret from OpenBao, from the default mount path for KV v2 in dev mode, "secret"
 	secret, err := client.KVv2("secret").Get(context.Background(), "creds")
 	if err != nil {
 		return "", fmt.Errorf("unable to read secret: %w", err)

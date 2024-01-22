@@ -2,7 +2,7 @@
 layout: docs
 page_title: FAQ
 description: |-
-  Answers to the most commonly asked questions about client count in Vault.
+  Answers to the most commonly asked questions about client count in OpenBao.
 ---
 
 # Client count FAQ
@@ -15,18 +15,18 @@ description: |-
 | Computing client count  |
 | ----------------------- |
 | [Can I compute clients for Vault versions before v1.6?](#before-1-6) |
-| [Can I compute KMIP clients for Vault?](#kmip) |
+| [Can I compute KMIP clients for OpenBao?](#kmip) |
 | [Can I compute changes in clients month to month from the UI for Vault v1.8 &nbsp; v1.10?](#month-to-month) |
 | [Do child namespaces create duplication in the client count?](#namespace-dupes) |
-| [Does the Nomad-Vault integration affect client counts?](#nomad) |
+| [Does the Nomad-OpenBao integration affect client counts?](#nomad) |
 | [Are batch tokens counted differently than service tokens?](#batch-tokens) |
 | [Do custom user filters affect client counts?](#custom-filters) |
 | [Does mount migration affect client counts?](#mount-migration) |
 
 | Upgrading and migration |
 | ----------------------- |
-| [How has client count changed across different Vault versions?](#logic-improvements) |
-| [How has the usage metric UI changed across different Vault versions?](#ui-improvements) |
+| [How has client count changed across different OpenBao versions?](#logic-improvements) |
+| [How has the usage metric UI changed across different OpenBao versions?](#ui-improvements) |
 | [Are there any known client count issues in the UI/API?](#uiapi-ki) |
 | [What happens to client count when I upgrade?](#what-happens-at-upgrade) |
 
@@ -38,11 +38,11 @@ description: |-
 | [Are there conditions that will cause me to lose client data?](#lost-data) |
 | [What happens if a portion of the data is missing for my billing period?](#missing-data) |
 | [Can I disable client counting?](#disable-client-count) |
-| [Can I configure Vault to log the client count data?](#log-client-count) |
+| [Can I configure OpenBao to log the client count data?](#log-client-count) |
 
-| Vault auditor tool      |
+| OpenBao auditor tool      |
 | ----------------------- |
-| [What is the Vault auditor?](##vault-auditor) |
+| [What is the OpenBao auditor?](##openbao-auditor) |
 | [Are there any known client count issues in the auditor tool?](#auditor-ki) |
 
 ## Definitions ((#definitions))
@@ -61,6 +61,6 @@ description: |-
 
 @include 'faq/client-count/usage.mdx'
 
-## Vault auditor tool ((#auditor))
+## OpenBao auditor tool ((#auditor))
 
 @include 'faq/client-count/tools.mdx'

@@ -34,8 +34,8 @@ replication {
   followed by an optional space, followed by a suffix indicating the capacity. Valid suffixes are:
   `kb, kib, mb, mib, gb, gib, tb, tib`, which correspond to kilobytes, kibibytes, megabytes, mebibytes, etc. Full
   details on multiple-byte units in both powers of 2 and 10 can be found [on Wikipedia](https://en.wikipedia.org/wiki/Byte#Multiple-byte_units). The suffixes are not case-sensitive. If this
-  is not specified, Vault will attempt to read the total amount of memory available on the host it's running on. If
-  that succeeds, Vault will use 10% of the value found. If Vault is unable to read the amount of host memory, this
+  is not specified, OpenBao will attempt to read the total amount of memory available on the host it's running on. If
+  that succeeds, OpenBao will use 10% of the value found. If OpenBao is unable to read the amount of host memory, this
   defaults to 1GB.
 - `allow_forwarding_via_header` `(boolean: false)` - Enable forwarding options for client controlled consistency,
   i.e. `X-Vault-Inconsistent: forward-active-node` and `X-Vault-Forward: active-node`.

@@ -8,7 +8,7 @@ description: |-
 
 # Azure auth method
 
-The `azure` auth method allows authentication against Vault using
+The `azure` auth method allows authentication against OpenBao using
 Azure Active Directory credentials. It treats Azure as a Trusted Third Party
 and expects a [JSON Web Token (JWT)](https://tools.ietf.org/html/rfc7519)
 signed by Azure Active Directory for the configured tenant.
@@ -18,7 +18,7 @@ managed identities. See [Managed identities for Azure resources](https://learn.m
 for more information about these resources.
 
 This documentation assumes the Azure method is mounted at the `/auth/azure`
-path in Vault. Since it is possible to enable auth methods at any location,
+path in OpenBao. Since it is possible to enable auth methods at any location,
 please update your API calls accordingly.
 
 ## Prerequisites:
@@ -31,7 +31,7 @@ are required to configure the auth method:
 - Client credentials (shared secret) with read access to particular Azure Resource Manager
   resources. See [Azure AD Service to Service Client Credentials](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-protocols-oauth-service-to-service).
 
-If Vault is hosted on Azure, Vault can use MSI to access Azure instead of a shared secret.
+If OpenBao is hosted on Azure, OpenBao can use MSI to access Azure instead of a shared secret.
 A managed identity must be [enabled](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/)
 on the resource that acquires the access token.
 
@@ -59,7 +59,7 @@ or [`resource_id`](/vault/api-docs/auth/azure#resource_id) parameters are used o
 ### API permissions
 
 The following [API permissions](https://learn.microsoft.com/en-us/azure/active-directory/develop/permissions-consent-overview#types-of-permissions)
-must be assigned to the service principal provided to Vault for managing the root rotation in Azure:
+must be assigned to the service principal provided to OpenBao for managing the root rotation in Azure:
 
 | Permission Name               | Type        |
 | ----------------------------- | ----------- |
@@ -73,7 +73,7 @@ The default path is `/auth/azure`. If this auth method was enabled at a differen
 path, specify `auth/my-path/login` instead.
 
 ```shell-session
-$ vault write auth/azure/login \
+$ bao write auth/azure/login \
     role="dev-role" \
     jwt="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
     subscription_id="12345-..." \
@@ -91,7 +91,7 @@ and can be obtained through instance metadata.
 For example:
 
 ```shell-session
-$ vault write auth/azure/login role="dev-role" \
+$ bao write auth/azure/login role="dev-role" \
      jwt="$(curl -s 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fmanagement.azure.com%2F' -H Metadata:true | jq -r '.access_token')" \
      subscription_id=$(curl -s -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2017-08-01" | jq -r '.compute | .subscriptionId')  \
      resource_group_name=$(curl -s -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=2017-08-01" | jq -r '.compute | .resourceGroupName') \
@@ -132,16 +132,16 @@ tool.
 
 ### Via the CLI
 
-1. Enable Azure authentication in Vault:
+1. Enable Azure authentication in OpenBao:
 
    ```shell-session
-   $ vault auth enable azure
+   $ bao auth enable azure
    ```
 
 1. Configure the Azure auth method:
 
    ```shell-session
-   $ vault write auth/azure/config \
+   $ bao write auth/azure/config \
        tenant_id=7cd1f227-ca67-4fc6-a1a4-9888ea7f388c \
        resource=https://management.azure.com/ \
        client_id=dd794de4-4c6c-40b3-a930-d84cd32e9699 \
@@ -154,13 +154,13 @@ tool.
 1. Create a role:
 
    ```shell-session
-   $ vault write auth/azure/role/dev-role \
+   $ bao write auth/azure/role/dev-role \
        policies="prod,dev" \
        bound_subscription_ids=6a1d5988-5917-4221-b224-904cd7e24a25 \
-       bound_resource_groups=vault
+       bound_resource_groups=openbao
    ```
 
-   Roles are associated with an authentication type/entity and a set of Vault
+   Roles are associated with an authentication type/entity and a set of OpenBao
    policies. Roles are configured with constraints specific to the
    authentication type, as well as overall constraints and configuration for
    the generated auth tokens.
@@ -169,7 +169,7 @@ tool.
 
 ### Via the API
 
-1. Enable Azure authentication in Vault:
+1. Enable Azure authentication in OpenBao:
 
    ```shell-session
    $ curl \
@@ -204,7 +204,7 @@ tool.
 There are two types of [managed identities](https://learn.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/overview#managed-identity-types)
 in Azure: System-assigned and User-assigned. System-assigned identities are unique to
 every virtual machine in Azure. If the resources using Azure auth are recreated
-frequently, using system-assigned identities could result in many Vault entities being
+frequently, using system-assigned identities could result in many OpenBao entities being
 created. For environments with high ephemeral workloads, user-assigned identities are
 recommended.
 
@@ -222,7 +222,7 @@ for more info.
 The Azure auth plugin supports debug logging which includes additional information
 about requests and responses from the Azure API.
 
-To enable the Azure debug logs, set the following environment variable on the Vault
+To enable the Azure debug logs, set the following environment variable on the OpenBao
 server:
 
 ```shell
@@ -236,7 +236,7 @@ The Azure Auth Plugin has a full HTTP API. Please see the [API documentation](/v
 ## Code example
 
 The following example demonstrates the Azure auth method to authenticate
-with Vault.
+with OpenBao.
 
 <CodeTabs>
 
@@ -249,18 +249,18 @@ import (
 	"context"
 	"fmt"
 
-	vault "github.com/lf-edge/openbao/api"
+	openbao "github.com/lf-edge/openbao/api"
 	auth "github.com/lf-edge/openbao/api/auth/azure"
 )
 
-// Fetches a key-value secret (kv-v2) after authenticating to Vault via Azure authentication.
+// Fetches a key-value secret (kv-v2) after authenticating to OpenBao via Azure authentication.
 // This example assumes you have a configured Azure AD Application.
 func getSecretWithAzureAuth() (string, error) {
-	config := vault.DefaultConfig() // modify for more granular configuration
+	config := openbao.DefaultConfig() // modify for more granular configuration
 
-	client, err := vault.NewClient(config)
+	client, err := openbao.NewClient(config)
 	if err != nil {
-		return "", fmt.Errorf("unable to initialize Vault client: %w", err)
+		return "", fmt.Errorf("unable to initialize OpenBao client: %w", err)
 	}
 
 	azureAuth, err := auth.NewAzureAuth(

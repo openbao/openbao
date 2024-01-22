@@ -62,11 +62,6 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-discover v0.0.0-20210818145131-c573d69da192
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/entropy/v2 v2.0.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.10
-	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.7-1
-	github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2 v2.0.7
-	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.7
 	github.com/hashicorp/go-memdb v1.3.4
 	github.com/hashicorp/go-metrics v0.5.3
 	github.com/hashicorp/go-msgpack v1.1.5
@@ -86,7 +81,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.2
-	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/go-sockaddr v1.0.6
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.6.0
@@ -121,13 +116,18 @@ require (
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-testing-interface v1.14.1
-	github.com/mitchellh/go-wordwrap v1.0.0
+	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.12.1
+	github.com/openbao/go-kms-wrapping/entropy/v2 v2.0.1-0.20240122151027-4d142be5e262
+	github.com/openbao/go-kms-wrapping/v2 v2.0.16-0.20240122151027-4d142be5e262
+	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.0.9-0.20240122151027-4d142be5e262
+	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.0.9-0.20240122151027-4d142be5e262
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.0.11-0.20240122151027-4d142be5e262
 	github.com/openbao/openbao/api v1.9.2
 	github.com/openbao/openbao/api/auth/approle v0.1.0
 	github.com/openbao/openbao/api/auth/userpass v0.1.0
@@ -142,7 +142,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/rboyer/safeio v0.2.1
-	github.com/ryanuber/columnize v2.1.0+incompatible
+	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sethvargo/go-limiter v0.7.1
@@ -155,15 +155,15 @@ require (
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.2.1
-	golang.org/x/crypto v0.15.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/crypto v0.17.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	golang.org/x/net v0.18.0
 	golang.org/x/oauth2 v0.14.0
-	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.14.0
-	golang.org/x/term v0.14.0
+	golang.org/x/sync v0.4.0
+	golang.org/x/sys v0.15.0
+	golang.org/x/term v0.15.0
 	golang.org/x/text v0.14.0
-	golang.org/x/tools v0.10.0
+	golang.org/x/tools v0.14.0
 	google.golang.org/api v0.126.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
@@ -269,6 +269,8 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/cronexpr v1.1.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-kms-wrapping/entropy/v2 v2.0.0 // indirect
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.8 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
@@ -362,7 +364,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
-	golang.org/x/mod v0.11.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230711160842-782d3b101e98 // indirect

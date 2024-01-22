@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/term"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"

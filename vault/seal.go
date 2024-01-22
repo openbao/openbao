@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	aeadwrapper "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/physical"
@@ -21,7 +21,7 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"
 	"github.com/golang/protobuf/proto"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/vault/seal"
 )
 

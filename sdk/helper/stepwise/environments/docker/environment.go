@@ -33,8 +33,8 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-multierror"
 	uuid "github.com/hashicorp/go-uuid"
-	stepwise "github.com/hashicorp/vault-testing-stepwise"
 	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/helper/stepwise"
 	"golang.org/x/net/http2"
 )
 

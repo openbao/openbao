@@ -97,7 +97,6 @@ require (
 	github.com/hashicorp/raft-snapshot v1.0.4
 	github.com/hashicorp/vault-plugin-mock v0.16.1
 	github.com/hashicorp/vault-plugin-secrets-kubernetes v0.5.0
-	github.com/hashicorp/vault-testing-stepwise v0.1.3
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/jcmturner/gokrb5/v8 v8.4.4

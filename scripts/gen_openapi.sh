@@ -50,51 +50,26 @@ vault secrets disable "secret/"
 echo "Mounting all builtin plugins ..."
 
 # Enable auth plugins
-vault auth enable "alicloud"
 vault auth enable "approle"
-vault auth enable "aws"
-vault auth enable "azure"
-vault auth enable "centrify"
 vault auth enable "cert"
-vault auth enable "cf"
-vault auth enable "gcp"
-vault auth enable "github"
 vault auth enable "jwt"
 vault auth enable "kerberos"
 vault auth enable "kubernetes"
 vault auth enable "ldap"
-vault auth enable "oci"
-vault auth enable "okta"
 vault auth enable "radius"
 vault auth enable "userpass"
 
 # Enable secrets plugins
-vault secrets enable "alicloud"
-vault secrets enable "aws"
-vault secrets enable "azure"
-vault secrets enable "consul"
 vault secrets enable "database"
-vault secrets enable "gcp"
-vault secrets enable "gcpkms"
 vault secrets enable "kubernetes"
 vault secrets enable -path="kv-v1/" -version=1 "kv"
 vault secrets enable -path="kv-v2/" -version=2 "kv"
 vault secrets enable "ldap"
-vault secrets enable "mongodbatlas"
-vault secrets enable "nomad"
 vault secrets enable "pki"
 vault secrets enable "rabbitmq"
 vault secrets enable "ssh"
-vault secrets enable "terraform"
 vault secrets enable "totp"
 vault secrets enable "transit"
-
-# Enable enterprise features
-if [[ -n "${VAULT_LICENSE:-}" ]]; then
-    vault secrets enable "keymgmt"
-    vault secrets enable "kmip"
-    vault secrets enable "transform"
-fi
 
 # Output OpenAPI, optionally formatted
 if [ "$1" == "-p" ]; then

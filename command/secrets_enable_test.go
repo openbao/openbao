@@ -239,7 +239,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			if len(splitLine) == 0 {
 				continue
 			}
-			potPlug := strings.TrimPrefix(splitLine[0], "github.com/hashicorp/")
+			potPlug := strings.TrimPrefix(splitLine[0], "github.com/openbao/")
 			if strings.HasPrefix(potPlug, "vault-plugin-secrets-") {
 				backends = append(backends, strings.TrimPrefix(potPlug, "vault-plugin-secrets-"))
 			}
@@ -248,7 +248,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		// backends are found by walking the directory, which includes the database backend,
 		// however, the plugins registry omits that one
 		if len(backends) != len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor {
-			t.Fatalf("expected %d logical backends, got %d", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor, len(backends))
+			t.Fatalf("expected %d logical backends, got %d\n\texpected: %#v\n\tbackends: %v", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor, len(backends), builtinplugins.Registry.Keys(consts.PluginTypeSecrets), backends)
 		}
 
 		for _, b := range backends {

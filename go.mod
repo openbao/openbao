@@ -96,7 +96,6 @@ require (
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c
 	github.com/hashicorp/raft-snapshot v1.0.4
 	github.com/hashicorp/vault-plugin-mock v0.16.1
-	github.com/hashicorp/vault-plugin-secrets-kubernetes v0.5.0
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/jcmturner/gokrb5/v8 v8.4.4
@@ -268,8 +267,6 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/cronexpr v1.1.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
-	github.com/hashicorp/go-kms-wrapping/entropy/v2 v2.0.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.8 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
@@ -279,7 +276,6 @@ require (
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/hashicorp/vault/api v1.9.2 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.4.1 // indirect
-	github.com/hashicorp/vault/sdk v0.9.2 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect

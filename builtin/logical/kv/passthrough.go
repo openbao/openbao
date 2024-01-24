@@ -41,8 +41,10 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	}
 
 	backend := &framework.Backend{
-		BackendType: logical.TypeLogical,
-		Help:        strings.TrimSpace(passthroughHelp),
+		BackendType:    logical.TypeLogical,
+		RunningVersion: ReportedVersion,
+
+		Help: strings.TrimSpace(passthroughHelp),
 
 		PathsSpecial: &logical.Paths{
 			SealWrapStorage: []string{

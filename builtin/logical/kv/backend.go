@@ -70,6 +70,9 @@ type versionedKVBackend struct {
 	upgradeCancelFunc context.CancelFunc
 }
 
+// ReportedVersion is used to report a specific version to Vault.
+var ReportedVersion = ""
+
 // Factory will return a logical backend of type versionedKVBackend or
 // PassthroughBackend based on the config passed in.
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
@@ -105,9 +108,11 @@ func VersionedKVFactory(ctx context.Context, conf *logical.BackendConfig) (logic
 	b.storagePrefix = conf.BackendUUID
 
 	b.Backend = &framework.Backend{
-		BackendType: logical.TypeLogical,
-		Help:        backendHelp,
-		Invalidate:  b.Invalidate,
+		BackendType:    logical.TypeLogical,
+		RunningVersion: ReportedVersion,
+
+		Help:       backendHelp,
+		Invalidate: b.Invalidate,
 
 		PathsSpecial: &logical.Paths{
 			SealWrapStorage: []string{
@@ -186,7 +191,7 @@ func pathInvalid(b *versionedKVBackend) []*framework.Path {
 	}
 
 	return []*framework.Path{
-		&framework.Path{
+		{
 			Pattern: ".*",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{Callback: handler, Unpublished: true},
@@ -374,7 +379,6 @@ func (b *versionedKVBackend) getVersionKey(ctx context.Context, key string, vers
 // getKeyMetadata returns the metadata object for the provided key, if no object
 // exits it will return nil.
 func (b *versionedKVBackend) getKeyMetadata(ctx context.Context, s logical.Storage, key string) (*KeyMetadata, error) {
-
 	wrapper, err := b.getKeyEncryptor(ctx, s)
 	if err != nil {
 		return nil, err

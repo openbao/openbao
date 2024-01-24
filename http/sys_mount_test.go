@@ -50,6 +50,7 @@ func TestSysMounts(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -117,6 +118,7 @@ func TestSysMounts(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",
@@ -231,6 +233,7 @@ func TestSysMount(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"secret/": map[string]interface{}{
 				"description":             "key/value secret storage",
@@ -247,6 +250,7 @@ func TestSysMount(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -314,6 +318,7 @@ func TestSysMount(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"secret/": map[string]interface{}{
 			"description":             "key/value secret storage",
@@ -330,6 +335,7 @@ func TestSysMount(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",
@@ -545,6 +551,7 @@ func TestSysRemount(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"secret/": map[string]interface{}{
 				"description":             "key/value secret storage",
@@ -561,6 +568,7 @@ func TestSysRemount(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -628,6 +636,7 @@ func TestSysRemount(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"secret/": map[string]interface{}{
 			"description":             "key/value secret storage",
@@ -644,6 +653,7 @@ func TestSysRemount(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",
@@ -758,6 +768,7 @@ func TestSysUnmount(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -825,6 +836,7 @@ func TestSysUnmount(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",

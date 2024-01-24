@@ -424,6 +424,7 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -491,6 +492,7 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",

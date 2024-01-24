@@ -2323,6 +2323,8 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 						http.StatusOK: {{
 							Description: "OK",
 							Fields: map[string]*framework.FieldSchema{
+								// XXX: additional fields in SystemBackend.mountInfo are
+								// missing from this schema declaration.
 								"type": {
 									Type:     framework.TypeString,
 									Required: true,
@@ -2374,6 +2376,10 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 								"config": {
 									Type:     framework.TypeMap,
 									Required: true,
+								},
+								"deprecation_status": {
+									Type:     framework.TypeString,
+									Required: false,
 								},
 							},
 						}},

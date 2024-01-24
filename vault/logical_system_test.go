@@ -212,6 +212,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"type":                    "system",
@@ -350,6 +351,7 @@ func TestSystemBackend_mount(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"type":                    "system",
@@ -426,6 +428,7 @@ func TestSystemBackend_mount(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 	}
 	if diff := deep.Equal(resp.Data, exp); len(diff) > 0 {
@@ -3796,6 +3799,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"plugin_version":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 				"running_sha256":         "",
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"type":                    "system",

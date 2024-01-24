@@ -34,7 +34,7 @@ import (
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
-	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
 	physRaft "github.com/openbao/openbao/physical/raft"
 	physFile "github.com/openbao/openbao/sdk/physical/file"

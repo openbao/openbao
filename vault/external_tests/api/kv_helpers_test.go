@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/http"
-	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"
 )

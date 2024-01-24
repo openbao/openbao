@@ -16,7 +16,7 @@ import (
 	"github.com/openbao/openbao/command/server"
 
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
-	logicalKv "github.com/openbao/openbao/plugins/secrets/kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
 	"github.com/openbao/openbao/builtin/plugin"
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/openbao/openbao/api"
 	auth "github.com/openbao/openbao/api/auth/userpass"
+	"github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -20,12 +21,11 @@ import (
 	"github.com/openbao/openbao/vault"
 )
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin.
+// TODO: rewrite test to not rely on AppRole plugin.
 func TestIdentityStore_ListAlias(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
-			"github": github.Factory,
+			"approle": approle.Factory,
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
@@ -38,8 +38,8 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	vault.TestWaitActive(t, core)
 	client := cluster.Cores[0].Client
 
-	err := client.Sys().EnableAuthWithOptions("github", &api.EnableAuthOptions{
-		Type: "github",
+	err := client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
+		Type: "approle",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -49,16 +49,16 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var githubAccessor string
+	var approleAccessor string
 	for k, v := range mounts {
 		t.Logf("key: %v\nmount: %#v", k, *v)
-		if k == "github/" {
-			githubAccessor = v.Accessor
+		if k == "approle/" {
+			approleAccessor = v.Accessor
 			break
 		}
 	}
-	if githubAccessor == "" {
-		t.Fatal("did not find github accessor")
+	if approleAccessor == "" {
+		t.Fatal("did not find approle accessor")
 	}
 
 	resp, err := client.Logical().Write("identity/entity", nil)
@@ -74,7 +74,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 	// Create an alias
 	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
 		"name":           "testaliasname",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 	})
 	if err != nil {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -84,7 +84,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 
 	resp, err = client.Logical().Write("identity/entity-alias", map[string]interface{}{
 		"name":           "entityalias",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 		switch {
 		case info["name"].(string) != currName:
 			t.Fatalf("bad name: %v", info["name"].(string))
-		case info["mount_accessor"].(string) != githubAccessor:
+		case info["mount_accessor"].(string) != approleAccessor:
 			t.Fatalf("bad mount_path: %v", info["mount_accessor"].(string))
 		}
 	}
@@ -169,17 +169,16 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 			switch {
 			case curr["id"].(string) != currAliasID:
 				t.Fatalf("bad alias id: %v", curr["id"])
-			case curr["mount_accessor"].(string) != githubAccessor:
+			case curr["mount_accessor"].(string) != approleAccessor:
 				t.Fatalf("bad mount accessor: %v", curr["mount_accessor"])
-			case curr["mount_path"].(string) != "auth/github/":
+			case curr["mount_path"].(string) != "auth/approle/":
 				t.Fatalf("bad mount path: %v", curr["mount_path"])
-			case curr["mount_type"].(string) != "github":
+			case curr["mount_type"].(string) != "approle":
 				t.Fatalf("bad mount type: %v", curr["mount_type"])
 			}
 		}
 	}
 }
-*/
 
 // TestIdentityStore_RenameAlias_CannotMergeEntity verifies that an error is
 // returned on an attempt to rename an alias to match another alias with the
@@ -347,13 +346,12 @@ func TestIdentityStore_MergeEntities_FailsDueToClash(t *testing.T) {
 	}
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin
+// TODO: rewrite test to not rely on AppRole plugin
 func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
 			"userpass": userpass.Factory,
-			"github":   github.Factory,
+			"approle":  approle.Factory,
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
@@ -371,8 +369,8 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 		t.Fatal(err)
 	}
 
-	err = client.Sys().EnableAuthWithOptions("github", &api.EnableAuthOptions{
-		Type: "github",
+	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
+		Type: "approle",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -401,20 +399,20 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 		t.Fatal("did not find userpass accessor")
 	}
 
-	var mountAccessorGitHub string
+	var mountAccessorAppRole string
 	for k, v := range mounts {
-		if k == "github/" {
-			mountAccessorGitHub = v.Accessor
+		if k == "approle/" {
+			mountAccessorAppRole = v.Accessor
 			break
 		}
 	}
-	if mountAccessorGitHub == "" {
-		t.Fatal("did not find github accessor")
+	if mountAccessorAppRole == "" {
+		t.Fatal("did not find approle accessor")
 	}
 
 	_, entityIdBob, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
-	_, entityIdAlice, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessorGitHub, "alice-smith", "alice")
-	_, entityIdClara, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessorGitHub, "clara-smith", "clara")
+	_, entityIdAlice, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "alice-smith", "alice")
+	_, entityIdClara, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "clara")
 
 	// Perform entity merge
 	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
@@ -424,7 +422,7 @@ func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities(t *testing.T)
 	if err == nil {
 		t.Fatalf("Expected error upon merge. Resp:%#v", mergeResp)
 	}
-	if !strings.Contains(err.Error(), fmt.Sprintf("mount accessor %s found in multiple fromEntities, merge should be done with one fromEntity at a time", mountAccessorGitHub)) {
+	if !strings.Contains(err.Error(), fmt.Sprintf("mount accessor %s found in multiple fromEntities, merge should be done with one fromEntity at a time", mountAccessorAppRole)) {
 		t.Fatalf("Error was not due to conflicting alias mount accessors in fromEntities. Error: %v", err)
 	}
 }
@@ -433,7 +431,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
 			"userpass": userpass.Factory,
-			"github":   github.Factory,
+			"approle":  approle.Factory,
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
@@ -451,8 +449,8 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = client.Sys().EnableAuthWithOptions("github", &api.EnableAuthOptions{
-		Type: "github",
+	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
+		Type: "approle",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -465,7 +463,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob-github", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]interface{}{
 		"password": "training",
 	})
 	if err != nil {
@@ -488,30 +486,30 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 		t.Fatal("did not find userpass accessor")
 	}
 
-	var mountAccessorGitHub string
+	var mountAccessorAppRole string
 	for k, v := range mounts {
-		if k == "github/" {
-			mountAccessorGitHub = v.Accessor
+		if k == "approle/" {
+			mountAccessorAppRole = v.Accessor
 			break
 		}
 	}
-	if mountAccessorGitHub == "" {
-		t.Fatal("did not find github accessor")
+	if mountAccessorAppRole == "" {
+		t.Fatal("did not find approle accessor")
 	}
 
 	_, entityIdBob, aliasIdBob := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 
 	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{
-		"name":           "bob-github",
+		"name":           "bob-approle",
 		"canonical_id":   entityIdBob,
-		"mount_accessor": mountAccessorGitHub,
+		"mount_accessor": mountAccessorAppRole,
 	})
 	if err != nil {
 		t.Fatalf("err:%v resp:%#v", err, aliasResp)
 	}
 
-	aliasIdBobGitHub := aliasResp.Data["id"].(string)
-	if aliasIdBobGitHub == "" {
+	aliasIdBobAppRole := aliasResp.Data["id"].(string)
+	if aliasIdBobAppRole == "" {
 		t.Fatal("Alias ID not present in response")
 	}
 
@@ -524,7 +522,7 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 	}
 
 	_, entityIdAlice, aliasIdAlice := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "alice-smith", "alice")
-	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorGitHub, "clara-smith", "clara")
+	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "clara")
 
 	// Perform entity merge
 	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
@@ -561,11 +559,10 @@ func TestIdentityStore_MergeEntities_FailsDueToDoubleClash(t *testing.T) {
 	if !strings.Contains(err.Error(), mountAccessor) {
 		t.Fatalf("Did not identify mount accessor %s as being reason for conflict. Error: %v", mountAccessor, err)
 	}
-	if !strings.Contains(err.Error(), mountAccessorGitHub) {
-		t.Fatalf("Did not identify mount accessor %s as being reason for conflict. Error: %v", mountAccessorGitHub, err)
+	if !strings.Contains(err.Error(), mountAccessorAppRole) {
+		t.Fatalf("Did not identify mount accessor %s as being reason for conflict. Error: %v", mountAccessorAppRole, err)
 	}
 }
-*/
 
 func TestIdentityStore_MergeEntities_FailsDueToClashInFromEntities_CheckRawRequest(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
@@ -848,13 +845,12 @@ func TestIdentityStore_MergeEntities_SameMountAccessor_ThenUseAlias(t *testing.T
 	}
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin.
+// TODO: rewrite test to not rely on AppRole plugin.
 func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *testing.T) {
 	coreConfig := &vault.CoreConfig{
 		CredentialBackends: map[string]logical.Factory{
 			"userpass": userpass.Factory,
-			"github":   github.Factory,
+			"approle":  approle.Factory,
 		},
 	}
 	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
@@ -872,8 +868,8 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatal(err)
 	}
 
-	err = client.Sys().EnableAuthWithOptions("github", &api.EnableAuthOptions{
-		Type: "github",
+	err = client.Sys().EnableAuthWithOptions("approle", &api.EnableAuthOptions{
+		Type: "approle",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -886,7 +882,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write("auth/userpass/users/bob-github", map[string]interface{}{
+	_, err = client.Logical().Write("auth/userpass/users/bob-approle", map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {
@@ -909,29 +905,29 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatal("did not find userpass accessor")
 	}
 
-	var mountAccessorGitHub string
+	var mountAccessorAppRole string
 	for k, v := range mounts {
-		if k == "github/" {
-			mountAccessorGitHub = v.Accessor
+		if k == "approle/" {
+			mountAccessorAppRole = v.Accessor
 			break
 		}
 	}
-	if mountAccessorGitHub == "" {
-		t.Fatal("did not find github accessor")
+	if mountAccessorAppRole == "" {
+		t.Fatal("did not find approle accessor")
 	}
 
 	_, entityIdBob, _ := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "bob-smith", "bob")
 	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{
-		"name":           "bob-github",
+		"name":           "bob-approle",
 		"canonical_id":   entityIdBob,
-		"mount_accessor": mountAccessorGitHub,
+		"mount_accessor": mountAccessorAppRole,
 	})
 	if err != nil {
 		t.Fatalf("err:%v resp:%#v", err, aliasResp)
 	}
 
-	aliasIdBobGitHub := aliasResp.Data["id"].(string)
-	if aliasIdBobGitHub == "" {
+	aliasIdBobAppRole := aliasResp.Data["id"].(string)
+	if aliasIdBobAppRole == "" {
 		t.Fatal("Alias ID not present in response")
 	}
 
@@ -944,7 +940,7 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 	}
 
 	_, entityIdAlice, aliasIdAlice := testhelpers.CreateEntityAndAlias(t, client, mountAccessor, "alice-smith", "alice")
-	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorGitHub, "clara-smith", "alice")
+	_, entityIdClara, aliasIdClara := testhelpers.CreateEntityAndAlias(t, client, mountAccessorAppRole, "clara-smith", "alice")
 
 	// Perform entity merge
 	mergeResp, err := client.Logical().Write("identity/entity/merge", map[string]interface{}{
@@ -959,4 +955,3 @@ func TestIdentityStore_MergeEntities_FailsDueToMultipleClashMergesAttempted(t *t
 		t.Fatalf("did not error for the right reason. Error: %v", err)
 	}
 }
-*/

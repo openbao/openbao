@@ -9,13 +9,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
 	uuid "github.com/hashicorp/go-uuid"
+	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
+	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/sdk/logical"
 )
 
@@ -74,10 +78,8 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	require.Len(t, entity.Aliases, 0)
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -86,9 +88,9 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	err = c.enableCredential(namespace.RootContext(nil), meGH)
@@ -99,9 +101,9 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	alias := &identity.Alias{
 		ID:             "alias1",
 		CanonicalID:    "entity1",
-		MountType:      "github",
+		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
-		Name:           "githubuser",
+		Name:           "approleuser",
 		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
@@ -123,9 +125,9 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	alias2 := &identity.Alias{
 		ID:             "alias2",
 		CanonicalID:    "entity2",
-		MountType:      "github",
+		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
-		Name:           "GITHUBUSER",
+		Name:           "APPROLEUSER",
 		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
@@ -171,19 +173,18 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		t.Fatal("still sealed")
 	}
 }
-*/
 
 func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
-	// Enable GitHub auth and initialize
+	// Enable AppRole auth and initialize
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, core := testIdentityStoreWithGithubAuth(ctx, t)
+	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	alias := &logical.Alias{
-		MountType:     "github",
+		MountType:     "approle",
 		MountAccessor: ghAccessor,
-		Name:          "githubuser",
+		Name:          "approleuser",
 	}
 
-	// Create an entity with GitHub alias
+	// Create an entity with AppRole alias
 	entity, _, err := is.CreateOrFetchEntity(ctx, alias)
 	if err != nil {
 		t.Fatal(err)
@@ -249,12 +250,12 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithGithubUserpassAuth(ctx, t)
+	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	alias := &logical.Alias{
-		MountType:     "github",
+		MountType:     "approle",
 		MountAccessor: ghAccessor,
-		Name:          "githubuser",
+		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",
 		},
@@ -300,7 +301,7 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "entity-alias",
 		Data: map[string]interface{}{
-			"name":           "githubuser2",
+			"name":           "approleuser2",
 			"canonical_id":   entity.ID,
 			"mount_accessor": upAccessor,
 		},
@@ -323,8 +324,8 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		t.Fatalf("bad: length of aliases; expected: 2, actual: %d", len(entity.Aliases))
 	}
 
-	if entity.Aliases[1].Name != "githubuser2" {
-		t.Fatalf("bad: alias name; expected: %q, actual: %q", alias.Name, "githubuser2")
+	if entity.Aliases[1].Name != "approleuser2" {
+		t.Fatalf("bad: alias name; expected: %q, actual: %q", alias.Name, "approleuser2")
 	}
 
 	if diff := deep.Equal(entity.Aliases[1].Metadata, map[string]string(nil)); diff != nil {
@@ -363,7 +364,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, ghAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -427,7 +428,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	core, is, ts, _ := testCoreWithIdentityTokenGithub(ctx, t)
+	core, is, ts, _ := testCoreWithIdentityTokenAppRole(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -534,10 +535,8 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 	}
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -545,9 +544,9 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	err = c.enableCredential(namespace.RootContext(nil), meGH)
@@ -558,9 +557,9 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	alias := &identity.Alias{
 		ID:             "alias1",
 		CanonicalID:    "entity1",
-		MountType:      "github",
+		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
-		Name:           "githubuser",
+		Name:           "approleuser",
 		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
@@ -581,9 +580,9 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	alias2 := &identity.Alias{
 		ID:             "alias2",
 		CanonicalID:    "entity2",
-		MountType:      "github",
+		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
-		Name:           "githubuser",
+		Name:           "approleuser",
 		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
@@ -604,8 +603,8 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 
 	newEntity, _, err := c.identityStore.CreateOrFetchEntity(namespace.RootContext(nil), &logical.Alias{
 		MountAccessor: meGH.Accessor,
-		MountType:     "github",
-		Name:          "githubuser",
+		MountType:     "approle",
+		Name:          "approleuser",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -634,28 +633,28 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	}
 }
 
-func testCoreWithIdentityTokenGithub(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string) {
-	is, ghAccessor, core := testIdentityStoreWithGithubAuth(ctx, t)
+func testCoreWithIdentityTokenAppRole(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string) {
+	is, ghAccessor, core := testIdentityStoreWithAppRoleAuth(ctx, t)
 	return core, is, core.tokenStore, ghAccessor
 }
 
-func testCoreWithIdentityTokenGithubRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
-	is, ghAccessor, core, root := testIdentityStoreWithGithubAuthRoot(ctx, t)
+func testCoreWithIdentityTokenAppRoleRoot(ctx context.Context, t *testing.T) (*Core, *IdentityStore, *TokenStore, string, string) {
+	is, ghAccessor, core, root := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
 	return core, is, core.tokenStore, ghAccessor, root
 }
 
-func testIdentityStoreWithGithubAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
-	is, ghA, c, _ := testIdentityStoreWithGithubAuthRoot(ctx, t)
+func testIdentityStoreWithAppRoleAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core) {
+	is, ghA, c, _ := testIdentityStoreWithAppRoleAuthRoot(ctx, t)
 	return is, ghA, c
 }
 
-// testIdentityStoreWithGithubAuthRoot returns an instance of identity store
-// which is mounted by default. This function also enables the github auth
+// testIdentityStoreWithAppRoleAuthRoot returns an instance of identity store
+// which is mounted by default. This function also enables the approle auth
 // backend to assist with testing aliases and entities that require an valid
 // mount accessor of an auth backend.
-func testIdentityStoreWithGithubAuthRoot(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core, string) {
+func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*IdentityStore, string, *Core, string) {
 	// Add github credential factory to core config
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -664,9 +663,9 @@ func testIdentityStoreWithGithubAuthRoot(ctx context.Context, t *testing.T) (*Id
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	err = c.enableCredential(ctx, meGH)
@@ -677,9 +676,9 @@ func testIdentityStoreWithGithubAuthRoot(ctx context.Context, t *testing.T) (*Id
 	return c.identityStore, meGH.Accessor, c, root
 }
 
-func testIdentityStoreWithGithubUserpassAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, string, *Core) {
+func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T) (*IdentityStore, string, string, *Core) {
 	// Setup 2 auth backends, github and userpass
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -693,9 +692,9 @@ func testIdentityStoreWithGithubUserpassAuth(ctx context.Context, t *testing.T) 
 
 	githubMe := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	err = c.enableCredential(ctx, githubMe)
@@ -717,7 +716,6 @@ func testIdentityStoreWithGithubUserpassAuth(ctx context.Context, t *testing.T) 
 
 	return c.identityStore, githubMe.Accessor, userpassMe.Accessor, c
 }
-*/
 
 func TestIdentityStore_MetadataKeyRegex(t *testing.T) {
 	key := "validVALID012_-=+/"
@@ -762,11 +760,9 @@ func expectSingleCount(t *testing.T, sink *metrics.InmemSink, keyPrefix string) 
 	}
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	// Add github credential factory to core config
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -775,9 +771,9 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	ctx := namespace.RootContext(nil)
@@ -790,9 +786,9 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	ghAccessor := meGH.Accessor
 
 	alias := &logical.Alias{
-		MountType:     "github",
+		MountType:     "approle",
 		MountAccessor: ghAccessor,
-		Name:          "githubuser",
+		Name:          "approleuser",
 		Metadata: map[string]string{
 			"foo": "a",
 		},
@@ -812,7 +808,6 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 
 	expectSingleCount(t, sink, "identity.entity.creation")
 }
-*/
 
 func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 	entity := &identity.Entity{

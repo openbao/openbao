@@ -18,7 +18,7 @@ import (
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
-	i, _, _ := testIdentityStoreWithGithubAuth(namespace.RootContext(nil), t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
 
 	// Create an entity
 	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
@@ -86,7 +86,7 @@ func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
 
 func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testEntityName := "testEntityName"
 
@@ -157,7 +157,7 @@ func TestIdentityStore_CaseInsensitiveEntityName(t *testing.T) {
 
 func TestIdentityStore_EntityByName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
 	resp, err := i.HandleRequest(ctx, &logical.Request{
@@ -276,7 +276,7 @@ func TestIdentityStore_EntityReadGroupIDs(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
 		Path:      "entity",
@@ -357,7 +357,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityData := map[string]interface{}{
 		"name":     "testentityname",
@@ -411,7 +411,7 @@ func TestIdentityStore_EntityCreateUpdate(t *testing.T) {
 
 func TestIdentityStore_BatchDelete(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ids := make([]string, 10000)
 	for i := 0; i < 10000; i++ {
@@ -503,9 +503,9 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	var err error
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	validateMountResp := is.router.ValidateMountByAccessor(githubAccessor)
+	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate github auth mount")
 	}
@@ -513,7 +513,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	alias1 := &identity.Alias{
 		CanonicalID:   "testentityid",
 		ID:            "testaliasid",
-		MountAccessor: githubAccessor,
+		MountAccessor: approleAccessor,
 		MountType:     validateMountResp.MountType,
 		Name:          "testaliasname",
 		Metadata: map[string]string{
@@ -568,7 +568,7 @@ func TestIdentityStore_ContextCancel(t *testing.T) {
 	var resp *logical.Response
 
 	ctx, cancelFunc := context.WithCancel(namespace.RootContext(nil))
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -604,7 +604,7 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
 		Operation: logical.UpdateOperation,
@@ -678,11 +678,11 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	meGH.UUID = meGHUUID
 
 	// Mount accessor for github auth
-	githubAccessor, err := c.generateMountAccessor("github")
+	approleAccessor, err := c.generateMountAccessor("github")
 	if err != nil {
 		panic(fmt.Sprintf("could not generate github accessor: %v", err))
 	}
-	meGH.Accessor = githubAccessor
+	meGH.Accessor = approleAccessor
 
 	// Storage view for github auth
 	ghView := NewBarrierView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
@@ -783,9 +783,9 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
-	validateMountResp := is.router.ValidateMountByAccessor(githubAccessor)
+	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate github auth mount")
 	}
@@ -793,7 +793,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	alias1 := &identity.Alias{
 		CanonicalID:   "testentityid",
 		ID:            "testaliasid",
-		MountAccessor: githubAccessor,
+		MountAccessor: approleAccessor,
 		MountType:     validateMountResp.MountType,
 		Name:          "testaliasname",
 		Metadata: map[string]string{
@@ -895,7 +895,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname",
@@ -992,7 +992,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, upAccessor, _ := testIdentityStoreWithGithubUserpassAuth(ctx, t)
+	is, approleAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	registerData := map[string]interface{}{
 		"name":     "testentityname2",
@@ -1006,7 +1006,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 
 	aliasRegisterData1 := map[string]interface{}{
 		"name":           "testaliasname1",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"metadata":       []string{"organization=hashicorp", "team=vault"},
 	}
 
@@ -1160,12 +1160,12 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		if aliasLookedUp == nil {
 			t.Fatalf("index for alias id %q is not updated", alias["id"].(string))
 		}
-		if aliasLookedUp.MountAccessor == githubAccessor {
+		if aliasLookedUp.MountAccessor == approleAccessor {
 			githubAliases += 1
 		}
 	}
 
-	// Test that only 1 alias for the githubAccessor is present in the merged entity,
+	// Test that only 1 alias for the approleAccessor is present in the merged entity,
 	// as the github alias on entity2 should've been skipped in the merge
 	if githubAliases != 1 {
 		t.Fatalf("Unexcepted number of github aliases in merged entity; expected: 1, actual: %d", githubAliases)
@@ -1197,7 +1197,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Register the entity
 	registerReq := &logical.Request{
@@ -1240,7 +1240,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		Path:      "alias",
 		Data: map[string]interface{}{
 			"name":           "testaliasname1",
-			"mount_accessor": githubAccessor,
+			"mount_accessor": approleAccessor,
 			"metadata":       []string{"organization=hashicorp", "team=vault"},
 			"entity_id":      entityID2,
 			"policies":       []string{"testPolicy1", "testPolicy1", "testPolicy2"},

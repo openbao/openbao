@@ -5861,7 +5861,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		pluginType consts.PluginType
 		mountTable string
 	}{
-		{"consul", consts.PluginTypeSecrets, "mounts"},
+		{"kv", consts.PluginTypeSecrets, "mounts"},
 		{"approle", consts.PluginTypeCredential, "auth"},
 	}
 	readMountConfig := func(pluginName, mountTable string) map[string]interface{} {

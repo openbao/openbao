@@ -49,7 +49,6 @@ type VaultNodeConfig struct {
 	//   Seals   []*KMS   `hcl:"-"`
 	//   Entropy *Entropy `hcl:"-"`
 	//   Telemetry *Telemetry `hcl:"telemetry"`
-	//   HCPLinkConf *HCPLinkConfig `hcl:"cloud"`
 	//   PidFile string `hcl:"pid_file"`
 	//   ServiceRegistrationType        string
 	//   ServiceRegistrationOptions    map[string]string

@@ -71,10 +71,6 @@ func removedFactory(ctx context.Context, config *logical.BackendConfig) (logical
 func newRegistry() *registry {
 	reg := &registry{
 		credentialBackends: map[string]credentialBackend{
-			"app-id": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
 			"approle":    {Factory: credAppRole.Factory},
 			"cert":       {Factory: credCert.Factory},
 			"jwt":        {Factory: credJWT.Factory},
@@ -99,27 +95,15 @@ func newRegistry() *registry {
 			"redis-database-plugin":      {Factory: dbRedis.New},
 		},
 		logicalBackends: map[string]logicalBackend{
-			"cassandra": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
 			"kubernetes": {Factory: logicalKube.Factory},
 			"kv":         {Factory: logicalKv.Factory},
-			"mongodb": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"openldap": {Factory: logicalLDAP.Factory},
-			"ldap":     {Factory: logicalLDAP.Factory},
-			"pki":      {Factory: logicalPki.Factory},
-			"postgresql": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"rabbitmq": {Factory: logicalRabbit.Factory},
-			"ssh":      {Factory: logicalSsh.Factory},
-			"totp":     {Factory: logicalTotp.Factory},
-			"transit":  {Factory: logicalTransit.Factory},
+			"openldap":   {Factory: logicalLDAP.Factory},
+			"ldap":       {Factory: logicalLDAP.Factory},
+			"pki":        {Factory: logicalPki.Factory},
+			"rabbitmq":   {Factory: logicalRabbit.Factory},
+			"ssh":        {Factory: logicalSsh.Factory},
+			"totp":       {Factory: logicalTotp.Factory},
+			"transit":    {Factory: logicalTransit.Factory},
 		},
 	}
 

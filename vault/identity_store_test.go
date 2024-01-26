@@ -83,6 +83,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+	defer ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
 
@@ -540,6 +541,8 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+	defer ClearTestCredentialBackends()
+
 	c, _, _ := TestCoreUnsealed(t)
 
 	meGH := &MountEntry{
@@ -659,6 +662,8 @@ func testIdentityStoreWithAppRoleAuthRoot(ctx context.Context, t *testing.T) (*I
 		t.Fatalf("err: %s", err)
 	}
 
+	defer ClearTestCredentialBackends()
+
 	c, _, root := TestCoreUnsealed(t)
 
 	meGH := &MountEntry{
@@ -687,6 +692,8 @@ func testIdentityStoreWithAppRoleUserpassAuth(ctx context.Context, t *testing.T)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	defer ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
 
@@ -766,6 +773,7 @@ func TestIdentityStore_NewEntityCounter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+	defer ClearTestCredentialBackends()
 
 	c, _, _, sink := TestCoreUnsealedWithMetrics(t)
 

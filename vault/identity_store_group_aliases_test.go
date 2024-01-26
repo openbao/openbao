@@ -101,6 +101,8 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	defer ClearTestCredentialBackends()
+
 	c, _, _ := TestCoreUnsealed(t)
 
 	ctx := namespace.RootContext(nil)

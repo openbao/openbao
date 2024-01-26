@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/go-uuid"
+	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/helper/strutil"
@@ -507,7 +509,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 
 	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
-		t.Fatal("failed to validate github auth mount")
+		t.Fatal("failed to validate approle auth mount")
 	}
 
 	alias1 := &identity.Alias{
@@ -640,15 +642,15 @@ func TestIdentityStore_ListEntities(t *testing.T) {
 	}
 }
 
-/*
-// TODO: rewrite test to not rely on GitHub plugin
 func TestIdentityStore_LoadingEntities(t *testing.T) {
 	var resp *logical.Response
-	// Add github credential factory to core config
-	err := AddTestCredentialBackend("github", credGithub.Factory)
+	// Add approle credential factory to core config
+	err := AddTestCredentialBackend("approle", credAppRole.Factory)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	defer ClearTestCredentialBackends()
 
 	c := TestCore(t)
 	unsealKeys, token := TestCoreInit(t, c)
@@ -664,40 +666,40 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle/",
+		Type:        "approle",
+		Description: "approle auth",
 		namespace:   namespace.RootNamespace,
 	}
 
-	// Mount UUID for github auth
+	// Mount UUID for approle auth
 	meGHUUID, err := uuid.GenerateUUID()
 	if err != nil {
 		t.Fatal(err)
 	}
 	meGH.UUID = meGHUUID
 
-	// Mount accessor for github auth
-	approleAccessor, err := c.generateMountAccessor("github")
+	// Mount accessor for approle auth
+	approleAccessor, err := c.generateMountAccessor("approle")
 	if err != nil {
-		panic(fmt.Sprintf("could not generate github accessor: %v", err))
+		panic(fmt.Sprintf("could not generate approle accessor: %v", err))
 	}
 	meGH.Accessor = approleAccessor
 
-	// Storage view for github auth
+	// Storage view for approle auth
 	ghView := NewBarrierView(c.barrier, credentialBarrierPrefix+meGH.UUID+"/")
 
-	// Sysview for github auth
+	// Sysview for approle auth
 	ghSysview := c.mountEntrySysView(meGH)
 
-	// Create new github auth credential backend
+	// Create new approle auth credential backend
 	ghAuth, _, err := c.newCredentialBackend(context.Background(), meGH, ghSysview, ghView)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Mount github auth
-	err = c.router.Mount(ghAuth, "auth/github", meGH, ghView)
+	// Mount approle auth
+	err = c.router.Mount(ghAuth, "auth/approle", meGH, ghView)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -777,7 +779,6 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 		t.Fatalf("failed to read the created entity after a seal/unseal cycle")
 	}
 }
-*/
 
 func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	var err error
@@ -787,7 +788,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 
 	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
-		t.Fatal("failed to validate github auth mount")
+		t.Fatal("failed to validate approle auth mount")
 	}
 
 	alias1 := &identity.Alias{
@@ -1150,7 +1151,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("bad: number of aliases in entity; expected: 2, actual: %d", len(entity1Aliases))
 	}
 
-	githubAliases := 0
+	approleAliases := 0
 	for _, aliasRaw := range entity1Aliases {
 		alias := aliasRaw.(map[string]interface{})
 		aliasLookedUp, err := is.MemDBAliasByID(alias["id"].(string), false, false)
@@ -1161,14 +1162,14 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatalf("index for alias id %q is not updated", alias["id"].(string))
 		}
 		if aliasLookedUp.MountAccessor == approleAccessor {
-			githubAliases += 1
+			approleAliases += 1
 		}
 	}
 
 	// Test that only 1 alias for the approleAccessor is present in the merged entity,
-	// as the github alias on entity2 should've been skipped in the merge
-	if githubAliases != 1 {
-		t.Fatalf("Unexcepted number of github aliases in merged entity; expected: 1, actual: %d", githubAliases)
+	// as the approle alias on entity2 should've been skipped in the merge
+	if approleAliases != 1 {
+		t.Fatalf("Unexcepted number of approle aliases in merged entity; expected: 1, actual: %d", approleAliases)
 	}
 
 	entity1Groups := resp.Data["direct_group_ids"].([]string)

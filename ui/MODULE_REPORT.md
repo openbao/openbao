@@ -1,17 +1,22 @@
 ## Module Report
+
 ### Unknown Global
 
 **Global**: `Ember.testing`
 
 **Location**: `app/components/auth-jwt.js` at line 9
 
+<!-- markdownlint-disable line-length -->
+
 ```js
 
 /* eslint-disable ember/no-ember-testing-in-module-scope */
 const WAIT_TIME = Ember.testing ? 0 : 500;
 const ERROR_WINDOW_CLOSED =
-  'The provider window was closed before authentication was complete.  Please click Sign In to try again.';
+  'The provider window was closed before authentication was complete.  Please click Sign In to try again.'; 
 ```
+
+<!-- markdownlint-enable line-length -->
 
 ### Unknown Global
 

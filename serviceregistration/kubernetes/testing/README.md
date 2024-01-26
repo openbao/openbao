@@ -4,7 +4,7 @@
 - In the Vault folder, `$ make dev XC_ARCH=amd64 XC_OS=linux XC_OSARCH=linux/amd64`
 - Create a file called `vault-test.yaml` with the following contents:
 
-```
+```yml
 apiVersion: v1
 kind: Pod
 metadata:
@@ -39,7 +39,7 @@ spec:
 - Install a text editor: `$ apt-get update`, `$ apt-get install nano`
 - Write a test Vault config to `vault.config` like:
 
-```
+```hcl
 storage "inmem" {}
 service_registration "kubernetes" {}
 disable_mlock = true
@@ -49,6 +49,7 @@ log_level = "debug"
 ```
 
 - Run Vault: `$ ./vault server -config=vault.config -dev -dev-root-token-id=root`
-- If 403's are received, you may need to grant RBAC, example here: https://github.com/fabric8io/fabric8/issues/6840#issuecomment-307560275
-- In a separate window outside the pod, view the resulting state of the pod: `$ kubectl get pod vault -o=yaml > currentstate.txt`
+- If 403's are received, you may need to grant RBAC, example here: [6840](https://github.com/fabric8io/fabric8/issues/6840#issuecomment-307560275)
+- In a separate window outside the pod, view the resulting state of the pod:
+  `$ kubectl get pod vault -o=yaml > currentstate.txt`
 - View the differences: `$ diff initialstate.txt currentstate.txt`

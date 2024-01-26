@@ -22,8 +22,8 @@ The minimum required API version for the FoundationDB backend is 520.
 Make sure you have Mono installed (core is enough), then install the
 Go bindings using the `fdb-go-install.sh` script:
 
-```
-$ physical/foundationdb/fdb-go-install.sh install --fdbver x.y.z
+```sh
+physical/foundationdb/fdb-go-install.sh install --fdbver x.y.z
 ```
 
 By default, if `--fdbver x.y.z` is not specified, version 5.2.4 will be used.
@@ -33,8 +33,8 @@ By default, if `--fdbver x.y.z` is not specified, version 5.2.4 will be used.
 To build Vault the FoundationDB backend, add FDB_ENABLED=1 when invoking
 `make`, e.g.
 
-```
-$ make dev FDB_ENABLED=1
+```sh
+make dev FDB_ENABLED=1
 ```
 
 ## Running tests
@@ -42,6 +42,6 @@ $ make dev FDB_ENABLED=1
 Similarly, add FDB_ENABLED=1 to your `make` invocation when running tests,
 e.g.
 
-```
-$ make test TEST=./physical/foundationdb FDB_ENABLED=1
+```sh
+make test TEST=./physical/foundationdb FDB_ENABLED=1
 ```

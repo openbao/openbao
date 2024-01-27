@@ -22,12 +22,11 @@ DOCKER_RUN_FLAGS=-it \
 		--publish "3000:3000" \
 		--rm \
 		--tty \
-		--volume "$(PWD)/content:/app/content" \
-		--volume "$(PWD)/public:/app/public" \
-		--volume "$(PWD)/data:/app/data" \
-		--volume "$(PWD)/redirects.js:/app/redirects.js" \
-		--volume "next-dir:/app/website-preview/.next" \
-		--volume "$(PWD)/.env:/app/.env" \
+		--mount "type=bind,source=$(PWD)/content,destination=/app/content,chown=true,relabel=shared" \
+		--mount "type=bind,source=$(PWD)/public,destination=/app/public,chown=true,relabel=shared" \
+		--mount "type=bind,source=$(PWD)/data,destination=/app/data,chown=true,relabel=shared" \
+		--mount "type=bind,source=$(PWD)/redirects.js,destination=/app/redirects.js,chown=true,relabel=shared" \
+		--mount "type=bind,source=$(PWD)/.env,destination=/app/.env,chown=true,relabel=shared" \
 		-e "REPO=$(REPO)" \
 		-e "PREVIEW_FROM_REPO=$(REPO)" \
 		-e "IS_CONTENT_PREVIEW=true" \

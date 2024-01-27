@@ -1,3 +1,0 @@
-```release-note:bug
-core: Fix a timeout initializing Vault by only using a short timeout persisting barrier keyring encryption counts.
-```

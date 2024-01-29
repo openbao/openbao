@@ -20,10 +20,10 @@ RUN make bootstrap \
 
 FROM alpine:3.13
 
-# Create a bao user and group first so the IDs get set the same way,
+# Create a openbao user and group first so the IDs get set the same way,
 # even as the rest of this may change over time.
-RUN addgroup bao && \
-    adduser -S -G bao bao
+RUN addgroup openbao && \
+    adduser -S -G openbao openbao
 
 # Set up certificates, our base tools, and OpenBao.
 RUN set -eux; \
@@ -31,23 +31,23 @@ RUN set -eux; \
 
 COPY --from=builder /go/src/github.com/lf-edge/openbao/bin/bao /bin/bao
 
-# /bao/logs is made available to use as a location to store audit logs, if
-# desired; /bao/file is made available to use as a location with the file
-# storage bao, if desired; the server will be started with /bao/config as
+# /openbao/logs is made available to use as a location to store audit logs, if
+# desired; /openbao/file is made available to use as a location with the file
+# storage openbao, if desired; the server will be started with /openbao/config as
 # the configuration directory so you can add additional config files in that
 # location.
-RUN mkdir -p /bao/logs && \
-    mkdir -p /bao/file && \
-    mkdir -p /bao/config && \
-    chown -R bao:bao /bao
+RUN mkdir -p /openbao/logs && \
+    mkdir -p /openbao/file && \
+    mkdir -p /openbao/config && \
+    chown -R openbao:openbao /openbao
 
 # Expose the logs directory as a volume since there's potentially long-running
 # state in there
-VOLUME /bao/logs
+VOLUME /openbao/logs
 
 # Expose the file directory as a volume since there's potentially long-running
 # state in there
-VOLUME /bao/file
+VOLUME /openbao/file
 
 # 8200/tcp is the primary interface that applications use to interact with
 # OpenBao.

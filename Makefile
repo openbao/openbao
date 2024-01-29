@@ -68,10 +68,10 @@ docker-dev-ui: prep
 test: BUILD_TAGS+=testonly
 test: prep
 	@CGO_ENABLED=$(CGO_ENABLED) \
-	VAULT_ADDR= \
-	VAULT_TOKEN= \
-	VAULT_DEV_ROOT_TOKEN_ID= \
-	VAULT_ACC= \
+	BAO_ADDR= \
+	BAO_TOKEN= \
+	BAO_DEV_ROOT_TOKEN_ID= \
+	BAO_ACC= \
 	$(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) $(TESTARGS) -timeout=$(TEST_TIMEOUT) -parallel=20
 
 testcompile: BUILD_TAGS+=testonly
@@ -87,16 +87,16 @@ testacc: prep
 		echo "ERROR: Set TEST to a specific package"; \
 		exit 1; \
 	fi
-	VAULT_ACC=1 $(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT)
+	BAO_ACC=1 $(GO_CMD) test -tags='$(BUILD_TAGS)' $(TEST) -v $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT)
 
 # testrace runs the race checker
 testrace: BUILD_TAGS+=testonly
 testrace: prep
 	@CGO_ENABLED=1 \
-	VAULT_ADDR= \
-	VAULT_TOKEN= \
-	VAULT_DEV_ROOT_TOKEN_ID= \
-	VAULT_ACC= \
+	BAO_ADDR= \
+	BAO_TOKEN= \
+	BAO_DEV_ROOT_TOKEN_ID= \
+	BAO_ACC= \
 	$(GO_CMD) test -tags='$(BUILD_TAGS)' -race $(TEST) $(TESTARGS) -timeout=$(EXTENDED_TEST_TIMEOUT) -parallel=20
 
 cover:

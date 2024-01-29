@@ -196,9 +196,9 @@ test-ember-enos: install-ui-dependencies
 	@cd ui && yarn run test:enos
 
 check-openbao-in-path:
-	@OPENBAO_BIN=$$(command -v openbao) || { echo "openbao command not found"; exit 1; }; \
+	@OPENBAO_BIN=$$(command -v bao) || { echo "bao command not found"; exit 1; }; \
 		[ -x "$$OPENBAO_BIN" ] || { echo "$$OPENBAO_BIN not executable"; exit 1; }; \
-		printf "Using OpenBao at %s:\n\$$ openbao version\n%s\n" "$$OPENBAO_BIN" "$$(openbao version)"
+		printf "Using OpenBao at %s:\n\$$ openbao version\n%s\n" "$$OPENBAO_BIN" "$$(bao version)"
 
 ember-dist: install-ui-dependencies
 	@cd ui && npm rebuild node-sass

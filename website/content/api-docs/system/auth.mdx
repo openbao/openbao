@@ -329,7 +329,7 @@ can be achieved without `sudo` via `sys/mounts/auth/[auth-path]/tune`._
   to use, e.g. "v1.0.0". Changes will not take effect until the mount is reloaded.
 
 - `user_lockout_config` `(map<string|string>: nil)` – Specifies the user lockout configuration
-  for the mount. User lockout feature was added in Vault 1.13. These are the possible values:
+  for the mount. These are the possible values:
 
   - `lockout_threshold` `(string: "")` - Specifies the number of failed login attempts after
     which the user is locked out, specified as a string like "15".

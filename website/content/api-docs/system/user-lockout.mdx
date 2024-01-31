@@ -21,8 +21,6 @@ queries in the root namespace because the information about the namespace path
 is unknown. The response will be returned in the decreasing order of locked user
 counts.
 
-This endpoint was added in Vault 1.13.
-
 | Method | Path             |
 | :----- | :--------------- |
 | `GET` | `/sys/locked-users` |
@@ -196,9 +194,6 @@ $ curl \
 
 The unlock user endpoint frees a locked user with the provided `mount_accessor` and `alias_identifier` in the given namespace.
 The unlock command is idempotent. Calls to the endpoint succeed even if the user matching the provided `mount_accessor` and `alias_identifier` is not currently locked.
-
-
-This endpoint was added in Vault 1.13.
 
 | Method | Path             |
 | :----- | :--------------- |

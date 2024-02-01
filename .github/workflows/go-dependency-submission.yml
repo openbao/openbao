@@ -37,7 +37,7 @@ jobs:
 
       - name: 'Submit Dependencies To GitHub'
         uses: actions/go-dependency-submission@v2.0.0
-        with:
+        #with:
           # GitHub Personal Access Token (PAT). Defaults to PAT provided by Action runner
           # token: # optional, default is ${{ github.token }}
           # User provided map of max key/value pairs of metadata to include with the snapshot e.g. {"lastModified": "12-31-2022"}

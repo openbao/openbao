@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/vault-plugin-secrets-openldap/client"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/ldaputil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestConfig_Create(t *testing.T) {

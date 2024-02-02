@@ -9,7 +9,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 type dynamicRole struct {

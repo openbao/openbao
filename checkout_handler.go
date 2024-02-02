@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 const (

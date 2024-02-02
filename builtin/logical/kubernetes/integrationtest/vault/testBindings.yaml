@@ -1,0 +1,84 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-secrets-abilities-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-secrets-abilities
+subjects:
+- kind: ServiceAccount
+  name: test-token-create
+  namespace: test
+- kind: ServiceAccount
+  name: vault
+  namespace: test
+- kind: ServiceAccount
+  name: super-jwt
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: test-clusterrole-abilities
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: test-cluster-role-list-pods
+subjects:
+- kind: ServiceAccount
+  name: test-token-create
+  namespace: test
+- kind: ServiceAccount
+  name: vault
+  namespace: test
+- kind: ServiceAccount
+  name: broken-jwt
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: test-capabilities
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: test-capabilities
+subjects:
+- kind: ServiceAccount
+  name: super-jwt
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-role-abilities
+  namespace: test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: test-role-list-pods
+subjects:
+- kind: ServiceAccount
+  name: sample-app
+  namespace: test
+- kind: ServiceAccount
+  name: broken-jwt
+  namespace: test
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-secrets-abilities-binding-broken
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k8s-secrets-abilities-broken
+subjects:
+- kind: ServiceAccount
+  name: broken-jwt
+  namespace: test

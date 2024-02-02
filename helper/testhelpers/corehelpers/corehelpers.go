@@ -164,18 +164,9 @@ func (m *mockBuiltinRegistry) Keys(pluginType consts.PluginType) []string {
 			"mysql-legacy-database-plugin",
 
 			"cassandra-database-plugin",
-			"couchbase-database-plugin",
-			"elasticsearch-database-plugin",
-			"hana-database-plugin",
 			"influxdb-database-plugin",
-			"mongodb-database-plugin",
-			"mongodbatlas-database-plugin",
-			"mssql-database-plugin",
 			"postgresql-database-plugin",
-			"redis-elasticache-database-plugin",
-			"redshift-database-plugin",
 			"redis-database-plugin",
-			"snowflake-database-plugin",
 		}
 	case consts.PluginTypeCredential:
 		return []string{

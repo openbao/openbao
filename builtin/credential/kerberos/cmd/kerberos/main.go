@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	kerberosauth "github.com/hashicorp/vault-plugin-auth-kerberos"
 	"github.com/openbao/openbao/api"
+	kerberosauth "github.com/openbao/openbao/builtin/credential/kerberos"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

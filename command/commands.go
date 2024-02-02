@@ -29,6 +29,7 @@ import (
 	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
 	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
+	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"

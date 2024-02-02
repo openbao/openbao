@@ -42,6 +42,7 @@ require (
 	github.com/go-errors/errors v1.4.2
 	github.com/go-jose/go-jose/v3 v3.0.1
 	github.com/go-ldap/ldap/v3 v3.4.4
+	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/go-test/deep v1.1.0
 	github.com/gocql/gocql v1.0.0
@@ -60,6 +61,7 @@ require (
 	github.com/hashicorp/go-discover v0.0.0-20210818145131-c573d69da192
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-memdb v1.3.4
+	github.com/hashicorp/go-metrics v0.5.3
 	github.com/hashicorp/go-msgpack v1.1.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.9

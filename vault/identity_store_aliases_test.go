@@ -87,7 +87,7 @@ func TestIdentityStore_DuplicateAliases(t *testing.T) {
 
 func TestIdentityStore_CaseInsensitiveEntityAliasName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity
 	resp, err := i.HandleRequest(ctx, &logical.Request{
@@ -175,11 +175,11 @@ func TestIdentityStore_AliasSameAliasNames(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	aliasData := map[string]interface{}{
 		"name":           "testaliasname",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 	}
 
 	aliasReq := &logical.Request{
@@ -208,12 +208,12 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	if is == nil {
 		t.Fatal("failed to create test identity store")
 	}
 
-	validateMountResp := is.router.ValidateMountByAccessor(githubAccessor)
+	validateMountResp := is.router.ValidateMountByAccessor(approleAccessor)
 	if validateMountResp == nil {
 		t.Fatal("failed to validate github auth mount")
 	}
@@ -236,7 +236,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	alias := &identity.Alias{
 		CanonicalID:   entity.ID,
 		ID:            "testaliasid",
-		MountAccessor: githubAccessor,
+		MountAccessor: approleAccessor,
 		MountType:     validateMountResp.MountType,
 		Name:          "testaliasname",
 		Metadata: map[string]string{
@@ -312,7 +312,7 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	if is == nil {
 		t.Fatal("failed to create test alias store")
@@ -320,7 +320,7 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 
 	aliasData := map[string]interface{}{
 		"name":           "testaliasname",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"metadata":       []string{"organization=hashicorp", "team=vault"},
 	}
 
@@ -359,7 +359,7 @@ func TestIdentityStore_AliasRegister(t *testing.T) {
 
 func TestIdentityStore_AliasUpdate(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	tests := []struct {
 		name       string
@@ -370,7 +370,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "noop",
 			createData: map[string]interface{}{
 				"name":           "noop",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "baz",
 					"bar": "qux",
@@ -378,7 +378,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			},
 			updateData: map[string]interface{}{
 				"name":           "noop",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "baz",
 					"bar": "qux",
@@ -389,23 +389,23 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "no-custom-metadata",
 			createData: map[string]interface{}{
 				"name":           "no-custom-metadata",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 			},
 			updateData: map[string]interface{}{
 				"name":           "no-custom-metadata",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 			},
 		},
 		{
 			name: "update-name-custom-metadata",
 			createData: map[string]interface{}{
 				"name":            "update-name-custom-metadata",
-				"mount_accessor":  githubAccessor,
+				"mount_accessor":  approleAccessor,
 				"custom_metadata": make(map[string]string),
 			},
 			updateData: map[string]interface{}{
 				"name":           "update-name-custom-metadata-2",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"bar": "qux",
 				},
@@ -415,14 +415,14 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "update-name",
 			createData: map[string]interface{}{
 				"name":           "update-name",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "baz",
 				},
 			},
 			updateData: map[string]interface{}{
 				"name":           "update-name-2",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "baz",
 				},
@@ -432,14 +432,14 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "update-metadata",
 			createData: map[string]interface{}{
 				"name":           "update-metadata",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "bar",
 				},
 			},
 			updateData: map[string]interface{}{
 				"name":           "update-metadata",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "baz",
 					"bar": "qux",
@@ -450,14 +450,14 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "clear-metadata",
 			createData: map[string]interface{}{
 				"name":           "clear",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "bar",
 				},
 			},
 			updateData: map[string]interface{}{
 				"name":            "clear",
-				"mount_accessor":  githubAccessor,
+				"mount_accessor":  approleAccessor,
 				"custom_metadata": map[string]string{},
 			},
 		},
@@ -465,7 +465,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "only-metadata",
 			createData: map[string]interface{}{
 				"name":           "only",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "bar",
 				},
@@ -480,7 +480,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "only-metadata-clear",
 			createData: map[string]interface{}{
 				"name":           "only-clear",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 				"custom_metadata": map[string]string{
 					"foo": "bar",
 				},
@@ -493,7 +493,7 @@ func TestIdentityStore_AliasUpdate(t *testing.T) {
 			name: "only-metadata-none-before",
 			createData: map[string]interface{}{
 				"name":           "no-metadata",
-				"mount_accessor": githubAccessor,
+				"mount_accessor": approleAccessor,
 			},
 			updateData: map[string]interface{}{
 				"custom_metadata": map[string]string{
@@ -574,7 +574,7 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 	var err error
 	var resp *logical.Response
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create 2 entities and 1 alias on each, against the same github mount
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -591,7 +591,7 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 
 	alias1Data := map[string]interface{}{
 		"name":           "testaliasname1",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entity1ID,
 	}
 
@@ -621,7 +621,7 @@ func TestIdentityStore_AliasMove_DuplicateAccessor(t *testing.T) {
 
 	alias2Data := map[string]interface{}{
 		"name":           "testaliasname2",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entity2ID,
 	}
 
@@ -659,7 +659,7 @@ func TestIdentityStore_AliasUpdate_DuplicateAccessor(t *testing.T) {
 	var resp *logical.Response
 	ctx := namespace.RootContext(nil)
 
-	is, ghAccessor, upAccessor, _ := testIdentityStoreWithGithubUserpassAuth(ctx, t)
+	is, ghAccessor, upAccessor, _ := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	// Create 1 entity and 2 aliases on it, one for each mount
 	resp, err = is.HandleRequest(ctx, &logical.Request{
@@ -731,7 +731,7 @@ func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 	var err error
 	var resp *logical.Response
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	resp, err = is.HandleRequest(ctx, &logical.Request{
 		Path:      "entity",
@@ -744,7 +744,7 @@ func TestIdentityStore_AliasCreate_DuplicateAccessor(t *testing.T) {
 
 	aliasData := map[string]interface{}{
 		"name":           "testaliasname",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 		"canonical_id":   entityID,
 	}
 
@@ -782,11 +782,11 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 	var err error
 	var resp *logical.Response
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	updateData := map[string]interface{}{
 		"name":           "updatedaliasname",
-		"mount_accessor": githubAccessor,
+		"mount_accessor": approleAccessor,
 	}
 
 	updateReq := &logical.Request{
@@ -808,7 +808,7 @@ func TestIdentityStore_AliasUpdate_ByID(t *testing.T) {
 	customMetadata["foo"] = "abc"
 	registerData := map[string]interface{}{
 		"name":            "testaliasname",
-		"mount_accessor":  githubAccessor,
+		"mount_accessor":  approleAccessor,
 		"custom_metadata": customMetadata,
 	}
 
@@ -881,13 +881,13 @@ func TestIdentityStore_AliasReadDelete(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	is, githubAccessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, approleAccessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	customMetadata := make(map[string]string)
 	customMetadata["foo"] = "abc"
 	registerData := map[string]interface{}{
 		"name":            "testaliasname",
-		"mount_accessor":  githubAccessor,
+		"mount_accessor":  approleAccessor,
 		"metadata":        []string{"organization=hashicorp", "team=vault"},
 		"custom_metadata": customMetadata,
 	}
@@ -925,7 +925,7 @@ func TestIdentityStore_AliasReadDelete(t *testing.T) {
 	if resp.Data["id"].(string) == "" ||
 		resp.Data["canonical_id"].(string) == "" ||
 		resp.Data["name"].(string) != registerData["name"] ||
-		resp.Data["mount_type"].(string) != "github" || !reflect.DeepEqual(resp.Data["custom_metadata"], customMetadata) {
+		resp.Data["mount_type"].(string) != "approle" || !reflect.DeepEqual(resp.Data["custom_metadata"], customMetadata) {
 		t.Fatalf("bad: alias read response; \nexpected: %#v \nactual: %#v\n", registerData, resp.Data)
 	}
 

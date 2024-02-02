@@ -672,6 +672,10 @@ func AddTestCredentialBackend(name string, factory logical.Factory) error {
 	return nil
 }
 
+func ClearTestCredentialBackends() {
+	testCredentialBackends = map[string]logical.Factory{}
+}
+
 // This adds a logical backend for the test core. This needs to be
 // invoked before the test core is created.
 func AddTestLogicalBackend(name string, factory logical.Factory) error {

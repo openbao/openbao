@@ -32,7 +32,6 @@ require (
 	github.com/armon/go-radix v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 	github.com/aws/aws-sdk-go v1.44.269
-	github.com/aws/aws-sdk-go-v2/config v1.18.19
 	github.com/axiomhq/hyperloglog v0.0.0-20220105174342-98591331716a
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/client9/misspell v0.3.4
@@ -71,7 +70,6 @@ require (
 	github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a
 	github.com/hashicorp/go-retryablehttp v0.7.2
 	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.2
@@ -89,7 +87,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/hashicorp/hcl/v2 v2.16.2
-	github.com/hashicorp/nomad/api v0.0.0-20230519153805-2275a83cbfdf
 	github.com/hashicorp/raft v1.3.10
 	github.com/hashicorp/raft-autopilot v0.2.0
 	github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c
@@ -98,15 +95,7 @@ require (
 	github.com/hashicorp/vault-plugin-auth-kerberos v0.10.0
 	github.com/hashicorp/vault-plugin-auth-kubernetes v0.16.0
 	github.com/hashicorp/vault-plugin-mock v0.16.1
-	github.com/hashicorp/vault-plugin-secrets-ad v0.16.0
-	github.com/hashicorp/vault-plugin-secrets-alicloud v0.15.0
-	github.com/hashicorp/vault-plugin-secrets-azure v0.16.1
-	github.com/hashicorp/vault-plugin-secrets-gcp v0.16.0
-	github.com/hashicorp/vault-plugin-secrets-gcpkms v0.15.0
-	github.com/hashicorp/vault-plugin-secrets-kubernetes v0.5.0
 	github.com/hashicorp/vault-plugin-secrets-kv v0.15.0
-	github.com/hashicorp/vault-plugin-secrets-openldap v0.11.1
-	github.com/hashicorp/vault-plugin-secrets-terraform v0.7.1
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/jcmturner/gokrb5/v8 v8.4.4
@@ -225,17 +214,6 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.301 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.17.7 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.13.18 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.31 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.25 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.32 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.25 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.12.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.18.7 // indirect
-	github.com/aws/smithy-go v1.13.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
@@ -266,7 +244,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
-	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -290,16 +267,13 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/cronexpr v1.1.1 // indirect
-	github.com/hashicorp/go-gcp-common v0.8.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/entropy/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.8 // indirect
-	github.com/hashicorp/go-secure-stdlib/fileutil v0.1.0 // indirect
-	github.com/hashicorp/go-slug v0.11.1 // indirect
-	github.com/hashicorp/go-tfe v1.25.1 // indirect
-	github.com/hashicorp/jsonapi v0.0.0-20210826224640-ee7dae0fb22d // indirect
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
+	github.com/hashicorp/nomad/api v0.0.0-20230519153805-2275a83cbfdf // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
 	github.com/hashicorp/vault/api v1.9.2 // indirect
 	github.com/hashicorp/vault/api/auth/kubernetes v0.4.1 // indirect
@@ -320,7 +294,6 @@ require (
 	github.com/jcmturner/gofork v1.7.6 // indirect
 	github.com/jcmturner/goidentity/v6 v6.0.1 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
-	github.com/jeffchao/backoff v0.0.0-20140404060208-9d7fd7aa17f2 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/joyent/triton-go v1.7.1-0.20200416154420-6801d15b779f // indirect

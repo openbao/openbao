@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	kubesecrets "github.com/hashicorp/vault-plugin-secrets-kubernetes"
 	"github.com/openbao/openbao/api"
+	kubesecrets "github.com/openbao/openbao/builtin/logical/kubernetes"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

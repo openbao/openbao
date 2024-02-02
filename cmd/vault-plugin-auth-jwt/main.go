@@ -8,8 +8,8 @@ import (
 	"os"
 
 	jwtauth "github.com/hashicorp/vault-plugin-auth-jwt"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {

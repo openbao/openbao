@@ -19,7 +19,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cap/jwt"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/square/go-jose.v2"

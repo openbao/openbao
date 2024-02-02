@@ -26,8 +26,9 @@ import (
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
-	credOIDC "github.com/hashicorp/vault-plugin-auth-jwt"
+	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
+	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -175,9 +176,10 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"cert": &credCert.CLIHandler{},
-		"ldap": &credLdap.CLIHandler{},
-		"oidc": &credOIDC.CLIHandler{},
+		"cert":     &credCert.CLIHandler{},
+		"kerberos": &credKerb.CLIHandler{},
+		"ldap":     &credLdap.CLIHandler{},
+		"oidc":     &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},

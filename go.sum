@@ -670,8 +670,6 @@ github.com/hashicorp/serf v0.10.1 h1:Z1H2J60yRKvfDYAOZLd2MU0ND4AH/WDz7xYHDWQsIPY
 github.com/hashicorp/serf v0.10.1/go.mod h1:yL2t6BqATOLGc5HF7qbFkTfXoPIY0WZdWHfEvMqbG+4=
 github.com/hashicorp/vault-plugin-auth-kerberos v0.10.0 h1:YH2x9kIV0jKXk22tVkpydhmPeEgprC7IOfN8l0pjF6c=
 github.com/hashicorp/vault-plugin-auth-kerberos v0.10.0/go.mod h1:I6ulXug4oxx77DFYjqI1kVl+72TgXEo3Oju4tTOVfU4=
-github.com/hashicorp/vault-plugin-auth-kubernetes v0.16.0 h1:vuXNJvtMyoqQ01Sfwf2TNcJNkGcxP1vD3C7gpvuVkCU=
-github.com/hashicorp/vault-plugin-auth-kubernetes v0.16.0/go.mod h1:onx9W/rDwENQkN+1yEnJvS51PVkkGAPOBXasne7lnnk=
 github.com/hashicorp/vault-plugin-mock v0.16.1 h1:5QQvSUHxDjEEbrd2REOeacqyJnCLPD51IQzy71hx8P0=
 github.com/hashicorp/vault-plugin-mock v0.16.1/go.mod h1:83G4JKlOwUtxVourn5euQfze3ZWyXcUiLj2wqrKSDIM=
 github.com/hashicorp/vault-plugin-secrets-kv v0.15.0 h1:S2d1t4m4ilDNJRdMUzNUimvyu/+ll8huq5QncVgYz+s=

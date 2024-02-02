@@ -1,0 +1,7 @@
+name: Run Tests
+on:
+  push:
+jobs:
+  run-tests:
+    # using `main` as the ref will keep your workflow up-to-date
+    uses: hashicorp/vault-workflows-common/.github/workflows/tests.yaml@main

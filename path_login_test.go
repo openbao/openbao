@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/ory/dockertest/v3"
 )
 

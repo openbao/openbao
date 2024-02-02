@@ -7,8 +7,8 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	ldap "github.com/hashicorp/vault-plugin-secrets-openldap"
 	"github.com/openbao/openbao/api"
+	ldap "github.com/openbao/openbao/builtin/logical/openldap"
 	"github.com/openbao/openbao/sdk/plugin"
 )
 

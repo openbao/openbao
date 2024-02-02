@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/hashicorp/vault/sdk/database/helper/connutil"
 	"github.com/mediocregopher/radix/v4"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/sdk/database/helper/connutil"
 )
 
 type redisDBConnectionProducer struct {

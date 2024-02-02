@@ -13,10 +13,10 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
-	"github.com/hashicorp/vault/sdk/database/helper/credsutil"
 	"github.com/mediocregopher/radix/v4"
 	"github.com/mediocregopher/radix/v4/resp/resp3"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/database/helper/credsutil"
 )
 
 const (

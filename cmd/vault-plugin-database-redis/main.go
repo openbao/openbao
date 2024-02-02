@@ -8,7 +8,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	redis "github.com/hashicorp/vault-plugin-database-redis"
-	dbplugin "github.com/hashicorp/vault/sdk/database/dbplugin/v5"
+	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 )
 
 func main() {

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/vault/sdk/database/dbplugin/v5"
 	"github.com/mediocregopher/radix/v4"
+	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
 )

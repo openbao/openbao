@@ -9,8 +9,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 
 	kubeauth "github.com/hashicorp/vault-plugin-auth-kubernetes"
-	"github.com/hashicorp/vault/api"
-	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {

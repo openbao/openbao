@@ -12,9 +12,9 @@ import (
 
 	capjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/hashicorp/vault/sdk/framework"
-	"github.com/hashicorp/vault/sdk/helper/cidrutil"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/logical"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/square/go-jose.v2"
 	josejwt "gopkg.in/square/go-jose.v2/jwt"

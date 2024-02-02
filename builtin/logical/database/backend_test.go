@@ -1511,7 +1511,7 @@ func TestBackend_AsyncClose(t *testing.T) {
 func TestNewDatabaseWrapper_IgnoresBuiltinVersion(t *testing.T) {
 	cluster, sys := getCluster(t)
 	t.Cleanup(cluster.Cleanup)
-	_, err := newDatabaseWrapper(context.Background(), "hana-database-plugin", "v1.0.0+builtin", sys, hclog.Default())
+	_, err := newDatabaseWrapper(context.Background(), "mysql-database-plugin", "v1.0.0+builtin", sys, hclog.Default())
 	if err != nil {
 		t.Fatal(err)
 	}

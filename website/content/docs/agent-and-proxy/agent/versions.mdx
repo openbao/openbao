@@ -10,7 +10,7 @@ description: |-
 There is no requirement to run identical versions of OpenBao Agent and OpenBao Server.
 It is safe to run different versions, however you may not be able to take advantage of all the newest features in OpenBao if you do not upgrade to the most recent versions of Agent and Server. We recognize that this isn’t always possible, so we do support version mismatch as best as possible.
 
-As of Vault Agent 1.13.0, Agent will write a note to its logs when it detects a mismatch between Agent and Server.  This is purely informative, intended to assist with debugging in case the mismatch is given rise to problems, e.g. because a newer Agent version is trying to make use of functionality that doesn't exist in the Server version it's talking to.  If Agent is behaving acceptably, the message may be ignored.
+Agent will write a note to its logs when it detects a mismatch between Agent and Server.  This is purely informative, intended to assist with debugging in case the mismatch is given rise to problems, e.g. because a newer Agent version is trying to make use of functionality that doesn't exist in the Server version it's talking to.  If Agent is behaving acceptably, the message may be ignored.
 
 This document describes the common cases.  There may be occasional exceptions, which if intentional will be called out in the CHANGELOG in a `CHANGES` section.  If unintentional/undocumented these should be treated as bugs and reported.
 

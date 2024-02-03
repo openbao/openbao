@@ -1,5 +1,5 @@
 If a user provides bad credentials several times in quick succession,
-Vault will stop trying to validate their credentials for a while, instead returning immediately
+OpenBao will stop trying to validate their credentials for a while, instead returning immediately
 with a permission denied error. We call this behavior "user lockout". The time for which
 a user will be locked out is called “lockout duration”. The user will be able to login after the lockout
 duration has passed. The number of failed login attempts after which the user is locked out is called
@@ -19,4 +19,4 @@ The user lockout feature can be disabled as follows:
 - It can be disabled for a specific auth mount using "auth tune". Please see [auth tune command](/vault/docs/commands/auth/tune)
   or [auth tune api](/vault/api-docs/system/auth#tune-auth-method) for more details.
 
-~> **NOTE**: This feature is available from Vault version 1.13 and is only supported by the userpass, ldap, and approle auth methods.
+~> **NOTE**: This feature is only supported by the userpass, ldap, and approle auth methods.

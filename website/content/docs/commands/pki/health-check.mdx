@@ -88,10 +88,7 @@ This command returns the following exit codes:
 	     one or more health checks.
 
 Note that an exit code of `5` (due to a version mismatch) is not necessarily
-fatal to the health check. For example, the `crl_validity_period` health
-check will return an invalid version warning when run against Vault 1.11 as
-no Delta CRL exists for this version of Vault, but this will not impact its
-ability to check the complete CRL.
+fatal to the health check. 
 
 Each health check outputs one or results in a list. This list contains a
 mapping of keys (`status`, `status_code`, `endpoint`, and `message`) to

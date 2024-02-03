@@ -22,9 +22,9 @@ the absolute limits being reached.
 The maximum size of an object written to a storage backend is determined
 by that backend.
 
-For the integrated storage backend, the default limit (introduced in
-Vault 1.5.0) is 1 MiB. This may be configured via `max_entry_size` in
-the [storage stanza](/vault/docs/configuration/storage/raft#max_entry_size).
+For the integrated storage backend, the default limit is 1 MiB. This may be
+configured via `max_entry_size` in the [storage
+stanza](/vault/docs/configuration/storage/raft#max_entry_size).
 
 Many of the other limits within OpenBao derive from the maximum size of
 a storage entry, as described in the next sections. It is possible to

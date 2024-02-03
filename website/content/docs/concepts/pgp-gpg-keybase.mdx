@@ -28,7 +28,7 @@ the shards and unseal normally.
 One of the early fundamental problems when bootstrapping and initializing OpenBao
 was that the first user (the initializer) received a plain-text copy of all of
 the unseal keys. This defeats the promises of OpenBao's security model, and it
-also makes the distribution of those keys more difficult. Since Vault 0.3,
+also makes the distribution of those keys more difficult. 
 OpenBao can optionally be initialized using PGP keys. In this mode, OpenBao will
 generate the unseal keys and then immediately encrypt them using the given
 users' public PGP keys. Only the owner of the corresponding private key is then

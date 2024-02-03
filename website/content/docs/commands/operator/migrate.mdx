@@ -52,15 +52,10 @@ to that used to [configure OpenBao](/vault/docs/configuration/storage),
 with the only difference being that two stanzas are required: `storage_source` and `storage_destination`.
 
 ```hcl
-storage_source "mysql" {
-  username = "user1234"
-  password = "secret123!"
-  database = "openbao"
-}
+storage_source "inmem" {}
 
-storage_destination "consul" {
-  address = "127.0.0.1:8500"
-  path    = "openbao/"
+storage_destination "file" {
+  path = "/mnt/openbao/data"
 }
 ```
 
@@ -68,7 +63,7 @@ storage_destination "consul" {
 
 ### Example configuration
 
-The below configuration will migrate away from Consul storage to integrated
+The below configuration will migrate away from Filesystem storage to integrated
 raft storage. The raft data will be stored on the local filesystem in the
 defined `path`. `node_id` can optionally be set to identify this node.
 [cluster_addr](/vault/docs/configuration#cluster_addr) must be set to the
@@ -80,9 +75,8 @@ If the original configuration uses "raft" for `ha_storage` a different
 configuration for the node post-migration.
 
 ```hcl
-storage_source "consul" {
-  address = "127.0.0.1:8500"
-  path    = "openbao"
+storage_source "file" {
+  path = "/mnt/openbao/data"
 }
 
 storage_destination "raft" {

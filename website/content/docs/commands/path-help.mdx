@@ -18,12 +18,12 @@ in OpenBao, and also allows you to discover new paths.
 
 Before using `path-help`, it is important to understand "paths" within OpenBao.
 Paths are the parameters used for `bao read`, `bao write`, etc. An example
-path is `secret/foo`, or `aws/config/root`. The paths available depend on the
+path is `secret/foo`, or `auth/userpass/users`. The paths available depend on the
 secrets engines in use. Because of this, the interactive help is an
 indispensable tool to finding what paths are supported.
 
 To discover what paths are supported, use `bao path-help PATH`. For example,
-if you enabled the AWS secrets engine, you can use `bao path-help aws` to find
+if you enabled the LDAP secrets engine, you can use `bao path-help ldap` to find
 the paths supported by that backend. The paths are shown with regular
 expressions, which can make them hard to parse, but they are also extremely
 exact.

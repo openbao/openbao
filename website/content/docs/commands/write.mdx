@@ -45,18 +45,6 @@ $ bao write -force transit/keys/my-key
 The `-force` flag allows the write operation without input data. (See [command
 options](#command-options).)
 
-Upload an AWS IAM policy from a file on disk:
-
-```shell-session
-$ bao write aws/roles/ops policy=@policy.json
-```
-
-Configure access to Consul by providing an access token:
-
-```shell-session
-$ echo $MY_TOKEN | bao write consul/config/access token=-
-```
-
 ### API versus CLI
 
 Create a token with TTL set to 8 hours, limited to 3 uses, and attach `admin`

@@ -114,9 +114,9 @@ you must use 0 (meaning unlimited) as the value for
 
 These are common configuration values that live within the `method` block:
 
-- `type` `(string: required)` - The type of the method to use, e.g. `aws`,
-  `gcp`, `azure`, etc. _Note_: when using HCL this can be used as the key for
-  the block, e.g. `method "aws" {...}`.
+- `type` `(string: required)` - The type of the method to use, e.g. `jwt`,
+  `ldap`, `cert`, etc. _Note_: when using HCL this can be used as the key for
+  the block, e.g. `method "jwt" {...}`.
 
 - `mount_path` `(string: optional)` - The mount path of the method. If not
   specified, defaults to a value of `auth/<method type>`.

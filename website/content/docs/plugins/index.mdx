@@ -14,7 +14,7 @@ Different versions of a plugin may be at each location, with each version differ
 from OpenBao's version.
 
 A plugin is uniquely identified by its type (one of `secret`, `auth`, or
-`database`), name (e.g. `aws`), and version (e.g `v1.0.0`). An empty version
+`database`), name (e.g. `kv`), and version (e.g `v1.0.0`). An empty version
 implies either the built-in plugin or the single unversioned plugin that can
 be registered.
 
@@ -71,14 +71,19 @@ plugin code got built into OpenBao as a dependency. For example:
 $ bao plugin list secret
 Name                Version
 ----                -------
-ad                  v0.14.0+builtin
-alicloud            v0.13.0+builtin
-aws                 v1.12.0+builtin.openbao
-# ...
+kubernetes      v0.5.0+builtin
+kv              v0.15.0+builtin
+ldap            v1.14.8+builtin.openbao
+openldap        v0.11.1+builtin
+pki             v1.14.8+builtin.openbao
+rabbitmq        v1.14.8+builtin.openbao
+ssh             v1.14.8+builtin.openbao
+totp            v1.14.8+builtin.openbao
+transit         v1.14.8+builtin.openbao
 ```
 
-Here, OpenBao has a dependency on `v0.14.0` of the [hashicorp/vault-plugin-secrets-ad](https://github.com/hashicorp/vault-plugin-secrets-ad)
-repo, and the `openbao` metadata identifier for `aws` indicates that plugin's code was
+Here, OpenBao has a dependency on `v0.15.0` of the [openbao-plugin-secrets-kv](https://github.com/openbao/openbao-plugin-secrets-kv)
+repo, and the `openbao` metadata identifier for `pki` indicates that plugin's code was
 within the OpenBao repo. For plugins within the OpenBao repo, OpenBao's own major, minor,
 and patch versions are used to form the plugin version.
 

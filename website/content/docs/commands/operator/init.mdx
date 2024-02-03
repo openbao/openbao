@@ -96,8 +96,7 @@ flags](/vault/docs/commands) included on all commands.
 - `-consul-auto` `(bool: false)` - Perform automatic service discovery using
   Consul in HA mode. When all nodes in a OpenBao HA cluster are registered with
   Consul, enabling this option will trigger automatic service discovery based on
-  the provided -consul-service value. When Consul is OpenBao's HA backend, this
-  functionality is automatically enabled. Ensure the proper Consul environment
+  the provided -consul-service value. Ensure the proper Consul environment
   variables are set (CONSUL_HTTP_ADDR, etc). When only one OpenBao server is
   discovered, it will be initialized automatically. When more than one OpenBao
   server is discovered, they will each be output for selection. The default is

@@ -18,31 +18,6 @@
         "path": "secret"
       },
       {
-        "title": "Active Directory",
-        "path": "secret/ad"
-      },
-      {
-        "title": "AliCloud",
-        "path": "secret/alicloud"
-      },
-      {
-        "title": "AWS",
-        "path": "secret/aws"
-      },
-      {
-        "title": "Azure",
-        "path": "secret/azure"
-      },
-      {
-        "title": "Cassandra",
-        "path": "secret/cassandra",
-        "hidden": true
-      },
-      {
-        "title": "Consul",
-        "path": "secret/consul"
-      },
-      {
         "title": "Cubbyhole",
         "path": "secret/cubbyhole"
       },
@@ -58,40 +33,12 @@
             "path": "secret/databases/cassandra"
           },
           {
-            "title": "Couchbase",
-            "path": "secret/databases/couchbase"
-          },
-          {
-            "title": "Elasticsearch",
-            "path": "secret/databases/elasticdb"
-          },
-          {
             "title": "Influxdb",
             "path": "secret/databases/influxdb"
           },
           {
-            "title": "HanaDB",
-            "path": "secret/databases/hanadb"
-          },
-          {
-            "title": "MongoDB",
-            "path": "secret/databases/mongodb"
-          },
-          {
-            "title": "MongoDB Atlas",
-            "path": "secret/databases/mongodbatlas"
-          },
-          {
-            "title": "MSSQL",
-            "path": "secret/databases/mssql"
-          },
-          {
             "title": "MySQL/MariaDB",
             "path": "secret/databases/mysql-maria"
-          },
-          {
-            "title": "Oracle",
-            "path": "secret/databases/oracle"
           },
           {
             "title": "PostgreSQL",
@@ -100,28 +47,8 @@
           {
             "title": "Redis",
             "path": "secret/databases/redis"
-          },
-          {
-            "title": "Redis ElastiCache",
-            "path": "secret/databases/rediselasticache"
-          },
-          {
-            "title": "Redshift",
-            "path": "secret/databases/redshift"
-          },
-          {
-            "title": "Snowflake",
-            "path": "secret/databases/snowflake"
           }
         ]
-      },
-      {
-        "title": "Google Cloud",
-        "path": "secret/gcp"
-      },
-      {
-        "title": "Google Cloud KMS",
-        "path": "secret/gcpkms"
       },
       {
         "title": "Identity",
@@ -211,14 +138,6 @@
         "path": "secret/kubernetes"
       },
       {
-        "title": "MongoDB Atlas",
-        "path": "secret/mongodbatlas"
-      },
-      {
-        "title": "Nomad",
-        "path": "secret/nomad"
-      },
-      {
         "title": "LDAP",
         "path": "secret/ldap"
       },
@@ -233,10 +152,6 @@
       {
         "title": "SSH",
         "path": "secret/ssh"
-      },
-      {
-        "title": "Terraform Cloud",
-        "path": "secret/terraform"
       },
       {
         "title": "TOTP",
@@ -256,32 +171,8 @@
         "path": "auth"
       },
       {
-        "title": "AliCloud",
-        "path": "auth/alicloud"
-      },
-      {
         "title": "AppRole",
         "path": "auth/approle"
-      },
-      {
-        "title": "AWS",
-        "path": "auth/aws"
-      },
-      {
-        "title": "Azure",
-        "path": "auth/azure"
-      },
-      {
-        "title": "Cloud Foundry",
-        "path": "auth/cf"
-      },
-      {
-        "title": "GitHub",
-        "path": "auth/github"
-      },
-      {
-        "title": "Google Cloud",
-        "path": "auth/gcp"
       },
       {
         "title": "JWT/OIDC",
@@ -298,14 +189,6 @@
       {
         "title": "LDAP",
         "path": "auth/ldap"
-      },
-      {
-        "title": "OCI",
-        "path": "auth/oci"
-      },
-      {
-        "title": "Okta",
-        "path": "auth/okta"
       },
       {
         "title": "RADIUS",

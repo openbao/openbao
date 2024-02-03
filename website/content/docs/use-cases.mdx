@@ -51,13 +51,3 @@ Organizations need a way to manage identity sprawl with the proliferation of dif
 - Try our [Identity: Entities and Groups](/vault/tutorials/auth-methods/identity) tutorial to learn how OpenBao's unified identity system works.
 
 - Follow the [Policies](/vault/tutorials/policies) tutorial series to learn how OpenBao enforces role-based access control (RBAC) across multiple cloud environments.
-
-## Key management
-
-Working with cloud providers requires that you use their security features, which involve encryption keys issued and stored by the provider in its own key management system (KMS). You may also have a requirement to maintain root of trust and control of the encryption key lifecycle, both within and outside of the cloud. The [OpenBao Key Management Secrets Engine](/vault/docs/secrets/key-management) provides a consistent workflow for distribution and lifecycle management of cloud provider keys, allowing organizations to maintain centralized control of their keys in OpenBao while leveraging the cryptographic capabilities native to the KMS providers.
-
-### Resources
-
-- Try our [Key Management Secrets Engine with Azure Key Vault](/vault/tutorials/adp/key-management-secrets-engine-azure-key-vault) to enable management of the Key Vault key with the Key Management secrets engine.
-
-- Try our [Key Management Secrets Engine with GCP Cloud KMS](/vault/tutorials/adp/key-management-secrets-engine-gcp-cloud-kms) to enable management of the Key Value key with the Key Management secrets engine.

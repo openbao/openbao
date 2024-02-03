@@ -26,8 +26,8 @@ to check in routinely.
 
 In addition to renewals, a lease can be _revoked_. When a lease is revoked, it
 invalidates that secret immediately and prevents any further renewals. For
-example, with the [AWS secrets engine](/vault/docs/secrets/aws), the
-access keys will be deleted from AWS the moment a lease is revoked. This
+example, with the [Kubernetes secrets engine](/vault/docs/secrets/kubernetes), the
+service accounts will be deleted from Kubernetes the moment a lease is revoked. This
 renders the access keys invalid from that point forward.
 
 Revocation can happen manually via the API, via the `bao lease revoke` cli command,
@@ -78,7 +78,7 @@ can revoke multiple secrets based on their lease ID prefix.
 
 Lease IDs are structured in a way that their prefix is always the path where
 the secret was requested from. This lets you revoke trees of secrets. For
-example, to revoke all AWS access keys, you can do `bao lease revoke -prefix aws/`.
+example, to revoke all Userpass logins, you can do `bao lease revoke -prefix auth/userpass/`.
 For more information about revoke command please check
 [cli's lease revoke](/vault/docs/commands/lease/revoke#lease-revoke)
 command docs.

@@ -133,7 +133,7 @@ This endpoint enables a new secrets engine at the given path.
   !> **NOTE:** Use ASCII printable characters to specify the desired path.
 
 - `type` `(string: <required>)` – Specifies the type of the backend, such as
-  "aws".
+  "kv".
 
 - `description` `(string: "")` – Specifies the human-friendly description of the
   mount.
@@ -183,7 +183,7 @@ This endpoint enables a new secrets engine at the given path.
 
 ```json
 {
-  "type": "aws",
+  "type": "kv",
   "config": {
     "force_no_cache": true
   }

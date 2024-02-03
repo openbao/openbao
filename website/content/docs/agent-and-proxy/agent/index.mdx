@@ -328,10 +328,8 @@ vault {
 }
 
 auto_auth {
-  method "aws" {
-    mount_path = "auth/aws-subaccount"
+  method "kubernetes" {
     config = {
-      type = "iam"
       role = "foobar"
     }
   }

@@ -25,8 +25,6 @@ import (
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/queue"
 	"github.com/stretchr/testify/mock"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -852,24 +850,6 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	}
 	if !pass {
 		t.Fatalf("password rotations did not match expected: %#v", pws)
-	}
-}
-
-func testCreateDBUser(t testing.TB, connURL, db, username, password string) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connURL))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createUserCmd := &createUserCommand{
-		Username: username,
-		Password: password,
-		Roles:    []interface{}{},
-	}
-	result := client.Database(db).RunCommand(ctx, createUserCmd, nil)
-	if result.Err() != nil {
-		t.Fatal(result.Err())
 	}
 }
 

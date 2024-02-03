@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-test/deep"
-	"github.com/hashicorp/vault/sdk/logical"
+	"github.com/openbao/openbao/sdk/logical"
 	"strings"
 	"testing"
 	"time"

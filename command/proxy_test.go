@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"

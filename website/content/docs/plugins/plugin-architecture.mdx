@@ -56,8 +56,8 @@ automatically negotiate mutual TLS for transport authentication.
 The [`api_addr`](/vault/docs/configuration#api_addr) must be set in order for the
 plugin process to establish communication with the OpenBao server during mount
 time. If the storage backend has HA enabled and supports automatic host address
-detection (e.g. Consul), OpenBao will automatically attempt to determine the
-`api_addr` as well.
+detection, OpenBao will automatically attempt to determine the `api_addr` as
+well.
 
 ~> Note: Prior to Vault version 1.9.2, reading the original connection's TLS
 connection state is not supported in plugins.

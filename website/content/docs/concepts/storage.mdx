@@ -74,20 +74,18 @@ backups and HA as critical components of that plan.
 
 Backups and restores are ideally performed while OpenBao is offline. If offline
 backups are not feasible, we recommend using a storage backend that supports
-atomic snapshots (such as
-[Consul](/consul/commands/snapshot) or [Integrated
+atomic snapshots (such as [Integrated
 Storage](/vault/docs/commands/operator/raft#snapshot)).
 
 ~> If your storage backend does not support atomic snapshots, we recommend only
 taking offline backups.
 
-To perform a backup or restore of OpenBao's encrypted data when using a
-HashiCorp-supported storage backend, see the instructions linked below. For
+To perform a backup or restore of OpenBao's encrypted data when using an
+officially supported storage backend, see the instructions linked below. For
 other storage backends, follow the documentation of that backend for taking and
 restoring backups.
 
 - Integrated Storage [snapshots](/vault/docs/commands/operator/raft#snapshot)
-- Consul [snapshots](/consul/commands/snapshot)
 
 ### Configuration
 

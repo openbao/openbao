@@ -45,15 +45,14 @@ The key features of OpenBao are:
 - **Secure Secret Storage**: Arbitrary key/value secrets can be stored
   in OpenBao. OpenBao encrypts these secrets prior to writing them to persistent
   storage, so gaining access to the raw storage isn't enough to access
-  your secrets. OpenBao can write to disk, [Consul](https://www.consul.io/),
-  and more.
+  your secrets. 
 
-- **Dynamic Secrets**: OpenBao can generate secrets on-demand for some
-  systems, such as AWS or SQL databases. For example, when an application
-  needs to access an S3 bucket, it asks OpenBao for credentials, and OpenBao
-  will generate an AWS keypair with valid permissions on demand. After
-  creating these dynamic secrets, OpenBao will also automatically revoke them
-  after the lease is up.
+- **Dynamic Secrets**: OpenBao can generate secrets on-demand for some systems,
+  such as Kubernetes or SQL databases. For example, when an application needs to
+  access a Kubernetes cluster, it asks OpenBao for credentials, and OpenBao will
+  generate an Kubernetes service account token with valid permissions on demand.
+  After creating these dynamic secrets, OpenBao will also automatically revoke
+  them after the lease is up.
 
 - **Data Encryption**: OpenBao can encrypt and decrypt data without storing
   it. This allows security teams to define encryption parameters and

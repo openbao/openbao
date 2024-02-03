@@ -25,9 +25,7 @@ request, they will either [forward the request](#request-forwarding) or
 [redirect the client](#client-redirection) depending on the current
 configuration and state of the cluster -- see the sections below for details.
 Due to this architecture, HA does not enable increased scalability. In general,
-the bottleneck of OpenBao is the data store itself, not OpenBao core. For example:
-to increase the scalability of OpenBao with Consul, you would generally scale
-Consul instead of OpenBao.
+the bottleneck of OpenBao is the data store itself, not OpenBao core.
 
 Certain storage backends can support high availability mode, which enable them
 to store both OpenBao's information in addition to the HA lock. However, OpenBao
@@ -168,16 +166,21 @@ variable, which takes precedence.
 
 ## Storage support
 
-Currently there are several storage backends that support high availability
-mode, including [Consul](/vault/docs/configuration/storage/consul),
-[ZooKeeper](/vault/docs/configuration/storage/zookeeper) and [etcd](/vault/docs/configuration/storage/etcd). These may
-change over time, and the [configuration page](/vault/docs/configuration) should be
-referenced.
+Currently the only officially supported storage backend that supports high
+availability is the  [Integrated
+Storage](/vault/docs/configuration/storage/raft) backend. In addition to that,
+some community suppThese may change over time, and the [configuration
+page](/vault/docs/configuration) should be referenced.  orted storage backends
+implement hight availability as well. 
 
-HashiCorp recommends [OpenBao Integrated Storage](/vault/docs/configuration/storage/raft) as the default HA backend for new deployments of OpenBao. [Consul Storage Backend](/vault/docs/configuration/storage/consul) is also a supported option and used by many production deployments. See the [comparison chart](/vault/docs/configuration/storage#integrated-storage-vs-consul-as-vault-storage) for help deciding which option is best for you.
+The [OpenBao Integrated Storage](/vault/docs/configuration/storage/raft) is
+recommended as the default HA backend for new deployments of OpenBao. See the
+[comparison
+chart](/vault/docs/configuration/storage#integrated-storage-vs-external-storage)
+for help deciding which option is best for you.
 
 If you're interested in implementing another backend or adding HA support to
 another backend, we'd love your contributions. Adding HA support requires
 implementing the
-[`physical.HABackend`](https://pkg.go.dev/github.com/lf-edge/openbao/sdk/physical#HABackend)
+[`physical.HABackend`](https://pkg.go.dev/github.com/openbao/openbao/sdk/physical#HABackend)
 interface for the storage backend.

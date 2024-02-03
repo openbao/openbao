@@ -96,17 +96,6 @@ Currently, the `storage` stanza is not checked.
 has enough information to create a storage object internally. Common errors will have to do
 with misconfigured fields in the storage stanza. 
 
-#### Check storage / check consul TLS
-
-`Check Consul TLS` verifies TLS information included in the storage stanza if the storage type 
-is consul. If a certificate chain is provided, Diagnose parses the root, intermediate, and leaf
-certificates, and checks each one for correctness. 
-
-#### Check storage / check consul direct storage access
-
-`Check Consul Direct Storage Access` is a consul-specific check that ensures OpenBao is not accessing
-the consul server directly, but rather through a local agent. 
-
 #### Check storage / check raft folder permissions
 
 `Check Raft Folder Permissions` computes the permissions on the raft folder, checks that a boltDB file 

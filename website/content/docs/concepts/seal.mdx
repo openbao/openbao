@@ -194,13 +194,13 @@ seal will require that the service backing the Auto Unseal is accessible during
 the migration.
 
 ~> **NOTE**: Seal migration from Auto Unseal to Auto Unseal of the same type is
-supported since Vault 1.6.0. However, there is a current limitation that
+supported in OpenBao. However, there is a current limitation that
 prevents migrating from AWSKMS to AWSKMS; all other seal migrations of the same
 type are supported. Seal migration from One Auto Unseal type (AWS KMS) to
 different Auto Unseal type (HSM, Azure KMS, etc.) is also supported on older
 versions as well.
 
-### Migration post Vault 1.5.1
+### Migration steps
 
 These steps are common for seal migrations between any supported kinds and for
 any storage backend.
@@ -276,10 +276,6 @@ Once the required threshold of recovery keys are entered, the recovery keys
 will be migrated to be used as unseal keys.
 
 #### Migration from auto unseal to auto unseal
-
-~> **NOTE**: Migration between same Auto Unseal types is supported in Vault
-1.6.0 and higher. For these pre-1.5.1 steps, it is only possible to migrate from
-one type of Auto Unseal to a different type (ie Transit -> AWSKMS).
 
 To migrate from Auto Unseal to a different Auto Unseal configuration, take your
 server cluster offline and update the existing [seal

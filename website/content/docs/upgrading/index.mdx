@@ -25,14 +25,6 @@ supported. The upgrade notes for each intervening version must be reviewed. The
 upgrade notes may describe additional steps or configuration to update before,
 during, or after the upgrade.
 
-## Integrated storage autopilot
-
-Vault 1.11 introduced [automated
-upgrades](/vault/docs/concepts/integrated-storage/autopilot#automated-upgrades) as
-part of the Integrated Storage Autopilot feature. If your Vault environment is
-configured to use Integrated Storage, consider leveraging this new feature to
-upgrade your Vault environment.
-
 ## Agent
 
 The OpenBao Agent is an API client of the OpenBao Server. OpenBao APIs are almost
@@ -65,8 +57,4 @@ upgrade notes.
 
 ## HA installations
 
-The recommended upgrade procedure depends on the version of OpenBao you're currently on and the storage backend of OpenBao. If you're currently running on Vault 1.11 or later with Integrated Storage and you have Autopilot enabled, you should let Autopilot do the upgrade for you, as that's easier and
-less prone to human error. Please refer to our [automated
-upgrades](/vault/docs/concepts/integrated-storage/autopilot#automated-upgrades) documentation for information on this feature.
-
-If you're currently on a version of Vault before 1.11, or you've chosen to opt-out the Autopilot automated upgrade features when running Vault after 1.11 with Integrated Storage, or if you are running Vault with other storage backend such as Consul. Please refer to our [Vault HA upgrades Pre 1.11/Without Autopilot Upgrade Automation](/vault/docs/upgrading/vault-ha-upgrade) documentation for more details. Please note that this upgrade procedure also applies if you are upgrading Vault from pre 1.11 to post 1.11.
+Please refer to our [OpenBao HA upgrades](/vault/docs/upgrading/vault-ha-upgrade) documentation for more details.

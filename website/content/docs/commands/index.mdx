@@ -10,12 +10,6 @@ description: |-
 
 # OpenBao commands (CLI)
 
-~> **Note:** The Vault command-line interface (CLI) changed substantially in
-0.9.2+ and may cause confusion while using older versions of Vault with this
-documentation. Read our [upgrade
-guide](/vault/docs/upgrading/upgrade-to-0.9.2#backwards-compatible-cli-changes) for
-more information.
-
 In addition to a verbose [HTTP API](/vault/api-docs), OpenBao features a command-line
 interface (CLI) that wraps common functionality and formats output. The OpenBao
 CLI is a single static binary. It is a thin wrapper around the HTTP API. Every
@@ -273,8 +267,8 @@ this file at any time to "logout" of OpenBao.
 The CLI reads the following environment variables to set behavioral defaults.
 This can alleviate the need to repetitively type a flag. Flags always take
 precedence over the environment variables. Each of the following environment 
-variables must be set on the OpenBao process.  In Vault 1.13+, all environment 
-variables available to the OpenBao process will be logged during startup.
+variables must be set on the OpenBao process. All environment  variables
+available to the OpenBao process will be logged during startup.
 
 ### `VAULT_TOKEN`
 

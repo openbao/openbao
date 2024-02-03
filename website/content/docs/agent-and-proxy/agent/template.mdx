@@ -251,7 +251,7 @@ of the secret's lease duration has elapsed.
 ### Non-Renewable secrets
 
 If a secret or token isn't renewable or leased, OpenBao Agent will fetch the secret every 5 minutes.
-This can be configured using Template config [static_secret_render_interval](/vault/docs/agent-and-proxy/agent/template#static_secret_render_interval) (requires Vault 1.8+).
+This can be configured using Template config [static_secret_render_interval](/vault/docs/agent-and-proxy/agent/template#static_secret_render_interval).
 Non-renewable secrets include (but not limited to) [KV Version 2](/vault/docs/secrets/kv/kv-v2).
 
 ### Non-Renewable leased secrets
@@ -268,7 +268,7 @@ this by inspecting the secret's time-to-live (TTL).
 
 ### Certificates
 
-As of Vault 1.11, certificates can be rendered using either `pkiCert` or
+Certificates can be rendered using either `pkiCert` or
 `secret` template functions, although it is recommended to use `pkiCert` to
 avoid unnecessarily generating certificates whenever Agent restarts or
 re-authenticates.

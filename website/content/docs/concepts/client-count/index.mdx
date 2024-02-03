@@ -130,18 +130,9 @@ token as a unique client for production usage. We strongly discourage the use of
 unaffiliated tokens and recommend that you always associate a token with an
 entity alias and token role.
 
-<Note title="Behavior change in Vault 1.9+">
-  As of Vault 1.9, all non-entity tokens with the same namespace and policy
-  assignments are treated as the same client entity. Prior to Vault 1.9, every
-  non-entity token was treated as a unique client entity, which drastically
-  inflated telemetry around client count.
-
-  If you are using Vault 1.8 or earlier, and need to address client count
-  inflation without upgrading, we recommend creating a
-  [token role](/vault/api-docs/auth/token#create-update-token-role) with
-  allowable entity aliases and assigning all tokens to an appropriate
-  [role and entity alias name](/vault/api-docs/auth/token#create-token) before
-  using them.
+<Note title="Behavior of non-enter tokens">
+  All non-entity tokens with the same namespace and policy assignments are
+  treated as the same client entity. 
 </Note>
 
 @include "content-footer-title.mdx"

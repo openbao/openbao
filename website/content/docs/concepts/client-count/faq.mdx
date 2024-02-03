@@ -14,10 +14,6 @@ description: |-
 
 | Computing client count  |
 | ----------------------- |
-| [Can I compute clients for Vault versions before v1.6?](#before-1-6) |
-| [Can I compute KMIP clients for OpenBao?](#kmip) |
-| [Can I compute changes in clients month to month from the UI for Vault v1.8 &nbsp; v1.10?](#month-to-month) |
-| [Do child namespaces create duplication in the client count?](#namespace-dupes) |
 | [Does the Nomad-OpenBao integration affect client counts?](#nomad) |
 | [Are batch tokens counted differently than service tokens?](#batch-tokens) |
 | [Do custom user filters affect client counts?](#custom-filters) |
@@ -25,25 +21,17 @@ description: |-
 
 | Upgrading and migration |
 | ----------------------- |
-| [How has client count changed across different OpenBao versions?](#logic-improvements) |
-| [How has the usage metric UI changed across different OpenBao versions?](#ui-improvements) |
-| [Are there any known client count issues in the UI/API?](#uiapi-ki) |
 | [What happens to client count when I upgrade?](#what-happens-at-upgrade) |
 
 | Usage                   |
 | ----------------------- |
 | [Can I view the list of unique client IDs that contributed to my client count aggregate?](#view-data) |
 | [Is clientID viewable in the audit logs for non-entity tokens?](#clientid-in-logs) |
-| [Can I skip client computation for a period of time during the billing period?](#skip-computation) |
+| [Can I skip client computation for a period of time during the period?](#skip-computation) |
 | [Are there conditions that will cause me to lose client data?](#lost-data) |
-| [What happens if a portion of the data is missing for my billing period?](#missing-data) |
+| [What happens if a portion of the data is missing for my period?](#missing-data) |
 | [Can I disable client counting?](#disable-client-count) |
 | [Can I configure OpenBao to log the client count data?](#log-client-count) |
-
-| OpenBao auditor tool      |
-| ----------------------- |
-| [What is the OpenBao auditor?](##openbao-auditor) |
-| [Are there any known client count issues in the auditor tool?](#auditor-ki) |
 
 ## Definitions ((#definitions))
 
@@ -60,7 +48,3 @@ description: |-
 ## Usage ((#usage))
 
 @include 'faq/client-count/usage.mdx'
-
-## OpenBao auditor tool ((#auditor))
-
-@include 'faq/client-count/tools.mdx'

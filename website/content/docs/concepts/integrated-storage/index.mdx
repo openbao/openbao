@@ -7,9 +7,9 @@ description: Learn about the integrated raft storage in OpenBao.
 # Integrated storage
 
 OpenBao supports a number of storage options for the durable storage of OpenBao's
-information. As of Vault 1.4 an Integrated Storage option is offered. This
-storage backend does not rely on any third party systems, implements high
-availability semantics and provides backup/restore workflows.
+information. This Integrated Storage backend does not rely on any third party
+systems, implements high availability semantics and provides backup/restore
+workflows.
 
 The option stores OpenBao's data on the server's filesystem and
 uses a consensus protocol to replicate data to each server in the cluster. More
@@ -230,10 +230,10 @@ options that lend themselves more to automation.
 
 #### Autojoin with TLS servername
 
-As of Vault 1.6.2, the simplest option might be to specify a
+The simplest option might be to specify a
 [`leader_tls_servername`](/vault/docs/configuration/storage/raft#leader_tls_servername)
-in the [`retry_join`](/vault/docs/configuration/storage/raft#retry_join-stanza) stanza
-which matches a [DNS
+in the [`retry_join`](/vault/docs/configuration/storage/raft#retry_join-stanza)
+stanza which matches a [DNS
 SAN](https://en.wikipedia.org/wiki/Subject_Alternative_Name) in the certificate.
 
 Note that names in a certificate's DNS SAN don't actually have to be registered

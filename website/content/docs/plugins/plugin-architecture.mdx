@@ -59,9 +59,6 @@ time. If the storage backend has HA enabled and supports automatic host address
 detection, OpenBao will automatically attempt to determine the `api_addr` as
 well.
 
-~> Note: Prior to Vault version 1.9.2, reading the original connection's TLS
-connection state is not supported in plugins.
-
 ## Plugin registration
 
 An important consideration of OpenBao's plugin system is to ensure the plugin
@@ -101,17 +98,6 @@ $ bao plugin register -sha256=<SHA256 Hex value of the plugin binary> \
     myplugin-database-plugin
 
 Success! Registered plugin: myplugin-database-plugin
-```
-
-Vault versions prior to v0.10.4 lacked the `vault plugin` operator and the
-registration step for them is:
-
-```shell-session
-$ bao write sys/plugins/catalog/database/myplugin-database-plugin \
-     sha256=<SHA256 Hex value of the plugin binary> \
-     command="myplugin"
-
-Success! Data written to: sys/plugins/catalog/database/myplugin-database-plugin
 ```
 
 ### Plugin execution

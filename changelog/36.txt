@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/transit: Add support for XChaCha20-Poly1305 keys, preventing nonce-reuse without key rotation.
+```

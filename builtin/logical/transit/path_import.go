@@ -198,6 +198,8 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_AES256_GCM96
 	case "chacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+	case "xchacha20-poly1305":
+		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 	case "ecdsa-p256":
 		polReq.KeyType = keysutil.KeyType_ECDSA_P256
 	case "ecdsa-p384":

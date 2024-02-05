@@ -203,6 +203,8 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_AES256_GCM96
 	case "chacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+	case "xchacha20-poly1305":
+		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 	case "ecdsa-p256":
 		polReq.KeyType = keysutil.KeyType_ECDSA_P256
 	case "ecdsa-p384":
@@ -359,7 +361,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 	}
 
 	switch p.Type {
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
+	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305:
 		retKeys := map[string]int64{}
 		for k, v := range p.Keys {
 			retKeys[k] = v.DeprecatedCreationTime

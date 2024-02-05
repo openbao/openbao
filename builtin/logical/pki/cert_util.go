@@ -1146,6 +1146,20 @@ func forEachSAN(extension []byte, callback func(tag int, data []byte) error) err
 	return nil
 }
 
+func dedupCommonNames(cnRaw string) []string {
+	// Translated from go-secure-stdlib/strutil:
+	//
+	// https://github.com/hashicorp/go-secure-stdlib/blob/c651aeae0c80f35905cf5a275c55e494c0eae09f/strutil/strutil.go#L56-L67
+	input := strings.TrimSpace(cnRaw)
+	parsed := []string{}
+	if input == "" {
+		// Don't return nil
+		return parsed
+	}
+
+	return strutil.RemoveDuplicatesStable(strings.Split(input, ","), false)
+}
+
 // generateCreationBundle is a shared function that reads parameters supplied
 // from the various endpoints and generates a CreationParameters with the
 // parameters that can be used to issue or sign
@@ -1207,7 +1221,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		if csr == nil || !data.role.UseCSRSANs {
 			cnAltRaw, ok := data.apiData.GetOk("alt_names")
 			if ok {
-				cnAlt := strutil.ParseDedupAndSortStrings(cnAltRaw.(string), ",")
+				cnAlt := dedupCommonNames(cnAltRaw.(string))
 				for _, v := range cnAlt {
 					if strings.Contains(v, "@") {
 						emailAddresses = append(emailAddresses, v)
@@ -1463,7 +1477,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	creation := &certutil.CreationBundle{
 		Params: &certutil.CreationParameters{
 			Subject:                       subject,
-			DNSNames:                      strutil.RemoveDuplicates(dnsNames, false),
+			DNSNames:                      strutil.RemoveDuplicatesStable(dnsNames, false),
 			EmailAddresses:                strutil.RemoveDuplicates(emailAddresses, false),
 			IPAddresses:                   ipAddresses,
 			URIs:                          URIs,

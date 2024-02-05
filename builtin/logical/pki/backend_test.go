@@ -2963,9 +2963,9 @@ func TestBackend_OID_SANs(t *testing.T) {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
 	if len(cert.DNSNames) != 3 ||
-		cert.DNSNames[0] != "bar.foobar.com" ||
+		cert.DNSNames[0] != "foobar.com" ||
 		cert.DNSNames[1] != "foo.foobar.com" ||
-		cert.DNSNames[2] != "foobar.com" {
+		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
 
@@ -3051,9 +3051,9 @@ func TestBackend_OID_SANs(t *testing.T) {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
 	if len(cert.DNSNames) != 3 ||
-		cert.DNSNames[0] != "bar.foobar.com" ||
+		cert.DNSNames[0] != "foobar.com" ||
 		cert.DNSNames[1] != "foo.foobar.com" ||
-		cert.DNSNames[2] != "foobar.com" {
+		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
 	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
@@ -3081,9 +3081,9 @@ func TestBackend_OID_SANs(t *testing.T) {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
 	if len(cert.DNSNames) != 3 ||
-		cert.DNSNames[0] != "bar.foobar.com" ||
+		cert.DNSNames[0] != "foobar.com" ||
 		cert.DNSNames[1] != "foo.foobar.com" ||
-		cert.DNSNames[2] != "foobar.com" {
+		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
 	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
@@ -3117,9 +3117,9 @@ func TestBackend_OID_SANs(t *testing.T) {
 		t.Fatalf("unexpected IP SAN %q", cert.IPAddresses[0].String())
 	}
 	if len(cert.DNSNames) != 3 ||
-		cert.DNSNames[0] != "bar.foobar.com" ||
+		cert.DNSNames[0] != "foobar.com" ||
 		cert.DNSNames[1] != "foo.foobar.com" ||
-		cert.DNSNames[2] != "foobar.com" {
+		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
 	expectedOtherNames := []otherNameUtf8{{oid1, val1}, {oid2, val2}}

@@ -33,7 +33,7 @@ import (
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 
 	physRaft "github.com/openbao/openbao/physical/raft"

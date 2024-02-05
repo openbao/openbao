@@ -15,6 +15,7 @@ import (
 	credRadius "github.com/openbao/openbao/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	logicalKube "github.com/openbao/openbao/builtin/logical/kubernetes"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	logicalLDAP "github.com/openbao/openbao/builtin/logical/openldap"
 	logicalPki "github.com/openbao/openbao/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/builtin/logical/rabbitmq"

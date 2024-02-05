@@ -965,6 +965,7 @@ func TestKeyUpgrade(t *testing.T) {
 func TestDerivedKeyUpgrade(t *testing.T) {
 	testDerivedKeyUpgrade(t, keysutil.KeyType_AES256_GCM96)
 	testDerivedKeyUpgrade(t, keysutil.KeyType_ChaCha20_Poly1305)
+	testDerivedKeyUpgrade(t, keysutil.KeyType_XChaCha20_Poly1305)
 }
 
 func testDerivedKeyUpgrade(t *testing.T, keyType keysutil.KeyType) {
@@ -1029,9 +1030,11 @@ func TestConvergentEncryption(t *testing.T) {
 	testConvergentEncryptionCommon(t, 2, keysutil.KeyType_AES128_GCM96)
 	testConvergentEncryptionCommon(t, 2, keysutil.KeyType_AES256_GCM96)
 	testConvergentEncryptionCommon(t, 2, keysutil.KeyType_ChaCha20_Poly1305)
+	testConvergentEncryptionCommon(t, 2, keysutil.KeyType_XChaCha20_Poly1305)
 	testConvergentEncryptionCommon(t, 3, keysutil.KeyType_AES128_GCM96)
 	testConvergentEncryptionCommon(t, 3, keysutil.KeyType_AES256_GCM96)
 	testConvergentEncryptionCommon(t, 3, keysutil.KeyType_ChaCha20_Poly1305)
+	testConvergentEncryptionCommon(t, 3, keysutil.KeyType_XChaCha20_Poly1305)
 }
 
 func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyType) {
@@ -1765,6 +1768,7 @@ func TestTransit_AEAD(t *testing.T) {
 	testTransit_AEAD(t, "aes128-gcm96")
 	testTransit_AEAD(t, "aes256-gcm96")
 	testTransit_AEAD(t, "chacha20-poly1305")
+	testTransit_AEAD(t, "xchacha20-poly1305")
 }
 
 func testTransit_AEAD(t *testing.T, keyType string) {

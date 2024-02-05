@@ -949,8 +949,8 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 	}
 
 	convergentVersion := p.convergentVersion(ver)
-	if convergentVersion == 1 && (nonce == nil || len(nonce) == 0) {
-		return "", errutil.UserError{Err: "invalid convergent nonce supplied"}
+	if p.ConvergentEncryption && convergentVersion < currentConvergentVersion && convergentVersion > 0 {
+		return "", errutil.UserError{Err: fmt.Sprintf("refusing to support decryption with old convergent encryption key: version %d", convergentVersion)}
 	}
 
 	// Decode the base64
@@ -1894,12 +1894,12 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 
 	if opts.Convergent {
 		convergentVersion := p.convergentVersion(ver)
+		if p.ConvergentEncryption && convergentVersion < currentConvergentVersion && convergentVersion > 0 {
+			return nil, errutil.UserError{Err: fmt.Sprintf("refusing to support decryption with old convergent encryption key: version %d", convergentVersion)}
+		}
+
 		switch convergentVersion {
-		case 1:
-			if len(opts.Nonce) != aead.NonceSize() {
-				return nil, errutil.UserError{Err: fmt.Sprintf("base64-decoded nonce must be %d bytes long when using convergent encryption with this key", aead.NonceSize())}
-			}
-		case 2, 3:
+		case 3:
 			if len(opts.HMACKey) == 0 {
 				return nil, errutil.InternalError{Err: fmt.Sprintf("invalid hmac key length of zero")}
 			}
@@ -1935,6 +1935,10 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 	var aead cipher.AEAD
 	var err error
 	var nonce []byte
+
+	if opts.Convergent && opts.ConvergentVersion < currentConvergentVersion && opts.ConvergentVersion > 0 {
+		return nil, errutil.UserError{Err: fmt.Sprintf("refusing to support decryption with old convergent encryption key: version %d", opts.ConvergentVersion)}
+	}
 
 	switch p.Type {
 	case KeyType_AES128_GCM96, KeyType_AES256_GCM96:
@@ -1979,12 +1983,8 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 
 	// Extract the nonce and ciphertext
 	var trueCT []byte
-	if opts.Convergent && opts.ConvergentVersion == 1 {
-		trueCT = ciphertext
-	} else {
-		nonce = ciphertext[:aead.NonceSize()]
-		trueCT = ciphertext[aead.NonceSize():]
-	}
+	nonce = ciphertext[:aead.NonceSize()]
+	trueCT = ciphertext[aead.NonceSize():]
 
 	// Verify and Decrypt
 	plain, err := aead.Open(nil, nonce, trueCT, opts.AdditionalData)

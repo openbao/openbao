@@ -57,15 +57,6 @@ Base64 encoded context for key derivation. Required if key derivation is
 enabled.`,
 			},
 
-			"nonce": {
-				Type: framework.TypeString,
-				Description: `
-Base64 encoded nonce value used during encryption. Must be provided if
-convergent encryption is enabled for this key and the key was generated with
-Vault 0.6.1 (prior to OpenBao's fork). Not required for keys created in
-Vault 0.6.2+.`,
-			},
-
 			"partial_failure_response_code": {
 				Type: framework.TypeInt,
 				Description: `
@@ -90,7 +81,7 @@ data are attested not to have been tampered with.
 				Type: framework.TypeSlice,
 				Description: `
 Specifies a list of items to be decrypted in a single batch. When this
-parameter is set, if the parameters 'ciphertext', 'context' and 'nonce' are
+parameter is set, if the parameters 'ciphertext' and 'context' are
 also set, they will be ignored. Any batch output will preserve the order
 of the batch input.`,
 			},
@@ -128,7 +119,6 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 		batchInputItems[0] = BatchRequestItem{
 			Ciphertext:     ciphertext,
 			Context:        d.Get("context").(string),
-			Nonce:          d.Get("nonce").(string),
 			AssociatedData: d.Get("associated_data").(string),
 		}
 	}
@@ -153,16 +143,6 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 		// Decode the context
 		if len(item.Context) != 0 {
 			batchInputItems[i].DecodedContext, err = base64.StdEncoding.DecodeString(item.Context)
-			if err != nil {
-				userErrorInBatch = true
-				batchResponseItems[i].Error = err.Error()
-				continue
-			}
-		}
-
-		// Decode the nonce
-		if len(item.Nonce) != 0 {
-			batchInputItems[i].DecodedNonce, err = base64.StdEncoding.DecodeString(item.Nonce)
 			if err != nil {
 				userErrorInBatch = true
 				batchResponseItems[i].Error = err.Error()
@@ -218,7 +198,7 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 			}
 		}
 
-		plaintext, err := p.DecryptWithFactory(item.DecodedContext, item.DecodedNonce, item.Ciphertext, factory, managedKeyFactory)
+		plaintext, err := p.DecryptWithFactory(item.DecodedContext, nil, item.Ciphertext, factory, managedKeyFactory)
 		if err != nil {
 			switch err.(type) {
 			case errutil.InternalError:

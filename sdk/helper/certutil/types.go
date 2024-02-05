@@ -782,6 +782,7 @@ type CreationParameters struct {
 	NotAfter                      time.Time
 	KeyUsage                      x509.KeyUsage
 	ExtKeyUsage                   CertExtKeyUsage
+	CADigitalSignature            bool
 	ExtKeyUsageOIDs               []string
 	PolicyIdentifiers             []string
 	BasicConstraintsValidForNonCA bool
@@ -815,12 +816,19 @@ type CreationBundle struct {
 // addKeyUsages adds appropriate key usages to the template given the creation
 // information
 func AddKeyUsages(data *CreationBundle, certTemplate *x509.Certificate) {
+	// Many KeyUsage field do not belong on CA certificates; restrict to a
+	// useful, required subset and conditionally add more. However, more
+	// ExtKeyUsage values apply to both CA and non-CA, so open those up
+	// more broadly.
 	if data.Params.IsCA {
 		certTemplate.KeyUsage = x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign)
-		return
-	}
 
-	certTemplate.KeyUsage = data.Params.KeyUsage
+		if data.Params.KeyUsage&x509.KeyUsageDigitalSignature != 0 {
+			certTemplate.KeyUsage |= x509.KeyUsageDigitalSignature
+		}
+	} else {
+		certTemplate.KeyUsage = data.Params.KeyUsage
+	}
 
 	if data.Params.ExtKeyUsage&AnyExtKeyUsage != 0 {
 		certTemplate.ExtKeyUsage = append(certTemplate.ExtKeyUsage, x509.ExtKeyUsageAny)

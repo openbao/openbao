@@ -1422,7 +1422,11 @@ func parseExtKeyUsages(role *roleEntry) certutil.CertExtKeyUsage {
 		parsedKeyUsages |= certutil.EmailProtectionExtKeyUsage
 	}
 
-	for _, k := range role.ExtKeyUsage {
+	return parseExtKeyUsagesValue(parsedKeyUsages, role.ExtKeyUsage)
+}
+
+func parseExtKeyUsagesValue(parsedKeyUsages certutil.CertExtKeyUsage, extKeyUsages []string) certutil.CertExtKeyUsage {
+	for _, k := range extKeyUsages {
 		switch strings.ToLower(strings.TrimSpace(k)) {
 		case "any":
 			parsedKeyUsages |= certutil.AnyExtKeyUsage

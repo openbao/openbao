@@ -7,12 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/openbao/openbao/sdk/helper/keysutil"
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
@@ -603,7 +600,7 @@ func TestTransit_BatchEncryptionCase10(t *testing.T) {
 	}
 }
 
-// Case11: Incorrect inputs for context and nonce should not fail the operation
+// Case11: Incorrect inputs for context should not fail the operation
 func TestTransit_BatchEncryptionCase11(t *testing.T) {
 	var err error
 
@@ -651,105 +648,6 @@ func TestTransit_BatchEncryptionCase12(t *testing.T) {
 	_, err = b.HandleRequest(context.Background(), batchReq)
 	if err == nil {
 		t.Fatalf("expected an error")
-	}
-}
-
-// Case13: Incorrect input for nonce when we aren't in convergent encryption should fail the operation
-func TestTransit_EncryptionCase13(t *testing.T) {
-	var err error
-
-	b, s := createBackendWithStorage(t)
-
-	// Non-batch first
-	data := map[string]interface{}{"plaintext": "bXkgc2VjcmV0IGRhdGE=", "nonce": "R80hr9eNUIuFV52e"}
-	req := &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      "encrypt/my-key",
-		Storage:   s,
-		Data:      data,
-	}
-	resp, err := b.HandleRequest(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected invalid request")
-	}
-
-	batchInput := []interface{}{
-		map[string]interface{}{"plaintext": "bXkgc2VjcmV0IGRhdGE=", "nonce": "R80hr9eNUIuFV52e"},
-	}
-
-	batchData := map[string]interface{}{
-		"batch_input": batchInput,
-	}
-	batchReq := &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      "encrypt/my-key",
-		Storage:   s,
-		Data:      batchData,
-	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if v, ok := resp.Data["http_status_code"]; !ok || v.(int) != http.StatusBadRequest {
-		t.Fatal("expected request error")
-	}
-}
-
-// Case14: Incorrect input for nonce when we are in convergent version 3 should fail
-func TestTransit_EncryptionCase14(t *testing.T) {
-	var err error
-
-	b, s := createBackendWithStorage(t)
-
-	cReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "keys/my-key",
-		Storage:   s,
-		Data: map[string]interface{}{
-			"convergent_encryption": "true",
-			"derived":               "true",
-		},
-	}
-	resp, err := b.HandleRequest(context.Background(), cReq)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Non-batch first
-	data := map[string]interface{}{"plaintext": "bXkgc2VjcmV0IGRhdGE=", "context": "SGVsbG8sIFdvcmxkCg==", "nonce": "R80hr9eNUIuFV52e"}
-	req := &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      "encrypt/my-key",
-		Storage:   s,
-		Data:      data,
-	}
-
-	resp, err = b.HandleRequest(context.Background(), req)
-	if err == nil {
-		t.Fatal("expected invalid request")
-	}
-
-	batchInput := []interface{}{
-		data,
-	}
-
-	batchData := map[string]interface{}{
-		"batch_input": batchInput,
-	}
-	batchReq := &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      "encrypt/my-key",
-		Storage:   s,
-		Data:      batchData,
-	}
-	resp, err = b.HandleRequest(context.Background(), batchReq)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if v, ok := resp.Data["http_status_code"]; !ok || v.(int) != http.StatusBadRequest {
-		t.Fatal("expected request error")
 	}
 }
 
@@ -825,17 +723,6 @@ func TestTransit_decodeBatchRequestItems(t *testing.T) {
 			wantErrContains: "error decoding json.Number into [0].key_version",
 		},
 		{
-			name: "src_nonce-dest",
-			src:  []interface{}{map[string]interface{}{"nonce": "dGVzdGNvbnRleHQ="}},
-			dest: []BatchRequestItem{},
-		},
-		{
-			name:            "src_nonce_invalid-dest",
-			src:             []interface{}{map[string]interface{}{"nonce": 666}},
-			dest:            []BatchRequestItem{},
-			wantErrContains: "expected type 'string', got unconvertible type 'int'",
-		},
-		{
 			name: "src_context-dest",
 			src:  []interface{}{map[string]interface{}{"context": "dGVzdGNvbnRleHQ="}},
 			dest: []BatchRequestItem{},
@@ -874,11 +761,6 @@ func TestTransit_decodeBatchRequestItems(t *testing.T) {
 			},
 			dest:            []BatchRequestItem{},
 			wantErrContains: "expected type 'int', got unconvertible type 'string'",
-		},
-		{
-			name: "src_plaintext-nil-nonce",
-			src:  []interface{}{map[string]interface{}{"plaintext": "dGhlIHF1aWNrIGJyb3duIGZveA==", "nonce": "null"}},
-			dest: []BatchRequestItem{},
 		},
 		// required fields
 		{
@@ -940,85 +822,6 @@ func TestTransit_decodeBatchRequestItems(t *testing.T) {
 				t.Errorf("decodeBatchRequestItems unexpected dest value, want: '%v', got: '%v'", expectedDest, gotDest)
 			}
 		})
-	}
-}
-
-func TestShouldWarnAboutNonceUsage(t *testing.T) {
-	tests := []struct {
-		name                 string
-		keyTypes             []keysutil.KeyType
-		nonce                []byte
-		convergentEncryption bool
-		convergentVersion    int
-		expected             bool
-	}{
-		{
-			name:                 "-NoConvergent-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
-			nonce:                []byte("testnonce"),
-			convergentEncryption: false,
-			convergentVersion:    -1,
-			expected:             true,
-		},
-		{
-			name:                 "-NoConvergent-NoNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
-			nonce:                []byte{},
-			convergentEncryption: false,
-			convergentVersion:    -1,
-			expected:             false,
-		},
-		{
-			name:                 "-Convergentv1-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
-			nonce:                []byte("testnonce"),
-			convergentEncryption: true,
-			convergentVersion:    1,
-			expected:             true,
-		},
-		{
-			name:                 "-Convergentv2-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
-			nonce:                []byte("testnonce"),
-			convergentEncryption: true,
-			convergentVersion:    2,
-			expected:             false,
-		},
-		{
-			name:                 "-Convergentv3-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_AES256_GCM96, keysutil.KeyType_AES128_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305},
-			nonce:                []byte("testnonce"),
-			convergentEncryption: true,
-			convergentVersion:    3,
-			expected:             false,
-		},
-		{
-			name:                 "-NoConvergent-WithNonce",
-			keyTypes:             []keysutil.KeyType{keysutil.KeyType_RSA2048, keysutil.KeyType_RSA4096},
-			nonce:                []byte("testnonce"),
-			convergentEncryption: false,
-			convergentVersion:    -1,
-			expected:             false,
-		},
-	}
-
-	for _, tt := range tests {
-		for _, keyType := range tt.keyTypes {
-			testName := keyType.String() + tt.name
-			t.Run(testName, func(t *testing.T) {
-				p := keysutil.Policy{
-					ConvergentEncryption: tt.convergentEncryption,
-					ConvergentVersion:    tt.convergentVersion,
-					Type:                 keyType,
-				}
-
-				actual := shouldWarnAboutNonceUsage(&p, tt.nonce)
-
-				if actual != tt.expected {
-					t.Errorf("Expected actual '%v' but got '%v'", tt.expected, actual)
-				}
-			})
-		}
 	}
 }
 

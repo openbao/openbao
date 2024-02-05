@@ -83,6 +83,7 @@ func buildPathIssuerSignIntermediateRaw(b *backend, pattern string, displayAttrs
 	}
 
 	path.Fields = addCACommonFields(path.Fields)
+	path.Fields = addKeyUsageRoleFields(path.Fields)
 	path.Fields = addCAIssueFields(path.Fields)
 
 	path.Fields["csr"] = &framework.FieldSchema{

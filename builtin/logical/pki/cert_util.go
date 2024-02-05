@@ -763,6 +763,18 @@ func generateCert(sc *storageContext,
 		data.Params.IsCA = isCA
 		data.Params.PermittedDNSDomains = input.apiData.Get("permitted_dns_domains").([]string)
 
+		if rawKeyUsageValue, ok := input.apiData.GetOk("key_usage"); ok {
+			data.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := input.apiData.GetOk("ext_key_usage"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := input.apiData.GetOk("ext_key_usage_oids"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
+
 		if data.SigningBundle == nil {
 			// Generating a self-signed root certificate. Since we have no
 			// issuer entry yet, we default to the global URLs.
@@ -1021,6 +1033,18 @@ func signCert(b *backend,
 
 	if isCA {
 		creation.Params.PermittedDNSDomains = data.apiData.Get("permitted_dns_domains").([]string)
+
+		if rawKeyUsageValue, ok := data.apiData.GetOk("key_usage"); ok {
+			creation.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := data.apiData.GetOk("ext_key_usage"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := data.apiData.GetOk("ext_key_usage_oids"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
 	} else {
 		for _, ext := range csr.Extensions {
 			if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) {

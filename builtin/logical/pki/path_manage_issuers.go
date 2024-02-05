@@ -113,6 +113,7 @@ func buildPathGenerateRoot(b *backend, pattern string, displayAttrs *framework.D
 	}
 
 	ret.Fields = addCACommonFields(map[string]*framework.FieldSchema{})
+	ret.Fields = addKeyUsageRoleFields(ret.Fields)
 	ret.Fields = addCAKeyGenerationFields(ret.Fields)
 	ret.Fields = addCAIssueFields(ret.Fields)
 	return ret

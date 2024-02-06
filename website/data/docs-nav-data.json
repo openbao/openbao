@@ -2099,5 +2099,25 @@
   {
     "title": "Glossary",
     "path": "glossary"
+  },
+  {
+    "divider": true
+  },
+  {
+    "title": "OpenBao Community Policies",
+    "routes": [
+      {
+        "title": "Overview",
+        "path": "policies"
+      },
+      {
+        "title": "Deprecation policy",
+        "path": "policies/deprecation"
+      },
+      {
+        "title": "Plugin support policy",
+        "path": "policies/plugins"
+      }
+    ]
   }
 ]

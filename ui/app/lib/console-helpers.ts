@@ -97,7 +97,7 @@ interface ParsedCommand {
 }
 export function parseCommand(command: string): ParsedCommand {
   const args: string[] = argTokenizer(parse(command));
-  if (args[0] === 'vault') {
+  if (args[0] === 'vault' || args[0] === 'bao') {
     args.shift();
   }
 

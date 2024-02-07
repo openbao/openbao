@@ -19,7 +19,7 @@
   <RadioCard
     class="has-fixed-width"
     @title="Local cluster"
-    @description="Generate credentials for the local Kubernetes cluster that Vault is running on, using Vault’s service account."
+    @description="Generate credentials for the local Kubernetes cluster that OpenBaois running on, using OpenBao’s service account."
     @icon="kubernetes-color"
     @value={{false}}
     @groupValue={{@model.disableLocalCaJwt}}
@@ -51,8 +51,8 @@
   {{else if (eq this.inferredState "error")}}
     <Icon @name="x-square-fill" class="has-text-danger" />
     <span class="has-text-danger">
-      Vault could not infer a configuration from your environment variables. Check your configuration file to edit or delete
-      them, or configure manually.
+      OpenBao could not infer a configuration from your environment variables. Check your configuration file to edit or
+      delete them, or configure manually.
     </span>
   {{else}}
     <p>
@@ -107,8 +107,8 @@
   >
     <section class="modal-card-body">
       <p>
-        Making changes to your configuration may affect how Vault will reach the Kubernetes API and authenticate with it. Are
-        you sure?
+        Making changes to your configuration may affect how OpenBao will reach the Kubernetes API and authenticate with it.
+        Are you sure?
       </p>
     </section>
     <footer class="modal-card-foot modal-card-foot-outlined">

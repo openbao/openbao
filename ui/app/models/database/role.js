@@ -34,25 +34,25 @@ export default Model.extend({
     editType: 'ttl',
     defaultValue: '1h',
     label: 'Generated credentials’s Time-to-Live (TTL)',
-    helperTextDisabled: 'Vault will use a TTL of 1 hour.',
+    helperTextDisabled: 'OpenBao will use a TTL of 1 hour.',
     defaultShown: 'Engine default',
   }),
   max_ttl: attr({
     editType: 'ttl',
     defaultValue: '24h',
     label: 'Generated credentials’s maximum Time-to-Live (Max TTL)',
-    helperTextDisabled: 'Vault will use a TTL of 24 hours.',
+    helperTextDisabled: 'OpenBao will use a TTL of 24 hours.',
     defaultShown: 'Engine default',
   }),
   username: attr('string', {
-    subText: 'The database username that this Vault role corresponds to.',
+    subText: 'The database username that this OpenBao role corresponds to.',
   }),
   rotation_period: attr({
     editType: 'ttl',
     defaultValue: '24h',
     helperTextDisabled:
-      'Specifies the amount of time Vault should wait before rotating the password. The minimum is 5 seconds. Default is 24 hours.',
-    helperTextEnabled: 'Vault will rotate password after',
+      'Specifies the amount of time OpenBao should wait before rotating the password. The minimum is 5 seconds. Default is 24 hours.',
+    helperTextEnabled: 'OpenBao will rotate password after',
   }),
   creation_statements: attr('array', {
     editType: 'stringArray',

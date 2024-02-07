@@ -2,10 +2,10 @@
   <div class="chart-wrapper stacked-charts" data-test-running-total="monthly-charts">
     <div class="single-chart-grid">
       <div class="chart-header has-bottom-margin-xl">
-        <h2 class="chart-title">Vault client counts</h2>
+        <h2 class="chart-title">OpenBao client counts</h2>
         <p class="chart-description">
-          A client is any user or service that interacts with Vault. They are made up of entity clients and non-entity
-          clients. The total client count number is an important consideration for Vault billing.
+          A client is any user or service that interacts with OpenBao. They are made up of entity clients and non-entity
+          clients. The total client count number is an important consideration for OpenBao billing.
         </p>
       </div>
 
@@ -15,7 +15,7 @@
 
       <div class="chart-subTitle">
         <h2 class="chart-title">Running client total</h2>
-        <p class="chart-subtext">The number of clients which interacted with Vault during this date range. </p>
+        <p class="chart-subtext">The number of clients which interacted with OpenBao during this date range. </p>
       </div>
       <div class="data-details-top" data-test-running-total-entity>
         <h3 class="data-details">Entity clients</h3>
@@ -49,7 +49,7 @@
       <div class="chart-subTitle">
         <h2 class="chart-title">New monthly clients</h2>
         <p class="chart-subtext">
-          Clients which interacted with Vault for the first time during this date range, displayed per month.
+          Clients which interacted with OpenBao for the first time during this date range, displayed per month.
         </p>
       </div>
 
@@ -88,17 +88,17 @@
   {{#if (and @isHistoricalMonth this.singleMonthData.new_clients.clients)}}
     <div class="chart-wrapper single-month-grid" data-test-running-total="single-month-stats">
       <div class="chart-header has-bottom-margin-sm">
-        <h2 class="chart-title">Vault client counts</h2>
+        <h2 class="chart-title">OpenBao client counts</h2>
         <p class="chart-description">
-          A client is any user or service that interacts with Vault. They are made up of entity clients and non-entity
-          clients. The total client count number is an important consideration for Vault billing.
+          A client is any user or service that interacts with OpenBao. They are made up of entity clients and non-entity
+          clients. The total client count number is an important consideration for OpenBao billing.
         </p>
       </div>
       <div class="single-month-stats" data-test-new>
         <div class="single-month-section-title">
           <StatText
             @label="New clients"
-            @subText="This is the number of clients which were created in Vault for the first time in the selected month."
+            @subText="This is the number of clients which were created in OpenBao for the first time in the selected month."
             @value={{this.singleMonthData.new_clients.clients}}
             @size="l"
           />
@@ -114,7 +114,7 @@
         <div class="single-month-section-title">
           <StatText
             @label="Total monthly clients"
-            @subText="This is the number of total clients which used Vault for the given month, both new and previous."
+            @subText="This is the number of total clients which used OpenBao for the given month, both new and previous."
             @value={{this.singleMonthData.clients}}
             @size="l"
           />

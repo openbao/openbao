@@ -144,7 +144,7 @@ export default class MountBackendForm extends Component {
       } else if (err.message) {
         this.errorMessage = err.message;
       } else {
-        this.errorMessage = 'An error occurred, check the vault logs.';
+        this.errorMessage = 'An error occurred, check the OpenBao logs.';
       }
       return;
     }

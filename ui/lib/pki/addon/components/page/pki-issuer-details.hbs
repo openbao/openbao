@@ -135,7 +135,7 @@
     @type="info"
     @title="There was an error parsing certificate metadata"
   >
-    Vault cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you
+    OpenBao cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you
     wish to cross-sign this issuer it must be done manually using the CLI.
     {{#if this.parsingErrors}}
       <p class="sub-text is-font-mono">Parsing error(s): {{this.parsingErrors}} </p>
@@ -164,7 +164,7 @@
     <p class="has-text-grey">
       <ol class="has-left-margin-m has-bottom-margin-s">
         <li>The new root will be generated using defaults from the old one that you can customize.</li>
-        <li>You will identify intermediates, which Vault will then cross-sign.</li>
+        <li>You will identify intermediates, which OpenBao will then cross-sign.</li>
       </ol>
       Then, you can begin re-issuing leaf certs and phase out the old root.
     </p>

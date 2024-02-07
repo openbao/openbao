@@ -87,7 +87,7 @@ export default class Dashboard extends Component {
             'This date is when client counting starts. Without this starting point, the data shown is not reliable.',
           title: 'No start date found',
           message:
-            'In order to get the most from this data, please enter a start month above. Vault will calculate new clients starting from that month.',
+            'In order to get the most from this data, please enter a start month above. OpenBao will calculate new clients starting from that month.',
         };
   }
 
@@ -163,10 +163,10 @@ export default class Dashboard extends Component {
       const [firstUpgrade, secondUpgrade] = this.upgradeDuringActivity;
       const firstDate = parseAPITimestamp(firstUpgrade.timestampInstalled, 'MMM d, yyyy');
       const secondDate = parseAPITimestamp(secondUpgrade.timestampInstalled, 'MMM d, yyyy');
-      return `Vault was upgraded to ${firstUpgrade.version} (${firstDate}) and ${secondUpgrade.version} (${secondDate}) during this time range.`;
+      return `OpenBao was upgraded to ${firstUpgrade.version} (${firstDate}) and ${secondUpgrade.version} (${secondDate}) during this time range.`;
     } else {
       const [upgrade] = this.upgradeDuringActivity;
-      return `Vault was upgraded to ${upgrade.version} on ${parseAPITimestamp(
+      return `OpenBao was upgraded to ${upgrade.version} on ${parseAPITimestamp(
         upgrade.timestampInstalled,
         'MMM d, yyyy'
       )}.`;

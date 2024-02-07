@@ -19,7 +19,7 @@ const M = Model.extend({
   name: attr('string', {
     readOnly: true,
     subText:
-      'Templates allow Vault to determine what and how to capture the value to be transformed. This cannot be edited later.',
+      'Templates allow OpenBao to determine what and how to capture the value to be transformed. This cannot be edited later.',
   }),
   type: attr('string', { defaultValue: 'regex' }),
   pattern: attr('string', {

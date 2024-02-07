@@ -57,7 +57,7 @@ module('Integration | Component | kubernetes | Page::Overview', function (hooks)
     assert.dom(SELECTORS.rolesCardTitle).hasText('Roles');
     assert
       .dom(SELECTORS.rolesCardSubTitle)
-      .hasText('The number of Vault roles being used to generate Kubernetes credentials.');
+      .hasText('The number of OpenBao roles being used to generate Kubernetes credentials.');
     assert.dom(SELECTORS.rolesCardLink).hasText('View Roles');
 
     this.roles = [];

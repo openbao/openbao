@@ -24,7 +24,7 @@ module('Integration | Component | oidc-consent-block', function (hooks) {
     assert
       .dom('[data-test-consent-form]')
       .includesText(
-        'In order to complete the login process, you must consent to Vault sharing your profile, email, address, and phone with the client.',
+        'In order to complete the login process, you must consent to OpenBao sharing your profile, email, address, and phone with the client.',
         'shows the correct copy for consent form'
       );
     assert.dom('[data-test-edit-form-submit]').hasText('Yes', 'form button has correct submit text');
@@ -45,7 +45,7 @@ module('Integration | Component | oidc-consent-block', function (hooks) {
     assert
       .dom('[data-test-consent-form]')
       .includesText(
-        'In order to complete the login process, you must consent to Vault sharing your profile, email, address, and phone with the client.',
+        'In order to complete the login process, you must consent to OpenBao sharing your profile, email, address, and phone with the client.',
         'shows the correct copy for consent form'
       );
     await click('[data-test-edit-form-submit]');
@@ -66,7 +66,7 @@ module('Integration | Component | oidc-consent-block', function (hooks) {
     assert
       .dom('[data-test-consent-form]')
       .includesText(
-        'In order to complete the login process, you must consent to Vault sharing your profile, email, address, and phone with the client.',
+        'In order to complete the login process, you must consent to OpenBao sharing your profile, email, address, and phone with the client.',
         'shows the correct copy for consent form'
       );
     await click('[data-test-cancel-button]');
@@ -97,7 +97,7 @@ module('Integration | Component | oidc-consent-block', function (hooks) {
     assert
       .dom('[data-test-consent-form]')
       .includesText(
-        'In order to complete the login process, you must consent to Vault sharing your profile, email, address, and phone with the client.',
+        'In order to complete the login process, you must consent to OpenBao sharing your profile, email, address, and phone with the client.',
         'shows the correct copy for consent form'
       );
     await click('[data-test-edit-form-submit]');

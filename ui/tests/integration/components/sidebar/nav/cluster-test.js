@@ -16,7 +16,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
   setupRenderingTest(hooks);
 
   test('it should render nav headings', async function (assert) {
-    const headings = ['Vault', 'Replication', 'Monitoring'];
+    const headings = ['OpenBao', 'Replication', 'Monitoring'];
     stubFeaturesAndPermissions(this.owner, true, true);
     await renderComponent();
 
@@ -37,7 +37,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
       .exists({ count: 1 }, 'Nav links are hidden other than secrets');
     assert
       .dom('[data-test-sidebar-nav-heading]')
-      .exists({ count: 1 }, 'Headings are hidden other than Vault');
+      .exists({ count: 1 }, 'Headings are hidden other than OpenBao');
   });
 
   test('it should render nav links', async function (assert) {
@@ -52,7 +52,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
       'Raft Storage',
       'Client count',
       'License',
-      'Seal Vault',
+      'Seal OpenBao',
     ];
     stubFeaturesAndPermissions(this.owner, true, true);
     await renderComponent();
@@ -72,7 +72,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
       'Replication',
       'Raft Storage',
       'License',
-      'Seal Vault',
+      'Seal OpenBao',
     ];
     this.owner.lookup('service:namespace').set('path', 'foo');
     const stubs = stubFeaturesAndPermissions(this.owner, true, true);

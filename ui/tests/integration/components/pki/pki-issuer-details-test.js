@@ -106,7 +106,7 @@ module('Integration | Component | page/pki-issuer-details', function (hooks) {
     assert
       .dom(SELECTORS.parsingAlertBanner)
       .hasText(
-        "There was an error parsing certificate metadata Vault cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI. Parsing error(s): certificate contains stuff we cannot parse"
+        "There was an error parsing certificate metadata OpenBao cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI. Parsing error(s): certificate contains stuff we cannot parse"
       );
   });
 
@@ -135,7 +135,7 @@ module('Integration | Component | page/pki-issuer-details', function (hooks) {
     assert
       .dom(SELECTORS.parsingAlertBanner)
       .hasText(
-        "There was an error parsing certificate metadata Vault cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI."
+        "There was an error parsing certificate metadata OpenBao cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI."
       );
   });
 
@@ -164,7 +164,7 @@ module('Integration | Component | page/pki-issuer-details', function (hooks) {
     assert
       .dom(SELECTORS.parsingAlertBanner)
       .hasText(
-        "There was an error parsing certificate metadata Vault cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI."
+        "There was an error parsing certificate metadata OpenBao cannot display unparsed values, but this will not interfere with the certificate's functionality. However, if you wish to cross-sign this issuer it must be done manually using the CLI."
       );
   });
 });

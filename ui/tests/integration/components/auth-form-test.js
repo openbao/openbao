@@ -45,7 +45,7 @@ module('Integration | Component | auth form', function (hooks) {
     this.router = this.owner.lookup('service:router');
   });
 
-  const CSP_ERR_TEXT = `Error This is a standby Vault node but can't communicate with the active node via request forwarding. Sign in at the active node to use the Vault UI.`;
+  const CSP_ERR_TEXT = `Error This is a standby OpenBao node but can't communicate with the active node via request forwarding. Sign in at the active node to use the OpenBao UI.`;
   test('it renders error on CSP violation', async function (assert) {
     assert.expect(2);
     this.set('cluster', EmberObject.create({ standby: true }));
@@ -57,7 +57,7 @@ module('Integration | Component | auth form', function (hooks) {
     assert.strictEqual(component.errorText, CSP_ERR_TEXT);
   });
 
-  test('it renders with vault style errors', async function (assert) {
+  test('it renders with OpenBao style errors', async function (assert) {
     assert.expect(1);
     const server = new Pretender(function () {
       this.get('/v1/auth/**', () => {

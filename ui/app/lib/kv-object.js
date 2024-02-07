@@ -10,7 +10,7 @@ import { guidFor } from '@ember/object/internals';
 export default ArrayProxy.extend({
   fromJSON(json) {
     if (json && typeOf(json) !== 'object') {
-      throw new Error('Vault expects data to be formatted as an JSON object.');
+      throw new Error('OpenBao expects data to be formatted as an JSON object.');
     }
     const contents = Object.keys(json || []).map((key) => {
       const obj = {

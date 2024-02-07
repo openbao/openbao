@@ -19,7 +19,7 @@
   <Page.header>
     {{#if this.oidcProvider}}
       <div class="box is-shadowless is-flex-v-centered" data-test-auth-logo>
-        <LogoEdition aria-label="Sign in with Hashicorp Vault" />
+        <LogoEdition aria-label="Sign in with OpenBao" />
       </div>
     {{else}}
       <div class="is-flex-v-centered has-bottom-margin-xxl">
@@ -38,7 +38,7 @@
           </button>
         {{/if}}
         <h1 class="title is-3">
-          {{if (or this.mfaAuthData this.waitingForOktaNumberChallenge) "Authenticate" "Sign in to Vault"}}
+          {{if (or this.mfaAuthData this.waitingForOktaNumberChallenge) "Authenticate" "Sign in to OpenBao"}}
         </h1>
       </div>
     {{/if}}

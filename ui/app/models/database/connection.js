@@ -57,7 +57,7 @@ export default Model.extend({
     editType: 'optionalText',
     subText: 'Specify the name of an existing password policy.',
     defaultSubText:
-      'Unless a custom policy is specified, Vault will use a default: 20 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 dash character.',
+      'Unless a custom policy is specified, OpenBao will use a default: 20 characters with at least 1 uppercase, 1 lowercase, 1 number, and 1 dash character.',
     defaultShown: 'Default',
     docLink: '/vault/docs/concepts/password-policies',
   }),
@@ -110,7 +110,7 @@ export default Model.extend({
     editType: 'optionalText',
     subText: 'Enter the custom username template to use.',
     defaultSubText:
-      'Template describing how dynamic usernames are generated. Vault will use the default for this plugin.',
+      'Template describing how dynamic usernames are generated. OpenBao will use the default for this plugin.',
     docLink: '/vault/docs/concepts/username-templating',
     defaultShown: 'Default',
   }),
@@ -144,7 +144,7 @@ export default Model.extend({
     subText: 'If set, this name is used to set the SNI host when connecting via 1TLS.',
   }),
   root_rotation_statements: attr({
-    subText: `The database statements to be executed to rotate the root user's credentials. If nothing is entered, Vault will use a reasonable default.`,
+    subText: `The database statements to be executed to rotate the root user's credentials. If nothing is entered, OpenBao will use a reasonable default.`,
     editType: 'stringArray',
     defaultShown: 'Default',
   }),

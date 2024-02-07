@@ -141,7 +141,7 @@
           data-test-input={{@attr.name}}
           @onChange={{this.setAndBroadcastTtl}}
           @label={{this.labelString}}
-          @helperTextDisabled={{or @attr.options.helperTextDisabled "Vault will use the default lease duration."}}
+          @helperTextDisabled={{or @attr.options.helperTextDisabled "OpenBao will use the default lease duration."}}
           @helperTextEnabled={{or @attr.options.helperTextEnabled "Lease will expire after"}}
           @description={{@attr.helpText}}
           @initialValue={{initialValue}}
@@ -182,7 +182,7 @@
           </span>
         {{else}}
           <span>
-            {{or @attr.options.defaultSubText "Vault will use the engine default."}}
+            {{or @attr.options.defaultSubText "OpenBao will use the engine default."}}
             {{#if @attr.options.docLink}}
               <DocLink @path={{@attr.options.docLink}}>
                 See our documentation

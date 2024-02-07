@@ -89,7 +89,7 @@ module('Integration | Component | page/pki-configuration-edit', function (hooks)
       assert.propEqual(
         JSON.parse(req.requestBody),
         {
-          path: 'https://pr-a.vault.example.com/v1/ns1/pki-root',
+          path: 'https://pr-a.openbao.example.com/v1/ns1/pki-root',
           aia_path: 'http://another-path.com',
         },
         'it updates cluster config model attributes'
@@ -149,7 +149,7 @@ module('Integration | Component | page/pki-configuration-edit', function (hooks)
     assert.dom(SELECTORS.urlFieldInput('ocspServers')).hasValue('ocsp-stuff.com');
 
     // cluster config
-    await fillIn(SELECTORS.configInput('path'), 'https://pr-a.vault.example.com/v1/ns1/pki-root');
+    await fillIn(SELECTORS.configInput('path'), 'https://pr-a.openbao.example.com/v1/ns1/pki-root');
     await fillIn(SELECTORS.configInput('aiaPath'), 'http://another-path.com');
 
     // acme config;
@@ -183,14 +183,14 @@ module('Integration | Component | page/pki-configuration-edit', function (hooks)
     assert
       .dom(SELECTORS.crlFieldLabel('autoRebuildGracePeriod'))
       .hasTextContaining(
-        'Auto-rebuild on Vault will rebuild the CRL in the below grace period before expiration',
+        'Auto-rebuild on OpenBao will rebuild the CRL in the below grace period before expiration',
         'it renders auto rebuild toggled on text'
       );
     await click(SELECTORS.crlToggleInput('deltaRebuildInterval'));
     assert
       .dom(SELECTORS.crlFieldLabel('deltaRebuildInterval'))
       .hasTextContaining(
-        'Delta CRL building on Vault will rebuild the delta CRL at the interval below:',
+        'Delta CRL building on OpenBao will rebuild the delta CRL at the interval below:',
         'it renders delta crl build toggled on text'
       );
 

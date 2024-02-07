@@ -46,7 +46,7 @@ ciphertext; "wrapped" will return the ciphertext only.`,
 
 			"nonce": {
 				Type:        framework.TypeString,
-				Description: "Nonce for when convergent encryption v1 is used (only in Vault 0.6.1)",
+				Description: "Nonce for when convergent encryption v1 is used (only in Vault 0.6.1 before OpenBao's fork)",
 			},
 
 			"bits": {
@@ -58,7 +58,7 @@ and 512 bits are supported. Defaults to 256.`,
 
 			"key_version": {
 				Type: framework.TypeInt,
-				Description: `The version of the Vault key to use for
+				Description: `The version of the OpenBao key to use for
 encryption of the data key. Must be 0 (for latest)
 or a value greater than or equal to the
 min_encryption_version configured on the key.`,

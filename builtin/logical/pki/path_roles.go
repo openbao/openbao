@@ -335,14 +335,14 @@ this value in certificates issued by this role.`,
 		"generate_lease": {
 			Type: framework.TypeBool,
 			Description: `
-If set, certificates issued/signed against this role will have Vault leases
+If set, certificates issued/signed against this role will have OpenBao leases
 attached to them. Defaults to "false". Certificates can be added to the CRL by
-"vault revoke <lease_id>" when certificates are associated with leases.  It can
+"bao revoke <lease_id>" when certificates are associated with leases.  It can
 also be done using the "pki/revoke" endpoint. However, when lease generation is
 disabled, invoking "pki/revoke" would be the only way to add the certificates
 to the CRL.  When large number of certificates are generated with long
 lifetimes, it is recommended that lease generation be disabled, as large amount of
-leases adversely affect the startup time of Vault.`,
+leases adversely affect the startup time of OpenBao.`,
 		},
 
 		"no_store": {
@@ -740,14 +740,14 @@ this value in certificates issued by this role.`,
 			"generate_lease": {
 				Type: framework.TypeBool,
 				Description: `
-If set, certificates issued/signed against this role will have Vault leases
+If set, certificates issued/signed against this role will have OpenBao leases
 attached to them. Defaults to "false". Certificates can be added to the CRL by
-"vault revoke <lease_id>" when certificates are associated with leases.  It can
+"bao revoke <lease_id>" when certificates are associated with leases.  It can
 also be done using the "pki/revoke" endpoint. However, when lease generation is
 disabled, invoking "pki/revoke" would be the only way to add the certificates
 to the CRL.  When large number of certificates are generated with long
 lifetimes, it is recommended that lease generation be disabled, as large amount of
-leases adversely affect the startup time of Vault.`,
+leases adversely affect the startup time of OpenBao.`,
 			},
 
 			"no_store": {
@@ -1141,7 +1141,7 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 	} else {
 		*entry.GenerateLease = data.Get("generate_lease").(bool)
 		if *entry.GenerateLease {
-			warning = "it is encouraged to disable generate_lease and rely on PKI's native capabilities when possible; this option can cause Vault-wide issues with large numbers of issued certificates"
+			warning = "it is encouraged to disable generate_lease and rely on PKI's native capabilities when possible; this option can cause instance-wide issues with large numbers of issued certificates"
 		}
 	}
 
@@ -1348,7 +1348,7 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		}
 
 		if *entry.GenerateLease {
-			warning = "it is encouraged to disable generate_lease and rely on PKI's native capabilities when possible; this option can cause Vault-wide issues with large numbers of issued certificates"
+			warning = "it is encouraged to disable generate_lease and rely on PKI's native capabilities when possible; this option can cause instance-wide issues with large numbers of issued certificates"
 		}
 	}
 

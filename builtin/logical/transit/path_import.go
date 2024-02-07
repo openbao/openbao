@@ -65,7 +65,7 @@ with the wrapping key and then concatenated with the import key, wrapped by the 
 			},
 			"allow_rotation": {
 				Type:        framework.TypeBool,
-				Description: "True if the imported key may be rotated within Vault; false otherwise.",
+				Description: "True if the imported key may be rotated within OpenBao; false otherwise.",
 			},
 			"derived": {
 				Type: framework.TypeBool,
@@ -424,7 +424,7 @@ func isFieldSet(fieldName string, d *framework.FieldData) bool {
 const (
 	pathImportWriteSyn  = "Imports an externally-generated key into a new transit key"
 	pathImportWriteDesc = "This path is used to import an externally-generated " +
-		"key into Vault. The import operation creates a new key and cannot be used to " +
+		"key into OpenBao. The import operation creates a new key and cannot be used to " +
 		"replace an existing key."
 )
 

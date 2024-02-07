@@ -333,7 +333,7 @@ func toAlg(a []string) []jwt.Alg {
 
 const (
 	pathLoginHelpSyn = `
-	Authenticates to Vault using a JWT (or OIDC) token.
+	Authenticates to OpenBao using a JWT (or OIDC) token.
 	`
 	pathLoginHelpDesc = `
 Authenticates JWTs.

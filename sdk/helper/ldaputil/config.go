@@ -230,7 +230,7 @@ Default: ({{.UserAttr}}={{.Username}})`,
 
 		"use_pre111_group_cn_behavior": {
 			Type:        framework.TypeBool,
-			Description: "In Vault 1.1.1 a fix for handling group CN values of different cases unfortunately introduced a regression that could cause previously defined groups to not be found due to a change in the resulting name. If set true, the pre-1.1.1 behavior for matching group CNs will be used. This is only needed in some upgrade scenarios for backwards compatibility. It is enabled by default if the config is upgraded but disabled by default on new configurations.",
+			Description: "In Vault 1.1.1 (prior to OpenBao's fork), a fix for handling group CN values of different cases unfortunately introduced a regression that could cause previously defined groups to not be found due to a change in the resulting name. If set true, the pre-1.1.1 behavior for matching group CNs will be used. This is only needed in some upgrade scenarios for backwards compatibility. It is enabled by default if the config is upgraded but disabled by default on new configurations.",
 		},
 
 		"request_timeout": {

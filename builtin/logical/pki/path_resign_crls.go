@@ -105,7 +105,7 @@ base64 encoded. Defaults to "pem".`,
 
 		HelpSynopsis: `Combine and sign with the provided issuer different CRLs`,
 		HelpDescription: `Provide two or more PEM encoded CRLs signed by the issuer,
- normally from separate Vault clusters to be combined and signed.`,
+ normally from separate OpenBao clusters to be combined and signed.`,
 	}
 }
 

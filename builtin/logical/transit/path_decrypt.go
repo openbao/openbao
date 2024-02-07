@@ -62,7 +62,8 @@ enabled.`,
 				Description: `
 Base64 encoded nonce value used during encryption. Must be provided if
 convergent encryption is enabled for this key and the key was generated with
-Vault 0.6.1. Not required for keys created in 0.6.2+.`,
+Vault 0.6.1 (prior to OpenBao's fork). Not required for keys created in
+Vault 0.6.2+.`,
 			},
 
 			"partial_failure_response_code": {

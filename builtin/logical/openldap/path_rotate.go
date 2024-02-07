@@ -37,9 +37,9 @@ func (b *backend) pathRotateCredentials() []*framework.Path {
 					ForwardPerformanceSecondary: true,
 				},
 			},
-			HelpSynopsis: "Request to rotate the root credentials Vault uses for the LDAP administrator account.",
+			HelpSynopsis: "Request to rotate the root credentials OpenBao uses for the LDAP administrator account.",
 			HelpDescription: "This path attempts to rotate the root credentials of the administrator account " +
-				"(binddn) used by Vault to manage LDAP.",
+				"(binddn) used by OpenBao to manage LDAP.",
 		},
 		{
 			Pattern: rotateRolePath + framework.GenericNameRegex("name"),

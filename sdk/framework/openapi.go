@@ -26,8 +26,8 @@ func NewOASDocument(version string) *OASDocument {
 	return &OASDocument{
 		Version: OASVersion,
 		Info: OASInfo{
-			Title:       "HashiCorp Vault API",
-			Description: "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
+			Title:       "OpenBao API",
+			Description: "HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.",
 			Version:     version,
 			License: OASLicense{
 				Name: "Mozilla Public License 2.0",

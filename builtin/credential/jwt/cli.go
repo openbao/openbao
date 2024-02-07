@@ -235,7 +235,7 @@ func fetchAuthURL(c *api.Client, role, mount, callbackPort string, callbackMetho
 	}
 
 	if authURL == "" {
-		return "", "", fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check Vault logs for more information.", role, redirectURI)
+		return "", "", fmt.Errorf("Unable to authorize role %q with redirect_uri %q. Check OpenBao logs for more information.", role, redirectURI)
 	}
 
 	return authURL, clientNonce, nil
@@ -280,14 +280,14 @@ func parseError(err error) (string, string) {
 // Help method for OIDC cli
 func (h *CLIHandler) Help() string {
 	help := fmt.Sprintf(`
-Usage: vault login -method=oidc [CONFIG K=V...]
+Usage: bao login -method=oidc [CONFIG K=V...]
 
   The OIDC auth method allows users to authenticate using an OIDC provider.
   The provider must be configured as part of a role by the operator.
 
   Authenticate using role "engineering":
 
-      $ vault login -method=oidc role=engineering
+      $ bao login -method=oidc role=engineering
       Complete the login via your OIDC provider. Launching browser to:
 
           https://accounts.google.com/o/oauth2/v2/...
@@ -298,7 +298,7 @@ Usage: vault login -method=oidc [CONFIG K=V...]
 Configuration:
 
   role=<string>
-    Vault role of type "OIDC" to use for authentication.
+    OpenBao role of type "OIDC" to use for authentication.
 
   %s=<string>
     Optional address to bind the OIDC callback listener to (default: localhost).

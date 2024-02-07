@@ -163,7 +163,7 @@ func (b *backend) storeConfig(ctx context.Context, storage logical.Storage, conf
 
 const backendHelp = `
 The "cert" credential provider allows authentication using
-TLS client certificates. A client connects to Vault and uses
+TLS client certificates. A client connects to OpenBao and uses
 the "login" endpoint to generate a client token.
 
 Trusted certificates are configured using the "certs/" endpoint

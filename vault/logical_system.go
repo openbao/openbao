@@ -320,7 +320,7 @@ func (b *SystemBackend) handleTidyLeases(ctx context.Context, req *logical.Reque
 	}()
 
 	resp := &logical.Response{}
-	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs.")
+	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs.")
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
 }
 
@@ -1491,7 +1491,7 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 			"migration_id": migrationID,
 		},
 	}
-	resp.AddWarning("Mount move has been queued. Progress will be reported in Vault's server log, tagged with the returned migration_id")
+	resp.AddWarning("Mount move has been queued. Progress will be reported in OpenBao's server log, tagged with the returned migration_id")
 	return resp, nil
 }
 
@@ -3672,13 +3672,13 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 		return "", fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return "no information found; wrapping token may be from a previous Vault version", ErrInternalError
+		return "no information found; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp.Error().Error(), nil
 	}
 	if cubbyResp.Data == nil {
-		return "wrapping information was nil; wrapping token may be from a previous Vault version", ErrInternalError
+		return "wrapping information was nil; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
 
 	responseRaw := cubbyResp.Data["response"]
@@ -3917,13 +3917,13 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	creationTTLRaw := cubbyResp.Data["creation_ttl"]
@@ -3998,13 +3998,13 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	// Set the creation TTL on the request
@@ -4036,13 +4036,13 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up response: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	response := cubbyResp.Data["response"]
@@ -5186,8 +5186,8 @@ func checkListingVisibility(visibility ListingVisibilityType) error {
 }
 
 const sysHelpRoot = `
-The system backend is built-in to Vault and cannot be remounted or
-unmounted. It contains the paths that are used to configure Vault itself
+The system backend is built-in to OpenBao and cannot be remounted or
+unmounted. It contains the paths that are used to configure OpenBao itself
 as well as perform core operations.
 `
 
@@ -5247,24 +5247,24 @@ This path responds to the following HTTP methods.
         `,
 	},
 	"init": {
-		"Initializes or returns the initialization status of the Vault.",
+		"Initializes or returns the initialization status of OpenBao.",
 		`
 This path responds to the following HTTP methods.
 
     GET /
-        Returns the initialization status of the Vault.
+        Returns the initialization status of OpenBao.
 
     POST /
-        Initializes a new vault.
+        Initializes a new OpenBao instance.
 		`,
 	},
 	"health": {
-		"Checks the health status of the Vault.",
+		"Checks the health status of OpenBao.",
 		`
 This path responds to the following HTTP methods.
 
 	GET /
-		Returns health information about the Vault.
+		Returns health information about OpenBao.
 		`,
 	},
 	"generate-root": {
@@ -5289,31 +5289,31 @@ HTTP methods are listed below.
 		`,
 	},
 	"seal-status": {
-		"Returns the seal status of the Vault.",
+		"Returns the seal status of the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     GET /
-        Returns the seal status of the Vault. This is an unauthenticated
+        Returns the seal status of the OpenBao instance. This is an unauthenticated
         endpoint.
 		`,
 	},
 	"seal": {
-		"Seals the Vault.",
+		"Seals the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     PUT /
-        Seals the Vault.
+        Seals the OpenBao instance.
 		`,
 	},
 	"unseal": {
-		"Unseals the Vault.",
+		"Unseals the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     PUT /
-        Unseals the Vault.
+        Unseals the OpenBao instance.
 		`,
 	},
 	"mounts": {
@@ -5387,7 +5387,7 @@ in the plugin catalog.`,
 	},
 
 	"external_entropy_access": {
-		`Whether to give the mount access to Vault's external entropy.`,
+		`Whether to give the mount access to OpenBao's external entropy.`,
 	},
 
 	"tune_default_lease_ttl": {
@@ -5508,7 +5508,7 @@ used to revoke the secret with the given Lease ID.
 		"Whether or not to perform the revocation synchronously",
 		`
 If false, the call will return immediately and revocation will be queued; if it
-fails, Vault will keep trying. If true, if the revocation fails, Vault will not
+fails, OpenBao will keep trying. If true, if the revocation fails, OpenBao will not
 automatically try again and will return an error. For revoke-prefix, this
 setting will apply to all leases being revoked. For revoke-force, since errors
 are ignored, this setting is not supported.
@@ -5539,7 +5539,7 @@ See the path help for 'revoke-prefix'; this behaves the same, except that it
 ignores errors encountered during revocation. This can be used in certain
 recovery situations; for instance, when you want to unmount a backend, but it
 is impossible to fix revocation errors and these errors prevent the unmount
-from proceeding. This is a DANGEROUS operation as it removes Vault's oversight
+from proceeding. This is a DANGEROUS operation as it removes OpenBao's oversight
 of external secrets. Access to this prefix should be tightly controlled.
 		`,
 	},
@@ -5825,7 +5825,7 @@ This path responds to the following HTTP methods.
 		`Returns a list of headers that have been configured to be audited.`,
 	},
 	"plugin-catalog-list-all": {
-		"Lists all the plugins known to Vault",
+		"Lists all the plugins known to OpenBao",
 		`
 This path responds to the following HTTP methods.
 		LIST /
@@ -5833,7 +5833,7 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"plugin-catalog": {
-		"Configures the plugins known to Vault",
+		"Configures the plugins known to OpenBao",
 		`
 This path responds to the following HTTP methods.
 		LIST /
@@ -5864,7 +5864,7 @@ command field. This should be HEX encoded.`,
 	},
 	"plugin-catalog_command": {
 		`The command used to start the plugin. The
-executable defined in this command must exist in vault's
+executable defined in this command must exist in OpenBao's
 plugin directory.`,
 		"",
 	},
@@ -5972,16 +5972,16 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"internal-counters-requests": {
-		"Currently unsupported. Previously, count of requests seen by this Vault cluster over time.",
-		"Currently unsupported. Previously, count of requests seen by this Vault cluster over time. Not included in count: health checks, UI asset requests, requests forwarded from another cluster.",
+		"Currently unsupported. Previously, count of requests seen by this OpenBao cluster over time.",
+		"Currently unsupported. Previously, count of requests seen by this OpenBao cluster over time. Not included in count: health checks, UI asset requests, requests forwarded from another cluster.",
 	},
 	"internal-counters-tokens": {
-		"Count of active tokens in this Vault cluster.",
-		"Count of active tokens in this Vault cluster.",
+		"Count of active tokens in this OpenBao cluster.",
+		"Count of active tokens in this OpenBao cluster.",
 	},
 	"internal-counters-entities": {
-		"Count of active entities in this Vault cluster.",
-		"Count of active entities in this Vault cluster.",
+		"Count of active entities in this OpenBao cluster.",
+		"Count of active entities in this OpenBao cluster.",
 	},
 	"internal-inspect-router": {
 		"Information on the entries in each of the trees in the router. Inspectable trees are uuid, accessor, storage, and root.",
@@ -5992,8 +5992,8 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"host-info": {
-		"Information about the host instance that this Vault server is running on.",
-		`Information about the host instance that this Vault server is running on.
+		"Information about the host instance that this OpenBao server is running on.",
+		`Information about the host instance that this OpenBao server is running on.
 		The information that gets collected includes host hardware information, and CPU,
 		disk, and memory utilization`,
 	},
@@ -6014,12 +6014,12 @@ This path responds to the following HTTP methods.
 		"Control the collection and reporting of client counts.",
 	},
 	"count-leases": {
-		"Count of leases associated with this Vault cluster",
-		"Count of leases associated with this Vault cluster",
+		"Count of leases associated with this OpenBao cluster",
+		"Count of leases associated with this OpenBao cluster",
 	},
 	"list-leases": {
-		"List leases associated with this Vault cluster",
-		"Requires sudo capability. List leases associated with this Vault cluster",
+		"List leases associated with this OpenBao cluster",
+		"Requires sudo capability. List leases associated with this OpenBao cluster",
 	},
 	"version-history": {
 		"List historical version changes sorted by installation time in ascending order.",
@@ -6031,7 +6031,7 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"experiments": {
-		"Returns information about Vault's experimental features. Should NOT be used in production.",
+		"Returns information about OpenBao's experimental features. Should NOT be used in production.",
 		`
 This path responds to the following HTTP methods.
 		GET /

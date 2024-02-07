@@ -101,7 +101,7 @@ func (b *backend) configFields() map[string]*framework.FieldSchema {
 	// Deprecated
 	fields["length"] = &framework.FieldSchema{
 		Type:        framework.TypeInt,
-		Description: "The desired length of passwords that Vault generates.",
+		Description: "The desired length of passwords that OpenBao generates.",
 		Deprecated:  true,
 	}
 	return fields

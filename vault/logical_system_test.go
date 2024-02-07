@@ -4052,8 +4052,8 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		exp := map[string]interface{}{
 			"openapi": framework.OASVersion,
 			"info": map[string]interface{}{
-				"title":       "HashiCorp Vault API",
-				"description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
+				"title":       "OpenBao API",
+				"description": "HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.",
 				"version":     version.GetVersion().Version,
 				"license": map[string]interface{}{
 					"name": "Mozilla Public License 2.0",

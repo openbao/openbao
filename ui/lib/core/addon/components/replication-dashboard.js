@@ -93,8 +93,8 @@ export default Component.extend({
   }),
   reindexMessage: computed('isSecondary', 'progressBar', function () {
     if (!this.isSecondary) {
-      return 'This can cause a delay depending on the size of the data store. You can <b>not</b> use Vault during this time.';
+      return 'This can cause a delay depending on the size of the data store. You can <b>not</b> use OpenBao during this time.';
     }
-    return 'This can cause a delay depending on the size of the data store. You can use Vault during this time.';
+    return 'This can cause a delay depending on the size of the data store. You can use OpenBao during this time.';
   }),
 });

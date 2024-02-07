@@ -110,9 +110,9 @@ export default Component.extend({
   routeToExplore: task(function* (command) {
     const filter = command.replace('api', '').trim();
     let content =
-      'Welcome to the Vault API explorer! \nYou can search for endpoints, see what parameters they accept, and even execute requests with your current token.';
+      'Welcome to the OpenBao API explorer! \nYou can search for endpoints, see what parameters they accept, and even execute requests with your current token.';
     if (filter) {
-      content = `Welcome to the Vault API explorer! \nWe've filtered the list of endpoints for '${filter}'.`;
+      content = `Welcome to the OpenBao API explorer! \nWe've filtered the list of endpoints for '${filter}'.`;
     }
     try {
       yield this.router.transitionTo('vault.cluster.open-api-explorer.index', {

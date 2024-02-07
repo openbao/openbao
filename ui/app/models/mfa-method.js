@@ -133,7 +133,7 @@ export default class MfaMethod extends Model {
   period;
   @attr('number', {
     label: 'Key size',
-    subText: 'The size in bytes of the Vault generated key.',
+    subText: 'The size in bytes of the OpenBao generated key.',
   })
   key_size;
   @attr('number', {

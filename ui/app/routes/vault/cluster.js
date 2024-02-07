@@ -57,7 +57,7 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
     const managedRoot = this.featureFlagService.managedNamespaceRoot;
     if (managedRoot && this.version.isOSS) {
       // eslint-disable-next-line no-console
-      console.error('Cannot use Cloud Admin Namespace flag with OSS Vault');
+      console.error('Cannot use Cloud Admin Namespace flag with OpenBao');
     }
     if (!namespace && currentTokenName && !Ember.testing) {
       // if no namespace queryParam and user authenticated,

@@ -36,8 +36,8 @@
       </span>
     </div>
     <div class="copy-text level">
-      {{#let (concat "vault write " this.model.backend "/encode/" this.cliCommand) as |copyEncodeCommand|}}
-        <code>vault write {{this.model.backend}}/encode/{{this.cliCommand}}</code>
+      {{#let (concat "bao write " this.model.backend "/encode/" this.cliCommand) as |copyEncodeCommand|}}
+        <code>bao write {{this.model.backend}}/encode/{{this.cliCommand}}</code>
         <CopyButton
           class="button is-transparent level-right"
           @clipboardText={{copyEncodeCommand}}
@@ -58,8 +58,8 @@
       </span>
     </div>
     <div class="copy-text level">
-      {{#let (concat "vault write " this.model.backend "/decode/" this.cliCommand) as |copyDecodeCommand|}}
-        <code>vault write {{this.model.backend}}/decode/{{this.cliCommand}}</code>
+      {{#let (concat "bao write " this.model.backend "/decode/" this.cliCommand) as |copyDecodeCommand|}}
+        <code>bao write {{this.model.backend}}/decode/{{this.cliCommand}}</code>
         <CopyButton
           class="button is-transparent level-right"
           @clipboardText={{copyDecodeCommand}}

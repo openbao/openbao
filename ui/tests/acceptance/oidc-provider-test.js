@@ -151,7 +151,7 @@ module('Acceptance | oidc provider', function (hooks) {
       currentURL().includes(`redirect_to=${encodeURIComponent(url)}`),
       'encodes url for the query param'
     );
-    assert.dom('[data-test-auth-logo]').exists('Vault logo exists on auth page');
+    assert.dom('[data-test-auth-logo]').exists('OpenBao logo exists on auth page');
     assert
       .dom('[data-test-auth-helptext]')
       .hasText(

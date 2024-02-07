@@ -27,7 +27,7 @@
       {{#if (and (not-eq this.model.id "default") this.capabilities.canDelete)}}
         <ConfirmAction
           @buttonClasses="toolbar-link"
-          @confirmMessage="This may affect access to Vault data."
+          @confirmMessage="This may affect access to OpenBao data."
           @onConfirmAction={{this.deletePolicy}}
           data-test-policy-delete="true"
         >

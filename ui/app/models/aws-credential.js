@@ -24,7 +24,7 @@ const CREDENTIAL_TYPES = [
 const DISPLAY_FIELDS = ['accessKey', 'secretKey', 'securityToken', 'leaseId', 'renewable', 'leaseDuration'];
 export default Model.extend({
   helpText:
-    'For Vault roles of credential type iam_user, there are no inputs, just submit the form. Choose a type to change the input options.',
+    'For OpenBao roles of credential type iam_user, there are no inputs, just submit the form. Choose a type to change the input options.',
   role: attr('object', {
     readOnly: true,
   }),
@@ -38,7 +38,7 @@ export default Model.extend({
   roleArn: attr('string', {
     label: 'Role ARN',
     helpText:
-      'The ARN of the role to assume if credential_type on the Vault role is assumed_role. Optional if the role has a single role ARN; required otherwise.',
+      'The ARN of the role to assume if credential_type on the OpenBao role is assumed_role. Optional if the role has a single role ARN; required otherwise.',
   }),
 
   ttl: attr({

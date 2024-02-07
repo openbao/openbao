@@ -15,7 +15,7 @@
             This certificate type is internal. This means that the private key will not be returned and cannot be retrieved
             later. Below, you will name the key and define its type and key bits.
           {{else if (eq @model.type "kms")}}
-            This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell Vault
+            This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao
             where to find it in your KMS or HSM.
             <DocLink @path="/vault/docs/enterprise/managed-keys">Learn more about managed keys.</DocLink>
           {{else if (eq @model.type "exported")}}

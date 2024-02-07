@@ -8,8 +8,8 @@ import { Factory } from 'ember-cli-mirage';
 export default Factory.extend({
   openapi: '3.0.2',
   info: {
-    title: 'HashiCorp Vault API',
-    description: 'HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.',
+    title: 'HashiCorp OpenBao API',
+    description: 'HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.',
     version: '1.0.0',
     license: {
       name: 'Mozilla Public License 2.0',

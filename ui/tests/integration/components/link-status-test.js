@@ -49,7 +49,7 @@ module('Integration | Component | link-status', function (hooks) {
     assert.dom('.link-status').hasClass('connected', 'Correct banner class renders for connected state');
     assert
       .dom('[data-test-link-status]')
-      .hasText('This self-managed Vault is linked to HCP.', 'Banner copy renders for connected state');
+      .hasText('This self-managed OpenBao is linked to HCP.', 'Banner copy renders for connected state');
     assert
       .dom('[data-test-link-status] a')
       .hasAttribute('href', 'https://portal.cloud.hashicorp.com/sign-in', 'HCP sign in link renders');

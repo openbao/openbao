@@ -54,7 +54,7 @@ module('Integration | Component | search select with modal', function (hooks) {
           name: 'rgp-test',
           enforcement_level: 'hard-mandatory',
           policy:
-            '\n# Import strings library that exposes common string operations\nimport "strings"\n\n# Conditional rule (precond) checks the incoming request endpoint\n# targeted to sys/policies/acl/admin\nprecond = rule {\n    strings.has_prefix(request.path, "sys/policies/admin")\n}\n\n# Vault checks to see if the request was made by an entity\n# named James Thomas or Team Lead role defined as its metadata\nmain = rule when precond {\n    identity.entity.metadata.role is "Team Lead" or\n      identity.entity.name is "James Thomas"\n}\n',
+            '\n# Import strings library that exposes common string operations\nimport "strings"\n\n# Conditional rule (precond) checks the incoming request endpoint\n# targeted to sys/policies/acl/admin\nprecond = rule {\n    strings.has_prefix(request.path, "sys/policies/admin")\n}\n\n# OpenBao checks to see if the request was made by an entity\n# named James Thomas or Team Lead role defined as its metadata\nmain = rule when precond {\n    identity.entity.metadata.role is "Team Lead" or\n      identity.entity.name is "James Thomas"\n}\n',
         },
       };
     });

@@ -91,7 +91,7 @@ module('Integration | Component | kubernetes | Page::Configure', function (hooks
       .dom('[data-test-icon="x-square-fill"]')
       .hasClass('has-text-danger', 'Icon is displayed for error state with correct styling');
     const error =
-      'Vault could not infer a configuration from your environment variables. Check your configuration file to edit or delete them, or configure manually.';
+      'OpenBao could not infer a configuration from your environment variables. Check your configuration file to edit or delete them, or configure manually.';
     assert.dom('[data-test-config] span').hasText(error, 'Error text is displayed');
     assert.dom('[data-test-config-save]').isDisabled('Save button is disabled in error state');
 
@@ -208,7 +208,7 @@ module('Integration | Component | kubernetes | Page::Configure', function (hooks
     assert
       .dom('.modal-card-body')
       .hasText(
-        'Making changes to your configuration may affect how Vault will reach the Kubernetes API and authenticate with it. Are you sure?',
+        'Making changes to your configuration may affect how OpenBao will reach the Kubernetes API and authenticate with it. Are you sure?',
         'Confirm modal renders'
       );
     await click('[data-test-config-confirm]');

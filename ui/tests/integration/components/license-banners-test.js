@@ -52,7 +52,7 @@ module('Integration | Component | license-banners', function (hooks) {
     this.set('expiry', formatRFC3339(this.nextMonth));
     await render(hbs`<LicenseBanners @expiry={{this.expiry}} />`);
     assert.dom('[data-test-license-banner-warning]').exists('Warning license banner renders');
-    assert.dom('.message-title').hasText('Vault license expiring', 'Shows correct title on alert');
+    assert.dom('.message-title').hasText('OpenBao license expiring', 'Shows correct title on alert');
   });
 
   test('it does not render a banner if expiry is outside 30 days', async function (assert) {
@@ -96,7 +96,7 @@ module('Integration | Component | license-banners', function (hooks) {
     localStorage.removeItem(key);
   });
 
-  test('it renders a banner if the vault license has changed', async function (assert) {
+  test('it renders a banner if the OpenBao license has changed', async function (assert) {
     assert.expect(3);
     this.version.version = '1.12.1+ent';
     this.set('expiry', formatRFC3339(this.nextMonth));
@@ -124,7 +124,7 @@ module('Integration | Component | license-banners', function (hooks) {
     localStorage.removeItem(keyNewVersion);
   });
 
-  test('it renders a banner if the vault expiry has changed', async function (assert) {
+  test('it renders a banner if the OpenBao expiry has changed', async function (assert) {
     assert.expect(3);
     this.set('expiry', formatRFC3339(this.tomorrow));
     const keyOldExpiry = `dismiss-license-banner-${this.version.version}-${this.expiry}`;

@@ -27,8 +27,8 @@ export default class PkiConfigCrlModel extends Model {
     mapToBoolean: 'autoRebuild',
     isOppositeValue: false,
     editType: 'ttl',
-    helperTextEnabled: 'Vault will rebuild the CRL in the below grace period before expiration',
-    helperTextDisabled: 'Vault will not automatically rebuild the CRL',
+    helperTextEnabled: 'OpenBao will rebuild the CRL in the below grace period before expiration',
+    helperTextDisabled: 'OpenBao will not automatically rebuild the CRL',
   })
   autoRebuildGracePeriod;
 
@@ -39,8 +39,8 @@ export default class PkiConfigCrlModel extends Model {
     mapToBoolean: 'enableDelta',
     isOppositeValue: false,
     editType: 'ttl',
-    helperTextEnabled: 'Vault will rebuild the delta CRL at the interval below:',
-    helperTextDisabled: 'Vault will not rebuild the delta CRL at an interval',
+    helperTextEnabled: 'OpenBao will rebuild the delta CRL at the interval below:',
+    helperTextDisabled: 'OpenBao will not rebuild the delta CRL at an interval',
   })
   deltaRebuildInterval;
 

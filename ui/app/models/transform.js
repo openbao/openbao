@@ -73,7 +73,7 @@ const ModelExport = Model.extend({
     selectLimit: 1,
     onlyAllowExisting: true,
     subText:
-      'Templates allow Vault to determine what and how to capture the value to be transformed. Type to use an existing template or create a new one.',
+      'Templates allow OpenBao to determine what and how to capture the value to be transformed. Type to use an existing template or create a new one.',
   }),
   allowed_roles: attr('array', {
     editType: 'searchSelect',

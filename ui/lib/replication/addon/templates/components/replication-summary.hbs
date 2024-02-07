@@ -193,8 +193,8 @@
               />
               {{#if this.showExplanation}}
                 <p>
-                  When running as a DR Secondary Vault is read only. For this reason, we don't allow other Replication modes
-                  to operate at the same time. This cluster is also currently operating as a Performance
+                  When running as a DR Secondary OpenBao is read only. For this reason, we don't allow other Replication
+                  modes to operate at the same time. This cluster is also currently operating as a Performance
                   {{capitalize this.cluster.performance.modeForUrl}}.
                 </p>
               {{/if}}
@@ -221,9 +221,9 @@
               <p class="help {{if (and this.token (not this.tokenIncludesAPIAddr)) 'is-danger' 'has-text-grey'}}">
                 {{#if (and this.token (not this.tokenIncludesAPIAddr))}}
                   The supplied token does not contain an embedded address for the primary cluster. Please enter the primary
-                  cluster's API address (normal Vault address).
+                  cluster's API address (normal OpenBao address).
                 {{else}}
-                  Set this to the API address (normal Vault address) to override the value embedded in the token.
+                  Set this to the API address (normal OpenBao address) to override the value embedded in the token.
                 {{/if}}
               </p>
             </div>

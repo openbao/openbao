@@ -15,8 +15,8 @@ export default Helper.extend({
     this.recompute();
   }),
   compute([sku]) {
-    if (sku !== 'OSS' && sku !== 'Enterprise') {
-      assert(`${sku} is not one of the available values for Vault versions.`, false);
+    if (sku !== 'OSS') {
+      assert(`${sku} is not one of the available values for OpenBao versions.`, false);
       return false;
     }
     return this.get(`version.is${sku}`);

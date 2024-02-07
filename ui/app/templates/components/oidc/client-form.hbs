@@ -41,7 +41,7 @@
       <RadioCard
         data-test-oidc-radio="allow-all"
         @title="Allow everyone to access existing"
-        @description="All Vault entities can authenticate through this application."
+        @description="All OpenBao entities can authenticate through this application."
         @icon="org"
         @value="allow_all"
         @groupValue={{this.radioCardGroupValue}}
@@ -68,7 +68,7 @@
         @excludeOptions={{array "allow_all"}}
         @fallbackComponent="string-list"
         @modalFormTemplate="modal-form/oidc-assignment-template"
-        @modalSubtext="Use assignment to specify which Vault entities and groups are allowed to authenticate."
+        @modalSubtext="Use assignment to specify which OpenBao entities and groups are allowed to authenticate."
       />
     {{/if}}
   </div>

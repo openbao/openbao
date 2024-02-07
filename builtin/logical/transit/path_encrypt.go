@@ -115,10 +115,11 @@ func (b *backend) pathEncrypt() *framework.Path {
 				Type: framework.TypeString,
 				Description: `
 Base64 encoded nonce value. Must be provided if convergent encryption is
-enabled for this key and the key was generated with Vault 0.6.1. Not required
-for keys created in 0.6.2+. The value must be exactly 96 bits (12 bytes) long
-and the user must ensure that for any given context (and thus, any given
-encryption key) this nonce value is **never reused**.
+enabled for this key and the key was generated with Vault 0.6.1 (prior to
+OpenBao's fork). Not required for keys created in 0.6.2+. The value must be
+exactly 96 bits (12 bytes) long and the user must ensure that for any given
+context (and thus, any given encryption key) this nonce value is **never
+reused**.
 `,
 			},
 

@@ -12,10 +12,10 @@ import (
 
 	capjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 	"gopkg.in/square/go-jose.v2"
 	josejwt "gopkg.in/square/go-jose.v2/jwt"
 )
@@ -289,7 +289,8 @@ func (keySet DontVerifySignature) VerifySignature(_ context.Context, token strin
 
 // parseAndValidateJWT is used to parse, validate and lookup the JWT token.
 func (b *kubeAuthBackend) parseAndValidateJWT(ctx context.Context, client *http.Client, jwtStr string,
-	role *roleStorageEntry, config *kubeConfig) (*serviceAccount, error) {
+	role *roleStorageEntry, config *kubeConfig,
+) (*serviceAccount, error) {
 	expected := capjwt.Expected{
 		SigningAlgorithms: supportedJwtAlgs,
 	}
@@ -506,7 +507,7 @@ func (b *kubeAuthBackend) pathLoginRenew() framework.OperationFunc {
 }
 
 const (
-	pathLoginHelpSyn  = `Authenticates Kubernetes service accounts with Vault.`
+	pathLoginHelpSyn  = `Authenticates Kubernetes service accounts with OpenBao.`
 	pathLoginHelpDesc = `
 Authenticate Kubernetes service accounts.
 `

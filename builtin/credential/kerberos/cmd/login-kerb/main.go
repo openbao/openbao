@@ -115,7 +115,7 @@ func main() {
 
 	b, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
-		fmt.Printf("unexpected Vault response %d: %s\n", resp.StatusCode, b)
+		fmt.Printf("unexpected OpenBao response %d: %s\n", resp.StatusCode, b)
 		os.Exit(1)
 	}
 
@@ -139,5 +139,5 @@ func main() {
 		fmt.Printf("client_token doesn't exist in %s\n", auth)
 		os.Exit(1)
 	}
-	fmt.Printf("Vault token through Go: %s\n", tokenRaw)
+	fmt.Printf("OpenBao token through Go: %s\n", tokenRaw)
 }

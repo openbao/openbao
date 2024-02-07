@@ -71,7 +71,7 @@ func (b *backend) acmeRevocationHandler(acmeCtx *acmeContext, _ *logical.Request
 		}
 
 		if int(reason) != 0 {
-			return nil, fmt.Errorf("Vault does not support revocation reasons (got %v; expected omitted or 0/unspecified): %w", int(reason), ErrBadRevocationReason)
+			return nil, fmt.Errorf("OpenBao does not support revocation reasons (got %v; expected omitted or 0/unspecified): %w", int(reason), ErrBadRevocationReason)
 		}
 	}
 

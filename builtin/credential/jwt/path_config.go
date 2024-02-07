@@ -97,7 +97,7 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 			},
 			"namespace_in_state": {
 				Type:        framework.TypeBool,
-				Description: "Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in Vault and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.",
+				Description: "Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in OpenBao and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all OpenBao namespaces that will be authenticating against it. Defaults to true for new configs.",
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name:  "Namespace in OIDC state",
 					Value: true,

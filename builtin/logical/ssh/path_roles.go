@@ -150,7 +150,7 @@ func pathRoles(b *backend) *framework.Path {
 				Port number for SSH connection. Default is '22'. Port number does not
 				play any role in creation of OTP. For 'otp' type, this is just a way
 				to inform client about the port number to use. Port number will be
-				returned to client by Vault server along with OTP.`,
+				returned to client by OpenBao server along with OTP.`,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Value: 22,
 				},
@@ -788,7 +788,7 @@ const pathRoleHelpDesc = `
 This path allows you to manage the roles that are used to generate credentials.
 
 Role takes a 'key_type' parameter that decides what type of credential this role
-can generate. If remote hosts have Vault SSH Agent installed, an 'otp' type can
+can generate. If remote hosts have OpenBao SSH Agent installed, an 'otp' type can
 be used, otherwise 'dynamic' type can be used.
 
 If the backend is mounted at "ssh" and the role is created at "ssh/roles/web",

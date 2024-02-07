@@ -322,3 +322,7 @@ ci-get-version-package:
 .PHONY: ci-prepare-legal
 ci-prepare-legal:
 	@$(CURDIR)/scripts/ci-helper.sh prepare-legal
+
+.PHONY: openapi
+openapi: dev
+	@$(CURDIR)/scripts/gen_openapi.sh

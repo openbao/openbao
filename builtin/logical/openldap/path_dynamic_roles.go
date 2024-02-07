@@ -13,9 +13,9 @@ import (
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -95,8 +95,8 @@ func (b *backend) pathDynamicRoles() []*framework.Path {
 					Callback: b.pathDynamicRoleList,
 				},
 			},
-			HelpSynopsis:    "List all the dynamic roles Vault is currently managing in LDAP.",
-			HelpDescription: "List all the dynamic roles being managed by Vault.",
+			HelpSynopsis:    "List all the dynamic roles OpenBao is currently managing in LDAP.",
+			HelpDescription: "List all the dynamic roles being managed by OpenBao.",
 		},
 	}
 }

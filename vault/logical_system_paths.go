@@ -104,7 +104,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "sanitized-configuration-state",
 					},
-					Summary:     "Return a sanitized version of the Vault server configuration.",
+					Summary:     "Return a sanitized version of the OpenBao server configuration.",
 					Description: "The sanitized output strips configuration values in the storage, HA storage, and seals stanzas, which may contain sensitive values such as API tokens. It also removes any token or secret fields in other stanzas, such as the circonus_api_token from telemetry.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
@@ -412,7 +412,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "update",
 					},
 					Summary:     "Enter a single unseal key share to progress the root generation attempt.",
-					Description: "If the threshold number of unseal key shares is reached, Vault will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
+					Description: "If the threshold number of unseal key shares is reached, OpenBao will complete the root generation and issue the new token. Otherwise, this API must be called multiple times until that threshold is met. The attempt nonce must be provided with each call.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -534,7 +534,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "health-status",
 					},
-					Summary: "Returns the health status of Vault.",
+					Summary: "Returns the health status of OpenBao.",
 					Responses: map[int][]framework.Response{
 						200: {{Description: "initialized, unsealed, and active"}},
 						429: {{Description: "unsealed and standby"}},
@@ -566,7 +566,7 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 				},
 				"secret_threshold": {
 					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using Vault HSM with auto-unsealing, this value must be the same as `secret_shares`.",
+					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as `secret_shares`.",
 				},
 				"stored_shares": {
 					Type:        framework.TypeInt,
@@ -591,14 +591,14 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 						OperationVerb:   "read",
 						OperationSuffix: "initialization-status",
 					},
-					Summary: "Returns the initialization status of Vault.",
+					Summary: "Returns the initialization status of OpenBao.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					DisplayAttrs: &framework.DisplayAttributes{
 						OperationVerb: "initialize",
 					},
-					Summary:     "Initialize a new Vault.",
-					Description: "The Vault must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using Vault HSM.",
+					Summary:     "Initialize a new OpenBao instance.",
+					Description: "The OpenBao instance must not have been previously initialized. The recovery options, as well as the stored shares option, are only available when using OpenBao HSM.",
 				},
 			},
 
@@ -794,7 +794,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 				"secret_threshold": {
 					Type:        framework.TypeInt,
-					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using Vault HSM with auto-unsealing, this value must be the same as secret_shares.",
+					Description: "Specifies the number of shares required to reconstruct the unseal key. This must be less than or equal secret_shares. If using OpenBao HSM with auto-unsealing, this value must be the same as secret_shares.",
 				},
 				"pgp_keys": {
 					Type:        framework.TypeCommaStringSlice,
@@ -802,7 +802,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 				},
 				"backup": {
 					Type:        framework.TypeBool,
-					Description: "Specifies if using PGP-encrypted keys, whether Vault should also store a plaintext backup of the PGP-encrypted keys.",
+					Description: "Specifies if using PGP-encrypted keys, whether OpenBao should also store a plaintext backup of the PGP-encrypted keys.",
 				},
 				"require_verification": {
 					Type:        framework.TypeBool,
@@ -1029,7 +1029,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 							},
 						}},
 					},
-					Summary: "Enter a single unseal key share to progress the rekey of the Vault.",
+					Summary: "Enter a single unseal key share to progress the rekey of the OpenBao.",
 				},
 			},
 		},
@@ -1152,7 +1152,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary: "Seal the Vault.",
+					Summary: "Seal the OpenBao instance.",
 					Responses: map[int][]framework.Response{
 						http.StatusNoContent: {{
 							Description: "OK",
@@ -1184,7 +1184,7 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Summary: "Unseal the Vault.",
+					Summary: "Unseal the OpenBao instance.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							// unseal returns `vault.SealStatusResponse` struct
@@ -1270,7 +1270,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleLeaderStatus,
-					Summary:  "Returns the high availability status and current leader instance of Vault.",
+					Summary:  "Returns the high availability status and current leader instance of OpenBao.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -1323,7 +1323,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis: "Check the high availability status and current leader of Vault",
+			HelpSynopsis: "Check the high availability status and current leader of OpenBao",
 		},
 		{
 			Pattern: "seal-status$",
@@ -1336,7 +1336,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleSealStatus,
-					Summary:  "Check the seal status of a Vault.",
+					Summary:  "Check the seal status of an OpenBao instance.",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							// unseal returns `vault.SealStatusResponse` struct
@@ -1417,7 +1417,7 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleHAStatus,
-					Summary:  "Check the HA status of a Vault cluster",
+					Summary:  "Check the HA status of an OpenBao cluster",
 					Responses: map[int][]framework.Response{
 						http.StatusOK: {{
 							Description: "OK",
@@ -2892,7 +2892,7 @@ func (b *SystemBackend) leasePaths() []*framework.Path {
 						}},
 					},
 					Summary:     "Revokes all secrets or tokens generated under a given prefix immediately",
-					Description: "Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, Vault abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
+					Description: "Unlike `/sys/leases/revoke-prefix`, this path ignores backend errors encountered during revocation. This is potentially very dangerous and should only be used in specific emergency situations where errors in the backend or the connected backend service prevent normal revocation.\n\nBy ignoring these errors, OpenBao abdicates responsibility for ensuring that the issued credentials or secrets are properly revoked and/or cleaned up. Access to this endpoint should be tightly controlled.",
 				},
 			},
 

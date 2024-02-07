@@ -40,7 +40,7 @@ func groupPathFields() map[string]*framework.FieldSchema {
 			Description: `Metadata to be associated with the group.
 In CLI, this parameter can be repeated multiple times, and it all gets merged together.
 For example:
-vault <command> <path> metadata=key1=value1 metadata=key2=value2
+bao <command> <path> metadata=key1=value1 metadata=key2=value2
 					`,
 		},
 		"policies": {

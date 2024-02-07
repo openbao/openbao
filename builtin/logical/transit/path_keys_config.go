@@ -127,7 +127,7 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 
 		if minDecryptionVersion == 0 {
 			minDecryptionVersion = 1
-			warning = "since Vault 0.3, transit key numbering starts at 1; forcing minimum to 1"
+			warning = "since Vault 0.3 (prior to the OpenBao fork), transit key numbering starts at 1; forcing minimum to 1"
 		}
 
 		if minDecryptionVersion != p.MinDecryptionVersion {

@@ -147,7 +147,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"issuer": {
 					Type:        framework.TypeString,
-					Description: "Issuer URL to be used in the iss claim of the token. If not set, Vault's app_addr will be used.",
+					Description: "Issuer URL to be used in the iss claim of the token. If not set, OpenBao's app_addr will be used.",
 				},
 			},
 
@@ -292,7 +292,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				logical.ReadOperation: i.pathOIDCGenerateToken,
 			},
 			HelpSynopsis:    "Generate an OIDC token",
-			HelpDescription: "Generate an OIDC token against a configured role. The vault token used to call this path must have a corresponding entity.",
+			HelpDescription: "Generate an OIDC token against a configured role. The OpenBao token used to call this path must have a corresponding entity.",
 		},
 		{
 			Pattern: "oidc/role/" + framework.GenericNameRegex("name"),
@@ -388,7 +388,7 @@ func (i *IdentityStore) pathOIDCReadConfig(ctx context.Context, req *logical.Req
 	}
 
 	if i.redirectAddr == "" && c.Issuer == "" {
-		resp.AddWarning(`Both "issuer" and Vault's "api_addr" are empty. ` +
+		resp.AddWarning(`Both "issuer" and OpenBao's "api_addr" are empty. ` +
 			`The issuer claim in generated tokens will not be network reachable.`)
 	}
 

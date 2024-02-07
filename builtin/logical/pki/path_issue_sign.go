@@ -579,6 +579,6 @@ This path allows requesting certificates to be issued according to the
 policy of the given role. The certificate will only be issued if the
 requested common name is allowed by the role policy.
 
-This path requires a CSR; if you want Vault to generate a private key
+This path requires a CSR; if you want OpenBao to generate a private key
 for you, use the issue path instead.
 `

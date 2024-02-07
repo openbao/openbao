@@ -208,12 +208,12 @@ derivation is enabled; currently only available with ed25519 keys.`,
 
 			"signature": {
 				Type:        framework.TypeString,
-				Description: "The signature, including vault header/key version",
+				Description: "The signature, including OpenBao header/key version",
 			},
 
 			"hmac": {
 				Type:        framework.TypeString,
-				Description: "The HMAC, including vault header/key version",
+				Description: "The HMAC, including OpenBao header/key version",
 			},
 
 			"input": {

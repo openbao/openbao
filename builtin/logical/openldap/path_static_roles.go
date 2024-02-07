@@ -482,13 +482,13 @@ when managing the existing entry. If the "dn" parameter is set, it will take
 precedence over the "username" when LDAP searches are performed.
 
 The "rotation_period' parameter is required and configures how often, in seconds, 
-the credentials should be automatically rotated by Vault.  The minimum is 5 seconds (5s).
+the credentials should be automatically rotated by OpenBao.  The minimum is 5 seconds (5s).
 `
 
 const staticRolesListHelpDescription = `
-List all the static roles being managed by Vault.
+List all the static roles being managed by OpenBao.
 `
 
 const staticRolesListHelpSynopsis = `
-This path lists all the static roles Vault is currently managing within the LDAP system.
+This path lists all the static roles OpenBao is currently managing within the LDAP system.
 `

@@ -16,7 +16,7 @@ const (
 	pathAcmeHelpSync = `An endpoint implementing the standard ACME protocol`
 	pathAcmeHelpDesc = `This API endpoint implementing a subset of the ACME protocol
  defined in RFC 8555, with its own authentication and argument syntax that
- does not follow conventional Vault operations. An ACME client tool or library
+ does not follow conventional OpenBao operations. An ACME client tool or library
  should be used to interact with these endpoints.`
 )
 

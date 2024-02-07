@@ -186,7 +186,7 @@ func pathInvalid(b *versionedKVBackend) []*framework.Path {
 			subCommand = "delete"
 		}
 		resp := &logical.Response{}
-		resp.AddWarning(fmt.Sprintf("Invalid path for a versioned K/V secrets engine. See the API docs for the appropriate API endpoints to use. If using the Vault CLI, use 'vault kv %s' for this operation.", subCommand))
+		resp.AddWarning(fmt.Sprintf("Invalid path for a versioned K/V secrets engine. See the API docs for the appropriate API endpoints to use. If using the OpenBao CLI, use 'bao kv %s' for this operation.", subCommand))
 		return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
 	}
 

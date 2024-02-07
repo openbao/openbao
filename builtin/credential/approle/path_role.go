@@ -3209,7 +3209,7 @@ var roleHelp = map[string][2]string{
 		"Register an role with the backend.",
 		`A role can represent a service, a machine or anything that can be IDed.
 The set of policies on the role defines access to the role, meaning, any
-Vault token with a policy set that is a superset of the policies on the
+OpenBao token with a policy set that is a superset of the policies on the
 role registered here will have access to the role. If a SecretID is desired
 to be generated against only this specific role, it can be done via
 'role/<role_name>/secret-id' and 'role/<role_name>/custom-secret-id' endpoints.
@@ -3245,8 +3245,8 @@ IP is not encompassed by it, token use fails`,
 	},
 	"role-policies": {
 		"Policies of the role.",
-		`A comma-delimited set of Vault policies that defines access to the role.
-All the Vault tokens with policies that encompass the policy set
+		`A comma-delimited set of OpenBao policies that defines access to the role.
+All the OpenBao tokens with policies that encompass the policy set
 defined on the role, can access the role.`,
 	},
 	"role-secret-id-num-uses": {

@@ -5,7 +5,7 @@ description: >-
   The "operator migrate" command copies data between storage backends to
   facilitate
 
-  migrating Vault between configurations. It operates directly at the storage
+  migrating OpenBao between configurations. It operates directly at the storage
 
   level, with no decryption involved.
 ---
@@ -13,13 +13,13 @@ description: >-
 # operator migrate
 
 The `operator migrate` command copies data between storage backends to facilitate
-migrating Vault between configurations. It operates directly at the storage
+migrating OpenBao between configurations. It operates directly at the storage
 level, with no decryption involved. Keys in the destination storage backend will
 be overwritten, and the destination should _not_ be initialized prior to the
 migrate operation. The source data is not modified, with the exception of a small lock
 key added during migration.
 
-This is intended to be an offline operation to ensure data consistency, and Vault
+This is intended to be an offline operation to ensure data consistency, and OpenBao
 will not allow starting the server if a migration is in progress.
 
 ## Examples
@@ -27,7 +27,7 @@ will not allow starting the server if a migration is in progress.
 Migrate all keys:
 
 ```shell-session
-$ vault operator migrate -config migrate.hcl
+$ bao operator migrate -config migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey
@@ -41,26 +41,26 @@ exits before completion (e.g. due to a connection error with a storage backend),
 it may be resumed from an arbitrary key prefix:
 
 ```shell-session
-$ vault operator migrate -config migrate.hcl -start "data/logical/fd"
+$ bao operator migrate -config migrate.hcl -start "data/logical/fd"
 ```
 
 ## Configuration
 
 The `operator migrate` command uses a dedicated configuration file to specify the source
 and destination storage backends. The format of the storage stanzas is identical
-to that used to [configure Vault](/vault/docs/configuration/storage),
+to that used to [configure OpenBao](/vault/docs/configuration/storage),
 with the only difference being that two stanzas are required: `storage_source` and `storage_destination`.
 
 ```hcl
 storage_source "mysql" {
   username = "user1234"
   password = "secret123!"
-  database = "vault"
+  database = "openbao"
 }
 
 storage_destination "consul" {
   address = "127.0.0.1:8500"
-  path    = "vault/"
+  path    = "openbao/"
 }
 ```
 
@@ -82,7 +82,7 @@ configuration for the node post-migration.
 ```hcl
 storage_source "consul" {
   address = "127.0.0.1:8500"
-  path    = "vault"
+  path    = "openbao"
 }
 
 storage_destination "raft" {
@@ -94,11 +94,11 @@ cluster_addr = "http://127.0.0.1:8201"
 
 ### Run the migration
 
-Vault will need to be offline during the migration process. First, stop Vault.
-Then, run the migration on the server you wish to become a the new Vault node.
+OpenBao will need to be offline during the migration process. First, stop OpenBao.
+Then, run the migration on the server you wish to become a the new OpenBao node.
 
 ```shell-session
-$ vault operator migrate -config migrate.hcl
+$ bao operator migrate -config migrate.hcl
 
 2018-09-20T14:23:23.656-0700 [INFO ] copied key: data/core/seal-config
 2018-09-20T14:23:23.657-0700 [INFO ] copied key: data/core/wrapping/jwtkey
@@ -108,10 +108,10 @@ $ vault operator migrate -config migrate.hcl
 ```
 
 After migration has completed, the data is stored on the local file system. To
-use the new storage backend with Vault, update Vault's configuration file as
+use the new storage backend with OpenBao, update OpenBao's configuration file as
 described in the [raft storage configuration
 documentation](/vault/docs/configuration/storage/raft). Then start and unseal the
-vault server.
+OpenBao server.
 
 ### Join additional nodes
 
@@ -130,7 +130,7 @@ The following flags are available for the `operator migrate` command.
 - `-start` `(string: "")` - Migration starting key prefix. Only keys at or after this value will be copied.
 
 - `-reset` - Reset the migration lock. A lock file is added during migration to prevent
-  starting the Vault server or another migration. The `-reset` option can be used to
+  starting the OpenBao server or another migration. The `-reset` option can be used to
   remove a stale lock file if present.
 
 - `-max-parallel` `int: 10` - Allows the operator to specify the maximum number of lightweight threads (goroutines)

@@ -6,7 +6,7 @@ package http
 import (
 	"testing"
 
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"

@@ -1,7 +1,7 @@
 [
   {
-    "title": "What is Vault?",
-    "path": "what-is-vault"
+    "title": "What is OpenBao?",
+    "path": "what-is-openbao"
   },
   {
     "title": "Use Cases",
@@ -10,14 +10,6 @@
   {
     "title": "Get Started",
     "routes": [
-      {
-        "title": "CLI Quick Start",
-        "href": "https://learn.hashicorp.com/collections/vault/getting-started"
-      },
-      {
-        "title": "HCP Quick Start",
-        "href": "https://learn.hashicorp.com/collections/vault/cloud"
-      },
       {
         "title": "Developer Quick Start",
         "path": "get-started/developer-qs"
@@ -34,7 +26,7 @@
   },
 
   {
-    "title": "Installing Vault",
+    "title": "Installing Openbao",
     "path": "install"
   },
   {
@@ -92,10 +84,6 @@
                 "path": "internals/telemetry/metrics/authn"
               },
               {
-                "title": "Auto-snapshot metrics",
-                "path": "internals/telemetry/metrics/autosnap"
-              },
-              {
                 "title": "Availability metrics",
                 "path": "internals/telemetry/metrics/availability"
               },
@@ -137,10 +125,6 @@
         "path": "internals/rotation"
       },
       {
-        "title": "Replication",
-        "path": "internals/replication"
-      },
-      {
         "title": "Limits and Maximums",
         "path": "internals/limits"
       }
@@ -160,10 +144,6 @@
       {
         "title": "Seal/Unseal",
         "path": "concepts/seal"
-      },
-      {
-        "title": "Namespace API Lock",
-        "path": "concepts/namespace-api-lock"
       },
       {
         "title": "Lease, Renew, and Revoke",
@@ -303,10 +283,6 @@
         ]
       },
       {
-        "title": "<code>replication</code>",
-        "path": "configuration/replication"
-      },
-      {
         "title": "<code>seal</code>",
         "routes": [
           {
@@ -334,23 +310,10 @@
             "path": "configuration/seal/ocikms"
           },
           {
-            "title": "HSM PKCS11",
-            "badge": {
-              "text": "ENT",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "configuration/seal/pkcs11"
-          },
-          {
-            "title": "Vault Transit",
+            "title": "Openbao Transit",
             "path": "configuration/seal/transit"
           }
         ]
-      },
-      {
-        "title": "<code>sentinel</code>",
-        "path": "configuration/sentinel"
       },
       {
         "title": "<code>service_registration</code>",
@@ -485,24 +448,6 @@
       {
         "title": "<code>Log Completed Requests</code>",
         "path": "configuration/log-requests-level"
-      },
-      {
-        "title": "<code>Entropy Augmentation</code>",
-        "badge": {
-          "text": "ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "configuration/entropy-augmentation"
-      },
-      {
-        "title": "<code>kms_library</code>",
-        "badge": {
-          "text": "ENT",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "configuration/kms-library"
       }
     ]
   },
@@ -650,23 +595,6 @@
         ]
       },
       {
-        "title": "<code>license</code>",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "commands/license"
-          },
-          {
-            "title": "<code>get</code>",
-            "path": "commands/license/get"
-          },
-          {
-            "title": "<code>inspect</code>",
-            "path": "commands/license/inspect"
-          }
-        ]
-      },
-      {
         "title": "<code>list</code>",
         "path": "commands/list"
       },
@@ -677,10 +605,6 @@
       {
         "title": "<code>monitor</code>",
         "path": "commands/monitor"
-      },
-      {
-        "title": "<code>namespace</code>",
-        "path": "commands/namespace"
       },
       {
         "title": "<code>operator</code>",
@@ -956,7 +880,7 @@
     ]
   },
   {
-    "title": "Vault Agent and Vault Proxy",
+    "title": "Openbao Agent and Openbao Proxy",
     "routes": [
       {
         "title": "Overview",
@@ -1042,7 +966,7 @@
         ]
       },
       {
-        "title": "Vault Proxy",
+        "title": "Openbao Proxy",
         "routes": [
           {
             "title": "Overview",
@@ -1081,7 +1005,7 @@
         ]
       },
       {
-        "title": "Vault Agent",
+        "title": "Openbao Agent",
         "routes": [
           {
             "title": "Overview",
@@ -1283,32 +1207,6 @@
         ]
       },
       {
-        "title": "Key Management",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "secrets/key-management"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "secrets/key-management/azurekeyvault"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "secrets/key-management/awskms"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "secrets/key-management/gcpkms"
-          }
-        ]
-      },
-      {
         "title": "Key/Value",
         "routes": [
           {
@@ -1324,20 +1222,6 @@
             "path": "secrets/kv/kv-v2"
           }
         ]
-      },
-      {
-        "title": "KMIP",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "secrets/kmip"
-      },
-      {
-        "title": "KMIP - Profile Support",
-        "path": "secrets/kmip-profiles",
-        "hidden": true
       },
       {
         "title": "Kubernetes",
@@ -1417,33 +1301,6 @@
       {
         "title": "TOTP",
         "path": "secrets/totp"
-      },
-      {
-        "title": "Transform",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "secrets/transform"
-          },
-          {
-            "title": "FF3-1 Tweak Usage",
-            "path": "secrets/transform/ff3-tweak-details"
-          },
-          {
-            "title": "Tokenization Transform",
-            "badge": {
-              "text": "ENTERPRISE",
-              "type": "outlined",
-              "color": "neutral"
-            },
-            "path": "secrets/transform/tokenization"
-          }
-        ]
       },
       {
         "title": "Transit",
@@ -1650,24 +1507,8 @@
       {
         "title": "Plugin Management",
         "path": "plugins/plugin-management"
-      },
-      {
-        "title": "Integrations Library",
-        "href": "/vault/integrations"
       }
     ]
-  },
-  {
-    "title": "Vault Integration Program",
-    "path": "partnerships"
-  },
-  {
-    "title": "Vault Interoperability Matrix",
-    "path": "interoperability-matrix"
-  },
-  {
-    "title": "Troubleshoot",
-    "href": "https://learn.hashicorp.com/tutorials/vault/troubleshooting-vault"
   },
   {
     "divider": true
@@ -1683,16 +1524,8 @@
         "title": "AWS",
         "routes": [
           {
-            "title": "Overview",
-            "path": "platform/aws"
-          },
-          {
             "title": "Vault Lambda Extension",
             "path": "platform/aws/lambda-extension"
-          },
-          {
-            "title": "Running Vault",
-            "path": "platform/aws/run"
           }
         ]
       },
@@ -1727,10 +1560,6 @@
               {
                 "title": "Running Vault",
                 "path": "platform/k8s/helm/run"
-              },
-              {
-                "title": "Enterprise Licensing",
-                "path": "platform/k8s/helm/enterprise"
               },
               {
                 "title": "Running Vault on OpenShift",
@@ -1786,18 +1615,6 @@
                   {
                     "title": "HA Cluster with Raft and TLS",
                     "path": "platform/k8s/helm/examples/ha-tls"
-                  },
-                  {
-                    "title": "HA Enterprise Cluster with Raft",
-                    "path": "platform/k8s/helm/examples/enterprise-with-raft"
-                  },
-                  {
-                    "title": "HA Enterprise DR Clusters with Raft",
-                    "path": "platform/k8s/helm/examples/enterprise-dr-with-raft"
-                  },
-                  {
-                    "title": "HA Enterprise Performance Clusters with Raft",
-                    "path": "platform/k8s/helm/examples/enterprise-perf-with-raft"
                   },
                   {
                     "title": "Vault Agent Injector TLS Configuration",
@@ -1906,35 +1723,6 @@
         ]
       },
       {
-        "title": "Microsoft SQL Server EKM provider",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "platform/mssql"
-          },
-          {
-            "title": "Installation",
-            "path": "platform/mssql/installation"
-          },
-          {
-            "title": "Configuration",
-            "path": "platform/mssql/configuration"
-          },
-          {
-            "title": "Upgrading",
-            "path": "platform/mssql/upgrading"
-          },
-          {
-            "title": "Troubleshooting",
-            "path": "platform/mssql/troubleshooting"
-          },
-          {
-            "title": "Release Notes",
-            "path": "platform/mssql/changelog"
-          }
-        ]
-      },
-      {
         "title": "ServiceNow",
         "routes": [
           {
@@ -1968,7 +1756,7 @@
         "path": "upgrading"
       },
       {
-        "title": "Upgrade Vault HA installations",
+        "title": "Upgrade Openbao HA installations",
         "path": "upgrading/vault-ha-upgrade"
       },
       {
@@ -2296,20 +2084,12 @@
         "href": "https://www.vaultproject.io/docs/deprecation/faq"
       },
       {
-        "title": "License",
-        "href": "https://www.vaultproject.io/docs/enterprise/license/faq"
-      },
-      {
         "title": "Client Count",
         "href": "https://www.vaultproject.io/docs/concepts/client-count/faq"
       },
       {
         "title": "Login MFA",
         "href": "https://www.vaultproject.io/docs/auth/login-mfa/faq"
-      },
-      {
-        "title": "Server Side Consistent Token",
-        "path": "faq/ssct"
       }
     ]
   },
@@ -2324,188 +2104,19 @@
     "divider": true
   },
   {
-    "title": "Vault Enterprise",
+    "title": "OpenBao Community Policies",
     "routes": [
       {
         "title": "Overview",
-        "path": "enterprise"
+        "path": "policies"
       },
       {
-        "title": "License",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/license"
-          },
-          {
-            "title": "Autoloading",
-            "path": "enterprise/license/autoloading"
-          },
-          {
-            "title": "Automated license utilization reporting",
-            "path": "enterprise/license/utilization-reporting"
-          },
-          {
-            "title": "FAQ",
-            "path": "enterprise/license/faq"
-          }
-        ]
-      },
-
-      {
-        "title": "Replication",
-        "path": "enterprise/replication"
-      },
-
-      {
-        "title": "HSM Support",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/hsm"
-          },
-          {
-            "title": "Behavioral Changes",
-            "path": "enterprise/hsm/behavior"
-          },
-          {
-            "title": "Security",
-            "path": "enterprise/hsm/security"
-          }
-        ]
+        "title": "Deprecation policy",
+        "path": "policies/deprecation"
       },
       {
-        "title": "PKCS11 Provider",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/pkcs11-provider"
-          },
-          {
-            "title": "AWS KMS XKS",
-            "path": "enterprise/pkcs11-provider/aws-xks"
-          },
-          {
-            "title": "Oracle TDE",
-            "path": "enterprise/pkcs11-provider/oracle-tde"
-          }
-        ]
-      },
-      {
-        "title": "Automated Integrated Storage Snapshots",
-        "path": "enterprise/automated-integrated-storage-snapshots"
-      },
-      {
-        "title": "Automated Upgrades",
-        "path": "enterprise/automated-upgrades"
-      },
-      {
-        "title": "Redundancy Zones",
-        "path": "enterprise/redundancy-zones"
-      },
-      {
-        "title": "Lease Count Quotas",
-        "path": "enterprise/lease-count-quotas"
-      },
-      {
-        "title": "Entropy Augmentation",
-        "path": "enterprise/entropy-augmentation"
-      },
-      {
-        "title": "FIPS",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/fips"
-          },
-          {
-            "title": "FIPS 140-2 Inside Vault",
-            "path": "enterprise/fips/fips1402"
-          },
-          {
-            "title": "Seal Wrap for FIPS 140-2",
-            "path": "enterprise/fips/sealwrap"
-          }
-        ]
-      },
-      {
-        "title": "Seal Wrap",
-        "path": "enterprise/sealwrap"
-      },
-      {
-        "title": "Namespaces",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/namespaces"
-          },
-          {
-            "title": "Create an administrative namespace",
-            "path": "enterprise/namespaces/create-admin-namespace"
-          }
-        ]
-      },
-      {
-        "title": "Performance Standbys",
-        "path": "enterprise/performance-standby"
-      },
-      {
-        "title": "Eventual Consistency",
-        "path": "enterprise/consistency"
-      },
-      {
-        "title": "Control Groups",
-        "path": "enterprise/control-groups"
-      },
-      {
-        "title": "Managed Keys",
-        "path": "enterprise/managed-keys"
-      },
-      {
-        "title": "MFA",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/mfa"
-          },
-          {
-            "title": "Duo MFA",
-            "path": "enterprise/mfa/mfa-duo"
-          },
-          {
-            "title": "Okta MFA",
-            "path": "enterprise/mfa/mfa-okta"
-          },
-          {
-            "title": "PingID MFA",
-            "path": "enterprise/mfa/mfa-pingid"
-          },
-          {
-            "title": "TOTP MFA",
-            "path": "enterprise/mfa/mfa-totp"
-          }
-        ]
-      },
-      {
-        "title": "Sentinel",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "enterprise/sentinel"
-          },
-          {
-            "title": "Examples",
-            "path": "enterprise/sentinel/examples"
-          },
-          {
-            "title": "Properties",
-            "path": "enterprise/sentinel/properties"
-          }
-        ]
-      },
-      {
-        "title": "HCP Vault",
-        "href": "https://cloud.hashicorp.com/docs/vault"
+        "title": "Plugin support policy",
+        "path": "policies/plugins"
       }
     ]
   }

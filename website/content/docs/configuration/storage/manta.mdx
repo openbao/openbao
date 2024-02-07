@@ -2,7 +2,7 @@
 layout: docs
 page_title: Manta - Storage Backends - Configuration
 description: >-
-  The Manta storage backend is used to persist Vault's data in Triton's Manta
+  The Manta storage backend is used to persist OpenBao's data in Triton's Manta
   Object
 
   Storage. The storage folder must already exist.
@@ -10,7 +10,7 @@ description: >-
 
 # Manta storage backend
 
-The Manta storage backend is used to persist Vault's data in [Triton's Manta Object
+The Manta storage backend is used to persist OpenBao's data in [Triton's Manta Object
 Storage][manta-object-store]. The storage folder must already exist.
 
 - **No High Availability** – the Manta storage backend does not support high
@@ -58,7 +58,7 @@ maximum parallel connections.
 
 ```hcl
 storage "manta" {
-  directory    = "vault-storage-directory"
+  directory    = "openbao-storage-directory"
   max_parallel = 512
 }
 ```

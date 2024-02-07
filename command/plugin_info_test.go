@@ -116,7 +116,7 @@ func TestPluginInfoCommand_Run(t *testing.T) {
 		client, _, closer := testVaultServerPluginDir(t, pluginDir)
 		defer closer()
 
-		const pluginName = "azure"
+		const pluginName = "approle"
 		_, sha256Sum := testPluginCreateAndRegister(t, client, pluginDir, pluginName, api.PluginTypeCredential, "v1.0.0")
 
 		for name, tc := range map[string]struct {

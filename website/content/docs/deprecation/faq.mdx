@@ -5,28 +5,19 @@ sidebar_title: FAQ
 description: |-
   An FAQ page to communicate frequently asked questions concerning feature deprecations.
 ---
-
+<!-- TODO: Remove documentation regarding older Vault versions -->
 # Feature deprecation FAQ
 
-This page provides frequently asked questions concerning decisions made about Vault feature deprecations. If you are looking for information about Vault licensing, refer to the [Licensing FAQ](/vault/docs/enterprise/license/faq) page. Pleaser refer to the [Feature Deprecation Notice and Plans](/vault/docs/deprecation) document for up-to-date information on Vault feature deprecations and notice.
+This page provides frequently asked questions concerning decisions made about Vault feature deprecations. Please refer to the [Feature Deprecation Notice and Plans](/vault/docs/deprecation) document for up-to-date information on Vault feature deprecations and notice.
 
-- [Q: What is the impact on anyone using the legacy MFA feature?](#q-what-is-the-impact-on-anyone-using-the-legacy-mfa-feature)
 - [Q: I'm currently using the Etcd storage backend feature. How does the deprecation impact me?](#q-i-m-currently-using-the-etcd-storage-backend-feature-how-does-the-deprecation-impact-me)
 - [Q: What should I do if I use Mount Filters, AppID, or any of the standalone DB engines?](#q-what-should-i-do-if-i-use-mount-filters-appid-or-any-of-the-standalone-db-engines)
 - [Q: What is the impact of removing support for X.509 certificates with signatures that use SHA-1?](#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
 - [Q: What are the phases of deprecation?](#q-what-are-the-phases-of-deprecation)
 
-### Q: what is the impact on anyone using the legacy MFA feature?
-
-If you are an Enterprise Vault user, there is no impact. There are no changes to the Enterprise MFA offering.
-
-If you use Vault Community Edition and use the legacy MFA, this will impact you since we plan to deprecate the legacy MFA feature. However, while we will continue to provide support for MFA in Vault Community Edition in the upcoming Vault 1.10 release, our target is to remove the legacy MFA feature from the product in the following Vault 1.11 release. Therefore, you should plan to migrate to the new MFA feature when Vault Community Edition supports it.
-
 ### Q: i'm currently using the etcd storage backend feature. how does the deprecation impact me?
 
 The Etcd v2 has been deprecated with the release of Etcd v3.5 and will be decommissioned by Etcd v3.6. Etcd v2 API will be removed in Vault 1.10. The Etcd storage backend users should migrate Vault storage to an Etcd V3 cluster before upgrading to Vault 1.10. We recommend that you back up all storage migrations before upgrading.
-
-If you are an Enterprise user, we recommend that you consider migrating to HashiCorp supported storage backends: **Integrated Storage** or **Consul** (if your use case requires you to use this). Your HashiCorp sales or support representative can assist you with this decision.
 
 ### Q: what should i do if i use mount filters, AppID, or any of the standalone DB engines?
 

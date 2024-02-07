@@ -8,8 +8,7 @@ description: >-
 # Availability telemetry
 
 Availability telemetry provides information about standby and active nodes in
-your Vault instance. Enterprise installations also include
-[replication](/vault/docs/enterprise/replication) metrics.
+your OpenBao instance.
 
 ## Default metrics
 
@@ -64,93 +63,3 @@ your Vault instance. Enterprise installations also include
 @include 'telemetry-metrics/vault/logshipper/streamwals/missing_guard.mdx'
 
 @include 'telemetry-metrics/vault/logshipper/streamwals/scanned_entries.mdx'
-
-## Replication metrics <EnterpriseAlert product="vault" inline />
-
-@include 'telemetry-metrics/replication-note.mdx'
-
-@include 'telemetry-metrics/vault/replication/fetchremotekeys.mdx'
-
-@include 'telemetry-metrics/vault/replication/fsm/last_remote_wal.mdx'
-
-@include 'telemetry-metrics/vault/replication/merkle/commit_index.mdx'
-
-@include 'telemetry-metrics/vault/replication/merklediff.mdx'
-
-@include 'telemetry-metrics/vault/replication/merklesync.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/conflicting_pages.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/create_token_register_auth_lease.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/fetch_keys.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/forward.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/guard_hash.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/persist_alias.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/register_auth.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/register_lease.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/save_mfa_response_auth.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/stream_wals.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/sub_page_hashes.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/sync_counter.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/upsert_group.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/client/wrap_in_cubbyhole.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/dr/server/echo.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/dr/server/fetch_keys_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/auth_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/bootstrap_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/conflicting_pages_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/echo.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/forwarding_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/guard_hash_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/persist_alias_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/persist_persona_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/save_mfa_response_auth.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/stream_wals_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/sub_page_hashes_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/sync_counter_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/server/upsert_group_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/standby/server/create_token_register_auth_lease_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/standby/server/echo.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/standby/server/register_auth_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/standby/server/register_lease_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/rpc/standby/server/wrap_token_request.mdx'
-
-@include 'telemetry-metrics/vault/replication/wal/gc.mdx'
-
-@include 'telemetry-metrics/vault/replication/wal/last_dr_wal.mdx'
-
-@include 'telemetry-metrics/vault/replication/wal/last_performance_wal.mdx'
-
-@include 'telemetry-metrics/vault/replication/wal/last_wal.mdx'

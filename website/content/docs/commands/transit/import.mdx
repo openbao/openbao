@@ -25,29 +25,29 @@ endpoints (either `transit/keys/:name/import` or
 Imports a 2048-bit RSA key as a new key:
 
 ```
-$ vault transit import transit/keys/test-key @test-key type=rsa-2048
+$ bao transit import transit/keys/test-key @test-key type=rsa-2048
 Retrieving transit wrapping key.
 Wrapping source key with ephemeral key.
 Encrypting ephemeral key with transit wrapping key.
-Submitting wrapped key to Vault transit.
+Submitting wrapped key to OpenBao transit.
 Success!
 ```
 
 Imports a new version of an existing key:
 
 ```
-$ vault transit import-version transit/keys/test-key @test-key-updated
+$ bao transit import-version transit/keys/test-key @test-key-updated
 Retrieving transit wrapping key.
 Wrapping source key with ephemeral key.
 Encrypting ephemeral key with transit wrapping key.
-Submitting wrapped key to Vault transit.
+Submitting wrapped key to OpenBao transit.
 Success!
 ```
 
 ## Usage
 
-This command does not have any unique flags and respects core Vault CLI
-commands. See `vault transit import -help` for more information.
+This command does not have any unique flags and respects core OpenBao CLI
+commands. See `bao transit import -help` for more information.
 
 This command requires two positional arguments:
 

@@ -14,10 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sectorbob/mlab-ns2/gae/ns/digest"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/helper/testhelpers/mongodb"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/framework"
@@ -27,9 +25,6 @@ import (
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/queue"
 	"github.com/stretchr/testify/mock"
-	mongodbatlasapi "go.mongodb.org/atlas/mongodbatlas"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -708,68 +703,6 @@ func TestBackend_StaticRole_Rotations_PostgreSQL(t *testing.T) {
 	})
 }
 
-func TestBackend_StaticRole_Rotations_MongoDB(t *testing.T) {
-	cleanup, connURL := mongodb.PrepareTestContainerWithDatabase(t, "5.0.10", "vaulttestdb")
-	defer cleanup()
-
-	uc := userCreator(func(t *testing.T, username, password string) {
-		testCreateDBUser(t, connURL, "vaulttestdb", username, password)
-	})
-	testBackend_StaticRole_Rotations(t, uc, map[string]interface{}{
-		"connection_url": connURL,
-		"plugin_name":    "mongodb-database-plugin",
-	})
-}
-
-func TestBackend_StaticRole_Rotations_MongoDBAtlas(t *testing.T) {
-	// To get the project ID, connect to cloud.mongodb.com, go to the vault-test project and
-	// look at Project Settings.
-	projID := os.Getenv("VAULT_MONGODBATLAS_PROJECT_ID")
-	// For the private and public key, go to Organization Access Manager on cloud.mongodb.com,
-	// choose Create API Key, then create one using the defaults.  Then go back to the vault-test
-	// project and add the API key to it, with permissions "Project Owner".
-	privKey := os.Getenv("VAULT_MONGODBATLAS_PRIVATE_KEY")
-	pubKey := os.Getenv("VAULT_MONGODBATLAS_PUBLIC_KEY")
-	if projID == "" {
-		t.Logf("Skipping MongoDB Atlas test because VAULT_MONGODBATLAS_PROJECT_ID not set")
-		t.SkipNow()
-	}
-
-	transport := digest.NewTransport(pubKey, privKey)
-	cl, err := transport.Client()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	api, err := mongodbatlasapi.New(cl)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	uc := userCreator(func(t *testing.T, username, password string) {
-		// Delete the user in case it's still there from an earlier run, ignore
-		// errors in case it's not.
-		_, _ = api.DatabaseUsers.Delete(context.Background(), "admin", projID, username)
-
-		req := &mongodbatlasapi.DatabaseUser{
-			Username:     username,
-			Password:     password,
-			DatabaseName: "admin",
-			Roles:        []mongodbatlasapi.Role{{RoleName: "atlasAdmin", DatabaseName: "admin"}},
-		}
-		_, _, err := api.DatabaseUsers.Create(context.Background(), projID, req)
-		if err != nil {
-			t.Fatal(err)
-		}
-	})
-	testBackend_StaticRole_Rotations(t, uc, map[string]interface{}{
-		"plugin_name": "mongodbatlas-database-plugin",
-		"project_id":  projID,
-		"private_key": privKey,
-		"public_key":  pubKey,
-	})
-}
-
 func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts map[string]interface{}) {
 	// We need to set this value for the plugin to run, but it doesn't matter what we set it to.
 	oldToken := os.Getenv(pluginutil.PluginUnwrapTokenEnv)
@@ -917,24 +850,6 @@ func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts
 	}
 	if !pass {
 		t.Fatalf("password rotations did not match expected: %#v", pws)
-	}
-}
-
-func testCreateDBUser(t testing.TB, connURL, db, username, password string) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(connURL))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	createUserCmd := &createUserCommand{
-		Username: username,
-		Password: password,
-		Roles:    []interface{}{},
-	}
-	result := client.Database(db).RunCommand(ctx, createUserCmd, nil)
-	if result.Err() != nil {
-		t.Fatal(result.Err())
 	}
 }
 

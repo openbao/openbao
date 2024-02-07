@@ -16,14 +16,14 @@ underlying secret.
 Revoke a lease:
 
 ```shell-session
-$ vault lease revoke database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
+$ bao lease revoke database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
 Success! Revoked lease: database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
 ```
 
 Revoke a lease which starts with a prefix:
 
 ```shell-session
-$ vault lease revoke -prefix database/creds
+$ bao lease revoke -prefix database/creds
 Success! Revoked any leases with prefix: database/creds
 ```
 
@@ -32,7 +32,7 @@ Success! Revoked any leases with prefix: database/creds
 The following flags are available in addition to the [standard set of
 flags](/vault/docs/commands) included on all commands.
 
-- `-force` `(bool: false)` - Delete the lease from Vault even if the secret
+- `-force` `(bool: false)` - Delete the lease from OpenBao even if the secret
   engine revocation fails. This is meant for recovery situations where the
   secret in the target secrets engine was manually removed. If this flag is
   specified, -prefix is also required. This is aliased as "-f". The default is

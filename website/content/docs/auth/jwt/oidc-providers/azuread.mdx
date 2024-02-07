@@ -16,10 +16,10 @@ Reference: [Azure Active Directory v2.0 and the OpenID Connect protocol](https:/
 
 1. Go to **Azure Active Directory** and
    [register an application](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app)
-   for Vault.
+   for OpenBao.
 
 1. Add Redirect URIs with the "Web" type. You may include two redirect URIs,
-   one for CLI access another one for Vault UI access.
+   one for CLI access another one for OpenBao UI access.
 
     - `http://localhost:8250/oidc/callback`
     - `https://hostname:port_number/ui/vault/auth/oidc/oidc/callback`
@@ -32,29 +32,29 @@ Reference: [Azure Active Directory v2.0 and the OpenID Connect protocol](https:/
 
 1. Under **Certificates & secrets**,
    [add a client secret](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-register-app#add-a-client-secret)
-   Record the secret's value as you will need it as the `oidc_client_secret` for Vault.
+   Record the secret's value as you will need it as the `oidc_client_secret` for OpenBao.
 
-### Connect AD group with Vault external group
+### Connect AD group with OpenBao external group
 
 Reference: [Azure Active Directory with OIDC Auth Method and External Groups](/vault/tutorials/auth-methods/oidc-auth-azure)
 
-To connect the AD group with a [Vault external groups](/vault/docs/secrets/identity#external-vs-internal-groups),
+To connect the AD group with a [OpenBao external groups](/vault/docs/secrets/identity#external-vs-internal-groups),
 you will need
 [Azure AD v2.0 endpoints](https://docs.microsoft.com/en-gb/azure/active-directory/develop/azure-ad-endpoint-comparison).
-You should set up a [Vault policy](/vault/tutorials/policies/policies) for the Azure AD group to use.
+You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the Azure AD group to use.
 
-1. Go to **Azure Active Directory** and choose your Vault application.
+1. Go to **Azure Active Directory** and choose your OpenBao application.
 
 1. Go to **Token configuration** and **Add groups claim**. Select "All" or "SecurityGroup" based on
    [which groups for a user](https://docs.microsoft.com/en-us/azure/active-directory/hybrid/how-to-connect-fed-group-claims)
    you want returned in the claim.
 
-1. In Vault, enable the OIDC auth method.
+1. In OpenBao, enable the OIDC auth method.
 
 1. Configure the OIDC auth method with the `oidc_client_id` (application ID), `oidc_client_secret`
    (client secret), and `oidc_discovery_url` (endpoint URL) you recorded from Azure.
    ```shell
-   vault write auth/oidc/config \
+   bao write auth/oidc/config \
       oidc_client_id="your_client_id" \
       oidc_client_secret="your_client_secret" \
       default_role="your_default_role" \
@@ -66,12 +66,12 @@ You should set up a [Vault policy](/vault/tutorials/policies/policies) for the A
    - `user_claim` should be `"sub"` or `"oid"` following the
    [recommendation](https://docs.microsoft.com/en-us/azure/active-directory/develop/id-tokens#using-claims-to-reliably-identify-a-user-subject-and-object-id)
   from Azure.
-   - `allowed_redirect_uris` should be the two redirect URIs for Vault CLI and UI access.
+   - `allowed_redirect_uris` should be the two redirect URIs for OpenBao CLI and UI access.
    - `groups_claim` should be set to `"groups"`.
    - `oidc_scopes` should be set to `"https://graph.microsoft.com/.default"`.
    
    ```shell
-   vault write auth/oidc/role/your_default_role \
+   bao write auth/oidc/role/your_default_role \
       user_claim="sub" \
       allowed_redirect_uris="http://localhost:8250/oidc/callback,https://online_version_hostname:port_number/ui/vault/auth/oidc/oidc/callback"  \
       groups_claim="groups" \
@@ -79,22 +79,22 @@ You should set up a [Vault policy](/vault/tutorials/policies/policies) for the A
       policies=default
    ```
 
-1. In Vault, create the [external group](/vault/api-docs/secret/identity/group).
+1. In OpenBao, create the [external group](/vault/api-docs/secret/identity/group).
    Record the group ID as you will need it for the group alias.
 
-1. From Vault, retrieve the [OIDC accessor ID](/vault/api-docs/system/auth#list-auth-methods)
+1. From OpenBao, retrieve the [OIDC accessor ID](/vault/api-docs/system/auth#list-auth-methods)
    from the OIDC auth method as you will need it for the group alias's `mount_accessor`.
 
-1. Go to the Azure AD Group you want to attach to Vault's external group. Record the `objectId`
-   as you will need it as the group alias name in Vault.
+1. Go to the Azure AD Group you want to attach to OpenBao's external group. Record the `objectId`
+   as you will need it as the group alias name in OpenBao.
 
-1. In Vault, create a [group alias](/vault/api-docs/secret/identity/group-alias)
+1. In OpenBao, create a [group alias](/vault/api-docs/secret/identity/group-alias)
    for the external group and set the `objectId` as the group alias name.
    ```shell
-   vault write identity/group-alias \
+   bao write identity/group-alias \
       name="your_ad_group_object_id" \
-      mount_accessor="vault_oidc_accessor_id" \
-      canonical_id="vault_external_group_id"
+      mount_accessor="openbao_oidc_accessor_id" \
+      canonical_id="openbao_external_group_id"
    ```
 
 ### Optional azure-specific configuration
@@ -116,7 +116,7 @@ send `_claim_names` and `_claim_sources`. For example, returned claims might loo
 ```
 
 The OIDC auth method role can be configured to include the user ID in the endpoint URL,
-which will be used by Vault to retrieve the groups for the user. Additional API permissions
+which will be used by OpenBao to retrieve the groups for the user. Additional API permissions
 must be added to the Azure app in order to request the additional groups from the Microsoft
 Graph API.
 
@@ -129,9 +129,9 @@ To set the proper permissions on the Azure app:
 1. Select "Delegated permissions"
 1. Add the [User.Read](https://learn.microsoft.com/en-us/graph/permissions-reference#delegated-permissions-93) permission
 1. Check the "Grant admin consent for Default Directory" checkbox
-1. Configure the OIDC auth method in Vault by setting `"provider_config"` to Azure.
+1. Configure the OIDC auth method in OpenBao by setting `"provider_config"` to Azure.
    ```shell
-   vault write auth/oidc/config -<<"EOH"
+   bao write auth/oidc/config -<<"EOH"
    {
      "oidc_client_id": "your_client_id",
      "oidc_client_secret": "your_client_secret",
@@ -146,7 +146,7 @@ To set the proper permissions on the Azure app:
 
 1. Add `"profile"` to `oidc_scopes` so the user's ID comes back on the JWT.
    ```shell
-   vault write auth/oidc/role/your_default_role \
+   bao write auth/oidc/role/your_default_role \
     user_claim="email" \
     allowed_redirect_uris="http://localhost:8250/oidc/callback,https://online_version_hostname:port_number/ui/vault/auth/oidc/oidc/callback"  \
     groups_claim="groups" \

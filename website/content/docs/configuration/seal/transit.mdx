@@ -1,41 +1,29 @@
 ---
 layout: docs
-page_title: Vault Transit - Seals - Configuration
+page_title: OpenBao Transit - Seals - Configuration
 description: |-
-  The Transit seal configures Vault to use Vault's Transit Secret Engine as the
+  The Transit seal configures OpenBao to use OpenBao's Transit Secret Engine as the
   autoseal mechanism.
 ---
 
 # `transit` seal
 
 
-<Note title="Seal wrap functionality requires Vault Enterprise">
-
-  All Vault versions support **auto-unseal** for Transit, but **seal wrapping**
-  requires Vault Enterprise.
-  
-  Vault Enterprise enables seal wrapping by default, which means the KMS service
-  must be available at runtime and not just during the unseal process. Refer to
-  the [Seal wrap](/vault/docs/enterprise/sealwrap) overview for more
-  information.
-
-</Note>
-
-The Transit seal configures Vault to use Vault's Transit Secret Engine as the
+The Transit seal configures OpenBao to use OpenBao's Transit Secret Engine as the
 autoseal mechanism.
 The Transit seal is activated by one of the following:
 
-- The presence of a `seal "transit"` block in Vault's configuration file
+- The presence of a `seal "transit"` block in OpenBao's configuration file
 - The presence of the environment variable `VAULT_SEAL_TYPE` set to `transit`.
 
 ## `transit` example
 
-This example shows configuring Transit seal through the Vault configuration file
+This example shows configuring Transit seal through the OpenBao configuration file
 by providing all the required values:
 
 ```hcl
 seal "transit" {
-  address            = "https://vault:8200"
+  address            = "https://openbao:8200"
   token              = "s.Qf1s5zigZ4OX6akYjQXJC1jY"
   disable_renewal    = "false"
 
@@ -45,22 +33,22 @@ seal "transit" {
   namespace          = "ns1/"
 
   // TLS Configuration
-  tls_ca_cert        = "/etc/vault/ca_cert.pem"
-  tls_client_cert    = "/etc/vault/client_cert.pem"
-  tls_client_key     = "/etc/vault/ca_cert.pem"
-  tls_server_name    = "vault"
+  tls_ca_cert        = "/etc/openbao/ca_cert.pem"
+  tls_client_cert    = "/etc/openbao/client_cert.pem"
+  tls_client_key     = "/etc/openbao/ca_cert.pem"
+  tls_server_name    = "openbao"
   tls_skip_verify    = "false"
 }
 ```
 
 ## `transit` parameters
 
-These parameters apply to the `seal` stanza in the Vault configuration file:
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
-- `address` `(string: <required>)`: The full address to the Vault cluster.
+- `address` `(string: <required>)`: The full address to the OpenBao cluster.
   This may also be specified by the `VAULT_ADDR` environment variable.
 
-- `token` `(string: <required>)`: The Vault token to use. This may also be
+- `token` `(string: <required>)`: The OpenBao token to use. This may also be
   specified by the `VAULT_TOKEN` environment variable.
 
 - `key_name` `(string: <required>)`: The transit key to use for encryption and
@@ -76,31 +64,31 @@ These parameters apply to the `seal` stanza in the Vault configuration file:
 
 - `disable_renewal` `(string: "false")`: Disables the automatic renewal of the token
   in case the lifecycle of the token is managed with some other mechanism outside of
-  Vault, such as Vault Agent. This may also be specified using the
+  OpenBao, such as OpenBao Agent. This may also be specified using the
   `VAULT_TRANSIT_SEAL_DISABLE_RENEWAL` environment variable.
 
 - `tls_ca_cert` `(string: "")`: Specifies the path to the CA certificate file used
-  for communication with the Vault server. This may also be specified using the
+  for communication with the OpenBao server. This may also be specified using the
   `VAULT_CACERT` environment variable.
 
 - `tls_client_cert` `(string: "")`: Specifies the path to the client certificate
-  for communication with the Vault server. This may also be specified using the
+  for communication with the OpenBao server. This may also be specified using the
   `VAULT_CLIENT_CERT` environment variable.
 
 - `tls_client_key` `(string: "")`: Specifies the path to the private key for
-  communication with the Vault server. This may also be specified using the
+  communication with the OpenBao server. This may also be specified using the
   `VAULT_CLIENT_KEY` environment variable.
 
 - `tls_server_name` `(string: "")`: Name to use as the SNI host when connecting
-  to the Vault server via TLS. This may also be specified via the
+  to the OpenBao server via TLS. This may also be specified via the
   `VAULT_TLS_SERVER_NAME` environment variable.
 
 - `tls_skip_verify` `(bool: "false")`: Disable verification of TLS certificates.
   Using this option is highly discouraged and decreases the security of data
-  transmissions to and from the Vault server. This may also be specified using the
+  transmissions to and from the OpenBao server. This may also be specified using the
   `VAULT_SKIP_VERIFY` environment variable.
 
-- `disabled` `(string: "")`: Set this to `true` if Vault is migrating from an auto seal configuration. Otherwise, set to `false`.
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
 Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
@@ -113,7 +101,7 @@ variables or as configuration parameters.
 `VAULT_TOKEN` as part of the seal's parameters, it is _strongly_ recommended
 to set these values via environment variables.
 
-The Vault token used to authenticate needs the following permissions on the
+The OpenBao token used to authenticate needs the following permissions on the
 transit key:
 
 ```hcl
@@ -141,4 +129,4 @@ used to decrypt older data.
 ## Tutorial
 
 Refer to the [Auto-unseal using Transit Secrets Engine](/vault/tutorials/auto-unseal/autounseal-transit)
-tutorial to learn how use the transit secrets engine to automatically unseal Vault.
+tutorial to learn how use the transit secrets engine to automatically unseal OpenBao.

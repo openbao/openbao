@@ -49,13 +49,14 @@ func Test_RegistryGet(t *testing.T) {
 			want:       toFunc(credUserpass.Factory),
 			wantOk:     true,
 		},
-		{
+		// The app-id plugin has been fully removed from OpenBao.
+		/*{
 			name:       "removed builtin lookup",
 			builtin:    "app-id",
 			pluginType: consts.PluginTypeCredential,
 			want:       nil,
 			wantOk:     true,
-		},
+		},*/
 		{
 			name:       "known builtin lookup",
 			builtin:    "mysql-database-plugin",
@@ -97,17 +98,17 @@ func Test_RegistryKeyCounts(t *testing.T) {
 		{
 			name:       "number of auth plugins",
 			pluginType: consts.PluginTypeCredential,
-			want:       19,
+			want:       9,
 		},
 		{
 			name:       "number of database plugins",
 			pluginType: consts.PluginTypeDatabase,
-			want:       17,
+			want:       8,
 		},
 		{
 			name:       "number of secrets plugins",
 			pluginType: consts.PluginTypeSecrets,
-			want:       19,
+			want:       9,
 		},
 	}
 	for _, tt := range tests {
@@ -200,20 +201,22 @@ func Test_RegistryStatus(t *testing.T) {
 			want:       consts.Supported,
 			wantOk:     true,
 		},
-		{
+		// The only deprecated plugin has been removed.
+		/*{
 			name:       "deprecated builtin lookup",
 			builtin:    "pcf",
 			pluginType: consts.PluginTypeCredential,
 			want:       consts.Deprecated,
 			wantOk:     true,
-		},
-		{
+		},*/
+		// The app-id plugin has been fully removed from OpenBao.
+		/*{
 			name:       "removed builtin lookup",
 			builtin:    "app-id",
 			pluginType: consts.PluginTypeCredential,
 			want:       consts.Removed,
 			wantOk:     true,
-		},
+		},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

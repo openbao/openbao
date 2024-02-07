@@ -2,17 +2,17 @@
 layout: docs
 page_title: Consul - Storage Backends - Configuration
 description: |-
-  The Consul storage backend is used to persist Vault's data in Consul's
+  The Consul storage backend is used to persist OpenBao's data in Consul's
   key-value store. In addition to providing durable storage, inclusion of this
-  backend will also register Vault as a service in Consul with a default health
+  backend will also register OpenBao as a service in Consul with a default health
   check.
 ---
 
 # Consul storage backend
 
-The Consul storage backend is used to persist Vault's data in [Consul's][consul]
+The Consul storage backend is used to persist OpenBao's data in [Consul's][consul]
 key-value store. In addition to providing durable storage, inclusion of this
-backend will also register Vault as a service in Consul with a default health
+backend will also register OpenBao as a service in Consul with a default health
 check.
 
 @include 'consul-dataplane-compat.mdx'
@@ -25,33 +25,33 @@ check.
 ```hcl
 storage "consul" {
   address = "127.0.0.1:8500"
-  path    = "vault/"
+  path    = "openbao/"
 }
 ```
 
-Once properly configured, an unsealed Vault installation should be available and
+Once properly configured, an unsealed OpenBao installation should be available and
 accessible at:
 
 ```text
-active.vault.service.consul
+active.openbao.service.consul
 ```
 
-Unsealed Vault instances in standby mode are available at:
+Unsealed OpenBao instances in standby mode are available at:
 
 ```text
-standby.vault.service.consul
+standby.openbao.service.consul
 ```
 
-All unsealed Vault instances are available as healthy at:
+All unsealed OpenBao instances are available as healthy at:
 
 ```text
-vault.service.consul
+openbao.service.consul
 ```
 
-Sealed Vault instances will mark themselves as unhealthy to avoid being returned
+Sealed OpenBao instances will mark themselves as unhealthy to avoid being returned
 at Consul's service discovery layer.
 
-Note that if you have configured multiple listeners for Vault, you must specify
+Note that if you have configured multiple listeners for OpenBao, you must specify
 which one Consul should advertise to the cluster using [`api_addr`][api-addr]
 and [`cluster_addr`][cluster-addr] ([example][listener-example]).
 
@@ -70,7 +70,7 @@ and [`cluster_addr`][cluster-addr] ([example][listener-example]).
   [consistency mode][consul-consistency]. Possible values are `"default"` or
   `"strong"`.
 
-- `disable_registration` `(string: "false")` – Specifies whether Vault should
+- `disable_registration` `(string: "false")` – Specifies whether OpenBao should
   register itself with Consul.
 
 - `max_parallel` `(string: "128")` – Specifies the maximum number of concurrent
@@ -78,22 +78,22 @@ and [`cluster_addr`][cluster-addr] ([example][listener-example]).
   support this level of parallelism, see
   [http_max_conns_per_client](/consul/docs/agent/config/config-files#http_max_conns_per_client).
 
-- `path` `(string: "vault/")` – Specifies the path in Consul's key-value store
-  where Vault data will be stored.
+- `path` `(string: "openbao/")` – Specifies the path in Consul's key-value store
+  where OpenBao data will be stored.
 
 - `scheme` `(string: "http")` – Specifies the scheme to use when communicating
   with Consul. This can be set to "http" or "https". It is highly recommended
   you communicate with Consul over https over non-local connections. When
   communicating over a unix socket, this option is ignored.
 
-- `service` `(string: "vault")` – Specifies the name of the service to register
+- `service` `(string: "openbao")` – Specifies the name of the service to register
   in Consul.
 
 - `service_tags` `(string: "")` – Specifies a comma-separated list of tags to
   attach to the service registration in Consul.
 
 - `service_address` `(string: nil)` – Specifies a service-specific address to
-  set on the service registration in Consul. If unset, Vault will use what it
+  set on the service registration in Consul. If unset, OpenBao will use what it
   knows to be the HA redirect address - which is usually desirable. Setting
   this parameter to `""` will tell Consul to leverage the configuration of the
   node the service is registered on dynamically. This could be beneficial if
@@ -102,7 +102,7 @@ and [`cluster_addr`][cluster-addr] ([example][listener-example]).
 
 - `token` `(string: "")` – Specifies the [Consul ACL token][consul-acl] with
   permission to read and write from the `path` in Consul's key-value store.
-  This is **not** a Vault token. This can also be provided via the environment
+  This is **not** a OpenBao token. This can also be provided via the environment
   variable [`CONSUL_HTTP_TOKEN`][consul-token]. See the ACL section below for help.
 
 - `session_ttl` `(string: "15s")` - Specifies the minimum allowed [session
@@ -145,17 +145,17 @@ connection. You can read more about encrypting Consul connections on the
 
 If using ACLs in Consul, you'll need appropriate permissions. For Consul 0.8,
 the following will work for most use-cases, assuming that your service name is
-`vault` and the prefix being used is `vault/`:
+`openbao` and the prefix being used is `openbao/`:
 
 ```json
 {
   "key": {
-    "vault/": {
+    "openbao/": {
       "policy": "write"
     }
   },
   "service": {
-    "vault": {
+    "openbao": {
       "policy": "write"
     }
   },
@@ -178,12 +178,12 @@ language:
 ```json
 {
   "key_prefix": {
-    "vault/": {
+    "openbao/": {
       "policy": "write"
     }
   },
   "service": {
-    "vault": {
+    "openbao": {
       "policy": "write"
     }
   },
@@ -231,7 +231,7 @@ configured to use ACLs.
 
 ```hcl
 storage "consul" {
-  path = "vault/"
+  path = "openbao/"
 }
 ```
 
@@ -253,9 +253,9 @@ communicate with Consul over TLS.
 ```hcl
 storage "consul" {
   scheme        = "https"
-  tls_ca_file   = "/etc/pem/vault.ca"
-  tls_cert_file = "/etc/pem/vault.cert"
-  tls_key_file  = "/etc/pem/vault.key"
+  tls_ca_file   = "/etc/pem/openbao.ca"
+  tls_cert_file = "/etc/pem/openbao.cert"
+  tls_key_file  = "/etc/pem/openbao.key"
 }
 ```
 

@@ -1245,14 +1245,6 @@ func (b *SystemBackend) rekeyPaths() []*framework.Path {
 									Type:     framework.TypeString,
 									Required: false,
 								},
-								"hcp_link_status": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"hcp_link_resource_ID": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
 							},
 						}},
 					},
@@ -1402,14 +1394,6 @@ func (b *SystemBackend) statusPaths() []*framework.Path {
 									Required: true,
 								},
 								"storage_type": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"hcp_link_status": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"hcp_link_resource_ID": {
 									Type:     framework.TypeString,
 									Required: false,
 								},
@@ -2339,6 +2323,8 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 						http.StatusOK: {{
 							Description: "OK",
 							Fields: map[string]*framework.FieldSchema{
+								// XXX: additional fields in SystemBackend.mountInfo are
+								// missing from this schema declaration.
 								"type": {
 									Type:     framework.TypeString,
 									Required: true,
@@ -2390,6 +2376,10 @@ func (b *SystemBackend) internalPaths() []*framework.Path {
 								"config": {
 									Type:     framework.TypeMap,
 									Required: true,
+								},
+								"deprecation_status": {
+									Type:     framework.TypeString,
+									Required: false,
 								},
 							},
 						}},

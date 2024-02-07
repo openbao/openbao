@@ -6,17 +6,13 @@ description: Move secrets and auth mounts within and across namespaces
 
 # Mount migration
 
-Vault supports moving secrets and auth mounts, both within and across namespaces. The operation
+OpenBao supports moving secrets and auth mounts, both within and across namespaces. The operation
 is supported by API endpoints and a CLI helper around them.
 
 ## Why
 
-There can be several reasons for wanting to migrate mounts. In Vault Community Edition, the use cases could be for 
+There can be several reasons for wanting to migrate mounts. In OpenBao, the use cases could be for 
 renaming mounts to align with org standards. 
-There may be more potential for use cases on Enterprise as namespaces come into the picture. 
-When migrating from a Community binary to an Enterprise binary, organizations may want to divide their 
-mounts across several namespaces. Mounts may also be moved across namespaces when there is a reorganization
-of roles and responsibilities.
 
 ## Async behavior
 
@@ -47,16 +43,16 @@ on a database mount or a user on a userpass mount, those will be available at th
 
 ## Cleanup operations
 
-There are two primary cleanup operations that Vault operators will need to keep in mind after performing a remount.
+There are two primary cleanup operations that OpenBao operators will need to keep in mind after performing a remount.
 
 ### Entities and aliases
 
 Any aliases that refer to users on the auth mount could now point to an invalid mount when an auth mount is moved. Pointing to an invalid mount may not be the case for every instance;
 a remount within a namespace will end in the aliases pointing to a valid mount.
 Still, a remount across namespaces will always result in the aliases pointing to an invalid mount. In the latter case,
-the Vault operator should find and remove those aliases from the source namespace, and create equivalent aliases
+the OpenBao operator should find and remove those aliases from the source namespace, and create equivalent aliases
 and entities for the new mount in the target namespace. If new entities and aliases aren't created in the target namespace,
-Vault will dynamically generate them upon login operations.
+OpenBao will dynamically generate them upon login operations.
 
 ### Policies
 
@@ -66,7 +62,7 @@ or a parent of the target namespace, or updated to remove the original mount pat
 Any policies associated with roles on a moved auth mount need to be inspected
 to see if they still refer to valid paths after the remount operation. Say in namespace ns1/, a child of the root namespace, a role on the mount approle/
 has policies granting access to /my-secret. If the mount is moved to another child of the root namespace, say ns2/,
-which does not have a secrets engine called my-secret/, the Vault operator would either create an equivalent my-secret/
+which does not have a secrets engine called my-secret/, the OpenBao operator would either create an equivalent my-secret/
 mount in ns2/, or update the policy to refer to paths valid from the ns2/ namespace.
 
 ## Quotas

@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/term"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
 	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"
@@ -28,14 +28,12 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	physconsul "github.com/openbao/openbao/physical/consul"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	srconsul "github.com/openbao/openbao/serviceregistration/consul"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/diagnose"
-	"github.com/openbao/openbao/vault/hcp_link"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 )
@@ -330,28 +328,6 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 			diagnose.RaftStorageQuorum(ctx, (*backend).(*raft.RaftBackend))
 		}
 
-		// Consul storage checks
-		if config.Storage != nil && config.Storage.Type == storageTypeConsul {
-			diagnose.Test(ctx, "Check Consul TLS", func(ctx context.Context) error {
-				err := physconsul.SetupSecureTLS(ctx, api.DefaultConfig(), config.Storage.Config, server.logger, true)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-
-			diagnose.Test(ctx, "Check Consul Direct Storage Access", func(ctx context.Context) error {
-				dirAccess := diagnose.ConsulDirectAccess(config.Storage.Config)
-				if dirAccess != "" {
-					diagnose.Warn(ctx, dirAccess)
-				}
-				if dirAccess == diagnose.DirAccessErr {
-					diagnose.Advise(ctx, diagnose.DirAccessAdvice)
-				}
-				return nil
-			})
-		}
-
 		// Attempt to use storage backend
 		if !c.skipEndEnd && config.Storage.Type != storageTypeRaft {
 			diagnose.Test(ctx, "Check Storage Access", diagnose.WithTimeout(30*time.Second, func(ctx context.Context) error {
@@ -565,15 +541,6 @@ SEALFAIL:
 			}
 			return nil
 		})
-		if config.HAStorage != nil && config.HAStorage.Type == storageTypeConsul {
-			diagnose.Test(ctx, "Check Consul TLS", func(ctx context.Context) error {
-				err = physconsul.SetupSecureTLS(ctx, api.DefaultConfig(), config.HAStorage.Config, server.logger, true)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		}
 		return nil
 	})
 
@@ -711,48 +678,6 @@ SEALFAIL:
 		}
 		return nil
 	})
-
-	// Checking HCP link to make sure Vault could connect to SCADA.
-	// If it could not connect to SCADA in 5 seconds, diagnose reports an issue
-	if !constants.IsEnterprise {
-		diagnose.Skipped(ctx, "HCP link check will not run on OSS Vault.")
-	} else {
-		if config.HCPLinkConf != nil {
-			// we need to override API and Passthrough capabilities
-			// as they could not be initialized when Vault http handler
-			// is not fully initialized
-			config.HCPLinkConf.EnablePassThroughCapability = false
-			config.HCPLinkConf.EnableAPICapability = false
-
-			diagnose.Test(ctx, "Check HCP Connection", func(ctx context.Context) error {
-				hcpLink, err := hcp_link.NewHCPLink(config.HCPLinkConf, vaultCore, server.logger)
-				if err != nil || hcpLink == nil {
-					return fmt.Errorf("failed to start HCP link, %w", err)
-				}
-
-				// check if a SCADA session is established successfully
-				deadline := time.Now().Add(5 * time.Second)
-				linkSessionStatus := "disconnected"
-				for time.Now().Before(deadline) {
-					linkSessionStatus = hcpLink.GetConnectionStatusMessage(hcpLink.GetScadaSessionStatus())
-					if linkSessionStatus == "connected" {
-						break
-					}
-					time.Sleep(500 * time.Millisecond)
-				}
-				if linkSessionStatus != "connected" {
-					return fmt.Errorf("failed to connect to HCP in 5 seconds. HCP session status is: %s", linkSessionStatus)
-				}
-
-				err = hcpLink.Shutdown()
-				if err != nil {
-					return fmt.Errorf("failed to shutdown HCP link: %w", err)
-				}
-
-				return nil
-			})
-		}
-	}
 
 	return nil
 }

@@ -1,0 +1,46 @@
+# .github/workflows/go-dependency-submission.yml
+name: Go Dependency Submission
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Environment variables to configure Go and Go modules. Customize as necessary
+env:
+  GOPROXY: '' # A Go Proxy server to be used
+  GOPRIVATE: '' # A list of modules are considered private and not requested from GOPROXY
+
+# The API requires write permission on the repository to submit dependencies
+permissions:
+  contents: write
+
+jobs:
+  go-dependency-submission:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Repository Checkout'
+        uses: actions/checkout@v4
+
+      - name: 'Setup Golang'
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.20.0"
+
+      - name: 'Submit Dependencies To GitHub'
+        uses: actions/go-dependency-submission@v2.0.0
+        #with:
+          # GitHub Personal Access Token (PAT). Defaults to PAT provided by Action runner
+          # token: # optional, default is ${{ github.token }}
+          # User provided map of max key/value pairs of metadata to include with the snapshot e.g. {"lastModified": "12-31-2022"}
+          # metadata: # optional
+          # Repo path to the go.mod file used to detect dependencies for the Go build target. Defaults to go.mod in the root of the repository.
+          # go-mod-path: # default is go.mod
+          # Build target to detect build dependencies. If unspecified, will use "all", with will detect all dependencies used in all build targets (including tests and tools).
+          # go-build-target: # default is all

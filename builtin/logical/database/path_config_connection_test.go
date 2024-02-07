@@ -28,8 +28,8 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	}
 	defer b.Cleanup(context.Background())
 
-	const hdb = "hana-database-plugin"
-	hdbBuiltin := versions.GetBuiltinVersion(consts.PluginTypeDatabase, hdb)
+	const mdb = "mysql-database-plugin"
+	mdbBuiltin := versions.GetBuiltinVersion(consts.PluginTypeDatabase, mdb)
 
 	// Configure a connection
 	writePluginVersion := func() {
@@ -40,8 +40,8 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 			Storage:   config.StorageView,
 			Data: map[string]interface{}{
 				"connection_url":    "test",
-				"plugin_name":       hdb,
-				"plugin_version":    hdbBuiltin,
+				"plugin_name":       mdb,
+				"plugin_version":    mdbBuiltin,
 				"verify_connection": false,
 			},
 		}
@@ -75,8 +75,8 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	// Directly store config to get the builtin plugin version into storage,
 	// simulating a write that happened before upgrading to 1.12.2+
 	err = storeConfig(context.Background(), config.StorageView, "plugin-test", &DatabaseConfig{
-		PluginName:    hdb,
-		PluginVersion: hdbBuiltin,
+		PluginName:    mdb,
+		PluginVersion: mdbBuiltin,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,8 +107,8 @@ func TestWriteConfig_PluginVersionInStorage(t *testing.T) {
 	}
 
 	storagePluginVersion := getPluginVersionFromStorage()
-	if storagePluginVersion != hdbBuiltin {
-		t.Fatalf("Expected %s, got: %s", hdbBuiltin, storagePluginVersion)
+	if storagePluginVersion != mdbBuiltin {
+		t.Fatalf("Expected %s, got: %s", mdbBuiltin, storagePluginVersion)
 	}
 
 	// Trigger a write to storage, which should clean up plugin version in the storage entry.

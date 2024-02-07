@@ -21,11 +21,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
+	vaultjwt "github.com/openbao/openbao/builtin/credential/jwt"
 	"github.com/openbao/openbao/command/agent"
 	agentConfig "github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/helper/useragent"

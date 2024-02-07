@@ -1,17 +1,17 @@
 ---
 layout: 'docs'
-page_title: 'Vault Auto-Auth Kerberos Method'
+page_title: 'OpenBao Auto-Auth Kerberos Method'
 sidebar_current: 'docs-agent-and-proxy-autoauth-methods-kerberos'
 description: |-
-  Kerberos Method for Vault Auto-Auth
+  Kerberos Method for OpenBao Auto-Auth
 ---
 
-# Vault Auto-Auth Kerberos method
+# OpenBao Auto-Auth Kerberos method
 
 The `kerberos` auto-auth method provides an automated mechanism to retrieve
-a Vault token for Kerberos entities. It reads in configuration and
+a OpenBao token for Kerberos entities. It reads in configuration and
 identification information from the surrounding environment, and uses
-it to authenticate to Vault.
+it to authenticate to OpenBao.
 
 For more on this auth method, see the [Kerberos auth method](/vault/docs/auth/kerberos).
 
@@ -20,7 +20,7 @@ For more on this auth method, see the [Kerberos auth method](/vault/docs/auth/ke
 - `krb5conf_path` `(string: required)` is the path to a valid `krb5.conf` file describing how to
   communicate with the Kerberos environment.
 - `keytab_path` `(string: required)` is the path to the `keytab` in which the entry lives for the
-  entity authenticating to Vault. Keytab files should be protected from other
+  entity authenticating to OpenBao. Keytab files should be protected from other
   users on a shared server using appropriate file permissions.
 - `username` `(string: required)` is the username for the entry _within_ the `keytab` to use for
   logging into Kerberos. This username must match a service account in LDAP.

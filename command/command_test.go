@@ -13,7 +13,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"

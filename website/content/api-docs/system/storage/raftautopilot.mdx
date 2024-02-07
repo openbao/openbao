@@ -9,8 +9,6 @@ description: |-
 
 # `/sys/storage/raft/autopilot`
 
-@include 'alerts/restricted-root.mdx'
-
 The `/sys/storage/raft/autopilot` endpoints are used to manage raft clusters using autopilot
 with OpenBao's [Integrated Storage backend](/vault/docs/internals/integrated-storage).
 Refer to the [Integrated Storage Autopilot](/vault/tutorials/raft/raft-autopilot) tutorial to learn how to manage raft clusters using autopilot.
@@ -84,83 +82,6 @@ $ curl \
 }
 ```
 
-### Enterprise only
-Vault Enterprise will include additional output in its API response to indicate the current state of redundancy zones,
-automated upgrade progress (if any), and optimistic failure tolerance.
-
-#### Sample response (Enterprise)
-```json
-{
-  "failure_tolerance": 0,
-  "healthy": true,
-  "leader": "openbao_1",
-  "optimistic_failure_tolerance": 3,
-  "redundancy_zones": {
-    "a": {
-      "servers": [
-        "openbao_1",
-        "openbao_2",
-        "openbao_5"
-      ],
-      "voters": [
-        "openbao_1"
-      ],
-      "failure_tolerance": 2
-    },
-    "b": {
-      "servers": [
-        "openbao_3",
-        "openbao_4"
-      ],
-      "voters": [
-        "openbao_3"
-      ],
-      "failure_tolerance": 1
-    }
-  },
-  "upgrade_info": {
-    "other_version_non_voters": [
-      "openbao_2",
-      "openbao_4"
-    ],
-    "other_version_voters": [
-      "openbao_1",
-      "openbao_3"
-    ],
-    "redundancy_zones": {
-      "a": {
-        "target_version_non_voters": [
-          "openbao_5"
-        ],
-        "other_version_voters": [
-          "openbao_1"
-        ],
-        "other_version_non_voters": [
-          "openbao_2"
-        ]
-      },
-      "b": {
-        "other_version_voters": [
-          "openbao_3"
-        ],
-        "other_version_non_voters": [
-          "openbao_4"
-        ]
-      }
-    },
-    "status": "await-new-voters",
-    "target_version": "1.12.0",
-    "target_version_non_voters": [
-      "openbao_5"
-    ]
-  },
-  "voters": [
-    "openbao_1",
-    "openbao_3"
-  ]
-}
-```
-
 ## Get configuration
 
 This endpoint is used to get the configuration of the autopilot subsystem of Integrated Storage.
@@ -186,12 +107,10 @@ $ curl \
   "last_contact_threshold": "10s",
   "max_trailing_logs": 1000,
   "min_quorum": 0,
-  "server_stabilization_time": "10s",
-  "disable_upgrade_migration": true
+  "server_stabilization_time": "10s"
 }
 ```
 
-Note that in the above sample response, `disable_upgrade_migration` is an Enterprise-only field.
 
 ## Set configuration
 
@@ -225,9 +144,6 @@ This endpoint is used to modify the configuration of the autopilot subsystem of 
 - `server_stabilization_time` `(string: "10s")` - Minimum amount of time a server must
   be in a stable, healthy state before it can be added to the cluster.
 
-- `disable_upgrade_migration` `(bool: false)` - Disables automatically upgrading OpenBao using
-  autopilot. (Enterprise-only)
-
 ### Sample request
 
 ```shell-session
@@ -247,9 +163,6 @@ $ curl \
   "dead_server_last_contact_threshold": "24h",
   "max_trailing_logs": "1000",
   "min_quorum": "3",
-  "server_stabilization_time": "10s",
-  "disable_upgrade_migration": true
+  "server_stabilization_time": "10s"
 }
 ```
-
-Note that in the above sample payload, `disable_upgrade_migration` is an Enterprise-only field.

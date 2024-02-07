@@ -3,13 +3,13 @@ layout: docs
 page_title: operator unseal - Command
 description: |-
   The "operator unseal" allows the user to provide a portion of the root key
-  to unseal a Vault server.
+  to unseal a OpenBao server.
 ---
 
 # operator unseal
 
 The `operator unseal` allows the user to provide a portion of the root key to
-unseal a Vault server. Vault starts in a sealed state. It cannot perform
+unseal a OpenBao server. OpenBao starts in a sealed state. It cannot perform
 operations until it is unsealed. This command accepts a portion of the master
 key (an "unseal key").
 
@@ -17,13 +17,13 @@ The unseal key can be supplied as an argument to the command, but this is
 not recommended as the unseal key will be available in your history:
 
 ```shell-session
-$ vault operator unseal IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
+$ bao operator unseal IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 ```
 
 Instead, run the command with no arguments and it will prompt for the key:
 
 ```shell-session
-$ vault operator unseal
+$ bao operator unseal
 Key (will be hidden): IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 ```
 
@@ -35,7 +35,7 @@ page](/vault/docs/concepts/seal).
 Provide an unseal key:
 
 ```shell-session
-$ vault operator unseal
+$ bao operator unseal
 Key (will be hidden):
 Sealed: false
 Key Shares: 1

@@ -255,7 +255,7 @@ func WaitForPerfReplicationWorking(ctx context.Context, pri, sec VaultCluster) e
 		"bar": 1,
 	})
 	if err != nil {
-		return fmt.Errorf("unable to write KV on primary", "path", path)
+		return fmt.Errorf("unable to write KV on primary: path=%v", path)
 	}
 
 	for ctx.Err() == nil {

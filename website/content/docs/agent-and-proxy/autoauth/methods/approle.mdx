@@ -1,10 +1,10 @@
 ---
 layout: docs
-page_title: Vault Auto-Auth AppRole Method
-description: AppRole Method for Vault Auto-Auth
+page_title: OpenBao Auto-Auth AppRole Method
+description: AppRole Method for OpenBao Auto-Auth
 ---
 
-# Vault Auto-Auth AppRole method
+# OpenBao Auto-Auth AppRole method
 
 The `approle` method reads in a role ID and a secret ID from files and sends
 the values to the [AppRole Auth
@@ -24,7 +24,7 @@ cached.
   ID.
   If not set, only the `role-id` will be used.
   In that case, the AppRole should have `bind_secret_id` set to `false` otherwise
-  Vault Agent wouldn't be able to login.
+  OpenBao Agent wouldn't be able to login.
 
 - `remove_secret_id_file_after_reading` `(bool: optional, defaults to true)` -
   This can be set to `false` to disable the default behavior of removing the
@@ -87,12 +87,12 @@ listener "tcp" {
 }
 
 template {
-  source      = "/etc/vault/server.key.ctmpl"
-  destination = "/etc/vault/server.key"
+  source      = "/etc/openbao/server.key.ctmpl"
+  destination = "/etc/openbao/server.key"
 }
 
 template {
-  source      = "/etc/vault/server.crt.ctmpl"
-  destination = "/etc/vault/server.crt"
+  source      = "/etc/openbao/server.crt.ctmpl"
+  destination = "/etc/openbao/server.crt"
 }
 ```

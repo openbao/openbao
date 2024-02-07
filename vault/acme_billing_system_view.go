@@ -14,7 +14,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/logical"
 
-	"github.com/hashicorp/go-kms-wrapping/entropy/v2"
+	"github.com/openbao/go-kms-wrapping/entropy/v2"
 )
 
 // See comment in command/format.go

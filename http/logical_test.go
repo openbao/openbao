@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/api"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"

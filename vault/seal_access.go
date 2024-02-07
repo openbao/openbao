@@ -6,7 +6,7 @@ package vault
 import (
 	"context"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
 	"github.com/openbao/openbao/vault/seal"
 )

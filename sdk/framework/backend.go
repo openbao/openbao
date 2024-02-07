@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-kms-wrapping/entropy/v2"
+	"github.com/openbao/go-kms-wrapping/entropy/v2"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/hashicorp/errwrap"

@@ -6,8 +6,6 @@ description: The `/sys/health` endpoint is used to check the health status of Op
 
 # `/sys/health`
 
-@include 'alerts/restricted-root.mdx'
-
 The `/sys/health` endpoint is used to check the health status of OpenBao.
 
 ## Read health information
@@ -25,8 +23,6 @@ The default status codes are:
 
 - `200` if initialized, unsealed, and active
 - `429` if unsealed and standby
-- `472` if disaster recovery mode replication secondary and active
-- `473` if performance standby
 - `501` if not initialized
 - `503` if sealed
 
@@ -35,24 +31,13 @@ The default status codes are:
 - `standbyok` `(bool: false)` – Specifies if being a standby should still return
   the active status code instead of the standby status code. This is useful when
   OpenBao is behind a non-configurable load balancer that just wants a 200-level
-  response. This will not apply if the node is a performance standby.
-
-- `perfstandbyok` `(bool: false)` – Specifies if being a performance standby should
-  still return the active status code instead of the performance standby status code.
-  This is useful when OpenBao is behind a non-configurable load balancer that just wants
-  a 200-level response.
+  response.
 
 - `activecode` `(int: 200)` – Specifies the status code that should be returned
   for an active node.
 
 - `standbycode` `(int: 429)` – Specifies the status code that should be returned
   for a standby node.
-
-- `drsecondarycode` `(int: 472)` – Specifies the status code that should be
-  returned for a DR secondary node.
-
-- `performancestandbycode` `(int: 473)` – Specifies the status code that should be
-  returned for a performance standby node.
 
 - `sealedcode` `(int: 503)` – Specifies the status code that should be returned
   for a sealed node.
@@ -70,11 +55,6 @@ $ curl \
 ### Sample response
 
 This response is only returned for a `GET` request.
-
-Note: `replication_performance_mode` and `replication_dr_mode` reflect the state of
-the active node in the cluster; if you are querying it for a standby that has
-just come up, it can take a small time for the active node to inform the
-standby of its status.
 
 ```json
 {
@@ -94,7 +74,7 @@ standby of its status.
 ### Sample request to customize the status code being returned
 
 ```shell-session
-$ curl -i https://127.0.0.1:8200/v1/sys/health\?drsecondarycode\=200
+$ curl -i https://127.0.0.1:8200/v1/sys/health\?standbycode\=200
 
 HTTP/2 200
 cache-control: no-store
@@ -108,11 +88,6 @@ date: Wed, 26 Jan 2022 09:21:13 GMT
 
 This response is only returned for a `GET` request.
 
-Note: `replication_performance_mode` and `replication_dr_mode` reflect the state of
-the active node in the cluster; if you are querying it for a standby that has
-just come up, it may take time for the active node to inform the
-standby of its status.
-
 ```json
 {
   "initialized": true,
@@ -120,12 +95,10 @@ standby of its status.
   "standby": false,
   "performance_standby": false,
   "replication_performance_mode": "disabled",
-  "replication_dr_mode": "secondary",
-  "server_time_utc": 1643188873,
-  "version": "1.9.0+prem",
-  "cluster_name": "SECONDARY",
-  "cluster_id": "d2fbb13b-0830-70a3-4751-57b6b6d95d01",
-  "last_wal":13,
-  "license":{"state":"none","expiry_time":"","terminated":false}
+  "replication_dr_mode": "disabled",
+  "server_time_utc": 1706217694,
+  "version": "1.14.8",
+  "cluster_name": "openbao-cluster-6fc973c2",
+  "cluster_id": "8190fce1-679e-3a57-7d1f-f63d4851633b"
 }
 ```

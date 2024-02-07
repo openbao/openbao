@@ -3,15 +3,15 @@ layout: docs
 page_title: lease renew - Command
 description: |-
   The "lease renew" command renews the lease on a secret, extending the time
-  that it can be used before it is revoked by Vault.
+  that it can be used before it is revoked by OpenBao.
 ---
 
 # lease renew
 
 The `lease renew` command renews the lease on a secret, extending the time that
-it can be used before it is revoked by Vault.
+it can be used before it is revoked by OpenBao.
 
-Every secret in Vault has a lease associated with it. If the owner of the secret
+Every secret in OpenBao has a lease associated with it. If the owner of the secret
 wants to use it longer than the lease, then it must be renewed. Renewing the
 lease does not change the contents of the secret.
 
@@ -20,7 +20,7 @@ lease does not change the contents of the secret.
 Renew a lease:
 
 ```shell-session
-$ vault lease renew database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
+$ bao lease renew database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
 Key                Value
 ---                -----
 lease_id           database/creds/readonly/27e1b9a1-27b8-83d9-9fe0-d99d786bdc83
@@ -33,5 +33,5 @@ lease_renewable    true
 The following flags are available in addition to the [standard set of
 flags](/vault/docs/commands) included on all commands.
 
-- `-increment` `(duration: "")` - Request a specific increment in seconds. Vault
+- `-increment` `(duration: "")` - Request a specific increment in seconds. OpenBao
   is not required to honor this request.

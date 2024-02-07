@@ -1,15 +1,15 @@
 ---
 layout: docs
 page_title: Limits and Maximums
-description: Learn about the maximum number of objects within Vault.
+description: Learn about the maximum number of objects within OpenBao.
 ---
 
-# Vault limits and maximums
+# OpenBao limits and maximums
 
-Vault imposes fixed upper limits on the size of certain fields and
-objects, and configurable limits on others. Vault also has upper
+OpenBao imposes fixed upper limits on the size of certain fields and
+objects, and configurable limits on others. OpenBao also has upper
 bounds that are a consequence of its underlying storage. This page
-attempts to collect these limits, to assist in planning Vault
+attempts to collect these limits, to assist in planning OpenBao
 deployments.
 
 In some cases, the system will show performance problems in advance of
@@ -30,10 +30,10 @@ For the integrated storage backend, the default limit (introduced in
 Vault 1.5.0) is 1 MiB. This may be configured via `max_entry_size` in
 the [storage stanza](/vault/docs/configuration/storage/raft#max_entry_size).
 
-Many of the other limits within Vault derive from the maximum size of
+Many of the other limits within OpenBao derive from the maximum size of
 a storage entry, as described in the next sections. It is possible to
 recover from an error where a storage entry has reached its maximum
-size by reconfiguring Vault or Consul to a larger maximum storage
+size by reconfiguring OpenBao or Consul to a larger maximum storage
 entry. However, using large storage entries also negatively affects
 performance, as even a small change may become a large
 read-modify-write cycle on the entire entry. Larger writes may also delay
@@ -105,7 +105,7 @@ has the following constraints:
 | Metadata key size                     | 128 bytes |
 | Metadata value size                   | 512 bytes |
 
-Vault shards the entities across 256 storage entries. This creates a
+OpenBao shards the entities across 256 storage entries. This creates a
 hard limit of 128MiB storage space used for entities on Consul, or
 256MiB on integrated storage with its default settings. Entity aliases
 are stored inline in the Entity objects and so consume the same pool
@@ -138,7 +138,7 @@ group has a large number of members.
 | Maximum number of groups (100 entities per group)                                        | ~22,000                  | ~50,000                            |
 | Maximum number of members in a group                                                     | ~11,500                  | ~23,000                            |
 
-The number of entities can be monitored using Vault's [telemetry](/vault/docs/internals/telemetry#token-identity-and-lease-metrics); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
+The number of entities can be monitored using OpenBao's [telemetry](/vault/docs/internals/telemetry#token-identity-and-lease-metrics); see `vault.identity.num_entities` (total) or `vault.identity.entities.count` (by namespace).
 
 The cost of entity and group updates grows as the number of objects in
 each shard increases. This cost can be monitored via the
@@ -176,10 +176,10 @@ within a single storage entry.
 | Maximum number of policies per token           | ~14,000                  | ~28,000                            |
 | Maximum number of policies per entity or group | ~14,000                  | ~28,000                            |
 
-Each time a token is used, Vault must assemble the collection of
+Each time a token is used, OpenBao must assemble the collection of
 policies attached to that token, to the entity, to any groups that the
 entity belongs to, and recursively to any groups that contain those groups.
-Very large numbers of policies are possible, but can cause Vault’s
+Very large numbers of policies are possible, but can cause OpenBao’s
 response time to increase. You can monitor the
 [`vault.core.fetch_acl_and_token`](/vault/docs/internals/telemetry#core-metrics)
 metric to determine if the time required to assemble an access control list
@@ -201,7 +201,7 @@ Version metadata consumes 21 bytes per version and must fit in a
 single storage entry, separate from the stored data.
 
 Each secret also has version-agnostic metadata. This data can contain a `custom_metadata` field of
-user-provided key-value pairs. Vault imposes the following custom metadata limits:
+user-provided key-value pairs. OpenBao imposes the following custom metadata limits:
 
 |                                           | Limit     |
 | ----------------------------------------- | --------- |
@@ -211,7 +211,7 @@ user-provided key-value pairs. Vault imposes the following custom metadata limit
 
 ### Transit secret engine
 
-The maximum size of a Transit ciphertext or plaintext is limited by Vault's
+The maximum size of a Transit ciphertext or plaintext is limited by OpenBao's
 maximum request size, as described [below](#request-size).
 
 All archived versions of a single key must fit in a single storage entry.
@@ -234,38 +234,20 @@ This limit depends on the key size.
 
 ### Request size
 
-The maximum size of an HTTP request sent to Vault is limited by
+The maximum size of an HTTP request sent to OpenBao is limited by
 the `max_request_size` option in the [listener stanza](/vault/docs/configuration/listener/tcp). It defaults to 32 MiB. This value, minus the overhead of
 the HTTP request itself, places an upper bound on any Transit operation,
 and on the maximum size of any key-value secrets.
 
 ### Request duration
 
-The maximum duration of a Vault operation is
+The maximum duration of a OpenBao operation is
 [`max_request_duration`](/vault/docs//configuration/listener/tcp), which defaults to
 90 seconds. If a particular secret engine takes longer than this to perform an
-operation on a remote service, the Vault client will see a failure.
+operation on a remote service, the OpenBao client will see a failure.
 
 The environment variable [`VAULT_CLIENT_TIMEOUT`](/vault/docs/commands#vault_client_timeout) sets a client-side maximum duration as well,
 which is 60 seconds by default.
-
-### Cluster and replication limits
-
-There are no implementation limits on the maximum size of a cluster,
-or the maximum number of replicas associated with a primary. However,
-each replica or performance standby adds considerable overhead to the
-active node, as each write must be duplicated to all standbys. The overhead of
-resyncing multiple replicas at once is also high.
-
-Monitor the active Vault node's CPU and network utilization, as well as
-the lag between the last WAL and replica WAL, to determine if the
-maximum number of replicas has been exceeded.
-
-|                                        | Limit                                  |
-| -------------------------------------- | -------------------------------------- |
-| Maximum cluster size                   | no limit, up to active node capability |
-| Maximum number of DR replicas          | no limit, up to active node capability |
-| Maximum number of performance replicas | no limit, up to active node capability |
 
 ### Lease limits
 
@@ -295,8 +277,8 @@ are a function of the alphabet size.
 ### External plugin limits
 
 The [plugin system](/vault/docs/plugins) launches a separate process
-initiated by Vault that communicates over RPC. For each secret engine and auth
-method that's enabled as an external plugin, Vault will spawn a process on the
+initiated by OpenBao that communicates over RPC. For each secret engine and auth
+method that's enabled as an external plugin, OpenBao will spawn a process on the
 host system. For the Database Secrets Engines, external database plugins will
 spawn a process for every configured connection.
 

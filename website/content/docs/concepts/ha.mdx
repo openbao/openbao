@@ -2,40 +2,40 @@
 layout: docs
 page_title: High Availability
 description: >-
-  Vault can be highly available, allowing you to run multiple Vaults to protect
+  OpenBao can be highly available, allowing you to run multiple OpenBaos to protect
   against outages.
 ---
 
 # High availability mode (HA)
 
-Vault supports a multi-server mode for high availability. This mode protects
-against outages by running multiple Vault servers. High availability mode
+OpenBao supports a multi-server mode for high availability. This mode protects
+against outages by running multiple OpenBao servers. High availability mode
 is automatically enabled when using a data store that supports it.
 
 You can tell if a data store supports high availability mode ("HA") by starting
 the server and seeing if "(HA available)" is output next to the data store
-information. If it is, then Vault will automatically use HA mode. This
+information. If it is, then OpenBao will automatically use HA mode. This
 information is also available on the
 [Configuration](/vault/docs/configuration) page.
 
-To be highly available, one of the Vault server nodes grabs a lock within the
+To be highly available, one of the OpenBao server nodes grabs a lock within the
 data store. The successful server node then becomes the active node; all other
 nodes become standby nodes. At this point, if the standby nodes receive a
 request, they will either [forward the request](#request-forwarding) or
 [redirect the client](#client-redirection) depending on the current
 configuration and state of the cluster -- see the sections below for details.
 Due to this architecture, HA does not enable increased scalability. In general,
-the bottleneck of Vault is the data store itself, not Vault core. For example:
-to increase the scalability of Vault with Consul, you would generally scale
-Consul instead of Vault.
+the bottleneck of OpenBao is the data store itself, not OpenBao core. For example:
+to increase the scalability of OpenBao with Consul, you would generally scale
+Consul instead of OpenBao.
 
 Certain storage backends can support high availability mode, which enable them
-to store both Vault's information in addition to the HA lock. However, Vault
+to store both OpenBao's information in addition to the HA lock. However, OpenBao
 also supports split data/HA mode, whereby the lock value and the rest of the
 data live separately. This can be done by specifying both the
 [`storage`](/vault/docs/configuration#storage) and
 [`ha_storage`](/vault/docs/configuration#ha_storage) stanzas in the configuration file
-with different backends. For instance, a Vault cluster can be set up to use
+with different backends. For instance, a OpenBao cluster can be set up to use
 Consul as the [`ha_storage`](/vault/docs/configuration#ha_storage) to manage the lock,
 and use Amazon S3 as the [`storage`](/vault/docs/configuration#storage) for all other
 persisted data.
@@ -48,8 +48,8 @@ mode must be met for an HA cluster to work successfully.
 
 Both methods of request handling rely on the active node advertising
 information about itself to the other nodes. Rather than over the network, this
-communication takes place within Vault's encrypted storage; the active node
-writes this information and unsealed standby Vault nodes can read it.
+communication takes place within OpenBao's encrypted storage; the active node
+writes this information and unsealed standby OpenBao nodes can read it.
 
 For the client redirection method, this is the extent of server-to-server
 communication -- no direct communication with only encrypted entries in the
@@ -92,40 +92,40 @@ the value can also be specified by the `VAULT_API_ADDR` environment variable,
 which takes precedence.
 
 What the [`api_addr`](/vault/docs/configuration#api_addr) value should be set to
-depends on how Vault is set up. There are two common scenarios: Vault servers
-accessed directly by clients, and Vault servers accessed via a load balancer.
+depends on how OpenBao is set up. There are two common scenarios: OpenBao servers
+accessed directly by clients, and OpenBao servers accessed via a load balancer.
 
 In both cases, the [`api_addr`](/vault/docs/configuration#api_addr) should be a full
 URL including scheme (`http`/`https`), not simply an IP address and port.
 
 ### Direct access
 
-When clients are able to access Vault directly, the
+When clients are able to access OpenBao directly, the
 [`api_addr`](/vault/docs/configuration#api_addr) for each node should be that node's
-address. For instance, if there are two Vault nodes:
+address. For instance, if there are two OpenBao nodes:
 
-- `A`, accessed via `https://a.vault.mycompany.com:8200`
-- `B`, accessed via `https://b.vault.mycompany.com:8200`
+- `A`, accessed via `https://a.openbao.mycompany.com:8200`
+- `B`, accessed via `https://b.openbao.mycompany.com:8200`
 
 Then node `A` would set its
 [`api_addr`](/vault/docs/configuration#api_addr) to
-`https://a.vault.mycompany.com:8200` and node `B` would set its
+`https://a.openbao.mycompany.com:8200` and node `B` would set its
 [`api_addr`](/vault/docs/configuration#api_addr) to
-`https://b.vault.mycompany.com:8200`.
+`https://b.openbao.mycompany.com:8200`.
 
 This way, when `A` is the active node, any requests received by node `B` will
 cause it to redirect the client to node `A`'s
-[`api_addr`](/vault/docs/configuration#api_addr) at `https://a.vault.mycompany.com`,
+[`api_addr`](/vault/docs/configuration#api_addr) at `https://a.openbao.mycompany.com`,
 and vice-versa.
 
 ### Behind load balancers
 
 Sometimes clients use load balancers as an initial method to access one of the
-Vault servers, but actually have direct access to each Vault node. In this
-case, the Vault servers should actually be set up as described in the above
+OpenBao servers, but actually have direct access to each OpenBao node. In this
+case, the OpenBao servers should actually be set up as described in the above
 section, since for redirection purposes the clients have direct access.
 
-However, if the only access to the Vault servers is via the load balancer, the
+However, if the only access to the OpenBao servers is via the load balancer, the
 [`api_addr`](/vault/docs/configuration#api_addr) on each node should be the same: the
 address of the load balancer. Clients that reach a standby node will be
 redirected back to the load balancer; at that point hopefully the load
@@ -135,12 +135,12 @@ setup when it can be avoided.
 
 ### Per-Node cluster listener addresses
 
-Each [`listener`](/vault/docs/configuration/listener) block in Vault's configuration
+Each [`listener`](/vault/docs/configuration/listener) block in OpenBao's configuration
 file contains an [`address`](/vault/docs/configuration/listener/tcp#address) value on
-which Vault listens for requests. Similarly, each
+which OpenBao listens for requests. Similarly, each
 [`listener`](/vault/docs/configuration/listener) block can contain a
 [`cluster_address`](/vault/docs/configuration/listener/tcp#cluster_address) on which
-Vault listens for server-to-server cluster requests. If this value is not set,
+OpenBao listens for server-to-server cluster requests. If this value is not set,
 its IP address will be automatically set to same as the
 [`address`](/vault/docs/configuration/listener/tcp#address) value, and its port will
 be automatically set to the same as the
@@ -174,7 +174,7 @@ mode, including [Consul](/vault/docs/configuration/storage/consul),
 change over time, and the [configuration page](/vault/docs/configuration) should be
 referenced.
 
-HashiCorp recommends [Vault Integrated Storage](/vault/docs/configuration/storage/raft) as the default HA backend for new deployments of Vault. [Consul Storage Backend](/vault/docs/configuration/storage/consul) is also a supported option and used by many production deployments. See the [comparison chart](/vault/docs/configuration/storage#integrated-storage-vs-consul-as-vault-storage) for help deciding which option is best for you.
+HashiCorp recommends [OpenBao Integrated Storage](/vault/docs/configuration/storage/raft) as the default HA backend for new deployments of OpenBao. [Consul Storage Backend](/vault/docs/configuration/storage/consul) is also a supported option and used by many production deployments. See the [comparison chart](/vault/docs/configuration/storage#integrated-storage-vs-consul-as-vault-storage) for help deciding which option is best for you.
 
 If you're interested in implementing another backend or adding HA support to
 another backend, we'd love your contributions. Adding HA support requires

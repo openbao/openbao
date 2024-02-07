@@ -26,45 +26,17 @@ import (
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
-	credAliCloud "github.com/hashicorp/vault-plugin-auth-alicloud"
-	credCentrify "github.com/hashicorp/vault-plugin-auth-centrify"
-	credCF "github.com/hashicorp/vault-plugin-auth-cf"
-	credGcp "github.com/hashicorp/vault-plugin-auth-gcp/plugin"
-	credOIDC "github.com/hashicorp/vault-plugin-auth-jwt"
-	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
-	credOCI "github.com/hashicorp/vault-plugin-auth-oci"
-	credAws "github.com/openbao/openbao/builtin/credential/aws"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
-	credGitHub "github.com/openbao/openbao/builtin/credential/github"
+	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
+	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
-	credOkta "github.com/openbao/openbao/builtin/credential/okta"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 
-	physAerospike "github.com/openbao/openbao/physical/aerospike"
-	physAliCloudOSS "github.com/openbao/openbao/physical/alicloudoss"
-	physAzure "github.com/openbao/openbao/physical/azure"
-	physCassandra "github.com/openbao/openbao/physical/cassandra"
-	physCockroachDB "github.com/openbao/openbao/physical/cockroachdb"
-	physConsul "github.com/openbao/openbao/physical/consul"
-	physCouchDB "github.com/openbao/openbao/physical/couchdb"
-	physDynamoDB "github.com/openbao/openbao/physical/dynamodb"
-	physEtcd "github.com/openbao/openbao/physical/etcd"
-	physFoundationDB "github.com/openbao/openbao/physical/foundationdb"
-	physGCS "github.com/openbao/openbao/physical/gcs"
-	physManta "github.com/openbao/openbao/physical/manta"
-	physMSSQL "github.com/openbao/openbao/physical/mssql"
-	physMySQL "github.com/openbao/openbao/physical/mysql"
-	physOCI "github.com/openbao/openbao/physical/oci"
-	physPostgreSQL "github.com/openbao/openbao/physical/postgresql"
 	physRaft "github.com/openbao/openbao/physical/raft"
-	physS3 "github.com/openbao/openbao/physical/s3"
-	physSpanner "github.com/openbao/openbao/physical/spanner"
-	physSwift "github.com/openbao/openbao/physical/swift"
-	physZooKeeper "github.com/openbao/openbao/physical/zookeeper"
 	physFile "github.com/openbao/openbao/sdk/physical/file"
 	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
 
@@ -185,34 +157,13 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"aerospike":              physAerospike.NewAerospikeBackend,
-		"alicloudoss":            physAliCloudOSS.NewAliCloudOSSBackend,
-		"azure":                  physAzure.NewAzureBackend,
-		"cassandra":              physCassandra.NewCassandraBackend,
-		"cockroachdb":            physCockroachDB.NewCockroachDBBackend,
-		"consul":                 physConsul.NewConsulBackend,
-		"couchdb_transactional":  physCouchDB.NewTransactionalCouchDBBackend,
-		"couchdb":                physCouchDB.NewCouchDBBackend,
-		"dynamodb":               physDynamoDB.NewDynamoDBBackend,
-		"etcd":                   physEtcd.NewEtcdBackend,
 		"file_transactional":     physFile.NewTransactionalFileBackend,
 		"file":                   physFile.NewFileBackend,
-		"foundationdb":           physFoundationDB.NewFDBBackend,
-		"gcs":                    physGCS.NewBackend,
 		"inmem_ha":               physInmem.NewInmemHA,
 		"inmem_transactional_ha": physInmem.NewTransactionalInmemHA,
 		"inmem_transactional":    physInmem.NewTransactionalInmem,
 		"inmem":                  physInmem.NewInmem,
-		"manta":                  physManta.NewMantaBackend,
-		"mssql":                  physMSSQL.NewMSSQLBackend,
-		"mysql":                  physMySQL.NewMySQLBackend,
-		"oci":                    physOCI.NewBackend,
-		"postgresql":             physPostgreSQL.NewPostgreSQLBackend,
-		"s3":                     physS3.NewS3Backend,
-		"spanner":                physSpanner.NewBackend,
-		"swift":                  physSwift.NewSwiftBackend,
 		"raft":                   physRaft.NewRaftBackend,
-		"zookeeper":              physZooKeeper.NewZooKeeperBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{
@@ -225,19 +176,10 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"alicloud": &credAliCloud.CLIHandler{},
-		"aws":      &credAws.CLIHandler{},
-		"centrify": &credCentrify.CLIHandler{},
 		"cert":     &credCert.CLIHandler{},
-		"cf":       &credCF.CLIHandler{},
-		"gcp":      &credGcp.CLIHandler{},
-		"github":   &credGitHub.CLIHandler{},
 		"kerberos": &credKerb.CLIHandler{},
 		"ldap":     &credLdap.CLIHandler{},
-		"oci":      &credOCI.CLIHandler{},
 		"oidc":     &credOIDC.CLIHandler{},
-		"okta":     &credOkta.CLIHandler{},
-		"pcf":      &credCF.CLIHandler{}, // Deprecated.
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},

@@ -13,8 +13,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-multierror"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	bolt "go.etcd.io/bbolt"
 )
 

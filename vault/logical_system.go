@@ -4696,23 +4696,21 @@ func (b *SystemBackend) pathInternalOpenAPI(ctx context.Context, req *logical.Re
 }
 
 type SealStatusResponse struct {
-	Type              string   `json:"type"`
-	Initialized       bool     `json:"initialized"`
-	Sealed            bool     `json:"sealed"`
-	T                 int      `json:"t"`
-	N                 int      `json:"n"`
-	Progress          int      `json:"progress"`
-	Nonce             string   `json:"nonce"`
-	Version           string   `json:"version"`
-	BuildDate         string   `json:"build_date"`
-	Migration         bool     `json:"migration"`
-	ClusterName       string   `json:"cluster_name,omitempty"`
-	ClusterID         string   `json:"cluster_id,omitempty"`
-	RecoverySeal      bool     `json:"recovery_seal"`
-	StorageType       string   `json:"storage_type,omitempty"`
-	HCPLinkStatus     string   `json:"hcp_link_status,omitempty"`
-	HCPLinkResourceID string   `json:"hcp_link_resource_ID,omitempty"`
-	Warnings          []string `json:"warnings,omitempty"`
+	Type         string   `json:"type"`
+	Initialized  bool     `json:"initialized"`
+	Sealed       bool     `json:"sealed"`
+	T            int      `json:"t"`
+	N            int      `json:"n"`
+	Progress     int      `json:"progress"`
+	Nonce        string   `json:"nonce"`
+	Version      string   `json:"version"`
+	BuildDate    string   `json:"build_date"`
+	Migration    bool     `json:"migration"`
+	ClusterName  string   `json:"cluster_name,omitempty"`
+	ClusterID    string   `json:"cluster_id,omitempty"`
+	RecoverySeal bool     `json:"recovery_seal"`
+	StorageType  string   `json:"storage_type,omitempty"`
+	Warnings     []string `json:"warnings,omitempty"`
 }
 
 func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResponse, error) {
@@ -4733,8 +4731,6 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 		return nil, err
 	}
 
-	hcpLinkStatus, resourceIDonHCP := core.GetHCPLinkStatus()
-
 	if sealConfig == nil {
 		s := &SealStatusResponse{
 			Type:         core.SealAccess().BarrierType().String(),
@@ -4744,11 +4740,6 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 			StorageType:  core.StorageType(),
 			Version:      version.GetVersion().VersionNumber(),
 			BuildDate:    version.BuildDate,
-		}
-
-		if resourceIDonHCP != "" {
-			s.HCPLinkStatus = hcpLinkStatus
-			s.HCPLinkResourceID = resourceIDonHCP
 		}
 
 		return s, nil
@@ -4785,11 +4776,6 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 		ClusterID:    clusterID,
 		RecoverySeal: core.SealAccess().RecoveryKeySupported(),
 		StorageType:  core.StorageType(),
-	}
-
-	if resourceIDonHCP != "" {
-		s.HCPLinkStatus = hcpLinkStatus
-		s.HCPLinkResourceID = resourceIDonHCP
 	}
 
 	return s, nil

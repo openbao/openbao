@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/logical"
 )
@@ -263,13 +263,13 @@ func metricLabelsMatch(t *testing.T, actual []metrics.Label, expected map[string
 
 func TestCoreMetrics_EntityGauges(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	is, ghAccessor, upAccessor, core := testIdentityStoreWithGithubUserpassAuth(ctx, t)
+	is, approleAccessor, upAccessor, core := testIdentityStoreWithAppRoleUserpassAuth(ctx, t)
 
 	// Create an entity
 	alias1 := &logical.Alias{
-		MountType:     "github",
-		MountAccessor: ghAccessor,
-		Name:          "githubuser",
+		MountType:     "approle",
+		MountAccessor: approleAccessor,
+		Name:          "approleuser",
 	}
 
 	entity, _, err := is.CreateOrFetchEntity(ctx, alias1)
@@ -339,8 +339,8 @@ func TestCoreMetrics_EntityGauges(t *testing.T) {
 	metricLabelsMatch(t, glv[0].Labels,
 		map[string]string{
 			"namespace":   "root",
-			"auth_method": "github",
-			"mount_point": "auth/github/",
+			"auth_method": "approle",
+			"mount_point": "auth/approle/",
 		})
 
 	metricLabelsMatch(t, glv[1].Labels,

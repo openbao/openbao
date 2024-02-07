@@ -2,28 +2,16 @@
 layout: docs
 page_title: OCI KMS - Seals - Configuration
 description: |-
-  The OCI KMS seal configures Vault to use OCI KMS as the seal wrapping
+  The OCI KMS seal configures OpenBao to use OCI KMS as the seal wrapping
   mechanism.
 ---
 
 # `ocikms` seal
 
-<Note title="Seal wrapping requires Vault Enterprise">
-
-  All Vault versions support **auto-unseal** for OCI KMS, but **seal wrapping**
-  requires Vault Enterprise.
-  
-  Vault Enterprise enables seal wrapping by default, which means the KMS service
-  must be available at runtime and not just during the unseal process. Refer to
-  the [Seal wrap](/vault/docs/enterprise/sealwrap) overview for more
-  information.
-
-</Note>
-
-The OCI KMS seal configures Vault to use OCI KMS as the seal wrapping mechanism.
+The OCI KMS seal configures OpenBao to use OCI KMS as the seal wrapping mechanism.
 The OCI KMS seal is activated by one of the following:
 
-- The presence of a `seal "ocikms"` block in Vault's configuration file
+- The presence of a `seal "ocikms"` block in OpenBao's configuration file
 - The presence of the environment variable `VAULT_SEAL_TYPE` set to `ocikms`. If
   enabling via environment variable, all other required values specific to OCI
   KMS (i.e. `VAULT_OCIKMS_SEAL_KEY_ID`, `VAULT_OCIKMS_CRYPTO_ENDPOINT` `VAULT_OCIKMS_MANAGEMENT_ENDPOINT`) must be also supplied, as well as all
@@ -32,7 +20,7 @@ The OCI KMS seal is activated by one of the following:
 
 ## `ocikms` example
 
-This example shows configuring the OCI KMS seal through the Vault configuration file
+This example shows configuring the OCI KMS seal through the OpenBao configuration file
 by providing all the required values:
 
 ```hcl
@@ -46,7 +34,7 @@ seal "ocikms" {
 
 ## `ocikms` parameters
 
-These parameters apply to the `seal` stanza in the Vault configuration file:
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `key_id` `(string: <required>)`: The OCI KMS key ID to use. May also be
   specified by the `VAULT_OCIKMS_SEAL_KEY_ID` environment variable.
@@ -57,9 +45,9 @@ These parameters apply to the `seal` stanza in the Vault configuration file:
   to be used to make OCI KMS key management requests. May also be specified by the `VAULT_OCIKMS_MANAGEMENT_ENDPOINT` environment
   variable.
 - `auth_type_api_key` `(boolean: false)`: Specifies if using API key to authenticate to OCI KMS service.
-  If it is `false`, Vault authenticates using the instance principal from the compute instance. See Authentication section for details. Default is `false`.
+  If it is `false`, OpenBao authenticates using the instance principal from the compute instance. See Authentication section for details. Default is `false`.
 
-- `disabled` `(string: "")`: Set this to `true` if Vault is migrating from an auto seal configuration. Otherwise, set to `false`.
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
 Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
@@ -118,7 +106,7 @@ admit dynamic-group <dynamic-group-name> of tenancy tenantA to use keys in compa
 
 ## `ocikms` rotate OCI KMS master key
 
-For the [OCI KMS key rotation feature][oci-kms-rotation], OCI KMS will create a new version of key internally. This process is independent from Vault, and Vault still uses the same `key_id` without any interruption.
+For the [OCI KMS key rotation feature][oci-kms-rotation], OCI KMS will create a new version of key internally. This process is independent from OpenBao, and OpenBao still uses the same `key_id` without any interruption.
 
 If you want to change the `key_id`: migrate to Shamir, change `key_id`, and then migrate to OCI KMS with the new `key_id`.
 

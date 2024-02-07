@@ -2,13 +2,13 @@
 layout: docs
 page_title: audit - Command
 description: |-
-  The "audit" command groups subcommands for interacting with Vault's audit
+  The "audit" command groups subcommands for interacting with OpenBao's audit
   devices. Users can list, enable, and disable audit devices.
 ---
 
 # audit
 
-The `audit` command groups subcommands for interacting with Vault's audit
+The `audit` command groups subcommands for interacting with OpenBao's audit
 devices. Users can list, enable, and disable audit devices.
 
 For more information, please see the [audit device
@@ -19,14 +19,14 @@ documentation](/vault/docs/audit)
 Enable an audit device:
 
 ```shell-session
-$ vault audit enable file file_path=/tmp/my-file.txt
+$ bao audit enable file file_path=/tmp/my-file.txt
 Success! Enabled the file audit device at: file/
 ```
 
 List all audit devices:
 
 ```shell-session
-$ vault audit list
+$ bao audit list
 Path     Type    Description
 ----     ----    -----------
 file/    file    n/a
@@ -35,7 +35,7 @@ file/    file    n/a
 Disable an audit device:
 
 ```shell-session
-$ vault audit disable file/
+$ bao audit disable file/
 Success! Disabled audit device (if it was enabled) at: file/
 ```
 
@@ -46,7 +46,7 @@ the audit device at the same path, as a new salt will be created for hashing.
 ## Usage
 
 ```text
-Usage: vault audit <subcommand> [options] [args]
+Usage: bao audit <subcommand> [options] [args]
 
   # ...
 

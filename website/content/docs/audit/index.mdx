@@ -1,15 +1,15 @@
 ---
 layout: docs
 page_title: Audit Devices
-description: Audit devices are mountable devices that log requests and responses in Vault.
+description: Audit devices are mountable devices that log requests and responses in OpenBao.
 ---
 
 # Audit devices
 
-Audit devices are the components in Vault that collectively keep a detailed log of all
-requests to Vault, and their responses. Because every operation with Vault is an API
+Audit devices are the components in OpenBao that collectively keep a detailed log of all
+requests to OpenBao, and their responses. Because every operation with OpenBao is an API
 request/response, when using a single audit device, the audit log contains _every_ interaction with
-the Vault API, including errors - except for a few paths which do not go via the audit system.
+the OpenBao API, including errors - except for a few paths which do not go via the audit system.
 
 The non-audited paths are:
 
@@ -38,18 +38,18 @@ and also, if the relevant listener configuration settings allow unauthenticated 
 
 ## Enabling multiple devices
 
-When multiple audit devices are enabled, Vault will attempt to send the audit
+When multiple audit devices are enabled, OpenBao will attempt to send the audit
 logs to all of them. This allows you to not only have redundant copies, but also
 a way to check for data tampering in the logs themselves.
 
-Vault considers a request to be successful if it can log to *at least* one
+OpenBao considers a request to be successful if it can log to *at least* one
 configured audit device (see: [Blocked Audit
 Devices](/vault/docs/audit#blocked-audit-devices) section below).  Therefore in order
 to build a complete picture of all audited actions, use the aggregate/union of
 the logs from each audit device.
 
-~> Note: It is **highly recommended** that you configure Vault to use multiple audit
-devices. Audit failures can prevent Vault from servicing requests, so it is
+~> Note: It is **highly recommended** that you configure OpenBao to use multiple audit
+devices. Audit failures can prevent OpenBao from servicing requests, so it is
 important to provide at least one other device.
 
 
@@ -64,7 +64,7 @@ audit logs.
 ## Sensitive information
 
 The audit logs contain the full request and response objects for every
-interaction with Vault. The request and response can be matched utilizing a
+interaction with OpenBao. The request and response can be matched utilizing a
 unique identifier assigned to each request.
 
 Most strings contained within requests and responses are hashed with a salt using HMAC-SHA256. The purpose of the hash is so that secrets aren't in plaintext within your audit logs. However, you're still able to check the value of secrets by generating HMACs yourself; this can be done with the audit device's hash function and salt by using the `/sys/audit-hash` API endpoint (see the documentation for more details).
@@ -72,9 +72,9 @@ Most strings contained within requests and responses are hashed with a salt usin
 ~> Currently, only strings that come from JSON or returned in JSON are
 HMAC'd. Other data types, like integers, booleans, and so on, are passed
 through in plaintext. We recommend that all sensitive data be provided as string values
-inside all JSON sent to Vault (i.e., that integer values are provided in quotes).
+inside all JSON sent to OpenBao (i.e., that integer values are provided in quotes).
 
-While most strings are hashed, Vault does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/vault/docs/commands/secrets/enable) command, and then tune it afterward.
+While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/vault/docs/commands/secrets/enable) command, and then tune it afterward.
 
 **see also**:
 
@@ -86,25 +86,24 @@ While most strings are hashed, Vault does make some exceptions, such as auth and
 
 ## Enabling/Disabling audit devices
 
-When a Vault server is first initialized, no auditing is enabled. Audit
-devices must be enabled by a root user using `vault audit enable`.
+When a OpenBao server is first initialized, no auditing is enabled. Audit
+devices must be enabled by a root user using `bao audit enable`.
 
 When enabling an audit device, options can be passed to it to configure it.
 For example, the command below enables the file audit device:
 
 ```shell-session
-$ vault audit enable file file_path=/var/log/vault_audit.log
+$ bao audit enable file file_path=/var/log/openbao_audit.log
 ```
 
 In the command above, we passed the "file_path" parameter to specify the path
 where the audit log will be written to. Each audit device has its own
 set of parameters. See the documentation to the left for more details.
 
-~> Note: Audit device configuration is replicated to all nodes within a
-cluster by default, and to performance/DR secondaries for Vault Enterprise clusters.
-Before enabling an audit device, ensure that all nodes within the cluster(s)
-will be able to successfully log to the audit device to avoid Vault being
-blocked from serving requests.
+~> Note: Audit device configuration is replicated to all nodes within a cluster
+by default.  Before enabling an audit device, ensure that all nodes within the
+cluster(s) will be able to successfully log to the audit device to avoid OpenBao
+being blocked from serving requests.
 An audit device can be limited to only within the node's cluster with the [`local`](/vault/api-docs/system/audit#local) parameter.
 
 When an audit device is disabled, it will stop receiving logs immediately.
@@ -116,15 +115,15 @@ the audit device at the same path, as a new salt will be created for hashing.
 
 ## Blocked audit devices
 
-Audit device logs are critically important and ignoring auditing failures opens an avenue for attack. Vault will not respond to requests when no enabled audit devices can record them.
+Audit device logs are critically important and ignoring auditing failures opens an avenue for attack. OpenBao will not respond to requests when no enabled audit devices can record them.
 
-Vault can distinguish between two types of audit device failures.
+OpenBao can distinguish between two types of audit device failures.
 
 - A blocking failure is one where an attempt to write to the audit device never completes. This is unlikely with a local disk device, but could occure with a network-based audit device.
 
-- When multiple audit devices are enabled, if any of them fail in a non-blocking fashion, Vault requests can still complete successfully provided at least one audit device successfully writes the audit record. If any of the audit devices fail in a blocking fashion however, Vault requests will hang until the blocking is resolved.
+- When multiple audit devices are enabled, if any of them fail in a non-blocking fashion, OpenBao requests can still complete successfully provided at least one audit device successfully writes the audit record. If any of the audit devices fail in a blocking fashion however, OpenBao requests will hang until the blocking is resolved.
 
-In other words, Vault will not complete any requests until the blocked audit device can write.
+In other words, OpenBao will not complete any requests until the blocked audit device can write.
 
 ## Tutorial
 
@@ -154,8 +153,8 @@ docs](/vault/api-docs/system/audit) for more details.
 
 ## Eliding list response bodies
 
-Some Vault responses can be very large. Primarily, this affects list operations -
-as Vault lacks pagination in its APIs, listing a very large collection can result
+Some OpenBao responses can be very large. Primarily, this affects list operations -
+as OpenBao lacks pagination in its APIs, listing a very large collection can result
 in a response that is tens of megabytes long. Some audit backends are unable to
 process individual audit records of larger sizes.
 
@@ -180,7 +179,7 @@ returned by a list operation.
 
 This extra processing only affects the response data fields `keys` and `key_info`,
 and only when they have the expected data types - in the event a list response
-contains data outside of the usual conventions that apply to Vault list responses,
+contains data outside of the usual conventions that apply to OpenBao list responses,
 it will be left as is by this feature.
 
 Here is an example of an audit record that has been processed by this feature

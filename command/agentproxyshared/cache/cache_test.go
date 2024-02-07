@@ -17,7 +17,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/command/agentproxyshared/sink/mock"

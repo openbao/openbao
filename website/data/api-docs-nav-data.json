@@ -190,32 +190,6 @@
         ]
       },
       {
-        "title": "Key Management",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "secret/key-management"
-          },
-          {
-            "title": "Azure Key Vault",
-            "path": "secret/key-management/azurekeyvault"
-          },
-          {
-            "title": "AWS KMS",
-            "path": "secret/key-management/awskms"
-          },
-          {
-            "title": "GCP Cloud KMS",
-            "path": "secret/key-management/gcpkms"
-          }
-        ]
-      },
-      {
         "title": "Key/Value",
         "routes": [
           {
@@ -231,15 +205,6 @@
             "path": "secret/kv/kv-v2"
           }
         ]
-      },
-      {
-        "title": "KMIP",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "secret/kmip"
       },
       {
         "title": "Kubernetes",
@@ -276,15 +241,6 @@
       {
         "title": "TOTP",
         "path": "secret/totp"
-      },
-      {
-        "title": "Transform",
-        "badge": {
-          "text": "ENTERPRISE",
-          "type": "outlined",
-          "color": "neutral"
-        },
-        "path": "secret/transform"
       },
       {
         "title": "Transit",
@@ -405,25 +361,8 @@
         "path": "system/config-auditing"
       },
       {
-        "title": "<code>/sys/config/control-group</code>",
-        "path": "system/config-control-group"
-      },
-      {
         "title": "<code>/sys/config/cors</code>",
         "path": "system/config-cors"
-      },
-      {
-        "title": "<code>/sys/config/group-policy-application</code>",
-        "path": "system/config-group-policy-application",
-        "badge": {
-          "text": "ENT",
-          "type": "outlined",
-          "color": "neutral"
-        }
-      },
-      {
-        "title": "<code>/sys/config/reload</code>",
-        "path": "system/config-reload"
       },
       {
         "title": "<code>/sys/config/state</code>",
@@ -432,10 +371,6 @@
       {
         "title": "<code>/sys/config/ui</code>",
         "path": "system/config-ui"
-      },
-      {
-        "title": "<code>/sys/control-group</code>",
-        "path": "system/control-group"
       },
       {
         "title": "<code>/sys/decode-token</code>",
@@ -523,10 +458,6 @@
         "path": "system/leases"
       },
       {
-        "title": "<code>/sys/license/status</code>",
-        "path": "system/license"
-      },
-      {
         "title": "<code>/sys/locked-users</code>",
         "path": "system/user-lockout"
       },
@@ -535,46 +466,12 @@
         "path": "system/loggers"
       },
       {
-        "title": "<code>/sys/managed-keys</code>",
-        "path": "system/managed-keys",
-        "badge": {
-          "text": "ENT",
-          "type": "outlined",
-          "color": "neutral"
-        }
-      },
-      {
         "title": "<code>/sys/metrics</code>",
         "path": "system/metrics"
       },
       {
-        "title": "<code>/sys/mfa</code>",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "system/mfa"
-          },
-          {
-            "title": "<code>/sys/mfa/method/duo</code>",
-            "path": "system/mfa/duo"
-          },
-          {
-            "title": "<code>/sys/mfa/method/okta</code>",
-            "path": "system/mfa/okta"
-          },
-          {
-            "title": "<code>/sys/mfa/method/pingid</code>",
-            "path": "system/mfa/pingid"
-          },
-          {
-            "title": "<code>/sys/mfa/method/totp</code>",
-            "path": "system/mfa/totp"
-          },
-          {
-            "title": "<code>/sys/mfa/validate</code>",
-            "path": "system/mfa/validate"
-          }
-        ]
+        "title": "<code>/sys/mfa/validate</code>",
+        "path": "system/mfa-validate"
       },
       {
         "title": "<code>/sys/monitor</code>",
@@ -621,10 +518,6 @@
         "path": "system/rate-limit-quotas"
       },
       {
-        "title": "<code>/sys/quotas/lease-count</code>",
-        "path": "system/lease-count-quotas"
-      },
-      {
         "title": "<code>/sys/raw</code>",
         "path": "system/raw"
       },
@@ -641,23 +534,6 @@
         "path": "system/remount"
       },
       {
-        "title": "<code>/sys/replication</code>",
-        "routes": [
-          {
-            "title": "Overview",
-            "path": "system/replication"
-          },
-          {
-            "title": "<code>/sys/replication/performance</code>",
-            "path": "system/replication/replication-performance"
-          },
-          {
-            "title": "<code>/sys/replication/dr</code>",
-            "path": "system/replication/replication-dr"
-          }
-        ]
-      },
-      {
         "title": "<code>/sys/rotate</code>",
         "path": "system/rotate"
       },
@@ -672,10 +548,6 @@
       {
         "title": "<code>/sys/seal-status</code>",
         "path": "system/seal-status"
-      },
-      {
-        "title": "<code>/sys/sealwrap/rewrap</code>",
-        "path": "system/sealwrap-rewrap"
       },
       {
         "title": "<code>/sys/step-down</code>",
@@ -695,10 +567,6 @@
           {
             "title": "<code>/sys/storage/raft/autopilot</code>",
             "path": "system/storage/raftautopilot"
-          },
-          {
-            "title": "<code>/sys/storage/raft/snapshot-auto</code>",
-            "path": "system/storage/raftautosnapshots"
           }
         ]
       },

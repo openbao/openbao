@@ -2,18 +2,18 @@
 layout: docs
 page_title: DynamoDB - Storage Backends - Configuration
 description: |-
-  The DynamoDB storage backend is used to persist Vault's data in DynamoDB
+  The DynamoDB storage backend is used to persist OpenBao's data in DynamoDB
   table.
 ---
 
 # DynamoDB storage backend
 
-The DynamoDB storage backend is used to persist Vault's data in
+The DynamoDB storage backend is used to persist OpenBao's data in
 [DynamoDB][dynamodb] table.
 
 - **High Availability** – the DynamoDB storage backend supports high
-  availability. Because DynamoDB uses the time on the Vault node to implement
-  the session lifetimes on its locks, significant clock skew across Vault nodes
+  availability. Because DynamoDB uses the time on the OpenBao node to implement
+  the session lifetimes on its locks, significant clock skew across OpenBao nodes
   could cause contention issues on the lock.
 
 - **Community Supported** – the DynamoDB storage backend is supported by the
@@ -25,7 +25,7 @@ The DynamoDB storage backend is used to persist Vault's data in
 storage "dynamodb" {
   ha_enabled = "true"
   region     = "us-west-2"
-  table      = "vault-data"
+  table      = "openbao-data"
 }
 ```
 
@@ -39,7 +39,7 @@ see the [official AWS DynamoDB documentation][dynamodb-rw-capacity].
   `AWS_DYNAMODB_ENDPOINT`.
 
 - `ha_enabled` `(string: "false")` – Specifies whether this backend should be used
-  to run Vault in high availability mode. Valid values are "true" or "false". This
+  to run OpenBao in high availability mode. Valid values are "true" or "false". This
   can also be provided via the environment variable `DYNAMODB_HA_ENABLED`.
 
 - `max_parallel` `(string: "128")` – Specifies the maximum number of concurrent
@@ -49,26 +49,26 @@ see the [official AWS DynamoDB documentation][dynamodb-rw-capacity].
   provided via the environment variable `AWS_DEFAULT_REGION`.
 
 - `read_capacity` `(int: 5)` – Specifies the maximum number of reads consumed
-  per second on the table, for use if Vault creates the DynamoDB table. This has
+  per second on the table, for use if OpenBao creates the DynamoDB table. This has
   no effect if the `table` already exists. This can also be provided via the
   environment variable `AWS_DYNAMODB_READ_CAPACITY`.
 
-- `table` `(string: "vault-dynamodb-backend")` – Specifies the name of the
-  DynamoDB table in which to store Vault data. If the specified table does not
+- `table` `(string: "openbao-dynamodb-backend")` – Specifies the name of the
+  DynamoDB table in which to store OpenBao data. If the specified table does not
   yet exist, it will be created during initialization. This can also be
   provided via the environment variable `AWS_DYNAMODB_TABLE`. See the
   information on the table schema below.
 
 - `write_capacity` `(int: 5)` – Specifies the maximum number of writes performed
-  per second on the table, for use if Vault creates the DynamoDB table. This value
+  per second on the table, for use if OpenBao creates the DynamoDB table. This value
   has no effect if the `table` already exists. This can also be provided via the
   environment variable `AWS_DYNAMODB_WRITE_CAPACITY`.
 
 The following settings are used for authenticating to AWS. If you are
-running your Vault server on an EC2 instance, you can also make use of the EC2
-instance profile service to provide the credentials Vault will use to make
+running your OpenBao server on an EC2 instance, you can also make use of the EC2
+instance profile service to provide the credentials OpenBao will use to make
 DynamoDB API calls. Leaving the `access_key` and `secret_key` fields empty will
-cause Vault to attempt to retrieve credentials from the AWS metadata service.
+cause OpenBao to attempt to retrieve credentials from the AWS metadata service.
 
 - `access_key` `(string: <required>)` – Specifies the AWS access key. This can
   also be provided via the environment variable `AWS_ACCESS_KEY_ID`.
@@ -81,8 +81,8 @@ cause Vault to attempt to retrieve credentials from the AWS metadata service.
 
 ## Required AWS permissions
 
-The governing policy for the IAM user or EC2 instance profile that Vault uses
-to access DynamoDB must contain the following permissions for Vault to perform
+The governing policy for the IAM user or EC2 instance profile that OpenBao uses
+to access DynamoDB must contain the following permissions for OpenBao to perform
 the required operations on the DynamoDB table:
 
 ```javascript
@@ -115,7 +115,7 @@ the required operations on the DynamoDB table:
 ## Table schema
 
 If you are going to create the DynamoDB table prior to the execution and
-initialization of Vault, you will need to create a table with these attributes:
+initialization of OpenBao, you will need to create a table with these attributes:
 
 - Primary partition key: "Path", a string
 - Primary sort key: "Key", a string
@@ -141,17 +141,17 @@ resource "aws_dynamodb_table" "dynamodb-table" {
   }
 
   tags = {
-    Name        = "vault-dynamodb-table"
+    Name        = "openbao-dynamodb-table"
     Environment = "prod"
   }
 }
 ```
 
-If a table with the configured name already exists, Vault will not modify it -
-and the Vault configuration values of `read_capacity` and `write_capacity` have
+If a table with the configured name already exists, OpenBao will not modify it -
+and the OpenBao configuration values of `read_capacity` and `write_capacity` have
 no effect.
 
-If the table does not already exist, Vault will try to create it, with read and
+If the table does not already exist, OpenBao will try to create it, with read and
 write capacities set to the values of `read_capacity` and `write_capacity`
 respectively.
 
@@ -159,7 +159,7 @@ respectively.
 
 @include 'aws-imds-timeout.mdx'
 
-## DynamoDB examples of Vault configuration
+## DynamoDB examples of OpenBao configuration
 
 ### Custom table and Read-Write capacity
 
@@ -167,7 +167,7 @@ This example shows using a custom table name and read/write capacity.
 
 ```hcl
 storage "dynamodb" {
-  table = "my-vault-data"
+  table = "my-openbao-data"
 
   read_capacity  = 10
   write_capacity = 15
@@ -179,7 +179,7 @@ storage "dynamodb" {
 This example shows enabling high availability for the DynamoDB storage backend.
 
 ```hcl
-api_addr = "https://vault-leader.my-company.internal"
+api_addr = "https://openbao-leader.my-company.internal"
 
 storage "dynamodb" {
   ha_enabled    = "true"

@@ -12,7 +12,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/sdk/helper/locksutil"
 	"github.com/openbao/openbao/sdk/physical"
 )

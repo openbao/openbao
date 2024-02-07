@@ -2,18 +2,18 @@
 layout: docs
 page_title: Google Cloud Storage - Storage Backends - Configuration
 description: |-
-  The Google Cloud Storage storage backend is used to persist Vault's data in
+  The Google Cloud Storage storage backend is used to persist OpenBao's data in
   Google Cloud Storage.
 ---
 
 # Google Cloud storage storage backend
 
-The Google Cloud Storage storage backend is used to persist Vault's data in
+The Google Cloud Storage storage backend is used to persist OpenBao's data in
 [Google Cloud Storage][gcs-docs].
 
 - **High Availability** – the Google Cloud Storage storage backend supports high
   availability. Because the Google Cloud Storage storage backend uses the system
-  time on the Vault node to acquire sessions, clock skew across Vault servers
+  time on the OpenBao node to acquire sessions, clock skew across OpenBao servers
   can cause lock contention.
 
 - **Community Supported** – the Google Cloud Storage storage backend is
@@ -32,21 +32,21 @@ Cloud Storage documentation][gcs-docs].
 
 ## `gcs` setup
 
-To use the Google Cloud Storage Vault storage backend, you must have a Google
+To use the Google Cloud Storage OpenBao storage backend, you must have a Google
 Cloud Platform account with permissions to create Google Cloud Storage buckets.
 
-To use the Google Cloud Storage Vault storage backend, you must have a Google
+To use the Google Cloud Storage OpenBao storage backend, you must have a Google
 Cloud Platform account. Either using the API or web interface, create a bucket
 using the [`gsutil`][cloud-sdk] command. Bucket names must be globally unique
 across all of Google Cloud, so choose a unique name:
 
 ```shell-session
-$ gsutil mb gs://mycompany-vault-data
+$ gsutil mb gs://mycompany-openbao-data
 ```
 
 Even though the data is encrypted in transit and at rest, be sure to set the
 appropriate permissions on the bucket to limit exposure. You may want to create
-a service account that limits Vault's interactions with Google Cloud to objects
+a service account that limits OpenBao's interactions with Google Cloud to objects
 in the storage bucket using IAM permissions.
 
 Here is a sample [Google Cloud IAM][iam] policy that grants the proper
@@ -58,20 +58,20 @@ value with the value for your service account.
   "bindings": [
     {
       "role": "roles/storage.objectAdmin",
-      "members": ["serviceAccount:my-vault@gserviceaccount.com"]
+      "members": ["serviceAccount:my-openbao@gserviceaccount.com"]
     }
   ]
 }
 ```
 
-Then give Vault the service account's credential file as a configuration option.
+Then give OpenBao the service account's credential file as a configuration option.
 
 For more information on schemas or Google Cloud Storage, please see the [Google
 Cloud Storage documentation][gcs-docs].
 
 ## `gcs` authentication
 
-The Google Cloud Storage Vault storage backend uses the official Google Cloud
+The Google Cloud Storage OpenBao storage backend uses the official Google Cloud
 Golang SDK. This means it supports the common ways of [providing credentials to
 Google Cloud][cloud-creds].
 
@@ -104,8 +104,8 @@ https://www.googleapis.com/auth/devstorage.read_write
 - `chunk_size` `(string: "8192")` – Specifies the maximum size (in kilobytes) to
   send in a single request. If set to 0, it will attempt to send the whole
   object at once, but will not retry any failures. If you are not storing large
-  objects in Vault, it is recommended to set this to a low value (minimum is
-  256), since it will reduce the amount of memory Vault uses. Alternatively, this parameter
+  objects in OpenBao, it is recommended to set this to a low value (minimum is
+  256), since it will reduce the amount of memory OpenBao uses. Alternatively, this parameter
   can be omitted and the `GOOGLE_STORAGE_CHUNK_SIZE` environment variable can be used to set 
   the chunk size. If both the environment variable and the parameter in the stanza are set, 
   the value of the environment variable will take precedence.
@@ -131,10 +131,10 @@ This example shows configuring Google Cloud Storage with high availability
 enabled.
 
 ```hcl
-api_addr = "https://vault-leader.my-company.internal"
+api_addr = "https://openbao-leader.my-company.internal"
 
 storage "gcs" {
-  bucket        = "mycompany-vault-data"
+  bucket        = "mycompany-openbao-data"
   ha_enabled    = "true"
 }
 ```
@@ -142,12 +142,12 @@ storage "gcs" {
 ### Custom chunk size
 
 This example shows setting a custom chunk size for uploads. When uploading large
-data to Vault, setting a lower number can reduce Vault's memory consumption, but
+data to OpenBao, setting a lower number can reduce OpenBao's memory consumption, but
 will increase the number of outbound requests.
 
 ```hcl
 storage "gcs" {
-  bucket     = "mycompany-vault-data"
+  bucket     = "mycompany-openbao-data"
   chunk_size = "512"
 }
 ```

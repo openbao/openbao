@@ -2,28 +2,28 @@
 layout: docs
 page_title: path-help - Command
 description: |-
-  The "path-help" command retrieves API help for paths. All endpoints in Vault
+  The "path-help" command retrieves API help for paths. All endpoints in OpenBao
   provide built-in help in markdown format. This includes system paths, secret
   engines, and auth methods.
 ---
 
 # path-help
 
-The `path-help` command retrieves API help for paths. All endpoints in Vault
+The `path-help` command retrieves API help for paths. All endpoints in OpenBao
 provide built-in help in markdown format. This includes system paths, secret
 engines, and auth methods.
 
 The help system is the easiest way to learn how to use the various systems
-in Vault, and also allows you to discover new paths.
+in OpenBao, and also allows you to discover new paths.
 
-Before using `path-help`, it is important to understand "paths" within Vault.
-Paths are the parameters used for `vault read`, `vault write`, etc. An example
+Before using `path-help`, it is important to understand "paths" within OpenBao.
+Paths are the parameters used for `bao read`, `bao write`, etc. An example
 path is `secret/foo`, or `aws/config/root`. The paths available depend on the
 secrets engines in use. Because of this, the interactive help is an
 indispensable tool to finding what paths are supported.
 
-To discover what paths are supported, use `vault path-help PATH`. For example,
-if you enabled the AWS secrets engine, you can use `vault path-help aws` to find
+To discover what paths are supported, use `bao path-help PATH`. For example,
+if you enabled the AWS secrets engine, you can use `bao path-help aws` to find
 the paths supported by that backend. The paths are shown with regular
 expressions, which can make them hard to parse, but they are also extremely
 exact.
@@ -33,11 +33,11 @@ exact.
 Get help output for the KV secrets engine:
 
 ```shell-session
-$ vault path-help secret
+$ bao path-help secret
 ## DESCRIPTION
 
 The KV backend reads and writes arbitrary secrets to the backend.
-The secrets are encrypted/decrypted by Vault: they are never stored
+The secrets are encrypted/decrypted by OpenBao: they are never stored
 unencrypted in the backend and the backend never has an opportunity to
 see the unencrypted value.
 
@@ -57,11 +57,11 @@ you may or may not be able to access certain paths.
         read/write arbitrary data into secret storage.
 ```
 
-Once you've found a path you like, you can learn more about it by using `vault path-help <path>` where "path" is a path that matches one of the regular
+Once you've found a path you like, you can learn more about it by using `bao path-help <path>` where "path" is a path that matches one of the regular
 expressions from the backend help.
 
 ```shell-session
-$ vault path-help secret/password
+$ bao path-help secret/password
 Request:        password
 Matching Route: ^.*$
 
@@ -79,7 +79,7 @@ The pass-through backend reads and writes arbitrary data into secret storage,
 encrypting it along the way.
 
 A lease can be specified when writing with the "lease" field. If given, then
-when the secret is read, Vault will report a lease with that duration. It
+when the secret is read, OpenBao will report a lease with that duration. It
 is expected that the consumer of this backend properly writes renewed keys
 before the lease is up. In addition, revocation must be handled by the
 user of this backend.

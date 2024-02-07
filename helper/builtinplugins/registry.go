@@ -6,55 +6,27 @@ package builtinplugins
 import (
 	"context"
 
-	credAliCloud "github.com/hashicorp/vault-plugin-auth-alicloud"
-	credAzure "github.com/hashicorp/vault-plugin-auth-azure"
-	credCentrify "github.com/hashicorp/vault-plugin-auth-centrify"
-	credCF "github.com/hashicorp/vault-plugin-auth-cf"
-	credGcp "github.com/hashicorp/vault-plugin-auth-gcp/plugin"
-	credJWT "github.com/hashicorp/vault-plugin-auth-jwt"
-	credKerb "github.com/hashicorp/vault-plugin-auth-kerberos"
-	credKube "github.com/hashicorp/vault-plugin-auth-kubernetes"
-	credOCI "github.com/hashicorp/vault-plugin-auth-oci"
-	dbCouchbase "github.com/hashicorp/vault-plugin-database-couchbase"
-	dbElastic "github.com/hashicorp/vault-plugin-database-elasticsearch"
-	dbMongoAtlas "github.com/hashicorp/vault-plugin-database-mongodbatlas"
-	dbRedis "github.com/hashicorp/vault-plugin-database-redis"
-	dbRedisElastiCache "github.com/hashicorp/vault-plugin-database-redis-elasticache"
-	dbSnowflake "github.com/hashicorp/vault-plugin-database-snowflake"
-	logicalAd "github.com/hashicorp/vault-plugin-secrets-ad/plugin"
-	logicalAlicloud "github.com/hashicorp/vault-plugin-secrets-alicloud"
-	logicalAzure "github.com/hashicorp/vault-plugin-secrets-azure"
-	logicalGcp "github.com/hashicorp/vault-plugin-secrets-gcp/plugin"
-	logicalGcpKms "github.com/hashicorp/vault-plugin-secrets-gcpkms"
-	logicalKube "github.com/hashicorp/vault-plugin-secrets-kubernetes"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	logicalMongoAtlas "github.com/hashicorp/vault-plugin-secrets-mongodbatlas"
-	logicalLDAP "github.com/hashicorp/vault-plugin-secrets-openldap"
-	logicalTerraform "github.com/hashicorp/vault-plugin-secrets-terraform"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
-	credAws "github.com/openbao/openbao/builtin/credential/aws"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
-	credGitHub "github.com/openbao/openbao/builtin/credential/github"
+	credJWT "github.com/openbao/openbao/builtin/credential/jwt"
+	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
+	credKube "github.com/openbao/openbao/builtin/credential/kubernetes"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
-	credOkta "github.com/openbao/openbao/builtin/credential/okta"
 	credRadius "github.com/openbao/openbao/builtin/credential/radius"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
-	logicalAws "github.com/openbao/openbao/builtin/logical/aws"
-	logicalConsul "github.com/openbao/openbao/builtin/logical/consul"
-	logicalNomad "github.com/openbao/openbao/builtin/logical/nomad"
+	logicalKube "github.com/openbao/openbao/builtin/logical/kubernetes"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
+	logicalLDAP "github.com/openbao/openbao/builtin/logical/openldap"
 	logicalPki "github.com/openbao/openbao/builtin/logical/pki"
 	logicalRabbit "github.com/openbao/openbao/builtin/logical/rabbitmq"
 	logicalSsh "github.com/openbao/openbao/builtin/logical/ssh"
 	logicalTotp "github.com/openbao/openbao/builtin/logical/totp"
 	logicalTransit "github.com/openbao/openbao/builtin/logical/transit"
 	dbCass "github.com/openbao/openbao/plugins/database/cassandra"
-	dbHana "github.com/openbao/openbao/plugins/database/hana"
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
-	dbMongo "github.com/openbao/openbao/plugins/database/mongodb"
-	dbMssql "github.com/openbao/openbao/plugins/database/mssql"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
-	dbRedshift "github.com/openbao/openbao/plugins/database/redshift"
+	dbRedis "github.com/openbao/openbao/plugins/database/redis"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/logical"
@@ -99,32 +71,15 @@ func removedFactory(ctx context.Context, config *logical.BackendConfig) (logical
 func newRegistry() *registry {
 	reg := &registry{
 		credentialBackends: map[string]credentialBackend{
-			"alicloud": {Factory: credAliCloud.Factory},
-			"app-id": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
 			"approle":    {Factory: credAppRole.Factory},
-			"aws":        {Factory: credAws.Factory},
-			"azure":      {Factory: credAzure.Factory},
-			"centrify":   {Factory: credCentrify.Factory},
 			"cert":       {Factory: credCert.Factory},
-			"cf":         {Factory: credCF.Factory},
-			"gcp":        {Factory: credGcp.Factory},
-			"github":     {Factory: credGitHub.Factory},
 			"jwt":        {Factory: credJWT.Factory},
 			"kerberos":   {Factory: credKerb.Factory},
 			"kubernetes": {Factory: credKube.Factory},
 			"ldap":       {Factory: credLdap.Factory},
-			"oci":        {Factory: credOCI.Factory},
 			"oidc":       {Factory: credJWT.Factory},
-			"okta":       {Factory: credOkta.Factory},
-			"pcf": {
-				Factory:           credCF.Factory,
-				DeprecationStatus: consts.Deprecated,
-			},
-			"radius":   {Factory: credRadius.Factory},
-			"userpass": {Factory: credUserpass.Factory},
+			"radius":     {Factory: credRadius.Factory},
+			"userpass":   {Factory: credUserpass.Factory},
 		},
 		databasePlugins: map[string]databasePlugin{
 			// These four plugins all use the same mysql implementation but with
@@ -134,65 +89,21 @@ func newRegistry() *registry {
 			"mysql-rds-database-plugin":    {Factory: dbMysql.New(dbMysql.DefaultLegacyUserNameTemplate)},
 			"mysql-legacy-database-plugin": {Factory: dbMysql.New(dbMysql.DefaultLegacyUserNameTemplate)},
 
-			"cassandra-database-plugin":         {Factory: dbCass.New},
-			"couchbase-database-plugin":         {Factory: dbCouchbase.New},
-			"elasticsearch-database-plugin":     {Factory: dbElastic.New},
-			"hana-database-plugin":              {Factory: dbHana.New},
-			"influxdb-database-plugin":          {Factory: dbInflux.New},
-			"mongodb-database-plugin":           {Factory: dbMongo.New},
-			"mongodbatlas-database-plugin":      {Factory: dbMongoAtlas.New},
-			"mssql-database-plugin":             {Factory: dbMssql.New},
-			"postgresql-database-plugin":        {Factory: dbPostgres.New},
-			"redshift-database-plugin":          {Factory: dbRedshift.New},
-			"redis-database-plugin":             {Factory: dbRedis.New},
-			"redis-elasticache-database-plugin": {Factory: dbRedisElastiCache.New},
-			"snowflake-database-plugin":         {Factory: dbSnowflake.New},
+			"cassandra-database-plugin":  {Factory: dbCass.New},
+			"influxdb-database-plugin":   {Factory: dbInflux.New},
+			"postgresql-database-plugin": {Factory: dbPostgres.New},
+			"redis-database-plugin":      {Factory: dbRedis.New},
 		},
 		logicalBackends: map[string]logicalBackend{
-			"ad": {
-				Factory:           logicalAd.Factory,
-				DeprecationStatus: consts.Deprecated,
-			},
-			"alicloud": {Factory: logicalAlicloud.Factory},
-			"aws":      {Factory: logicalAws.Factory},
-			"azure":    {Factory: logicalAzure.Factory},
-			"cassandra": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"consul":     {Factory: logicalConsul.Factory},
-			"gcp":        {Factory: logicalGcp.Factory},
-			"gcpkms":     {Factory: logicalGcpKms.Factory},
 			"kubernetes": {Factory: logicalKube.Factory},
 			"kv":         {Factory: logicalKv.Factory},
-			"mongodb": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			// The mongodbatlas secrets engine is not the same as the database plugin equivalent
-			// (`mongodbatlas-database-plugin`), and thus will not be deprecated at this time.
-			"mongodbatlas": {Factory: logicalMongoAtlas.Factory},
-			"mssql": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"mysql": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"nomad":    {Factory: logicalNomad.Factory},
-			"openldap": {Factory: logicalLDAP.Factory},
-			"ldap":     {Factory: logicalLDAP.Factory},
-			"pki":      {Factory: logicalPki.Factory},
-			"postgresql": {
-				Factory:           removedFactory,
-				DeprecationStatus: consts.Removed,
-			},
-			"rabbitmq":  {Factory: logicalRabbit.Factory},
-			"ssh":       {Factory: logicalSsh.Factory},
-			"terraform": {Factory: logicalTerraform.Factory},
-			"totp":      {Factory: logicalTotp.Factory},
-			"transit":   {Factory: logicalTransit.Factory},
+			"openldap":   {Factory: logicalLDAP.Factory},
+			"ldap":       {Factory: logicalLDAP.Factory},
+			"pki":        {Factory: logicalPki.Factory},
+			"rabbitmq":   {Factory: logicalRabbit.Factory},
+			"ssh":        {Factory: logicalSsh.Factory},
+			"totp":       {Factory: logicalTotp.Factory},
+			"transit":    {Factory: logicalTransit.Factory},
 		},
 	}
 

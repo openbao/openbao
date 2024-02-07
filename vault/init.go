@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"sync/atomic"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/vault/seal"
 

@@ -169,7 +169,7 @@ require (
 	k8s.io/apimachinery v0.27.2
 	k8s.io/client-go v0.27.2
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
-	layeh.com/radius v0.0.0-20190322222518-890bc1058917
+	layeh.com/radius v0.0.0-20230922032716-6579be8edf5d
 	mvdan.cc/gofumpt v0.3.1
 	nhooyr.io/websocket v1.8.7
 )

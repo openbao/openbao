@@ -8,9 +8,7 @@ module github.com/openbao/openbao
 // The general policy for updating it is: when the Go major version used on the branch is
 // updated. If we choose not to do so at some point (e.g. because we don't want some new
 // semantic related to Go module handling), this comment should be updated to explain that.
-//
-// Whenever this value gets updated, sdk/go.mod should be updated to the same value.
-go 1.20
+go 1.22
 
 replace github.com/openbao/openbao/api => ./api
 

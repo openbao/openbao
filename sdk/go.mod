@@ -1,5 +1,10 @@
 module github.com/openbao/openbao/sdk
 
+// The Go version directive for the sdk package should normally only be updated when
+// code in the sdk package requires a newer Go version to build.  It should not
+// automatically track the Go version used to build Vault itself.  Many projects import
+// the sdk module and we don't want to impose a newer version on them any more than we
+// have to.
 go 1.19
 
 replace github.com/openbao/openbao/api => ../api

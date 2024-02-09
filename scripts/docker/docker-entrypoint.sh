@@ -38,7 +38,7 @@ fi
 # BAO_CONFIG_DIR isn't exposed as a volume but you can compose additional
 # config files in there if you use this image as a base, or use
 # BAO_CLUSTER_ADDR below.
-BAO_CONFIG_DIR=/bao/config
+BAO_CONFIG_DIR=/openbao/config
 
 # You can also set the BAO_CLUSTER_ADDR environment variable to pass some
 # OpenBao configuration JSON without having to bind any volumes.
@@ -73,18 +73,18 @@ fi
 if [ "$1" = 'bao' ]; then
     if [ -z "$SKIP_CHOWN" ]; then
         # If the config dir is bind mounted then chown it
-        if [ "$(stat -c %u /bao/config)" != "$(id -u bao)" ]; then
-            chown -R bao:bao /bao/config || echo "Could not chown /bao/config (may not have appropriate permissions)"
+        if [ "$(stat -c %u /openbao/config)" != "$(id -u openbao)" ]; then
+            chown -R openbao:openbao /openbao/config || echo "Could not chown /openbao/config (may not have appropriate permissions)"
         fi
 
         # If the logs dir is bind mounted then chown it
-        if [ "$(stat -c %u /bao/logs)" != "$(id -u bao)" ]; then
-            chown -R bao:bao /bao/logs
+        if [ "$(stat -c %u /openbao/logs)" != "$(id -u openbao)" ]; then
+            chown -R openbao:openbao /openbao/logs
         fi
 
         # If the file dir is bind mounted then chown it
-        if [ "$(stat -c %u /bao/file)" != "$(id -u bao)" ]; then
-            chown -R bao:bao /bao/file
+        if [ "$(stat -c %u /openbao/file)" != "$(id -u openbao)" ]; then
+            chown -R openbao:openbao /openbao/file
         fi
     fi
 
@@ -100,7 +100,7 @@ if [ "$1" = 'bao' ]; then
     fi
 
     if [ "$(id -u)" = '0' ]; then
-      set -- su-exec bao "$@"
+      set -- su-exec openbao "$@"
     fi
 fi
 

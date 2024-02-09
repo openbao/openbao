@@ -20,7 +20,7 @@ RUN make bootstrap \
 
 FROM alpine:3.13
 
-# Create a openbao user and group first so the IDs get set the same way,
+# Create an openbao user and group first so the IDs get set the same way,
 # even as the rest of this may change over time.
 RUN addgroup openbao && \
     adduser -S -G openbao openbao

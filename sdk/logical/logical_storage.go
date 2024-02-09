@@ -44,6 +44,10 @@ func (s *LogicalStorage) List(ctx context.Context, prefix string) ([]string, err
 	return s.underlying.List(ctx, prefix)
 }
 
+func (s *LogicalStorage) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return s.underlying.ListPage(ctx, prefix, after, limit)
+}
+
 func (s *LogicalStorage) Underlying() physical.Backend {
 	return s.underlying
 }

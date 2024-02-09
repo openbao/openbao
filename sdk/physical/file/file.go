@@ -301,7 +301,21 @@ func (b *FileBackend) List(ctx context.Context, prefix string) ([]string, error)
 	return b.ListInternal(ctx, prefix)
 }
 
+func (b *FileBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	b.permitPool.Acquire()
+	defer b.permitPool.Release()
+
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.ListPageInternal(ctx, prefix, after, limit)
+}
+
 func (b *FileBackend) ListInternal(ctx context.Context, prefix string) ([]string, error) {
+	return b.ListPageInternal(ctx, prefix, "", -1)
+}
+
+func (b *FileBackend) ListPageInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if err := b.validatePath(prefix); err != nil {
 		return nil, err
 	}
@@ -351,6 +365,21 @@ func (b *FileBackend) ListInternal(ctx context.Context, prefix string) ([]string
 
 	if len(names) > 0 {
 		sort.Strings(names)
+	}
+
+	if after != "" {
+		idx := sort.SearchStrings(names, after)
+		if idx < len(names) && names[idx] == after {
+			idx += 1
+		}
+		names = names[idx:]
+	}
+
+	if limit > 0 {
+		if limit > len(names) {
+			limit = len(names)
+		}
+		names = names[0:limit]
 	}
 
 	return names, nil

@@ -310,14 +310,25 @@ storage_destination "dest_type2" {
 	})
 }
 
-// randomLister wraps a physical backend, providing a List method
-// that returns results in a random order.
+// randomLister wraps a physical backend, providing a List and
+// ListPage methods that returns results in a random order.
 type randomLister struct {
 	b physical.Backend
 }
 
 func (l randomLister) List(ctx context.Context, path string) ([]string, error) {
 	result, err := l.b.List(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	rand.Shuffle(len(result), func(i, j int) {
+		result[i], result[j] = result[j], result[i]
+	})
+	return result, err
+}
+
+func (l randomLister) ListPage(ctx context.Context, path string, after string, limit int) ([]string, error) {
+	result, err := l.b.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return nil, err
 	}

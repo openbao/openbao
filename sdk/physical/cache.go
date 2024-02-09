@@ -220,6 +220,11 @@ func (c *Cache) List(ctx context.Context, prefix string) ([]string, error) {
 	return c.backend.List(ctx, prefix)
 }
 
+func (c *Cache) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	// See note above about List(...).
+	return c.backend.ListPage(ctx, prefix, after, limit)
+}
+
 func (c *TransactionalCache) Locks() []*locksutil.LockEntry {
 	return c.locks
 }

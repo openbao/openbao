@@ -40,6 +40,21 @@ func (s *GRPCStorageClient) List(ctx context.Context, prefix string) ([]string, 
 	return reply.Keys, nil
 }
 
+func (s *GRPCStorageClient) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	reply, err := s.client.ListPage(ctx, &pb.StorageListPageArgs{
+		Prefix: prefix,
+		After:  after,
+		Limit:  int32(limit),
+	}, largeMsgGRPCCallOpts...)
+	if err != nil {
+		return []string{}, err
+	}
+	if reply.Err != "" {
+		return reply.Keys, errors.New(reply.Err)
+	}
+	return reply.Keys, nil
+}
+
 func (s *GRPCStorageClient) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
 	reply, err := s.client.Get(ctx, &pb.StorageGetArgs{
 		Key: key,
@@ -96,6 +111,17 @@ func (s *GRPCStorageServer) List(ctx context.Context, args *pb.StorageListArgs) 
 	}, nil
 }
 
+func (s *GRPCStorageServer) ListPage(ctx context.Context, args *pb.StorageListPageArgs) (*pb.StorageListReply, error) {
+	if s.impl == nil {
+		return nil, errMissingStorage
+	}
+	keys, err := s.impl.ListPage(ctx, args.Prefix, args.After, int(args.Limit))
+	return &pb.StorageListReply{
+		Keys: keys,
+		Err:  pb.ErrToString(err),
+	}, nil
+}
+
 func (s *GRPCStorageServer) Get(ctx context.Context, args *pb.StorageGetArgs) (*pb.StorageGetReply, error) {
 	if s.impl == nil {
 		return nil, errMissingStorage
@@ -138,6 +164,10 @@ func (s *GRPCStorageServer) Delete(ctx context.Context, args *pb.StorageDeleteAr
 type NOOPStorage struct{}
 
 func (s *NOOPStorage) List(_ context.Context, prefix string) ([]string, error) {
+	return []string{}, nil
+}
+
+func (s *NOOPStorage) ListPage(_ context.Context, prefix string, after string, limit int) ([]string, error) {
 	return []string{}, nil
 }
 

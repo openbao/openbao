@@ -82,6 +82,11 @@ func (m mockStorageBackend) List(ctx context.Context, prefix string) ([]string, 
 	return nil, fmt.Errorf("method not implemented")
 }
 
+// ListPage is not used in a mock.
+func (m mockStorageBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return nil, fmt.Errorf("method not implemented")
+}
+
 func callTypeToOp(ctype string) string {
 	if ctype == timeoutCallRead || ctype == errCallRead || ctype == badReadCall {
 		return readOp

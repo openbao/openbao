@@ -112,6 +112,12 @@ func (l *LatencyInjector) List(ctx context.Context, prefix string) ([]string, er
 	return l.backend.List(ctx, prefix)
 }
 
+// ListPage is a latent paginated list request
+func (l *LatencyInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	l.addLatency()
+	return l.backend.ListPage(ctx, prefix, after, limit)
+}
+
 // Transaction is a latent transaction request
 func (l *TransactionalLatencyInjector) Transaction(ctx context.Context, txns []*TxnEntry) error {
 	l.addLatency()

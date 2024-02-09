@@ -785,6 +785,10 @@ func (f fakeStorage) List(ctx context.Context, s string) ([]string, error) {
 	panic("list not implemented")
 }
 
+func (f fakeStorage) ListPage(ctx context.Context, s string, a string, l int) ([]string, error) {
+	panic("list page not implemented")
+}
+
 func (f fakeStorage) Get(ctx context.Context, s string) (*logical.StorageEntry, error) {
 	panic("get not implemented")
 }

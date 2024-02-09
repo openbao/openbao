@@ -314,6 +314,10 @@ func (b fakeBarrier) List(context.Context, string) ([]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
+func (b fakeBarrier) ListPage(context.Context, string, string, int) ([]string, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
 func (b fakeBarrier) Put(context.Context, *logical.StorageEntry) error {
 	return fmt.Errorf("not implemented")
 }

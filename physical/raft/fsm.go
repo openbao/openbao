@@ -525,6 +525,13 @@ func (f *FSM) Put(ctx context.Context, entry *physical.Entry) error {
 
 // List retrieves the set of keys with the given prefix from the bolt file.
 func (f *FSM) List(ctx context.Context, prefix string) ([]string, error) {
+	return f.ListPage(ctx, prefix, "", -1)
+}
+
+// ListPage retrieves the set of keys with the given prefix from the bolt
+// file, after the specified entry (if present), and up to the given
+// limit of entries.
+func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	// TODO: Remove this outdated metric name in a future release
 	defer metrics.MeasureSince([]string{"raft", "list"}, time.Now())
 	defer metrics.MeasureSince([]string{"raft_storage", "fsm", "list"}, time.Now())
@@ -532,23 +539,47 @@ func (f *FSM) List(ctx context.Context, prefix string) ([]string, error) {
 	f.l.RLock()
 	defer f.l.RUnlock()
 
-	var keys []string
+	prefixBytes := []byte(prefix)
+	seekPrefix := []byte(filepath.Join(prefix, after))
+	if after == "" {
+		seekPrefix = prefixBytes
+	}
 
+	var keys []string
 	err := f.db.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys
 		c := tx.Bucket(dataBucketName).Cursor()
 
-		prefixBytes := []byte(prefix)
-		for k, _ := c.Seek(prefixBytes); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
+		// By seeking relative to the after location, we can save looking
+		// at unnecessary entries before our expected entry.
+		for k, _ := c.Seek(seekPrefix); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
+			if limit > 0 && len(keys) >= limit {
+				// We've seen enough entries; exit early.
+				return nil
+			}
+
+			// Note that we push the comparison of 'key' with 'after'
+			// until we add in the directory suffix, if necessary.
 			key := string(k)
 			key = strings.TrimPrefix(key, prefix)
 			if i := strings.Index(key, "/"); i == -1 {
+				if after != "" && key <= after {
+					// Still prior to our cut-off point, so retry.
+					continue
+				}
+
 				// Add objects only from the current 'folder'
 				keys = append(keys, key)
 			} else {
 				// Add truncated 'folder' paths
 				if len(keys) == 0 || keys[len(keys)-1] != key[:i+1] {
-					keys = append(keys, string(key[:i+1]))
+					folder := string(key[:i+1])
+					if after != "" && folder <= after {
+						// Still prior to our cut-off point, so retry.
+						continue
+					}
+
+					keys = append(keys, folder)
 				}
 			}
 		}

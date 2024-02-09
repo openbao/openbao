@@ -922,7 +922,7 @@ func (b *AESGCMBarrier) Delete(ctx context.Context, key string) error {
 	return b.backend.Delete(ctx, key)
 }
 
-// List is used ot list all the keys under a given
+// List is used to list all the keys under a given
 // prefix, up to the next prefix.
 func (b *AESGCMBarrier) List(ctx context.Context, prefix string) ([]string, error) {
 	defer metrics.MeasureSince([]string{"barrier", "list"}, time.Now())
@@ -934,6 +934,20 @@ func (b *AESGCMBarrier) List(ctx context.Context, prefix string) ([]string, erro
 	}
 
 	return b.backend.List(ctx, prefix)
+}
+
+// ListPage is used to list a subset of the keys under a given
+// prefix, up to the next prefix.
+func (b *AESGCMBarrier) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	defer metrics.MeasureSince([]string{"barrier", "list-page"}, time.Now())
+	b.l.RLock()
+	sealed := b.sealed
+	b.l.RUnlock()
+	if sealed {
+		return nil, ErrBarrierSealed
+	}
+
+	return b.backend.ListPage(ctx, prefix, after, limit)
 }
 
 // aeadForTerm returns the AES-GCM AEAD for the given term

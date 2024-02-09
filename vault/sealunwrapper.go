@@ -151,6 +151,10 @@ func (d *sealUnwrapper) List(ctx context.Context, prefix string) ([]string, erro
 	return d.underlying.List(ctx, prefix)
 }
 
+func (d *sealUnwrapper) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return d.underlying.ListPage(ctx, prefix, after, limit)
+}
+
 func (d *transactionalSealUnwrapper) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
 	// Collect keys that need to be locked
 	var keys []string

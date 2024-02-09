@@ -105,6 +105,13 @@ func (e *ErrorInjector) List(ctx context.Context, prefix string) ([]string, erro
 	return e.backend.List(ctx, prefix)
 }
 
+func (e *ErrorInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	if err := e.addError(); err != nil {
+		return nil, err
+	}
+	return e.backend.ListPage(ctx, prefix, after, limit)
+}
+
 func (e *TransactionalErrorInjector) Transaction(ctx context.Context, txns []*TxnEntry) error {
 	if err := e.addError(); err != nil {
 		return err

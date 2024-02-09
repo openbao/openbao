@@ -58,6 +58,10 @@ func (f *faultyPseudo) List(ctx context.Context, prefix string) ([]string, error
 	return f.underlying.List(context.Background(), prefix)
 }
 
+func (f *faultyPseudo) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return f.underlying.ListPage(context.Background(), prefix, after, limit)
+}
+
 func (f *faultyPseudo) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
 	f.underlying.permitPool.Acquire()
 	defer f.underlying.permitPool.Release()

@@ -59,6 +59,12 @@ func (s *InmemStorage) List(ctx context.Context, prefix string) ([]string, error
 	return s.underlying.List(ctx, prefix)
 }
 
+func (s *InmemStorage) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	s.once.Do(s.init)
+
+	return s.underlying.ListPage(ctx, prefix, after, limit)
+}
+
 func (s *InmemStorage) Underlying() *inmem.InmemBackend {
 	s.once.Do(s.init)
 

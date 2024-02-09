@@ -206,7 +206,7 @@ agree on how cluster traffic should be encrypted.
 It's less clear how this works with Integrated Storage, as there is a chicken
 and egg problem. Nodes don't have a shared view of storage until the raft
 cluster has been formed, but we're trying to form the raft cluster! To solve
-this problem, a OpenBao node must speak to another OpenBao node using the API port
+this problem, an OpenBao node must speak to another OpenBao node using the API port
 instead of the cluster port. This is currently the only situation in which
 OpenBao does this.
 

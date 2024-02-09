@@ -36,7 +36,7 @@ binaries can be obtained from [releases.hashicorp.com](https://releases.hashicor
 or they can be [built from source](/vault/docs/plugins/plugin-development#building-a-plugin-from-source).
 
 OpenBao's external plugins are completely separate, standalone applications that
-OpenBao executes and communicates with over RPC. Each time a OpenBao secret engine,
+OpenBao executes and communicates with over RPC. Each time an OpenBao secret engine,
 auth method, or database plugin is mounted, a new process is spawned. However,
 plugins can be made to implement [plugin multiplexing](/vault/docs/plugins/plugin-architecture#plugin-multiplexing)
 to improve performance. Plugin multiplexing allows plugin processes to be

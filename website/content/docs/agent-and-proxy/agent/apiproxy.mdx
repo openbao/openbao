@@ -31,7 +31,7 @@ request to OpenBao. See the [caching docs](/vault/docs/agent-and-proxy/agent/cac
 OpenBao Agent allows for easy authentication to OpenBao in a wide variety of
 environments using [Auto-Auth](/vault/docs/agent-and-proxy/autoauth). By setting the
 `use_auto_auth_token` (see below) configuration, clients will not be required
-to provide a OpenBao token to the requests made to the Agent. When this
+to provide an OpenBao token to the requests made to the Agent. When this
 configuration is set, if the request doesn't already bear a token, then the
 auto-auth token will be used to forward the request to the OpenBao server. This
 configuration will be overridden if the request already has a token attached,
@@ -52,7 +52,7 @@ existing OpenBao token in the request and instead uses the auto-auth token.
 The top level `api_proxy` block has the following configuration entries:
 
 - `use_auto_auth_token` `(bool/string: false)` - If set, the requests made to Agent
-without a OpenBao token will be forwarded to the OpenBao server with the
+without an OpenBao token will be forwarded to the OpenBao server with the
 auto-auth token attached. If the requests already bear a token, this
 configuration will be overridden and the token in the request will be used to
 forward the request to the OpenBao server. If set to `"force"` Agent will use the

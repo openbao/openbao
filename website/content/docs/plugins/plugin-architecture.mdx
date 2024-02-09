@@ -66,7 +66,7 @@ connection state is not supported in plugins.
 
 An important consideration of OpenBao's plugin system is to ensure the plugin
 invoked by OpenBao is authentic and maintains integrity. There are two components
-that a OpenBao operator needs to configure before external plugins can be run- the
+that an OpenBao operator needs to configure before external plugins can be run- the
 plugin directory and the plugin catalog entry.
 
 ### Plugin directory
@@ -84,7 +84,7 @@ added to OpenBao.
 ### Plugin catalog
 
 The plugin catalog is OpenBao's list of approved plugins. The catalog is stored in
-OpenBao's barrier and can only be updated by a OpenBao user with sudo permissions.
+OpenBao's barrier and can only be updated by an OpenBao user with sudo permissions.
 Upon adding a new plugin, the plugin name, SHA256 sum of the executable, and the
 command that should be used to run the plugin must be provided. The catalog will
 ensure the executable referenced in the command exists in the plugin

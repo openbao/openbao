@@ -47,7 +47,7 @@ quickly merge or address your contributions.
 
 1. The issue is reported.
 
-2. The issue is verified and categorized by a OpenBao collaborator.
+2. The issue is verified and categorized by an OpenBao collaborator.
    Categorization is done via tags. For example, bugs are marked as "bugs".
 
 3. Unless it is critical, the issue may be left for a period of time (sometimes

@@ -55,7 +55,7 @@ func (c *OperatorInitCommand) Synopsis() string {
 
 func (c *OperatorInitCommand) Help() string {
 	helpText := `
-Usage: vault operator init [options]
+Usage: bao operator init [options]
 
   Initializes a Vault server. Initialization is the process by which Vault's
   storage backend is prepared to receive data. Since Vault servers share the
@@ -72,18 +72,18 @@ Usage: vault operator init [options]
 
   Start initialization with the default options:
 
-      $ vault operator init
+      $ bao operator init
 
   Initialize, but encrypt the unseal keys with pgp keys:
 
-      $ vault operator init \
+      $ bao operator init \
           -key-shares=3 \
           -key-threshold=2 \
           -pgp-keys="keybase:hashicorp,keybase:jefferai,keybase:sethvargo"
 
   Encrypt the initial root token using a pgp key:
 
-      $ vault operator init -root-token-pgp-key="keybase:hashicorp"
+      $ bao operator init -root-token-pgp-key="keybase:hashicorp"
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)

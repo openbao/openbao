@@ -21,7 +21,7 @@ func (c *OperatorCommand) Synopsis() string {
 
 func (c *OperatorCommand) Help() string {
 	helpText := `
-Usage: vault operator <subcommand> [options] [args]
+Usage: bao operator <subcommand> [options] [args]
 
   This command groups subcommands for operators interacting with Vault. Most
   users will not need to interact with these commands. Here are a few examples
@@ -29,15 +29,15 @@ Usage: vault operator <subcommand> [options] [args]
 
   Initialize a new Vault cluster:
 
-      $ vault operator init
+      $ bao operator init
 
   Force a Vault to resign leadership in a cluster:
 
-      $ vault operator step-down
+      $ bao operator step-down
 
   Rotate Vault's underlying encryption key:
 
-      $ vault operator rotate
+      $ bao operator rotate
 
   Please see the individual subcommand help for detailed usage information.
 `

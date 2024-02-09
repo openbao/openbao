@@ -26,14 +26,14 @@ func (c *PolicyDeleteCommand) Synopsis() string {
 
 func (c *PolicyDeleteCommand) Help() string {
 	helpText := `
-Usage: vault policy delete [options] NAME
+Usage: bao policy delete [options] NAME
 
   Deletes the policy named NAME in the Vault server. Once the policy is deleted,
   all tokens associated with the policy are affected immediately.
 
   Delete the policy named "my-policy":
 
-      $ vault policy delete my-policy
+      $ bao policy delete my-policy
 
   Note that it is not possible to delete the "default" or "root" policies.
   These are built-in policies.

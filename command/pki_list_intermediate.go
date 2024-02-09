@@ -38,7 +38,7 @@ func (c *PKIListIntermediateCommand) Synopsis() string {
 
 func (c *PKIListIntermediateCommand) Help() string {
 	helpText := `
-Usage: vault pki list-intermediates PARENT [CHILD] [CHILD] [CHILD] ...
+Usage: bao pki list-intermediates PARENT [CHILD] [CHILD] [CHILD] ...
 
   Lists the set of intermediate CAs issued by this parent issuer.
 

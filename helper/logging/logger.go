@@ -112,7 +112,7 @@ func parseFullPath(fullPath string) (directory, fileName string, err error) {
 		err = multierror.Append(err, fmt.Errorf("directory contains glob character"))
 	}
 	if fileName == "" {
-		fileName = "vault.log"
+		fileName = "bao.log"
 	} else if strings.ContainsAny(fileName, globChars) {
 		err = multierror.Append(err, fmt.Errorf("file name contains globbing character"))
 	}

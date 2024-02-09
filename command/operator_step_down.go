@@ -26,7 +26,7 @@ func (c *OperatorStepDownCommand) Synopsis() string {
 
 func (c *OperatorStepDownCommand) Help() string {
 	helpText := `
-Usage: vault operator step-down [options]
+Usage: bao operator step-down [options]
 
   Forces the Vault server at the given address to step down from active duty.
   While the affected node will have a delay before attempting to acquire the
@@ -36,7 +36,7 @@ Usage: vault operator step-down [options]
 
   Force Vault to step down as the leader:
 
-      $ vault operator step-down
+      $ bao operator step-down
 
 ` + c.Flags().Help()
 

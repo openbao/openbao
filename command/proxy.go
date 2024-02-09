@@ -97,14 +97,14 @@ func (c *ProxyCommand) Synopsis() string {
 
 func (c *ProxyCommand) Help() string {
 	helpText := `
-Usage: vault proxy [options]
+Usage: bao proxy [options]
 
   This command starts a Vault Proxy that can perform automatic authentication
   in certain environments.
 
   Start a proxy with a configuration file:
 
-      $ vault proxy -config=/etc/vault/config.hcl
+      $ bao proxy -config=/etc/vault/config.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -397,7 +397,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 	// Output the header that the proxy has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault Proxy started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Proxy started! Log data will stream in below:\n")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -591,7 +591,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.SighupCh:
-				c.UI.Output("==> Vault Proxy config reload triggered")
+				c.UI.Output("==> OpenBao Proxy config reload triggered")
 				err := c.reloadConfig(c.flagConfigs)
 				if err != nil {
 					c.outputErrors(err)
@@ -614,7 +614,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.ShutdownCh:
-				c.UI.Output("==> Vault Proxy shutdown triggered")
+				c.UI.Output("==> OpenBao Proxy shutdown triggered")
 				// Notify systemd that the server is shutting down
 				// Let the lease cache know this is a shutdown; no need to evict everything
 				if leaseCache != nil {
@@ -708,7 +708,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English)
-	c.UI.Output("==> Vault Proxy configuration:\n")
+	c.UI.Output("==> OpenBao Proxy configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",

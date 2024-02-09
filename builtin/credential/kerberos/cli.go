@@ -11,11 +11,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/api"
 	"github.com/jcmturner/gokrb5/v8/client"
 	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/keytab"
 	"github.com/jcmturner/gokrb5/v8/spnego"
+	"github.com/openbao/openbao/api"
 )
 
 // CLIHandler fulfills Vault's LoginHandler interface.
@@ -99,14 +99,14 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login -method=kerberos [CONFIG K=V...]
+Usage: bao login -method=kerberos [CONFIG K=V...]
 
   The Kerberos auth method allows users to authenticate using Kerberos
   combined with LDAP.
 
   Example authentication:
 
-      $ vault login -method=kerberos \
+      $ bao login -method=kerberos \
             -username=grace \
             -service="HTTP/ab10dfy3be7v.matrix.lan:8200" \
             -realm=MATRIX.LAN \

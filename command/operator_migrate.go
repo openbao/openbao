@@ -61,7 +61,7 @@ func (c *OperatorMigrateCommand) Synopsis() string {
 
 func (c *OperatorMigrateCommand) Help() string {
 	helpText := `
-Usage: vault operator migrate [options]
+Usage: bao operator migrate [options]
 
   This command starts a storage backend migration process to copy all data
   from one backend to another. This operates directly on encrypted data and
@@ -69,7 +69,7 @@ Usage: vault operator migrate [options]
 
   Start a migration with a configuration file:
 
-      $ vault operator migrate -config=migrate.hcl
+      $ bao operator migrate -config=migrate.hcl
 
   For more information, please see the documentation.
 

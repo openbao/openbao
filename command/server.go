@@ -154,7 +154,7 @@ func (c *ServerCommand) Synopsis() string {
 
 func (c *ServerCommand) Help() string {
 	helpText := `
-Usage: vault server [options]
+Usage: bao server [options]
 
   This command starts a Vault server that responds to API requests. By default,
   Vault will start in a "sealed" state. The Vault cluster must be initialized
@@ -164,11 +164,11 @@ Usage: vault server [options]
 
   Start a server with a configuration file:
 
-      $ vault server -config=/etc/vault/config.hcl
+      $ bao server -config=/etc/vault/config.hcl
 
   Run in "dev" mode:
 
-      $ vault server -dev -dev-root-token-id="root"
+      $ bao server -dev -dev-root-token-id="root"
 
   For a full list of examples, please see the documentation.
 
@@ -657,7 +657,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -715,7 +715,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 	}
 
 	c.flushLog()
@@ -723,7 +723,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	for {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 
 			c.cleanupGuard.Do(listenerCloseFunc)
 
@@ -1429,7 +1429,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info["administrative namespace"] = config.AdministrativeNamespacePath
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -1516,7 +1516,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Output the header that the server has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 	}
 
 	// Inform any tests that the server is ready
@@ -1583,14 +1583,14 @@ func (c *ServerCommand) Run(args []string) int {
 	for !shutdownTriggered {
 		select {
 		case <-coreShutdownDoneCh:
-			c.UI.Output("==> Vault core was shut down")
+			c.UI.Output("==> OpenBao core was shut down")
 			retCode = 1
 			shutdownTriggered = true
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 			shutdownTriggered = true
 		case <-c.SighupCh:
-			c.UI.Output("==> Vault reload triggered")
+			c.UI.Output("==> OpenBao reload triggered")
 
 			// Notify systemd that the server is reloading config
 			c.notifySystemd(systemd.SdNotifyReloading)
@@ -2024,7 +2024,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -2153,7 +2153,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}
 
 	// Output the header that the server has started
-	c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+	c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 
 	// Inform any tests that the server is ready
 	select {
@@ -2170,7 +2170,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 
 			// Stop the listeners so that we don't process further client requests.
 			c.cleanupGuard.Do(testCluster.Cleanup)
@@ -2187,7 +2187,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Vault reload triggered")
+			c.UI.Output("==> OpenBao reload triggered")
 			for _, core := range testCluster.Cores {
 				if err := c.Reload(core.ReloadFuncsLock, core.ReloadFuncs, nil, core.Core); err != nil {
 					c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))

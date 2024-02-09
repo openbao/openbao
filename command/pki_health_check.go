@@ -55,7 +55,7 @@ func (c *PKIHealthCheckCommand) Synopsis() string {
 
 func (c *PKIHealthCheckCommand) Help() string {
 	helpText := `
-Usage: vault pki health-check [options] MOUNT
+Usage: bao pki health-check [options] MOUNT
 
   Reports status of the specified mount against best practices and pending
   failures. This is an informative command and not all recommendations will
@@ -64,11 +64,11 @@ Usage: vault pki health-check [options] MOUNT
 
   To check the pki-root mount with default configuration:
 
-      $ vault pki health-check pki-root
+      $ bao pki health-check pki-root
 
   To specify a configuration:
 
-      $ vault pki health-check -health-config=mycorp-root.json /pki-root
+      $ bao pki health-check -health-config=mycorp-root.json /pki-root
 
   Return codes indicate failure type:
 

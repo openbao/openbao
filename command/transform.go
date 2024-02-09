@@ -18,7 +18,7 @@ func (c *TransformCommand) Synopsis() string {
 
 func (c *TransformCommand) Help() string {
 	helpText := `
-Usage: vault transform <subcommand> [options] [args]
+Usage: bao transform <subcommand> [options] [args]
 
   This command has subcommands for interacting with Vault's Transform Secrets
   Engine. Here are some simple examples, and more detailed examples are
@@ -26,7 +26,7 @@ Usage: vault transform <subcommand> [options] [args]
 
   To import a key into a new FPE transformation:
 
-  $ vault transform import transform/transformations/fpe/new-transformation @path/to/key \
+  $ bao transform import transform/transformations/fpe/new-transformation @path/to/key \
       template=identifier \
 	  allowed_roles=physical-access 
 

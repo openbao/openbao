@@ -25,7 +25,7 @@ func (c *TransitImportVersionCommand) Synopsis() string {
 
 func (c *TransitImportVersionCommand) Help() string {
 	helpText := `
-Usage: vault transit import-version PATH KEY [...]
+Usage: bao transit import-version PATH KEY [...]
 
   Using the Transit key wrapping system, imports key material from
   the base64 encoded KEY (either directly on the CLI or via @path notation),

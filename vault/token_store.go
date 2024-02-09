@@ -2436,7 +2436,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	}()
 
 	resp := &logical.Response{}
-	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs.")
+	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs.")
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
 }
 
@@ -4189,8 +4189,8 @@ lease entries after certain error conditions. Usually running this is not
 necessary, and is only required if upgrade notes or support personnel suggest
 it.
 `
-	tokenBackendHelp = `The token credential backend is always enabled and builtin to Vault.
-Client tokens are used to identify a client and to allow Vault to associate policies and ACLs
+	tokenBackendHelp = `The token credential backend is always enabled and builtin to OpenBao.
+Client tokens are used to identify a client and to allow OpenBao to associate policies and ACLs
 which are enforced on every request. This backend also allows for generating sub-tokens as well
 as revocation of tokens. The tokens are renewable if associated with a lease.`
 	tokenCreateHelp          = `The token create path is used to create new tokens.`

@@ -21,7 +21,7 @@ func (c *NamespaceCommand) Synopsis() string {
 
 func (c *NamespaceCommand) Help() string {
 	helpText := `
-Usage: vault namespace <subcommand> [options] [args]
+Usage: bao namespace <subcommand> [options] [args]
 
   This command groups subcommands for interacting with Vault namespaces.
   These subcommands operate in the context of the namespace that the
@@ -29,31 +29,31 @@ Usage: vault namespace <subcommand> [options] [args]
 
   List enabled child namespaces:
 
-      $ vault namespace list
+      $ bao namespace list
 
   Look up an existing namespace:
 
-      $ vault namespace lookup
+      $ bao namespace lookup
 
   Create a new namespace:
 
-      $ vault namespace create
+      $ bao namespace create
 
   Patch an existing namespace:
 
-      $ vault namespace patch
+      $ bao namespace patch
 
   Delete an existing namespace:
 
-      $ vault namespace delete
+      $ bao namespace delete
 
   Lock the API for an existing namespace:
 
-      $ vault namespace lock
+      $ bao namespace lock
 
   Unlock the API for an existing namespace:
 
-      $ vault namespace unlock
+      $ bao namespace unlock
 
   Please see the individual subcommand help for detailed usage information.
 `

@@ -11,7 +11,7 @@ func TestIsBuiltinVersion(t *testing.T) {
 		builtin bool
 	}{
 		{"v1.0.0+builtin", true},
-		{"v2.3.4+builtin.vault", true},
+		{"v2.3.4+builtin.bao", true},
 		{"1.0.0+builtin.anythingelse", true},
 		{"v1.0.0+other.builtin", true},
 		{"v1.0.0+builtinbutnot", false},

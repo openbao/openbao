@@ -26,7 +26,7 @@ func (c *AuditDisableCommand) Synopsis() string {
 
 func (c *AuditDisableCommand) Help() string {
 	helpText := `
-Usage: vault audit disable [options] PATH
+Usage: bao audit disable [options] PATH
 
   Disables an audit device. Once an audit device is disabled, no future audit
   logs are dispatched to it. The data associated with the audit device is not
@@ -36,7 +36,7 @@ Usage: vault audit disable [options] PATH
 
   Disable the audit device enabled at "file/":
 
-      $ vault audit disable file/
+      $ bao audit disable file/
 
 ` + c.Flags().Help()
 

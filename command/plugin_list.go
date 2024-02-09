@@ -29,7 +29,7 @@ func (c *PluginListCommand) Synopsis() string {
 
 func (c *PluginListCommand) Help() string {
 	helpText := `
-Usage: vault plugin list [options] [TYPE]
+Usage: bao plugin list [options] [TYPE]
 
   Lists available plugins registered in the catalog. This does not list whether
   plugins are in use, but rather just their availability. The last argument of
@@ -37,15 +37,15 @@ Usage: vault plugin list [options] [TYPE]
 
   List all available plugins in the catalog:
 
-      $ vault plugin list
+      $ bao plugin list
 
   List all available database plugins in the catalog:
 
-      $ vault plugin list database
+      $ bao plugin list database
 
   List all available plugins with detailed output:
 
-      $ vault plugin list -detailed
+      $ bao plugin list -detailed
 
 ` + c.Flags().Help()
 

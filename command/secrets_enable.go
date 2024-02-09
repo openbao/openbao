@@ -49,7 +49,7 @@ func (c *SecretsEnableCommand) Synopsis() string {
 
 func (c *SecretsEnableCommand) Help() string {
 	helpText := `
-Usage: vault secrets enable [options] TYPE
+Usage: bao secrets enable [options] TYPE
 
   Enables a secrets engine. By default, secrets engines are enabled at the path
   corresponding to their TYPE, but users can customize the path using the
@@ -60,23 +60,23 @@ Usage: vault secrets enable [options] TYPE
 
   Enable the AWS secrets engine at aws/:
 
-      $ vault secrets enable aws
+      $ bao secrets enable aws
 
   Enable the SSH secrets engine at ssh-prod/:
 
-      $ vault secrets enable -path=ssh-prod ssh
+      $ bao secrets enable -path=ssh-prod ssh
 
   Enable the database secrets engine with an explicit maximum TTL of 30m:
 
-      $ vault secrets enable -max-lease-ttl=30m database
+      $ bao secrets enable -max-lease-ttl=30m database
 
   Enable a custom plugin (after it is registered in the plugin registry):
 
-      $ vault secrets enable -path=my-secrets -plugin-name=my-plugin plugin
+      $ bao secrets enable -path=my-secrets -plugin-name=my-plugin plugin
 
   OR (preferred way):
 
-      $ vault secrets enable -path=my-secrets my-plugin
+      $ bao secrets enable -path=my-secrets my-plugin
 
   For a full list of secrets engines and examples, please see the documentation.
 

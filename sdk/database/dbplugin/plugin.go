@@ -25,8 +25,8 @@ type Database interface {
 	// backend.
 	Type() (string, error)
 
-	// CreateUser is called on `$ vault read database/creds/:role-name` and it's
-	// also the first time anything is touched from `$ vault write
+	// CreateUser is called on `$ bao read database/creds/:role-name` and it's
+	// also the first time anything is touched from `$ bao write
 	// database/roles/:role-name`. This is likely to be the highest-throughput
 	// method for most plugins.
 	CreateUser(ctx context.Context, statements Statements, usernameConfig UsernameConfig, expiration time.Time) (username string, password string, err error)
@@ -60,7 +60,7 @@ type Database interface {
 	// save in Vault's storage.
 	SetCredentials(ctx context.Context, statements Statements, staticConfig StaticUserConfig) (username string, password string, err error)
 
-	// Init is called on `$ vault write database/config/:db-name`, or when you
+	// Init is called on `$ bao write database/config/:db-name`, or when you
 	// do a creds call after Vault's been restarted. The config provided won't
 	// hold all the keys and values provided in the API call, some will be
 	// stripped by the database engine before the config is provided. The config

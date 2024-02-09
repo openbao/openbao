@@ -21,7 +21,7 @@ func (c *PKICommand) Synopsis() string {
 
 func (c *PKICommand) Help() string {
 	helpText := `
-Usage: vault pki <subcommand> [options] [args]
+Usage: bao pki <subcommand> [options] [args]
 
   This command has subcommands for interacting with Vault's PKI Secrets
   Engine. Here are some simple examples, and more detailed examples are
@@ -29,7 +29,7 @@ Usage: vault pki <subcommand> [options] [args]
 
   Check the health of a PKI mount, to the best of this token's abilities:
 
-      $ vault pki health-check pki
+      $ bao pki health-check pki
 
   Please see the individual subcommand help for detailed usage information.
 `

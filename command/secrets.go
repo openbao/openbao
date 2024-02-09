@@ -21,7 +21,7 @@ func (c *SecretsCommand) Synopsis() string {
 
 func (c *SecretsCommand) Help() string {
 	helpText := `
-Usage: vault secrets <subcommand> [options] [args]
+Usage: bao secrets <subcommand> [options] [args]
 
   This command groups subcommands for interacting with Vault's secrets engines.
   Each secret engine behaves differently. Please see the documentation for
@@ -29,11 +29,11 @@ Usage: vault secrets <subcommand> [options] [args]
 
   List all enabled secrets engines:
 
-      $ vault secrets list
+      $ bao secrets list
 
   Enable a new secrets engine:
 
-      $ vault secrets enable database
+      $ bao secrets enable database
 
   Please see the individual subcommand help for detailed usage information.
 `

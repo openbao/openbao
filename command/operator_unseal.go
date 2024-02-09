@@ -30,12 +30,12 @@ type OperatorUnsealCommand struct {
 }
 
 func (c *OperatorUnsealCommand) Synopsis() string {
-	return "Unseals the Vault server"
+	return "Unseals the OpenBao server"
 }
 
 func (c *OperatorUnsealCommand) Help() string {
 	helpText := `
-Usage: vault operator unseal [options] [KEY]
+Usage: bao operator unseal [options] [KEY]
 
   Provide a portion of the root key to unseal a Vault server. Vault starts
   in a sealed state. It cannot perform operations until it is unsealed. This
@@ -44,11 +44,11 @@ Usage: vault operator unseal [options] [KEY]
   The unseal key can be supplied as an argument to the command, but this is
   not recommended as the unseal key will be available in your history:
 
-      $ vault operator unseal IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
+      $ bao operator unseal IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 
   Instead, run the command with no arguments and it will prompt for the key:
 
-      $ vault operator unseal
+      $ bao operator unseal
       Key (will be hidden): IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 
 ` + c.Flags().Help()

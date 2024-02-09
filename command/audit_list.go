@@ -30,18 +30,18 @@ func (c *AuditListCommand) Synopsis() string {
 
 func (c *AuditListCommand) Help() string {
 	helpText := `
-Usage: vault audit list [options]
+Usage: bao audit list [options]
 
   Lists the enabled audit devices in the Vault server. The output lists the
   enabled audit devices and the options for those devices.
 
   List all audit devices:
 
-      $ vault audit list
+      $ bao audit list
 
   List detailed output about the audit devices:
 
-      $ vault audit list -detailed
+      $ bao audit list -detailed
 
 ` + c.Flags().Help()
 

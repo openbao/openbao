@@ -34,7 +34,7 @@ func (c *PatchCommand) Synopsis() string {
 
 func (c *PatchCommand) Help() string {
 	helpText := `
-Usage: vault patch [options] PATH [DATA K=V...]
+Usage: bao patch [options] PATH [DATA K=V...]
 
   Patches data in Vault at the given path. The data can be credentials, secrets,
   configuration, or arbitrary data. The specific behavior of this command is
@@ -48,12 +48,12 @@ Usage: vault patch [options] PATH [DATA K=V...]
 
   Persist data in the generic secrets engine without modifying any other fields:
 
-      $ vault patch pki/roles/example allow_localhost=false
+      $ bao patch pki/roles/example allow_localhost=false
 
   The data can also be consumed from a file on disk by prefixing with the "@"
   symbol. For example:
 
-      $ vault patch pki/roles/example @role.json
+      $ bao patch pki/roles/example @role.json
 
   Or it can be read from stdin using the "-" symbol:
 

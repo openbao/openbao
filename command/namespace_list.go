@@ -26,13 +26,13 @@ func (c *NamespaceListCommand) Synopsis() string {
 
 func (c *NamespaceListCommand) Help() string {
 	helpText := `
-Usage: vault namespace list [options]
+Usage: bao namespace list [options]
 
   Lists the enabled child namespaces.
 
   List all enabled child namespaces:
 
-      $ vault namespace list
+      $ bao namespace list
 
 ` + c.Flags().Help()
 

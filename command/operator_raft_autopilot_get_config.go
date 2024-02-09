@@ -28,7 +28,7 @@ func (c *OperatorRaftAutopilotGetConfigCommand) Synopsis() string {
 
 func (c *OperatorRaftAutopilotGetConfigCommand) Help() string {
 	helpText := `
-Usage: vault operator raft autopilot get-config
+Usage: bao operator raft autopilot get-config
 
  Returns the configuration of the autopilot subsystem under integrated storage.
 ` + c.Flags().Help()

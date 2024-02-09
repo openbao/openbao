@@ -140,7 +140,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login TOKEN [CONFIG K=V...]
+Usage: bao login TOKEN [CONFIG K=V...]
 
   The token auth method allows logging in directly with a token. This
   can be a token from the "token-create" command or API. There are no
@@ -148,11 +148,11 @@ Usage: vault login TOKEN [CONFIG K=V...]
 
   Authenticate using a token:
 
-      $ vault login 96ddf4bc-d217-f3ba-f9bd-017055595017
+      $ bao login 96ddf4bc-d217-f3ba-f9bd-017055595017
 
   Authenticate but do not lookup information about the token:
 
-      $ vault login token=96ddf4bc-d217-f3ba-f9bd-017055595017 lookup=false
+      $ bao login token=96ddf4bc-d217-f3ba-f9bd-017055595017 lookup=false
 
   This token usually comes from a different source such as the API or via the
   built-in "vault token create" command.

@@ -53,7 +53,7 @@ func (c *SSHCommand) Synopsis() string {
 
 func (c *SSHCommand) Help() string {
 	helpText := `
-Usage: vault ssh [options] username@ip [ssh options]
+Usage: bao ssh [options] username@ip [ssh options]
 
   Establishes an SSH connection with the target machine.
 
@@ -63,15 +63,15 @@ Usage: vault ssh [options] username@ip [ssh options]
 
   SSH using the OTP mode (requires sshpass for full automation):
 
-      $ vault ssh -mode=otp -role=my-role user@1.2.3.4
+      $ bao ssh -mode=otp -role=my-role user@1.2.3.4
 
   SSH using the CA mode:
 
-      $ vault ssh -mode=ca -role=my-role user@1.2.3.4
+      $ bao ssh -mode=ca -role=my-role user@1.2.3.4
 
   SSH using CA mode with host key verification:
 
-      $ vault ssh \
+      $ bao ssh \
           -mode=ca \
           -role=my-role \
           -host-key-mount-point=host-signer \
@@ -159,7 +159,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Default:    "~/.ssh/id_rsa.pub",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
-		Usage:      "Path to the SSH public key to send to Vault for signing.",
+		Usage:      "Path to the SSH public key to send to OpenBao for signing.",
 	})
 
 	f.StringVar(&StringVar{
@@ -179,7 +179,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		EnvVar:     "VAULT_SSH_HOST_KEY_MOUNT_POINT",
 		Completion: complete.PredictAnything,
 		Usage: "Mount point to the SSH secrets engine where host keys are signed. " +
-			"When given a value, Vault will generate a custom \"known_hosts\" file " +
+			"When given a value, OpenBao will generate a custom \"known_hosts\" file " +
 			"with delegation to the CA at the provided mount point to verify the " +
 			"SSH connection's host keys against the provided CA. By default, host " +
 			"keys are validated against the user's local \"known_hosts\" file. " +
@@ -295,9 +295,9 @@ func (c *SSHCommand) Run(args []string) int {
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagRole == "" {
 		c.UI.Warn(wrapAtLength(
-			"WARNING: No -role specified. Use -role to tell Vault which ssh role " +
+			"WARNING: No -role specified. Use -role to tell OpenBao which ssh role " +
 				"to use for authentication. In the future, you will need to tell " +
-				"Vault which role to use. For now, Vault will attempt to guess based " +
+				"OpenBao which role to use. For now, OpenBao will attempt to guess based " +
 				"on the API response. This will be removed in the Vault 1.1."))
 
 		role, err := c.defaultRole(c.flagMountPoint, ip)
@@ -309,7 +309,7 @@ func (c *SSHCommand) Run(args []string) int {
 		// if something doesn't work. If the role chosen is not allowed to
 		// be used by the user (ACL enforcement), then user should see an
 		// error message accordingly.
-		c.UI.Output(fmt.Sprintf("Vault SSH: Role: %q", role))
+		c.UI.Output(fmt.Sprintf("OpenBao SSH: Role: %q", role))
 		c.flagRole = role
 	}
 
@@ -319,9 +319,9 @@ func (c *SSHCommand) Run(args []string) int {
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagMode == "" {
 		c.UI.Warn(wrapAtLength(
-			"WARNING: No -mode specified. Use -mode to tell Vault which ssh " +
+			"WARNING: No -mode specified. Use -mode to tell OpenBao which ssh " +
 				"authentication mode to use. In the future, you will need to tell " +
-				"Vault which mode to use. For now, Vault will attempt to guess based " +
+				"OpenBao which mode to use. For now, OpenBao will attempt to guess based " +
 				"on the API response. This guess involves creating a temporary " +
 				"credential, reading its type, and then revoking it. To reduce the " +
 				"number of API calls and surface area, specify -mode directly. This " +
@@ -541,9 +541,9 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 	if err != nil {
 		// No sshpass available so using normal ssh client
 		c.UI.Warn(wrapAtLength(
-			"Vault could not locate \"sshpass\". The OTP code for the session is " +
+			"OpenBao could not locate \"sshpass\". The OTP code for the session is " +
 				"displayed below. Enter this code in the SSH password prompt. If you " +
-				"install sshpass, Vault can automatically perform this step for you."))
+				"install sshpass, OpenBao can automatically perform this step for you."))
 		c.UI.Output("OTP for the session is: " + cred.Key)
 	} else {
 		// sshpass is available so lets use it instead

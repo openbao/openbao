@@ -27,19 +27,19 @@ func (c *NamespaceAPIUnlockCommand) Synopsis() string {
 
 func (c *NamespaceAPIUnlockCommand) Help() string {
 	helpText := `
-Usage: vault namespace unlock [options] PATH
+Usage: bao namespace unlock [options] PATH
 
 	Unlock the current namespace, and all descendants, with unlock key:
 
-		$ vault namespace unlock -unlock-key=<key>
+		$ bao namespace unlock -unlock-key=<key>
 
 	Unlock the current namespace, and all descendants (from a root token):
 
-		$ vault namespace unlock
+		$ bao namespace unlock
 
 	Unlock a child namespace, and all of its descendants (e.g. ns1/ns2/):
 
-		$ vault namespace lock -unlock-key=<key> ns1/ns2
+		$ bao namespace lock -unlock-key=<key> ns1/ns2
 
 ` + c.Flags().Help()
 

@@ -26,7 +26,7 @@ func (c *PolicyListCommand) Synopsis() string {
 
 func (c *PolicyListCommand) Help() string {
 	helpText := `
-Usage: vault policy list [options]
+Usage: bao policy list [options]
 
   Lists the names of the policies that are installed on the Vault server.
 

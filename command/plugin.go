@@ -21,7 +21,7 @@ func (c *PluginCommand) Synopsis() string {
 
 func (c *PluginCommand) Help() string {
 	helpText := `
-Usage: vault plugin <subcommand> [options] [args]
+Usage: bao plugin <subcommand> [options] [args]
 
   This command groups subcommands for interacting with Vault's plugins and the
   plugin catalog. The plugin catalog is divided into three types: "auth", 
@@ -30,15 +30,15 @@ Usage: vault plugin <subcommand> [options] [args]
 
   List all available plugins in the catalog of a particular type:
 
-      $ vault plugin list database
+      $ bao plugin list database
 
   Register a new plugin to the catalog as a particular type:
 
-      $ vault plugin register -sha256=d3f0a8b... auth my-custom-plugin
+      $ bao plugin register -sha256=d3f0a8b... auth my-custom-plugin
 
   Get information about a plugin in the catalog listed under a particular type:
 
-      $ vault plugin info auth my-custom-plugin
+      $ bao plugin info auth my-custom-plugin
 
   Please see the individual subcommand help for detailed usage information.
 `

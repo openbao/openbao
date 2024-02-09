@@ -225,11 +225,11 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	hiddenCommands := []string{"version"}
 
 	cli := &cli.CLI{
-		Name:     "vault",
+		Name:     "bao",
 		Args:     args,
 		Commands: commands,
 		HelpFunc: groupedHelpFunc(
-			cli.BasicHelpFunc("vault"),
+			cli.BasicHelpFunc("bao"),
 		),
 		HelpWriter:                 runOpts.Stdout,
 		ErrorWriter:                runOpts.Stderr,
@@ -268,7 +268,7 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		var b bytes.Buffer
 		tw := tabwriter.NewWriter(&b, 0, 2, 6, ' ', 0)
 
-		fmt.Fprintf(tw, "Usage: vault <command> [args]\n\n")
+		fmt.Fprintf(tw, "Usage: bao <command> [args]\n\n")
 		fmt.Fprintf(tw, "Common commands:\n")
 		for _, v := range commonCommands {
 			printCommand(tw, v, commands[v])

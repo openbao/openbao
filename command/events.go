@@ -31,7 +31,7 @@ func (c *EventsSubscribeCommands) Synopsis() string {
 
 func (c *EventsSubscribeCommands) Help() string {
 	helpText := `
-Usage: vault events subscribe [-format=json] [-timeout=XYZs] eventType
+Usage: bao events subscribe [-format=json] [-timeout=XYZs] eventType
 
   Subscribe to events of the given event type (topic). The events will be
   output to standard out.

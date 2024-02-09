@@ -7,9 +7,9 @@
 ----
 
 <!-- -	Website: https://www.openbao.org -->
--	Announcement list: [Mailing List](https://lists.lfedge.org/g/openbao)
--	Discussion forum: [GitHub Discussions](https://github.com/openbao/openbao/discussions)
-<!-- - Documentation: [https://www.vaultproject.io/docs/](https://www.vaultproject.io/docs/) -->
+- [Mailing List](https://lists.lfedge.org/g/openbao)
+- [GitHub Discussions](https://github.com/openbao/openbao/discussions)
+- [Chat Server](https://chat.lfx.linuxfoundation.org/) -- look for `openbao-` prefixed rooms.
 
 <p align="center">
   <img width="300" alt="OpenBao Mascot" src="bao.svg">

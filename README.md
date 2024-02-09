@@ -109,19 +109,19 @@ $ make test TEST=./vault
 ...
 ```
 
-### Importing Vault
+### Importing OpenBao
 
 This repository publishes two libraries that may be imported by other projects:
 `github.com/openbao/openbao/api` and `github.com/openbao/openbao/sdk`.
 
-Note that this repository also contains Vault (the product), and as with most Go
-projects, Vault uses Go modules to manage its dependencies. The mechanism to do
+Note that this repository also contains OpenBao (the product), and as with most Go
+projects, OpenBao uses Go modules to manage its dependencies. The mechanism to do
 that is the [go.mod](./go.mod) file. As it happens, the presence of that file
-also makes it theoretically possible to import Vault as a dependency into other
+also makes it theoretically possible to import OpenBao as a dependency into other
 projects. Some other projects have made a practice of doing so in order to take
-advantage of testing tooling that was developed for testing Vault itself. This
-is not, and has never been, a supported way to use the Vault project. We aren't 
-likely to fix bugs relating to failure to import `github.com/hashicorp/vault` 
+advantage of testing tooling that was developed for testing OpenBao itself. This
+is not, and has never been, a supported way to use the OpenBao project. We aren't
+likely to fix bugs relating to failure to import `github.com/openbao/openbao`
 into your project.
 
 See also the section "Docker-based tests" below.
@@ -269,7 +269,7 @@ Finally, here's an example of running an existing OSS docker test with a custom 
 
 ```bash
 $ GOOS=linux make dev
-$ VAULT_BINARY=$(pwd)/bin/vault go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
+$ VAULT_BINARY=$(pwd)/bin/bao go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
 ok      github.com/openbao/openbao/vault/external_tests/raft/raft_binary        20.960s
 ```
 -->

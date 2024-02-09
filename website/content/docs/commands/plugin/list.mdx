@@ -23,13 +23,13 @@ List all available plugins in the catalog.
 $ bao plugin list
 Name                                 Type        Version
 ----                                 ----        -------
-approle                              auth        v1.14.8+builtin.openbao
+approle                              auth        v1.14.8+builtin.bao
 # ...
 
 $ bao plugin list database
 Name                                 Version
 ----                                 -------
-cassandra-database-plugin            v1.13.0+builtin.vault
+cassandra-database-plugin            v1.13.0+builtin.bao
 # ...
 ```
 
@@ -39,7 +39,7 @@ List detailed plugin information:
 $ bao plugin list -detailed
 Name                             Type        Version                                          Deprecation Status
 ----                             ----        -------                                          ------------------
-approle                          auth        v1.14.8+builtin.vault                            supported
+approle                          auth        v1.14.8+builtin.bao                              supported
 # ...
 ```
 

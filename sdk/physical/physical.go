@@ -46,6 +46,15 @@ type Backend interface {
 	// List is used to list all the keys under a given
 	// prefix, up to the next prefix.
 	List(ctx context.Context, prefix string) ([]string, error)
+
+	// ListPage is used to list all the keys under a given prefix,
+	// in sorted order. When after is present, the next result
+	// after the key prefix + after is the first entry in the
+	// list, with at most limit entries (negative for unlimited).
+	// Note that this is not necessarily a consistent view: entries
+	// may be created or deleted between calls to ListPage(...) and
+	// thus may be omitted.
+	ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error)
 }
 
 // HABackend is an extensions to the standard physical

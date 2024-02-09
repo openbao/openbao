@@ -475,6 +475,12 @@ message StorageListArgs {
 	string prefix = 1;
 }
 
+message StorageListPageArgs {
+	string prefix = 1;
+	string after = 2;
+	int32 limit = 3;
+}
+
 message StorageListReply {
 	repeated string keys = 1;
 	string err = 2;
@@ -509,6 +515,7 @@ message StorageDeleteReply {
 // implement the client for this service.
 service Storage {
 	rpc List(StorageListArgs) returns (StorageListReply);
+	rpc ListPage(StorageListPageArgs) returns (StorageListReply);
 	rpc Get(StorageGetArgs) returns (StorageGetReply);
 	rpc Put(StoragePutArgs) returns (StoragePutReply);
 	rpc Delete(StorageDeleteArgs) returns (StorageDeleteReply);

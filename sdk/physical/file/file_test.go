@@ -41,7 +41,13 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
-
+	keys, err = b.ListPage(context.Background(), "", "", -1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
+	}
 	// Create a storage entry without base64 encoding the file name
 	rawFullPath := filepath.Join(backendPath, "_foo")
 	e := &physical.Entry{Key: "foo", Value: []byte("test")}
@@ -72,6 +78,22 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	if len(keys) != 1 {
 		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
 	}
+	keys, err = b.ListPage(context.Background(), "", "", -1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
+	}
+
+	// Listing after the last entry should return none.
+	keys, err = b.ListPage(context.Background(), "", "foo", -1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
+	}
 
 	err = b.Put(context.Background(), e)
 	if err != nil {
@@ -80,6 +102,13 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 
 	// List the entries again. There should still be one entry.
 	keys, err = b.List(context.Background(), "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
+	}
+	keys, err = b.ListPage(context.Background(), "", "", -1)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -116,6 +145,13 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	if len(keys) != 0 {
 		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
 	}
+	keys, err = b.ListPage(context.Background(), "", "", -1)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 0 {
+		t.Fatalf("bad: len(keys): expected: 0, actual: %d", len(keys))
+	}
 
 	f, err = os.OpenFile(
 		rawFullPath,
@@ -128,6 +164,13 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 	f.Close()
 
 	keys, err = b.List(context.Background(), "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(keys) != 1 {
+		t.Fatalf("bad: len(keys): expected: 1, actual: %d", len(keys))
+	}
+	keys, err = b.ListPage(context.Background(), "", "", -1)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

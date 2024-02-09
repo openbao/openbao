@@ -411,6 +411,7 @@ var Backend_ServiceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StorageClient interface {
 	List(ctx context.Context, in *StorageListArgs, opts ...grpc.CallOption) (*StorageListReply, error)
+	ListPage(ctx context.Context, in *StorageListPageArgs, opts ...grpc.CallOption) (*StorageListReply, error)
 	Get(ctx context.Context, in *StorageGetArgs, opts ...grpc.CallOption) (*StorageGetReply, error)
 	Put(ctx context.Context, in *StoragePutArgs, opts ...grpc.CallOption) (*StoragePutReply, error)
 	Delete(ctx context.Context, in *StorageDeleteArgs, opts ...grpc.CallOption) (*StorageDeleteReply, error)
@@ -427,6 +428,15 @@ func NewStorageClient(cc grpc.ClientConnInterface) StorageClient {
 func (c *storageClient) List(ctx context.Context, in *StorageListArgs, opts ...grpc.CallOption) (*StorageListReply, error) {
 	out := new(StorageListReply)
 	err := c.cc.Invoke(ctx, "/pb.Storage/List", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) ListPage(ctx context.Context, in *StorageListPageArgs, opts ...grpc.CallOption) (*StorageListReply, error) {
+	out := new(StorageListReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/ListPage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +475,7 @@ func (c *storageClient) Delete(ctx context.Context, in *StorageDeleteArgs, opts 
 // for forward compatibility
 type StorageServer interface {
 	List(context.Context, *StorageListArgs) (*StorageListReply, error)
+	ListPage(context.Context, *StorageListPageArgs) (*StorageListReply, error)
 	Get(context.Context, *StorageGetArgs) (*StorageGetReply, error)
 	Put(context.Context, *StoragePutArgs) (*StoragePutReply, error)
 	Delete(context.Context, *StorageDeleteArgs) (*StorageDeleteReply, error)
@@ -477,6 +488,9 @@ type UnimplementedStorageServer struct {
 
 func (UnimplementedStorageServer) List(context.Context, *StorageListArgs) (*StorageListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedStorageServer) ListPage(context.Context, *StorageListPageArgs) (*StorageListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPage not implemented")
 }
 func (UnimplementedStorageServer) Get(context.Context, *StorageGetArgs) (*StorageGetReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
@@ -514,6 +528,24 @@ func _Storage_List_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StorageServer).List(ctx, req.(*StorageListArgs))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_ListPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StorageListPageArgs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).ListPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/ListPage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).ListPage(ctx, req.(*StorageListPageArgs))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -582,6 +614,10 @@ var Storage_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _Storage_List_Handler,
+		},
+		{
+			MethodName: "ListPage",
+			Handler:    _Storage_ListPage_Handler,
 		},
 		{
 			MethodName: "Get",

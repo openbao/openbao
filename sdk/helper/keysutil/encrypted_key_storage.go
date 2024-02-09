@@ -144,6 +144,13 @@ func ensureTailingSlash(path string) string {
 // in a path prefix. This can only operate on full folder structures so the
 // prefix should end in a "/".
 func (s *encryptedKeyStorage) List(ctx context.Context, prefix string) ([]string, error) {
+	return s.ListPage(ctx, prefix, "", -1)
+}
+
+// ListPage implements the logical.Storage List method, and decrypts a subset
+// of items in a path prefix. This can only operate on full folder structures
+// so the prefix should end in a "/".
+func (s *encryptedKeyStorage) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	var decoder big.Int
 
 	encPrefix, err := s.encryptPath(prefix)
@@ -213,6 +220,23 @@ func (s *encryptedKeyStorage) List(ctx context.Context, prefix string) ([]string
 	}
 
 	sort.Strings(decryptedKeys)
+
+	// Apply pagination filtering.
+	if after != "" {
+		idx := sort.SearchStrings(decryptedKeys, after)
+		if idx < len(decryptedKeys) && decryptedKeys[idx] == after {
+			idx += 1
+		}
+		decryptedKeys = decryptedKeys[idx:]
+	}
+
+	if limit > 0 {
+		if limit > len(decryptedKeys) {
+			limit = len(decryptedKeys)
+		}
+		decryptedKeys = decryptedKeys[0:limit]
+	}
+
 	return decryptedKeys, nil
 }
 

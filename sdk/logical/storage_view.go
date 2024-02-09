@@ -31,6 +31,13 @@ func (s *StorageView) List(ctx context.Context, prefix string) ([]string, error)
 	return s.storage.List(ctx, s.ExpandKey(prefix))
 }
 
+func (s *StorageView) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	if err := s.SanityCheck(prefix); err != nil {
+		return nil, err
+	}
+	return s.storage.ListPage(ctx, s.ExpandKey(prefix), after, limit)
+}
+
 // logical.Storage impl.
 func (s *StorageView) Get(ctx context.Context, key string) (*StorageEntry, error) {
 	if err := s.SanityCheck(key); err != nil {

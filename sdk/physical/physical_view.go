@@ -37,6 +37,14 @@ func (v *View) List(ctx context.Context, prefix string) ([]string, error) {
 	return v.backend.List(ctx, v.expandKey(prefix))
 }
 
+// List a page of the contents of the prefixed view
+func (v *View) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	if err := v.sanityCheck(prefix); err != nil {
+		return nil, err
+	}
+	return v.backend.ListPage(ctx, v.expandKey(prefix), after, limit)
+}
+
 // Get the key of the prefixed view
 func (v *View) Get(ctx context.Context, key string) (*Entry, error) {
 	if err := v.sanityCheck(key); err != nil {

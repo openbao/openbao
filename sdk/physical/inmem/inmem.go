@@ -251,7 +251,24 @@ func (i *InmemBackend) List(ctx context.Context, prefix string) ([]string, error
 	return i.ListInternal(ctx, prefix)
 }
 
+// ListPage is used to list all the keys under a given
+// prefix, up to the next prefix, but limiting to a
+// specified number of keys after a given entry.
+func (i *InmemBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	i.permitPool.Acquire()
+	defer i.permitPool.Release()
+
+	i.RLock()
+	defer i.RUnlock()
+
+	return i.ListPaginatedInternal(ctx, prefix, after, limit)
+}
+
 func (i *InmemBackend) ListInternal(ctx context.Context, prefix string) ([]string, error) {
+	return i.ListPaginatedInternal(ctx, prefix, "", -1)
+}
+
+func (i *InmemBackend) ListPaginatedInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if i.logOps {
 		i.logger.Trace("list", "prefix", prefix)
 	}
@@ -262,17 +279,37 @@ func (i *InmemBackend) ListInternal(ctx context.Context, prefix string) ([]strin
 	var out []string
 	seen := make(map[string]interface{})
 	walkFn := func(s string, v interface{}) bool {
+		if limit > 0 && len(out) >= limit {
+			// We've seen enough entries; exit early.
+			return true
+		}
+
+		// Note that we push the comparison with trimmed down until
+		// after we add in the directory suffix, if necessary.
 		trimmed := strings.TrimPrefix(s, prefix)
 		sep := strings.Index(trimmed, "/")
 		if sep == -1 {
+			if after != "" && trimmed <= after {
+				// Still prior to our cut-off point, so retry.
+				return false
+			}
+
 			out = append(out, trimmed)
 		} else {
+			// Include the directory suffix to distinguish keys from
+			// subtrees.
 			trimmed = trimmed[:sep+1]
+			if after != "" && trimmed <= after {
+				// Still prior to our cut-off point, so retry.
+				return false
+			}
+
 			if _, ok := seen[trimmed]; !ok {
 				out = append(out, trimmed)
 				seen[trimmed] = struct{}{}
 			}
 		}
+
 		return false
 	}
 	i.root.WalkPrefix(prefix, walkFn)

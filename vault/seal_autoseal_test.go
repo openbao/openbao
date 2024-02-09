@@ -63,6 +63,11 @@ func (p *phy) List(_ context.Context, prefix string) ([]string, error) {
 	return []string{}, nil
 }
 
+func (p *phy) ListPage(_ context.Context, prefix string, after string, limit int) ([]string, error) {
+	p.t.Errorf("ListPage called on phy: prefix: %v", prefix)
+	return []string{}, nil
+}
+
 func (p *phy) Len() int {
 	return len(p.entries)
 }

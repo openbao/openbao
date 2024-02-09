@@ -1575,6 +1575,28 @@ func (b *RaftBackend) List(ctx context.Context, prefix string) ([]string, error)
 	return b.fsm.List(ctx, prefix)
 }
 
+// ListPage enumerates all the items under the prefix from the fsm,
+// applying the paginatino filters.
+func (b *RaftBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	defer metrics.MeasureSince([]string{"raft-storage", "list-page"}, time.Now())
+	if b.fsm == nil {
+		return nil, errors.New("raft: fsm not configured")
+	}
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	b.permitPool.Acquire()
+	defer b.permitPool.Release()
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return b.fsm.ListPage(ctx, prefix, after, limit)
+}
+
 // Transaction applies all the given operations into a single log and
 // applies it.
 func (b *RaftBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {

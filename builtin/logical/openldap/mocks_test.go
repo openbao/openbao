@@ -44,6 +44,11 @@ func (m *mockStorage) List(ctx context.Context, s string) ([]string, error) {
 	return args.Get(0).([]string), args.Error(1)
 }
 
+func (m *mockStorage) ListPage(ctx context.Context, s string, a string, l int) ([]string, error) {
+	args := m.Called(ctx, s, a, l)
+	return args.Get(0).([]string), args.Error(1)
+}
+
 func (m *mockStorage) Get(ctx context.Context, s string) (*logical.StorageEntry, error) {
 	args := m.Called(ctx, s)
 	return args.Get(0).(*logical.StorageEntry), args.Error(1)

@@ -57,6 +57,10 @@ func (v *BarrierView) List(ctx context.Context, prefix string) ([]string, error)
 	return v.storage.List(ctx, prefix)
 }
 
+func (v *BarrierView) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return v.storage.ListPage(ctx, prefix, after, limit)
+}
+
 func (v *BarrierView) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
 	return v.storage.Get(ctx, key)
 }

@@ -5,6 +5,7 @@ package physical
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -13,20 +14,120 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func sortaEqualSlice(t testing.TB, expected []string, actual []string, msg string, args ...interface{}) {
+	if len(expected) == 0 {
+		require.Equal(t, len(expected), len(actual), msg, args)
+	} else {
+		require.Equal(t, expected, actual, msg, args)
+	}
+}
+
+func testListAndPage(t testing.TB, b Backend, prefix string, expected []string) {
+	keys, err := b.List(context.Background(), prefix)
+	require.NoError(t, err, "initial list failed")
+	sortaEqualSlice(t, expected, keys, "expected list to match")
+
+	page, err := b.ListPage(context.Background(), prefix, "", -100)
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page to match")
+
+	page, err = b.ListPage(context.Background(), prefix, "", -1)
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page to match")
+
+	page, err = b.ListPage(context.Background(), prefix, "", 0)
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page to match")
+
+	page, err = b.ListPage(context.Background(), prefix, "", len(expected))
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page to match")
+
+	page, err = b.ListPage(context.Background(), prefix, "", len(expected)+1)
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page to match")
+
+	if len(expected) > 0 {
+		// Fetch pages one at a time.
+		page, err = b.ListPage(context.Background(), prefix, "", 1)
+		require.NoError(t, err, "list page failed")
+		require.Equal(t, 1, len(page), "expected only a single entry")
+		require.Equal(t, expected[0], page[0], "expected list page to match first entry")
+
+		for index, after := range expected {
+			entry := ""
+			if index+1 < len(expected) {
+				entry = expected[index+1]
+			}
+
+			page, err = b.ListPage(context.Background(), prefix, after, 1)
+			require.NoError(t, err, "list page failed")
+			if entry != "" {
+				require.Equal(t, 1, len(page), "expected only a single entry")
+				require.Equal(t, entry, page[0], "expected list page to match entry at index %v", index+1)
+
+				// Now fetch all subsequent entries and ensure subset matches.
+				page, err = b.ListPage(context.Background(), prefix, after, -1)
+				require.NoError(t, err, "list page failed")
+				sortaEqualSlice(t, expected[index+1:], page, "expected contents of pages to match")
+
+				page, err = b.ListPage(context.Background(), prefix, after, len(expected))
+				require.NoError(t, err, "list page failed")
+				sortaEqualSlice(t, expected[index+1:], page, "expected contents of pages to match")
+
+				page, err = b.ListPage(context.Background(), prefix, after, len(expected)-index-1)
+				require.NoError(t, err, "list page failed")
+				sortaEqualSlice(t, expected[index+1:], page, "expected contents of pages to match")
+			} else {
+				require.Equal(t, 0, len(page), "expected no entries: page=%v / index=%v / after=%v / entry=%v / expected=%v", page, index, after, entry, expected)
+			}
+
+			// Then fetch all previous entries and ensure subset matches.
+			page, err = b.ListPage(context.Background(), prefix, "", index+1)
+			require.NoError(t, err, "list page failed")
+			require.Equal(t, expected[:index+1], page, "expected prefix contents to match")
+		}
+
+		// Creating a fake reference point before the current
+		// one should yield everything.
+		if len(expected[0]) > 1 {
+			basis := string(expected[0][0])
+			page, err = b.ListPage(context.Background(), prefix, basis, -1)
+			require.NoError(t, err, "list page failed")
+			require.Equal(t, expected, page, "expected previous basis to yield everything")
+		} else if expected[0] >= "\x02" {
+			basis := "\x01"
+			page, err = b.ListPage(context.Background(), prefix, basis, -1)
+			require.NoError(t, err, "list page failed")
+			require.Equal(t, expected, page, "expected previous basis to yield everything")
+		}
+
+		// Creating a fake reference point after the last result
+		// should yield nothing.
+		basis := expected[len(expected)-1] + "z"
+		page, err = b.ListPage(context.Background(), prefix, basis, -1)
+		require.NoError(t, err, "list page failed")
+		sortaEqualSlice(t, nil, page, "expected list page to be empty with later reference")
+	} else {
+		// Make sure giving a bogus after entry doesn't change the result.
+		page, err = b.ListPage(context.Background(), prefix, "bogus", -1)
+		require.NoError(t, err, "initial list page failed")
+		sortaEqualSlice(t, expected, page, "expected list page to match")
+
+		page, err = b.ListPage(context.Background(), prefix, "bogus", 2)
+		require.NoError(t, err, "initial list page failed")
+		sortaEqualSlice(t, expected, page, "expected list page to match")
+	}
+}
+
 func ExerciseBackend(t testing.TB, b Backend) {
 	t.Helper()
 
-	// Should be empty
-	keys, err := b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("initial list failed: %v", err)
-	}
-	if len(keys) != 0 {
-		t.Errorf("initial not empty: %v", keys)
-	}
+	// Initial list should be empty
+	testListAndPage(t, b, "", nil)
 
 	// Delete should work if it does not exist
-	err = b.Delete(context.Background(), "foo")
+	err := b.Delete(context.Background(), "foo")
 	if err != nil {
 		t.Fatalf("idempotent delete: %v", err)
 	}
@@ -57,13 +158,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 	}
 
 	// List should not be empty
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list failed: %v", err)
-	}
-	if len(keys) != 1 || keys[0] != "foo" {
-		t.Errorf("keys[0] did not equal foo: %v", keys)
-	}
+	testListAndPage(t, b, "", []string{"foo"})
 
 	// Delete should work
 	err = b.Delete(context.Background(), "foo")
@@ -71,16 +166,10 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("delete: %v", err)
 	}
 
-	// Should be empty
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list after delete: %v", err)
-	}
-	if len(keys) != 0 {
-		t.Errorf("list after delete not empty: %v", keys)
-	}
+	// List should be empty
+	testListAndPage(t, b, "", nil)
 
-	// Get should fail
+	// Get should not fail, but be nil again
 	out, err = b.Get(context.Background(), "foo")
 	if err != nil {
 		t.Fatalf("get after delete: %v", err)
@@ -117,14 +206,8 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Errorf("bad: %v expected: %v", out, e)
 	}
 
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list multi failed: %v", err)
-	}
-	sort.Strings(keys)
-	if len(keys) != 2 || keys[0] != "foo" || keys[1] != "foo/" {
-		t.Errorf("expected 2 keys [foo, foo/]: %v", keys)
-	}
+	// List should have both a key and a subtree.
+	testListAndPage(t, b, "", []string{"foo", "foo/"})
 
 	// Delete with children should work
 	err = b.Delete(context.Background(), "foo")
@@ -153,13 +236,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("failed to remove deep nest: %v", err)
 	}
 
-	keys, err = b.List(context.Background(), "foo/")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(keys) != 1 || keys[0] != "bar" {
-		t.Errorf("should be exactly 1 key == bar: %v", keys)
-	}
+	testListAndPage(t, b, "foo/", []string{"bar"})
 
 	// Make a second nested entry to test prefix removal
 	e = &Entry{Key: "foo/zip", Value: []byte("zap")}
@@ -174,13 +251,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("failed to delete nested prefix: %v", err)
 	}
 
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("list nested prefix: %v", err)
-	}
-	if len(keys) != 1 || keys[0] != "foo/" {
-		t.Errorf("should be exactly 1 key == foo/: %v", keys)
-	}
+	testListAndPage(t, b, "", []string{"foo/"})
 
 	// Delete should remove the prefix
 	err = b.Delete(context.Background(), "foo/zip")
@@ -188,13 +259,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("failed to delete second prefix: %v", err)
 	}
 
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("listing after second delete failed: %v", err)
-	}
-	if len(keys) != 0 {
-		t.Errorf("should be empty at end: %v", keys)
-	}
+	testListAndPage(t, b, "", nil)
 
 	// When the root path is empty, adding and removing deep nested values should not break listing
 	e = &Entry{Key: "foo/nested1/nested2/value1", Value: []byte("baz")}
@@ -214,7 +279,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("failed to remove deep nest: %v", err)
 	}
 
-	keys, err = b.List(context.Background(), "")
+	keys, err := b.List(context.Background(), "")
 	if err != nil {
 		t.Fatalf("listing of root failed after deletion: %v", err)
 	}
@@ -229,6 +294,7 @@ func ExerciseBackend(t testing.TB, b Backend) {
 			t.Logf("  keys can still be listed from nested1/ so it's not empty, expected nested2/: %v", keys)
 		}
 	}
+	testListAndPage(t, b, "", []string{"foo/"})
 
 	// cleanup left over listing bug test value
 	err = b.Delete(context.Background(), "foo/nested1/nested2/value1")
@@ -236,12 +302,27 @@ func ExerciseBackend(t testing.TB, b Backend) {
 		t.Fatalf("failed to remove deep nest: %v", err)
 	}
 
-	keys, err = b.List(context.Background(), "")
-	if err != nil {
-		t.Fatalf("listing of root failed after delete of deep nest: %v", err)
+	testListAndPage(t, b, "", nil)
+
+	// Create multiple items in a path iteratively and ensure
+	// paginated lists work as expected.
+	var created []string
+	for i := 0; i < 10; i++ {
+		name := fmt.Sprintf("key-%d", i)
+		e = &Entry{Key: "foo/" + name, Value: []byte("baz")}
+		err = b.Put(context.Background(), e)
+		if err != nil {
+			t.Fatalf("deep nest: %v", err)
+		}
+
+		created = append(created, name)
+		testListAndPage(t, b, "foo/", created)
 	}
-	if len(keys) != 0 {
-		t.Errorf("should be empty at end: %v", keys)
+	for _, name := range created {
+		err = b.Delete(context.Background(), "foo/"+name)
+		if err != nil {
+			t.Fatalf("failed to remove deep nest: %v", err)
+		}
 	}
 }
 

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-test/deep"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/helper/logging"
@@ -383,7 +384,6 @@ func TestVersionedKV_Data_Delete(t *testing.T) {
 	if !parsed.After(time.Now().Add(-1*time.Minute)) || !parsed.Before(time.Now()) {
 		t.Fatalf("Bad response: %#v", resp)
 	}
-
 }
 
 func TestVersionedKV_Data_Put_CleanupOldVersions(t *testing.T) {
@@ -617,7 +617,6 @@ func TestVersionedKV_Reload_Policy(t *testing.T) {
 		}
 
 	}
-
 }
 
 func TestVersionedKV_Patch_NotFound(t *testing.T) {

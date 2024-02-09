@@ -13,7 +13,7 @@ func TestDeletionTimeCalc(t *testing.T) {
 	zeroTime := time.Time{}
 	ct := time.Date(2019, time.March, 25, 1, 0, 0, 0, time.UTC)
 	dm, ds := 6*time.Hour, 3*time.Hour
-	var tests = []struct {
+	tests := []struct {
 		mount, meta time.Duration
 		want        time.Time
 		wantOk      bool
@@ -92,7 +92,7 @@ func lifetime(t *testing.T, d map[string]interface{}) time.Duration {
 func TestDeleteVersionAfter(t *testing.T) {
 	nd := -1 * time.Second
 	dm, ds := 6*time.Hour, 3*time.Hour
-	var tests = []struct {
+	tests := []struct {
 		mount, meta      time.Duration
 		want             time.Duration
 		wantDeletionTime bool

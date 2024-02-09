@@ -33,8 +33,8 @@ import (
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
-	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
 	physRaft "github.com/openbao/openbao/physical/raft"
 	physFile "github.com/openbao/openbao/sdk/physical/file"

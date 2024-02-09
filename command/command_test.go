@@ -13,10 +13,10 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/openbao/openbao/builtin/logical/transit"

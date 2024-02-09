@@ -119,7 +119,9 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 	return nil, nil
 }
 
-const confHelpSynopsis = `Configures the Kerberos keytab and service account.`
-const confHelpDescription = `
+const (
+	confHelpSynopsis    = `Configures the Kerberos keytab and service account.`
+	confHelpDescription = `
 The keytab must be base64 encoded, use the output of base64 <vault.keytab>.
 `
+)

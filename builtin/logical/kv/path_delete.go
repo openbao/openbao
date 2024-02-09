@@ -13,7 +13,7 @@ import (
 // pathsDelete returns the path configuration for the delete and undelete paths
 func pathsDelete(b *versionedKVBackend) []*framework.Path {
 	return []*framework.Path{
-		&framework.Path{
+		{
 			Pattern: "delete/" + framework.MatchAllRegex("path"),
 			Fields: map[string]*framework.FieldSchema{
 				"path": {
@@ -33,7 +33,7 @@ func pathsDelete(b *versionedKVBackend) []*framework.Path {
 			HelpSynopsis:    deleteHelpSyn,
 			HelpDescription: deleteHelpDesc,
 		},
-		&framework.Path{
+		{
 			Pattern: "undelete/" + framework.MatchAllRegex("path"),
 			Fields: map[string]*framework.FieldSchema{
 				"path": {
@@ -163,15 +163,19 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 	}
 }
 
-const deleteHelpSyn = `Marks one or more versions as deleted in the KV store.`
-const deleteHelpDesc = `
+const (
+	deleteHelpSyn  = `Marks one or more versions as deleted in the KV store.`
+	deleteHelpDesc = `
 Deletes the data for the provided version and path in the key-value store. The
 versioned data will not be fully removed, but marked as deleted and will no
 longer be returned in normal get requests. This operation can be undone.
 `
+)
 
-const undeleteHelpSyn = `Undeletes one or more versions from the KV store.`
-const undeleteHelpDesc = `
+const (
+	undeleteHelpSyn  = `Undeletes one or more versions from the KV store.`
+	undeleteHelpDesc = `
 Undeletes the data for the provided version and path in the key-value store.
 This restores the data, allowing it to be returned on get requests.
 `
+)

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/api"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault"

@@ -97,7 +97,8 @@ func TestConfig_RejectsBadWrites(t *testing.T) {
 }
 
 func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Storage,
-	data map[string]interface{}, e string) {
+	data map[string]interface{}, e string,
+) {
 	req := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      configPath,
@@ -117,6 +118,8 @@ func testConfigWriteError(t *testing.T, b logical.Backend, storage logical.Stora
 	}
 }
 
-var testValidKeytab string = "BQIAAABFAAEAC1RFU1QuR09LUkI1AAdzeXNIVFRQAAAAAVkNxa8CABIAIEN2NwKGiXjRttkaNnBLmH4n5RclAFW9/EC4prOEjZqu"
-var testNotBase64Keytab string = "NOT_VALID_BASE64"
-var testInvalidKeytab string = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+var (
+	testValidKeytab     string = "BQIAAABFAAEAC1RFU1QuR09LUkI1AAdzeXNIVFRQAAAAAVkNxa8CABIAIEN2NwKGiXjRttkaNnBLmH4n5RclAFW9/EC4prOEjZqu"
+	testNotBase64Keytab string = "NOT_VALID_BASE64"
+	testInvalidKeytab   string = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+)

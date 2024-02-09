@@ -17,8 +17,8 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/api"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/command/agentproxyshared/sink/mock"
 	"github.com/openbao/openbao/helper/namespace"

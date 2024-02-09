@@ -14,13 +14,13 @@ import (
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/jcmturner/gokrb5/v8/keytab"
+	"github.com/jcmturner/gokrb5/v8/service"
+	"github.com/jcmturner/gokrb5/v8/spnego"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/helper/ldaputil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/jcmturner/gokrb5/v8/keytab"
-	"github.com/jcmturner/gokrb5/v8/service"
-	"github.com/jcmturner/gokrb5/v8/spnego"
 	"gopkg.in/jcmturner/goidentity.v3"
 )
 

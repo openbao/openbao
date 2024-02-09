@@ -138,13 +138,11 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 
 			if deletionTime.Before(time.Now()) {
 				return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
-
 			}
 		}
 
 		if versionMetadata.Destroyed {
 			return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
-
 		}
 
 		versionKey, err := b.getVersionKey(ctx, key, versionNum, req.Storage)
@@ -177,8 +175,9 @@ func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 	}
 }
 
-const subkeysHelpSyn = `Read the structure of a secret entry from the Key-Value store with the values removed.`
-const subkeysHelpDesc = `
+const (
+	subkeysHelpSyn  = `Read the structure of a secret entry from the Key-Value store with the values removed.`
+	subkeysHelpDesc = `
 This endpoint provides the subkeys within a secret entry that exists at the requested path.
 The secret entry at this path will be retrieved and stripped of all data by replacing
 underlying values of leaf keys (i.e. non-map keys or map keys with no underlying subkeys) with null.
@@ -191,3 +190,4 @@ The default value 0 will not impose any limit. If non-zero, keys that reside at 
 specified depth value will be artificially treated as leaves and will thus be null
 even if further underlying subkeys exist.
 `
+)

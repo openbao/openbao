@@ -53,7 +53,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 		},
 
 		Paths: []*framework.Path{
-			&framework.Path{
+			{
 				Pattern: framework.MatchAllRegex("path"),
 
 				Fields: map[string]*framework.FieldSchema{
@@ -78,7 +78,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 			},
 		},
 		Secrets: []*framework.Secret{
-			&framework.Secret{
+			{
 				Type: "kv",
 
 				Renew: b.handleRead(),

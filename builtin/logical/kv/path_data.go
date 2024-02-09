@@ -12,10 +12,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/locksutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/mitchellh/mapstructure"
 )
 
 // pathConfig returns the path configuration for CRUD operations on the backend
@@ -132,14 +132,12 @@ func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 
 			if deletionTime.Before(time.Now()) {
 				return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
-
 			}
 		}
 
 		// If the version has been destroyed return metadata with a 404
 		if vm.Destroyed {
 			return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
-
 		}
 
 		versionKey, err := b.getVersionKey(ctx, key, verNum, req.Storage)
@@ -652,8 +650,9 @@ func max(a, b uint32) uint32 {
 	return a
 }
 
-const dataHelpSyn = `Write, Patch, Read, and Delete data in the Key-Value Store.`
-const dataHelpDesc = `
+const (
+	dataHelpSyn  = `Write, Patch, Read, and Delete data in the Key-Value Store.`
+	dataHelpDesc = `
 This path takes a key name and based on the operation stores, retrieves or
 deletes versions of data.
 
@@ -676,3 +675,4 @@ Delete operations are a soft delete. They will mark the latest version as
 deleted, but the underlying data will not be fully removed. Delete operations
 can be undone.
 `
+)

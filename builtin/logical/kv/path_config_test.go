@@ -69,7 +69,7 @@ func getDuration(t *testing.T, in string) time.Duration {
 }
 
 func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		ds1, ds2 string
 		want     time.Duration
 	}{
@@ -157,5 +157,4 @@ func TestVersionedKV_Config_DeleteVersionAfter(t *testing.T) {
 			}
 		})
 	}
-
 }

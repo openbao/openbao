@@ -3,11 +3,12 @@ package kv
 import (
 	"context"
 	"fmt"
-	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/logical"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-test/deep"
+	"github.com/openbao/openbao/sdk/logical"
 )
 
 func TestVersionedKV_Metadata_Put(t *testing.T) {
@@ -343,7 +344,6 @@ func TestVersionedKV_Metadata_Delete(t *testing.T) {
 		}
 
 	}
-
 }
 
 func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
@@ -473,7 +473,6 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 	if !strings.Contains(respError, expectedError) {
 		t.Fatalf("expected response error %q to include %q validation errors", respError, expectedError)
 	}
-
 }
 
 func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
@@ -503,7 +502,6 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 
 	if err != nil || resp == nil {
 		t.Fatalf("Write err: %s resp: %#v\n", err, resp)
-
 	}
 
 	if !resp.IsError() {

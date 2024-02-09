@@ -192,7 +192,6 @@ func (b *versionedKVBackend) Upgrade(ctx context.Context, s logical.Storage) err
 	// Run the actual upgrade in a go routine so we don't block the client on a
 	// potentially long process.
 	go func() {
-
 		// Write the canary value and if we are read only wait until the setup
 		// process has finished.
 	READONLY_LOOP:

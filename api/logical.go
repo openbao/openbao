@@ -198,6 +198,47 @@ func (c *Logical) ListWithContext(ctx context.Context, path string) (*Secret, er
 	return ParseSecret(resp.Body)
 }
 
+func (c *Logical) ListPage(path string, after string, limit int) (*Secret, error) {
+	return c.ListPageWithContext(context.Background(), path, after, limit)
+}
+
+func (c *Logical) ListPageWithContext(ctx context.Context, path string, after string, limit int) (*Secret, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest("LIST", "/v1/"+path)
+	// Set this for broader compatibility, but we use LIST above to be able to
+	// handle the wrapping lookup function.
+	r.Method = http.MethodGet
+	r.Params.Set("list", "true")
+	r.Params.Set("after", after)
+	r.Params.Set("limit", fmt.Sprintf("%d", limit))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if resp != nil && resp.StatusCode == 404 {
+		secret, parseErr := ParseSecret(resp.Body)
+		switch parseErr {
+		case nil:
+		case io.EOF:
+			return nil, nil
+		default:
+			return nil, parseErr
+		}
+		if secret != nil && (len(secret.Warnings) > 0 || len(secret.Data) > 0) {
+			return secret, nil
+		}
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return ParseSecret(resp.Body)
+}
+
 func (c *Logical) Write(path string, data map[string]interface{}) (*Secret, error) {
 	return c.WriteWithContext(context.Background(), path, data)
 }

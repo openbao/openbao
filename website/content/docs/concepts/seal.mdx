@@ -2,13 +2,13 @@
 layout: docs
 page_title: Seal/Unseal
 description: >-
-  A OpenBao must be unsealed before it can access its data. Likewise, it can be
+  An OpenBao must be unsealed before it can access its data. Likewise, it can be
   sealed to lock it down.
 ---
 
 # Seal/Unseal
 
-When a OpenBao server is started, it starts in a _sealed_ state. In this
+When an OpenBao server is started, it starts in a _sealed_ state. In this
 state, OpenBao is configured to know where and how to access the physical
 storage, but doesn't know how to decrypt any of it.
 
@@ -60,7 +60,7 @@ Note that when using the Shamir seal with multiple nodes, each node must be
 unsealed with the required threshold of shares. Partial unsealing of each node
 is not distributed across the cluster.
 
-Once a OpenBao node is unsealed, it remains unsealed until one of these things happens:
+Once an OpenBao node is unsealed, it remains unsealed until one of these things happens:
 
 1. It is resealed via the API (see below).
 
@@ -68,7 +68,7 @@ Once a OpenBao node is unsealed, it remains unsealed until one of these things h
 
 3. OpenBao's storage layer encounters an unrecoverable error.
 
--> **Note:** Unsealing makes the process of automating a OpenBao install
+-> **Note:** Unsealing makes the process of automating an OpenBao install
 difficult. Automated tools can easily install, configure, and start OpenBao,
 but unsealing it using Shamir is a very manual process. For most users
 Auto Unseal will provide a better experience.
@@ -102,7 +102,7 @@ keys_ instead.
 Just as the initialization process with a Shamir seal yields unseal keys,
 initializing with an Auto Unseal yields recovery keys.
 
-It is still possible to seal a OpenBao node using the API. In this case OpenBao
+It is still possible to seal an OpenBao node using the API. In this case OpenBao
 will remain sealed until restarted, or the unseal API is used, which with Auto
 Unseal requires the recovery key fragments instead of the unseal key fragments
 that would be provided with Shamir. The process remains the same.

@@ -236,7 +236,7 @@ $ bao write auth/ldap/config \
 
 ## LDAP group -> policy mapping
 
-Next we want to create a mapping from an LDAP group to a OpenBao policy:
+Next we want to create a mapping from an LDAP group to an OpenBao policy:
 
 ```shell-session
 $ bao write auth/ldap/groups/scientists policies=foo,bar

@@ -33,7 +33,7 @@ also supports split data/HA mode, whereby the lock value and the rest of the
 data live separately. This can be done by specifying both the
 [`storage`](/vault/docs/configuration#storage) and
 [`ha_storage`](/vault/docs/configuration#ha_storage) stanzas in the configuration file
-with different backends. For instance, a OpenBao cluster can be set up to use
+with different backends. For instance, an OpenBao cluster can be set up to use
 Consul as the [`ha_storage`](/vault/docs/configuration#ha_storage) to manage the lock,
 and use Amazon S3 as the [`storage`](/vault/docs/configuration#storage) for all other
 persisted data.

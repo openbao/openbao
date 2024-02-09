@@ -2,7 +2,7 @@
 layout: docs
 page_title: operator init - Command
 description: |-
-  The "operator init" command initializes a OpenBao server. Initialization is the
+  The "operator init" command initializes an OpenBao server. Initialization is the
   process by which OpenBao's storage backend is prepared to receive data. Since
   OpenBao servers share the same storage backend in HA mode, you only need to
   initialize one OpenBao to initialize the storage backend.
@@ -10,7 +10,7 @@ description: |-
 
 # operator init
 
-The `operator init` command initializes a OpenBao server. Initialization is the
+The `operator init` command initializes an OpenBao server. Initialization is the
 process by which OpenBao's storage backend is prepared to receive data. Since
 OpenBao servers share the same storage backend in HA mode, you only need to
 initialize one OpenBao to initialize the storage backend.
@@ -94,7 +94,7 @@ flags](/vault/docs/commands) included on all commands.
 ### Consul options
 
 - `-consul-auto` `(bool: false)` - Perform automatic service discovery using
-  Consul in HA mode. When all nodes in a OpenBao HA cluster are registered with
+  Consul in HA mode. When all nodes in an OpenBao HA cluster are registered with
   Consul, enabling this option will trigger automatic service discovery based on
   the provided -consul-service value. Ensure the proper Consul environment
   variables are set (CONSUL_HTTP_ADDR, etc). When only one OpenBao server is

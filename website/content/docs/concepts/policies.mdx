@@ -650,7 +650,7 @@ Any user associated with this policy becomes a root user. A root user can do
 _anything_ within OpenBao. As such, it is **highly recommended** that you revoke
 any root tokens before running OpenBao in production.
 
-When a OpenBao server is first initialized, there always exists one root user.
+When an OpenBao server is first initialized, there always exists one root user.
 This user is used to do the initial configuration and setup of OpenBao. After
 configured, the initial root token should be revoked and more strictly
 controlled users and authentication should be used.
@@ -772,7 +772,7 @@ authorization. This configuration varies significantly between authentication
 backends. For simplicity, this example will use OpenBao's built-in userpass
 auth method.
 
-A OpenBao administrator or someone from the security team would create the user in
+An OpenBao administrator or someone from the security team would create the user in
 OpenBao with a list of associated policies:
 
 ```shell-session

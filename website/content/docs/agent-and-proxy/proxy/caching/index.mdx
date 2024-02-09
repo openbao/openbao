@@ -87,7 +87,7 @@ the caching functionality is built upon.
 
 The tokens and leases are renewed by the proxy using the secret renewer that is
 made available via the OpenBao server's [Go
-API](https://godoc.org/github.com/lf-edge/openbao/api#Renewer). Proxy performs
+API](https://godoc.org/github.com/openbao/openbao/api#Renewer). Proxy performs
 all operations in memory and does not persist anything to storage. This means
 that when the proxy is shut down, all the renewal operations are immediately
 terminated and there is no way for the proxy to resume renewals after the fact.

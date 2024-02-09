@@ -63,7 +63,7 @@ del /f "%_GO_ENV_TMP_FILE%" 2>nul
 REM Build!
 echo ==^> Building...
 go build^
- -ldflags "-X github.com/lf-edge/openbao/version.GitCommit=%_GIT_COMMIT%%_GIT_DIRTY% -X github.com/lf-edge/openbao/version.BuildDate=%_BUILD_DATE%"^
+ -ldflags "-X github.com/openbao/openbao/version.GitCommit=%_GIT_COMMIT%%_GIT_DIRTY% -X github.com/openbao/openbao/version.BuildDate=%_BUILD_DATE%"^
  -o "bin/vault.exe"^
  .
 

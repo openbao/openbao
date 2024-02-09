@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/lf-edge/openbao/helper/storagepacker";
+option go_package = "github.com/openbao/openbao/helper/storagepacker";
 
 package storagepacker;
 

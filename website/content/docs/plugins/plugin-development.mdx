@@ -35,7 +35,7 @@ from OpenBao.
 
 ### Serving a plugin with multiplexing
 
-~> Plugin multiplexing requires `github.com/lf-edge/openbao/sdk v0.5.4` or above.
+~> Plugin multiplexing requires `github.com/openbao/openbao/sdk v0.5.4` or above.
 
 The following code exhibits an example main package for a OpenBao plugin using
 the OpenBao SDK for a secrets engine or auth method:
@@ -47,8 +47,8 @@ import (
 	"os"
 
 	myPlugin "your/plugin/import/path"
-	"github.com/lf-edge/openbao/api"
-	"github.com/lf-edge/openbao/sdk/plugin"
+	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/sdk/plugin"
 )
 
 func main() {
@@ -105,12 +105,12 @@ be omitted.
 @include 'plugin-versioning.mdx'
 
 Auth and secrets plugins based on `framework.Backend` from the SDK should set the
-[`RunningVersion`](https://github.com/lf-edge/openbao/blob/sdk/v0.6.0/sdk/framework/backend.go#L95-L96)
+[`RunningVersion`](https://github.com/openbao/openbao/blob/sdk/v0.6.0/sdk/framework/backend.go#L95-L96)
 variable, and the framework will implement the version interface.
 
 Database plugins have a smaller API than `framework.Backend` exposes, and should
 instead implement the
-[`PluginVersioner`](https://github.com/lf-edge/openbao/blob/sdk/v0.6.0/sdk/logical/logical.go#L150-L154)
+[`PluginVersioner`](https://github.com/openbao/openbao/blob/sdk/v0.6.0/sdk/logical/logical.go#L150-L154)
 interface directly.
 
 ## Building a plugin from source

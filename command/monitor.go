@@ -34,7 +34,7 @@ func (c *MonitorCommand) Synopsis() string {
 
 func (c *MonitorCommand) Help() string {
 	helpText := `
-Usage: vault monitor [options]
+Usage: bao monitor [options]
 
 	Stream log messages of a Vault server. The monitor command lets you listen
 	for log levels that may be filtered out of the server logs. For example,

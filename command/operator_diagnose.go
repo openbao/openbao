@@ -68,7 +68,7 @@ func (c *OperatorDiagnoseCommand) Synopsis() string {
 
 func (c *OperatorDiagnoseCommand) Help() string {
 	helpText := `
-Usage: vault operator diagnose 
+Usage: bao operator diagnose
 
   This command troubleshoots Vault startup issues, such as TLS configuration or
   auto-unseal. It should be run using the same environment variables and configuration
@@ -77,11 +77,11 @@ Usage: vault operator diagnose
 
   Start diagnose with a configuration file:
     
-     $ vault operator diagnose -config=/etc/vault/config.hcl
+     $ bao operator diagnose -config=/etc/vault/config.hcl
 
   Perform a diagnostic check while Vault is still running:
 
-     $ vault operator diagnose -config=/etc/vault/config.hcl -skip=listener
+     $ bao operator diagnose -config=/etc/vault/config.hcl -skip=listener
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)

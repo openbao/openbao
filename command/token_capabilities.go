@@ -27,7 +27,7 @@ func (c *TokenCapabilitiesCommand) Synopsis() string {
 
 func (c *TokenCapabilitiesCommand) Help() string {
 	helpText := `
-Usage: vault token capabilities [options] [TOKEN] PATH
+Usage: bao token capabilities [options] [TOKEN] PATH
 
   Fetches the capabilities of a token for a given path. If a TOKEN is provided
   as an argument, the "/sys/capabilities" endpoint and permission is used. If
@@ -36,11 +36,11 @@ Usage: vault token capabilities [options] [TOKEN] PATH
 
   List capabilities for the local token on the "secret/foo" path:
 
-      $ vault token capabilities secret/foo
+      $ bao token capabilities secret/foo
 
   List capabilities for a token on the "cubbyhole/foo" path:
 
-      $ vault token capabilities 96ddf4bc-d217-f3ba-f9bd-017055595017 cubbyhole/foo
+      $ bao token capabilities 96ddf4bc-d217-f3ba-f9bd-017055595017 cubbyhole/foo
 
   For a full list of examples, please see the documentation.
 

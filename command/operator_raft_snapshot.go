@@ -21,7 +21,7 @@ func (c *OperatorRaftSnapshotCommand) Synopsis() string {
 
 func (c *OperatorRaftSnapshotCommand) Help() string {
 	helpText := `
-Usage: vault operator raft snapshot <subcommand> [options] [args]
+Usage: bao operator raft snapshot <subcommand> [options] [args]
 
   This command groups subcommands for operators interacting with the snapshot
   functionality of the integrated Raft storage backend. Here are a few examples of
@@ -29,15 +29,15 @@ Usage: vault operator raft snapshot <subcommand> [options] [args]
 
   Installs the provided snapshot, returning the cluster to the state defined in it:
 
-      $ vault operator raft snapshot restore raft.snap
+      $ bao operator raft snapshot restore raft.snap
 
   Saves a snapshot of the current state of the Raft cluster into a file:
 
-      $ vault operator raft snapshot save raft.snap
+      $ bao operator raft snapshot save raft.snap
 
   Inspects a snapshot based on a file:
 
-      $ vault operator raft snapshot inspect raft.snap
+      $ bao operator raft snapshot inspect raft.snap
 
   Please see the individual subcommand help for detailed usage information.
 `

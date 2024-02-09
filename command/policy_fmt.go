@@ -31,7 +31,7 @@ func (c *PolicyFmtCommand) Synopsis() string {
 
 func (c *PolicyFmtCommand) Help() string {
 	helpText := `
-Usage: vault policy fmt [options] PATH
+Usage: bao policy fmt [options] PATH
 
   Formats a local policy file to the policy specification. This command will
   overwrite the file at the given PATH with the properly-formatted policy
@@ -39,7 +39,7 @@ Usage: vault policy fmt [options] PATH
 
   Format the local file "my-policy.hcl" as a policy file:
 
-      $ vault policy fmt my-policy.hcl
+      $ bao policy fmt my-policy.hcl
 
 ` + c.Flags().Help()
 

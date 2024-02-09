@@ -26,7 +26,7 @@ func (c *OperatorSealCommand) Synopsis() string {
 
 func (c *OperatorSealCommand) Help() string {
 	helpText := `
-Usage: vault operator seal [options]
+Usage: bao operator seal [options]
 
   Seals the Vault server. Sealing tells the Vault server to stop responding
   to any operations until it is unsealed. When sealed, the Vault server
@@ -40,7 +40,7 @@ Usage: vault operator seal [options]
 
   Seal the Vault server:
 
-      $ vault operator seal
+      $ bao operator seal
 
 ` + c.Flags().Help()
 

@@ -34,15 +34,15 @@ func (c *OperatorUsageCommand) Synopsis() string {
 
 func (c *OperatorUsageCommand) Help() string {
 	helpText := `
-Usage: vault operator usage
+Usage: bao operator usage
 
   List the client counts for the default reporting period.
 
-	  $ vault operator usage
+	  $ bao operator usage
 
   List the client counts for a specific time period.
 
-          $ vault operator usage -start-time=2020-10 -end-time=2020-11
+          $ bao operator usage -start-time=2020-10 -end-time=2020-11
 
 ` + c.Flags().Help()
 

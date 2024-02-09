@@ -46,11 +46,11 @@ func (c *OperatorRaftSnapshotInspectCommand) Synopsis() string {
 
 func (c *OperatorRaftSnapshotInspectCommand) Help() string {
 	helpText := `
-	Usage: vault operator raft snapshot inspect <snapshot_file>
+	Usage: bao operator raft snapshot inspect <snapshot_file>
 	
 	Inspects a snapshot file.
 	
-	$ vault operator raft snapshot inspect raft.snap
+	$ bao operator raft snapshot inspect raft.snap
 	
 	` + c.Flags().Help()
 

@@ -54,7 +54,7 @@ func (c *OperatorGenerateRootCommand) Synopsis() string {
 
 func (c *OperatorGenerateRootCommand) Help() string {
 	helpText := `
-Usage: vault operator generate-root [options] [KEY]
+Usage: bao operator generate-root [options] [KEY]
 
   Generates a new root token by combining a quorum of share holders. One of
   the following must be provided to start the root token generation:
@@ -73,16 +73,16 @@ Usage: vault operator generate-root [options] [KEY]
 
   Generate an OTP code for the final token:
 
-      $ vault operator generate-root -generate-otp
+      $ bao operator generate-root -generate-otp
 
   Start a root token generation:
 
-      $ vault operator generate-root -init -otp="..."
-      $ vault operator generate-root -init -pgp-key="..."
+      $ bao operator generate-root -init -otp="..."
+      $ bao operator generate-root -init -pgp-key="..."
 
   Enter an unseal key to progress root token generation:
 
-      $ vault operator generate-root -otp="..."
+      $ bao operator generate-root -otp="..."
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)

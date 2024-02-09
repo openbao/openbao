@@ -96,19 +96,19 @@ type AgentCommand struct {
 }
 
 func (c *AgentCommand) Synopsis() string {
-	return "Start a Vault agent"
+	return "Start an OpenBao agent"
 }
 
 func (c *AgentCommand) Help() string {
 	helpText := `
-Usage: vault agent [options]
+Usage: bao agent [options]
 
-  This command starts a Vault Agent that can perform automatic authentication
+  This command starts an OpenBao Agent that can perform automatic authentication
   in certain environments.
 
   Start an agent with a configuration file:
 
-      $ vault agent -config=/etc/vault/config.hcl
+      $ bao agent -config=/etc/openbao/config.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -146,11 +146,11 @@ func (c *AgentCommand) Flags() *FlagSets {
 
 	// Internal-only flags to follow.
 	//
-	// Why hello there little source code reader! Welcome to the Vault source
+	// Why hello there little source code reader! Welcome to the OpenBao source
 	// code. The remaining options are intentionally undocumented and come with
 	// no warranty or backwards-compatibility promise. Do not use these flags
 	// in production. Do not build automation using these flags. Unless you are
-	// developing against Vault, you should not need any of these flags.
+	// developing against OpenBao, you should not need any of these flags.
 	f.BoolVar(&BoolVar{
 		Name:    "test-verify-only",
 		Target:  &c.flagTestVerifyOnly,
@@ -274,8 +274,8 @@ func (c *AgentCommand) Run(args []string) int {
 		serverVersion := serverHealth.Version
 		agentVersion := version.GetVersion().VersionNumber()
 		if serverVersion != agentVersion {
-			c.UI.Info("==> Note: Vault Agent version does not match Vault server version. " +
-				fmt.Sprintf("Vault Agent version: %s, Vault server version: %s", agentVersion, serverVersion))
+			c.UI.Info("==> Note: OpenBao Agent version does not match OpenBao server version. " +
+				fmt.Sprintf("OpenBao Agent version: %s, OpenBao server version: %s", agentVersion, serverVersion))
 		}
 	}
 
@@ -284,9 +284,9 @@ func (c *AgentCommand) Run(args []string) int {
 		// we log on each API proxy call, which would be too noisy.
 		// A customer could have a listener defined but only be using e.g. the cache-clear API,
 		// even though the API proxy is something they have available.
-		c.UI.Warn("==> Note: Vault Agent will be deprecating API proxy functionality in a future " +
-			"release, and this functionality has moved to a new subcommand, vault proxy. If you rely on this " +
-			"functionality, plan to move to Vault Proxy instead.")
+		c.UI.Warn("==> Note: OpenBao Agent will be deprecating API proxy functionality in a future " +
+			"release, and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
+			"functionality, plan to move to OpenBao Proxy instead.")
 	}
 
 	// ctx and cancelFunc are passed to the AuthHandler, SinkServer, ExecServer and
@@ -299,8 +299,8 @@ func (c *AgentCommand) Run(args []string) int {
 	inmemMetrics, _, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
 		Ui:          c.UI,
-		ServiceName: "vault",
-		DisplayName: "Vault",
+		ServiceName: "bao",
+		DisplayName: "OpenBao",
 		UserAgent:   useragent.AgentString(),
 		ClusterName: config.ClusterName,
 	})
@@ -462,7 +462,7 @@ func (c *AgentCommand) Run(args []string) int {
 
 	// Output the header that the agent has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault Agent started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Agent started! Log data will stream in below:\n")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -655,7 +655,7 @@ func (c *AgentCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.SighupCh:
-				c.UI.Output("==> Vault Agent config reload triggered")
+				c.UI.Output("==> OpenBao Agent config reload triggered")
 				err := c.reloadConfig(c.flagConfigs)
 				if err != nil {
 					c.outputErrors(err)
@@ -678,7 +678,7 @@ func (c *AgentCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.ShutdownCh:
-				c.UI.Output("==> Vault Agent shutdown triggered")
+				c.UI.Output("==> OpenBao Agent shutdown triggered")
 				// Notify systemd that the server is shutting down
 				// Let the lease cache know this is a shutdown; no need to evict everything
 				if leaseCache != nil {
@@ -823,7 +823,7 @@ func (c *AgentCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English)
-	c.UI.Output("==> Vault Agent configuration:\n")
+	c.UI.Output("==> OpenBao Agent configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",

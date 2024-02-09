@@ -26,7 +26,7 @@ func (c *LeaseLookupCommand) Synopsis() string {
 
 func (c *LeaseLookupCommand) Help() string {
 	helpText := `
-Usage: vault lease lookup ID
+Usage: bao lease lookup ID
 
   Lookup the lease information of a secret.
 
@@ -35,7 +35,7 @@ Usage: vault lease lookup ID
 
   Lookup lease of a secret:
 
-      $ vault lease lookup database/creds/readonly/2f6a614c...
+      $ bao lease lookup database/creds/readonly/2f6a614c...
 
 ` + c.Flags().Help()
 

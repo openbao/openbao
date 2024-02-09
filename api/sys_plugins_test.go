@@ -292,7 +292,7 @@ const listUntypedResponse = `{
       {
         "type": "database",
         "name": "cassandra-database-plugin",
-        "version": "v1.13.0+builtin.vault",
+        "version": "v1.13.0+builtin.bao",
         "builtin": true,
         "deprecation_status": "supported"
       },

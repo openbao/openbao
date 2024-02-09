@@ -27,7 +27,7 @@ func (c *AuthMoveCommand) Synopsis() string {
 
 func (c *AuthMoveCommand) Help() string {
 	helpText := `
-Usage: vault auth move [options] SOURCE DESTINATION
+Usage: bao auth move [options] SOURCE DESTINATION
 
   Moves an existing auth method to a new path. Any leases from the old
   auth method are revoked, but all configuration associated with the method
@@ -42,12 +42,12 @@ Usage: vault auth move [options] SOURCE DESTINATION
 
   Move the auth method at approle/ to generic/:
 
-      $ vault auth move approle/ generic/
+      $ bao auth move approle/ generic/
 
   Move the auth method at ns1/approle/ across namespaces to ns2/generic/, 
   where ns1 and ns2 are child namespaces of the current namespace:
 
-  $ vault auth move ns1/approle/ ns2/generic/
+  $ bao auth move ns1/approle/ ns2/generic/
 
 ` + c.Flags().Help()
 

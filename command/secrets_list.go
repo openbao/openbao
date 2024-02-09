@@ -31,7 +31,7 @@ func (c *SecretsListCommand) Synopsis() string {
 
 func (c *SecretsListCommand) Help() string {
 	helpText := `
-Usage: vault secrets list [options]
+Usage: bao secrets list [options]
 
   Lists the enabled secret engines on the Vault server. This command also
   outputs information about the enabled path including configured TTLs and
@@ -40,11 +40,11 @@ Usage: vault secrets list [options]
 
   List all enabled secrets engines:
 
-      $ vault secrets list
+      $ bao secrets list
 
   List all enabled secrets engines with detailed output:
 
-      $ vault secrets list -detailed
+      $ bao secrets list -detailed
 
 ` + c.Flags().Help()
 

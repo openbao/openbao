@@ -56,7 +56,7 @@ func TestSharedConfig_Sanitized_LogFields(t *testing.T) {
 		},
 		"valid-log-fields": {
 			Value: &SharedConfig{
-				LogFile:           "vault.log",
+				LogFile:           "bao.log",
 				LogFormat:         "json",
 				LogLevel:          "warn",
 				LogRotateBytes:    1024,
@@ -65,7 +65,7 @@ func TestSharedConfig_Sanitized_LogFields(t *testing.T) {
 			},
 			IsNil: false,
 			Expected: expectedLogFields{
-				File:           mapValue[string]{IsFound: true, Value: "vault.log"},
+				File:           mapValue[string]{IsFound: true, Value: "bao.log"},
 				Format:         mapValue[string]{IsFound: true, Value: "json"},
 				Level:          mapValue[string]{IsFound: true, Value: "warn"},
 				RotateBytes:    mapValue[int]{IsFound: true, Value: 1024},

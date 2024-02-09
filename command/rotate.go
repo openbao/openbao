@@ -26,7 +26,7 @@ func (c *OperatorRotateCommand) Synopsis() string {
 
 func (c *OperatorRotateCommand) Help() string {
 	helpText := `
-Usage: vault operator rotate [options]
+Usage: bao operator rotate [options]
 
   Rotates the underlying encryption key which is used to secure data written
   to the storage backend. This installs a new key in the key ring. This new
@@ -39,7 +39,7 @@ Usage: vault operator rotate [options]
 
   Rotate Vault's encryption key:
 
-      $ vault operator rotate
+      $ bao operator rotate
 
   For a full list of examples, please see the documentation.
 

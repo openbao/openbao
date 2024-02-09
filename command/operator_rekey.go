@@ -55,7 +55,7 @@ func (c *OperatorRekeyCommand) Synopsis() string {
 
 func (c *OperatorRekeyCommand) Help() string {
 	helpText := `
-Usage: vault operator rekey [options] [KEY]
+Usage: bao operator rekey [options] [KEY]
 
   Generates a new set of unseal keys. This can optionally change the total
   number of key shares or the required threshold of those key shares to
@@ -71,14 +71,14 @@ Usage: vault operator rekey [options] [KEY]
 
   Initialize a rekey:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -key-shares=15 \
           -key-threshold=9
 
   Rekey and encrypt the resulting unseal keys with PGP:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -key-shares=3 \
           -key-threshold=2 \
@@ -86,18 +86,18 @@ Usage: vault operator rekey [options] [KEY]
 
   Store encrypted PGP keys in Vault's core:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -pgp-keys="..." \
           -backup
 
   Retrieve backed-up unseal keys:
 
-      $ vault operator rekey -backup-retrieve
+      $ bao operator rekey -backup-retrieve
 
   Delete backed-up unseal keys:
 
-      $ vault operator rekey -backup-delete
+      $ bao operator rekey -backup-delete
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)

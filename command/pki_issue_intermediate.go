@@ -33,7 +33,7 @@ func (c *PKIIssueCACommand) Synopsis() string {
 
 func (c *PKIIssueCACommand) Help() string {
 	helpText := `
-Usage: vault pki issue PARENT CHILD_MOUNT options
+Usage: bao pki issue PARENT CHILD_MOUNT options
 
 PARENT is the fully qualified path of the Certificate Authority in vault which will issue the new intermediate certificate.
 

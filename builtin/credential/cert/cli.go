@@ -43,7 +43,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login -method=cert [CONFIG K=V...]
+Usage: bao login -method=cert [CONFIG K=V...]
 
   The certificate auth method allows users to authenticate with a
   client certificate passed with the request. The -client-cert and -client-key
@@ -52,7 +52,7 @@ Usage: vault login -method=cert [CONFIG K=V...]
 
   Authenticate using a local client certificate:
 
-      $ vault login -method=cert -client-cert=cert.pem -client-key=key.pem
+      $ bao login -method=cert -client-cert=cert.pem -client-key=key.pem
 
 Configuration:
 

@@ -383,7 +383,7 @@ func TestTLSClientCAVerfiyMutualExclusion(t *testing.T) {
 		t.Fatalf("TLS config check should have failed when both 'tls_disable_client_certs' and 'tls_require_and_verify_client_cert' are true")
 	}
 	if !strings.Contains(err, "The tls_disable_client_certs and tls_require_and_verify_client_cert fields in the "+
-		"listener stanza of the Vault server configuration are mutually exclusive fields") {
+		"listener stanza of the OpenBao server configuration are mutually exclusive fields") {
 		t.Fatalf("Bad error message: %s", err)
 	}
 }

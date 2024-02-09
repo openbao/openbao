@@ -27,11 +27,11 @@ func (c *OperatorMembersCommand) Synopsis() string {
 
 func (c *OperatorMembersCommand) Help() string {
 	helpText := `
-Usage: vault operator members
+Usage: bao operator members
 
   Provides the details of all the nodes in the cluster.
 
-	  $ vault operator members
+	  $ bao operator members
 
 ` + c.Flags().Help()
 

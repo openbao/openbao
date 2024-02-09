@@ -59,19 +59,19 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login -method=ldap [CONFIG K=V...]
+Usage: bao login -method=ldap [CONFIG K=V...]
 
   The LDAP auth method allows users to authenticate using LDAP or
   Active Directory.
 
   Authenticate as "sally":
 
-      $ vault login -method=ldap username=sally
+      $ bao login -method=ldap username=sally
       Password (will be hidden):
 
   Authenticate as "bob":
 
-      $ vault login -method=ldap username=bob password=password
+      $ bao login -method=ldap username=bob password=password
 
 Configuration:
 

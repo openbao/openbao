@@ -37,7 +37,7 @@ func (c *PKIReIssueCACommand) Synopsis() string {
 
 func (c *PKIReIssueCACommand) Help() string {
 	helpText := `
-Usage: vault pki reissue PARENT TEMPLATE CHILD_MOUNT options
+Usage: bao pki reissue PARENT TEMPLATE CHILD_MOUNT options
 `
 	return strings.TrimSpace(helpText)
 }

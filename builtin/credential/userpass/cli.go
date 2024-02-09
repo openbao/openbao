@@ -61,19 +61,19 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login -method=userpass [CONFIG K=V...]
+Usage: bao login -method=userpass [CONFIG K=V...]
 
   The userpass auth method allows users to authenticate using Vault's
   internal user database.
 
   Authenticate as "sally":
 
-      $ vault login -method=userpass username=sally
+      $ bao login -method=userpass username=sally
       Password (will be hidden):
 
   Authenticate as "bob":
 
-      $ vault login -method=userpass username=bob password=password
+      $ bao login -method=userpass username=bob password=password
 
 Configuration:
 

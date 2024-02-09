@@ -28,16 +28,16 @@ func (c *OperatorRaftListPeersCommand) Synopsis() string {
 
 func (c *OperatorRaftListPeersCommand) Help() string {
 	helpText := `
-Usage: vault operator raft list-peers
+Usage: bao operator raft list-peers
 
   Provides the details of all the peers in the Raft cluster.
 
-	  $ vault operator raft list-peers
+	  $ bao operator raft list-peers
 
   Provides the details of all the peers in the Raft cluster of a DR secondary
   cluster. This command should be invoked on the DR secondary nodes.
 
-      $ vault operator raft list-peers -dr-token <dr-operation-token>
+      $ bao operator raft list-peers -dr-token <dr-operation-token>
 
 ` + c.Flags().Help()
 

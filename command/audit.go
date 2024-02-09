@@ -21,7 +21,7 @@ func (c *AuditCommand) Synopsis() string {
 
 func (c *AuditCommand) Help() string {
 	helpText := `
-Usage: vault audit <subcommand> [options] [args]
+Usage: bao audit <subcommand> [options] [args]
 
   This command groups subcommands for interacting with Vault's audit devices.
   Users can list, enable, and disable audit devices.
@@ -32,11 +32,11 @@ Usage: vault audit <subcommand> [options] [args]
 
   List all enabled audit devices:
 
-      $ vault audit list
+      $ bao audit list
 
   Enable a new audit device "file";
 
-       $ vault audit enable file file_path=/var/log/audit.log
+       $ bao audit enable file file_path=/var/log/audit.log
 
   Please see the individual subcommand help for detailed usage information.
 `

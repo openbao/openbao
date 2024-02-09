@@ -30,7 +30,7 @@ func (c *PluginDeregisterCommand) Synopsis() string {
 
 func (c *PluginDeregisterCommand) Help() string {
 	helpText := `
-Usage: vault plugin deregister [options] TYPE NAME
+Usage: bao plugin deregister [options] TYPE NAME
 
   Deregister an existing plugin in the catalog. If the plugin does not exist,
   no action is taken (the command is idempotent). The TYPE argument
@@ -38,11 +38,11 @@ Usage: vault plugin deregister [options] TYPE NAME
 
   Deregister the unversioned auth plugin named my-custom-plugin:
 
-      $ vault plugin deregister auth my-custom-plugin
+      $ bao plugin deregister auth my-custom-plugin
 
   Deregister the auth plugin named my-custom-plugin, version 1.0.0:
 
-      $ vault plugin deregister -version=v1.0.0 auth my-custom-plugin
+      $ bao plugin deregister -version=v1.0.0 auth my-custom-plugin
 
 ` + c.Flags().Help()
 

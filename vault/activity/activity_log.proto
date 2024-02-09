@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/lf-edge/openbao/vault/activity";
+option go_package = "github.com/openbao/openbao/vault/activity";
 
 package activity;
 

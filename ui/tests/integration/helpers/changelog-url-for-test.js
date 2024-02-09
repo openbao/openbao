@@ -7,7 +7,7 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { changelogUrlFor } from '../../../helpers/changelog-url-for';
 
-const CHANGELOG_URL = 'https://www.github.com/lf-edge/openbao/blob/main/CHANGELOG.md#';
+const CHANGELOG_URL = 'https://www.github.com/openbao/openbao/blob/main/CHANGELOG.md#';
 
 module('Integration | Helper | changelog-url-for', function (hooks) {
   setupRenderingTest(hooks);

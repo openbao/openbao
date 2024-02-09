@@ -29,7 +29,7 @@ RUN addgroup openbao && \
 RUN set -eux; \
     apk add --no-cache ca-certificates libcap su-exec dumb-init tzdata
 
-COPY --from=builder /go/src/github.com/lf-edge/openbao/bin/bao /bin/bao
+COPY --from=builder /go/src/github.com/openbao/openbao/bin/bao /bin/bao
 
 # /openbao/logs is made available to use as a location to store audit logs, if
 # desired; /openbao/file is made available to use as a location with the file

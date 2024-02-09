@@ -19,7 +19,7 @@ etc.
 */
 
 export function changelogUrlFor([version]) {
-  const url = 'https://www.github.com/lf-edge/openbao/blob/main/CHANGELOG.md#';
+  const url = 'https://www.github.com/openbao/openbao/blob/main/CHANGELOG.md#';
   if (!version) return url;
   try {
     // strip the '+prem' from enterprise versions and remove periods

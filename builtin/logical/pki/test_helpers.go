@@ -248,6 +248,13 @@ func CBList(b *backend, s logical.Storage, path string) (*logical.Response, erro
 	return CBReq(b, s, logical.ListOperation, path, make(map[string]interface{}))
 }
 
+func CBPaginatedList(b *backend, s logical.Storage, path string, after string, limit int) (*logical.Response, error) {
+	return CBReq(b, s, logical.ListOperation, path, map[string]interface{}{
+		"after": after,
+		"limit": limit,
+	})
+}
+
 func CBDelete(b *backend, s logical.Storage, path string) (*logical.Response, error) {
 	return CBReq(b, s, logical.DeleteOperation, path, make(map[string]interface{}))
 }

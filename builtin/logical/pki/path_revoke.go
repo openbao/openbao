@@ -34,6 +34,17 @@ func pathListCertsRevoked(b *backend) *framework.Path {
 			OperationSuffix: "revoked-certs",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathListRevokedCertsHandler,
@@ -729,10 +740,13 @@ func (b *backend) pathRotateDeltaCRLRead(ctx context.Context, req *logical.Reque
 	return resp, nil
 }
 
-func (b *backend) pathListRevokedCertsHandler(ctx context.Context, request *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathListRevokedCertsHandler(ctx context.Context, request *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	sc := b.makeStorageContext(ctx, request.Storage)
 
-	revokedCerts, err := sc.listRevokedCerts()
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
+	revokedCerts, err := sc.listRevokedCertsPage(after, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -7325,6 +7325,57 @@ func TestPKI_IssueKeyTypeAny(t *testing.T) {
 	}
 }
 
+func TestPaginatedListing(t *testing.T) {
+	// Generate a root CA at /pki-root
+	b, s := CreateBackendWithStorage(t)
+
+	resp, err := CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root R1",
+		"issuer_name": "root-r1",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root R2",
+		"issuer_name": "root-r2",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root R3",
+		"issuer_name": "root-r3",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root X1",
+		"issuer_name": "root-x1",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root X2",
+		"issuer_name": "root-x2",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBWrite(b, s, "root/generate/exported", map[string]interface{}{
+		"common_name": "Root X3",
+		"issuer_name": "root-x3",
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected root generation to succeed")
+
+	resp, err = CBList(b, s, "issuers")
+	require.NoError(t, err)
+	require.Equal(t, len(resp.Data["keys"].([]string)), 6)
+
+	all_ids := resp.Data["keys"].([]string)
+
+	resp, err = CBPaginatedList(b, s, "issuers", all_ids[2], 2)
+	require.NoError(t, err)
+	require.Equal(t, resp.Data["keys"], all_ids[3:5])
+}
+
 var (
 	initTest  sync.Once
 	rsaCAKey  string

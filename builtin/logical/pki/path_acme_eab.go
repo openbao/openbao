@@ -41,7 +41,18 @@ func mustBase64Decode(s string) []byte {
 func pathAcmeEabList(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "eab/?$",
-		Fields:  map[string]*framework.FieldSchema{},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathAcmeListEab,
@@ -180,10 +191,13 @@ type eabType struct {
 	CreatedOn     time.Time `json:"created-on"`
 }
 
-func (b *backend) pathAcmeListEab(ctx context.Context, r *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathAcmeListEab(ctx context.Context, r *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	sc := b.makeStorageContext(ctx, r.Storage)
 
-	eabIds, err := b.acmeState.ListEabIds(sc)
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
+	eabIds, err := b.acmeState.ListEabIdsPage(sc, after, limit)
 	if err != nil {
 		return nil, err
 	}

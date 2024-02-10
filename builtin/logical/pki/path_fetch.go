@@ -231,6 +231,17 @@ func pathFetchListCerts(b *backend) *framework.Path {
 			OperationSuffix: "certs",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathFetchCertList,
@@ -254,8 +265,14 @@ func pathFetchListCerts(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathFetchCertList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (response *logical.Response, retErr error) {
-	entries, err := req.Storage.List(ctx, "certs/")
+func (b *backend) pathFetchCertList(ctx context.Context, req *logical.Request, data *framework.FieldData) (response *logical.Response, retErr error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "certs/", after, limit)
 	if err != nil {
 		return nil, err
 	}

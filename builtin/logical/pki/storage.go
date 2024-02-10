@@ -287,7 +287,11 @@ func (sc *storageContext) WithFreshTimeout(timeout time.Duration) (*storageConte
 }
 
 func (sc *storageContext) listKeys() ([]keyID, error) {
-	strList, err := sc.Storage.List(sc.Context, keyPrefix)
+	return sc.listKeysPage("", -1)
+}
+
+func (sc *storageContext) listKeysPage(after string, limit int) ([]keyID, error) {
+	strList, err := sc.Storage.ListPage(sc.Context, keyPrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +598,11 @@ func (i issuerEntry) GetAIAURLs(sc *storageContext) (*certutil.URLEntries, error
 }
 
 func (sc *storageContext) listIssuers() ([]issuerID, error) {
-	strList, err := sc.Storage.List(sc.Context, issuerPrefix)
+	return sc.listIssuersPage("", -1)
+}
+
+func (sc *storageContext) listIssuersPage(after string, limit int) ([]issuerID, error) {
+	strList, err := sc.Storage.ListPage(sc.Context, issuerPrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1458,7 +1466,11 @@ func (sc *storageContext) writeAutoTidyConfig(config *tidyConfig) error {
 }
 
 func (sc *storageContext) listRevokedCerts() ([]string, error) {
-	list, err := sc.Storage.List(sc.Context, revokedPath)
+	return sc.listRevokedCertsPage("", -1)
+}
+
+func (sc *storageContext) listRevokedCertsPage(after string, limit int) ([]string, error) {
+	list, err := sc.Storage.ListPage(sc.Context, revokedPath, after, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed listing revoked certs: %w", err)
 	}

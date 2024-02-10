@@ -26,6 +26,17 @@ func pathListIssuers(b *backend) *framework.Path {
 			OperationSuffix: "issuers",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathListIssuersHandler,
@@ -54,7 +65,7 @@ func pathListIssuers(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if b.useLegacyBundleCaStorage() {
 		return logical.ErrorResponse("Can not list issuers until migration has completed"), nil
 	}
@@ -62,8 +73,11 @@ func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Reque
 	var responseKeys []string
 	responseInfo := make(map[string]interface{})
 
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
 	sc := b.makeStorageContext(ctx, req.Storage)
-	entries, err := sc.listIssuers()
+	entries, err := sc.listIssuersPage(after, limit)
 	if err != nil {
 		return nil, err
 	}

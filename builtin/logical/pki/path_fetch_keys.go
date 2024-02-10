@@ -23,6 +23,17 @@ func pathListKeys(b *backend) *framework.Path {
 			OperationSuffix: "keys",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathListKeysHandler,
@@ -59,7 +70,7 @@ const (
 their identifier and their name (if set).`
 )
 
-func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if b.useLegacyBundleCaStorage() {
 		return logical.ErrorResponse("Can not list keys until migration has completed"), nil
 	}
@@ -67,8 +78,11 @@ func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request,
 	var responseKeys []string
 	responseInfo := make(map[string]interface{})
 
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
 	sc := b.makeStorageContext(ctx, req.Storage)
-	entries, err := sc.listKeys()
+	entries, err := sc.listKeysPage(after, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -232,6 +232,8 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		return nil, errors.New("the import path cannot be used with an existing key; use import-version to rotate an existing imported key")
 	}
 
+	// Otherwise, p was nil, so there is no lock that needs to be released.
+
 	key, resp, err := b.extractKeyFromFields(ctx, req, d, polReq.KeyType, isCiphertextSet)
 	if err != nil {
 		return resp, err

@@ -366,8 +366,8 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
-		defer p.Unlock()
 	}
+	defer p.Unlock()
 
 	if !p.Type.SigningSupported() {
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support signing", p.Type)), logical.ErrInvalidRequest
@@ -620,8 +620,8 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 	}
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
-		defer p.Unlock()
 	}
+	defer p.Unlock()
 
 	if !p.Type.SigningSupported() {
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support verification", p.Type)), logical.ErrInvalidRequest

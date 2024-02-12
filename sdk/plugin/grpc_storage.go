@@ -6,6 +6,9 @@ package plugin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
+	"strings"
 
 	"google.golang.org/grpc"
 
@@ -47,6 +50,32 @@ func (s *GRPCStorageClient) ListPage(ctx context.Context, prefix string, after s
 		Limit:  int32(limit),
 	}, largeMsgGRPCCallOpts...)
 	if err != nil {
+		if strings.Contains(err.Error(), "Unimplemented") {
+			// Implement ListPage(...) manually. Assume the results are
+			// already sorted from the storage backend.
+			results, listErr := s.List(ctx, prefix)
+			if listErr != nil {
+				return nil, fmt.Errorf("failed to re-call List(...) from ListPage(...): %w\n\toriginal: %v", listErr, err)
+			}
+
+			if after != "" {
+				idx := sort.SearchStrings(results, after)
+				if idx < len(results) && results[idx] == after {
+					idx += 1
+				}
+				results = results[idx:]
+			}
+
+			if limit > 0 {
+				if limit > len(results) {
+					limit = len(results)
+				}
+				results = results[0:limit]
+			}
+
+			return results, nil
+		}
+
 		return []string{}, err
 	}
 	if reply.Err != "" {

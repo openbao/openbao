@@ -25,7 +25,7 @@ const POSSIBLE_FEATURES = [
 
 export function hasFeature(featureName, features) {
   if (!POSSIBLE_FEATURES.includes(featureName)) {
-    assert(`${featureName} is not one of the available values for Vault Enterprise features.`, false);
+    assert(`${featureName} is not one of the available values for OpenBao features.`, false);
     return false;
   }
   return features ? features.includes(featureName) : false;

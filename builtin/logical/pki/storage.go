@@ -1412,8 +1412,7 @@ func (sc *storageContext) getRevocationConfig() (*crlConfig, error) {
 	isLocalMount := sc.Backend.System().LocalMount()
 	if (!constants.IsEnterprise || isLocalMount) && (result.UnifiedCRLOnExistingPaths || result.UnifiedCRL || result.UseGlobalQueue) {
 		// An end user must have had Enterprise, enabled the unified config args and then downgraded to OSS.
-		sc.Backend.Logger().Warn("Not running Vault Enterprise or using a local mount, " +
-			"disabling unified_crl, unified_crl_on_existing_paths and cross_cluster_revocation config flags.")
+		sc.Backend.Logger().Warn("Not using a local mount, disabling unified_crl, unified_crl_on_existing_paths and cross_cluster_revocation config flags.")
 		result.UnifiedCRLOnExistingPaths = false
 		result.UnifiedCRL = false
 		result.UseGlobalQueue = false

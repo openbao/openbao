@@ -388,11 +388,11 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 	}
 
 	if !constants.IsEnterprise && config.UseGlobalQueue {
-		return logical.ErrorResponse("Global, cross-cluster revocation queue (cross_cluster_revocation) can only be enabled on Vault Enterprise."), nil
+		return logical.ErrorResponse("Global, cross-cluster revocation queue (cross_cluster_revocation) cannot be enabled on OpenBao"), nil
 	}
 
 	if !constants.IsEnterprise && config.UnifiedCRL {
-		return logical.ErrorResponse("unified_crl can only be enabled on Vault Enterprise"), nil
+		return logical.ErrorResponse("unified_crl cannot only be enabled on Openbao"), nil
 	}
 
 	isLocalMount := b.System().LocalMount()

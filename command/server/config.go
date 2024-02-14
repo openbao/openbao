@@ -745,7 +745,7 @@ func ParseConfig(d, source string) (*Config, error) {
 	}
 
 	if err := result.parseConfig(list); err != nil {
-		return nil, fmt.Errorf("error parsing enterprise config: %w", err)
+		return nil, fmt.Errorf("error parsing config: %w", err)
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.

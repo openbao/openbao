@@ -524,7 +524,7 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		disableUpgradeMigration, ok := d.GetOk("disable_upgrade_migration")
 		if ok {
 			if !constants.IsEnterprise {
-				return logical.ErrorResponse("disable_upgrade_migration is only available in Vault Enterprise"), logical.ErrInvalidRequest
+				return logical.ErrorResponse("disable_upgrade_migration is not available available in OpenBao"), logical.ErrInvalidRequest
 			}
 			config.DisableUpgradeMigration = disableUpgradeMigration.(bool)
 			persist = true

@@ -10,7 +10,7 @@ import (
 	"errors"
 )
 
-var errEntOnly = errors.New("managed keys are supported within enterprise edition only")
+var errEntOnly = errors.New("managed keys are not supported in OpenBao")
 
 func GetManagedKeyUUID(ctx context.Context, b *backend, keyName string, keyId string) (uuid string, err error) {
 	return "", errEntOnly

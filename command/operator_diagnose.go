@@ -588,7 +588,7 @@ SEALFAIL:
 	licenseCtx, licenseSpan := diagnose.StartSpan(ctx, "Check For Autoloaded License")
 	// If we are not in enterprise, return from the check
 	if !constants.IsEnterprise {
-		diagnose.Skipped(licenseCtx, "License check will not run on OSS Vault.")
+		diagnose.Skipped(licenseCtx, "License check will not run on OpenBao.")
 	} else {
 		// Load License from environment variables. These take precedence over the
 		// configured license.

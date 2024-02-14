@@ -14,7 +14,7 @@ import (
 	"github.com/openbao/openbao/sdk/helper/certutil"
 )
 
-var errEntOnly = errors.New("managed keys are supported within enterprise edition only")
+var errEntOnly = errors.New("managed keys are not supported in OpenBao")
 
 func generateManagedKeyCABundle(ctx context.Context, b *backend, keyId managedKeyId, data *certutil.CreationBundle, randomSource io.Reader) (bundle *certutil.ParsedCertBundle, err error) {
 	return nil, errEntOnly

@@ -2124,7 +2124,7 @@ func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value
 		}
 
 		if managedKeyFactory == nil {
-			return "", errors.New("key type is managed_key, but managed key parameters were not provided")
+			return "", errors.New("key with type is 'managed_key' was provided but managed keys are not supported")
 		}
 
 		ciphertext, err = p.encryptWithManagedKey(managedKeyFactory.GetManagedKeyParameters(), keyEntry, plaintext, nonce, aad)

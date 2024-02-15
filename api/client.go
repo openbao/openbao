@@ -14,7 +14,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -33,26 +32,26 @@ import (
 )
 
 const (
-	EnvVaultAddress          = "VAULT_ADDR"
-	EnvVaultAgentAddr        = "VAULT_AGENT_ADDR"
-	EnvVaultCACert           = "VAULT_CACERT"
-	EnvVaultCACertBytes      = "VAULT_CACERT_BYTES"
-	EnvVaultCAPath           = "VAULT_CAPATH"
-	EnvVaultClientCert       = "VAULT_CLIENT_CERT"
-	EnvVaultClientKey        = "VAULT_CLIENT_KEY"
-	EnvVaultClientTimeout    = "VAULT_CLIENT_TIMEOUT"
-	EnvVaultSRVLookup        = "VAULT_SRV_LOOKUP"
-	EnvVaultSkipVerify       = "VAULT_SKIP_VERIFY"
-	EnvVaultNamespace        = "VAULT_NAMESPACE"
-	EnvVaultTLSServerName    = "VAULT_TLS_SERVER_NAME"
-	EnvVaultWrapTTL          = "VAULT_WRAP_TTL"
-	EnvVaultMaxRetries       = "VAULT_MAX_RETRIES"
-	EnvVaultToken            = "VAULT_TOKEN"
-	EnvVaultMFA              = "VAULT_MFA"
-	EnvRateLimit             = "VAULT_RATE_LIMIT"
-	EnvHTTPProxy             = "VAULT_HTTP_PROXY"
-	EnvVaultProxyAddr        = "VAULT_PROXY_ADDR"
-	EnvVaultDisableRedirects = "VAULT_DISABLE_REDIRECTS"
+	EnvVaultAddress          = "BAO_ADDR"
+	EnvVaultAgentAddr        = "BAO_AGENT_ADDR"
+	EnvVaultCACert           = "BAO_CACERT"
+	EnvVaultCACertBytes      = "BAO_CACERT_BYTES"
+	EnvVaultCAPath           = "BAO_CAPATH"
+	EnvVaultClientCert       = "BAO_CLIENT_CERT"
+	EnvVaultClientKey        = "BAO_CLIENT_KEY"
+	EnvVaultClientTimeout    = "BAO_CLIENT_TIMEOUT"
+	EnvVaultSRVLookup        = "BAO_SRV_LOOKUP"
+	EnvVaultSkipVerify       = "BAO_SKIP_VERIFY"
+	EnvVaultNamespace        = "BAO_NAMESPACE"
+	EnvVaultTLSServerName    = "BAO_TLS_SERVER_NAME"
+	EnvVaultWrapTTL          = "BAO_WRAP_TTL"
+	EnvVaultMaxRetries       = "BAO_MAX_RETRIES"
+	EnvVaultToken            = "BAO_TOKEN"
+	EnvVaultMFA              = "BAO_MFA"
+	EnvRateLimit             = "BAO_RATE_LIMIT"
+	EnvHTTPProxy             = "BAO_HTTP_PROXY"
+	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
+	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
 	HeaderIndex              = "X-Vault-Index"
 	HeaderForward            = "X-Vault-Forward"
 	HeaderInconsistent       = "X-Vault-Inconsistent"
@@ -73,15 +72,15 @@ const (
 		"on the server or run the client with -address set to an address\n" +
 		"that uses the http protocol:\n\n" +
 		"    vault <command> -address http://<address>\n\n" +
-		"You can also set the VAULT_ADDR environment variable:\n\n\n" +
-		"    VAULT_ADDR=http://<address> vault <command>\n\n" +
+		"You can also set the BAO_ADDR environment variable:\n\n\n" +
+		"    BAO_ADDR=http://<address> vault <command>\n\n" +
 		"where <address> is replaced by the actual address to the server."
 )
 
 // Deprecated values
 const (
-	EnvVaultAgentAddress = "VAULT_AGENT_ADDR"
-	EnvVaultInsecure     = "VAULT_SKIP_VERIFY"
+	EnvVaultAgentAddress = "BAO_AGENT_ADDR"
+	EnvVaultInsecure     = "BAO_SKIP_VERIFY"
 )
 
 // WrappingLookupFunc is a function that, given an HTTP verb and a path,
@@ -240,7 +239,7 @@ type TLSConfig struct {
 // safe to modify the return value of this function.
 //
 // The default Address is https://127.0.0.1:8200, but this can be overridden by
-// setting the `VAULT_ADDR` environment variable.
+// setting the `BAO_ADDR` environment variable.
 //
 // If an error is encountered, the Error field on the returned *Config will be populated with the specific error.
 func DefaultConfig() *Config {
@@ -378,56 +377,56 @@ func (c *Config) ReadEnvironment() error {
 	var envVaultDisableRedirects bool
 
 	// Parse the environment variables
-	if v := os.Getenv(EnvVaultAddress); v != "" {
+	if v := ReadBaoVariable(EnvVaultAddress); v != "" {
 		envAddress = v
 	}
-	if v := os.Getenv(EnvVaultAgentAddr); v != "" {
+	if v := ReadBaoVariable(EnvVaultAgentAddr); v != "" {
 		envAgentAddress = v
 	}
-	if v := os.Getenv(EnvVaultMaxRetries); v != "" {
+	if v := ReadBaoVariable(EnvVaultMaxRetries); v != "" {
 		maxRetries, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
 			return err
 		}
 		envMaxRetries = &maxRetries
 	}
-	if v := os.Getenv(EnvVaultCACert); v != "" {
+	if v := ReadBaoVariable(EnvVaultCACert); v != "" {
 		envCACert = v
 	}
-	if v := os.Getenv(EnvVaultCACertBytes); v != "" {
+	if v := ReadBaoVariable(EnvVaultCACertBytes); v != "" {
 		envCACertBytes = []byte(v)
 	}
-	if v := os.Getenv(EnvVaultCAPath); v != "" {
+	if v := ReadBaoVariable(EnvVaultCAPath); v != "" {
 		envCAPath = v
 	}
-	if v := os.Getenv(EnvVaultClientCert); v != "" {
+	if v := ReadBaoVariable(EnvVaultClientCert); v != "" {
 		envClientCert = v
 	}
-	if v := os.Getenv(EnvVaultClientKey); v != "" {
+	if v := ReadBaoVariable(EnvVaultClientKey); v != "" {
 		envClientKey = v
 	}
-	if v := os.Getenv(EnvRateLimit); v != "" {
+	if v := ReadBaoVariable(EnvRateLimit); v != "" {
 		rateLimit, burstLimit, err := parseRateLimit(v)
 		if err != nil {
 			return err
 		}
 		limit = rate.NewLimiter(rate.Limit(rateLimit), burstLimit)
 	}
-	if t := os.Getenv(EnvVaultClientTimeout); t != "" {
+	if t := ReadBaoVariable(EnvVaultClientTimeout); t != "" {
 		clientTimeout, err := parseutil.ParseDurationSecond(t)
 		if err != nil {
 			return fmt.Errorf("could not parse %q", EnvVaultClientTimeout)
 		}
 		envClientTimeout = clientTimeout
 	}
-	if v := os.Getenv(EnvVaultSkipVerify); v != "" {
+	if v := ReadBaoVariable(EnvVaultSkipVerify); v != "" {
 		var err error
 		envInsecure, err = strconv.ParseBool(v)
 		if err != nil {
 			return fmt.Errorf("could not parse %s", EnvVaultSkipVerify)
 		}
 	}
-	if v := os.Getenv(EnvVaultSRVLookup); v != "" {
+	if v := ReadBaoVariable(EnvVaultSRVLookup); v != "" {
 		var err error
 		envSRVLookup, err = strconv.ParseBool(v)
 		if err != nil {
@@ -435,20 +434,20 @@ func (c *Config) ReadEnvironment() error {
 		}
 	}
 
-	if v := os.Getenv(EnvVaultTLSServerName); v != "" {
+	if v := ReadBaoVariable(EnvVaultTLSServerName); v != "" {
 		envTLSServerName = v
 	}
 
-	if v := os.Getenv(EnvHTTPProxy); v != "" {
+	if v := ReadBaoVariable(EnvHTTPProxy); v != "" {
 		envVaultProxy = v
 	}
 
-	// VAULT_PROXY_ADDR supersedes VAULT_HTTP_PROXY
-	if v := os.Getenv(EnvVaultProxyAddr); v != "" {
+	// BAO_PROXY_ADDR supersedes BAO_HTTP_PROXY
+	if v := ReadBaoVariable(EnvVaultProxyAddr); v != "" {
 		envVaultProxy = v
 	}
 
-	if v := os.Getenv(EnvVaultDisableRedirects); v != "" {
+	if v := ReadBaoVariable(EnvVaultDisableRedirects); v != "" {
 		var err error
 		envVaultDisableRedirects, err = strconv.ParseBool(v)
 		if err != nil {
@@ -586,7 +585,7 @@ type Client struct {
 // If the configuration is nil, Vault will use configuration from
 // DefaultConfig(), which is the recommended starting configuration.
 //
-// If the environment variable `VAULT_TOKEN` is present, the token will be
+// If the environment variable `BAO_TOKEN` is present, the token will be
 // automatically added to the client. Otherwise, you must manually call
 // `SetToken()`.
 func NewClient(c *Config) (*Client, error) {
@@ -643,11 +642,11 @@ func NewClient(c *Config) (*Client, error) {
 	// Add the VaultRequest SSRF protection header
 	client.headers[RequestHeaderName] = []string{"true"}
 
-	if token := os.Getenv(EnvVaultToken); token != "" {
+	if token := ReadBaoVariable(EnvVaultToken); token != "" {
 		client.token = token
 	}
 
-	if namespace := os.Getenv(EnvVaultNamespace); namespace != "" {
+	if namespace := ReadBaoVariable(EnvVaultNamespace); namespace != "" {
 		client.setNamespace(namespace)
 	}
 
@@ -684,7 +683,7 @@ func (c *Client) CloneConfig() *Config {
 
 // SetAddress sets the address of Vault in the client. The format of address should be
 // "<Scheme>://<Host>:<Port>". Setting this on a client will override the
-// value of VAULT_ADDR environment variable.
+// value of BAO_ADDR environment variable.
 func (c *Client) SetAddress(addr string) error {
 	c.modifyLock.Lock()
 	defer c.modifyLock.Unlock()

@@ -22,15 +22,15 @@ import (
 const (
 	// PluginAutoMTLSEnv is used to ensure AutoMTLS is used. This will override
 	// setting a TLSProviderFunc for a plugin.
-	PluginAutoMTLSEnv = "VAULT_PLUGIN_AUTOMTLS_ENABLED"
+	PluginAutoMTLSEnv = "BAO_PLUGIN_AUTOMTLS_ENABLED"
 
 	// PluginMetadataModeEnv is an ENV name used to disable TLS communication
 	// to bootstrap mounting plugins.
-	PluginMetadataModeEnv = "VAULT_PLUGIN_METADATA_MODE"
+	PluginMetadataModeEnv = "BAO_PLUGIN_METADATA_MODE"
 
 	// PluginUnwrapTokenEnv is the ENV name used to pass unwrap tokens to the
 	// plugin.
-	PluginUnwrapTokenEnv = "VAULT_UNWRAP_TOKEN"
+	PluginUnwrapTokenEnv = "BAO_UNWRAP_TOKEN"
 )
 
 // sudoPaths is a map containing the paths that require a token's policy

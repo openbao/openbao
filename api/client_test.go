@@ -26,21 +26,21 @@ import (
 
 func init() {
 	// Ensure our special envvars are not present
-	os.Setenv("VAULT_ADDR", "")
-	os.Setenv("VAULT_TOKEN", "")
+	os.Setenv("BAO_ADDR", "")
+	os.Setenv("BAO_TOKEN", "")
 }
 
 func TestDefaultConfig_envvar(t *testing.T) {
-	os.Setenv("VAULT_ADDR", "https://vault.mycompany.com")
-	defer os.Setenv("VAULT_ADDR", "")
+	os.Setenv("BAO_ADDR", "https://vault.mycompany.com")
+	defer os.Setenv("BAO_ADDR", "")
 
 	config := DefaultConfig()
 	if config.Address != "https://vault.mycompany.com" {
 		t.Fatalf("bad: %s", config.Address)
 	}
 
-	os.Setenv("VAULT_TOKEN", "testing")
-	defer os.Setenv("VAULT_TOKEN", "")
+	os.Setenv("BAO_TOKEN", "testing")
+	defer os.Setenv("BAO_TOKEN", "")
 
 	client, err := NewClient(config)
 	if err != nil {
@@ -72,8 +72,8 @@ func TestClientNilConfig(t *testing.T) {
 }
 
 func TestClientDefaultHttpClient_unixSocket(t *testing.T) {
-	os.Setenv("VAULT_AGENT_ADDR", "unix:///var/run/vault.sock")
-	defer os.Setenv("VAULT_AGENT_ADDR", "")
+	os.Setenv("BAO_AGENT_ADDR", "unix:///var/run/vault.sock")
+	defer os.Setenv("BAO_AGENT_ADDR", "")
 
 	client, err := NewClient(nil)
 	if err != nil {
@@ -689,7 +689,7 @@ func TestClone(t *testing.T) {
 					t.Fatalf("tokens do not match: %v vs %v", parent.token, clone.token)
 				}
 			} else {
-				// assumes `VAULT_TOKEN` is unset or has an empty value.
+				// assumes `BAO_TOKEN` is unset or has an empty value.
 				expected := ""
 				if clone.token != expected {
 					t.Fatalf("expected clone's token %q, actual %q", expected, clone.token)
@@ -1342,31 +1342,31 @@ func TestVaultProxy(t *testing.T) {
 		requestUrl               string
 		expectedResolvedProxyUrl string
 	}{
-		"VAULT_HTTP_PROXY used when NO_PROXY env var doesn't include request host": {
+		"BAO_HTTP_PROXY used when NO_PROXY env var doesn't include request host": {
 			vaultHttpProxy: "https://hashicorp.com",
 			vaultProxyAddr: "",
 			noProxy:        "terraform.io",
 			requestUrl:     "https://vaultproject.io",
 		},
-		"VAULT_HTTP_PROXY used when NO_PROXY env var includes request host": {
+		"BAO_HTTP_PROXY used when NO_PROXY env var includes request host": {
 			vaultHttpProxy: "https://hashicorp.com",
 			vaultProxyAddr: "",
 			noProxy:        "terraform.io,vaultproject.io",
 			requestUrl:     "https://vaultproject.io",
 		},
-		"VAULT_PROXY_ADDR used when NO_PROXY env var doesn't include request host": {
+		"BAO_PROXY_ADDR used when NO_PROXY env var doesn't include request host": {
 			vaultHttpProxy: "",
 			vaultProxyAddr: "https://hashicorp.com",
 			noProxy:        "terraform.io",
 			requestUrl:     "https://vaultproject.io",
 		},
-		"VAULT_PROXY_ADDR used when NO_PROXY env var includes request host": {
+		"BAO_PROXY_ADDR used when NO_PROXY env var includes request host": {
 			vaultHttpProxy: "",
 			vaultProxyAddr: "https://hashicorp.com",
 			noProxy:        "terraform.io,vaultproject.io",
 			requestUrl:     "https://vaultproject.io",
 		},
-		"VAULT_PROXY_ADDR used when VAULT_HTTP_PROXY env var also supplied": {
+		"BAO_PROXY_ADDR used when BAO_HTTP_PROXY env var also supplied": {
 			vaultHttpProxy:           "https://hashicorp.com",
 			vaultProxyAddr:           "https://terraform.io",
 			noProxy:                  "",

@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/errwrap"
@@ -30,8 +29,8 @@ var (
 	// var to set the wrap TTL. The default wrap TTL will apply when when writing
 	// to `sys/wrapping/wrap` when the env var is not set.
 	DefaultWrappingLookupFunc = func(operation, path string) string {
-		if os.Getenv(EnvVaultWrapTTL) != "" {
-			return os.Getenv(EnvVaultWrapTTL)
+		if ReadBaoVariable(EnvVaultWrapTTL) != "" {
+			return ReadBaoVariable(EnvVaultWrapTTL)
 		}
 
 		if (operation == http.MethodPut || operation == http.MethodPost) && path == "sys/wrapping/wrap" {

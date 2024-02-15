@@ -35,7 +35,7 @@ func GenerateForwardedHTTPRequest(req *http.Request, addr string) (*http.Request
 	}
 
 	var newBody []byte
-	switch os.Getenv("VAULT_MESSAGE_TYPE") {
+	switch os.Getenv("BAO_MESSAGE_TYPE") {
 	case "json":
 		newBody, err = jsonutil.EncodeJSON(fq)
 	case "json_compress":

@@ -115,7 +115,7 @@
           }
         ]
       },
-      
+
       {
         "title": "Token Authentication",
         "path": "internals/token"
@@ -1604,6 +1604,10 @@
       {
         "title": "Plugin support policy",
         "path": "policies/plugins"
+      },
+      {
+        "title": "Migration policy",
+        "path": "policies/migration"
       }
     ]
   }

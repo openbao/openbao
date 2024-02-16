@@ -42,5 +42,5 @@ Proxy:
 - since Agent simply mirrors the incoming requests, it is unlikely that incompatibilities would surface in proxying, but new functionality may not be available
 
 Templating:
-- we don't anticipate a scenario where changes to Agent's templating itself gives rise to an incompatibility with older OpenBao Servers, though of course with any Agent version it's possible to write templates that issue requests which make use of functionality not yet present in the upstream OpenBao server, e.g. {{ with secret "secret/my-secret?some-new-option" }}
+- we don't anticipate a scenario where changes to Agent's templating itself gives rise to an incompatibility with older OpenBao Servers, though of course with any Agent version it's possible to write templates that issue requests which make use of functionality not yet present in the upstream OpenBao server, e.g. \{\{ with secret "secret/my-secret?some-new-option" }}
 - we would not deliberately make a change to templating that breaks existing deployments

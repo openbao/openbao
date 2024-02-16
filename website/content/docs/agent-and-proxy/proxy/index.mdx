@@ -103,15 +103,15 @@ Set to `-1` to discard old log files when a new one is created.
 
 These are the currently-available general configuration options:
 
-- `vault` <code>([vault][vault]: <optional\>)</code> - Specifies the remote OpenBao server the Proxy connects to.
+- `vault` <code>([vault][vault]: \<optional>)</code> - Specifies the remote OpenBao server the Proxy connects to.
 
-- `auto_auth` <code>([auto_auth][autoauth]: <optional\>)</code> - Specifies the method and other options used for Auto-Auth functionality.
+- `auto_auth` <code>([auto_auth][autoauth]: \<optional>)</code> - Specifies the method and other options used for Auto-Auth functionality.
 
-- `api_proxy` <code>([api_proxy][apiproxy]: <optional\>)</code> - Specifies options used for API Proxy functionality.
+- `api_proxy` <code>([api_proxy][apiproxy]: \<optional>)</code> - Specifies options used for API Proxy functionality.
 
-- `cache` <code>([cache][caching]: <optional\>)</code> - Specifies options used for Caching functionality.
+- `cache` <code>([cache][caching]: \<optional>)</code> - Specifies options used for Caching functionality.
 
-- `listener` <code>([listener][listener]: <optional\>)</code> - Specifies the addresses and ports on which the Proxy will respond to requests.
+- `listener` <code>([listener][listener]: \<optional>)</code> - Specifies the addresses and ports on which the Proxy will respond to requests.
 
 ~> **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will attempt to reload listener TLS configuration.
 This method can be used to refresh certificates used by OpenBao Proxy without having to restart its process.
@@ -131,11 +131,11 @@ environment variable as a comma separated string. This environment variable will
 Valid values include: `auto-auth`, and `proxying`. Can also be configured by setting the `VAULT_PROXY_DISABLE_KEEP_ALIVES`
 environment variable as a comma separated string. This environment variable will override any values found in a configuration file.
 
-- `template` <code>([template][template]: <optional\>)</code> - Specifies options used for templating OpenBao secrets to files.
+- `template` <code>([template][template]: \<optional>)</code> - Specifies options used for templating OpenBao secrets to files.
 
-- `template_config` <code>([template_config][template-config]: <optional\>)</code> - Specifies templating engine behavior.
+- `template_config` <code>([template_config][template-config]: \<optional>)</code> - Specifies templating engine behavior.
 
-- `telemetry` <code>([telemetry][telemetry]: <optional\>)</code> – Specifies the telemetry
+- `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
 reporting system. See the [telemetry Stanza](/vault/docs/agent-and-proxy/proxy#telemetry-stanza) section below
 for a list of metrics specific to Proxy.
 
@@ -228,7 +228,7 @@ It can be configured to `metrics_only` to serve only metrics, or the default rol
 which serves everything (including metrics). The `require_request_header` does not apply
 to `metrics_only` listeners.
 
-- `proxy_api` <code>([proxy_api][proxy-api]: <optional\>)</code> - Manages optional Proxy API endpoints.
+- `proxy_api` <code>([proxy_api][proxy-api]: \<optional>)</code> - Manages optional Proxy API endpoints.
 
 #### proxy_api stanza
 

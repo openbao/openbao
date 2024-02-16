@@ -209,8 +209,8 @@ cannot be used with `env_template` entries in process supervisor mode.
   at the destination path before writing a new one. It keeps exactly one backup.
   This option is useful for preventing accidental changes to the data without having
   a rollback strategy.
-- `left_delimiter` `(string: "{{")` - Delimiter to use in the template. The
-  default is "{{" but for some templates, it may be easier to use a different
+- `left_delimiter` `(string: "\{\{")` - Delimiter to use in the template. The
+  default is "\{\{" but for some templates, it may be easier to use a different
   delimiter that does not conflict with the output file itself.
 - `right_delimiter` `(string: "}}")` - Delimiter to use in the template. The
   default is "}}" but for some templates, it may be easier to use a different

@@ -4,7 +4,6 @@
 package server
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -165,9 +164,6 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 	}
 	addExpectedEntConfig(expected, []string{})
 
-	if entropy != nil {
-		expected.Entropy = entropy
-	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
 		t.Fatal(diff)
@@ -256,76 +252,9 @@ func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
 	}
 	addExpectedEntConfig(expected, []string{"http"})
 
-	if entropy != nil {
-		expected.Entropy = entropy
-	}
-
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
 		t.Fatal(diff)
-	}
-}
-
-func testParseEntropy(t *testing.T, oss bool) {
-	tests := []struct {
-		inConfig   string
-		outErr     error
-		outEntropy configutil.Entropy
-	}{
-		{
-			inConfig: `entropy "seal" {
-				mode = "augmentation"
-				}`,
-			outErr:     nil,
-			outEntropy: configutil.Entropy{Mode: configutil.EntropyAugmentation},
-		},
-		{
-			inConfig: `entropy "seal" {
-				mode = "a_mode_that_is_not_supported"
-				}`,
-			outErr: fmt.Errorf("the specified entropy mode %q is not supported", "a_mode_that_is_not_supported"),
-		},
-		{
-			inConfig: `entropy "device_that_is_not_supported" {
-				mode = "augmentation"
-				}`,
-			outErr: fmt.Errorf("only the %q type of external entropy is supported", "seal"),
-		},
-		{
-			inConfig: `entropy "seal" {
-				mode = "augmentation"
-				}
-				entropy "seal" {
-				mode = "augmentation"
-				}`,
-			outErr: fmt.Errorf("only one %q block is permitted", "entropy"),
-		},
-	}
-
-	config := Config{
-		SharedConfig: &configutil.SharedConfig{},
-	}
-
-	for _, test := range tests {
-		obj, _ := hcl.Parse(strings.TrimSpace(test.inConfig))
-		list, _ := obj.Node.(*ast.ObjectList)
-		objList := list.Filter("entropy")
-		err := configutil.ParseEntropy(config.SharedConfig, objList, "entropy")
-		// validate the error, both should be nil or have the same Error()
-		switch {
-		case oss:
-			if config.Entropy != nil {
-				t.Fatalf("parsing Entropy should not be possible in oss but got a non-nil config.Entropy: %#v", config.Entropy)
-			}
-		case err != nil && test.outErr != nil:
-			if err.Error() != test.outErr.Error() {
-				t.Fatalf("error mismatch: expected %#v got %#v", err, test.outErr)
-			}
-		case err != test.outErr:
-			t.Fatalf("error mismatch: expected %#v got %#v", err, test.outErr)
-		case err == nil && config.Entropy != nil && *config.Entropy != test.outEntropy:
-			t.Fatalf("entropy config mismatch: expected %#v got %#v", test.outEntropy, *config.Entropy)
-		}
 	}
 }
 
@@ -413,8 +342,6 @@ func testLoadConfigFile(t *testing.T) {
 			},
 
 			DisableMlock: true,
-
-			Entropy: nil,
 
 			PidFile: "./pidfile",
 
@@ -636,7 +563,6 @@ func testLoadConfigFile_json(t *testing.T) {
 			},
 
 			PidFile:     "./pidfile",
-			Entropy:     nil,
 			ClusterName: "testcluster",
 		},
 
@@ -1167,8 +1093,6 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 			},
 
 			DisableMlock: true,
-
-			Entropy: nil,
 
 			PidFile: "./pidfile",
 

@@ -19,14 +19,11 @@ type SharedConfig struct {
 	UnusedKeys UnusedKeyMap `hcl:",unusedKeyPositions"`
 	Sections   map[string][]token.Pos
 
-	EntSharedConfig
-
 	Listeners []*Listener `hcl:"-"`
 
 	UserLockouts []*UserLockout `hcl:"-"`
 
-	Seals   []*KMS   `hcl:"-"`
-	Entropy *Entropy `hcl:"-"`
+	Seals []*KMS `hcl:"-"`
 
 	DisableMlock    bool        `hcl:"-"`
 	DisableMlockRaw interface{} `hcl:"disable_mlock"`
@@ -111,13 +108,6 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		}
 	}
 
-	if o := list.Filter("entropy"); len(o.Items) > 0 {
-		result.found("entropy", "Entropy")
-		if err := ParseEntropy(&result, o, "entropy"); err != nil {
-			return nil, fmt.Errorf("error parsing 'entropy': %w", err)
-		}
-	}
-
 	if o := list.Filter("listener"); len(o.Items) > 0 {
 		result.found("listener", "Listener")
 		if err := ParseListeners(&result, o); err != nil {
@@ -137,11 +127,6 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		if err := parseTelemetry(&result, o); err != nil {
 			return nil, fmt.Errorf("error parsing 'telemetry': %w", err)
 		}
-	}
-
-	entConfig := &(result.EntSharedConfig)
-	if err := entConfig.ParseConfig(list); err != nil {
-		return nil, fmt.Errorf("error parsing enterprise config: %w", err)
 	}
 
 	return &result, nil

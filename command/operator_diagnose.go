@@ -24,7 +24,6 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
 	cserver "github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
@@ -584,23 +583,6 @@ SEALFAIL:
 	if vaultCore == nil {
 		return fmt.Errorf("Diagnose could not initialize the Vault core from the Vault server configuration.")
 	}
-
-	licenseCtx, licenseSpan := diagnose.StartSpan(ctx, "Check For Autoloaded License")
-	// If we are not in enterprise, return from the check
-	if !constants.IsEnterprise {
-		diagnose.Skipped(licenseCtx, "License check will not run on OpenBao.")
-	} else {
-		// Load License from environment variables. These take precedence over the
-		// configured license.
-		if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
-			coreConfig.LicensePath = envLicensePath
-		}
-		if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
-			coreConfig.License = envLicense
-		}
-		vault.DiagnoseCheckLicense(licenseCtx, vaultCore, coreConfig, false)
-	}
-	licenseSpan.End()
 
 	var lns []listenerutil.Listener
 	diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {

@@ -221,7 +221,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.EnableRaw = opts.EnableRaw
 	conf.EnableIntrospection = opts.EnableIntrospection
 	conf.Seal = opts.Seal
-	conf.LicensingConfig = opts.LicensingConfig
 	conf.DisableKeyEncodingChecks = opts.DisableKeyEncodingChecks
 	conf.MetricsHelper = opts.MetricsHelper
 	conf.MetricSink = opts.MetricSink
@@ -1547,9 +1546,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.EnableRaw = base.EnableRaw
 		coreConfig.DisableSealWrap = base.DisableSealWrap
 		coreConfig.DisableCache = base.DisableCache
-		coreConfig.LicensingConfig = base.LicensingConfig
-		coreConfig.License = base.License
-		coreConfig.LicensePath = base.LicensePath
 		coreConfig.DisablePerformanceStandby = base.DisablePerformanceStandby
 		coreConfig.MetricsHelper = base.MetricsHelper
 		coreConfig.MetricSink = base.MetricSink
@@ -1966,15 +1962,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	if opts != nil && opts.ClusterLayers != nil {
 		localConfig.ClusterNetworkLayer = opts.ClusterLayers.Layers()[idx]
 		localConfig.ClusterAddr = "https://" + localConfig.ClusterNetworkLayer.Listeners()[0].Addr().String()
-	}
-
-	switch {
-	case localConfig.LicensingConfig != nil:
-		if pubKey != nil {
-			localConfig.LicensingConfig.AdditionalPublicKeys = append(localConfig.LicensingConfig.AdditionalPublicKeys, pubKey)
-		}
-	default:
-		localConfig.LicensingConfig = testGetLicensingConfig(pubKey)
 	}
 
 	if localConfig.MetricsHelper == nil {

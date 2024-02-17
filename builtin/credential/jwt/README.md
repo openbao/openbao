@@ -160,7 +160,7 @@ Additionally, there are some BATs tests in the `tests` dir.
   - `ISSUER`
 - Export `VAULT_IMAGE` to test the image of your choice or place a vault binary
   in the `tests` directory.
-- Export `VAULT_LICENSE`. This test will only work for enterprise images.
+- Export `VAULT_LICENSE`. This test will only work for HashiCorp's Vault images.
 
 #### Logs
 
@@ -174,7 +174,6 @@ Vault logs will be written to `VAULT_OUTFILE`. BATs test logs will be written to
 export CLIENT_ID="12345"
 export CLIENT_SECRET="6789"
 export ISSUER="my-issuer-url"
-export VAULT_LICENSE="abcde"
 
 # run tests
 cd tests/

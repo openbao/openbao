@@ -32,10 +32,6 @@ func (e entCoreConfig) Clone() entCoreConfig {
 	return entCoreConfig{}
 }
 
-type LicensingConfig struct {
-	AdditionalPublicKeys []interface{}
-}
-
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
 	_, txnOK := phys.(physical.Transactional)

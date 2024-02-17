@@ -1128,13 +1128,6 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
-		config.LicensePath = envLicensePath
-	}
-	if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
-		config.License = envLicense
-	}
-
 	if err := server.ExperimentsFromEnvAndCLI(config, EnvVaultExperiments, c.flagExperiments); err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1644,11 +1637,6 @@ func (c *ServerCommand) Run(args []string) int {
 		RUNRELOADFUNCS:
 			if err := c.Reload(c.reloadFuncsLock, c.reloadFuncs, c.flagConfigs, core); err != nil {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
-			}
-
-			// Reload license file
-			if err = vault.LicenseReload(core); err != nil {
-				c.UI.Error(err.Error())
 			}
 
 			if err := core.ReloadCensus(); err != nil {
@@ -2742,8 +2730,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		License:                        config.License,
-		LicensePath:                    config.LicensePath,
 		DisableSSCTokens:               config.DisableSSCTokens,
 		Experiments:                    config.Experiments,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,

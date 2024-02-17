@@ -5,6 +5,8 @@ sidebar_current: 'docs-platform-k8s-terraform'
 description: |-
   Describes how to configure the Vault Helm chart using Terraform
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Configuring Vault helm with terraform
 
@@ -12,8 +14,8 @@ Terraform may also be used to configure and deploy the Vault Helm chart, by usin
 
 For example, to configure the chart to deploy [HA Vault with integrated storage (raft)](/vault/docs/platform/k8s/helm/examples/ha-with-raft), the values overrides can be set on the command-line, in a values yaml file, or with a Terraform configuration:
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="CLI">
 
 ```shell-session
 $ helm install vault hashicorp/vault \
@@ -21,9 +23,9 @@ $ helm install vault hashicorp/vault \
   --set='server.ha.raft.enabled=true'
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -33,9 +35,9 @@ server:
       enabled: true
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
 provider "helm" {
@@ -60,8 +62,8 @@ resource "helm_release" "vault" {
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 The values file can also be used directly in the Terraform configuration with the [`values` directive](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release#values#values).
 
@@ -69,8 +71,8 @@ The values file can also be used directly in the Terraform configuration with th
 
 ### Vault config as a multi-line string
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -100,8 +102,8 @@ server:
         }
 ```
 
-</CodeBlockConfig>
-<CodeBlockConfig>
+</TabItem>
+<TabItem value="OpenTofu">
 
 ```hcl
 resource "helm_release" "vault" {
@@ -147,13 +149,13 @@ EOT
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 ### Lists of volumes and volumeMounts
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -169,9 +171,9 @@ server:
       readOnly: true
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
 resource "helm_release" "vault" {
@@ -207,16 +209,16 @@ resource "helm_release" "vault" {
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 ### Annotations
 
 Annotations can be set as a YAML map:
 
-<CodeTabs>
+<Tabs>
 
-<CodeBlockConfig>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -225,9 +227,9 @@ server:
       service.beta.kubernetes.io/azure-load-balancer-internal: true
       service.beta.kubernetes.io/azure-load-balancer-internal-subnet: apps-subnet
 ```
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
   set {
@@ -241,13 +243,13 @@ server:
   }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 or as a multi-line string:
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -257,8 +259,8 @@ server:
       service.beta.kubernetes.io/azure-load-balancer-internal-subnet: apps-subnet
 ```
 
-</CodeBlockConfig>
-<CodeBlockConfig>
+</TabItem>
+<TabItem value="OpenTofu">
 
 ```hcl
   set {
@@ -271,5 +273,5 @@ server:
   }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>

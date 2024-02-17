@@ -144,16 +144,12 @@ More resources on implementing plugin multiplexing:
 If the following error is encountered when enabling a plugin secret engine or
 auth method:
 
-<CodeBlockConfig hideClipboard>
-
 ```sh
 Unrecognized remote plugin message:
 
 This usually means that the plugin is either invalid or simply
 needs to be recompiled to support the latest protocol.
 ```
-
-</CodeBlockConfig>
 
 Verify whether the OpenBao process has `mlock` enabled, and if so, run the
 following command against the plugin binary:

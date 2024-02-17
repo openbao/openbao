@@ -78,7 +78,11 @@ The following flags are available for the `operator raft join` command.
 - `-retry` `(bool: false)` - Continuously retry joining the Raft cluster upon
   failures. The default is false.
 
-~> **Note:** Please be aware that the content (not the path to the file) of the certificate or key is expected for these parameters: `-leader-ca-cert`, `-leader-client-cert`, `-leader-client-key`.
+:::note
+
+Please be aware that the content (not the path to the file) of the certificate or key is expected for these parameters: `-leader-ca-cert`, `-leader-client-cert`, `-leader-client-key`.
+
+:::
 
 ## list-peers
 
@@ -137,9 +141,9 @@ Usage: bao operator raft remove-peer <server_id>
 	  $ bao operator raft remove-peer node1
 ```
 
-<Note>
+:::note
   Once a node is removed, its Raft data needs to be deleted before it may be joined back into an existing cluster. This requires shutting down the OpenBao process, deleting the data, then restarting the OpenBao process on the removed node.
-</Note>
+:::
 
 ## snapshot
 
@@ -171,7 +175,11 @@ Usage: bao operator raft snapshot save <snapshot_file>
 	  $ bao operator raft snapshot save raft.snap
 ```
 
-~> **Note:** Snapshot is not supported when Raft is used only for `ha_storage`.
+:::note
+
+Snapshot is not supported when Raft is used only for `ha_storage`.
+
+:::
 
 ### snapshot restore
 
@@ -293,7 +301,11 @@ Flags applicable to this command are the following:
   a server can go without leader contact before being considered failed.
   This takes effect only when `cleanup_dead_servers` is set as `true`. Defaults to `24h`.
   
-  -> **Note:** A failed server that autopilot has removed from the raft configuration cannot rejoin the cluster without being reinitialized.  
+:::note
+
+A failed server that autopilot has removed from the raft configuration cannot rejoin the cluster without being reinitialized.  
+
+:::
 
 - `max-trailing-logs` `(int)` - Amount of entries in the Raft Log that a server
   can be behind before being considered unhealthy. Defaults to `1000`.

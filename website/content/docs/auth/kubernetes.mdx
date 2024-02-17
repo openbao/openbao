@@ -5,6 +5,8 @@ description: |-
   The Kubernetes auth method allows automated authentication of Kubernetes
   Service Accounts.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Kubernetes auth method
 
@@ -319,9 +321,8 @@ The Kubernetes Auth Plugin has a full HTTP API. Please see the
 The following example demonstrates the Kubernetes auth method to authenticate
 with OpenBao.
 
-<CodeTabs>
-
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="Go" heading="Go">
 
 ```go
 package main
@@ -384,5 +385,6 @@ func getSecretWithKubernetesAuth() (string, error) {
 	return value, nil
 }
 ```
-</CodeBlockConfig>
-</CodeTabs>
+
+</TabItem>
+</Tabs>

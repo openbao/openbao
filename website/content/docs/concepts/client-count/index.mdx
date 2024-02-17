@@ -5,6 +5,8 @@ description: |-
   Technical overview covering the concept of clients, entities, and entity IDs
   in OpenBao 
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Clients and entities
 
@@ -130,16 +132,15 @@ token as a unique client for production usage. We strongly discourage the use of
 unaffiliated tokens and recommend that you always associate a token with an
 entity alias and token role.
 
-<Note title="Behavior of non-enter tokens">
+:::note[Behavior of non-entity tokens]
   All non-entity tokens with the same namespace and policy assignments are
   treated as the same client entity. 
-</Note>
 
-@include "content-footer-title.mdx"
+:::
 
 <Tabs>
+<TabItem value="Related concepts" heading="Related concepts">
 
-<Tab heading="Related concepts">
 <ul>
   <li>
     <a href="/vault/docs/concepts/client-count/counting">Client count calculation</a>
@@ -148,23 +149,22 @@ entity alias and token role.
     <a href="/vault/docs/concepts/client-count/faq">Client count FAQ</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Related tutorials">
+<TabItem value="Related tutorials" heading="Related tutorials">
 <ul>
   <li>
     <a href="/vault/tutorials/auth-methods/identity">Identity: Entities and Groups</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Other resources">
+<TabItem value="Other resources" heading="Other resources">
 <ul>
   <li>
     Article: 
     <a href="https://www.hashicorp.com/identity-based-security-and-low-trust-networks">Identity-based Security and Low-trust Networks</a>
   </li>
 </ul>
-</Tab>
-
+</TabItem>
 </Tabs>

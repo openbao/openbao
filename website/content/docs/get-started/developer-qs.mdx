@@ -3,6 +3,9 @@ layout: docs
 page_title: Developer Quick Start
 description: Learn how to store and retrieve your first secret.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Developer quick start
 
 This quick start will explore how to use OpenBao client libraries inside your application code to store and retrieve your first secret value. OpenBao takes the security burden away from developers by providing a secure, centralized secret store for an application’s sensitive data: credentials, certificates, encryption keys, and more.
@@ -33,7 +36,7 @@ To read and write secrets in your application, you need to first configure a cli
 Let's install the OpenBao client library for your language of choice.
 
 <Tabs>
-<Tab heading="Go" group="go">
+<TabItem value="Go" group="go" heading="Go" group="go">
 
 [Go](https://pkg.go.dev/github.com/openbao/openbao/api) (official) client library:
 
@@ -43,15 +46,11 @@ $ go get github.com/openbao/openbao/api
 
 Now, let's add the import statements for the client library to the top of the file.
 
-<CodeBlockConfig heading="import statements for client library" lineNumbers>
-
-```go
+```go title="import statements for client library" showLineNumbers
 import openbao "github.com/openbao/openbao/api"
 ```
 
-</CodeBlockConfig>
-
-</Tab>
+</TabItem>
 </Tabs>
 
 
@@ -64,7 +63,7 @@ following code to initialize a new OpenBao client that will use token-based
 authentication for all its requests:
 
 <Tabs>
-<Tab heading="Go">
+<TabItem value="Go" heading="Go">
 
 ```go
 config := openbao.DefaultConfig()
@@ -79,14 +78,14 @@ if err != nil {
 client.SetToken("dev-only-token")
 ```
 
-</Tab>
-<Tab heading="Bash" group="bash">
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
 
 ```shell-session
 $ export VAULT_TOKEN="dev-only-token"
 ```
 
-</Tab>
+</TabItem>
 </Tabs>
 
 ## Step 4: store a secret
@@ -96,7 +95,7 @@ Secrets are sensitive data like API keys and passwords that we shouldn’t be st
 We'll use the OpenBao client we just initialized to write a secret to OpenBao, like so:
 
 <Tabs>
-<Tab heading="Go">
+<TabItem value="Go" heading="Go">
 
 ```go
 secretData := map[string]interface{}{
@@ -112,8 +111,8 @@ if err != nil {
 fmt.Println("Secret written successfully.")
 ```
 
-</Tab>
-<Tab heading="Bash" group="bash">
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
 
 ```shell-session
 $ curl \
@@ -124,7 +123,7 @@ $ curl \
     http://127.0.0.1:8200/v1/secret/data/my-secret-password
 ```
 
-</Tab>
+</TabItem>
 </Tabs>
 
 A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](/vault/docs/secrets/kv/kv-v2). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
@@ -140,7 +139,7 @@ Now that we know how to write a secret, let's practice reading one.
 Underneath the line where you wrote a secret to OpenBao, let's add a few more lines, where we will be retrieving the secret and unpacking the value:
 
 <Tabs>
-<Tab heading="Go">
+<TabItem value="Go" heading="Go">
 
 ```go
 secret, err := client.KVv2("secret").Get(context.Background(), "my-secret-password")
@@ -154,8 +153,8 @@ log.Fatalf("value type assertion failed: %T %#v", secret.Data["password"], secre
 }
 ```
 
-</Tab>
-<Tab heading="Bash" group="bash">
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
 
 ```shell-session
 $ curl \
@@ -163,13 +162,13 @@ $ curl \
     http://127.0.0.1:8200/v1/secret/data/my-secret-password > secrets.json
 ```
 
-</Tab>
+</TabItem>
 </Tabs>
 
 Last, confirm that the value we unpacked from the read response is correct:
 
 <Tabs>
-<Tab heading="Go">
+<TabItem value="Go" heading="Go">
 
 ```go
 if value != "OpenBao123" {
@@ -179,14 +178,14 @@ if value != "OpenBao123" {
 fmt.Println("Access granted!")
 ```
 
-</Tab>
-<Tab heading="Bash" group="bash">
+</TabItem>
+<TabItem value="Bash" group="bash" heading="Bash" group="bash">
 
 ```shell-session
 $ cat secrets.json | jq '.data.data'
 ```
 
-</Tab>
+</TabItem>
 </Tabs>
 
 If the secret was fetched successfully, you should see the `Access granted!` message after you run the code. If not, check to see if you provided the correct path to your secret.

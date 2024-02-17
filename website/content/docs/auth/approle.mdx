@@ -5,6 +5,8 @@ description: |-
   The AppRole auth method allows machines and services to authenticate with
   OpenBao.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # AppRole auth method
 
@@ -254,9 +256,8 @@ details.
 The following example demonstrates AppRole authentication with response
 wrapping.
 
-<CodeTabs>
-
-<CodeBlockConfig>
+<Tabs>
+<TabItem value="Go" heading="Go">
 
 ```go
 package main
@@ -327,6 +328,5 @@ func getSecretWithAppRole() (string, error) {
 }
 ```
 
-</CodeBlockConfig>
-
-</CodeTabs>
+</TabItem>
+</Tabs>

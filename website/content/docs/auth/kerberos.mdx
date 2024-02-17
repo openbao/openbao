@@ -27,7 +27,7 @@ it into HashiCorp's maintenance.
 ## Prerequisites
 
 Kerberos is a very hands-on auth method. Other auth methods like
-[LDAP](/vault/docs/auth/ldap) only require
+[LDAP](/docs/auth/ldap) only require
 a cursory amount of knowledge for configuration and use.
 Kerberos, on the other hand, is best used by people already familiar
 with it. We recommend that you use simpler authentication methods if
@@ -113,14 +113,14 @@ $ bao write auth/kerberos/config/ldap \
 ```
 
 The LDAP above relies upon the same code as the LDAP auth method.
-See [its documentation](/vault/docs/auth/ldap)
+See [its documentation](/docs/auth/ldap)
 for further discussion of available parameters.
 
 - Configure the OpenBao policies that should be granted to those
   who successfully authenticate based on their LDAP group membership.
   Since this is identical to the LDAP auth method, see
-  [Group Membership Resolution](/vault/docs/auth/ldap#group-membership-resolution)
-  and [LDAP Group -> Policy Mapping](/vault/docs/auth/ldap#ldap-group-policy-mapping)
+  [Group Membership Resolution](/docs/auth/ldap#group-membership-resolution)
+  and [LDAP Group -> Policy Mapping](/docs/auth/ldap#ldap-group-policy-mapping)
   for further discussion.
 
 ```shell-session
@@ -204,7 +204,7 @@ in the `keytab` file.
 
 ### Additional troubleshooting resources
 
-- [Troubleshooting OpenBao](/vault/tutorials/monitoring/troubleshooting-vault)
+- [Troubleshooting OpenBao](/tutorials/monitoring/troubleshooting-vault)
 - [The plugin's code](https://github.com/hashicorp/vault-plugin-auth-kerberos)
 
 The OpenBao Kerberos library has a working integration test environment that
@@ -224,5 +224,5 @@ client.
 ## API
 
 The Kerberos auth method has a full HTTP API. Please see the
-[Kerberos auth method API](/vault/api-docs/auth/kerberos) for more
+[Kerberos auth method API](/api-docs/auth/kerberos) for more
 details.

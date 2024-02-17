@@ -40,7 +40,7 @@ Self                       | AppRole, tokens with no associated authN path or ro
 ![OpenBao client types](https://www.datocms-assets.com/2885/1617325030-vault-clients.png)
 
 When a client authenticates, OpenBao assigns a unique identifier
-(**client entity**) in the [OpenBao identity system](/vault/docs/secrets/identity)
+(**client entity**) in the [OpenBao identity system](/docs/secrets/identity)
 based on the authentication method used or a previously assigned alias.
 **Entity aliases** let clients authenticate with multiple methods but still be
 associated with a single policy, share resources, and count as the same entity,
@@ -110,10 +110,10 @@ For example:
 ## Entity assignment with non-entity tokens
 
 OpenBao uses tokens as the core method for authentication. You can use tokens to
-authenticate directly, or use token [auth methods](/vault/docs/concepts/auth)
+authenticate directly, or use token [auth methods](/docs/concepts/auth)
 to dynamically generate tokens based on external identities.
 
-When clients authenticate with the [token auth method](/vault/docs/auth/token)
+When clients authenticate with the [token auth method](/docs/auth/token)
 **without** a client identity, the result is a **non-entity token**. For example,
 a service might use the token authentication method to create a token for a user
 whose explicit identity is unknown. 
@@ -143,10 +143,10 @@ entity alias and token role.
 
 <ul>
   <li>
-    <a href="/vault/docs/concepts/client-count/counting">Client count calculation</a>
+    <a href="/docs/concepts/client-count/counting">Client count calculation</a>
   </li>
   <li>
-    <a href="/vault/docs/concepts/client-count/faq">Client count FAQ</a>
+    <a href="/docs/concepts/client-count/faq">Client count FAQ</a>
   </li>
 </ul>
 </TabItem>
@@ -154,7 +154,7 @@ entity alias and token role.
 <TabItem value="Related tutorials" heading="Related tutorials">
 <ul>
   <li>
-    <a href="/vault/tutorials/auth-methods/identity">Identity: Entities and Groups</a>
+    <a href="/tutorials/auth-methods/identity">Identity: Entities and Groups</a>
   </li>
 </ul>
 </TabItem>

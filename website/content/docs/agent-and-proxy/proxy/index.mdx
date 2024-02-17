@@ -39,7 +39,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/vault/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
 
 ## Caching
 
@@ -61,7 +61,7 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/vault/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
+See the [caching](/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
 
 ## Configuration
 
@@ -136,7 +136,7 @@ environment variable as a comma separated string. This environment variable will
 - `template_config` <code>([template_config][template-config]: \<optional>)</code> - Specifies templating engine behavior.
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
-reporting system. See the [telemetry Stanza](/vault/docs/agent-and-proxy/proxy#telemetry-stanza) section below
+reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/proxy#telemetry-stanza) section below
 for a list of metrics specific to Proxy.
 
 - `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
@@ -232,7 +232,7 @@ to `metrics_only` listeners.
 
 #### proxy_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/vault/docs/agent-and-proxy/proxy#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/docs/agent-and-proxy/proxy#quit) API.
 
 ### telemetry stanza
 
@@ -253,7 +253,7 @@ runtime metrics about its performance, the auto-auth and the cache status:
 
 To run OpenBao Proxy:
 
-1. [Download](/vault/downloads) the OpenBao binary where the client application runs
+1. [Download](/downloads) the OpenBao binary where the client application runs
 (virtual machine, Kubernetes pod, etc.)
 
 1. Create an OpenBao Proxy configuration file. (See the [Example
@@ -340,14 +340,14 @@ listener "tcp" {
 }
 ```
 
-[vault]: /vault/docs/agent-and-proxy/proxy#vault-stanza
-[autoauth]: /vault/docs/agent-and-proxy/autoauth
-[caching]: /vault/docs/agent-and-proxy/proxy/caching
-[apiproxy]: /vault/docs/agent-and-proxy/proxy/apiproxy
-[persistent-cache]: /vault/docs/agent-and-proxy/proxy/caching/persistent-caches
-[template]: /vault/docs/agent-and-proxy/proxy/template
-[template-config]: /vault/docs/agent-and-proxy/proxy/template#template-configurations
-[proxy-api]: /vault/docs/agent-and-proxy/proxy/#proxy_api-stanza
-[listener]: /vault/docs/agent-and-proxy/proxy#listener-stanza
-[listener_main]: /vault/docs/configuration/listener/tcp
-[telemetry]: /vault/docs/configuration/telemetry
+[vault]: /docs/agent-and-proxy/proxy#vault-stanza
+[autoauth]: /docs/agent-and-proxy/autoauth
+[caching]: /docs/agent-and-proxy/proxy/caching
+[apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
+[persistent-cache]: /docs/agent-and-proxy/proxy/caching/persistent-caches
+[template]: /docs/agent-and-proxy/proxy/template
+[template-config]: /docs/agent-and-proxy/proxy/template#template-configurations
+[proxy-api]: /docs/agent-and-proxy/proxy/#proxy_api-stanza
+[listener]: /docs/agent-and-proxy/proxy#listener-stanza
+[listener_main]: /docs/configuration/listener/tcp
+[telemetry]: /docs/configuration/telemetry

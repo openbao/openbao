@@ -16,7 +16,7 @@ This quick start will explore how to use OpenBao client libraries inside your ap
 
 ## Step 1: start OpenBao
 
-!> **Warning**: This in-memory “dev” server is useful for practicing with OpenBao locally for the first time, but is insecure and **should never be used in production**. For developers who need to manage their own production OpenBao installations, this [page](/vault/tutorials/operations/production-hardening) provides some guidance on how to make your setup more production-friendly.
+!> **Warning**: This in-memory “dev” server is useful for practicing with OpenBao locally for the first time, but is insecure and **should never be used in production**. For developers who need to manage their own production OpenBao installations, this [page](/tutorials/operations/production-hardening) provides some guidance on how to make your setup more production-friendly.
 
 Run the OpenBao server in a non-production "dev" mode:
 
@@ -26,7 +26,7 @@ $ bao server -dev -dev-root-token-id="dev-only-token"
 
 The `-dev-root-token-id` flag for dev servers tells the OpenBao server to allow full root access to anyone who presents a token with the specified value (in this case "dev-only-token").
 
-!> **Warning**: The [root token](/vault/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
+!> **Warning**: The [root token](/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
 
 OpenBao is now listening over HTTP on port **8200**. With all the setup out of the way, it's time to get coding!
 
@@ -56,7 +56,7 @@ import openbao "github.com/openbao/openbao/api"
 
 ## Step 3: authenticate to OpenBao
 
-A variety of [authentication methods](/vault/docs/auth) can be used to prove
+A variety of [authentication methods](/docs/auth) can be used to prove
 your application's identity to the OpenBao server.  To keep things simple for
 our example, we'll just use the root token created in **Step 1**.  Paste the
 following code to initialize a new OpenBao client that will use token-based
@@ -126,7 +126,7 @@ $ curl \
 </TabItem>
 </Tabs>
 
-A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](/vault/docs/secrets/kv/kv-v2). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
+A common way of storing secrets is as key-value pairs using the [KV secrets engine (v2)](/docs/secrets/kv/kv-v2). In the code we've just added, `password` is the key in the key-value pair, and `OpenBao123` is the value.
 
 We also provided the path to our secret in OpenBao. We will reference this path in a moment when we learn how to retrieve our secret.
 
@@ -194,4 +194,4 @@ If the secret was fetched successfully, you should see the `Access granted!` mes
 
 # Additional examples
 
-To learn how to integrate applications with OpenBao without needing to always change your application code, see the [OpenBao Agent](/vault/docs/agent-and-proxy/agent) documentation.
+To learn how to integrate applications with OpenBao without needing to always change your application code, see the [OpenBao Agent](/docs/agent-and-proxy/agent) documentation.

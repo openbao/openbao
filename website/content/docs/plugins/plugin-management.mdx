@@ -18,12 +18,12 @@ backend has HA enabled and supports automatic host address detection, OpenBao
 will automatically attempt to determine the `api_addr` as well.
 
 Detailed information regarding the plugin system can be found in the
-[internals documentation](/vault/docs/plugins).
+[internals documentation](/docs/plugins).
 
 ## Registering external plugins
 
 Before an external plugin can be mounted, it needs to be
-[registered](/vault/docs/plugins/plugin-architecture#plugin-registration) in the
+[registered](/docs/plugins/plugin-architecture#plugin-registration) in the
 plugin catalog to ensure the plugin invoked by OpenBao is authentic and maintains
 integrity:
 
@@ -65,5 +65,5 @@ $ bao secrets disable my-secrets
 Upgrade instructions can be found in the [Upgrading Plugins - Guides][upgrading_plugins]
 page.
 
-[api_addr]: /vault/docs/configuration#api_addr
-[upgrading_plugins]: /vault/docs/upgrading/plugins
+[api_addr]: /docs/configuration#api_addr
+[upgrading_plugins]: /docs/upgrading/plugins

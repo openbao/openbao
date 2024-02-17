@@ -10,7 +10,7 @@ description: |-
 
 @include 'helm/version.mdx'
 
-In this example, we will walk through how to set up the [Kubernetes Auth Method](/vault/docs/auth/kubernetes).
+In this example, we will walk through how to set up the [Kubernetes Auth Method](/docs/auth/kubernetes).
 
 This assumes the following commands will be run inside a Vault pod running in Kubernetes.
 
@@ -29,4 +29,4 @@ vault write auth/kubernetes/config \
     kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
 ```
 
-From here you can continue to configure Vault from the [Kubernetes Auth Method](/vault/docs/auth/kubernetes) documentation.
+From here you can continue to configure Vault from the [Kubernetes Auth Method](/docs/auth/kubernetes) documentation.

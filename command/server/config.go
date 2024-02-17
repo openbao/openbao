@@ -47,7 +47,6 @@ var (
 type Config struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	FoundKeys  []string                `hcl:",decodedFields"`
-	entConfig
 
 	*configutil.SharedConfig `hcl:"-"`
 
@@ -459,8 +458,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 
-	result.entConfig = c.entConfig.Merge(c2.entConfig)
-
 	result.Experiments = mergeExperiments(c.Experiments, c2.Experiments)
 
 	return result
@@ -742,10 +739,6 @@ func ParseConfig(d, source string) (*Config, error) {
 
 	if err := validateExperiments(result.Experiments); err != nil {
 		return nil, fmt.Errorf("error validating experiment(s) from config: %w", err)
-	}
-
-	if err := result.parseConfig(list); err != nil {
-		return nil, fmt.Errorf("error parsing config: %w", err)
 	}
 
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
@@ -1194,11 +1187,6 @@ func (c *Config) Sanitized() map[string]interface{} {
 			"type": c.ServiceRegistration.Type,
 		}
 		result["service_registration"] = sanitizedServiceRegistration
-	}
-
-	entConfigResult := c.entConfig.Sanitized()
-	for k, v := range entConfigResult {
-		result[k] = v
 	}
 
 	return result

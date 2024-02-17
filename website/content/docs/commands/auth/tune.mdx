@@ -11,12 +11,12 @@ description: |-
 The `auth tune` command tunes the configuration options for the auth method at
 the given PATH. 
 
-<Note>
+:::note
 
 The argument corresponds to the **path** where the auth method is
 enabled, not the auth **type**.
 
-</Note>
+:::
 
 ## Examples
 
@@ -44,9 +44,7 @@ Success! Tuned the auth method at: github/
 
 Verify the updated configuration.
 
-<CodeBlockConfig highlight="1,4">
-
-```shell-session
+```shell-session {1,4}
 $ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
@@ -57,8 +55,6 @@ max_lease_ttl        768h
 token_type           default-service
 ```
 
-</CodeBlockConfig>
-
 To restore back to the system default, you can use `-1`. 
 
 ```shell-session
@@ -68,9 +64,7 @@ Success! Tuned the auth method at: github/
 
 Verify the updated configuration.
 
-<CodeBlockConfig highlight="1,4">
-
-```shell-session
+```shell-session {1,4}
 $ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
@@ -80,8 +74,6 @@ force_no_cache       false
 max_lease_ttl        768h
 token_type           default-service
 ```
-
-</CodeBlockConfig>
 
 You can specify multiple audit non-hmac request keys.
 
@@ -106,9 +98,7 @@ Success! Tuned the auth method at: userpass/
 
 View the current configuration of the auth method enabled at `userpass/`.
 
-<CodeBlockConfig highlight="1,11-13">
-
-```shell-session
+```shell-session {1,11-13}
 $ bao read sys/auth/userpass/tune
 
 Key                  Value
@@ -123,9 +113,6 @@ user_lockout_disable                   false
 user_lockout_duration                  10m
 user_lockout_threshold                 10
 ```
-
-</CodeBlockConfig>
-
 
 ## Usage
 

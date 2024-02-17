@@ -41,16 +41,16 @@ To complete the cluster upgrade:
 
 1. Properly shut down the remaining (active) node
 
-   <Note>
+:::note
 
-   It is important that you shut the node down properly.
-   This will perform a step-down and release the HA lock, allowing a standby
-   node to take over with a very short delay.
-   If you kill OpenBao without letting it release the lock, a standby node will
-   not be able to take over until the lock's timeout period has expired. This
-   is backend-specific but could be ten seconds or more.
+It is important that you shut the node down properly.
+This will perform a step-down and release the HA lock, allowing a standby
+node to take over with a very short delay.
+If you kill OpenBao without letting it release the lock, a standby node will
+not be able to take over until the lock's timeout period has expired. This
+is backend-specific but could be ten seconds or more.
 
-   </Note>
+:::
 
 2. Replace the OpenBao binary with the new version; ensure that `mlock()`
    capability is added to the new binary with

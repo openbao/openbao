@@ -10,7 +10,7 @@ description: This is the API documentation for the OpenBao LDAP auth method.
 
 This is the API documentation for the OpenBao LDAP auth method. For
 general information about the usage and operation of the LDAP method, please
-see the [OpenBao LDAP method documentation](/vault/docs/auth/ldap).
+see the [OpenBao LDAP method documentation](/docs/auth/ldap).
 
 This documentation assumes the LDAP method is mounted at the `/auth/ldap`
 path in OpenBao. Since it is possible to enable auth methods at any location,

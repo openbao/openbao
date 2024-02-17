@@ -13,8 +13,8 @@ a process via environment variables using
 [Consul Template markup][consul-templating-language].
 
 -> If you are running your applications in a Kubernetes cluster, we recommend
-  evaluating the [OpenBao Secrets Operator](/vault/docs/platform/k8s/vso) and
-  the [OpenBao Agent Sidecar Injector](/vault/docs/platform/k8s/injector).
+  evaluating the [OpenBao Secrets Operator](/docs/platform/k8s/vso) and
+  the [OpenBao Agent Sidecar Injector](/docs/platform/k8s/injector).
 
 !> OpenBao Agent's Process Supervisor Mode is in public beta. Please provide your
    feedback by opening a GitHub issue [here](https://github.com/openbao/openbao/issues).
@@ -29,7 +29,7 @@ environment variable template has rendered at least once before starting the
 process. If `restart_on_secret_changes` is set to `always` (default), Agent
 will restart the process whenever an update to an injected secret is detected.
 This could be either a static secret update (done on
-[`static_secret_render_interval`](/vault/docs/agent-and-proxy/agent/template#static_secret_render_interval))
+[`static_secret_render_interval`](/docs/agent-and-proxy/agent/template#static_secret_render_interval))
 or dynamic secret being close to its expiration.
 
 In many ways, OpenBao Agent will mirror the child process. Standard intput and
@@ -39,7 +39,7 @@ its own with the same exit code.
 
 ## Configuration
 
--> Agent's [generate-config](/vault/docs/agent-and-proxy/agent/generate-config)
+-> Agent's [generate-config](/docs/agent-and-proxy/agent/generate-config)
    tool will help you get started by generating a valid agent configuration
    file from the given inputs.
 
@@ -52,9 +52,9 @@ exactly one top level `exec` block. It is incompatible with regular file
 `env_template` stanza maps the template specified in the `contents` field or
 referenced in the `source` field to the environment variable name in the title
 of the stanza. It uses the same
-[templating language](/vault/docs/agent-and-proxy/agent/template#templating-language)
+[templating language](/docs/agent-and-proxy/agent/template#templating-language)
 as file templates but permits only a subset of
-[its configuration parameters](/vault/docs/agent-and-proxy/agent/template#template_configurations):
+[its configuration parameters](/docs/agent-and-proxy/agent/template#template_configurations):
 
 - environment variable name `(string: <required>)` - the name of the
   environment variable to which the contents of the template should map.
@@ -71,7 +71,7 @@ as file templates but permits only a subset of
   a struct or map field/key that does notexist. The default behavior will print `<no value>`
   when accessing a field that does not exist. It is highly recommended you set this
   to "true". Also see
-  [`exit_on_retry_failure` in global OpenBao Agent Template Config](/vault/docs/agent-and-proxy/agent/template#interaction-between-exit_on_retry_failure-and-error_on_missing_key).
+  [`exit_on_retry_failure` in global OpenBao Agent Template Config](/docs/agent-and-proxy/agent/template#interaction-between-exit_on_retry_failure-and-error_on_missing_key).
 
 - `left_delimiter` `(string: "\{\{")` - Delimiter to use in the template. The
   default is "\{\{" but for some templates, it may be easier to use a different
@@ -92,7 +92,7 @@ The top level `exec` block has the following configuration entries.
 - `restart_on_secret_changes` `(string: "always")` - Controls whether agent
   will restart the child process on secret changes. There are two types of
   secret changes relevant to this configuration: a static secret update (on
-  [static_secret_render_interval`](/vault/docs/agent-and-proxy/agent/template#static_secret_render_interval))
+  [static_secret_render_interval`](/docs/agent-and-proxy/agent/template#static_secret_render_interval))
   and dynamic secret being close to its expiration. The configuration supports
   two options: `always` and `never`.
 
@@ -105,7 +105,7 @@ The top level `exec` block has the following configuration entries.
 ## Configuration example
 
 The following example was generated using
-[`bao agent generate-config`](/vault/docs/agent-and-proxy/agent/generate-config),
+[`bao agent generate-config`](/docs/agent-and-proxy/agent/generate-config),
 a configuration helper tool. Given this configuration, OpenBao Agent will run
 the child process (`./my-app arg1 arg2`) with two additional environment
 variables (`FOO_USER` and `FOO_PASSWORD`) populated with secrets from OpenBao.
@@ -148,11 +148,11 @@ exec {
 ```
 
 [consul-templating-language]: https://github.com/hashicorp/consul-template/blob/v0.28.1/docs/templating-language.md
-[template-config]: /vault/docs/agent-and-proxy/agent/template#template-configurations
+[template-config]: /docs/agent-and-proxy/agent/template#template-configurations
 
 
 ## Tutorial
 
 Refer to the [OpenBao Agent - secrets as environment
-variables](/vault/tutorials/vault-agent/agent-env-vars) tutorial for an
+variables](/tutorials/vault-agent/agent-env-vars) tutorial for an
 end-to-end example.

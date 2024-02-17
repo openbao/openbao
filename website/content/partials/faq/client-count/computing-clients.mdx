@@ -14,17 +14,17 @@ Openbao will record every running instance of a Nomad job as a unique client.
 Batch token clients are counted like service token clients. The batch token is
 mapped to either to the associated active entity or an artificial entity that
 Openbao creates by combining the assigned namespace and policy. See the
-[clients and entities](/vault/docs/concepts/client-count) overview for more
+[clients and entities](/docs/concepts/client-count) overview for more
 details.
 
 ### Do custom user filters affect client counts? ((#custom-filters))
 
 **Yes**.
 
-Custom [user filters](/vault/api-docs/auth/ldap#userfilter) can change the way
+Custom [user filters](/api-docs/auth/ldap#userfilter) can change the way
 that entity aliases are mapped, which can affect the client count computation.
 
-Consult the [clients and entities](/vault/docs/concepts/client-count) overview
+Consult the [clients and entities](/docs/concepts/client-count) overview
 for more information about how Openbao determines entity assignments.
 
 ### Does mount migration affect client counts? ((#mount-migration))

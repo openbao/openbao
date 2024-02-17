@@ -63,7 +63,7 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 
 ## Authentication
@@ -86,7 +86,7 @@ and secret. MSI must be
 on the VMs hosting OpenBao, and it is the preferred configuration since MSI
 prevents your Azure credentials from being stored as clear text. Refer to the
 [Production
-Hardening](/vault/tutorials/operations/production-hardening) tutorial
+Hardening](/tutorials/operations/production-hardening) tutorial
 for more best practices.
 
 -> **Note:** If you are using a Managed HSM KeyVault, `AZURE_AD_RESOURCE` or the `resource`
@@ -111,5 +111,5 @@ using Azure Automation Account and OpenBao will recognize newly rotated keys.
 
 ## Tutorial
 
-Refer to the [Auto-unseal using Azure Key Vault](/vault/tutorials/auto-unseal/autounseal-azure-keyvault)
+Refer to the [Auto-unseal using Azure Key Vault](/tutorials/auto-unseal/autounseal-azure-keyvault)
 tutorial to learn how to use the Azure Key Vault to auto-unseal an OpenBao server.

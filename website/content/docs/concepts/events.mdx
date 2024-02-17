@@ -15,7 +15,7 @@ and subscribers (OpenBao components and external users via the API).
 Events are delivered on a *best-effort* basis, so do not have delivery guarantees at this time.
 
 Events are not considered production-ready, and so are disabled by default when starting a OpenBao server.
-Events can be enabled via the `events.alpha1` [experiment option](/vault/docs/configuration#experiments) in the OpenBao
+Events can be enabled via the `events.alpha1` [experiment option](/docs/configuration#experiments) in the OpenBao
 configuration or on the command-line:
 
 ```shell-session
@@ -148,7 +148,7 @@ $ bao events subscribe kv-v2/data-write
 
 ## Policies
 
-To subscribe, the `read` capability must be granted by a [policy](/vault/docs/concepts/policies)
+To subscribe, the `read` capability must be granted by a [policy](/docs/concepts/policies)
 on the `/v1/sys/events/subscribe/{eventType}` path, where `{eventType}` is the event type that will be
 subscribed to. The path may contain wildcards.
 

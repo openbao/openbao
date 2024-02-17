@@ -5,7 +5,7 @@
 You can export the list of unique
 clients that contributed to your client count for a given period with
 the
-[activity export API endpoint](/vault/api-docs/system/internal-counters#activity-export).
+[activity export API endpoint](/api-docs/system/internal-counters#activity-export).
 
 ### Is clientID viewable in the audit logs for non-entity tokens? ((#clientid-in-logs))
 
@@ -57,7 +57,7 @@ and compute results for that period of time. May 2021 through December 2021.
 **Yes**.
 
 You can use the OpenBao API to
-[update the client count configuration](/vault/api-docs/system/internal-counters#update-the-client-count-configuration)
+[update the client count configuration](/api-docs/system/internal-counters#update-the-client-count-configuration)
 and disable the tracking parameter. If you disable client counting in the middle
 of a month, OpenBao will discard any data currently recorded for the month. Data
 for previous months is preserved.
@@ -67,5 +67,5 @@ for previous months is preserved.
 **Yes**.
 
 You can use the OpenBao API to
-[update the client count configuration](/vault/api-docs/system/internal-counters#update-the-client-count-configuration)
+[update the client count configuration](/api-docs/system/internal-counters#update-the-client-count-configuration)
 and specify your preferred retention period.

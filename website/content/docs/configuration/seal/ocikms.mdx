@@ -49,14 +49,14 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 ## Authentication
 
 Authentication-related values must be provided, either as environment
 variables or as configuration parameters.
 
-If you want to use Instance Principal, add section configuration below and add further configuration settings as detailed in the [configuration docs](/vault/docs/configuration/).
+If you want to use Instance Principal, add section configuration below and add further configuration settings as detailed in the [configuration docs](/docs/configuration/).
 
 ```hcl
 seal "ocikms" {

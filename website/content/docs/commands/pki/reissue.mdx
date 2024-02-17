@@ -33,7 +33,7 @@ Usage: `bao pki reissue [flags] <parent> <template> <child_mount> [options]`
 - `<child_mount>` is the path of the mount in OpenBao where the new issuer is saved.
 
 - `[options]` are the superset of the k=v options passed to generate/intermediate
-  and sign-intermediate commands.  See [below](/vault/docs/commands/pki/reissue#options).
+  and sign-intermediate commands.  See [below](/docs/commands/pki/reissue#options).
 
 The output of this command when it is successful is to read the resulting new
 issuer entry.
@@ -59,8 +59,8 @@ issuer entry.
 
 Other than `type` (which is passed as a flag, see above), this command accepts
 all options provided to the
-[Generate CSR](/vault/api-docs/secret/pki#generate-intermediate-csr) and
-[Sign Intermediate](/vault/api-docs/secret/pki#sign-intermediate) endpoints.
+[Generate CSR](/api-docs/secret/pki#generate-intermediate-csr) and
+[Sign Intermediate](/api-docs/secret/pki#sign-intermediate) endpoints.
 
 ### Accessed APIs
 

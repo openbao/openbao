@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: LDAP - Auth Methods
+sidebar_label: LDAP
 description: |-
   The "ldap" auth method allows users to authenticate with OpenBao using LDAP
   credentials.

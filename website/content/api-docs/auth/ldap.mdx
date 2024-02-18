@@ -1,6 +1,5 @@
 ---
-layout: api
-page_title: LDAP - Auth Methods - HTTP API
+sidebar_label: LDAP
 description: This is the API documentation for the OpenBao LDAP auth method.
 ---
 

@@ -156,6 +156,12 @@ var (
 	// step down of the active node, to prevent instantly regrabbing the lock.
 	// It's var not const so that tests can manipulate it.
 	manualStepDownSleepPeriod = 10 * time.Second
+
+	// Functions only in the Enterprise version
+	LastWAL               = lastWALImpl
+	LastRemoteWAL         = lastRemoteWALImpl
+	LastRemoteUpstreamWAL = lastRemoteUpstreamWALImpl
+	WaitUntilWALShipped   = waitUntilWALShippedImpl
 )
 
 // NonFatalError is an error that can be returned during NewCore that should be

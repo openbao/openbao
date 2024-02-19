@@ -96,7 +96,7 @@ func (v *BarrierView) Delete(ctx context.Context, key string) error {
 // SubView constructs a nested sub-view using the given prefix
 func (v *BarrierView) SubView(prefix string) *BarrierView {
 	return &BarrierView{
-		storage:     v.storage.SubView(prefix),
+		storage:     v.storage.SubView(prefix), // Segfault here
 		readOnlyErr: v.getReadOnlyErr(),
 		iCheck:      v.iCheck,
 	}

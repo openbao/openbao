@@ -82,6 +82,7 @@ const config: Config = {
         ],
       },
     ],
+    require.resolve("docusaurus-lunr-search"),
   ],
 
   themeConfig: {

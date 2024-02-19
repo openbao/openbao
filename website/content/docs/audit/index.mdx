@@ -47,9 +47,13 @@ Devices](/docs/audit#blocked-audit-devices) section below).  Therefore in order
 to build a complete picture of all audited actions, use the aggregate/union of
 the logs from each audit device.
 
-~> Note: It is **highly recommended** that you configure OpenBao to use multiple audit
+:::warning
+
+Note: It is **highly recommended** that you configure OpenBao to use multiple audit
 devices. Audit failures can prevent OpenBao from servicing requests, so it is
 important to provide at least one other device.
+
+:::
 
 
 ## Format
@@ -68,10 +72,14 @@ unique identifier assigned to each request.
 
 Most strings contained within requests and responses are hashed with a salt using HMAC-SHA256. The purpose of the hash is so that secrets aren't in plaintext within your audit logs. However, you're still able to check the value of secrets by generating HMACs yourself; this can be done with the audit device's hash function and salt by using the `/sys/audit-hash` API endpoint (see the documentation for more details).
 
-~> Currently, only strings that come from JSON or returned in JSON are
+:::warning
+
+Currently, only strings that come from JSON or returned in JSON are
 HMAC'd. Other data types, like integers, booleans, and so on, are passed
 through in plaintext. We recommend that all sensitive data be provided as string values
 inside all JSON sent to OpenBao (i.e., that integer values are provided in quotes).
+
+:::
 
 While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/docs/commands/secrets/enable) command, and then tune it afterward.
 
@@ -99,18 +107,26 @@ In the command above, we passed the "file_path" parameter to specify the path
 where the audit log will be written to. Each audit device has its own
 set of parameters. See the documentation to the left for more details.
 
-~> Note: Audit device configuration is replicated to all nodes within a cluster
+:::warning
+
+Note: Audit device configuration is replicated to all nodes within a cluster
 by default.  Before enabling an audit device, ensure that all nodes within the
 cluster(s) will be able to successfully log to the audit device to avoid OpenBao
 being blocked from serving requests.
 An audit device can be limited to only within the node's cluster with the [`local`](/api-docs/system/audit#local) parameter.
 
+:::
+
 When an audit device is disabled, it will stop receiving logs immediately.
 The existing logs that it did store are untouched.
 
-~> Note: Once an audit device is disabled, you will no longer be able to HMAC values
+:::warning
+
+Note: Once an audit device is disabled, you will no longer be able to HMAC values
 for comparison with entries in the audit logs. This is true even if you re-enable
 the audit device at the same path, as a new salt will be created for hashing.
+
+:::
 
 ## Blocked audit devices
 

@@ -9,8 +9,12 @@ description: >-
 The Vault CSI Provider allows pods to consume Vault secrets using
 [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes.
 
-~> The Vault CSI Provider requires the [CSI Secret Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
+:::warning
+
+The Vault CSI Provider requires the [CSI Secret Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
 Driver to be installed.
+
+:::
 
 ## Overview
 
@@ -82,7 +86,11 @@ spec:
     # "secretKey" is the key within the Vault secret response to extract a value from.
 ```
 
-~> Secret Provider Class is a namespaced object in Kubernetes.
+:::warning
+
+Secret Provider Class is a namespaced object in Kubernetes.
+
+:::
 
 ## Using secret provider classes
 

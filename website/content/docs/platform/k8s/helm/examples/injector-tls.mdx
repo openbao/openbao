@@ -6,7 +6,12 @@ description: |-
 
 # Vault agent injector TLS configuration
 
-@include 'helm/version.mdx'
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
 
 The following instructions demonstrate how to manually configure the Vault Agent Injector
 with self-signed certificates.
@@ -21,7 +26,11 @@ $ openssl genrsa -out injector-ca.key 2048
 
 Next, create a certificate authority certificate:
 
-~> **Important Note:** Values such as days (how long the certificate is valid for) should be configured for your environment.
+:::warning
+
+**Important Note:** Values such as days (how long the certificate is valid for) should be configured for your environment.
+
+:::
 
 ```shell
 $ openssl req \
@@ -60,8 +69,12 @@ $ openssl req \
 After creating the CSR, create an extension file to configure additional parameters for signing
 the certificate.
 
-~> **Important Note:** The alternative names for the certificate must be configured to use the name
+:::warning
+
+**Important Note:** The alternative names for the certificate must be configured to use the name
 of the Vault Agent Injector Kubernetes service and namespace where its created.
+
+:::
 
 In this example the Vault Agent Injector service name is `vault-agent-injector-svc` in the `vault` namespace.
 This uses the pattern `<k8s service name>.<k8s namespace>.svc.cluster.local`.
@@ -83,7 +96,11 @@ EOF
 
 Finally, sign the certificate:
 
-~> **Important Note:** Values such as days (how long the certificate is valid for) should be configured for your environment.
+:::warning
+
+**Important Note:** Values such as days (how long the certificate is valid for) should be configured for your environment.
+
+:::
 
 ```shell
 $ openssl x509 \
@@ -105,7 +122,11 @@ Helm and the Vault Agent Injector to use them.
 
 First, create a Kubernetes secret containing the certificate and key created above:
 
-~> **Important Note:** This example assumes the Vault Agent Injector is running in the `vault` namespace.
+:::warning
+
+**Important Note:** This example assumes the Vault Agent Injector is running in the `vault` namespace.
+
+:::
 
 ```shell
 $ kubectl create secret generic injector-tls \

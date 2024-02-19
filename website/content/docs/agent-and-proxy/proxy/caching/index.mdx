@@ -148,8 +148,12 @@ The top level `cache` block has the following configuration entry:
 
 - `persist` `(object: optional)` - Configuration for the persistent cache.
 
--> **Note:** When the `cache` block is defined, a [listener][proxy-listener] must also be defined
+:::info
+
+**Note:** When the `cache` block is defined, a [listener][proxy-listener] must also be defined
 in the config, otherwise there is no way to utilize the cache.
+
+:::
 
 [proxy-listener]: /docs/agent-and-proxy/proxy#listener-stanza
 

@@ -44,11 +44,15 @@ path using the `kv` CLI command:
 $ bao kv get -mount=secret customers
 ```
 
--> **Comparison:** All three commands retrieve the same data, but display the
+:::info
+
+**Comparison:** All three commands retrieve the same data, but display the
 output in a different format. By default, `bao read` prints output in
 key-value format. The `curl` command prints the response in JSON. Since the
 `kv` command is designed to handle operations associated with K/V secrets
 engine, it prints the output in more structured format that is easy to read.
+
+:::
 
 ## Usage
 

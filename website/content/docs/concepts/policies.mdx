@@ -167,12 +167,16 @@ corresponding path and capability - even OpenBao's internal core configuration
 endpoints live under the `"sys/"` path. Policies define access to these paths and
 capabilities, which controls a token's access to credentials in OpenBao.
 
-~> **Note:** The policy rules that OpenBao applies are determined by the most-specific match
+:::warning
+
+**Note:** The policy rules that OpenBao applies are determined by the most-specific match
 available, using the priority rules described below. This may be an exact match
 or the longest-prefix match of a glob. If the same pattern appears in multiple
 policies, we take the union of the capabilities. If different patterns appear in
 the applicable policies, we take only the highest-priority match from those
 policies.
+
+:::
 
 This means if you define a policy for `"secret/foo*"`, the policy would
 also match `"secret/foobar"`. Specifically, when there are potentially multiple
@@ -189,8 +193,12 @@ wildcard appears in the same place, both end in `*` and the latter has two wildc
 segments while the former has zero. So we end at rule (3), and give `"secret/+/+/foo/*"`
 _lower_ priority.
 
-!> **Informational:**The glob character referred to in this documentation is the asterisk (`*`).
+:::danger
+
+**Informational:**The glob character referred to in this documentation is the asterisk (`*`).
 It _is not a regular expression_ and is only supported **as the last character of the path**!
+
+:::
 
 When providing `list` capability, it is important to note that since listing
 always operates on a prefix, policies must operate on a prefix because OpenBao
@@ -247,11 +255,15 @@ HTTP verbs.
 - `deny` - Disallows access. This always takes precedence regardless of any
   other defined capabilities, including `sudo`.
 
-~> **Note:** Capabilities usually map to the HTTP verb, and not the underlying
+:::warning
+
+**Note:** Capabilities usually map to the HTTP verb, and not the underlying
 action taken. This can be a common source of confusion. Generating database
 credentials _creates_ database credentials, but the HTTP request is a GET which
 corresponds to a `read` capability. Thus, to grant access to generate database
 credentials, the policy would grant `read` access on the appropriate path.
+
+:::
 
 ## Templated policies
 
@@ -303,10 +315,14 @@ path "secret/metadata/groups/{{identity.groups.ids.fb036ebc-2f62-4124-9503-42aa7
 }
 ```
 
-~> **Note:** When developing templated policies, use IDs wherever possible. Each ID is
+:::warning
+
+**Note:** When developing templated policies, use IDs wherever possible. Each ID is
 unique to the user, whereas names can change over time and can be reused. This
 ensures that if a given user or group name is changed, the policy will be
 mapped to the intended entity or group.
+
+:::
 
 If you want to use the metadata associated with an authentication plugin in your
 templates, you will need to get its _mount accessor_ and access it via the
@@ -339,9 +355,17 @@ path take precedence over permissions on parameters.
 
 ### Parameter constraints
 
-!> **Note:** The use of [globs](/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
+:::danger
 
-~> **Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/docs/secrets/kv/kv-v2).
+**Note:** The use of [globs](/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
+
+:::
+
+:::warning
+
+**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/docs/secrets/kv/kv-v2).
+
+:::
 
 See the [API Specification](/api-docs/secret/kv/kv-v2) for more information.
 
@@ -378,11 +402,15 @@ constrain requests, using the following options:
     }
     ```
 
-    -> **Usage example:** The [ACL Policy Path
+:::info
+
+**Usage example:** The [ACL Policy Path
      Templating](/tutorials/policies/policy-templating)
      tutorial demonstrates the use of `allowed_parameters` to permit a user to
      update the user's password when using the [userpass auth
      method](/docs/auth/userpass) to log in with OpenBao.
+
+:::
 
   - Setting a parameter with a value of a populated list allows the parameter
     to contain only those values.
@@ -485,7 +513,11 @@ path "secret/foo" {
 }
 ```
 
-~> **Note:** the only value that can be used with the `*` parameter is `[]`.
+:::warning
+
+**Note:** the only value that can be used with the `*` parameter is `[]`.
+
+:::
 
 #### Parameter constraints limitations
 
@@ -696,9 +728,13 @@ $ curl \
   https://openbao.hashicorp.rocks/v1/sys/policy
 ```
 
-~> **Note:** You may also see the CLI command `bao policies`. This is a convenience
+:::warning
+
+**Note:** You may also see the CLI command `bao policies`. This is a convenience
 wrapper around reading the sys endpoint directly. It provides the same
 functionality but formats the output in a special manner.
+
+:::
 
 ### Creating policies
 
@@ -796,11 +832,15 @@ authenticated user.
 
 ## Root protected API endpoints
 
-~> **Note:** OpenBao treats the HTTP POST and PUT verbs as equivalent, so for each mention
+:::warning
+
+**Note:** OpenBao treats the HTTP POST and PUT verbs as equivalent, so for each mention
    of POST in the table above, PUT may also be used. OpenBao uses the non-standard LIST HTTP
    verb, but also allows list requests to be made using the GET verb along with `?list=true`
    as a query parameter, so for each mention of LIST in the table above, GET with `?list=true`
    may also be used.
+
+:::
 
 The following paths requires a root token or `sudo` capability in the policy:
 

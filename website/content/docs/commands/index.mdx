@@ -30,8 +30,12 @@ bao <command> [options] [path] [args]
 - `options` - [Flags](/docs/commands#flags) to specify additional settings
 - `args` - API arguments specific to the operation
 
--> **NOTE:** Use the [command help](#command-help) to display available options
+:::info
+
+**NOTE:** Use the [command help](#command-help) to display available options
 and arguments.
+
+:::
 
 #### Examples:
 
@@ -239,7 +243,11 @@ Enable autocompletion by running:
 $ bao -autocomplete-install
 ```
 
-~> Be sure to **restart your shell** after installing autocompletion!
+:::warning
+
+Be sure to **restart your shell** after installing autocompletion!
+
+:::
 
 When you start typing an OpenBao command, press the `<tab>` character to show a
 list of available completions. Type `-<tab>` to show available flag completions.
@@ -385,20 +393,32 @@ HTTP or HTTPS proxy location which should be used by all requests to access Open
  When present, this overrides the default proxy resolution behavior.
 Format should be `http://server:port` or `https://server:port`.
 
-~> Note: When using `VAULT_HTTP_PROXY` or `VAULT_PROXY_ADDR` any of the standard
+:::warning
+
+Note: When using `VAULT_HTTP_PROXY` or `VAULT_PROXY_ADDR` any of the standard
  proxy variables found in the environment will be ignored.
 Specifically `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`.
 All requests will resolve the specified proxy; there is no way to exclude
  domains from consulting the proxy server.
 
-~> Note: If both `VAULT_HTTP_PROXY` and `VAULT_PROXY_ADDR` environment
+:::
+
+:::warning
+
+Note: If both `VAULT_HTTP_PROXY` and `VAULT_PROXY_ADDR` environment
 variables are supplied, `VAULT_PROXY_ADDR` will be prioritized and preferred.
+
+:::
 
 ### `VAULT_DISABLE_REDIRECTS`
 
 Prevents the OpenBao client from following redirects. By default, the OpenBao client will automatically follow a single redirect.
 
-~> **Note:** Disabling redirect following behavior could cause issues with commands such as 'bao operator raft snapshot' as this command redirects the request to the cluster's primary node.
+:::warning
+
+**Note:** Disabling redirect following behavior could cause issues with commands such as 'bao operator raft snapshot' as this command redirects the request to the cluster's primary node.
+
+:::
 
 ## Flags
 

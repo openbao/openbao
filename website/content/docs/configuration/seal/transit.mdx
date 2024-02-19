@@ -96,9 +96,13 @@ Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation 
 Authentication-related values must be provided, either as environment
 variables or as configuration parameters.
 
-~> **Note:** Although the configuration file allows you to pass in
+:::warning
+
+**Note:** Although the configuration file allows you to pass in
 `VAULT_TOKEN` as part of the seal's parameters, it is _strongly_ recommended
 to set these values via environment variables.
+
+:::
 
 The OpenBao token used to authenticate needs the following permissions on the
 transit key:

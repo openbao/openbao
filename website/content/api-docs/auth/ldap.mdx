@@ -5,7 +5,15 @@ description: This is the API documentation for the OpenBao LDAP auth method.
 
 # LDAP auth method (API)
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 This is the API documentation for the OpenBao LDAP auth method. For
 general information about the usage and operation of the LDAP method, please
@@ -106,7 +114,14 @@ This endpoint configures the LDAP auth method.
 
 @include 'tokenfields.mdx'
 
-@include 'ldap-auth-userfilter-warning.mdx'
+:::warning
+
+When specifying a `userfilter`, either the templated value `{{.UserAttr}}` or
+the literal value that matches `userattr` should be present in the filter to
+ensure that the search returns a unique result that takes `userattr` into
+consideration for entity alias mapping purposes and avoid possible collisions on login.
+
+:::
 
 ### Sample request
 

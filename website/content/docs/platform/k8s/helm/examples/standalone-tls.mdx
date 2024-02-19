@@ -6,7 +6,12 @@ description: |-
 
 # Standalone server with TLS
 
-@include 'helm/version.mdx'
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
 
 This example can be used to set up a single server Vault cluster using TLS.
 
@@ -82,7 +87,11 @@ e is 65537 (0x10001)
 
 3. Create the certificate
 
-   ~> **Important Note:** If you are using EKS, certificate signing requirements have changed.  As per the AWS [certificate signing](https://docs.aws.amazon.com/eks/latest/userguide/cert-signing.html) documentation, EKS version `1.22` and later now requires the `signerName` to be `beta.eks.amazonaws.com/app-serving`, otherwise, the CSR will be approved but the certificate will not be issued.
+:::warning
+
+ **Important Note:** If you are using EKS, certificate signing requirements have changed.  As per the AWS [certificate signing](https://docs.aws.amazon.com/eks/latest/userguide/cert-signing.html) documentation, EKS version `1.22` and later now requires the `signerName` to be `beta.eks.amazonaws.com/app-serving`, otherwise, the CSR will be approved but the certificate will not be issued.
+
+:::
 
    1. Create a file `${TMPDIR}/csr.yaml` with the following contents:
 
@@ -112,8 +121,12 @@ e is 65537 (0x10001)
       certificatesigningrequest.certificates.k8s.io/vault-csr created
       ```
 
-      -> If this process is automated, you may need to wait to ensure the CSR has been received and stored:
+:::info
+
+If this process is automated, you may need to wait to ensure the CSR has been received and stored:
       `kubectl get csr ${CSR_NAME}`
+
+:::
 
    3. Approve the CSR in Kubernetes.
 
@@ -137,8 +150,12 @@ e is 65537 (0x10001)
    $ serverCert=$(kubectl get csr ${CSR_NAME} -o jsonpath='{.status.certificate}')
    ```
 
-   -> If this process is automated, you may need to wait to ensure the certificate has been created.
+:::info
+
+If this process is automated, you may need to wait to ensure the certificate has been created.
    If it hasn't, this will return an empty string.
+
+:::
 
 2. Write the certificate out to a file.
 

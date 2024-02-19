@@ -4,9 +4,13 @@ description: Learn about OpenBao plugin development.
 
 # Plugin development
 
-~> Advanced topic! Plugin development is a highly advanced topic in OpenBao, and
+:::warning
+
+Advanced topic! Plugin development is a highly advanced topic in OpenBao, and
 is not required knowledge for day-to-day usage. If you don't plan on writing any
 plugins, we recommend not reading this section of the documentation.
+
+:::
 
 Because OpenBao communicates to plugins over a RPC interface, you can build and
 distribute a plugin for OpenBao without having to rebuild OpenBao itself. This makes
@@ -26,14 +30,22 @@ Your plugin implementation needs to satisfy the interface for the plugin
 type you want to build. You can find these definitions in the docs for the
 backend running the plugin.
 
-~> Note: Plugins should be prepared to handle multiple concurrent requests
+:::warning
+
+Note: Plugins should be prepared to handle multiple concurrent requests
 from OpenBao.
+
+:::
 
 ## Serving a plugin
 
 ### Serving a plugin with multiplexing
 
-~> Plugin multiplexing requires `github.com/openbao/openbao/sdk v0.5.4` or above.
+:::warning
+
+Plugin multiplexing requires `github.com/openbao/openbao/sdk v0.5.4` or above.
+
+:::
 
 The following code exhibits an example main package for an OpenBao plugin using
 the OpenBao SDK for a secrets engine or auth method:

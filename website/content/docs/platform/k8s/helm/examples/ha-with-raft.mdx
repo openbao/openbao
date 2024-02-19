@@ -6,7 +6,11 @@ description: |-
 
 # Highly available Vault cluster with integrated storage (Raft)
 
-@include 'helm/version.mdx'
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
 
 Integrated storage (raft) can be enabled using the `server.ha.raft.enabled` value:
 

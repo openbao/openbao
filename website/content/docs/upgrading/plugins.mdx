@@ -72,11 +72,15 @@ the reload is triggered, OpenBao will kill `my-secret-plugin`’s process and st
 new plugin process for `my-secret-plugin` version 1.0.1. The "Running Version" should also
 now match the "Version" when you run `bao secrets list -detailed`.
 
--> **Important:** Plugin reload of a new plugin binary must be
+:::info
+
+**Important:** Plugin reload of a new plugin binary must be
 performed on each OpenBao instance. Performing a plugin upgrade on a single
 instance or through a load balancer can result in mismatched
 plugin binaries within a cluster. On a replicated cluster this may be accomplished
 by setting the 'scope' parameter of the reload to 'global'.
+
+:::
 
 ### Upgrading database plugins
 

@@ -128,34 +128,50 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
 - `tls_min_version` `(string: "tls12")` – Specifies the minimum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-  ~> **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
+:::warning
+
+ **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
   `tls_min_version` and `tls_max_version` parameters) are widely considered
   insecure.
+
+:::
 
 - `tls_max_version` `(string: "tls13")` – Specifies the maximum supported
   version of TLS. Accepted values are "tls10", "tls11", "tls12" or "tls13".
 
-~> **Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
+:::warning
+
+**Warning**: TLS 1.1 and lower (`tls10` and `tls11` values for the
   `tls_min_version` and `tls_max_version` parameters) are widely considered
   insecure.
+
+:::
 
 - `tls_cipher_suites` `(string: "")` – Specifies the list of supported
   ciphersuites as a comma-separated-list. The list of all available ciphersuites
   is available in the [Golang TLS documentation][golang-tls].
 
-  ~> **Note**: Go only consults the `tls_cipher_suites` list for TLSv1.2 and
+:::warning
+
+ **Note**: Go only consults the `tls_cipher_suites` list for TLSv1.2 and
   earlier; the order of ciphers is not important. For this parameter to be
   effective, the `tls_max_version` property must be set to `tls12` to prevent
   negotiation of TLSv1.3, which is not recommended. For more information about
   this and other TLS related changes, see the [Go TLS blog post][go-tls-blog].
 
+:::
+
 - `tls_prefer_server_cipher_suites` `(string: "false")` – Specifies to prefer the
   server's ciphersuite over the client ciphersuites.
 
-  ~> **Warning**: The `tls_prefer_server_cipher_suites` parameter is
+:::warning
+
+ **Warning**: The `tls_prefer_server_cipher_suites` parameter is
   deprecated. Setting it has no effect. See the above
   [Go blog post][go-tls-blog] for more information about
   this change.
+
+:::
 
 - `tls_require_and_verify_client_cert` `(string: "false")` – Turns on client
   authentication for this listener; the listener will require a presented
@@ -168,7 +184,11 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   authentication for this listener. The default behavior (when this is false)
   is for OpenBao to request client certificates when available.
 
-  ~> **Warning**: The `tls_disable_client_certs` and `tls_require_and_verify_client_cert` fields in the listener stanza of the OpenBao server configuration are mutually exclusive fields. Please ensure they are not both set to true. TLS client verification remains optional with default settings and is not enforced.
+:::warning
+
+ **Warning**: The `tls_disable_client_certs` and `tls_require_and_verify_client_cert` fields in the listener stanza of the OpenBao server configuration are mutually exclusive fields. Please ensure they are not both set to true. TLS client verification remains optional with default settings and is not enforced.
+
+:::
 
 - `x_forwarded_for_authorized_addrs` `(string: <required-to-enable>)` –
   Specifies the list of source IP CIDRs for which an X-Forwarded-For header

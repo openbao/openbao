@@ -66,10 +66,14 @@ Once an OpenBao node is unsealed, it remains unsealed until one of these things 
 
 3. OpenBao's storage layer encounters an unrecoverable error.
 
--> **Note:** Unsealing makes the process of automating an OpenBao install
+:::info
+
+**Note:** Unsealing makes the process of automating an OpenBao install
 difficult. Automated tools can easily install, configure, and start OpenBao,
 but unsealing it using Shamir is a very manual process. For most users
 Auto Unseal will provide a better experience.
+
+:::
 
 ## Sealing
 
@@ -108,7 +112,9 @@ that would be provided with Shamir. The process remains the same.
 For a list of examples and supported providers, please see the
 [seal documentation](/docs/configuration/seal).
 
--> **Warning:** Recovery keys cannot decrypt the root key, and thus are not
+:::info
+
+**Warning:** Recovery keys cannot decrypt the root key, and thus are not
 sufficient to unseal OpenBao if the Auto Unseal mechanism isn't working. They
 are purely an authorization mechanism.  Using Auto Unseal 
 creates a strict OpenBao lifecycle dependency on the underlying seal mechanism. 
@@ -121,6 +127,8 @@ To mitigate this risk, we recommend careful controls around management of the se
 mechanism, for example using 
 [AWS Service Control Policies](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)
 or similar.  
+
+:::
 
 ## Recovery key
 
@@ -183,20 +191,32 @@ you briefly take the whole cluster down. While experiencing some downtime may
 be unavoidable, we believe that switching seals is a rare event and that the
 inconvenience of the downtime is an acceptable trade-off.
 
-~> **NOTE**: A backup should be taken before starting seal migration in case
+:::warning
+
+**NOTE**: A backup should be taken before starting seal migration in case
 something goes wrong.
 
-~> **NOTE**: Seal migration operation will require both old and new seals to be
+:::
+
+:::warning
+
+**NOTE**: Seal migration operation will require both old and new seals to be
 available during the migration. For example, migration from Auto Unseal to Shamir
 seal will require that the service backing the Auto Unseal is accessible during
 the migration.
 
-~> **NOTE**: Seal migration from Auto Unseal to Auto Unseal of the same type is
+:::
+
+:::warning
+
+**NOTE**: Seal migration from Auto Unseal to Auto Unseal of the same type is
 supported in OpenBao. However, there is a current limitation that
 prevents migrating from AWSKMS to AWSKMS; all other seal migrations of the same
 type are supported. Seal migration from One Auto Unseal type (AWS KMS) to
 different Auto Unseal type (HSM, Azure KMS, etc.) is also supported on older
 versions as well.
+
+:::
 
 ### Migration steps
 

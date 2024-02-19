@@ -112,7 +112,7 @@ jobs:
           git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
-      - uses: actions/cache/restore@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+      - uses: actions/cache/restore@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}
@@ -409,7 +409,7 @@ jobs:
     needs: test-go
     runs-on: ${{ fromJSON(inputs.runs-on) }}
     steps:
-      - uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+      - uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2 # v4.0.0
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}

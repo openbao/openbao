@@ -8,7 +8,11 @@ description: The Vault Agent Sidecar Injector can be installed using Vault Helm.
 The [Vault Helm chart](/docs/platform/k8s/helm) is the recommended way to
 install and configure the Agent Injector in Kubernetes.
 
-~> The Vault Agent Injector requires Vault 1.3.1 or greater.
+:::warning
+
+The Vault Agent Injector requires Vault 1.3.1 or greater.
+
+:::
 
 To install a new instance of Vault and the Vault Agent Injector, first add the
 Hashicorp helm repository and ensure you have access to the chart:
@@ -43,7 +47,11 @@ the following environment variables:
 | `AGENT_INJECT_TLS_MIN_VERSION`   | Minimum supported version of TLS. Defaults to **tls12**. Accepted values are `tls10`, `tls11`, `tls12`, or `tls13`.            |
 | `AGENT_INJECT_TLS_CIPHER_SUITES` | Comma-separated list of enabled [cipher suites][tls-suites] for TLS 1.0-1.2. (Cipher suites are not configurable for TLS 1.3.) |
 
-~> **Warning**: TLS 1.1 and lower are generally considered insecure.
+:::warning
+
+**Warning**: TLS 1.1 and lower are generally considered insecure.
+
+:::
 
 These may be set in a Helm chart deployment via the
 [injector.extraEnvironmentVars](/docs/platform/k8s/helm/configuration#extraenvironmentvars)

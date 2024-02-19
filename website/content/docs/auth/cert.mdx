@@ -7,7 +7,15 @@ description: >-
 
 # TLS certificates auth method
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 The `cert` auth method allows authentication using SSL/TLS client certificates
 which are either signed by a CA or self-signed. SSL/TLS client certificates
@@ -74,10 +82,14 @@ role. Note that the name `web` ties to the configuration example below writing
 to a path of `auth/cert/certs/web`. If a certificate role name is not specified,
 the auth method will try to authenticate against all trusted certificates.
 
-~> **NOTE** The `-ca-cert` value used here is for the OpenBao TLS Listener CA
+:::warning
+
+**NOTE** The `-ca-cert` value used here is for the OpenBao TLS Listener CA
 certificate, not the CA that issued the client authentication certificate. This
 can be omitted if the CA used to issue the OpenBao server certificate is trusted
 by the local system executing this command.
+
+:::
 
 ```shell-session
 $ bao login \
@@ -95,10 +107,14 @@ TLS certificate and when the login endpoint is hit, the auth method will
 determine if there is a matching trusted certificate to authenticate the client.
 Optionally, you may specify a single certificate role to authenticate against.
 
-~> **NOTE** The `--cacert` value used here is for the OpenBao TLS Listener CA
+:::warning
+
+**NOTE** The `--cacert` value used here is for the OpenBao TLS Listener CA
 certificate, not the CA that issued the client authentication certificate. This
 can be omitted if the CA used to issue the OpenBao server certificate is trusted
 by the local system executing this command.
+
+:::
 
 ```shell-session
 $ curl \

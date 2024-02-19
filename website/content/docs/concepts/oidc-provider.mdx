@@ -117,7 +117,11 @@ A `client_id` is generated and returned after a successful client registration. 
 `client_id` uniquely identifies the client. Its value will be a string with 32 random
 characters from the base62 character set.
 
-~> **Note**: At least one of the redirect URIs of a client must exactly match the `redirect_uri` parameter used in an authentication request initiated by the client.
+:::warning
+
+**Note**: At least one of the redirect URIs of a client must exactly match the `redirect_uri` parameter used in an authentication request initiated by the client.
+
+:::
 
 #### Client types
 
@@ -177,7 +181,11 @@ The `default` key will have the following configuration:
 
 ## OIDC flow
 
-~> **Note**: The OpenBao OIDC Provider feature currently only supports the [authorization code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth).
+:::warning
+
+**Note**: The OpenBao OIDC Provider feature currently only supports the [authorization code flow](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth).
+
+:::
 
 The following sections provide implementation details for the OIDC compliant APIs provided by OpenBao OIDC providers.
 

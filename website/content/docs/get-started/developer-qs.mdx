@@ -14,7 +14,11 @@ This quick start will explore how to use OpenBao client libraries inside your ap
 
 ## Step 1: start OpenBao
 
-!> **Warning**: This in-memory “dev” server is useful for practicing with OpenBao locally for the first time, but is insecure and **should never be used in production**. For developers who need to manage their own production OpenBao installations, this [page](/tutorials/operations/production-hardening) provides some guidance on how to make your setup more production-friendly.
+:::danger
+
+**Warning**: This in-memory “dev” server is useful for practicing with OpenBao locally for the first time, but is insecure and **should never be used in production**. For developers who need to manage their own production OpenBao installations, this [page](/tutorials/operations/production-hardening) provides some guidance on how to make your setup more production-friendly.
+
+:::
 
 Run the OpenBao server in a non-production "dev" mode:
 
@@ -24,7 +28,11 @@ $ bao server -dev -dev-root-token-id="dev-only-token"
 
 The `-dev-root-token-id` flag for dev servers tells the OpenBao server to allow full root access to anyone who presents a token with the specified value (in this case "dev-only-token").
 
-!> **Warning**: The [root token](/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
+:::danger
+
+**Warning**: The [root token](/docs/concepts/tokens#root-tokens) is useful for development, but allows full access to all data and functionality of OpenBao, so it must be carefully guarded in production. Ideally, even an administrator of OpenBao would use their own token with limited privileges instead of the root token.
+
+:::
 
 OpenBao is now listening over HTTP on port **8200**. With all the setup out of the way, it's time to get coding!
 

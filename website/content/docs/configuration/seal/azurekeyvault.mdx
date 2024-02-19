@@ -78,7 +78,9 @@ Azure authentication values:
 - `AZURE_ENVIRONMENT`
 - `AZURE_AD_RESOURCE`
 
-~> **Note:** If OpenBao is hosted on Azure, OpenBao can use Managed Service
+:::warning
+
+**Note:** If OpenBao is hosted on Azure, OpenBao can use Managed Service
 Identities (MSI) to access Azure instead of an environment and shared client id
 and secret. MSI must be
 [enabled](https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/qs-configure-portal-windows-vm)
@@ -88,9 +90,15 @@ prevents your Azure credentials from being stored as clear text. Refer to the
 Hardening](/tutorials/operations/production-hardening) tutorial
 for more best practices.
 
--> **Note:** If you are using a Managed HSM KeyVault, `AZURE_AD_RESOURCE` or the `resource`
+:::
+
+:::info
+
+**Note:** If you are using a Managed HSM KeyVault, `AZURE_AD_RESOURCE` or the `resource`
 configuration parameter must be specified; usually this should point to `managedhsm.azure.net`,
 but could point to other suffixes depending on Azure environment.
+
+:::
 
 ## `azurekeyvault` environment variables
 

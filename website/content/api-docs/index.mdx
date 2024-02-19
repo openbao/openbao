@@ -13,12 +13,16 @@ All API routes are prefixed with `/v1/`.
 
 This documentation is only for the v1 API, which is currently the only version.
 
-~> **Backwards compatibility:** At the current version, OpenBao does not yet
+:::warning
+
+**Backwards compatibility:** At the current version, OpenBao does not yet
 promise backwards compatibility even with the v1 prefix. We'll remove this
 warning when this policy changes. At this point in time the core API (that
 is, `sys/` routes) change very infrequently, but various secrets engines/auth
 methods/etc. sometimes have minor changes to accommodate new features as
 they're developed.
+
+:::
 
 ## Transport
 
@@ -245,10 +249,14 @@ The following HTTP status codes are used throughout the API. OpenBao tries to
 adhere to these whenever possible, but in case it doesn't -- then feel free to
 [raise a bug](https://github.com/openbao/openbao/issues) for our attention!
 
-~> _Note_: Applications should be prepared to accept both `200` and `204` as
+:::warning
+
+_Note_: Applications should be prepared to accept both `200` and `204` as
 success. `204` is simply an indication that there is no response body to parse,
 but API endpoints that indicate that they return a `204` may return a `200` if
 warnings are generated during the operation.
+
+:::
 
 - `200` - Success with data.
 - `204` - Success, no data returned.

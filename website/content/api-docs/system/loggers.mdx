@@ -6,9 +6,13 @@ description: The `/sys/loggers` endpoint is used modify the verbosity level of l
 
 The `/sys/loggers` endpoint is used modify the verbosity level of logging.
 
-!> **NOTE:** Changes made to the log level using this endpoint are not persisted and will be restored
+:::danger
+
+**NOTE:** Changes made to the log level using this endpoint are not persisted and will be restored
 to either the default log level (info) or the level specified using `log_level` in openbao.hcl or the `VAULT_LOG_LEVEL`
 environment variable once the OpenBao service is reloaded or restarted.
+
+:::
 
 ## Modify verbosity level of all loggers
 

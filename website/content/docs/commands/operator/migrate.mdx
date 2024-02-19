@@ -131,5 +131,5 @@ The following flags are available for the `operator migrate` command.
   the cost of more resources (e.g. CPU, memory). Permitted values range from `1` (synchronous) to the maximum value
   for an `integer`. If not supplied, a default of `10` parallel goroutines will be used.
 
-  ~> Note: The maximum number of concurrent requests handled by a storage backend is ultimately governed by the
+ Note: The maximum number of concurrent requests handled by a storage backend is ultimately governed by the
   storage backend configuration setting, which enforces a maximum number of concurrent requests (`max_parallel`).

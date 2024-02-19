@@ -76,12 +76,16 @@ them to your desired values.
   - Minimum amount of time a server must be in a healthy state before it can become a voter. Until that happens,
     it will be visible as a peer in the cluster, but as a non-voter, meaning it won't contribute to quorum.
 
-~> **Note**: Autopilot in OpenBao does similar things to what autopilot does in
+:::warning
+
+**Note**: Autopilot in OpenBao does similar things to what autopilot does in
 [Consul](https://www.consul.io/). However, the configuration in these 2 systems
 differ in terms of default values and thresholds; some additional parameters
 might also show up in OpenBao in comparison to Consul as well. Autopilot in OpenBao
 and Consul use different technical underpinnings requiring these differences, to
 provide the autopilot functionality.
+
+:::
 
 ## Tutorial
 

@@ -9,7 +9,15 @@ import TabItem from '@theme/TabItem';
 
 # Kubernetes auth method
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 The `kubernetes` auth method can be used to authenticate with OpenBao using a
 Kubernetes Service Account Token. This method of authentication makes it easy to
@@ -20,10 +28,14 @@ See the section on [How to work with short-lived Kubernetes tokens][short-lived-
 for a summary of why you might want to use JWT auth instead and how it compares to
 Kubernetes auth.
 
--> **Note:** If you are upgrading to Kubernetes v1.21+, ensure the config option
+:::info
+
+**Note:** If you are upgrading to Kubernetes v1.21+, ensure the config option
 `disable_iss_validation` is set to true. Assuming the default mount path, you
 can check with `bao read -field disable_iss_validation auth/kubernetes/config`.
 See [Kubernetes 1.21](#kubernetes-1-21) below for more details.
+
+:::
 
 ## Authentication
 
@@ -93,13 +105,17 @@ management tool.
       kubernetes_ca_cert=@ca.crt
   ```
 
-  !> **Note:** The pattern OpenBao uses to authenticate Pods depends on sharing
+:::danger
+
+ **Note:** The pattern OpenBao uses to authenticate Pods depends on sharing
   the JWT token over the network. Given the [security model of
   OpenBao](/docs/internals/security), this is allowable because OpenBao is
   part of the trusted compute base. In general, Kubernetes applications should
   **not** share this JWT with other applications, as it allows API calls to be
   made on behalf of the Pod and can result in unintended access being granted
   to 3rd parties.
+
+:::
 
 1. Create a named role:
 
@@ -160,12 +176,16 @@ table summarizes the options, each of which is explained in more detail below.
 | Use long-lived token as reviewer JWT | No                         | Yes                     |                                                           |
 | Use JWT auth instead                 | Yes                        | No                      |                                                           |
 
--> **Note:** By default, Kubernetes currently extends the lifetime of admission
+:::info
+
+**Note:** By default, Kubernetes currently extends the lifetime of admission
 injected service account tokens to a year to help smooth the transition to
 short-lived tokens. If you would like to disable this, set
 [--service-account-extend-token-expiration=false][k8s-extended-tokens] for
 `kube-apiserver` or specify your own `serviceAccountToken` volume mount. See
 [here](/docs/auth/jwt/oidc-providers/kubernetes#specifying-ttl-and-audience) for an example.
+
+:::
 
 [k8s-extended-tokens]: https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/#options
 
@@ -242,11 +262,15 @@ limitation in mind.
 
 ### Discovering the service account `issuer`
 
--> **Note:** `disable_iss_validation` and `issuer` are deprecated and the
+:::info
+
+**Note:** `disable_iss_validation` and `issuer` are deprecated and the
 default for `disable_iss_validation` has changed to `true` for new Kubernetes
 auth mounts. The following section only applies if you have set
 `disable_iss_validation=false` , but `disable_iss_validation=true` is the new
 recommended value for all versions of OpenBao.
+
+:::
 
 Kubernetes 1.21+ clusters may require setting the service account
 [`issuer`](/api-docs/auth/kubernetes#issuer) to the same value as

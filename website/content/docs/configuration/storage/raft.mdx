@@ -30,16 +30,28 @@ storage "raft" {
 cluster_addr = "http://127.0.0.1:8201"
 ```
 
-~> **Note:** When using the Integrated Storage backend, it is required to provide
+:::warning
+
+**Note:** When using the Integrated Storage backend, it is required to provide
 [`cluster_addr`](/docs/concepts/ha#per-node-cluster-address) to indicate the address and port to be used for communication
 between the nodes in the Raft cluster.
 
-~> **Note:** When using the Integrated Storage backend, a separate
+:::
+
+:::warning
+
+**Note:** When using the Integrated Storage backend, a separate
 [`ha_storage`](/docs/configuration#ha_storage)
 backend cannot be declared.
 
-~> **Note:** When using the Integrated Storage backend, it is strongly recommended to
+:::
+
+:::warning
+
+**Note:** When using the Integrated Storage backend, it is strongly recommended to
 set [`disable_mlock`](/docs/configuration#disable_mlock) to `true`, and to disable memory swapping on the system.
+
+:::
 
 ## `raft` parameters
 

@@ -4,7 +4,11 @@ description: This section documents configuration options for the Vault Helm cha
 
 # Configuration
 
-@include 'helm/version.mdx'
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
 
 The chart is highly customizable using
 [Helm configuration values](https://helm.sh/docs/intro/using_helm/#customizing-the-chart-before-installing).
@@ -365,8 +369,12 @@ and consider if they're appropriate for your deployment.
 
   - `ingress` - Values that configure Ingress services for Vault.
 
-    ~> If deploying on OpenShift, these ingress settings are ignored. Use the [`route`](#route) configuration to expose Vault on OpenShift. <br/> <br/>
+:::warning
+
+ If deploying on OpenShift, these ingress settings are ignored. Use the [`route`](#route) configuration to expose Vault on OpenShift. <br/> <br/>
     If [`ha`](#ha) is enabled the Ingress will point to the active vault server via the `active` Service. This requires vault 1.4+ and [service_registration](/docs/configuration/service-registration/kubernetes) to be set in the vault config.
+
+:::
 
     - `enabled` (`boolean: false`) - When set to `true`, an [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) service will be created.
 
@@ -427,7 +435,11 @@ and consider if they're appropriate for your deployment.
 
   - `route` - Values that configure Route services for Vault in OpenShift
 
-    ~> If [`ha`](#ha) is enabled the Route will point to the active vault server via the `active` Service (requires vault 1.4+ and [service_registration](/docs/configuration/service-registration/kubernetes) to be set in the vault config).
+:::warning
+
+ If [`ha`](#ha) is enabled the Route will point to the active vault server via the `active` Service (requires vault 1.4+ and [service_registration](/docs/configuration/service-registration/kubernetes) to be set in the vault config).
+
+:::
 
     - `enabled` (`boolean: false`) - When set to `true`, a Route for Vault will be created.
 
@@ -831,7 +843,11 @@ and consider if they're appropriate for your deployment.
 
     - `devRootToken` (`string: "root"`) - Configures the root token for the Vault development server.
 
-    ~> **Security Warning:** Never, ever, ever run a "dev" mode server in production. It is insecure and will lose data on every restart (since it stores data in-memory). It is only made for development or experimentation.
+:::warning
+
+ **Security Warning:** Never, ever, ever run a "dev" mode server in production. It is insecure and will lose data on every restart (since it stores data in-memory). It is only made for development or experimentation.
+
+:::
 
   - `standalone` - This configures `standalone` mode for the Vault server.
 

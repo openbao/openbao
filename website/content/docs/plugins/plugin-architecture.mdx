@@ -15,8 +15,12 @@ It is possible to enable a custom plugin with a name that's identical to a
 built-in plugin. In such a situation, OpenBao will always choose the custom plugin
 when enabling it.
 
--> **NOTE:** See the [OpenBao Integrations](/integrations) page to find a
+:::info
+
+**NOTE:** See the [OpenBao Integrations](/integrations) page to find a
 curated collection of official, partner, and community OpenBao plugins.
+
+:::
 
 ## External plugin lifecycle
 
@@ -107,9 +111,13 @@ configured in the plugin catalog. Finally OpenBao runs the command configured in
 the catalog, sending along the JWT formatted response wrapping token and mlock
 settings. Like OpenBao, plugins support [the use of mlock when available](/docs/configuration#disable_mlock).
 
-~> Note: If OpenBao is configured with `mlock` enabled, then the OpenBao executable
+:::warning
+
+Note: If OpenBao is configured with `mlock` enabled, then the OpenBao executable
 and each plugin executable in your [plugins directory](/docs/plugins/plugin-architecture#plugin-directory)
 must be given the ability to use the `mlock` syscall.
+
+:::
 
 ### Plugin upgrades
 

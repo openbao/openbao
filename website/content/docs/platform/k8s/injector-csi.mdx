@@ -20,7 +20,11 @@ The [Vault CSI provider](/docs/platform/k8s/csi) allows pods to consume Vault se
 
 ![Vault Sidecar Injection Workflow](/img/vault-csi-workflow.png)
 
-~> **Note**: Secrets are fetched earlier in the pod lifecycle, therefore, they have fewer compatibility issues with Sidecars, such as Istio.
+:::warning
+
+**Note**: Secrets are fetched earlier in the pod lifecycle, therefore, they have fewer compatibility issues with Sidecars, such as Istio.
+
+:::
 
 Before we get into some of the similarities and differences between the two solutions, let's look at several common design considerations.
 
@@ -93,7 +97,11 @@ Now that you understand the similarities, there are differences between these tw
 
 The below chart provides a high-level comparison between the two solutions.
 
-~> **Note:** Shared Memory Volume Environment Variable can be achieved through [Agent templating](/docs/platform/k8s/injector/examples#environment-variable-example).
+:::warning
+
+**Note:** Shared Memory Volume Environment Variable can be achieved through [Agent templating](/docs/platform/k8s/injector/examples#environment-variable-example).
+
+:::
 
 ![Comparison Chart](/img/comparison-table.png)
 

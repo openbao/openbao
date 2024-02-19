@@ -107,8 +107,12 @@ The secret unique name must consist of alphanumeric characters, `.`, `_` or `-`.
 
 ##### Secret templates
 
-~> Vault Agent uses the Consul Template project to render secrets. For more information
+:::warning
+
+Vault Agent uses the Consul Template project to render secrets. For more information
 on writing templates, see the [Consul Template documentation](https://github.com/hashicorp/consul-template).
+
+:::
 
 How the secret is rendered to the file is also configurable. To configure the template
 used, the user must supply a _template_ annotation using the same unique name of
@@ -140,7 +144,11 @@ $ cat /vault/secrets/foo
 postgres://v-kubernet-pg-app-q0Z7WPfVN:A1a-BUEuQR52oAqPrP1J@postgres:5432/mydb?sslmode=disable
 ```
 
-~> The default left and right template delimiters are `{{` and `}}`.
+:::warning
+
+The default left and right template delimiters are `{{` and `}}`.
+
+:::
 
 If no template is provided the following generic template is used:
 
@@ -168,7 +176,11 @@ password: A1a-BUEuQR52oAqPrP1J
 username: v-kubernet-pg-app-q0Z7WPfVNqqTJuoDqCTY-1576529094
 ```
 
-~> Some secrets such as KV are stored in maps. Their data can be accessed using `.Data.data.<NAME>`
+:::warning
+
+Some secrets such as KV are stored in maps. Their data can be accessed using `.Data.data.<NAME>`
+
+:::
 
 ### Renewals and updating secrets
 

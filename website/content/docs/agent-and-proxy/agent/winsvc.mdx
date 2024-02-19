@@ -26,8 +26,12 @@ both will be shown below.
 
 ### Using sc.exe
 
-~> **Important Note:** Ensure the executable path of the service is quoted, especially when it contains spaces, to avoid
+:::warning
+
+**Important Note:** Ensure the executable path of the service is quoted, especially when it contains spaces, to avoid
 potential privilege escalation risks.
+
+:::
 
 If you use `sc.exe`, make sure you specify `sc.exe` explicitly, and not just `sc`. The command below shows the creation
 of OpenBao Agent as a service, using "OpenBao Agent" as the display name, and starting automatically when Windows starts.

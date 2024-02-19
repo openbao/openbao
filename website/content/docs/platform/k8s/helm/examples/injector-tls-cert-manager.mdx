@@ -103,8 +103,12 @@ spec:
   commonName: Agent Inject Cert
 ```
 
-~> **Important Note:** The dnsNames for the certificate must be configured to use the name
+:::warning
+
+**Important Note:** The dnsNames for the certificate must be configured to use the name
 of the Vault Agent Injector Kubernetes service and namespace where it is deployed.
+
+:::
 
 In this example the Vault Agent Injector service name is `vault-agent-injector-svc` in the `vault` namespace.
 This uses the pattern `<k8s service name>.<k8s namespace>.svc`.

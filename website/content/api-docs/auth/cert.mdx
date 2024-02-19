@@ -7,7 +7,15 @@ description: |-
 
 # TLS certificate auth method (API)
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 This is the API documentation for the OpenBao TLS Certificate authentication
 method. For general information about the usage and operation of the TLS
@@ -403,10 +411,14 @@ https://tools.ietf.org/html/rfc6125#section-2.3)
 
 ### Sample request
 
-~> **NOTE** The `--cacert` value used here is for the OpenBao TLS Listener CA
+:::warning
+
+**NOTE** The `--cacert` value used here is for the OpenBao TLS Listener CA
 certificate, not the CA that issued the client authentication certificate. This
 can be omitted if the CA used to issue the OpenBao server certificate is trusted
 by the local system executing this command.
+
+:::
 
 ```shell-session
 $ curl \

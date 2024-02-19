@@ -6,7 +6,11 @@ description: >-
 
 # Events
 
-~> **Important:** Events are experimental, and may have backwards incompatible changes introduced in subsequent versions of OpenBao, or be removed altogether.
+:::warning
+
+**Important:** Events are experimental, and may have backwards incompatible changes introduced in subsequent versions of OpenBao, or be removed altogether.
+
+:::
 
 Events are arbitrary, **non-secret** data that can be exchanged between producers (OpenBao and plugins)
 and subscribers (OpenBao components and external users via the API).
@@ -20,7 +24,11 @@ configuration or on the command-line:
 $ bao server -experiment events.alpha1
 ```
 
--> Note: Experiments can only be enabled at startup, and cannot be disabled or enabled at runtime.
+:::info
+
+Note: Experiments can only be enabled at startup, and cannot be disabled or enabled at runtime.
+
+:::
 
 ## Event types
 

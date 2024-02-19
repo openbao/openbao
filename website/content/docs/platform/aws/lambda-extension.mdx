@@ -10,7 +10,11 @@ AWS Lambda lets you run code without provisioning and managing servers.
 The [Vault Lambda Extension](https://github.com/hashicorp/vault-lambda-extension) utilizes the AWS Lambda Extensions API to help your Lambda function read secrets from your Vault deployment.
 You can use the [quick-start](https://github.com/hashicorp/vault-lambda-extension/tree/main/quick-start) directory which has an end-to-end example if you would like to try out the extension from scratch.
 
-~> **Note**: If you decide to create one from scratch, be aware that this will create real infrastructure with an associated cost as per AWS' pricing.
+:::warning
+
+**Note**: If you decide to create one from scratch, be aware that this will create real infrastructure with an associated cost as per AWS' pricing.
+
+:::
 
 ## Usage
 
@@ -249,9 +253,13 @@ the header to `nocache` on a request will opt-out of caching entirely in this
 configuration. Setting the header to `recache` will skip the cache lookup and
 return and cache the response from Vault as described previously.
 
-~> **Warning!** The Vault Lambda Extension's cache is only in-memory
+:::warning
+
+**Warning!** The Vault Lambda Extension's cache is only in-memory
 and will not be persisted when the Lambda execution environment shuts down.
 In order words, the cache TTL is capped to the duration of the Lambda execution environment.
+
+:::
 
 ## Limitations
 

@@ -2659,32 +2659,6 @@ func (c *Core) preSeal() error {
 	return result
 }
 
-func enterprisePostUnsealImpl(c *Core, isStandby bool) error {
-	return nil
-}
-
-func enterprisePreSealImpl(c *Core) error {
-	return nil
-}
-
-func enterpriseSetupFilteredPathsImpl(c *Core) error {
-	return nil
-}
-
-func enterpriseSetupQuotasImpl(ctx context.Context, c *Core) error {
-	return nil
-}
-
-func startReplicationImpl(c *Core) error {
-	return nil
-}
-
-func stopReplicationImpl(c *Core) error {
-	return nil
-}
-
-func setupAPILockImpl(_ *Core, _ context.Context) error { return nil }
-
 func (c *Core) ReplicationState() consts.ReplicationState {
 	return consts.ReplicationState(atomic.LoadUint32(c.replicationState))
 }
@@ -2720,19 +2694,7 @@ func waitUntilWALShippedImpl(ctx context.Context, c *Core, index uint64) bool {
 	return true
 }
 
-func merkleRootImpl(c *Core) string {
-	return ""
-}
-
 func lastWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastPerformanceWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastDRWALImpl(c *Core) uint64 {
 	return 0
 }
 

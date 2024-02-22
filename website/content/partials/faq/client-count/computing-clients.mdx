@@ -1,4 +1,4 @@
-### Does the Nomad-Openbao integration affect client counts? ((#nomad))
+### Does the Nomad-Openbao integration affect client counts? {#nomad}
 
 **Maybe**.
 
@@ -7,7 +7,7 @@ uses token roles where a single token role creates tokens for many Nomad jobs.
 Unless you have configured explicit identity aliases for your Nomad tokens,
 Openbao will record every running instance of a Nomad job as a unique client.
 
-### Are batch tokens counted differently than service tokens? ((#batch-tokens))
+### Are batch tokens counted differently than service tokens? {#batch-tokens}
 
 **No**.
 
@@ -17,7 +17,7 @@ Openbao creates by combining the assigned namespace and policy. See the
 [clients and entities](/docs/concepts/client-count) overview for more
 details.
 
-### Do custom user filters affect client counts? ((#custom-filters))
+### Do custom user filters affect client counts? {#custom-filters}
 
 **Yes**.
 
@@ -27,7 +27,7 @@ that entity aliases are mapped, which can affect the client count computation.
 Consult the [clients and entities](/docs/concepts/client-count) overview
 for more information about how Openbao determines entity assignments.
 
-### Does mount migration affect client counts? ((#mount-migration))
+### Does mount migration affect client counts? {#mount-migration}
 
 **Maybe**.
 

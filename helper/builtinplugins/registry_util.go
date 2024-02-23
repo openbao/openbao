@@ -1,5 +1,3 @@
-//go:build !enterprise
-
 package builtinplugins
 
 import "github.com/openbao/openbao/sdk/helper/consts"

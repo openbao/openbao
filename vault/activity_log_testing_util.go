@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/vault/activity"
 )
@@ -34,21 +33,6 @@ func (c *Core) InjectActivityLogDataThisMonth(t *testing.T) map[string]*activity
 			NonEntity:     i%2 == 0,
 		}
 		c.activityLog.partialMonthClientTracker[er.ClientID] = er
-	}
-
-	if constants.IsEnterprise {
-		for j := 0; j < 2; j++ {
-			for i := 0; i < 2; i++ {
-				er := &activity.EntityRecord{
-					ClientID:      fmt.Sprintf("ns-%d-testclientid-%d", j, i),
-					NamespaceID:   fmt.Sprintf("ns-%d", j),
-					MountAccessor: fmt.Sprintf("ns-%d-testmountaccessor-%d", j, i),
-					Timestamp:     c.activityLog.clock.Now().Unix(),
-					NonEntity:     i%2 == 0,
-				}
-				c.activityLog.partialMonthClientTracker[er.ClientID] = er
-			}
-		}
 	}
 
 	return c.activityLog.partialMonthClientTracker

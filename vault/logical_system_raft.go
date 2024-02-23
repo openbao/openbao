@@ -16,7 +16,6 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/framework"
@@ -522,9 +521,6 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		}
 		disableUpgradeMigration, ok := d.GetOk("disable_upgrade_migration")
 		if ok {
-			if !constants.IsEnterprise {
-				return logical.ErrorResponse("disable_upgrade_migration is not available available in OpenBao"), logical.ErrInvalidRequest
-			}
 			config.DisableUpgradeMigration = disableUpgradeMigration.(bool)
 			persist = true
 		}

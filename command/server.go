@@ -40,7 +40,6 @@ import (
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/experiments"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -1963,14 +1962,6 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}, nil)
 	testCluster := vault.NewTestCluster(&testing.RuntimeT{}, conf, opts)
 	defer c.cleanupGuard.Do(testCluster.Cleanup)
-
-	if constants.IsEnterprise {
-		err := testcluster.WaitForActiveNodeAndPerfStandbys(context.Background(), testCluster)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("perf standbys didn't become ready: %v", err))
-			return 1
-		}
-	}
 
 	info["cluster parameters path"] = testCluster.TempDir
 	infoKeys = append(infoKeys, "cluster parameters path")

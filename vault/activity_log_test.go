@@ -28,7 +28,6 @@ import (
 	"github.com/go-test/deep"
 	"github.com/golang/protobuf/proto"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/timeutil"
 	"github.com/openbao/openbao/sdk/logical"
@@ -1584,15 +1583,6 @@ func setupActivityRecordsInStorage(t *testing.T, base time.Time, includeEntities
 				Timestamp:   time.Now().Unix(),
 			},
 		}
-		if constants.IsEnterprise {
-			entityRecords = append(entityRecords, []*activity.EntityRecord{
-				{
-					ClientID:    "44444444-1111-1111-1111-111111111111",
-					NamespaceID: "ns1",
-					Timestamp:   time.Now().Unix(),
-				},
-			}...)
-		}
 		for i, entityRecord := range entityRecords {
 			entityData, err := proto.Marshal(&activity.EntityActivityLog{
 				Clients: []*activity.EntityRecord{entityRecord},
@@ -1612,12 +1602,6 @@ func setupActivityRecordsInStorage(t *testing.T, base time.Time, includeEntities
 	if includeTokens {
 		tokenRecords = make(map[string]uint64)
 		tokenRecords[namespace.RootNamespaceID] = uint64(1)
-		if constants.IsEnterprise {
-			for i := 1; i < 4; i++ {
-				nsID := "ns" + strconv.Itoa(i)
-				tokenRecords[nsID] = uint64(i)
-			}
-		}
 		tokenCount := &activity.TokenCount{
 			CountByNamespaceID: tokenRecords,
 		}

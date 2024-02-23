@@ -16,7 +16,6 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/framework"
@@ -269,19 +268,6 @@ func Backend(conf *logical.BackendConfig) *backend {
 		b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, acmePrefix+"acme/order/+/finalize")
 		b.PathsSpecial.Unauthenticated = append(b.PathsSpecial.Unauthenticated, acmePrefix+"acme/order/+/cert")
 		// We specifically do NOT add acme/new-eab to this as it should be auth'd
-	}
-
-	if constants.IsEnterprise {
-		// Unified CRL/OCSP paths are ENT only
-		entOnly := []*framework.Path{
-			pathGetIssuerUnifiedCRL(&b),
-			pathListCertsRevocationQueue(&b),
-			pathListUnifiedRevoked(&b),
-			pathFetchUnifiedCRL(&b),
-			buildPathUnifiedOcspGet(&b),
-			buildPathUnifiedOcspPost(&b),
-		}
-		b.Backend.Paths = append(b.Backend.Paths, entOnly...)
 	}
 
 	b.tidyCASGuard = new(uint32)

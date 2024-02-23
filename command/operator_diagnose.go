@@ -21,7 +21,6 @@ import (
 	"github.com/mitchellh/cli"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	cserver "github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
@@ -582,13 +581,6 @@ SEALFAIL:
 	if vaultCore == nil {
 		return fmt.Errorf("Diagnose could not initialize the Vault core from the Vault server configuration.")
 	}
-
-	licenseCtx, licenseSpan := diagnose.StartSpan(ctx, "Check For Autoloaded License")
-	// If we are not in enterprise, return from the check
-	if !constants.IsEnterprise {
-		diagnose.Skipped(licenseCtx, "License check will not run on OpenBao.")
-	}
-	licenseSpan.End()
 
 	var lns []listenerutil.Listener
 	diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {

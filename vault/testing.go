@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -885,14 +884,6 @@ WAITACTIVE:
 		})
 		if err != nil {
 			t.Fatalf("error setting up global rate limit quota: %v", err)
-		}
-		if constants.IsEnterprise {
-			_, err = cli.Logical().Write("sys/quotas/lease-count/lc-NewTestCluster", map[string]interface{}{
-				"max_leases": 1000000,
-			})
-			if err != nil {
-				t.Fatalf("error setting up global lease count quota: %v", err)
-			}
 		}
 	}
 }

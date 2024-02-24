@@ -223,110 +223,6 @@ func (cli *CLI) ParseFlags(args []string) (
 		return nil
 	}), "config", "")
 
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.Address = config.String(s)
-		return nil
-	}), "consul-addr", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		a, err := config.ParseAuthConfig(s)
-		if err != nil {
-			return err
-		}
-		c.Consul.Auth = a
-		return nil
-	}), "consul-auth", "")
-
-	flags.Var((funcBoolVar)(func(b bool) error {
-		c.Consul.Retry.Enabled = config.Bool(b)
-		return nil
-	}), "consul-retry", "")
-
-	flags.Var((funcIntVar)(func(i int) error {
-		c.Consul.Retry.Attempts = config.Int(i)
-		return nil
-	}), "consul-retry-attempts", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Retry.Backoff = config.TimeDuration(d)
-		return nil
-	}), "consul-retry-backoff", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Retry.MaxBackoff = config.TimeDuration(d)
-		return nil
-	}), "consul-retry-max-backoff", "")
-
-	flags.Var((funcBoolVar)(func(b bool) error {
-		c.Consul.SSL.Enabled = config.Bool(b)
-		return nil
-	}), "consul-ssl", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.SSL.CaCert = config.String(s)
-		return nil
-	}), "consul-ssl-ca-cert", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.SSL.CaPath = config.String(s)
-		return nil
-	}), "consul-ssl-ca-path", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.SSL.Cert = config.String(s)
-		return nil
-	}), "consul-ssl-cert", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.SSL.Key = config.String(s)
-		return nil
-	}), "consul-ssl-key", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.SSL.ServerName = config.String(s)
-		return nil
-	}), "consul-ssl-server-name", "")
-
-	flags.Var((funcBoolVar)(func(b bool) error {
-		c.Consul.SSL.Verify = config.Bool(b)
-		return nil
-	}), "consul-ssl-verify", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.Token = config.String(s)
-		return nil
-	}), "consul-token", "")
-
-	flags.Var((funcVar)(func(s string) error {
-		c.Consul.TokenFile = config.String(s)
-		return nil
-	}), "consul-token-file", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Transport.DialKeepAlive = config.TimeDuration(d)
-		return nil
-	}), "consul-transport-dial-keep-alive", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Transport.DialTimeout = config.TimeDuration(d)
-		return nil
-	}), "consul-transport-dial-timeout", "")
-
-	flags.Var((funcBoolVar)(func(b bool) error {
-		c.Consul.Transport.DisableKeepAlives = config.Bool(b)
-		return nil
-	}), "consul-transport-disable-keep-alives", "")
-
-	flags.Var((funcIntVar)(func(i int) error {
-		c.Consul.Transport.MaxIdleConnsPerHost = config.Int(i)
-		return nil
-	}), "consul-transport-max-idle-conns-per-host", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Transport.TLSHandshakeTimeout = config.TimeDuration(d)
-		return nil
-	}), "consul-transport-tls-handshake-timeout", "")
-
 	flags.Var((funcBoolVar)(func(b bool) error {
 		c.Dedup.Enabled = config.Bool(b)
 		return nil
@@ -460,11 +356,6 @@ func (cli *CLI) ParseFlags(args []string) (
 		c.ReloadSignal = config.Signal(sig)
 		return nil
 	}), "reload-signal", "")
-
-	flags.Var((funcDurationVar)(func(d time.Duration) error {
-		c.Consul.Retry.Backoff = config.TimeDuration(d)
-		return nil
-	}), "retry", "")
 
 	flags.Var((funcBoolVar)(func(b bool) error {
 		c.Syslog.Enabled = config.Bool(b)
@@ -689,7 +580,7 @@ func (cli *CLI) setup(conf *config.Config) (*config.Config, error) {
 const usage = `Usage: %s [options]
 
   Watches a series of templates on the file system, writing new changes when
-  Consul is updated. It runs until an interrupt is received unless the -once
+  OpenBao is updated. It runs until an interrupt is received unless the -once
   flag is specified.
 
 Options:
@@ -699,73 +590,6 @@ Options:
       specified multiple times to load multiple files or folders. If multiple
       values are given, they are merged left-to-right, and CLI arguments take
       the top-most precedence.
-
-  -consul-addr=<address>
-      Sets the address of the Consul instance
-
-  -consul-auth=<username[:password]>
-      Set the basic authentication username and password for communicating
-      with Consul.
-
-  -consul-retry
-      Use retry logic when communication with Consul fails
-
-  -consul-retry-attempts=<int>
-      The number of attempts to use when retrying failed communications
-
-  -consul-retry-backoff=<duration>
-      The base amount to use for the backoff duration. This number will be
-      increased exponentially for each retry attempt.
-
-  -consul-retry-max-backoff=<duration>
-      The maximum limit of the retry backoff duration. Default is one minute.
-      0 means infinite. The backoff will increase exponentially until given value.
-
-  -consul-ssl
-      Use SSL when connecting to Consul
-
-  -consul-ssl-ca-cert=<string>
-      Validate server certificate against this CA certificate file list
-
-  -consul-ssl-ca-path=<string>
-      Sets the path to the CA to use for TLS verification
-
-  -consul-ssl-cert=<string>
-      SSL client certificate to send to server
-
-  -consul-ssl-key=<string>
-      SSL/TLS private key for use in client authentication key exchange
-
-  -consul-ssl-server-name=<string>
-      Sets the name of the server to use when validating TLS.
-
-  -consul-ssl-verify
-      Verify certificates when connecting via SSL
-
-  -consul-token=<token>
-      Sets the Consul API token
-
-  -consul-token-file=<path>
-      Sets the path to a file containing the Consul API token
-
-  -consul-transport-dial-keep-alive=<duration>
-      Sets the amount of time to use for keep-alives
-
-  -consul-transport-dial-timeout=<duration>
-      Sets the amount of time to wait to establish a connection
-
-  -consul-transport-disable-keep-alives
-      Disables keep-alives (this will impact performance)
-
-  -consul-transport-max-idle-conns-per-host=<int>
-      Sets the maximum number of idle connections to permit per host
-
-  -consul-transport-tls-handshake-timeout=<duration>
-      Sets the handshake timeout
-
-  -dedup
-      Enable de-duplication mode - reduces load on Consul when many instances of
-      Consul Template are rendering a common template
 
   -default-left-delimiter
       The default left delimiter for templating
@@ -821,7 +645,7 @@ Options:
       Set the logging level - values are "debug", "info", "warn", and "err"
 
   -max-stale=<duration>
-      Set the maximum staleness and allow stale queries to Consul which will
+      Set the maximum staleness and allow stale queries to OpenBao which will
       distribute work among all servers instead of just the leader
 
   -once
@@ -837,7 +661,7 @@ Options:
       Signal to listen to reload configuration
 
   -retry=<duration>
-      The amount of time to wait if Consul returns an error when communicating
+      The amount of time to wait if OpenBao returns an error when communicating
       with the API
 
   -syslog

@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"reflect"
-	"strconv"
 	"sync"
 	"time"
 
@@ -97,9 +96,6 @@ type Runner struct {
 	// fires.
 	quiescenceMap map[string]*quiescence
 	quiescenceCh  chan *template.Template
-
-	// dedup is the deduplication manager if enabled
-	dedup *DedupManager
 
 	// Env represents a custom set of environment variables to populate the
 	// template and command runtime with. These environment variables will be
@@ -232,16 +228,6 @@ func (r *Runner) Start() {
 		return
 	}
 
-	// Start the de-duplication manager
-	var dedupCh <-chan struct{}
-	if r.dedup != nil {
-		if err := r.dedup.Start(); err != nil {
-			r.ErrCh <- err
-			return
-		}
-		dedupCh = r.dedup.UpdateCh()
-	}
-
 	// Setup the child process exit channel
 	var childExitCh <-chan int
 
@@ -257,7 +243,6 @@ func (r *Runner) Start() {
 		log.Printf("[INFO] (runner) ParseOnly mode and all templates parsed")
 
 		if r.child != nil {
-			r.stopDedup()
 			r.stopWatchers()
 
 			log.Printf("[INFO] (runner) waiting for child process to exit")
@@ -361,7 +346,6 @@ func (r *Runner) Start() {
 				log.Printf("[INFO] (runner) once mode and all templates rendered")
 
 				if r.child != nil {
-					r.stopDedup()
 					r.stopWatchers()
 
 					log.Printf("[INFO] (runner) waiting for child process to exit")
@@ -402,13 +386,6 @@ func (r *Runner) Start() {
 					break OUTER
 				}
 			}
-
-		case <-dedupCh:
-			// We may get triggered by the de-duplication manager for either a change
-			// in leadership (acquired or lost lock), or an update of data for a template
-			// that we are watching.
-			log.Printf("[INFO] (runner) watcher triggered by de-duplication manager")
-			break OUTER
 
 		case err := <-r.watcher.ErrCh():
 			// Push the error back up the stack
@@ -492,7 +469,6 @@ func (r *Runner) internalStop(immediately bool) {
 	}
 
 	log.Printf("[INFO] (runner) stopping")
-	r.stopDedup()
 	r.stopWatchers()
 	r.stopChild(immediately)
 
@@ -504,13 +480,6 @@ func (r *Runner) internalStop(immediately bool) {
 	r.stopped = true
 
 	close(r.DoneCh)
-}
-
-func (r *Runner) stopDedup() {
-	if r.dedup != nil {
-		log.Printf("[DEBUG] (runner) stopping de-duplication manager")
-		r.dedup.Stop()
-	}
 }
 
 func (r *Runner) stopWatchers() {
@@ -725,9 +694,6 @@ func (r *Runner) runTemplate(tmpl *template.Template, runCtx *templateRunCtx) (*
 
 	// Check if we are currently the leader instance
 	isLeader := true
-	if r.dedup != nil {
-		isLeader = r.dedup.IsLeader(tmpl)
-	}
 
 	// If we are in once mode and this template was already rendered, move
 	// onto the next one. We do not want to re-render the template if we are
@@ -828,13 +794,6 @@ func (r *Runner) runTemplate(tmpl *template.Template, runCtx *templateRunCtx) (*
 	if l := missing.Len(); l > 0 {
 		log.Printf("[DEBUG] (runner) missing data for %d dependencies", l)
 		return event, nil
-	}
-
-	// Trigger an update of the de-duplication manager
-	if r.dedup != nil && isLeader {
-		if err := r.dedup.UpdateDeps(tmpl, used.List()); err != nil {
-			log.Printf("[ERR] (runner) failed to update dependency data for de-duplication: %v", err)
-		}
 	}
 
 	// If quiescence is activated, start/update the timers and loop back around.
@@ -988,18 +947,6 @@ func (r *Runner) init(clients *dep.ClientSet) error {
 	r.templates = templates
 
 	r.renderEvents = make(map[string]*RenderEvent, numTemplates)
-
-	if *r.config.Dedup.Enabled {
-		if r.config.Once {
-			log.Printf("[INFO] (runner) disabling de-duplication in once mode")
-		} else {
-			r.dedup, err = NewDedupManager(r.config.Dedup, clients, r.brain, r.templates)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -1084,25 +1031,6 @@ func (r *Runner) allTemplatesRendered() bool {
 // access to configurations in Consul Template's configuration.
 func (r *Runner) childEnv() []string {
 	m := make(map[string]string)
-
-	if config.StringPresent(r.config.Consul.Address) {
-		m["CONSUL_HTTP_ADDR"] = config.StringVal(r.config.Consul.Address)
-	}
-
-	if config.BoolVal(r.config.Consul.Auth.Enabled) {
-		m["CONSUL_HTTP_AUTH"] = r.config.Consul.Auth.String()
-	}
-
-	if config.StringPresent(r.config.Consul.Token) {
-		m["CONSUL_HTTP_TOKEN"] = config.StringVal(r.config.Consul.Token)
-	}
-
-	if config.StringPresent(r.config.Consul.TokenFile) {
-		m["CONSUL_HTTP_TOKEN_FILE"] = config.StringVal(r.config.Consul.TokenFile)
-	}
-
-	m["CONSUL_HTTP_SSL"] = strconv.FormatBool(config.BoolVal(r.config.Consul.SSL.Enabled))
-	m["CONSUL_HTTP_SSL_VERIFY"] = strconv.FormatBool(config.BoolVal(r.config.Consul.SSL.Verify))
 
 	if config.StringPresent(r.config.Vault.Address) {
 		m["VAULT_ADDR"] = config.StringVal(r.config.Vault.Address)
@@ -1316,32 +1244,6 @@ func findCommand(c *config.TemplateConfig, templates []*config.TemplateConfig) *
 func NewClientSet(c *config.Config) (*dep.ClientSet, error) {
 	clients := dep.NewClientSet()
 
-	if err := clients.CreateConsulClient(&dep.CreateConsulClientInput{
-		Address:                      config.StringVal(c.Consul.Address),
-		Namespace:                    config.StringVal(c.Consul.Namespace),
-		Token:                        config.StringVal(c.Consul.Token),
-		TokenFile:                    config.StringVal(c.Consul.TokenFile),
-		AuthEnabled:                  config.BoolVal(c.Consul.Auth.Enabled),
-		AuthUsername:                 config.StringVal(c.Consul.Auth.Username),
-		AuthPassword:                 config.StringVal(c.Consul.Auth.Password),
-		SSLEnabled:                   config.BoolVal(c.Consul.SSL.Enabled),
-		SSLVerify:                    config.BoolVal(c.Consul.SSL.Verify),
-		SSLCert:                      config.StringVal(c.Consul.SSL.Cert),
-		SSLKey:                       config.StringVal(c.Consul.SSL.Key),
-		SSLCACert:                    config.StringVal(c.Consul.SSL.CaCert),
-		SSLCAPath:                    config.StringVal(c.Consul.SSL.CaPath),
-		ServerName:                   config.StringVal(c.Consul.SSL.ServerName),
-		TransportDialKeepAlive:       config.TimeDurationVal(c.Consul.Transport.DialKeepAlive),
-		TransportDialTimeout:         config.TimeDurationVal(c.Consul.Transport.DialTimeout),
-		TransportDisableKeepAlives:   config.BoolVal(c.Consul.Transport.DisableKeepAlives),
-		TransportIdleConnTimeout:     config.TimeDurationVal(c.Consul.Transport.IdleConnTimeout),
-		TransportMaxIdleConns:        config.IntVal(c.Consul.Transport.MaxIdleConns),
-		TransportMaxIdleConnsPerHost: config.IntVal(c.Consul.Transport.MaxIdleConnsPerHost),
-		TransportTLSHandshakeTimeout: config.TimeDurationVal(c.Consul.Transport.TLSHandshakeTimeout),
-	}); err != nil {
-		return nil, fmt.Errorf("runner: %s", err)
-	}
-
 	if err := clients.CreateVaultClient(&dep.CreateVaultClientInput{
 		Address:                      config.StringVal(c.Vault.Address),
 		Namespace:                    config.StringVal(c.Vault.Namespace),
@@ -1372,31 +1274,6 @@ func NewClientSet(c *config.Config) (*dep.ClientSet, error) {
 		return nil, fmt.Errorf("runner: %s", err)
 	}
 
-	if err := clients.CreateNomadClient(&dep.CreateNomadClientInput{
-		Address:                      config.StringVal(c.Nomad.Address),
-		Namespace:                    config.StringVal(c.Nomad.Namespace),
-		Token:                        config.StringVal(c.Nomad.Token),
-		AuthUsername:                 config.StringVal(c.Nomad.AuthUsername),
-		AuthPassword:                 config.StringVal(c.Nomad.AuthPassword),
-		SSLEnabled:                   config.BoolVal(c.Nomad.SSL.Enabled),
-		SSLVerify:                    config.BoolVal(c.Nomad.SSL.Verify),
-		SSLCert:                      config.StringVal(c.Nomad.SSL.Cert),
-		SSLKey:                       config.StringVal(c.Nomad.SSL.Key),
-		SSLCACert:                    config.StringVal(c.Nomad.SSL.CaCert),
-		SSLCAPath:                    config.StringVal(c.Nomad.SSL.CaPath),
-		ServerName:                   config.StringVal(c.Nomad.SSL.ServerName),
-		TransportCustomDialer:        c.Nomad.Transport.CustomDialer,
-		TransportDialKeepAlive:       config.TimeDurationVal(c.Nomad.Transport.DialKeepAlive),
-		TransportDialTimeout:         config.TimeDurationVal(c.Nomad.Transport.DialTimeout),
-		TransportDisableKeepAlives:   config.BoolVal(c.Nomad.Transport.DisableKeepAlives),
-		TransportIdleConnTimeout:     config.TimeDurationVal(c.Nomad.Transport.IdleConnTimeout),
-		TransportMaxIdleConns:        config.IntVal(c.Nomad.Transport.MaxIdleConns),
-		TransportMaxIdleConnsPerHost: config.IntVal(c.Nomad.Transport.MaxIdleConnsPerHost),
-		TransportTLSHandshakeTimeout: config.TimeDurationVal(c.Nomad.Transport.TLSHandshakeTimeout),
-	}); err != nil {
-		return nil, fmt.Errorf("runner: %s", err)
-	}
-
 	return clients, nil
 }
 
@@ -1411,13 +1288,11 @@ func newWatcher(c *config.Config, clients *dep.ClientSet) *watch.Watcher {
 		BlockQueryWaitTime:  config.TimeDurationVal(c.BlockQueryWaitTime),
 		RenewVault:          clients.Vault().Token() != "" && config.BoolVal(c.Vault.RenewToken),
 		VaultAgentTokenFile: config.StringVal(c.Vault.VaultAgentTokenFile),
-		RetryFuncConsul:     watch.RetryFunc(c.Consul.Retry.RetryFunc()),
 		FailLookupErrors:    c.ErrOnFailedLookup,
 		// TODO: Add a reasonable default retry - right now this only affects
 		// "local" dependencies like reading a file from disk.
 		RetryFuncDefault: nil,
 		RetryFuncVault:   watch.RetryFunc(c.Vault.Retry.RetryFunc()),
 		VaultToken:       clients.Vault().Token(),
-		RetryFuncNomad:   watch.RetryFunc(c.Nomad.Retry.RetryFunc()),
 	})
 }

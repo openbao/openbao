@@ -45,9 +45,6 @@ var homePath, _ = homedir.Dir()
 
 // Config is used to configure Consul Template
 type Config struct {
-	// Consul is the configuration for connecting to a Consul cluster.
-	Consul *ConsulConfig `mapstructure:"consul"`
-
 	// Dedup is used to configure the dedup settings
 	Dedup *DedupConfig `mapstructure:"deduplicate"`
 
@@ -91,9 +88,6 @@ type Config struct {
 	// Vault is the configuration for connecting to a vault server.
 	Vault *VaultConfig `mapstructure:"vault"`
 
-	// Nomad is the configuration for connecting to a Nomad agent.
-	Nomad *NomadConfig `mapstructure:"nomad"`
-
 	// Wait is the quiescence timers.
 	Wait *WaitConfig `mapstructure:"wait"`
 
@@ -120,12 +114,6 @@ func (c *Config) Copy() *Config {
 		return nil
 	}
 	var o Config
-
-	o.Consul = c.Consul
-
-	if c.Consul != nil {
-		o.Consul = c.Consul.Copy()
-	}
 
 	if c.Dedup != nil {
 		o.Dedup = c.Dedup.Copy()
@@ -178,10 +166,6 @@ func (c *Config) Copy() *Config {
 	o.ErrOnFailedLookup = c.ErrOnFailedLookup
 	o.BlockQueryWaitTime = c.BlockQueryWaitTime
 
-	if c.Nomad != nil {
-		o.Nomad = c.Nomad.Copy()
-	}
-
 	return &o
 }
 
@@ -200,10 +184,6 @@ func (c *Config) Merge(o *Config) *Config {
 	}
 
 	r := c.Copy()
-
-	if o.Consul != nil {
-		r.Consul = r.Consul.Merge(o.Consul)
-	}
 
 	if o.Dedup != nil {
 		r.Dedup = r.Dedup.Merge(o.Dedup)
@@ -271,10 +251,6 @@ func (c *Config) Merge(o *Config) *Config {
 		r.ErrOnFailedLookup = o.ErrOnFailedLookup
 	}
 
-	if o.Nomad != nil {
-		r.Nomad = r.Nomad.Merge(o.Nomad)
-	}
-
 	return r
 }
 
@@ -293,20 +269,12 @@ func Parse(s string) (*Config, error) {
 
 	flattenKeys(parsed, []string{
 		"auth",
-		"consul",
-		"consul.auth",
-		"consul.retry",
-		"consul.ssl",
-		"consul.transport",
 		"deduplicate",
 		"default_delimiters",
 		"env",
 		"exec",
 		"exec.env",
 		"log_file",
-		"nomad",
-		"nomad.ssl",
-		"nomad.transport",
 		"ssl",
 		"syslog",
 		"vault",
@@ -336,7 +304,6 @@ func Parse(s string) (*Config, error) {
 	var md mapstructure.Metadata
 	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			ConsulStringToStructFunc(),
 			StringToFileModeFunc(),
 			signals.StringToSignalFunc(),
 			StringToWaitDurationHookFunc(),
@@ -456,7 +423,6 @@ func (c *Config) GoString() string {
 	}
 
 	return fmt.Sprintf("&Config{"+
-		"Consul:%#v, "+
 		"Dedup:%#v, "+
 		"DefaultDelims:%#v, "+
 		"Exec:%#v, "+
@@ -475,7 +441,6 @@ func (c *Config) GoString() string {
 		"BlockQueryWaitTime:%#v, "+
 		"ErrOnFailedLookup:%#v"+
 		"}",
-		c.Consul,
 		c.Dedup,
 		c.DefaultDelims,
 		c.Exec,
@@ -527,12 +492,10 @@ func (expected *Config) Diff(actual *Config) string {
 // variables may be set which control the values for the default configuration.
 func DefaultConfig() *Config {
 	return &Config{
-		Consul:        DefaultConsulConfig(),
 		Dedup:         DefaultDedupConfig(),
 		DefaultDelims: DefaultDefaultDelims(),
 		Exec:          DefaultExecConfig(),
 		FileLog:       DefaultLogFileConfig(),
-		Nomad:         DefaultNomadConfig(),
 		Syslog:        DefaultSyslogConfig(),
 		Templates:     DefaultTemplateConfigs(),
 		Vault:         DefaultVaultConfig(),
@@ -549,10 +512,6 @@ func (c *Config) Finalize() {
 	if c == nil {
 		return
 	}
-	if c.Consul == nil {
-		c.Consul = DefaultConsulConfig()
-	}
-	c.Consul.Finalize()
 
 	if c.Dedup == nil {
 		c.Dedup = DefaultDedupConfig()
@@ -575,8 +534,6 @@ func (c *Config) Finalize() {
 	if c.LogLevel == nil {
 		c.LogLevel = stringFromEnv([]string{
 			"CT_LOG",
-			"CONSUL_TEMPLATE_LOG",
-			"CONSUL_TEMPLATE_LOG_LEVEL",
 		}, DefaultLogLevel)
 	}
 
@@ -596,11 +553,6 @@ func (c *Config) Finalize() {
 		c.FileLog = DefaultLogFileConfig()
 	}
 	c.FileLog.Finalize()
-
-	if c.Nomad == nil {
-		c.Nomad = DefaultNomadConfig()
-	}
-	c.Nomad.Finalize()
 
 	if c.Syslog == nil {
 		c.Syslog = DefaultSyslogConfig()

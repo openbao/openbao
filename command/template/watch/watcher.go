@@ -17,7 +17,7 @@ const dataBufferSize = 2048
 
 type RetryFunc func(int) (bool, time.Duration)
 
-// Watcher is a top-level manager for views that poll Consul for data.
+// Watcher is a top-level manager for views that poll OpenBao for data.
 type Watcher struct {
 	sync.Mutex
 
@@ -49,10 +49,8 @@ type Watcher struct {
 	once bool
 
 	// retryFuncs specifies the different ways to retry based on the upstream.
-	retryFuncConsul  RetryFunc
 	retryFuncDefault RetryFunc
 	retryFuncVault   RetryFunc
-	retryFuncNomad   RetryFunc
 }
 
 type NewWatcherInput struct {
@@ -82,10 +80,8 @@ type NewWatcherInput struct {
 	VaultAgentTokenFile string
 
 	// RetryFuncs specify the different ways to retry based on the upstream.
-	RetryFuncConsul  RetryFunc
 	RetryFuncDefault RetryFunc
 	RetryFuncVault   RetryFunc
-	RetryFuncNomad   RetryFunc
 }
 
 // NewWatcher creates a new watcher using the given API client.
@@ -99,10 +95,8 @@ func NewWatcher(i *NewWatcherInput) *Watcher {
 		once:               i.Once,
 		blockQueryWaitTime: i.BlockQueryWaitTime,
 		failLookupErrors:   i.FailLookupErrors,
-		retryFuncConsul:    i.RetryFuncConsul,
 		retryFuncDefault:   i.RetryFuncDefault,
 		retryFuncVault:     i.RetryFuncVault,
-		retryFuncNomad:     i.RetryFuncNomad,
 	}
 	return w
 }
@@ -143,12 +137,8 @@ func (w *Watcher) Add(d dep.Dependency) (bool, error) {
 	// Choose the correct retry function based off of the dependency's type.
 	var retryFunc RetryFunc
 	switch d.Type() {
-	case dep.TypeConsul:
-		retryFunc = w.retryFuncConsul
 	case dep.TypeVault:
 		retryFunc = w.retryFuncVault
-	case dep.TypeNomad:
-		retryFunc = w.retryFuncNomad
 	default:
 		retryFunc = w.retryFuncDefault
 	}

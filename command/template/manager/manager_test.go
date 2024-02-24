@@ -10,41 +10,21 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/openbao/openbao/command/template/config"
 	dep "github.com/openbao/openbao/command/template/dependency"
-	"github.com/openbao/openbao/command/template/template"
 	"github.com/openbao/openbao/command/template/test"
 )
 
-var (
-	testConsul  *testutil.TestServer
-	testClients *dep.ClientSet
-)
+var testClients *dep.ClientSet
 
 func TestMain(m *testing.M) {
 	log.SetOutput(io.Discard)
 	tb := &test.TestingTB{}
-	consul, err := testutil.NewTestServerConfigT(tb,
-		func(c *testutil.TestServerConfig) {
-			c.LogLevel = "warn"
-			c.Stdout = io.Discard
-			c.Stderr = io.Discard
-		})
-	if err != nil {
-		log.Fatal(fmt.Errorf("failed to start consul server: %v", err))
-	}
-	testConsul = consul
 
-	consulConfig := config.DefaultConsulConfig()
-	consulConfig.Address = &testConsul.HTTPAddr
 	clients, err := NewClientSet(&config.Config{
-		Consul: consulConfig,
-		Vault:  config.DefaultVaultConfig(),
-		Nomad:  config.DefaultNomadConfig(),
+		Vault: config.DefaultVaultConfig(),
 	})
 	if err != nil {
-		testConsul.Stop()
 		log.Fatal(fmt.Errorf("failed to start clients: %v", err))
 	}
 	testClients = clients
@@ -56,7 +36,6 @@ func TestMain(m *testing.M) {
 			// it, the panic will cause the server to remain running in the
 			// background. Here we catch the panic and the re-raise it.
 			if r := recover(); r != nil {
-				testConsul.Stop()
 				panic(r)
 			}
 		}()
@@ -67,16 +46,5 @@ func TestMain(m *testing.M) {
 	exit := <-exitCh
 
 	tb.DoCleanup()
-	testConsul.Stop()
 	os.Exit(exit)
-}
-
-func testDedupManager(t *testing.T, tmpls []*template.Template) *DedupManager {
-	brain := template.NewBrain()
-	dedupConfig := config.TestConfig(nil).Dedup
-	dedup, err := NewDedupManager(dedupConfig, testClients, brain, tmpls)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dedup
 }

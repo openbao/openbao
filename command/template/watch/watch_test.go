@@ -64,20 +64,21 @@ func (v vaultServer) Stop() error {
 }
 
 func newTestVault() *vaultServer {
-	path, err := exec.LookPath("vault")
+	// TODO: convert to vault.NewTestCluster(...)
+	path, err := exec.LookPath("bao")
 	if err != nil || path == "" {
-		panic("vault not found on $PATH")
+		panic("bao not found on $PATH")
 	}
 	args := []string{
 		"server", "-dev", "-dev-root-token-id", vaultToken,
 		"-dev-no-store-token",
 	}
-	cmd := exec.Command("vault", args...)
+	cmd := exec.Command("bao", args...)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 
 	if err := cmd.Start(); err != nil {
-		panic("vault failed to start: " + err.Error())
+		panic("bao failed to start: " + err.Error())
 	}
 	return &vaultServer{
 		cmd: cmd,
@@ -190,12 +191,12 @@ func runVaultAgent(clients *dep.ClientSet, role_id string) string {
 	args := []string{
 		"agent", "-exit-after-auth", "-config=" + vaconf,
 	}
-	cmd := exec.Command("vault", args...)
+	cmd := exec.Command("bao", args...)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 
 	if err := cmd.Run(); err != nil {
-		panic("vault agent failed to run: " + err.Error())
+		panic("bao agent failed to run: " + err.Error())
 	}
 	return tokenFile
 }

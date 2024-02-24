@@ -4,15 +4,11 @@
 package dependency
 
 import (
-	"fmt"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"time"
-
-	consulapi "github.com/hashicorp/consul/api"
-	nomadapi "github.com/hashicorp/nomad/api"
 )
 
 const (
@@ -36,10 +32,8 @@ const (
 type Type int
 
 const (
-	TypeConsul Type = iota
-	TypeVault
+	TypeVault Type = iota
 	TypeLocal
-	TypeNomad
 )
 
 // Dependency is an interface for a dependency that Consul Template is capable
@@ -68,9 +62,6 @@ type QueryOptions struct {
 	VaultGrace        time.Duration
 	WaitIndex         uint64
 	WaitTime          time.Duration
-	ConsulPeer        string
-	ConsulPartition   string
-	ConsulNamespace   string
 }
 
 func (q *QueryOptions) Merge(o *QueryOptions) *QueryOptions {
@@ -122,77 +113,7 @@ func (q *QueryOptions) Merge(o *QueryOptions) *QueryOptions {
 		r.WaitTime = o.WaitTime
 	}
 
-	if o.ConsulNamespace != "" {
-		r.ConsulNamespace = o.ConsulNamespace
-	}
-
-	if o.ConsulPartition != "" {
-		r.ConsulPartition = o.ConsulPartition
-	}
-
-	if o.ConsulPeer != "" {
-		r.ConsulPeer = o.ConsulPeer
-	}
-
 	return &r
-}
-
-func (q *QueryOptions) ToConsulOpts() *consulapi.QueryOptions {
-	return &consulapi.QueryOptions{
-		AllowStale:        q.AllowStale,
-		Datacenter:        q.Datacenter,
-		Namespace:         q.ConsulNamespace,
-		Partition:         q.ConsulPartition,
-		Peer:              q.ConsulPeer,
-		Near:              q.Near,
-		RequireConsistent: q.RequireConsistent,
-		WaitIndex:         q.WaitIndex,
-		WaitTime:          q.WaitTime,
-	}
-}
-
-// GetConsulQueryOpts parses optional consul query params into key pairs.
-// supports namespace, peer and partition params
-func GetConsulQueryOpts(queryMap map[string]string, endpointLabel string) (url.Values, error) {
-	queryParams := url.Values{}
-
-	if queryRaw := queryMap["query"]; queryRaw != "" {
-		var err error
-		queryParams, err = url.ParseQuery(queryRaw)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"%s: invalid query: %q: %s", endpointLabel, queryRaw, err)
-		}
-		// Validate keys.
-		for key := range queryParams {
-			switch key {
-			case QueryNamespace,
-				QueryPeer,
-				QueryPartition:
-			default:
-				return nil,
-					fmt.Errorf("%s: invalid query parameter key %q in query %q: supported keys: %s,%s,%s", endpointLabel, key, queryRaw, QueryNamespace, QueryPeer, QueryPartition)
-			}
-		}
-	}
-
-	return queryParams, nil
-}
-
-func (q *QueryOptions) ToNomadOpts() *nomadapi.QueryOptions {
-	var params map[string]string
-	if q.Choose != "" {
-		params = map[string]string{
-			"choose": q.Choose,
-		}
-	}
-	return &nomadapi.QueryOptions{
-		AllowStale: q.AllowStale,
-		Region:     q.Region,
-		Params:     params,
-		WaitIndex:  q.WaitIndex,
-		WaitTime:   q.WaitTime,
-	}
 }
 
 func (q *QueryOptions) String() string {
@@ -208,18 +129,6 @@ func (q *QueryOptions) String() string {
 
 	if q.Region != "" {
 		u.Add("region", q.Region)
-	}
-
-	if q.ConsulNamespace != "" {
-		u.Add(QueryNamespace, q.ConsulNamespace)
-	}
-
-	if q.ConsulPeer != "" {
-		u.Add(QueryPeer, q.ConsulPeer)
-	}
-
-	if q.ConsulPartition != "" {
-		u.Add(QueryPartition, q.ConsulPartition)
 	}
 
 	if q.Near != "" {

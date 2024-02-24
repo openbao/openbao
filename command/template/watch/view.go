@@ -18,7 +18,7 @@ import (
 var errLookup = fmt.Errorf("lookup error")
 
 // View is a representation of a Dependency and the most recent data it has
-// received from Consul.
+// received from OpenBao.
 type View struct {
 	// dependency is the dependency that is associated with this View
 	dependency dep.Dependency
@@ -27,7 +27,7 @@ type View struct {
 	// directly to the dependency.
 	clients *dep.ClientSet
 
-	// data is the most-recently-received data from Consul for this View. It is
+	// data is the most-recently-received data from OpenBao for this View. It is
 	// accompanied by a series of locks and booleans to ensure consistency.
 	dataLock     sync.RWMutex
 	data         interface{}
@@ -101,14 +101,14 @@ func (v *View) Dependency() dep.Dependency {
 	return v.dependency
 }
 
-// Data returns the most-recently-received data from Consul for this View.
+// Data returns the most-recently-received data from OpenBao for this View.
 func (v *View) Data() interface{} {
 	v.dataLock.RLock()
 	defer v.dataLock.RUnlock()
 	return v.data
 }
 
-// DataAndLastIndex returns the most-recently-received data from Consul for
+// DataAndLastIndex returns the most-recently-received data from OpenBao for
 // this view, along with the last index. This is atomic so you will get the
 // index that goes with the data you are fetching.
 func (v *View) DataAndLastIndex() (interface{}, uint64) {
@@ -117,7 +117,7 @@ func (v *View) DataAndLastIndex() (interface{}, uint64) {
 	return v.data, v.lastIndex
 }
 
-// poll queries the Consul instance for data using the fetch function, but also
+// poll queries the OpenBao instance for data using the fetch function, but also
 // accounts for interrupts on the interrupt channel. This allows the poll
 // function to be fired in a goroutine, but then halted even if the fetch
 // function is in the middle of a blocking query.
@@ -153,7 +153,7 @@ func (v *View) poll(viewCh chan<- *View, errCh chan<- error) {
 			// We successfully received a non-error response from the server. This
 			// does not mean we have data (that's dataCh's job), but rather this
 			// just resets the counter indicating we communicated successfully. For
-			// example, Consul make have an outage, but when it returns, the view
+			// example, OpenBao make have an outage, but when it returns, the view
 			// is unchanged. We have to reset the counter retries, but not update the
 			// actual template.
 			log.Printf("[TRACE] (view) %s successful contact, resetting retries", v.dependency)
@@ -190,7 +190,7 @@ func (v *View) poll(viewCh chan<- *View, errCh chan<- error) {
 	}
 }
 
-// fetch queries the Consul instance for the attached dependency. This API
+// fetch queries the OpenBao instance for the attached dependency. This API
 // promises that either data will be written to doneCh or an error will be
 // written to errCh. It is designed to be run in a goroutine that selects the
 // result of doneCh and errCh. It is assumed that only one instance of fetch
@@ -206,7 +206,7 @@ func (v *View) fetch(doneCh, successCh chan<- struct{}, errCh chan<- error) {
 	firstLoop := true // to disable rate limiting on first pass
 	for {
 		// If the view was stopped, short-circuit this loop. This prevents a bug
-		// where a view can get "lost" in the event Consul Template is reloaded.
+		// where a view can get "lost" in the event Template is reloaded.
 		select {
 		case <-v.stopCh:
 			return

@@ -281,11 +281,6 @@ func redactinator(used *dep.Set, b *Brain, err error) error {
 					pairs = append(pairs, fmt.Sprintf("%v", v), "[redacted]")
 				}
 			}
-			if nVar, ok := data.(*dep.NomadVarItems); ok {
-				for _, v := range nVar.Values() {
-					pairs = append(pairs, fmt.Sprintf("%v", v), "[redacted]")
-				}
-			}
 		}
 	}
 	return fmt.Errorf(strings.NewReplacer(pairs...).Replace(err.Error()))
@@ -309,43 +304,12 @@ type funcMapInput struct {
 func funcMap(i *funcMapInput) template.FuncMap {
 	var scratch Scratch
 
-	// Get the Nomad default namespace from the client config
-	// this is done here rather than in the function to prevent an
-	// import cycle between the dependency and config packages
-	nomadNS := "default"
-	if i.config != nil && i.config.Nomad != nil && *(i.config.Nomad).Namespace != "" {
-		nomadNS = *(i.config.Nomad).Namespace
-	}
-
 	r := template.FuncMap{
 		// API functions
-		"datacenters":  datacentersFunc(i.brain, i.used, i.missing),
-		"file":         fileFunc(i.brain, i.used, i.missing, i.sandboxPath),
-		"key":          keyFunc(i.brain, i.used, i.missing),
-		"keyExists":    keyExistsFunc(i.brain, i.used, i.missing),
-		"keyOrDefault": keyWithDefaultFunc(i.brain, i.used, i.missing),
-		"ls":           lsFunc(i.brain, i.used, i.missing, true),
-		"safeLs":       safeLsFunc(i.brain, i.used, i.missing),
-		"node":         nodeFunc(i.brain, i.used, i.missing),
-		"nodes":        nodesFunc(i.brain, i.used, i.missing),
-		"secret":       secretFunc(i.brain, i.used, i.missing),
-		"secrets":      secretsFunc(i.brain, i.used, i.missing),
-		"service":      serviceFunc(i.brain, i.used, i.missing),
-		"connect":      connectFunc(i.brain, i.used, i.missing),
-		"services":     servicesFunc(i.brain, i.used, i.missing),
-		"tree":         treeFunc(i.brain, i.used, i.missing, true),
-		"safeTree":     safeTreeFunc(i.brain, i.used, i.missing),
-		"caRoots":      connectCARootsFunc(i.brain, i.used, i.missing),
-		"caLeaf":       connectLeafFunc(i.brain, i.used, i.missing),
-		"pkiCert":      pkiCertFunc(i.brain, i.used, i.missing, i.destination),
-
-		// Nomad Functions.
-		"nomadServices":    nomadServicesFunc(i.brain, i.used, i.missing),
-		"nomadService":     nomadServiceFunc(i.brain, i.used, i.missing),
-		"nomadVarList":     nomadVariablesFunc(i.brain, i.used, i.missing, nomadNS, true),
-		"nomadVarListSafe": nomadSafeVariablesFunc(i.brain, i.used, i.missing, nomadNS),
-		"nomadVar":         nomadVariableItemsFunc(i.brain, i.used, i.missing, nomadNS),
-		"nomadVarExists":   nomadVariableExistsFunc(i.brain, i.used, i.missing, nomadNS),
+		"file":    fileFunc(i.brain, i.used, i.missing, i.sandboxPath),
+		"secret":  secretFunc(i.brain, i.used, i.missing),
+		"secrets": secretsFunc(i.brain, i.used, i.missing),
+		"pkiCert": pkiCertFunc(i.brain, i.used, i.missing, i.destination),
 
 		// Scratch
 		"scratch": func() *Scratch { return &scratch },
@@ -355,8 +319,6 @@ func funcMap(i *funcMapInput) template.FuncMap {
 		"base64Encode":          base64Encode,
 		"base64URLDecode":       base64URLDecode,
 		"base64URLEncode":       base64URLEncode,
-		"byKey":                 byKey,
-		"byTag":                 byTag,
 		"contains":              contains,
 		"containsAll":           containsSomeFunc(true, true),
 		"containsAny":           containsSomeFunc(false, false),
@@ -366,7 +328,6 @@ func funcMap(i *funcMapInput) template.FuncMap {
 		"mustEnv":               mustEnvFunc(i.env),
 		"envOrDefault":          envWithDefaultFunc(i.env),
 		"executeTemplate":       executeTemplateFunc(i.newTmpl),
-		"explode":               explode,
 		"explodeMap":            explodeMap,
 		"mergeMap":              mergeMap,
 		"mergeMapWithOverride":  mergeMapWithOverride,
@@ -403,7 +364,6 @@ func funcMap(i *funcMapInput) template.FuncMap {
 		"toYAML":                toYAML,
 		"split":                 split,
 		"splitToMap":            splitToMap,
-		"byMeta":                byMeta,
 		"sockaddr":              sockaddr,
 		"writeToFile":           writeToFile,
 

@@ -256,7 +256,7 @@ type fakeDep struct{ name string }
 func (d fakeDep) String() string { return d.name }
 func (d fakeDep) CanShare() bool { return false }
 func (d fakeDep) Stop()          {}
-func (d fakeDep) Type() dep.Type { return dep.TypeConsul }
+func (d fakeDep) Type() dep.Type { return dep.TypeVault }
 func (d fakeDep) Fetch(*dep.ClientSet, *dep.QueryOptions) (interface{}, *dep.ResponseMetadata, error) {
 	return d.name, nil, nil
 }

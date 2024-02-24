@@ -50,270 +50,6 @@ func TestParse(t *testing.T) {
 		err  bool
 	}{
 		{
-			"consul_address",
-			`consul {
-				address = "1.2.3.4"
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Address: String("1.2.3.4"),
-				},
-			},
-			false,
-		},
-		{
-			"consul_auth",
-			`consul {
-				auth {
-					username = "username"
-					password = "password"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Auth: &AuthConfig{
-						Username: String("username"),
-						Password: String("password"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_retry",
-			`consul {
-				retry {
-					backoff  = "2s"
-					attempts = 10
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Retry: &RetryConfig{
-						Attempts: Int(10),
-						Backoff:  TimeDuration(2 * time.Second),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl",
-			`consul {
-				ssl {}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_enabled",
-			`consul {
-				ssl {
-					enabled = true
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						Enabled: Bool(true),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_verify",
-			`consul {
-				ssl {
-					verify = true
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						Verify: Bool(true),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_cert",
-			`consul {
-				ssl {
-					cert = "cert"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						Cert: String("cert"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_key",
-			`consul {
-				ssl {
-					key = "key"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						Key: String("key"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_ca_cert",
-			`consul {
-				ssl {
-					ca_cert = "ca_cert"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						CaCert: String("ca_cert"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_ca_path",
-			`consul {
-				ssl {
-					ca_path = "ca_path"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						CaPath: String("ca_path"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_ssl_server_name",
-			`consul {
-				ssl {
-					server_name = "server_name"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					SSL: &SSLConfig{
-						ServerName: String("server_name"),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_token",
-			`consul {
-				token = "token"
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Token: String("token"),
-				},
-			},
-			false,
-		},
-		{
-			"consul_transport_dial_keep_alive",
-			`consul {
-				transport {
-					dial_keep_alive = "10s"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Transport: &TransportConfig{
-						DialKeepAlive: TimeDuration(10 * time.Second),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_transport_dial_timeout",
-			`consul {
-				transport {
-					dial_timeout = "10s"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Transport: &TransportConfig{
-						DialTimeout: TimeDuration(10 * time.Second),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_transport_disable_keep_alives",
-			`consul {
-				transport {
-					disable_keep_alives = true
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Transport: &TransportConfig{
-						DisableKeepAlives: Bool(true),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_transport_max_idle_conns_per_host",
-			`consul {
-				transport {
-					max_idle_conns_per_host = 100
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Transport: &TransportConfig{
-						MaxIdleConnsPerHost: Int(100),
-					},
-				},
-			},
-			false,
-		},
-		{
-			"consul_transport_tls_handshake_timeout",
-			`consul {
-				transport {
-					tls_handshake_timeout = "30s"
-				}
-			}`,
-			&Config{
-				Consul: &ConsulConfig{
-					Transport: &TransportConfig{
-						TLSHandshakeTimeout: TimeDuration(30 * time.Second),
-					},
-				},
-			},
-			false,
-		},
-		{
 			"deduplicate",
 			`deduplicate {
 				enabled				= true
@@ -1767,80 +1503,6 @@ func TestParse(t *testing.T) {
 			nil,
 			true,
 		},
-		{
-			"mapstructure_error",
-			`consul = true`,
-			nil,
-			true,
-		},
-		{
-			"nomad",
-			`nomad {}`,
-			&Config{
-				Nomad: &NomadConfig{},
-			},
-			false,
-		},
-		{
-			"nomad_address",
-			`nomad {
-              address = "http://10.10.10.2:4646"
-            }`,
-			&Config{
-				Nomad: &NomadConfig{
-					Address: String("http://10.10.10.2:4646"),
-				},
-			},
-			false,
-		},
-		{
-			"nomad_namespace",
-			`nomad {
-              namespace = "platform"
-            }`,
-			&Config{
-				Nomad: &NomadConfig{
-					Namespace: String("platform"),
-				},
-			},
-			false,
-		},
-		{
-			"nomad_token",
-			`nomad {
-              token = "sssssshhhhhh"
-            }`,
-			&Config{
-				Nomad: &NomadConfig{
-					Token: String("sssssshhhhhh"),
-				},
-			},
-			false,
-		},
-		{
-			"nomad_auth_username",
-			`nomad {
-              auth_username = "admin"
-            }`,
-			&Config{
-				Nomad: &NomadConfig{
-					AuthUsername: String("admin"),
-				},
-			},
-			false,
-		},
-		{
-			"nomad_auth_password",
-			`nomad {
-              auth_password = "admin"
-            }`,
-			&Config{
-				Nomad: &NomadConfig{
-					AuthPassword: String("admin"),
-				},
-			},
-			false,
-		},
 	}
 
 	for i, tc := range cases {
@@ -2079,24 +1741,6 @@ func TestConfig_Merge(t *testing.T) {
 			&Config{},
 			&Config{},
 			&Config{},
-		},
-		{
-			"consul",
-			&Config{
-				Consul: &ConsulConfig{
-					Address: String("consul"),
-				},
-			},
-			&Config{
-				Consul: &ConsulConfig{
-					Address: String("consul-diff"),
-				},
-			},
-			&Config{
-				Consul: &ConsulConfig{
-					Address: String("consul-diff"),
-				},
-			},
 		},
 		{
 			"deduplicate",
@@ -2367,7 +2011,7 @@ func TestFromPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := []byte(`
-		consul {
+		vault {
 			address = "1.2.3.4"
 		}
 	`)
@@ -2379,7 +2023,7 @@ func TestFromPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	d = []byte(`
-		consul {
+		vault {
 			token = "token"
 		}
 	`)
@@ -2415,7 +2059,7 @@ func TestFromPath(t *testing.T) {
 			"config_dir",
 			configDir,
 			&Config{
-				Consul: &ConsulConfig{
+				Vault: &VaultConfig{
 					Address: String("1.2.3.4"),
 					Token:   String("token"),
 				},
@@ -2445,34 +2089,6 @@ func TestDefaultConfig(t *testing.T) {
 		e   *Config
 		err bool
 	}{
-		{
-			"CONSUL_HTTP_ADDR",
-			"1.2.3.4",
-			&Config{
-				Consul: &ConsulConfig{
-					Address: String("1.2.3.4"),
-				},
-			},
-			false,
-		},
-		{
-			"CONSUL_TEMPLATE_LOG_LEVEL",
-			"DEBUG",
-			&Config{
-				LogLevel: String("DEBUG"),
-			},
-			false,
-		},
-		{
-			"CONSUL_TOKEN",
-			"token",
-			&Config{
-				Consul: &ConsulConfig{
-					Token: String("token"),
-				},
-			},
-			false,
-		},
 		{
 			"VAULT_ADDR",
 			"http://1.2.3.4:8200",

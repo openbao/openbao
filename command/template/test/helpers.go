@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul/sdk/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,9 +82,6 @@ func WaitForContents(t *testing.T, d time.Duration, p, c string) {
 	}
 }
 
-// Meets consul/sdk/testutil/TestingTB interface
-var _ testutil.TestingTB = (*TestingTB)(nil)
-
 type TestingTB struct {
 	cleanup func()
 	sync.Mutex
@@ -94,7 +90,9 @@ type TestingTB struct {
 func (t *TestingTB) DoCleanup() {
 	t.Lock()
 	defer t.Unlock()
-	t.cleanup()
+	if t.cleanup != nil {
+		t.cleanup()
+	}
 }
 
 func (*TestingTB) Failed() bool                  { return false }

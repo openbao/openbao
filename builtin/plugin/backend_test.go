@@ -60,11 +60,11 @@ func TestBackend_Factory(t *testing.T) {
 
 func TestBackend_PluginMain(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" && os.Getenv(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -88,11 +88,11 @@ func TestBackend_PluginMain(t *testing.T) {
 
 func TestBackend_PluginMain_Multiplexed(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" && os.Getenv(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}

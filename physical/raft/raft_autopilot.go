@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 	"go.uber.org/atomic"
 )
 
@@ -812,7 +812,7 @@ func (b *RaftBackend) DisableAutopilot() {
 // it. If autopilot is disabled, this function does nothing.
 func (b *RaftBackend) SetupAutopilot(ctx context.Context, storageConfig *AutopilotConfig, followerStates *FollowerStates, disable bool) {
 	b.l.Lock()
-	if disable || os.Getenv("VAULT_RAFT_AUTOPILOT_DISABLE") != "" {
+	if disable || api.ReadBaoVariable("BAO_RAFT_AUTOPILOT_DISABLE") != "" {
 		b.disableAutopilot = true
 	}
 

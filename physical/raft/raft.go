@@ -31,6 +31,7 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	snapshot "github.com/hashicorp/raft-snapshot"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
@@ -44,13 +45,13 @@ import (
 
 const (
 	// EnvVaultRaftNodeID is used to fetch the Raft node ID from the environment.
-	EnvVaultRaftNodeID = "VAULT_RAFT_NODE_ID"
+	EnvVaultRaftNodeID = "BAO_RAFT_NODE_ID"
 
 	// EnvVaultRaftPath is used to fetch the path where Raft data is stored from the environment.
-	EnvVaultRaftPath = "VAULT_RAFT_PATH"
+	EnvVaultRaftPath = "BAO_RAFT_PATH"
 
 	// EnvVaultRaftNonVoter is used to override the non_voter config option, telling Vault to join as a non-voter (i.e. read replica).
-	EnvVaultRaftNonVoter  = "VAULT_RAFT_RETRY_JOIN_AS_NON_VOTER"
+	EnvVaultRaftNonVoter  = "BAO_RAFT_RETRY_JOIN_AS_NON_VOTER"
 	raftNonVoterConfigKey = "retry_join_as_non_voter"
 )
 
@@ -314,7 +315,7 @@ func EnsurePath(path string, dir bool) error {
 
 // NewRaftBackend constructs a RaftBackend using the given directory
 func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	path := os.Getenv(EnvVaultRaftPath)
+	path := api.ReadBaoVariable(EnvVaultRaftPath)
 	if path == "" {
 		pathFromConfig, ok := conf["path"]
 		if !ok {
@@ -326,7 +327,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 	var localID string
 	{
 		// Determine the local node ID from the environment.
-		if raftNodeID := os.Getenv(EnvVaultRaftNodeID); raftNodeID != "" {
+		if raftNodeID := api.ReadBaoVariable(EnvVaultRaftNodeID); raftNodeID != "" {
 			localID = raftNodeID
 		}
 
@@ -488,7 +489,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 	}
 
 	var nonVoter bool
-	if v := os.Getenv(EnvVaultRaftNonVoter); v != "" {
+	if v := api.ReadBaoVariable(EnvVaultRaftNonVoter); v != "" {
 		// Consistent with handling of other raft boolean env vars
 		// VAULT_RAFT_AUTOPILOT_DISABLE and VAULT_RAFT_FREELIST_SYNC
 		nonVoter = true
@@ -1941,23 +1942,23 @@ func boltOptions(path string) *bolt.Options {
 		MmapFlags:      getMmapFlags(path),
 	}
 
-	if os.Getenv("VAULT_RAFT_FREELIST_TYPE") == "array" {
+	if api.ReadBaoVariable("BAO_RAFT_FREELIST_TYPE") == "array" {
 		o.FreelistType = bolt.FreelistArrayType
 	}
 
-	if os.Getenv("VAULT_RAFT_FREELIST_SYNC") != "" {
+	if api.ReadBaoVariable("BAO_RAFT_FREELIST_SYNC") != "" {
 		o.NoFreelistSync = false
 	}
 
 	// By default, we want to set InitialMmapSize to 100GB, but only on 64bit platforms.
-	// Otherwise, we set it to whatever the value of VAULT_RAFT_INITIAL_MMAP_SIZE
+	// Otherwise, we set it to whatever the value of BAO_RAFT_INITIAL_MMAP_SIZE
 	// is, assuming it can be parsed as an int. Bolt itself sets this to 0 by default,
 	// so if users are wanting to turn this off, they can also set it to 0. Setting it
 	// to a negative value is the same as not setting it at all.
-	if os.Getenv("VAULT_RAFT_INITIAL_MMAP_SIZE") == "" {
+	if api.ReadBaoVariable("BAO_RAFT_INITIAL_MMAP_SIZE") == "" {
 		o.InitialMmapSize = initialMmapSize
 	} else {
-		imms, err := strconv.Atoi(os.Getenv("VAULT_RAFT_INITIAL_MMAP_SIZE"))
+		imms, err := strconv.Atoi(api.ReadBaoVariable("BAO_RAFT_INITIAL_MMAP_SIZE"))
 
 		// If there's an error here, it means they passed something that's not convertible to
 		// a number. Rather than fail startup, just ignore it.

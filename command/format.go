@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -82,7 +81,7 @@ func Format(ui cli.Ui) string {
 		return ui.format
 	}
 
-	format := os.Getenv(EnvVaultFormat)
+	format := api.ReadBaoVariable(EnvVaultFormat)
 	if format == "" {
 		format = "table"
 	}

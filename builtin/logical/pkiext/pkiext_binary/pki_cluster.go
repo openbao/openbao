@@ -6,7 +6,6 @@ package pkiext_binary
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -23,9 +22,9 @@ type VaultPkiCluster struct {
 }
 
 func NewVaultPkiCluster(t *testing.T) *VaultPkiCluster {
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
-		t.Skip("only running docker test when $VAULT_BINARY present")
+		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
 	opts := &docker.DockerClusterOptions{

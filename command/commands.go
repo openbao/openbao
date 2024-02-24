@@ -47,27 +47,27 @@ import (
 
 const (
 	// EnvVaultCLINoColor is an env var that toggles colored UI output.
-	EnvVaultCLINoColor = `VAULT_CLI_NO_COLOR`
+	EnvVaultCLINoColor = `BAO_CLI_NO_COLOR`
 	// EnvVaultFormat is the output format
-	EnvVaultFormat = `VAULT_FORMAT`
+	EnvVaultFormat = `BAO_FORMAT`
 	// EnvVaultLicense is an env var used in Vault Enterprise to provide a license blob
-	EnvVaultLicense = "VAULT_LICENSE"
+	EnvVaultLicense = "BAO_LICENSE"
 	// EnvVaultLicensePath is an env var used in Vault Enterprise to provide a
 	// path to a license file on disk
-	EnvVaultLicensePath = "VAULT_LICENSE_PATH"
+	EnvVaultLicensePath = "BAO_LICENSE_PATH"
 	// EnvVaultDetailed is to output detailed information (e.g., ListResponseWithInfo).
-	EnvVaultDetailed = `VAULT_DETAILED`
+	EnvVaultDetailed = `BAO_DETAILED`
 	// EnvVaultLogFormat is used to specify the log format. Supported values are "standard" and "json"
-	EnvVaultLogFormat = "VAULT_LOG_FORMAT"
+	EnvVaultLogFormat = "BAO_LOG_FORMAT"
 	// EnvVaultLogLevel is used to specify the log level applied to logging
 	// Supported log levels: Trace, Debug, Error, Warn, Info
-	EnvVaultLogLevel = "VAULT_LOG_LEVEL"
+	EnvVaultLogLevel = "BAO_LOG_LEVEL"
 	// EnvVaultExperiments defines the experiments to enable for a server as a
 	// comma separated list. See experiments.ValidExperiments() for the list of
 	// valid experiments. Not mutable or persisted in storage, only read and
 	// logged at startup _per node_. This was initially introduced for the events
 	// system being developed over multiple release cycles.
-	EnvVaultExperiments = "VAULT_EXPERIMENTS"
+	EnvVaultExperiments = "BAO_EXPERIMENTS"
 
 	// flagNameAddress is the flag used in the base command to read in the
 	// address of the Vault server.

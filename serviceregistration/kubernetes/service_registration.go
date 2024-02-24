@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/serviceregistration/kubernetes/client"
 )
@@ -109,7 +110,7 @@ func (r *serviceRegistration) NotifyInitializedStateChange(isInitialized bool) e
 func getRequiredField(logger hclog.Logger, config map[string]string, envVar, configParam string) (string, error) {
 	value := ""
 	switch {
-	case os.Getenv(envVar) != "":
+	case api.ReadBaoVariable(envVar) != "":
 		value = os.Getenv(envVar)
 	case config[configParam] != "":
 		value = config[configParam]

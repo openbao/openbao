@@ -11,16 +11,17 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/hclutil"
 )
 
 const (
 	// DefaultConfigPath is the default path to the configuration file
-	DefaultConfigPath = "~/.vault"
+	DefaultConfigPath = "~/.bao"
 
 	// ConfigPathEnv is the environment variable that can be used to
 	// override where the Vault configuration is.
-	ConfigPathEnv = "VAULT_CONFIG_PATH"
+	ConfigPathEnv = "BAO_CONFIG_PATH"
 )
 
 // Config is the CLI configuration for Vault that can be specified via
@@ -52,7 +53,7 @@ func LoadConfig(path string) (*DefaultConfig, error) {
 	if path == "" {
 		path = DefaultConfigPath
 	}
-	if v := os.Getenv(ConfigPathEnv); v != "" {
+	if v := api.ReadBaoVariable(ConfigPathEnv); v != "" {
 		path = v
 	}
 

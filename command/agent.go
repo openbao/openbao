@@ -249,7 +249,7 @@ func (c *AgentCommand) Run(args []string) int {
 	// Tests might not want to start a vault server and just want to verify
 	// the configuration.
 	if c.flagTestVerifyOnly {
-		if os.Getenv("VAULT_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
+		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
 				pretty.Sprint(*c.config)))
@@ -374,7 +374,7 @@ func (c *AgentCommand) Run(args []string) int {
 	// We do this after auto-auth has been configured, because we don't want to
 	// confuse the issue of retries for auth failures which have their own
 	// config and are handled a bit differently.
-	if os.Getenv(api.EnvVaultMaxRetries) == "" {
+	if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 		client.SetMaxRetries(ctconfig.DefaultRetryAttempts)
 		if config.Vault != nil {
 			if config.Vault.Retry != nil {

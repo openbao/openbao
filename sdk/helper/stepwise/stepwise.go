@@ -6,7 +6,6 @@ package stepwise
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
@@ -15,7 +14,7 @@ import (
 )
 
 // TestEnvVar must be set to a non-empty value for acceptance tests to run.
-const TestEnvVar = "VAULT_ACC"
+const TestEnvVar = "BAO_ACC"
 
 // Operation defines operations each step could perform. These are
 // intentionally redefined from the logical package in the SDK, so users
@@ -296,7 +295,7 @@ func makeRequest(tt TestT, env Environment, step Step) (*api.Secret, error) {
 
 func checkShouldRun(tt TestT) {
 	tt.Helper()
-	if os.Getenv(TestEnvVar) == "" {
+	if api.ReadBaoVariable(TestEnvVar) == "" {
 		tt.Skip(fmt.Sprintf(
 			"Acceptance tests skipped unless env '%s' set",
 			TestEnvVar))

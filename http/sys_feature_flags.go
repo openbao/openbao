@@ -6,8 +6,8 @@ package http
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -16,11 +16,11 @@ type FeatureFlagsResponse struct {
 }
 
 var FeatureFlag_EnvVariables = [...]string{
-	"VAULT_CLOUD_ADMIN_NAMESPACE",
+	"BAO_CLOUD_ADMIN_NAMESPACE",
 }
 
 func featureFlagIsSet(name string) bool {
-	switch os.Getenv(name) {
+	switch api.ReadBaoVariable(name) {
 	case "", "0":
 		return false
 	default:

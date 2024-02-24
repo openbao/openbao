@@ -432,9 +432,6 @@ func NewDockerCluster(ctx context.Context, opts *DockerClusterOptions) (*DockerC
 	if opts.Logger == nil {
 		opts.Logger = log.NewNullLogger()
 	}
-	if opts.VaultLicense == "" {
-		opts.VaultLicense = os.Getenv(testcluster.EnvVaultLicenseCI)
-	}
 
 	dc := &DockerCluster{
 		DockerAPI:   api,

@@ -98,5 +98,5 @@ func usernameFromEnv() string {
 }
 
 func passwordFromEnv() string {
-	return os.Getenv("VAULT_LDAP_PASSWORD")
+	return api.ReadBaoVariable("BAO_LDAP_PASSWORD")
 }

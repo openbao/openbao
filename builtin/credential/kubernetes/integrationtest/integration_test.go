@@ -51,8 +51,8 @@ func run(m *testing.M) int {
 	}
 	defer close()
 
-	os.Setenv("VAULT_ADDR", fmt.Sprintf("http://127.0.0.1:%d", localPort))
-	os.Setenv("VAULT_TOKEN", "root")
+	os.Setenv("BAO_ADDR", fmt.Sprintf("http://127.0.0.1:%d", localPort))
+	os.Setenv("BAO_TOKEN", "root")
 
 	return m.Run()
 }

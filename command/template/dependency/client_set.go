@@ -16,8 +16,8 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	nomadapi "github.com/hashicorp/nomad/api"
-	vaultapi "github.com/hashicorp/vault/api"
-	vaultkubernetesauth "github.com/hashicorp/vault/api/auth/kubernetes"
+	vaultapi "github.com/openbao/openbao/api"
+	vaultkubernetesauth "github.com/openbao/openbao/api/auth/kubernetes"
 )
 
 // ClientSet is a collection of clients that dependencies use to communicate

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	dep "github.com/hashicorp/consul-template/dependency"
 	"github.com/hashicorp/consul/api"
+	dep "github.com/openbao/openbao/command/template/dependency"
 	"github.com/stretchr/testify/require"
 )
 

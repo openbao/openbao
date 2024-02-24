@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	cnf "github.com/hashicorp/consul-template/config"
+	cnf "github.com/openbao/openbao/command/template/config"
 
 	gsyslog "github.com/hashicorp/go-syslog"
 	"github.com/hashicorp/logutils"

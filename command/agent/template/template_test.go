@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/command/agentproxyshared"
+	ctconfig "github.com/openbao/openbao/command/template/config"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/helper/logging"

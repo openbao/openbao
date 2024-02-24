@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	dep "github.com/hashicorp/consul-template/dependency"
+	dep "github.com/openbao/openbao/command/template/dependency"
 )
 
 // nomadServicesFunc returns or accumulates a list of service registration

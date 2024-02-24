@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	dep "github.com/hashicorp/consul-template/dependency"
+	dep "github.com/openbao/openbao/command/template/dependency"
 )
 
 // TestDep is a special dependency that does not actually speaks to a server.

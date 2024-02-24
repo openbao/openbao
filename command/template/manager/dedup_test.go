@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul-template/dependency"
-	"github.com/hashicorp/consul-template/template"
+	"github.com/openbao/openbao/command/template/dependency"
+	"github.com/openbao/openbao/command/template/template"
 )
 
 func TestDedup_StartStop(t *testing.T) {

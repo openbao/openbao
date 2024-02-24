@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/consul-template/renderer"
+	"github.com/openbao/openbao/command/template/renderer"
 	"github.com/stretchr/testify/assert"
 )
 

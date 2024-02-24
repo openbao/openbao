@@ -5,9 +5,9 @@ import (
 	"io"
 	"strings"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
-	ctlogging "github.com/hashicorp/consul-template/logging"
 	"github.com/hashicorp/go-hclog"
+	ctconfig "github.com/openbao/openbao/command/template/config"
+	ctlogging "github.com/openbao/openbao/command/template/logging"
 
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/sdk/helper/pointerutil"

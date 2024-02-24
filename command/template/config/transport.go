@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/consul-template/dependency"
+	"github.com/openbao/openbao/command/template/dependency"
 )
 
 const (

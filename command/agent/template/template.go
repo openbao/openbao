@@ -16,9 +16,9 @@ import (
 
 	"go.uber.org/atomic"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
-	"github.com/hashicorp/consul-template/manager"
 	"github.com/hashicorp/go-hclog"
+	ctconfig "github.com/openbao/openbao/command/template/config"
+	"github.com/openbao/openbao/command/template/manager"
 
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/command/agent/internal/ctmanager"

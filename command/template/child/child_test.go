@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul-template/signals"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/command/template/signals"
 
 	"github.com/hashicorp/go-gatedio"
 	"golang.org/x/sys/unix"

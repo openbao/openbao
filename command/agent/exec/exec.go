@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/consul-template/child"
-	ctconfig "github.com/hashicorp/consul-template/config"
-	"github.com/hashicorp/consul-template/manager"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/command/template/child"
+	ctconfig "github.com/openbao/openbao/command/template/config"
+	"github.com/openbao/openbao/command/template/manager"
 	"golang.org/x/exp/slices"
 
 	"github.com/openbao/openbao/command/agent/config"

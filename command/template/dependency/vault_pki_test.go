@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/consul-template/renderer"
 	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/command/template/renderer"
 )
 
 func Test_VaultPKI_uniqueID(t *testing.T) {

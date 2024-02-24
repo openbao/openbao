@@ -27,10 +27,10 @@ import (
 
 	"github.com/BurntSushi/toml"
 	spewLib "github.com/davecgh/go-spew/spew"
-	dep "github.com/hashicorp/consul-template/dependency"
 	"github.com/hashicorp/consul/api"
 	socktmpl "github.com/hashicorp/go-sockaddr/template"
 	"github.com/imdario/mergo"
+	dep "github.com/openbao/openbao/command/template/dependency"
 	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

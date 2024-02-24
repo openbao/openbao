@@ -10,11 +10,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hashicorp/consul-template/config"
-	dep "github.com/hashicorp/consul-template/dependency"
-	"github.com/hashicorp/consul-template/template"
-	"github.com/hashicorp/consul-template/test"
 	"github.com/hashicorp/consul/sdk/testutil"
+	"github.com/openbao/openbao/command/template/config"
+	dep "github.com/openbao/openbao/command/template/dependency"
+	"github.com/openbao/openbao/command/template/template"
+	"github.com/openbao/openbao/command/template/test"
 )
 
 var (

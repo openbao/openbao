@@ -18,7 +18,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -36,6 +35,7 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/sink/inmem"
 	"github.com/openbao/openbao/command/agentproxyshared/winsvc"
 	proxyConfig "github.com/openbao/openbao/command/proxy/config"
+	ctconfig "github.com/openbao/openbao/command/template/config"
 	"github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/useragent"

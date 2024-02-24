@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/consul-template/config"
-	"github.com/hashicorp/consul-template/logging"
-	"github.com/hashicorp/consul-template/manager"
-	"github.com/hashicorp/consul-template/service_os"
-	"github.com/hashicorp/consul-template/signals"
-	"github.com/hashicorp/consul-template/version"
+	"github.com/openbao/openbao/command/template/config"
+	"github.com/openbao/openbao/command/template/logging"
+	"github.com/openbao/openbao/command/template/manager"
+	"github.com/openbao/openbao/command/template/service_os"
+	"github.com/openbao/openbao/command/template/signals"
+	"github.com/openbao/openbao/command/template/version"
 )
 
 // Exit codes are int values that represent an exit code for a particular error.

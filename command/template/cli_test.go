@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul-template/config"
-	"github.com/hashicorp/consul-template/signals"
-	"github.com/hashicorp/consul-template/test"
 	gatedio "github.com/hashicorp/go-gatedio"
+	"github.com/openbao/openbao/command/template/config"
+	"github.com/openbao/openbao/command/template/signals"
+	"github.com/openbao/openbao/command/template/test"
 )
 
 func TestCLI_ParseFlags(t *testing.T) {

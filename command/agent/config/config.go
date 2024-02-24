@@ -15,13 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
-	ctsignals "github.com/hashicorp/consul-template/signals"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
+	ctconfig "github.com/openbao/openbao/command/template/config"
+	ctsignals "github.com/openbao/openbao/command/template/signals"
 	"k8s.io/utils/strings/slices"
 
 	"github.com/openbao/openbao/command/agentproxyshared"

@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	dep "github.com/hashicorp/consul-template/dependency"
 	"github.com/hashicorp/vault/api"
+	dep "github.com/openbao/openbao/command/template/dependency"
 )
 
 const (

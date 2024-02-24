@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
+	ctconfig "github.com/openbao/openbao/command/template/config"
 
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/sdk/helper/logging"
@@ -218,7 +218,7 @@ func TestExecServer_Run(t *testing.T) {
 
 		"test_app_ignores_stop_signal": {
 			skip:       true,
-			skipReason: "This test currently fails with 'go test -race' (see hashicorp/consul-template/issues/1753).",
+			skipReason: "This test currently fails with 'go test -race' (see openbao/openbao/command/template/issues/1753).",
 			envTemplates: []*ctconfig.TemplateConfig{{
 				Contents:                 pointerutil.StringPtr(`{{ with secret "kv/my-app/creds" }}{{ .Data.data.user }}{{ end }}`),
 				MapToEnvironmentVariable: pointerutil.StringPtr("MY_USER"),

@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul-template/config"
-	dep "github.com/hashicorp/consul-template/dependency"
 	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/command/template/config"
+	dep "github.com/openbao/openbao/command/template/dependency"
 )
 
 // approle auto-auth setup in watch_test.go, TestMain()

@@ -6,14 +6,29 @@ import (
 )
 
 func ReadBaoVariable(name string) string {
-	nonPrefixedName := strings.Replace(name, "BAO_", "", 1)
-	prefixes := [2]string{"BAO_", "VAULT_"}
-	for _, prefix := range prefixes {
-		searchName := prefix + nonPrefixedName
-		result := os.Getenv(searchName)
-		if result != "" {
-			return result
-		}
+	if !strings.HasPrefix(name, "BAO_") {
+		return os.Getenv(name)
 	}
-	return ""
+
+	// If the BAO_ version is present but set to the empty string, still
+	// prefer that over the VAULT_ prefixed version.
+	if baoValue, baoPresent := os.LookupEnv(name); baoPresent {
+		return baoValue
+	}
+
+	nonPrefixedName := strings.Replace(name, "BAO_", "", 1)
+	return os.Getenv("VAULT_" + nonPrefixedName)
+}
+
+func LookupBaoVariable(name string) (string, bool) {
+	if !strings.HasPrefix(name, "BAO_") {
+		return os.LookupEnv(name)
+	}
+
+	if baoValue, baoPresent := os.LookupEnv(name); baoPresent {
+		return baoValue, baoPresent
+	}
+
+	nonPrefixedName := strings.Replace(name, "BAO_", "", 1)
+	return os.LookupEnv("VAULT_" + nonPrefixedName)
 }

@@ -88,7 +88,7 @@ module('Acceptance | auth backend list', function (hooks) {
   });
 
   test('auth methods are linkable and link to correct view', async function (assert) {
-    assert.expect(16);
+    assert.expect(12);
     const uid = uuidv4();
     await visit('/vault/access');
 
@@ -113,7 +113,7 @@ module('Acceptance | auth backend list', function (hooks) {
         assert.dom('[data-test-doc-link] .doc-link').exists(`includes doc link for ${type} auth method`);
       } else {
         let expectedTabs = 2;
-        if (type == 'ldap' || type === 'okta') {
+        if (type == 'ldap') {
           expectedTabs = 3;
         }
         assert

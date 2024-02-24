@@ -61,12 +61,8 @@
         >
           <div class="radio-card-row is-flex-v-centered">
             <div>
-              <Icon
-                @name={{if (eq methodName "Okta") "okta-color" (lowercase methodName)}}
-                @size="24"
-                class={{if (eq methodName "TOTP") "has-text-grey"}}
-              />
-              <p class="has-text-weight-semibold has-text-center {{if (eq methodName 'Okta') 'has-top-margin-xs'}}">
+              <Icon @name={{(lowercase methodName)}} @size="24" class={{if (eq methodName "TOTP") "has-text-grey"}} />
+              <p class="has-text-weight-semibold has-text-center">
                 {{methodName}}
               </p>
             </div>

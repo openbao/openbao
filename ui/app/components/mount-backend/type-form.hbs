@@ -1,4 +1,4 @@
-{{#each (array "generic" "cloud" "infra") as |category|}}
+{{#each (array "generic" "infra") as |category|}}
   <h3 class="title box-radio-header">
     {{capitalize category}}
   </h3>
@@ -11,15 +11,6 @@
         @groupValue={{this.selection}}
         @groupName="mount-type"
         @onRadioChange={{mut this.selection}}
-        @disabled={{if type.requiredFeature (not (has-feature type.requiredFeature)) false}}
-        @tooltipMessage={{if
-          (or (eq type.type "transform") (eq type.type "kmip") (eq type.type "keymgmt"))
-          (concat
-            type.displayName
-            " is part of the Advanced Data Protection module, which is not included in your enterprise license."
-          )
-          "This secret engine is not included in your license."
-        }}
       />
     {{/each}}
   </div>

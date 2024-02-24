@@ -13,7 +13,6 @@
       need access changes.
     </p>
   </div>
-  {{#if (or (has-feature "Performance Replication") (has-feature "DR Replication"))}}{{/if}}
   <h3 class="feature-header">Walk me through setting up:</h3>
   <form id="features-form" class="feature-selection" {{action "saveFeatures" on="submit"}}>
     {{#each this.allFeatures as |feature|}}

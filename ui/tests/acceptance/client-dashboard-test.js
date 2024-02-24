@@ -334,7 +334,7 @@ module('Acceptance | client counts dashboard tab', function (hooks) {
     assert
       .dom('[data-test-alert-banner="alert"]')
       .hasTextContaining(
-        `Warning Vault was upgraded to 1.10.1 on Aug 1, 2022. We added monthly breakdowns and mount level attribution starting in 1.10, so keep that in mind when looking at the data. Learn more here.`
+        `Warning OpenBao was upgraded to 1.10.1 on Aug 1, 2022. We added monthly breakdowns and mount level attribution starting in 1.10, so keep that in mind when looking at the data. Learn more here.`
       );
   });
 

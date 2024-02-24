@@ -835,7 +835,7 @@ func (c *ProxyCommand) setStringFlag(f *FlagSets, configVal string, fVar *String
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line
@@ -859,7 +859,7 @@ func (c *ProxyCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line

@@ -78,7 +78,7 @@ func TestFeatureFlags(t *testing.T) {
 	}
 
 	// Now try with the environment variable temporarily set
-	envVar := "VAULT_CLOUD_ADMIN_NAMESPACE"
+	envVar := "BAO_CLOUD_ADMIN_NAMESPACE"
 	os.Setenv(envVar, "1")
 	defer os.Unsetenv(envVar)
 

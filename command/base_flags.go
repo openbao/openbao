@@ -8,13 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"math"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/api"
 	"github.com/posener/complete"
 )
 
@@ -118,7 +118,7 @@ type BoolPtrVar struct {
 
 func (f *FlagSet) BoolPtrVar(i *BoolPtrVar) {
 	def := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if b, err := strconv.ParseBool(v); err == nil {
 			if def == nil {
 				def = new(bool)
@@ -150,7 +150,7 @@ type BoolVar struct {
 
 func (f *FlagSet) BoolVar(i *BoolVar) {
 	def := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if b, err := strconv.ParseBool(v); err == nil {
 			def = b
 		}
@@ -211,7 +211,7 @@ type IntVar struct {
 
 func (f *FlagSet) IntVar(i *IntVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if i, err := parseutil.SafeParseInt(v); err == nil {
 			initial = i
 		}
@@ -277,7 +277,7 @@ type Int64Var struct {
 
 func (f *FlagSet) Int64Var(i *Int64Var) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if i, err := strconv.ParseInt(v, 0, 64); err == nil {
 			initial = i
 		}
@@ -341,7 +341,7 @@ type UintVar struct {
 
 func (f *FlagSet) UintVar(i *UintVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if i, err := strconv.ParseUint(v, 0, 64); err == nil {
 			initial = uint(i)
 		}
@@ -408,7 +408,7 @@ type Uint64Var struct {
 
 func (f *FlagSet) Uint64Var(i *Uint64Var) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if i, err := strconv.ParseUint(v, 0, 64); err == nil {
 			initial = i
 		}
@@ -472,7 +472,7 @@ type StringVar struct {
 
 func (f *FlagSet) StringVar(i *StringVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		initial = v
 	}
 
@@ -529,7 +529,7 @@ type Float64Var struct {
 
 func (f *FlagSet) Float64Var(i *Float64Var) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if i, err := strconv.ParseFloat(v, 64); err == nil {
 			initial = i
 		}
@@ -593,7 +593,7 @@ type DurationVar struct {
 
 func (f *FlagSet) DurationVar(i *DurationVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if d, err := parseutil.ParseDurationSecond(v); err == nil {
 			initial = d
 		}
@@ -670,7 +670,7 @@ type StringSliceVar struct {
 
 func (f *FlagSet) StringSliceVar(i *StringSliceVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		parts := strings.Split(v, ",")
 		for i := range parts {
 			parts[i] = strings.TrimSpace(parts[i])
@@ -939,7 +939,7 @@ func parseTimeAlternatives(input string, allowedFormats TimeFormat) (time.Time, 
 
 func (f *FlagSet) TimeVar(i *TimeVar) {
 	initial := i.Default
-	if v, exist := os.LookupEnv(i.EnvVar); exist {
+	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
 		if d, err := parseTimeAlternatives(v, i.Formats); err == nil {
 			initial = d
 		}

@@ -31,7 +31,7 @@ func (c *NamespaceCreateCommand) Help() string {
 Usage: bao namespace create [options] PATH
 
   Create a child namespace. The namespace created will be relative to the
-  namespace provided in either the VAULT_NAMESPACE environment variable or
+  namespace provided in either the BAO_NAMESPACE environment variable or
   -namespace CLI flag.
 
   Create a child namespace (e.g. ns1/):

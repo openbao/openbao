@@ -4,9 +4,9 @@
 package pprof_binary
 
 import (
-	"os"
 	"testing"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/testcluster"
 	"github.com/openbao/openbao/vault/external_tests/pprof"
 )
@@ -17,7 +17,7 @@ import (
 // other than that it was fast and simple.
 func TestSysPprof_Exec(t *testing.T) {
 	t.Parallel()
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("only running exec test when $VAULT_BINARY present")
 	}
@@ -39,7 +39,7 @@ func TestSysPprof_Exec(t *testing.T) {
 // other than that it was fast and simple.
 func TestSysPprof_Standby_Exec(t *testing.T) {
 	t.Parallel()
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("only running exec test when $VAULT_BINARY present")
 	}

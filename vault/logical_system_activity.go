@@ -7,12 +7,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"path"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/timeutil"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/logical"
@@ -222,7 +222,7 @@ func (b *SystemBackend) handleClientExport(ctx context.Context, req *logical.Req
 
 	// This is to avoid the default 90s context timeout.
 	timeout := 10 * time.Minute
-	if durationRaw := os.Getenv("VAULT_ACTIVITY_EXPORT_DURATION"); durationRaw != "" {
+	if durationRaw := api.ReadBaoVariable("BAO_ACTIVITY_EXPORT_DURATION"); durationRaw != "" {
 		d, err := parseutil.ParseDurationSecond(durationRaw)
 		if err == nil {
 			timeout = d

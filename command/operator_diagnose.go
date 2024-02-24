@@ -23,6 +23,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
+
+	bApi "github.com/openbao/openbao/api"
 	cserver "github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -317,7 +319,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 		// Check for raft quorum status
 		if config.Storage.Type == storageTypeRaft {
-			path := os.Getenv(raft.EnvVaultRaftPath)
+			path := bApi.ReadBaoVariable(raft.EnvVaultRaftPath)
 			if path == "" {
 				path, ok := config.Storage.Config["path"]
 				if !ok {
@@ -592,10 +594,10 @@ SEALFAIL:
 	} else {
 		// Load License from environment variables. These take precedence over the
 		// configured license.
-		if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
+		if envLicensePath := bApi.ReadBaoVariable(EnvVaultLicensePath); envLicensePath != "" {
 			coreConfig.LicensePath = envLicensePath
 		}
-		if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
+		if envLicense := bApi.ReadBaoVariable(EnvVaultLicense); envLicense != "" {
 			coreConfig.License = envLicense
 		}
 		vault.DiagnoseCheckLicense(licenseCtx, vaultCore, coreConfig, false)

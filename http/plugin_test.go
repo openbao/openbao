@@ -69,11 +69,11 @@ func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluste
 }
 
 func TestPlugin_PluginMain(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}

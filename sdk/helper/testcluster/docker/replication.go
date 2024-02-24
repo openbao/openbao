@@ -6,11 +6,11 @@ package docker
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/openbao/openbao/sdk/helper/testcluster"
 )
@@ -19,7 +19,7 @@ func DefaultOptions(t *testing.T) *DockerClusterOptions {
 	return &DockerClusterOptions{
 		ImageRepo:   "hashicorp/vault",
 		ImageTag:    "latest",
-		VaultBinary: os.Getenv("VAULT_BINARY"),
+		VaultBinary: api.ReadBaoVariable("BAO_BINARY"),
 		ClusterOptions: testcluster.ClusterOptions{
 			NumCores:    3,
 			ClusterName: strings.ReplaceAll(t.Name(), "/", "-"),
@@ -31,9 +31,9 @@ func DefaultOptions(t *testing.T) *DockerClusterOptions {
 }
 
 func NewReplicationSetDocker(t *testing.T, opts *DockerClusterOptions) (*testcluster.ReplicationSet, error) {
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
-		t.Skip("only running docker test when $VAULT_BINARY present")
+		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
 	r := &testcluster.ReplicationSet{

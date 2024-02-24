@@ -11,7 +11,6 @@ import (
 	"errors"
 	"flag"
 	"net/url"
-	"os"
 	"regexp"
 
 	"github.com/go-jose/go-jose/v3/jwt"
@@ -130,12 +129,12 @@ func VaultPluginTLSProvider(apiTLSConfig *TLSConfig) func() (*tls.Config, error)
 // VaultPluginTLSProviderContext is run inside a plugin and retrieves the response
 // wrapped TLS certificate from vault. It returns a configured TLS Config.
 func VaultPluginTLSProviderContext(ctx context.Context, apiTLSConfig *TLSConfig) func() (*tls.Config, error) {
-	if os.Getenv(PluginAutoMTLSEnv) == "true" || os.Getenv(PluginMetadataModeEnv) == "true" {
+	if ReadBaoVariable(PluginAutoMTLSEnv) == "true" || ReadBaoVariable(PluginMetadataModeEnv) == "true" {
 		return nil
 	}
 
 	return func() (*tls.Config, error) {
-		unwrapToken := os.Getenv(PluginUnwrapTokenEnv)
+		unwrapToken := ReadBaoVariable(PluginUnwrapTokenEnv)
 
 		parsedJWT, err := jwt.ParseSigned(unwrapToken)
 		if err != nil {

@@ -22,6 +22,7 @@ import (
 	"github.com/axiomhq/hyperloglog"
 	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/timeutil"
@@ -1103,7 +1104,7 @@ func (c *Core) setupActivityLogLocked(ctx context.Context, wg *sync.WaitGroup) e
 	logger := c.baseLogger.Named("activity")
 	c.AddLogger(logger)
 
-	if os.Getenv("VAULT_DISABLE_ACTIVITY_LOG") != "" {
+	if api.ReadBaoVariable("BAO_DISABLE_ACTIVITY_LOG") != "" {
 		if c.CensusLicensingEnabled() {
 			logger.Warn("activity log disabled via environment variable while reporting is enabled. " +
 				"Reporting will override, and the activity log will be enabled")

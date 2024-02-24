@@ -29,7 +29,7 @@ func (c *NamespaceDeleteCommand) Help() string {
 Usage: bao namespace delete [options] PATH
 
   Delete an existing namespace. The namespace deleted will be relative to the
-  namespace provided in either the VAULT_NAMESPACE environment variable or
+  namespace provided in either the BAO_NAMESPACE environment variable or
   -namespace CLI flag.
 
   Delete a namespace (e.g. ns1/):

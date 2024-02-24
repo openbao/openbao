@@ -375,7 +375,7 @@ func (c *OperatorInitCommand) consulAuto(client *api.Client, req *api.InitReques
 				"Vault server:",
 			vaultURL.String(), c.flagConsulService)))
 		c.UI.Output("")
-		c.UI.Output(fmt.Sprintf("    $ %s VAULT_ADDR=%s%s%s", export, quote, vaultAddr, quote))
+		c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
 		c.UI.Output("")
 		return 0
 	}
@@ -405,7 +405,7 @@ func (c *OperatorInitCommand) consulAuto(client *api.Client, req *api.InitReques
 				"Vault server:",
 			vaultURL.String(), c.flagConsulService)))
 		c.UI.Output("")
-		c.UI.Output(fmt.Sprintf("    $ %s VAULT_ADDR=%s%s%s", export, quote, vaultAddr, quote))
+		c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
 		c.UI.Output("")
 		c.UI.Output("Attempting to initialize it...")
 		c.UI.Output("")
@@ -414,7 +414,7 @@ func (c *OperatorInitCommand) consulAuto(client *api.Client, req *api.InitReques
 		return c.init(client, req)
 	default:
 		// If more than one Vault node were discovered, print out all of them,
-		// requiring the client to update VAULT_ADDR and to run init again.
+		// requiring the client to update BAO_ADDR and to run init again.
 		c.UI.Output(wrapAtLength(fmt.Sprintf(
 			"Discovered %d uninitialized Vault servers with Consul service name "+
 				"%q. To initialize these Vaults, set any one of the following "+
@@ -431,7 +431,7 @@ func (c *OperatorInitCommand) consulAuto(client *api.Client, req *api.InitReques
 			}
 			vaultAddr := vaultURL.String()
 
-			c.UI.Output(fmt.Sprintf("    $ %s VAULT_ADDR=%s%s%s", export, quote, vaultAddr, quote))
+			c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
 		}
 
 		c.UI.Output("")

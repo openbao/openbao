@@ -134,7 +134,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "strict-host-key-checking",
 		Target:     &c.flagStrictHostKeyChecking,
 		Default:    "ask",
-		EnvVar:     "VAULT_SSH_STRICT_HOST_KEY_CHECKING",
+		EnvVar:     "BAO_SSH_STRICT_HOST_KEY_CHECKING",
 		Completion: complete.PredictSet("ask", "no", "yes"),
 		Usage: "Value to use for the SSH configuration option " +
 			"\"StrictHostKeyChecking\".",
@@ -144,7 +144,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "user-known-hosts-file",
 		Target:     &c.flagUserKnownHostsFile,
 		Default:    "",
-		EnvVar:     "VAULT_SSH_USER_KNOWN_HOSTS_FILE",
+		EnvVar:     "BAO_SSH_USER_KNOWN_HOSTS_FILE",
 		Completion: complete.PredictFiles("*"),
 		Usage: "Value to use for the SSH configuration option " +
 			"\"UserKnownHostsFile\".",
@@ -176,7 +176,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "host-key-mount-point",
 		Target:     &c.flagHostKeyMountPoint,
 		Default:    "",
-		EnvVar:     "VAULT_SSH_HOST_KEY_MOUNT_POINT",
+		EnvVar:     "BAO_SSH_HOST_KEY_MOUNT_POINT",
 		Completion: complete.PredictAnything,
 		Usage: "Mount point to the SSH secrets engine where host keys are signed. " +
 			"When given a value, OpenBao will generate a custom \"known_hosts\" file " +
@@ -191,7 +191,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "host-key-hostnames",
 		Target:     &c.flagHostKeyHostnames,
 		Default:    "*",
-		EnvVar:     "VAULT_SSH_HOST_KEY_HOSTNAMES",
+		EnvVar:     "BAO_SSH_HOST_KEY_HOSTNAMES",
 		Completion: complete.PredictAnything,
 		Usage: "List of hostnames to delegate for the CA. The default value " +
 			"allows all domains and IPs. This is specified as a comma-separated " +
@@ -212,7 +212,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "ssh-executable",
 		Target:     &c.flagSSHExecutable,
 		Default:    "ssh",
-		EnvVar:     "VAULT_SSH_EXECUTABLE",
+		EnvVar:     "BAO_SSH_EXECUTABLE",
 		Completion: complete.PredictAnything,
 		Usage:      "Path to the SSH executable to use when connecting to the host",
 	})

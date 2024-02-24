@@ -24,7 +24,6 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/url"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -350,7 +349,7 @@ func TestBackend_Roles(t *testing.T) {
 			}
 
 			testCase.Steps = append(testCase.Steps, generateRoleSteps(t, tc.useCSR)...)
-			if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+			if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 				for i, v := range testCase.Steps {
 					data := map[string]interface{}{}
 					var keys []string
@@ -925,7 +924,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		// testing we use a randomized time for maximum fuzziness.
 	*/
 	var seed int64 = 1
-	fixedSeed := os.Getenv("VAULT_PKITESTS_FIXED_SEED")
+	fixedSeed := api.ReadBaoVariable("BAO_PKITESTS_FIXED_SEED")
 	if len(fixedSeed) == 0 {
 		seed = time.Now().UnixNano()
 	} else {
@@ -1290,7 +1289,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		default:
 			panic("invalid key type: " + keyType)
 		}
-		if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+		if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 			t.Logf("roleKeyBits=%d testBitSize=%d errorOk=%v", plan.roleKeyBits, testBitSize, plan.errorOk)
 		}
 
@@ -1427,7 +1426,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		getOrganizationCheck, getOuCheck, getPostalCodeCheck, getRandCsr, getStreetAddressCheck,
 		getProvinceCheck,
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("funcs=%d", len(funcs))
 	}
 
@@ -3102,7 +3101,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 1 to check:\n%s", certStr)
 	}
 
@@ -3132,7 +3131,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 2 to check:\n%s", certStr)
 	}
 
@@ -3176,7 +3175,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 	if diff := deep.Equal(expectedOtherNames, foundOtherNames); len(diff) != 0 {
 		t.Errorf("unexpected otherNames: %v", diff)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 3 to check:\n%s", certStr)
 	}
 }
@@ -3262,7 +3261,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 	if cert.Subject.SerialNumber != "f00bar" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 1 to check:\n%s", certStr)
 	}
 
@@ -3283,7 +3282,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 	if cert.Subject.SerialNumber != "b4rf00" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 2 to check:\n%s", certStr)
 	}
 }

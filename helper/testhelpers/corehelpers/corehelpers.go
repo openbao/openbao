@@ -17,6 +17,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/plugins/database/mysql"
@@ -388,7 +389,7 @@ func NewTestLogger(t testing.T) *TestLogger {
 	var logPath string
 	output := os.Stderr
 
-	logDir := os.Getenv("VAULT_TEST_LOG_DIR")
+	logDir := api.ReadBaoVariable("BAO_TEST_LOG_DIR")
 	if logDir != "" {
 		logPath = filepath.Join(logDir, t.Name()+".log")
 		// t.Name may include slashes.

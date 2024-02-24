@@ -96,7 +96,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		}
 	}
 
-	envVaultFormat := os.Getenv(EnvVaultFormat)
+	envVaultFormat := api.ReadBaoVariable(EnvVaultFormat)
 	// If we did not parse a value, fetch the env var
 	if format == "" && envVaultFormat != "" {
 		format = envVaultFormat
@@ -107,7 +107,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		format = "table"
 	}
 
-	envVaultDetailed := os.Getenv(EnvVaultDetailed)
+	envVaultDetailed := api.ReadBaoVariable(EnvVaultDetailed)
 	// If we did not parse a value, fetch the env var
 	if !haveDetailed && envVaultDetailed != "" {
 		detailed, err = strconv.ParseBool(envVaultDetailed)
@@ -160,7 +160,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 
 	// Don't use color if disabled
 	useColor := true
-	if os.Getenv(EnvVaultCLINoColor) != "" || color.NoColor {
+	if api.ReadBaoVariable(EnvVaultCLINoColor) != "" || color.NoColor {
 		useColor = false
 	}
 

@@ -87,7 +87,7 @@ func TestUnknownFieldValidationListenerAndStorage(t *testing.T) {
 }
 
 func TestExperimentsConfigParsing(t *testing.T) {
-	const envKey = "VAULT_EXPERIMENTS"
+	const envKey = "BAO_EXPERIMENTS"
 	originalValue := validExperiments
 	validExperiments = []string{"foo", "bar", "baz"}
 	t.Cleanup(func() {

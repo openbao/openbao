@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -477,11 +478,11 @@ func LoadConfig(path string) (*Config, error) {
 	if fi.IsDir() {
 		// check permissions on the config directory
 		var enableFilePermissionsCheck bool
-		if enableFilePermissionsCheckEnv := os.Getenv(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
+		if enableFilePermissionsCheckEnv := api.ReadBaoVariable(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
 			var err error
 			enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 			if err != nil {
-				return nil, errors.New("Error parsing the environment variable VAULT_ENABLE_FILE_PERMISSIONS_CHECK")
+				return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 			}
 		}
 		f, err := os.Open(path)
@@ -538,11 +539,11 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	var enableFilePermissionsCheck bool
-	if enableFilePermissionsCheckEnv := os.Getenv(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
+	if enableFilePermissionsCheckEnv := api.ReadBaoVariable(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return nil, errors.New("Error parsing the environment variable VAULT_ENABLE_FILE_PERMISSIONS_CHECK")
+			return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 		}
 	}
 
@@ -761,7 +762,7 @@ func ParseConfig(d, source string) (*Config, error) {
 }
 
 func ExperimentsFromEnvAndCLI(config *Config, envKey string, flagExperiments []string) error {
-	if envExperimentsRaw := os.Getenv(envKey); envExperimentsRaw != "" {
+	if envExperimentsRaw := api.ReadBaoVariable(envKey); envExperimentsRaw != "" {
 		envExperiments := strings.Split(envExperimentsRaw, ",")
 		err := validateExperiments(envExperiments)
 		if err != nil {

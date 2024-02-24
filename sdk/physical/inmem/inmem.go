@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/armon/go-radix"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/physical"
 )
 
@@ -78,7 +78,7 @@ func NewInmem(conf map[string]string, logger log.Logger) (physical.Backend, erro
 		failDelete:   new(uint32),
 		failList:     new(uint32),
 		failGetInTxn: new(uint32),
-		logOps:       os.Getenv("VAULT_INMEM_LOG_ALL_OPS") != "",
+		logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
 		maxValueSize: maxValueSize,
 	}, nil
 }
@@ -106,7 +106,7 @@ func NewTransactionalInmem(conf map[string]string, logger log.Logger) (physical.
 			failDelete:   new(uint32),
 			failList:     new(uint32),
 			failGetInTxn: new(uint32),
-			logOps:       os.Getenv("VAULT_INMEM_LOG_ALL_OPS") != "",
+			logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
 			maxValueSize: maxValueSize,
 		},
 	}, nil

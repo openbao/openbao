@@ -36,6 +36,7 @@ import (
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
@@ -254,7 +255,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:    "dev-root-token-id",
 		Target:  &c.flagDevRootTokenID,
 		Default: "",
-		EnvVar:  "VAULT_DEV_ROOT_TOKEN_ID",
+		EnvVar:  "BAO_DEV_ROOT_TOKEN_ID",
 		Usage: "Initial root token. This only applies when running in \"dev\" " +
 			"mode.",
 	})
@@ -263,7 +264,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:    "dev-listen-address",
 		Target:  &c.flagDevListenAddr,
 		Default: "127.0.0.1:8200",
-		EnvVar:  "VAULT_DEV_LISTEN_ADDRESS",
+		EnvVar:  "BAO_DEV_LISTEN_ADDRESS",
 		Usage:   "Address to bind to in \"dev\" mode.",
 	})
 	f.BoolVar(&BoolVar{
@@ -479,7 +480,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	grpclog.SetLogger(&grpclogFaker{
 		logger: namedGRPCLogFaker,
-		log:    os.Getenv("VAULT_GRPC_LOGGING") != "",
+		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
 
 	if config.Storage == nil {
@@ -500,7 +501,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 		return 1
 	}
 	if config.Storage.Type == storageTypeRaft || (config.HAStorage != nil && config.HAStorage.Type == storageTypeRaft) {
-		if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+		if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 			config.ClusterAddr = envCA
 		}
 
@@ -537,8 +538,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	configSeal := config.Seals[0]
 	sealType := wrapping.WrapperTypeShamir.String()
-	if !configSeal.Disabled && os.Getenv("VAULT_SEAL_TYPE") != "" {
-		sealType = os.Getenv("VAULT_SEAL_TYPE")
+	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
+		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
 	} else {
 		sealType = configSeal.Type
@@ -799,7 +800,7 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 			}
 		}
 	case storageTypeRaft:
-		if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+		if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
@@ -1111,7 +1112,7 @@ func (c *ServerCommand) Run(args []string) int {
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
 	grpclog.SetLogger(&grpclogFaker{
 		logger: namedGRPCLogFaker,
-		log:    os.Getenv("VAULT_GRPC_LOGGING") != "",
+		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
 
 	if memProfilerEnabled {
@@ -1124,19 +1125,19 @@ func (c *ServerCommand) Run(args []string) int {
 
 	logProxyEnvironmentVariables(c.logger)
 
-	if envMlock := os.Getenv("VAULT_DISABLE_MLOCK"); envMlock != "" {
+	if envMlock := api.ReadBaoVariable("BAO_DISABLE_MLOCK"); envMlock != "" {
 		var err error
 		config.DisableMlock, err = strconv.ParseBool(envMlock)
 		if err != nil {
-			c.UI.Output("Error parsing the environment variable VAULT_DISABLE_MLOCK")
+			c.UI.Output("Error parsing the environment variable BAO_DISABLE_MLOCK")
 			return 1
 		}
 	}
 
-	if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
+	if envLicensePath := api.ReadBaoVariable(EnvVaultLicensePath); envLicensePath != "" {
 		config.LicensePath = envLicensePath
 	}
-	if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
+	if envLicense := api.ReadBaoVariable(EnvVaultLicense); envLicense != "" {
 		config.License = envLicense
 	}
 
@@ -1258,14 +1259,14 @@ func (c *ServerCommand) Run(args []string) int {
 
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
 	if c.flagDevThreeNode {
-		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, os.Getenv("VAULT_DEV_TEMP_DIR"))
+		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
 	if c.flagDevFourCluster {
-		return enableFourClusterDev(c, &coreConfig, info, infoKeys, c.flagDevListenAddr, os.Getenv("VAULT_DEV_TEMP_DIR"))
+		return enableFourClusterDev(c, &coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
-	if allowPendingRemoval := os.Getenv(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
+	if allowPendingRemoval := api.ReadBaoVariable(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
 		var err error
 		coreConfig.PendingRemovalMountsAllowed, err = strconv.ParseBool(allowPendingRemoval)
 		if err != nil {
@@ -1297,11 +1298,11 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Override the UI enabling config by the environment variable
-	if enableUI := os.Getenv("VAULT_UI"); enableUI != "" {
+	if enableUI := api.ReadBaoVariable("BAO_UI"); enableUI != "" {
 		var err error
 		coreConfig.EnableUI, err = strconv.ParseBool(enableUI)
 		if err != nil {
-			c.UI.Output("Error parsing the environment variable VAULT_UI")
+			c.UI.Output("Error parsing the environment variable BAO_UI")
 			return 1
 		}
 	}
@@ -1675,11 +1676,11 @@ func (c *ServerCommand) Run(args []string) int {
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
 			pprof.Lookup("goroutine").WriteTo(logWriter, 2)
 
-			if os.Getenv("VAULT_STACKTRACE_WRITE_TO_FILE") != "" {
+			if api.ReadBaoVariable("BAO_STACKTRACE_WRITE_TO_FILE") != "" {
 				c.logger.Info("Writing stacktrace to file")
 
 				dir := ""
-				path := os.Getenv("VAULT_STACKTRACE_FILE_PATH")
+				path := api.ReadBaoVariable("BAO_STACKTRACE_FILE_PATH")
 				if path != "" {
 					if _, err := os.Stat(path); err != nil {
 						c.logger.Error("Checking stacktrace path failed", "error", err)
@@ -1713,9 +1714,9 @@ func (c *ServerCommand) Run(args []string) int {
 			// We can only get pprof outputs via the API but sometimes Vault can get
 			// into a state where it cannot process requests so we can get pprof outputs
 			// via SIGUSR2.
-			if os.Getenv("VAULT_PPROF_WRITE_TO_FILE") != "" {
+			if api.ReadBaoVariable("BAO_PPROF_WRITE_TO_FILE") != "" {
 				dir := ""
-				path := os.Getenv("VAULT_PPROF_FILE_PATH")
+				path := api.ReadBaoVariable("BAO_PPROF_FILE_PATH")
 				if path != "" {
 					if _, err := os.Stat(path); err != nil {
 						c.logger.Error("Checking pprof path failed", "error", err)
@@ -2121,9 +2122,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 	c.UI.Output(fmt.Sprintf(
 		"\nUseful env vars:\n"+
-			"VAULT_TOKEN=%s\n"+
-			"VAULT_ADDR=%s\n"+
-			"VAULT_CACERT=%s/ca_cert.pem\n",
+			"BAO_TOKEN=%s\n"+
+			"BAO_ADDR=%s\n"+
+			"BAO_CACERT=%s/ca_cert.pem\n",
 		testCluster.RootToken,
 		testCluster.Cores[0].Client.Address(),
 		testCluster.TempDir,
@@ -2470,8 +2471,8 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys []string, info ma
 	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
 		sealType := wrapping.WrapperTypeShamir.String()
-		if !configSeal.Disabled && os.Getenv("VAULT_SEAL_TYPE") != "" {
-			sealType = os.Getenv("VAULT_SEAL_TYPE")
+		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
+			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
 		} else {
 			sealType = configSeal.Type
@@ -2577,17 +2578,17 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.Config) error {
 	var retErr error
-	if envRA := os.Getenv("VAULT_API_ADDR"); envRA != "" {
+	if envRA := api.ReadBaoVariable("BAO_API_ADDR"); envRA != "" {
 		coreConfig.RedirectAddr = envRA
-	} else if envRA := os.Getenv("VAULT_REDIRECT_ADDR"); envRA != "" {
+	} else if envRA := api.ReadBaoVariable("BAO_REDIRECT_ADDR"); envRA != "" {
 		coreConfig.RedirectAddr = envRA
-	} else if envAA := os.Getenv("VAULT_ADVERTISE_ADDR"); envAA != "" {
+	} else if envAA := api.ReadBaoVariable("BAO_ADVERTISE_ADDR"); envAA != "" {
 		coreConfig.RedirectAddr = envAA
 	}
 
 	// Attempt to detect the redirect address, if possible
 	if coreConfig.RedirectAddr == "" {
-		c.logger.Warn("no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set")
+		c.logger.Warn("no `api_addr` value specified in config or in BAO_API_ADDR; falling back to detection if possible, but this value should be manually set")
 	}
 
 	var ok bool
@@ -2622,7 +2623,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.Config, disableClustering bool) error {
 	if disableClustering {
 		coreConfig.ClusterAddr = ""
-	} else if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+	} else if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 		coreConfig.ClusterAddr = envCA
 	} else {
 		var addrToUse string
@@ -2851,21 +2852,21 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					endpointURL := protocol + config.Listeners[0].Address
 					if runtime.GOOS == "windows" {
 						c.UI.Warn("PowerShell:")
-						c.UI.Warn(fmt.Sprintf("    $env:VAULT_ADDR=\"%s\"", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $env:BAO_ADDR=\"%s\"", endpointURL))
 						c.UI.Warn("cmd.exe:")
-						c.UI.Warn(fmt.Sprintf("    set VAULT_ADDR=%s", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    set BAOT_ADDR=%s", endpointURL))
 					} else {
-						c.UI.Warn(fmt.Sprintf("    $ export VAULT_ADDR='%s'", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $ export BAO_ADDR='%s'", endpointURL))
 					}
 
 					if c.flagDevTLS {
 						if runtime.GOOS == "windows" {
 							c.UI.Warn("PowerShell:")
-							c.UI.Warn(fmt.Sprintf("    $env:VAULT_CACERT=\"%s/vault-ca.pem\"", certDir))
+							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
 							c.UI.Warn("cmd.exe:")
-							c.UI.Warn(fmt.Sprintf("    set VAULT_CACERT=%s/vault-ca.pem", certDir))
+							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
 						} else {
-							c.UI.Warn(fmt.Sprintf("    $ export VAULT_CACERT='%s/vault-ca.pem'", certDir))
+							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
 						}
 						c.UI.Warn("")
 					}

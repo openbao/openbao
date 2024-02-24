@@ -7,10 +7,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
+	"github.com/openbao/openbao/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -36,7 +36,7 @@ func MultiplexingSupported(ctx context.Context, cc grpc.ClientConnInterface, nam
 		return false, fmt.Errorf("client connection is nil")
 	}
 
-	out := strings.Split(os.Getenv(PluginMultiplexingOptOut), ",")
+	out := strings.Split(api.ReadBaoVariable(PluginMultiplexingOptOut), ",")
 	if strutil.StrListContains(out, name) {
 		return false, nil
 	}

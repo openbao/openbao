@@ -2572,7 +2572,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 	//
 	// Use a small temporary worker pool to run postUnsealFuncs in parallel
 	postUnsealFuncConcurrency := runtime.NumCPU() * 2
-	if v := os.Getenv("VAULT_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
+	if v := api.ReadBaoVariable("BAO_POSTUNSEAL_FUNC_CONCURRENCY"); v != "" {
 		pv, err := strconv.Atoi(v)
 		if err != nil || pv < 1 {
 			c.logger.Warn("invalid value for VAULT_POSTUNSEAL_FUNC_CURRENCY, must be a positive integer", "error", err, "value", pv)
@@ -2610,7 +2610,7 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		}
 	}
 
-	if os.Getenv(EnvVaultDisableLocalAuthMountEntities) != "" {
+	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
 		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
 	}
 	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
@@ -3581,7 +3581,7 @@ func (c *Core) updateLockedUserEntries() {
 func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	// check environment variable to see if user lockout workflow is disabled
 	var disableUserLockout bool
-	if disableUserLockoutEnv := os.Getenv(consts.VaultDisableUserLockout); disableUserLockoutEnv != "" {
+	if disableUserLockoutEnv := api.ReadBaoVariable(consts.VaultDisableUserLockout); disableUserLockoutEnv != "" {
 		var err error
 		disableUserLockout, err = strconv.ParseBool(disableUserLockoutEnv)
 		if err != nil {
@@ -3859,7 +3859,7 @@ func (c *Core) GetHAPeerNodesCached() []PeerNode {
 
 func (c *Core) CheckPluginPerms(pluginName string) (err error) {
 	var enableFilePermissionsCheck bool
-	if enableFilePermissionsCheckEnv := os.Getenv(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
+	if enableFilePermissionsCheckEnv := api.ReadBaoVariable(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/namespace"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
@@ -705,7 +706,7 @@ func TestBackend_StaticRole_Rotations_PostgreSQL(t *testing.T) {
 
 func testBackend_StaticRole_Rotations(t *testing.T, createUser userCreator, opts map[string]interface{}) {
 	// We need to set this value for the plugin to run, but it doesn't matter what we set it to.
-	oldToken := os.Getenv(pluginutil.PluginUnwrapTokenEnv)
+	oldToken := api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv)
 	os.Setenv(pluginutil.PluginUnwrapTokenEnv, "...")
 	defer func() {
 		if oldToken != "" {

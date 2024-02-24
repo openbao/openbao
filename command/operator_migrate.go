@@ -116,7 +116,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
 		Default:    "info",
-		EnvVar:     "VAULT_LOG_LEVEL",
+		EnvVar:     "BAO_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "error"),
 		Usage: "Log verbosity level. Supported values (in order of detail) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"error\". These are not case sensitive.",

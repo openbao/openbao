@@ -1,0 +1,48 @@
+{
+  "Datacenters": [
+    "dc1"
+  ],
+  "ID": "example",
+  "Name": "example",
+  "Namespace": "default",
+  "Region": "global",
+  "Type": "service",
+  "TaskGroups": [
+    {
+      "Count": 1,
+      "Name": "cache",
+      "Networks": [
+        {
+          "DynamicPorts": [
+            {
+              "Mode": "host",
+              "Label": "redis",
+              "To": 6379
+            }
+          ]
+        }
+      ],
+      "Services": [
+        {
+          "PortLabel": "redis",
+          "Provider": "nomad",
+          "Tags": ["tag1", "tag2"]
+        }
+      ],
+      "Tasks": [
+        {
+          "Config": {
+            "command": "sleep",
+            "args": ["10000"]
+          },
+          "Driver": "raw_exec",
+          "Name": "redis",
+          "Resources": {
+            "CPU": 100,
+            "MemoryMB": 100
+          }
+        }
+      ]
+    }
+  ]
+}

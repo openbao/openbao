@@ -1,0 +1,62 @@
+#!/bin/sh
+
+# This script is here to allow easy testing of the config files embedded in the
+# docucument and to help users try it out.
+
+name=$(basename ${0})
+proxy_connect_document="${name#run-}.md"
+
+cat << EOF
+
+This script will extract the configuration files from $proxy_connect_document,
+save them to files then run the commands to start up all the processes in a
+screen session. Requires basic Unix shell utilities (cat, sed, grep) and GNU
+Screen.
+
+To switch between the different screen windows type control-a then the number
+0-4 (eg. 'ctrl-a 0' will take you to the first window, the web-server). When
+done just exit each application (ctrl-c) and each window (type 'exit' or
+ctrl-d), exiting the last will exit screen.
+
+Press Enter to continue (ctrl-c to abort)...
+EOF
+read ignore
+
+# extracts all config files out of document
+sh -c "$(cat ../$proxy_connect_document \
+    | sed -n -e '/```shell/,/```/g;/```/,/```/p' |grep -v '```')"
+
+# to just extract the files to play with, uncomment this exit line..
+#exit
+
+# create a screen session
+screen -dmS connect
+
+# function for opening new screen windows in that session
+window=0
+open() {
+    [ $window -ne 0 ] && screen -S connect -X screen $window
+    screen -S connect -p $window -X stuff "$1\n"
+    window=$(($window + 1))
+}
+
+# sleeps are needed when services depend on others already running
+open "consul agent -dev -log-level=warn -config-file=consul-services.json"
+open "python -m SimpleHTTPServer"
+# change to "python3 -m http.server" if you only have python3
+sleep 0.3
+open "consul connect proxy -sidecar-for webserver"
+sleep 0.3
+open "consul-template -config ingress-config.hcl -log-level=info"
+# last session is to test things
+open "clear && echo 'Run these to test routing and intentions...
+curl http://localhost:8080
+consul intention create -deny  ingress webserver
+curl http://localhost:8080
+consul intention delete ingress webserver
+curl http://localhost:8080'"
+
+screen -r connect
+
+# clean up the generated files
+git clean -f .

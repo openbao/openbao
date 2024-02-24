@@ -1,0 +1,92 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - govet
+    - unconvert
+    - staticcheck
+    - ineffassign
+    - unparam
+    - forbidigo
+    - gomodguard
+    - gosimple
+    - depguard
+
+issues:
+  # Disable the default exclude list so that all excludes are explicitly
+  # defined in this file.
+  exclude-use-default: false
+
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment
+      - nilness
+      - shadow
+      - unusedwrite
+  forbidigo:
+    # Forbid the following identifiers (list of regexp).
+    forbid:
+      - '\bioutil\b(# Use io and os packages instead of ioutil)?'
+      - '\brequire\.New\b(# Use package-level functions with explicit TestingT)?'
+      - '\bassert\.New\b(# Use package-level functions with explicit TestingT)?'
+    # Exclude godoc examples from forbidigo checks.
+    # Default: true
+    exclude_godoc_examples: false
+  gofmt:
+    simplify: true
+  gomodguard:
+    blocked:
+      # List of blocked modules.
+      modules:
+        # Blocked module.
+        - github.com/hashicorp/go-msgpack:
+            recommendations:
+              - github.com/hashicorp/consul-net-rpc/go-msgpack
+        - github.com/golang/protobuf:
+            recommendations:
+              - google.golang.org/protobuf
+  depguard:
+    rules:
+      main:
+        # List of file globs that will match this list of settings to compare against.
+        # Default: $all
+        files:
+          - $all
+        # List of allowed packages.
+        allow:
+          - $gostd
+          - github.com/BurntSushi/toml
+          - github.com/Masterminds/sprig/v3
+          - github.com/davecgh/go-spew/spew
+          - github.com/hashicorp/consul-template
+          - github.com/hashicorp/consul/api
+          - github.com/hashicorp/consul/sdk/testutil
+          - github.com/hashicorp/go-gatedio
+          - github.com/hashicorp/go-hclog
+          - github.com/hashicorp/go-multierror
+          - github.com/hashicorp/go-rootcerts
+          - github.com/hashicorp/go-sockaddr/template
+          - github.com/hashicorp/go-syslog
+          - github.com/hashicorp/hcl
+          - github.com/hashicorp/logutils
+          - github.com/hashicorp/nomad/api
+          - github.com/hashicorp/vault/api
+          - github.com/imdario/mergo
+          - github.com/mitchellh/go-homedir
+          - github.com/mitchellh/hashstructure
+          - github.com/mitchellh/mapstructure
+          - github.com/pkg/errors
+          - github.com/stretchr/testify/assert
+          - github.com/stretchr/testify/require
+
+run:
+  timeout: 10m
+  concurrency: 4
+  skip-dirs-use-default: false

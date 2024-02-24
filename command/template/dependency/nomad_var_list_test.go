@@ -13,7 +13,6 @@ import (
 )
 
 func TestNewNVListQuery(t *testing.T) {
-
 	cases := []struct {
 		name string
 		i    string
@@ -177,7 +176,6 @@ func TestNewNVListQuery(t *testing.T) {
 }
 
 func TestNVListQuery_Fetch(t *testing.T) {
-
 	type nvmap map[string]string
 	_ = testNomad.CreateVariable("test-kv-list/prefix/foo", nvmap{"bar": "barp"}, nil)
 	_ = testNomad.CreateVariable("test-kv-list/prefix/zip", nvmap{"zap": "zapp"}, nil)
@@ -346,7 +344,6 @@ func TestNVListQuery_Fetch(t *testing.T) {
 }
 
 func TestNVListQuery_String(t *testing.T) {
-
 	cases := []struct {
 		name string
 		i    string

@@ -19,7 +19,6 @@ import (
 // demonstrate the dependencies, polling, and rerendering features available in
 // the manager
 func Example() {
-
 	// Consul-template uses the standard logger, which needs to be silenced
 	// in this example
 	log.SetOutput(io.Discard)

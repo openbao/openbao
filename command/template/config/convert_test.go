@@ -216,7 +216,7 @@ func TestFileModePresent(t *testing.T) {
 		},
 		{
 			"present",
-			FileMode(0644),
+			FileMode(0o644),
 			true,
 		},
 		{

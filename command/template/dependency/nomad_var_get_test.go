@@ -14,7 +14,6 @@ import (
 )
 
 func TestNewNVGetQuery(t *testing.T) {
-
 	cases := []struct {
 		name string
 		i    string
@@ -126,7 +125,6 @@ func TestNewNVGetQuery(t *testing.T) {
 }
 
 func TestNVGetQuery_Fetch(t *testing.T) {
-
 	type nvmap map[string]string
 	_ = testNomad.CreateVariable("test-kv-get/path", nvmap{"bar": "barp"}, nil)
 	_ = testNomad.CreateNamespace("test", nil)
@@ -274,7 +272,6 @@ func TestNVGetQuery_Fetch(t *testing.T) {
 }
 
 func TestNVGetQuery_String(t *testing.T) {
-
 	cases := []struct {
 		name string
 		i    string

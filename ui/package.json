@@ -230,11 +230,9 @@
       "lib/core",
       "lib/css",
       "lib/keep-gitkeep",
-      "lib/kmip",
       "lib/kubernetes",
       "lib/open-api-explorer",
       "lib/pki",
-      "lib/replication",
       "lib/service-worker-authenticated-download"
     ]
   },

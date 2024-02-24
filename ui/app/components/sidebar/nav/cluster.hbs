@@ -51,15 +51,6 @@
       @text="Disaster Recovery"
       data-test-sidebar-nav-link="Disaster Recovery"
     />
-
-    {{#if (has-feature "Performance Replication")}}
-      <Nav.Link
-        @route="vault.cluster.replication.mode.index"
-        @model="performance"
-        @text="Performance"
-        data-test-sidebar-nav-link="Performance"
-      />
-    {{/if}}
   {{/if}}
 
   {{#if

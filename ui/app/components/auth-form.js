@@ -13,7 +13,6 @@ import { computed } from '@ember/object';
 import { supportedAuthBackends } from 'vault/helpers/supported-auth-backends';
 import { task, timeout } from 'ember-concurrency';
 import { waitFor } from '@ember/test-waiters';
-import { v4 as uuidv4 } from 'uuid';
 
 const BACKENDS = supportedAuthBackends();
 
@@ -237,11 +236,7 @@ export default Component.extend(DEFAULTS, {
         cluster: { id: clusterId },
       } = this;
       try {
-        if (backendType === 'okta') {
-          this.pollForOktaNumberChallenge.perform(data.nonce, data.path);
-        } else {
-          this.delayAuthMessageReminder.perform();
-        }
+        this.delayAuthMessageReminder.perform();
         const authResponse = yield this.auth.authenticate({
           clusterId,
           backend: backendType,
@@ -257,28 +252,6 @@ export default Component.extend(DEFAULTS, {
       }
     })
   ),
-
-  pollForOktaNumberChallenge: task(function* (nonce, mount) {
-    // yield for 1s to wait to see if there is a login error before polling
-    yield timeout(1000);
-    if (this.error) {
-      return;
-    }
-    let response = null;
-    this.setOktaNumberChallenge(true);
-    this.setCancellingAuth(false);
-    // keep polling /auth/okta/verify/:nonce API every 1s until a response is given with the correct number for the Okta Number Challenge
-    while (response === null) {
-      // when testing, the polling loop causes promises to be rejected making acceptance tests fail
-      // so disable the poll in tests
-      if (Ember.testing) {
-        return;
-      }
-      yield timeout(1000);
-      response = yield this.auth.getOktaNumberChallengeAnswer(nonce, mount);
-    }
-    this.set('oktaNumberChallengeAnswer', response);
-  }),
 
   delayAuthMessageReminder: task(function* () {
     if (Ember.testing) {
@@ -310,14 +283,6 @@ export default Component.extend(DEFAULTS, {
       }
       if (this.customPath || backend.id) {
         data.path = this.customPath || backend.id;
-      }
-      // add nonce field for okta backend
-      if (backend.type === 'okta') {
-        data.nonce = uuidv4();
-        // add a default path of okta if it doesn't exist to be used for Okta Number Challenge
-        if (!data.path) {
-          data.path = 'okta';
-        }
       }
       return this.authenticate.unlinked().perform(backend.type, data);
     },

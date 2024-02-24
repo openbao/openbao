@@ -30,21 +30,8 @@
     <Nav.Link @route="vault.cluster.access.oidc" @text="OIDC provider" data-test-sidebar-nav-link="OIDC provider" />
   {{/if}}
 
-  {{#if (and (has-feature "Control Groups") (has-permission "access" routeParams="control-groups"))}}
-    <Nav.Title data-test-sidebar-nav-heading="Access Control">Access Control</Nav.Title>
-    <Nav.Link
-      @route="vault.cluster.access.control-groups"
-      @current-when="vault.cluster.access.control-groups vault.cluster.access.control-group-accessor vault.cluster.access.control-groups-configure"
-      @text="Control Groups"
-      data-test-sidebar-nav-link="Control Groups"
-    />
-  {{/if}}
-
   {{#if (has-permission "access" routeParams=(array "namespaces" "groups" "entities"))}}
     <Nav.Title data-test-sidebar-nav-heading="Organization">Organization</Nav.Title>
-  {{/if}}
-  {{#if (and (has-feature "Namespaces") (has-permission "access" routeParams="namespaces"))}}
-    <Nav.Link @route="vault.cluster.access.namespaces" @text="Namespaces" data-test-sidebar-nav-link="Namespaces" />
   {{/if}}
   {{#if (has-permission "access" routeParams="groups")}}
     <Nav.Link @route="vault.cluster.access.identity" @model="groups" @text="Groups" data-test-sidebar-nav-link="Groups" />

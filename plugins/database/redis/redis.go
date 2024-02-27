@@ -123,7 +123,6 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 	var response string
 
 	err = db.Do(ctx, radix.Cmd(&response, "ACL", "DELUSER", req.Username))
-
 	if err != nil {
 		return dbplugin.DeleteUserResponse{}, err
 	}
@@ -149,7 +148,6 @@ func newUser(ctx context.Context, db radix.Client, username string, req dbplugin
 	var response string
 
 	err = db.Do(ctx, radix.Cmd(&response, "ACL", aclargs...))
-
 	if err != nil {
 		return err
 	}
@@ -192,7 +190,6 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 
 	var sresponse string
 	err = db.Do(ctx, radix.Cmd(&sresponse, "ACL", "SETUSER", username, "RESETPASS", ">"+password))
-
 	if err != nil {
 		return err
 	}

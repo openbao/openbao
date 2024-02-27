@@ -208,7 +208,6 @@ func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
 		"insecure_tls": true,
 	}
 	err = setupRedisDBInitialize(t, connectionDetails)
-
 	if err != nil {
 		t.Fatalf("Testing TLS Init() failed: error: %s", err)
 	}

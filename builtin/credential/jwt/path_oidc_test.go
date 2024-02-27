@@ -868,7 +868,6 @@ func TestOIDC_Callback(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), req)
-
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1346,7 +1345,6 @@ func TestOIDC_Callback(t *testing.T) {
 			}
 
 			resp, err = b.HandleRequest(context.Background(), req)
-
 			if err != nil {
 				t.Fatal(err)
 			}

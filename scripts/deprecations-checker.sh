@@ -30,9 +30,9 @@ echo "Performing deprecations check: running staticcheck"
 # Else only output the deprecations from the changes added
 if [ -z $1 ]
     then
-        staticcheck -checks="SA1019" -tags="$BUILD_TAGS"
+        go run honnef.co/go/tools/cmd/staticcheck@latest -checks="SA1019" -tags="$BUILD_TAGS"
     else
         # GitHub Actions will use this to find only changes wrt PR's base ref branch
         # revgrep CLI tool will return an exit status of 1 if any issues match, else it will return 0
-        staticcheck  -checks="SA1019" -tags="$BUILD_TAGS" 2>&1 | revgrep origin/"$1" 
+        go run honnef.co/go/tools/cmd/staticcheck@latest -checks="SA1019" -tags="$BUILD_TAGS" 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/"$1"
 fi

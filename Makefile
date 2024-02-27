@@ -7,13 +7,6 @@ TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
 INTEG_TEST_TIMEOUT=120m
 VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -shift -structtags -unsafeptr
-EXTERNAL_TOOLS_CI=\
-	golang.org/x/tools/cmd/goimports \
-	github.com/golangci/revgrep/cmd/revgrep \
-	mvdan.cc/gofumpt \
-	honnef.co/go/tools/cmd/staticcheck
-EXTERNAL_TOOLS=\
-	github.com/client9/misspell/cmd/misspell
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v pb.go | grep -v vendor)
 SED?=$(shell command -v gsed || command -v sed)
 
@@ -144,17 +137,17 @@ tools/codechecker/.bin/codechecker:
 # piped to revgrep which will only return an error if new piece of code violates
 # the check
 vet-codechecker: bootstrap tools/codechecker/.bin/codechecker prep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | revgrep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/... 2>&1 | revgrep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/... 2>&1 | revgrep
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest
 
 # vet-codechecker runs our custom linters on the test functions. All output gets
 # piped to revgrep which will only return an error if new piece of code that is
 # not on main violates the check
 ci-vet-codechecker: ci-bootstrap tools/codechecker/.bin/codechecker prep
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | revgrep origin/main
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/... 2>&1 | revgrep origin/main
-	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/... 2>&1 | revgrep origin/main
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) ./... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/api/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
+	@$(GO_CMD) vet -vettool=./tools/codechecker/.bin/codechecker -tags=$(BUILD_TAGS) github.com/openbao/openbao/sdk/... 2>&1 | go run github.com/golangci/revgrep/cmd/revgrep@latest origin/main
 
 # lint runs vet plus a number of other checkers, it is more comprehensive, but louder
 lint:
@@ -194,15 +187,6 @@ prep:
 	@GOARCH= GOOS= $(GO_CMD) generate $$($(GO_CMD) list github.com/openbao/openbao/api/... | grep -v /vendor/)
 	@GOARCH= GOOS= $(GO_CMD) generate $$($(GO_CMD) list github.com/openbao/openbao/sdk/... | grep -v /vendor/)
 	@if [ -d .git/hooks ]; then cp .hooks/* .git/hooks/; fi
-
-# bootstrap the build by downloading additional tools needed to build
-ci-bootstrap: .ci-bootstrap
-.ci-bootstrap:
-	@for tool in  $(EXTERNAL_TOOLS_CI) ; do \
-		echo "Installing/Updating $$tool" ; \
-		GO111MODULE=off $(GO_CMD) get -u $$tool; \
-	done
-	@touch .ci-bootstrap
 
 # bootstrap the build by downloading additional tools that may be used by devs
 bootstrap: ci-bootstrap
@@ -278,7 +262,7 @@ fmtcheck:
 	@sh -c "'$(CURDIR)/scripts/gofmtcheck.sh'"
 
 fmt: ci-bootstrap
-	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt -w
+	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -w
 
 semgrep:
 	semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
@@ -292,7 +276,7 @@ assetcheck:
 
 spellcheck:
 	@echo "==> Spell checking website..."
-	@misspell -error -source=text website/source
+	$(GO_CMD) run github.com/client9/misspell/cmd/misspell@latest -error -source=text website/source
 
 mysql-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin

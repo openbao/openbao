@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"

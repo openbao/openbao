@@ -18,7 +18,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -27,6 +26,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"

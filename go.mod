@@ -51,7 +51,6 @@ require (
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/google/tink/go v1.7.0
 	github.com/hashicorp/cap v0.3.0
-	github.com/hashicorp/consul-template v0.33.0
 	github.com/hashicorp/consul/api v1.23.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/eventlogger v0.2.1
@@ -123,6 +122,7 @@ require (
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.0.11-0.20240122151027-4d142be5e262
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.0.9-0.20240122151027-4d142be5e262
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.0.11-0.20240122151027-4d142be5e262
+	github.com/openbao/openbao-template v0.35.1-0.20240228162143-c99b5c146391
 	github.com/openbao/openbao/api v1.9.2
 	github.com/openbao/openbao/api/auth/approle v0.1.0
 	github.com/openbao/openbao/api/auth/userpass v0.1.0
@@ -261,15 +261,11 @@ require (
 	github.com/gophercloud/gophercloud v0.1.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
-	github.com/hashicorp/cronexpr v1.1.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.2.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
-	github.com/hashicorp/nomad/api v0.0.0-20230519153805-2275a83cbfdf // indirect
 	github.com/hashicorp/serf v0.10.1 // indirect
-	github.com/hashicorp/vault/api v1.9.2 // indirect
-	github.com/hashicorp/vault/api/auth/kubernetes v0.4.1 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
@@ -299,7 +295,6 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
-	github.com/mitchellh/hashstructure v1.1.0 // indirect
 	github.com/moby/patternmatcher v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
@@ -308,6 +303,7 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
+	github.com/openbao/openbao/api/auth/kubernetes v0.0.0-20240227182507-a8c90d250c17 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b // indirect
 	github.com/opencontainers/runc v1.1.6 // indirect

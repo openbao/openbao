@@ -19,7 +19,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -28,6 +27,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/posener/complete"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

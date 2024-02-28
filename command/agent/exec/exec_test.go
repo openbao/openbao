@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
+	ctconfig "github.com/openbao/openbao-template/config"
 
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/sdk/helper/logging"

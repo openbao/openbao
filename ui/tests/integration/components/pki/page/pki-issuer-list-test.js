@@ -4,7 +4,6 @@ import { setupMirage } from 'ember-cli-mirage/test-support';
 import { hbs } from 'ember-cli-htmlbars';
 import { setupEngine } from 'ember-engines/test-support';
 import { setupRenderingTest } from 'vault/tests/helpers';
-import { STANDARD_META } from 'vault/tests/helpers/pki';
 
 /**
  * this test is for the page component only. A separate test is written for the form rendered
@@ -38,9 +37,7 @@ module('Integration | Component | page/pki-issuer-list', function (hooks) {
       },
       serialNumber: '74:2d:ed:f2:c4:3b:76:5e:6e:0d:f1:6a:c0:8b:6f:e3:3c:62:f9:03',
     });
-    const issuers = this.store.peekAll('pki/issuer');
-    issuers.meta = STANDARD_META;
-    this.issuers = issuers;
+    this.issuers = this.store.peekAll('pki/issuer');
 
     await render(hbs`<Page::PkiIssuerList @issuers={{this.issuers}} @mountPoint={{this.engineId}} />`, {
       owner: this.engine,
@@ -68,9 +65,8 @@ module('Integration | Component | page/pki-issuer-list', function (hooks) {
       issuerName: 'issuer-1',
       isDefault: true,
     });
-    const issuers = this.store.peekAll('pki/issuer');
-    issuers.meta = STANDARD_META;
-    this.issuers = issuers;
+    this.issuers = this.store.peekAll('pki/issuer');
+
     await render(hbs`<Page::PkiIssuerList @issuers={{this.issuers}} @mountPoint={{this.engineId}} />`, {
       owner: this.engine,
     });

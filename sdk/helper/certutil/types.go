@@ -64,7 +64,6 @@ const (
 	RSAPrivateKey     PrivateKeyType = "rsa"
 	ECPrivateKey      PrivateKeyType = "ec"
 	Ed25519PrivateKey PrivateKeyType = "ed25519"
-	ManagedPrivateKey PrivateKeyType = "ManagedPrivateKey"
 )
 
 // TLSUsage controls whether the intended usage of a *tls.Config
@@ -291,8 +290,6 @@ func extractAndSetPrivateKey(c *CertBundle, parsedBundle *ParsedCertBundle) erro
 			c.PrivateKeyType = RSAPrivateKey
 		case Ed25519PrivateKey:
 			c.PrivateKeyType = Ed25519PrivateKey
-		case ManagedPrivateKey:
-			c.PrivateKeyType = ManagedPrivateKey
 		}
 	default:
 		return errutil.UserError{Err: fmt.Sprintf("Unsupported key block type: %s", pemBlock.Type)}
@@ -552,9 +549,6 @@ func (p *ParsedCSRBundle) ToCSRBundle() (*CSRBundle, error) {
 			block.Type = "EC PRIVATE KEY"
 		case Ed25519PrivateKey:
 			result.PrivateKeyType = "ed25519"
-			block.Type = "PRIVATE KEY"
-		case ManagedPrivateKey:
-			result.PrivateKeyType = ManagedPrivateKey
 			block.Type = "PRIVATE KEY"
 		default:
 			return nil, errutil.InternalError{Err: "Could not determine private key type when creating block"}

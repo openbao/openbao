@@ -306,20 +306,6 @@ the private key!`,
 		AllowedValues: []interface{}{"internal", "external", "kms"},
 	}
 
-	fields["managed_key_name"] = &framework.FieldSchema{
-		Type: framework.TypeString,
-		Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_id
-is required. Ignored for other types.`,
-	}
-
-	fields["managed_key_id"] = &framework.FieldSchema{
-		Type: framework.TypeString,
-		Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_name
-is required. Ignored for other types.`,
-	}
-
 	fields["key_bits"] = &framework.FieldSchema{
 		Type:    framework.TypeInt,
 		Default: 0,

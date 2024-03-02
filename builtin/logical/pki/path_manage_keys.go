@@ -48,18 +48,6 @@ func pathGenerateKey(b *backend) *framework.Path {
 4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
 ed25519.`,
 			},
-			"managed_key_name": {
-				Type: framework.TypeString,
-				Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_id
-is required. Ignored for other types.`,
-			},
-			"managed_key_id": {
-				Type: framework.TypeString,
-				Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_name
-is required. Ignored for other types.`,
-			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -148,16 +136,6 @@ func (b *backend) pathGenerateKeyHandler(ctx context.Context, req *logical.Reque
 		}
 
 		actualPrivateKeyType = keyBundle.PrivateKeyType
-	case strings.HasSuffix(req.Path, "/kms"):
-		keyId, err := getManagedKeyId(data)
-		if err != nil {
-			return nil, err
-		}
-
-		keyBundle, actualPrivateKeyType, err = createKmsKeyBundle(ctx, b, keyId)
-		if err != nil {
-			return nil, err
-		}
 	default:
 		return logical.ErrorResponse("Unknown type of key to generate"), nil
 	}

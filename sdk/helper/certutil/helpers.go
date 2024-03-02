@@ -930,9 +930,6 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	var certBytes []byte
 	if data.SigningBundle != nil {
 		privateKeyType := data.SigningBundle.PrivateKeyType
-		if privateKeyType == ManagedPrivateKey {
-			privateKeyType = GetPrivateKeyTypeFromSigner(data.SigningBundle.PrivateKey)
-		}
 		switch privateKeyType {
 		case RSAPrivateKey:
 			certTemplateSetSigAlgo(certTemplate, data)
@@ -1191,10 +1188,6 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	privateKeyType := data.SigningBundle.PrivateKeyType
-	if privateKeyType == ManagedPrivateKey {
-		privateKeyType = GetPrivateKeyTypeFromSigner(data.SigningBundle.PrivateKey)
-	}
-
 	switch privateKeyType {
 	case RSAPrivateKey:
 		certTemplateSetSigAlgo(certTemplate, data)

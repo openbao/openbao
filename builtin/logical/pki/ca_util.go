@@ -117,11 +117,6 @@ func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.Cr
 	return certutil.CreateCSRWithRandomSource(data, addBasicConstraints, randomSource)
 }
 
-// NOTE: Is it worth keeping this method for this?
-func parseCABundle(ctx context.Context, b *backend, bundle *certutil.CertBundle) (*certutil.ParsedCertBundle, error) {
-	return bundle.ToParsedCertBundle()
-}
-
 func (sc *storageContext) getKeyTypeAndBitsForRole(data *framework.FieldData) (string, int, error) {
 	exportedStr := data.Get("exported").(string)
 	var keyType string

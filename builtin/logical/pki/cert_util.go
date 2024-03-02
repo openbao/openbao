@@ -135,7 +135,7 @@ func (sc *storageContext) fetchCAInfoByIssuerId(issuerId issuerID, usage issuerU
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error while attempting to use issuer %v: %v", issuerId, err)}
 	}
 
-	parsedBundle, err := parseCABundle(sc.Context, sc.Backend, bundle)
+	parsedBundle, err := bundle.ToParsedCertBundle()
 	if err != nil {
 		return nil, errutil.InternalError{Err: err.Error()}
 	}

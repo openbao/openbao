@@ -428,11 +428,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
-		"operator raft snapshot inspect": func() (cli.Command, error) {
-			return &OperatorRaftSnapshotInspectCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
 		"operator raft snapshot restore": func() (cli.Command, error) {
 			return &OperatorRaftSnapshotRestoreCommand{
 				BaseCommand: getBaseCommand(),

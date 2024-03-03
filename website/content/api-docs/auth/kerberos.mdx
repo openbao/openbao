@@ -252,6 +252,14 @@ This endpoint returns a list of existing LDAP groups in the Kerberos auth method
 | :----- | :---------------------- |
 | `LIST` | `/auth/kerberos/groups` |
 
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
+
 ### Sample request
 
 ```shell-session

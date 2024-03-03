@@ -21,6 +21,17 @@ func (b *backend) pathGroupsList() *framework.Path {
 			OperationSuffix: "groups",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathGroupList,
@@ -127,11 +138,18 @@ func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *f
 	return nil, nil
 }
 
-func (b *backend) pathGroupList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	groups, err := req.Storage.List(ctx, "group/")
+func (b *backend) pathGroupList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	groups, err := req.Storage.ListPage(ctx, "group/", after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(groups), nil
 }
 

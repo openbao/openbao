@@ -56,6 +56,14 @@ User-provided key-value pairs that are used to describe arbitrary and
 version-agnostic information about a secret.
 `,
 			},
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist. Only used for listing.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries. Only used for listing.`,
+			},
 		},
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.UpdateOperation: b.upgradeCheck(b.pathMetadataWrite()),
@@ -95,6 +103,12 @@ func (b *versionedKVBackend) metadataExistenceCheck() framework.ExistenceFunc {
 
 func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		after := data.Get("after").(string)
+		limit := data.Get("limit").(int)
+		if limit <= 0 {
+			limit = -1
+		}
+
 		key := data.Get("path").(string)
 
 		// Get an encrypted key storage object
@@ -106,7 +120,7 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 		es := wrapper.Wrap(req.Storage)
 
 		// Use encrypted key storage to list the keys
-		keys, err := es.List(ctx, key)
+		keys, err := es.ListPage(ctx, key, after, limit)
 		return logical.ListResponse(keys), err
 	}
 }

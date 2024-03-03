@@ -156,6 +156,16 @@ func (b *backend) pathRoles() []*framework.Path {
 				OperationPrefix: operationPrefixKubernetes,
 				OperationSuffix: "roles",
 			},
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathRolesList,
@@ -313,11 +323,18 @@ func (b *backend) pathRolesDelete(ctx context.Context, req *logical.Request, d *
 	return nil, nil
 }
 
-func (b *backend) pathRolesList(ctx context.Context, req *logical.Request, d *framework.FieldData) (resp *logical.Response, err error) {
-	roles, err := req.Storage.List(ctx, rolesPath)
+func (b *backend) pathRolesList(ctx context.Context, req *logical.Request, data *framework.FieldData) (resp *logical.Response, err error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, rolesPath, after, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list roles: %w", err)
 	}
+
 	return logical.ListResponse(roles), nil
 }
 

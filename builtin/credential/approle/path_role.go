@@ -313,6 +313,16 @@ can only be set during role creation and once set, it can't be reset later.`,
 				OperationPrefix: operationPrefixAppRole,
 				OperationSuffix: "roles",
 			},
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
+			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathRoleList,
@@ -952,6 +962,14 @@ Overrides secret_id_num_uses role option when supplied. May not be higher than r
 					Description: `Duration in seconds after which this SecretID expires.
 Overrides secret_id_ttl role option when supplied. May not be longer than role's secret_id_ttl.`,
 				},
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist. Only used in list operations.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries. Only used in list operations.`,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
@@ -1323,10 +1341,17 @@ func (b *backend) pathRoleExistenceCheck(ctx context.Context, req *logical.Reque
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, "role/")
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, "role/", after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(roles), nil
 }
 
@@ -1361,7 +1386,13 @@ func (b *backend) pathRoleSecretIDList(ctx context.Context, req *logical.Request
 
 	// Listing works one level at a time. Get the first level of data
 	// which could then be used to get the actual SecretID storage entries.
-	secretIDHMACs, err := req.Storage.List(ctx, fmt.Sprintf("%s%s/", role.SecretIDPrefix, roleNameHMAC))
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	secretIDHMACs, err := req.Storage.ListPage(ctx, fmt.Sprintf("%s%s/", role.SecretIDPrefix, roleNameHMAC), after, limit)
 	if err != nil {
 		return nil, err
 	}

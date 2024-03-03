@@ -26,6 +26,17 @@ func pathUsersList(b *backend) *framework.Path {
 			ItemType:        "User",
 		},
 
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.ListOperation: b.pathUserList,
 		},
@@ -154,11 +165,18 @@ func (b *backend) setUser(ctx context.Context, s logical.Storage, username strin
 	return s.Put(ctx, entry)
 }
 
-func (b *backend) pathUserList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	users, err := req.Storage.List(ctx, "user/")
+func (b *backend) pathUserList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	users, err := req.Storage.ListPage(ctx, "user/", after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(users), nil
 }
 

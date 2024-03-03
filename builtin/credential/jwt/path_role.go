@@ -29,11 +29,24 @@ const (
 func pathRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "role/?",
+
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixJWT,
 			OperationVerb:   "list",
 			OperationSuffix: "roles",
 		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback:    b.pathRoleList,
@@ -293,10 +306,17 @@ func (b *jwtAuthBackend) pathRoleExistenceCheck(ctx context.Context, req *logica
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *jwtAuthBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, rolePrefix)
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, rolePrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(roles), nil
 }
 

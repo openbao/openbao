@@ -14,11 +14,9 @@ set -e
 [ ${BUILD_DARWIN:?} ]
 [ ${BUILD_DOCKER:?} ]
 [ ${BUILD_UBI:?} ]
-[ ${TEST:?} ]
-[ ${TEST_DOCKER_K8S:?} ]
 
 # listing out all of the jobs with the status
-jobs=( "build-other:$BUILD_OTHER" "build-linux:$BUILD_LINUX" "build-darwin:$BUILD_DARWIN" "build-docker:$BUILD_DOCKER" "build-ubi:$BUILD_UBI" "test:$TEST" "test-docker-k8s:$TEST_DOCKER_K8S" )
+jobs=( "build-other:$BUILD_OTHER" "build-linux:$BUILD_LINUX" "build-darwin:$BUILD_DARWIN" "build-docker:$BUILD_DOCKER" "build-ubi:$BUILD_UBI" )
 
 # there is a case where even if a job is failed, it reports as cancelled. So, we look for both.
 failed_jobs=()

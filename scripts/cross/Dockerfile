@@ -35,6 +35,6 @@ ENV PATH $GOROOT/bin:$GOPATH/bin:$PATH
 
 RUN go get golang.org/x/tools/cmd/goimports
 
-RUN mkdir -p /gopath/src/github.com/hashicorp/vault
-WORKDIR /gopath/src/github.com/hashicorp/vault
+RUN mkdir -p /gopath/src/github.com/openbao/openbao
+WORKDIR /gopath/src/github.com/openbao/openbao
 CMD make static-dist bin

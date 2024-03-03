@@ -5,10 +5,6 @@ on:
         description: The execution architecture (arm, amd64, etc.)
         required: true
         type: string
-      enterprise:
-        description: A flag indicating if this workflow is executing for the enterprise repository.
-        required: true
-        type: string
       total-runners:
         description: Number of runners to use for executing non-binary tests.
         required: true
@@ -70,44 +66,14 @@ jobs:
     permissions:
       id-token: write  # Note: this permission is explicitly required for Vault auth
       contents: read
-    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
         with:
           ref: ${{ inputs.checkout-ref }}
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
-      - name: Authenticate to Vault
-        id: vault-auth
-        if: github.repository == 'hashicorp/vault-enterprise'
-        run: vault-auth
-      - name: Fetch Secrets
-        id: secrets
-        if: github.repository == 'hashicorp/vault-enterprise'
-        uses: hashicorp/vault-action@130d1f5f4fe645bb6c83e4225c04d64cfb62de6e
-        with:
-          url: ${{ steps.vault-auth.outputs.addr }}
-          caCertificate: ${{ steps.vault-auth.outputs.ca_certificate }}
-          token: ${{ steps.vault-auth.outputs.token }}
-          secrets: |
-            kv/data/github/${{ github.repository }}/datadog-ci DATADOG_API_KEY;
-            kv/data/github/${{ github.repository }}/github-token username-and-token | github-token;
-            kv/data/github/${{ github.repository }}/license license_1 | VAULT_LICENSE_CI;
-            kv/data/github/${{ github.repository }}/license license_2 | VAULT_LICENSE_2;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_API_ADDRESS;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_AUTH_URL;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_CLIENT_ID;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_CLIENT_SECRET;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_RESOURCE_ID;
-      - id: setup-git-private
-        name: Setup Git configuration (private)
-        if: github.repository == 'hashicorp/vault-enterprise'
-        run: |
-          git config --global url."https://${{ steps.secrets.outputs.github-token }}@github.com".insteadOf https://github.com
-      - id: setup-git-public
         name: Setup Git configuration (public)
-        if: github.repository != 'hashicorp/vault-enterprise'
+      - id: setup-git-public
         run: |
           git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - uses: ./.github/actions/set-up-gotestsum
@@ -123,19 +89,15 @@ jobs:
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
         if: ${{ !inputs.testonly }}
-        env:
-          GOPRIVATE: github.com/hashicorp/*
         run: |
           # testonly tests need additional build tag though let's exclude them anyway for clarity
           (
-            go list ./... | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" | gotestsum tool ci-matrix --debug \
+            go list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" | gotestsum tool ci-matrix --debug \
               --partitions "${{ inputs.total-runners }}" \
               --timing-files 'test-results/go-test/*.json' > matrix.json
           )
       - name: Build matrix for tests tagged with testonly
         if: ${{ inputs.testonly }}
-        env:
-          GOPRIVATE: github.com/hashicorp/*
         run: |
           set -exo pipefail
           # enable glob expansion
@@ -153,7 +115,7 @@ jobs:
         if: inputs.binary-tests
         id: list-binary-tests
         run: |
-          LIST="$(go list ./... | grep "_binary" | xargs)"
+          LIST="$(go list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep "_binary" | xargs)"
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
       - name: Build complete matrix
         id: build
@@ -193,57 +155,24 @@ jobs:
       actions: read
       contents: read
       id-token: write  # Note: this permission is explicitly required for Vault auth
-    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         id: ${{ fromJSON(needs.test-matrix.outputs.matrix_ids) }}
     env:
-      GOPRIVATE: github.com/hashicorp/*
       TIMEOUT_IN_MINUTES: ${{ inputs.timeout-minutes }}
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
         with:
           ref: ${{ inputs.checkout-ref }}
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
-      - name: Authenticate to Vault
-        id: vault-auth
-        if: github.repository == 'hashicorp/vault-enterprise'
-        run: vault-auth
-      - name: Fetch Secrets
-        id: secrets
-        if: github.repository == 'hashicorp/vault-enterprise'
-        uses: hashicorp/vault-action@130d1f5f4fe645bb6c83e4225c04d64cfb62de6e
-        with:
-          url: ${{ steps.vault-auth.outputs.addr }}
-          caCertificate: ${{ steps.vault-auth.outputs.ca_certificate }}
-          token: ${{ steps.vault-auth.outputs.token }}
-          secrets: |
-            kv/data/github/${{ github.repository }}/datadog-ci DATADOG_API_KEY;
-            kv/data/github/${{ github.repository }}/github-token username-and-token | github-token;
-            kv/data/github/${{ github.repository }}/license license_1 | VAULT_LICENSE_CI;
-            kv/data/github/${{ github.repository }}/license license_2 | VAULT_LICENSE_2;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_API_ADDRESS;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_AUTH_URL;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_CLIENT_ID;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_CLIENT_SECRET;
-            kv/data/github/${{ github.repository }}/hcp-link HCP_RESOURCE_ID;
-      - id: setup-git-private
-        name: Setup Git configuration (private)
-        if: github.repository == 'hashicorp/vault-enterprise'
-        run: |
-          git config --global url."https://${{ steps.secrets.outputs.github-token }}@github.com".insteadOf https://github.com
       - id: setup-git-public
         name: Setup Git configuration (public)
-        if: github.repository != 'hashicorp/vault-enterprise'
         run: |
           git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - id: build
         if: inputs.binary-tests && matrix.id == inputs.total-runners
-        env:
-          GOPRIVATE: github.com/hashicorp/*
         run: time make ci-bootstrap dev
       - uses: ./.github/actions/set-up-gotestsum
       - id: run-go-tests
@@ -263,31 +192,10 @@ jobs:
             echo "no test packages to run"
             exit 1
           fi
-          # We don't want VAULT_LICENSE set when running Go tests, because that's
-          # not what developers have in their environments and it could break some
-          # tests; it would be like setting VAULT_TOKEN.  However some non-Go
-          # CI commands, like the UI tests, shouldn't have to worry about licensing.
-          # So we provide the tests which want an externally supplied license with licenses
-          # via the VAULT_LICENSE_CI and VAULT_LICENSE_2 environment variables, and here we unset it.
+
           # shellcheck disable=SC2034
-          VAULT_LICENSE=
-
-          # Assign test licenses to relevant variables if they aren't already
-          if [[ ${{ github.repository }} == 'hashicorp/vault' ]]; then
-            export VAULT_LICENSE_CI=${{ secrets.ci_license }}
-            export VAULT_LICENSE_2=${{ secrets.ci_license_2 }}
-            export HCP_API_ADDRESS=${{ secrets.HCP_API_ADDRESS }}
-            export HCP_AUTH_URL=${{ secrets.HCP_AUTH_URL }}
-            export HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}
-            export HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}
-            export HCP_RESOURCE_ID=${{ secrets.HCP_RESOURCE_ID }}
-            # Temporarily removing this variable to cause HCP Link tests
-            # to be skipped.
-            #export HCP_SCADA_ADDRESS=${{ secrets.HCP_SCADA_ADDRESS }}
-          fi
-
-          if [ -f bin/vault ]; then
-            VAULT_BINARY="$(pwd)/bin/vault"
+          if [ -f bin/bao ]; then
+            VAULT_BINARY="$(pwd)/bin/bao"
             export VAULT_BINARY
           fi
 
@@ -311,22 +219,6 @@ jobs:
               -timeout=${{ env.TIMEOUT_IN_MINUTES }}m \
               -parallel=${{ inputs.go-test-parallelism }} \
               ${{ inputs.extra-flags }} \
-      - name: Prepare datadog-ci
-        if: github.repository == 'hashicorp/vault' && (success() || failure())
-        continue-on-error: true
-        run: |
-          curl -L --fail "https://github.com/DataDog/datadog-ci/releases/latest/download/datadog-ci_linux-x64" --output "/usr/local/bin/datadog-ci"
-          chmod +x /usr/local/bin/datadog-ci
-      - name: Upload test results to DataDog
-        continue-on-error: true
-        env:
-          DD_ENV: ci
-        run: |
-          if [[ ${{ github.repository }} == 'hashicorp/vault' ]]; then
-            export DATADOG_API_KEY=${{ secrets.DATADOG_API_KEY }}
-          fi
-          datadog-ci junit upload --service "$GITHUB_REPOSITORY" test-results/go-test/results-${{ matrix.id }}.xml
-        if: success() || failure()
       - name: Archive test results
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         with:
@@ -407,7 +299,7 @@ jobs:
   test-collect-reports:
     if: ${{ ! cancelled() }}
     needs: test-go
-    runs-on: ${{ fromJSON(inputs.runs-on) }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:

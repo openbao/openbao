@@ -25,8 +25,8 @@ on:
         type: string
       package-name:
         type: string
-        default: vault
-      vault-version:
+        default: bao
+      bao-version:
         type: string
         required: true
       web-ui-cache-key:
@@ -35,13 +35,11 @@ on:
 
 jobs:
   build:
-    runs-on: custom-linux-xl-vault-latest
-    name: Vault ${{ inputs.goos }} ${{ inputs.goarch }} v${{ inputs.vault-version }}
+    runs-on: ubuntu-latest
+    name: OpenBao ${{ inputs.goos }} ${{ inputs.goarch }} v${{ inputs.bao-version }}
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
       - name: Restore UI from cache
         uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
@@ -50,22 +48,22 @@ jobs:
           fail-on-cache-miss: true
           path: http/web_ui
           key: ${{ inputs.web-ui-cache-key }}
-      - name: Build Vault
+      - name: Build OpenBao
         env:
           GO_TAGS: ${{ inputs.go-tags }}
           CGO_ENABLED: ${{ inputs.cgo-enabled }}
           GOARCH: ${{ inputs.goarch }}
           GOOS: ${{ inputs.goos }}
-          VERSION: ${{ inputs.vault-version }}
+          VERSION: ${{ inputs.bao-version }}
         run:
             make ci-build
       - name: Determine artifact basename
         env:
           GOARCH: ${{ inputs.goarch }}
           GOOS: ${{ inputs.goos }}
-          VERSION: ${{ inputs.vault-version }}
+          VERSION: ${{ inputs.bao-version }}
         run: echo "ARTIFACT_BASENAME=$(make ci-get-artifact-basename)" >> "$GITHUB_ENV"
-      - name: Bundle Vault
+      - name: Bundle OpenBao
         env:
           BUNDLE_PATH: out/${{ env.ARTIFACT_BASENAME }}.zip
         run: make ci-bundle
@@ -78,11 +76,12 @@ jobs:
         uses: hashicorp/actions-packaging-linux@v1
         with:
           name: ${{ github.event.repository.name }}
-          description: Vault is a tool for secrets management, encryption as a service, and privileged access management.
+          description: OpenBao exists to provide a software solution to manage, store, and distribute sensitive data including secrets, certificates, and keys.
           arch: ${{ inputs.goarch }}
-          version: ${{ inputs.vault-version }}
-          maintainer: HashiCorp
-          homepage: https://github.com/hashicorp/vault
+          version: ${{ inputs.bao-version }}
+          vendor: OpenBao
+          maintainer: OpenBao
+          homepage: https://github.com/openbao/openbao
           license: MPL-2.0
           binary: dist/${{ inputs.package-name }}
           deb_depends: openssl

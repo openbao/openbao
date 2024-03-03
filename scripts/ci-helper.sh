@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-# The ci-helper is used to determine build metadata, build Vault binaries,
+# The ci-helper is used to determine build metadata, build OpenBao binaries,
 # package those binaries into artifacts, and execute tests with those artifacts.
 
 set -euo pipefail
@@ -31,7 +31,7 @@ function repo() {
 
 # Determine the artifact basename based on metadata
 function artifact_basename() {
-  : "${PKG_NAME:="vault"}"
+  : "${PKG_NAME:="openbao"}"
   : "${GOOS:=$(go env GOOS)}"
   : "${GOARCH:=$(go env GOARCH)}"
 
@@ -46,7 +46,7 @@ function artifact_basename() {
 
 # Bundle the dist directory into a zip
 function bundle() {
-  : "${BUNDLE_PATH:=$(repo_root)/vault.zip}"
+  : "${BUNDLE_PATH:=$(repo_root)/openbao.zip}"
   echo "--> Bundling dist/* to $BUNDLE_PATH"
   zip -r -j "$BUNDLE_PATH" dist/
 }
@@ -71,7 +71,7 @@ function build_ui() {
   popd
 }
 
-# Build Vault
+# Build OpenBao
 function build() {
   local revision
   local build_date
@@ -88,7 +88,7 @@ function build() {
   (unset GOOS; unset GOARCH; go generate ./...)
 
   # Build our ldflags
-  msg="--> Building Vault revision $revision, built $build_date"
+  msg="--> Building OpenBao revision $revision, built $build_date"
 
   # Keep the symbol and dwarf information by default
   if [ -n "$REMOVE_SYMBOLS" ]; then
@@ -104,35 +104,32 @@ function build() {
     ldflags="${ldflags} -X github.com/openbao/openbao/version.VersionMetadata=$VERSION_METADATA"
   fi
 
-  # Build vault
+  # Build OpenBao
   echo "$msg"
   pushd "$(repo_root)"
   mkdir -p dist
   mkdir -p out
   set -x
-  go build -v -tags "$GO_TAGS" -ldflags "$ldflags" -o dist/
+  go build -v -tags "$GO_TAGS" -ldflags "$ldflags" -o dist/bao
   set +x
   popd
 }
 
 # Prepare legal requirements for packaging
 function prepare_legal() {
-  : "${PKG_NAME:="vault"}"
+  : "${PKG_NAME:="openbao"}"
 
   pushd "$(repo_root)"
   mkdir -p dist
-  curl -o dist/EULA.txt https://eula.hashicorp.com/EULA.txt
-  curl -o dist/TermsOfEvaluation.txt https://eula.hashicorp.com/TermsOfEvaluation.txt
   mkdir -p ".release/linux/package/usr/share/doc/$PKG_NAME"
-  cp dist/EULA.txt ".release/linux/package/usr/share/doc/$PKG_NAME/EULA.txt"
-  cp dist/TermsOfEvaluation.txt ".release/linux/package/usr/share/doc/$PKG_NAME/TermsOfEvaluation.txt"
+  cp LICENSE ".release/linux/package/usr/share/doc/$PKG_NAME/LICENSE"
   popd
 }
 
-# Package version converts a vault version string into a compatible representation for system
+# Package version converts an OpenBao version string into a compatible representation for system
 # packages.
 function version_package() {
-  awk '{ gsub("-","~",$1); print $1 }' <<< "$VAULT_VERSION"
+  awk '{ gsub("-","~",$1); print $1 }' <<< "$OPENBAO_VERSION"
 }
 
 # Run the CI Helper

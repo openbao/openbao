@@ -21,17 +21,31 @@ func pathsRole(b *kubeAuthBackend) []*framework.Path {
 	p := []*framework.Path{
 		{
 			Pattern: "role/?",
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
-			},
-			HelpSynopsis:    strings.TrimSpace(roleHelp["role-list"][0]),
-			HelpDescription: strings.TrimSpace(roleHelp["role-list"][1]),
+
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixKubernetes,
 				OperationSuffix: "auth-roles",
 				Navigation:      true,
 				ItemType:        "Role",
 			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
+			},
+
+			Callbacks: map[logical.Operation]framework.OperationFunc{
+				logical.ListOperation: b.pathRoleList,
+			},
+
+			HelpSynopsis:    strings.TrimSpace(roleHelp["role-list"][0]),
+			HelpDescription: strings.TrimSpace(roleHelp["role-list"][1]),
 		},
 		{
 			Pattern: "role/" + framework.GenericNameRegex("name"),
@@ -140,7 +154,13 @@ func (b *kubeAuthBackend) pathRoleList(ctx context.Context, req *logical.Request
 	b.l.RLock()
 	defer b.l.RUnlock()
 
-	roles, err := req.Storage.List(ctx, "role/")
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, "role/", after, limit)
 	if err != nil {
 		return nil, err
 	}

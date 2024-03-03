@@ -153,6 +153,14 @@ List the users registered with the method.
 | :----- | :------------------- |
 | `LIST` | `/auth/radius/users` |
 
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
+
 ### Sample request
 
 ```shell-session

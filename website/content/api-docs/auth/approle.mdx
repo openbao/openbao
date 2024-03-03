@@ -21,6 +21,14 @@ This endpoint returns a list the existing AppRoles in the method.
 | :----- | :------------------- |
 | `LIST` | `/auth/approle/role` |
 
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
+
 ### Sample request
 
 ```shell-session
@@ -330,6 +338,14 @@ This includes the accessors for "custom" SecretIDs as well.
 | Method | Path                                      |
 | :----- | :---------------------------------------- |
 | `LIST` | `/auth/approle/role/:role_name/secret-id` |
+
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
 
 ### Parameters
 

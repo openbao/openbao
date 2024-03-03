@@ -30,6 +30,17 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				OperationSuffix: "roles",
 			},
 
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
+			},
+
 			Callbacks: map[logical.Operation]framework.OperationFunc{
 				logical.ListOperation: b.pathRoleList,
 			},
@@ -44,6 +55,17 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				OperationPrefix: operationPrefixDatabase,
 				OperationVerb:   "list",
 				OperationSuffix: "static-roles",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
 			},
 
 			Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -352,11 +374,18 @@ func (b *databaseBackend) pathRoleRead(ctx context.Context, req *logical.Request
 }
 
 func (b *databaseBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
 	path := databaseRolePath
 	if strings.HasPrefix(req.Path, "static-roles") {
 		path = databaseStaticRolePath
 	}
-	entries, err := req.Storage.List(ctx, path)
+
+	entries, err := req.Storage.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -15,13 +15,27 @@ import (
 func pathListRoles(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "roles/?$",
+
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixRabbitMQ,
 			OperationSuffix: "roles",
 		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.ListOperation: b.pathRoleList,
 		},
+
 		HelpSynopsis:    pathRoleHelpSyn,
 		HelpDescription: pathRoleHelpDesc,
 	}
@@ -136,8 +150,14 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 // Lists all the roles registered with the backend
-func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, "role/")
+func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, "role/", after, limit)
 	if err != nil {
 		return nil, err
 	}

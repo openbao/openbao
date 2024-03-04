@@ -5,9 +5,9 @@ package command
 
 import (
 	"flag"
-	"os"
 	"strconv"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/posener/complete"
 )
@@ -102,7 +102,7 @@ func envVarValue(key string) (string, bool) {
 	if key == "" {
 		return "", false
 	}
-	return os.LookupEnv(key)
+	return api.LookupBaoVariable(key)
 }
 
 // flagValue attempts to find the named flag in a set of FlagSets.

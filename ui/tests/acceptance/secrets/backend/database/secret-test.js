@@ -52,61 +52,6 @@ const newConnection = async (
 
 const connectionTests = [
   {
-    name: 'elasticsearch-connection',
-    plugin: 'elasticsearch-database-plugin',
-    elasticUser: 'username',
-    elasticPassword: 'password',
-    url: 'http://127.0.0.1:9200',
-    requiredFields: async (assert, name) => {
-      assert.dom('[data-test-input="username"]').exists(`Username field exists for ${name}`);
-      assert.dom('[data-test-input="password"]').exists(`Password field exists for ${name}`);
-      assert.dom('[data-test-input="ca_cert"]').exists(`CA certificate field exists for ${name}`);
-      assert.dom('[data-test-input="ca_path"]').exists(`CA path field exists for ${name}`);
-      assert.dom('[data-test-input="client_cert"]').exists(`Client certificate field exists for ${name}`);
-      assert.dom('[data-test-input="client_key"]').exists(`Client key field exists for ${name}`);
-      assert.dom('[data-test-input="tls_server_name"]').exists(`TLS server name field exists for ${name}`);
-      assert.dom('[data-test-input="insecure"]').exists(`Insecure checkbox exists for ${name}`);
-      assert
-        .dom('[data-test-toggle-input="show-username_template"]')
-        .exists(`Username template toggle exists for ${name}`);
-    },
-  },
-  {
-    name: 'mongodb-connection',
-    plugin: 'mongodb-database-plugin',
-    url: `mongodb://127.0.0.1:4321/test`,
-    requiredFields: async (assert, name) => {
-      assert.dom('[data-test-input="username"]').exists(`Username field exists for ${name}`);
-      assert.dom('[data-test-input="password"]').exists(`Password field exists for ${name}`);
-      assert.dom('[data-test-input="write_concern"]').exists(`Write concern field exists for ${name}`);
-      assert.dom('[data-test-toggle-group="TLS options"]').exists('TLS options toggle exists');
-      assert
-        .dom('[data-test-input="root_rotation_statements"]')
-        .exists(`Root rotation statements exists for ${name}`);
-    },
-  },
-  {
-    name: 'mssql-connection',
-    plugin: 'mssql-database-plugin',
-    url: `mssql://127.0.0.1:4321/test`,
-    requiredFields: async (assert, name) => {
-      assert.dom('[data-test-input="username"]').exists(`Username field exists for ${name}`);
-      assert.dom('[data-test-input="password"]').exists(`Password field exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_open_connections"]')
-        .exists(`Max open connections exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_idle_connections"]')
-        .exists(`Max idle connections exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_connection_lifetime"]')
-        .exists(`Max connection lifetime exists for ${name}`);
-      assert
-        .dom('[data-test-input="root_rotation_statements"]')
-        .exists(`Root rotation statements exists for ${name}`);
-    },
-  },
-  {
     name: 'mysql-connection',
     plugin: 'mysql-database-plugin',
     url: `{{username}}:{{password}}@tcp(127.0.0.1:3306)/test`,
@@ -218,34 +163,6 @@ const connectionTests = [
         .exists(`Username template toggle exists for ${name}`);
     },
   },
-  // keep oracle as last DB because it is skipped in some tests (line 285) the UI doesn't return to empty state after
-  {
-    name: 'oracle-connection',
-    plugin: 'vault-plugin-database-oracle',
-    url: `{{username}}/{{password}}@localhost:1521/OraDoc.localhost`,
-    requiredFields: async (assert, name) => {
-      assert.dom('[data-test-input="username"]').exists(`Username field exists for ${name}`);
-      assert.dom('[data-test-input="password"]').exists(`Password field exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_open_connections"]')
-        .exists(`Max open connections exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_idle_connections"]')
-        .exists(`Max idle connections exists for ${name}`);
-      assert
-        .dom('[data-test-input="max_connection_lifetime"]')
-        .exists(`Max connection lifetime exists for ${name}`);
-      assert
-        .dom('[data-test-input="root_rotation_statements"]')
-        .exists(`Root rotation statements exists for ${name}`);
-      assert
-        .dom('[data-test-alert-banner="alert"]')
-        .hasTextContaining(
-          `Warning Please ensure that your Oracle plugin has the default name of vault-plugin-database-oracle. Custom naming is not supported in the UI at this time. If the plugin is already named vault-plugin-database-oracle, disregard this warning.`,
-          'warning banner displays about connections with SSL.'
-        );
-    },
-  },
 ];
 
 module('Acceptance | secrets/database/*', function (hooks) {
@@ -296,11 +213,6 @@ module('Acceptance | secrets/database/*', function (hooks) {
         await connectionPage.password(testCase.elasticPassword);
       } else {
         await connectionPage.connectionUrl(testCase.url);
-      }
-      // skip adding oracle db connection since plugin doesn't exist
-      if (testCase.plugin === 'vault-plugin-database-oracle') {
-        testCase.requiredFields(assert, testCase.name);
-        continue;
       }
       testCase.requiredFields(assert, testCase.name);
       await connectionPage.toggleVerify();

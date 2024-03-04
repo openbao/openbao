@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: auth tune - Command
+sidebar_label: tune
 description: |-
   The "auth tune" command tunes the configuration options for the auth method at
   the given PATH.
@@ -11,12 +10,12 @@ description: |-
 The `auth tune` command tunes the configuration options for the auth method at
 the given PATH. 
 
-<Note>
+:::note
 
 The argument corresponds to the **path** where the auth method is
 enabled, not the auth **type**.
 
-</Note>
+:::
 
 ## Examples
 
@@ -44,9 +43,7 @@ Success! Tuned the auth method at: github/
 
 Verify the updated configuration.
 
-<CodeBlockConfig highlight="1,4">
-
-```shell-session
+```shell-session {1,4}
 $ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
@@ -57,8 +54,6 @@ max_lease_ttl        768h
 token_type           default-service
 ```
 
-</CodeBlockConfig>
-
 To restore back to the system default, you can use `-1`. 
 
 ```shell-session
@@ -68,9 +63,7 @@ Success! Tuned the auth method at: github/
 
 Verify the updated configuration.
 
-<CodeBlockConfig highlight="1,4">
-
-```shell-session
+```shell-session {1,4}
 $ bao read sys/auth/github/tune
 Key                  Value
 ---                  -----
@@ -80,8 +73,6 @@ force_no_cache       false
 max_lease_ttl        768h
 token_type           default-service
 ```
-
-</CodeBlockConfig>
 
 You can specify multiple audit non-hmac request keys.
 
@@ -93,8 +84,8 @@ Success! Tuned the auth method at: github/
 ### Enable user lockout
 
 User lockout feature is only supported for
-[userpass](/vault/docs/auth/userpass), [ldap](/vault/docs/auth/ldap), and
-[approle](/vault/docs/auth/approle) auth methods.
+[userpass](/docs/auth/userpass), [ldap](/docs/auth/ldap), and
+[approle](/docs/auth/approle) auth methods.
 
 Tune the `userpass/` auth method to lock out the user after 10 failed login
 attempts within 10 minutes.
@@ -106,9 +97,7 @@ Success! Tuned the auth method at: userpass/
 
 View the current configuration of the auth method enabled at `userpass/`.
 
-<CodeBlockConfig highlight="1,11-13">
-
-```shell-session
+```shell-session {1,11-13}
 $ bao read sys/auth/userpass/tune
 
 Key                  Value
@@ -124,13 +113,10 @@ user_lockout_duration                  10m
 user_lockout_threshold                 10
 ```
 
-</CodeBlockConfig>
-
-
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 - `-allowed-response-headers` `(string: "")` - response header values that the auth
   method will be allowed to set.
@@ -157,7 +143,7 @@ flags](/vault/docs/commands) included on all commands.
 
 - `-max-lease-ttl` `(duration: "")` - The maximum lease TTL for this auth
   method. If unspecified, this defaults to the OpenBao server's globally
-  configured [maximum lease TTL](/vault/docs/configuration#max_lease_ttl), or a
+  configured [maximum lease TTL](/docs/configuration#max_lease_ttl), or a
   previously configured value for the auth method. This value is allowed to
   override the server's global max TTL; it can be longer or shorter.
 
@@ -170,16 +156,15 @@ flags](/vault/docs/commands) included on all commands.
 
 - `-plugin-version` `(string: "")` - Configures the semantic version of the plugin
   to use. The new version will not start running until the mount is
-  [reloaded](/vault/docs/commands/plugin/reload).
+  [reloaded](/docs/commands/plugin/reload).
 
 - `-user-lockout-threshold` `(string: "")` - Specifies the number of failed login attempts 
-  after which the user is locked out. User lockout feature was added in Vault 1.13. 
+  after which the user is locked out.
 
 - `-user-lockout-duration` `(duration: "")` - Specifies the duration for which a user will be locked out.
-  User lockout feature was added in Vault 1.13.
 
 - `-user-lockout-counter-reset-duration` `(duration: "")` - Specifies the duration after which the lockout 
-  counter is reset with no failed login attempts. User lockout feature was added in Vault 1.13.
+  counter is reset with no failed login attempts.
 
-- `-user-lockout-disable` `(bool: false)` - Disables the user lockout feature if set to true. User lockout feature was added in Vault 1.13.
+- `-user-lockout-disable` `(bool: false)` - Disables the user lockout feature if set to true.
 

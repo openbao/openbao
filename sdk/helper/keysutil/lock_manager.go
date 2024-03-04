@@ -323,6 +323,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			lock.Unlock()
 		}
 	}
+	defer cleanup()
 
 	// Check the cache again
 	if lm.useCache {
@@ -331,18 +332,15 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	if ok {
 		p = pRaw.(*Policy)
 		if atomic.LoadUint32(&p.deleted) == 1 {
-			cleanup()
 			return nil, false, nil
 		}
 		retP = p
-		cleanup()
 		return
 	}
 
 	// Load it from storage
 	p, err = lm.getPolicyFromStorage(ctx, req.Storage, req.Name)
 	if err != nil {
-		cleanup()
 		return nil, false, err
 	}
 	// We don't need to lock the policy as there would be no other holders of
@@ -352,7 +350,6 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		// This is the only place we upsert a new policy, so if upsert is not
 		// specified, or the lock type is wrong, unlock before returning
 		if !req.Upsert {
-			cleanup()
 			return nil, false, nil
 		}
 
@@ -364,19 +361,16 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		switch req.KeyType {
 		case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305:
 			if req.Convergent && !req.Derived {
-				cleanup()
 				return nil, false, fmt.Errorf("convergent encryption requires derivation to be enabled")
 			}
 
 		case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
 			if req.Derived || req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
 		case KeyType_ED25519:
 			if req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
@@ -387,18 +381,15 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			}
 		case KeyType_HMAC:
 			if req.Derived || req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
 		case KeyType_MANAGED_KEY:
 			if req.Derived || req.Convergent {
-				cleanup()
 				return nil, false, fmt.Errorf("key derivation and convergent encryption not supported for keys of type %v", req.KeyType)
 			}
 
 		default:
-			cleanup()
 			return nil, false, fmt.Errorf("unsupported key type %v", req.KeyType)
 		}
 
@@ -433,7 +424,6 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 			err = p.Rotate(ctx, req.Storage, rand)
 		}
 		if err != nil {
-			cleanup()
 			return nil, false, err
 		}
 
@@ -447,13 +437,11 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		// We don't need to worry about upgrading since it will be a new policy
 		retP = p
 		retUpserted = true
-		cleanup()
 		return
 	}
 
 	if p.NeedsUpgrade() {
 		if err := p.Upgrade(ctx, req.Storage, rand); err != nil {
-			cleanup()
 			return nil, false, err
 		}
 	}
@@ -466,7 +454,6 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 	}
 
 	retP = p
-	cleanup()
 	return
 }
 

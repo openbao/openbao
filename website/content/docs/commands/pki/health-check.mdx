@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: pki health-check - Command
+sidebar_label: health-check
 description: |-
   The "pki health-check" command verifies the health of the given PKI secrets
   engine mount against an optional configuration.
@@ -88,10 +87,7 @@ This command returns the following exit codes:
 	     one or more health checks.
 
 Note that an exit code of `5` (due to a version mismatch) is not necessarily
-fatal to the health check. For example, the `crl_validity_period` health
-check will return an invalid version warning when run against Vault 1.11 as
-no Delta CRL exists for this version of Vault, but this will not impact its
-ability to check the complete CRL.
+fatal to the health check. 
 
 Each health check outputs one or results in a list. This list contains a
 mapping of keys (`status`, `status_code`, `endpoint`, and `message`) to
@@ -138,12 +134,12 @@ This health check will check each issuer in the mount for validity status, retur
 
 **Remediation steps**:
 
-1. Perform a [CA rotation operation](/vault/docs/secrets/pki/rotation-primitives)
+1. Perform a [CA rotation operation](/docs/secrets/pki/rotation-primitives)
    to check for CAs that are about to expire.
 1. Migrate from expiring CAs to new CAs.
 1. Delete any expired CAs with one of the following options:
-  - Run [tidy](/vault/api-docs/secret/pki#tidy) manually with `bao write <mount>/tidy tidy_expired_issuers=true`.
-  - Use the OpenBao API to call [delete issuer](/vault/api-docs/secret/pki#delete-issuer).
+  - Run [tidy](/api-docs/secret/pki#tidy) manually with `bao write <mount>/tidy tidy_expired_issuers=true`.
+  - Use the OpenBao API to call [delete issuer](/api-docs/secret/pki#delete-issuer).
 
 ### CRL validity period
 
@@ -263,19 +259,20 @@ other (potentially dangerous) quirks.
 
 Checks each role to see whether `no_store` is set to `false`.
 
-<Important>
+:::warning
+
 OpenBao will provide warnings and performance will suffer if you have a large
 number of certificates without temporal CRL auto-rebuilding and set `no_store`
 to `true`.
-</Important>
 
+:::
 
 **Remediation steps**:
 
 1. Update none-ACME roles with `no_store=false`. **NOTE**: Roles used for ACME
    issuance must have `no_store`  set to `true`.
 1. Set your certificate lifetimes as short as possible.
-1. Use [BYOC revocations](/vault/api-docs/secret/pki#revoke-certificate) to
+1. Use [BYOC revocations](/api-docs/secret/pki#revoke-certificate) to
    revoke certificates as needed.
 
 ### Accessibility of audit information
@@ -486,7 +483,7 @@ This health check verifies that this cluster has a reasonable number of certific
    lifetimes should reflect the expected usage of the certificate. If the TTL is
    set appropriately, most certificates renew at approximately 2/3 of their
    lifespan.
-1. Consider setting the `no_store` field for all roles to `true` and use [BYOC revocations](/vault/api-docs/secret/pki#revoke-certificate) to avoid storage.
+1. Consider setting the `no_store` field for all roles to `true` and use [BYOC revocations](/api-docs/secret/pki#revoke-certificate) to avoid storage.
 
 ### Enable ACME issuance
 
@@ -503,7 +500,7 @@ This health check verifies that this cluster has a reasonable number of certific
 
 This health check verifies that ACME is enabled within a mount that contains an intermediary issuer, as this is considered a best-practice to support a self-rotating PKI infrastructure.
 
-Review the [ACME Certificate Issuance](/vault/api-docs/secret/pki#acme-certificate-issuance)
+Review the [ACME Certificate Issuance](/api-docs/secret/pki#acme-certificate-issuance)
 API documentation to learn about enabling ACME support in OpenBao.
 
 ### ACME response headers

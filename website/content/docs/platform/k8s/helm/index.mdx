@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Helm - Kubernetes
+sidebar_label: Overview
 description: >-
   The Vault Helm chart is the recommended way to install and configure Vault on
   Kubernetes.
@@ -8,7 +7,11 @@ description: >-
 
 # Helm chart
 
-@include 'helm/version.mdx'
+:::warning
+
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
 
 The [Vault Helm chart](https://github.com/hashicorp/vault-helm)
 is the recommended way to install and configure Vault on Kubernetes.
@@ -26,16 +29,20 @@ properly installed and configured with your Kubernetes cluster.
 
 Helm must be installed and configured on your machine. Please refer to the [Helm
 documentation](https://helm.sh/) or the [Vault Installation to Minikube via
-Helm](/vault/tutorials/kubernetes/kubernetes-minikube-consul) tutorial.
+Helm](/tutorials/kubernetes/kubernetes-minikube-consul) tutorial.
 
 To use the Helm chart, add the Hashicorp helm repository and check that you have
 access to the chart:
 
 @include 'helm/repo.mdx'
 
--> **Important:** The Helm chart is new and under significant development.
+:::info
+
+**Important:** The Helm chart is new and under significant development.
 Please always run Helm with `--dry-run` before any install or upgrade to verify
 changes.
+
+:::
 
 Example chart usage:
 
@@ -50,16 +57,20 @@ Installing a specific version of the chart.
 
 @include 'helm/install.mdx'
 
-~> **Security Warning:** By default, the chart runs in standalone mode. This
+:::warning
+
+**Security Warning:** By default, the chart runs in standalone mode. This
 mode uses a single Vault server with a file storage backend. This is a less
 secure and less resilient installation that is **NOT** appropriate for a
 production setup. It is highly recommended to use a [properly secured Kubernetes
 cluster](https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/),
 [learn the available configuration
-options](/vault/docs/platform/k8s/helm/configuration), and read the [production deployment
-checklist](/vault/docs/platform/k8s/helm/run#architecture).
+options](/docs/platform/k8s/helm/configuration), and read the [production deployment
+checklist](/docs/platform/k8s/helm/run#architecture).
+
+:::
 
 ## Tutorial
 
-Refer to the [Kubernetes](/vault/tutorials/kubernetes)
+Refer to the [Kubernetes](/tutorials/kubernetes)
 tutorials series to learn how to run Vault on Kubernetes.

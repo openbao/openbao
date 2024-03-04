@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Vault CSI Provider
+sidebar_label: Overview
 description: >-
   The Vault CSI Provider allows pods to consume Vault secrets using CSI volumes.
 ---
@@ -10,8 +9,12 @@ description: >-
 The Vault CSI Provider allows pods to consume Vault secrets using
 [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes.
 
-~> The Vault CSI Provider requires the [CSI Secret Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
+:::warning
+
+The Vault CSI Provider requires the [CSI Secret Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver)
 Driver to be installed.
+
+:::
 
 ## Overview
 
@@ -34,15 +37,15 @@ The following features are supported by the Vault CSI Provider:
 - Rendering Vault secrets to files.
 - Dynamic lease caching and renewal performed by Agent.
 - Syncing secrets to Kubernetes secrets to be used as environment variables.
-- Installation via [Vault Helm](/vault/docs/platform/k8s/helm)
+- Installation via [Vault Helm](/docs/platform/k8s/helm)
 
 @include 'kubernetes-supported-versions.mdx'
 
 ## Authenticating with Vault
 
 The Vault CSI Provider will authenticate with Vault as the service account of the
-pod that mounts the CSI volume. [Kubernetes](/vault/docs/auth/kubernetes) and
-[JWT](/vault/docs/auth/jwt) auth methods are supported. The pod's service account
+pod that mounts the CSI volume. [Kubernetes](/docs/auth/kubernetes) and
+[JWT](/docs/auth/jwt) auth methods are supported. The pod's service account
 must be bound to a Vault role and a policy granting access to the secrets desired.
 
 It is highly recommended to run pods with dedicated Kubernetes service accounts to
@@ -83,7 +86,11 @@ spec:
     # "secretKey" is the key within the Vault secret response to extract a value from.
 ```
 
-~> Secret Provider Class is a namespaced object in Kubernetes.
+:::warning
+
+Secret Provider Class is a namespaced object in Kubernetes.
+
+:::
 
 ## Using secret provider classes
 
@@ -126,5 +133,5 @@ the Secret Provider Class named `vault-db-creds`.
 
 ## Tutorial
 
-Refer to the [Vault CSI Provider](/vault/tutorials/kubernetes/kubernetes-secret-store-driver)
+Refer to the [Vault CSI Provider](/tutorials/kubernetes/kubernetes-secret-store-driver)
 tutorial to learn how to set up Vault and its dependencies with a Helm chart.

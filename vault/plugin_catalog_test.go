@@ -611,7 +611,7 @@ func TestPluginCatalog_MakeExternalPluginsKey_Comparable(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -634,7 +634,7 @@ func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -657,7 +657,7 @@ func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -670,7 +670,7 @@ func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_PostgresMultiplexed(_ *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 

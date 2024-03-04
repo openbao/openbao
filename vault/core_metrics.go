@@ -6,11 +6,11 @@ package vault
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/armon/go-metrics"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
@@ -281,7 +281,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 			[]string{"secret", "kv", "count"},
 			[]metrics.Label{{"gauge", "kv_secrets_by_mountpoint"}},
 			c.kvSecretGaugeCollector,
-			"VAULT_DISABLE_KV_GAUGE",
+			"BAO_DISABLE_KV_GAUGE",
 		},
 		{
 			[]string{"identity", "entity", "count"},
@@ -310,7 +310,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	} else if standby, _ := c.Standby(); !standby && !c.IsDRSecondary() {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
-				if os.Getenv(init.DisableEnvVar) != "" {
+				if api.ReadBaoVariable(init.DisableEnvVar) != "" {
 					c.logger.Info("usage gauge collection is disabled for",
 						"metric", init.MetricName)
 					continue

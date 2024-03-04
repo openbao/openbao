@@ -27,7 +27,7 @@ async function processLines(input, eachLine = () => {}) {
 (async function () {
   try {
     const vault = testHelper.run(
-      'vault',
+      'bao',
       [
         'server',
         '-dev',
@@ -63,7 +63,7 @@ async function processLines(input, eachLine = () => {}) {
       } else if (initError) {
         console.log('VAULT SERVER START FAILED');
         console.log(
-          'If this is happening, run `export VAULT_LICENSE_PATH=/Users/username/license.hclic` to your valid local vault license filepath, or use OSS Vault'
+          'If this is happening, run `export VAULT_LICENSE_PATH=/Users/username/license.hclic` to your valid local vault license filepath, or use OpenBao'
         );
         process.exit(1);
       }

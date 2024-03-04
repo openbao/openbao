@@ -5,8 +5,8 @@ package mock
 
 import (
 	"context"
-	"os"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/logical"
 )
@@ -66,7 +66,7 @@ func Backend() *backend {
 	}
 	b.internal = "bar"
 	b.RunningVersion = "v0.0.0+mock"
-	if version := os.Getenv(MockPluginVersionEnv); version != "" {
+	if version := api.ReadBaoVariable(MockPluginVersionEnv); version != "" {
 		b.RunningVersion = version
 	}
 	return &b

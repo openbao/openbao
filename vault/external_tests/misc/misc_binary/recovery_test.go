@@ -5,7 +5,6 @@ package misc
 
 import (
 	"context"
-	"os"
 	"path"
 	"testing"
 
@@ -27,7 +26,7 @@ func TestRecovery_Docker(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Parallel()
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
 		t.Skip("only running docker test when $VAULT_BINARY present")
 	}

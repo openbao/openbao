@@ -56,18 +56,18 @@ module('Integration | Component | mfa-method-form', function (hooks) {
       <div id="modal-wormhole"></div>
     `);
 
-    await fillIn('[data-test-input="issuer"]', 'Vault');
+    await fillIn('[data-test-input="issuer"]', 'OpenBao');
     await click('[data-test-mfa-save]');
     await fillIn('[data-test-confirmation-modal-input="Edit totp configuration?"]', 'totp');
     await click('[data-test-confirm-button="Edit totp configuration?"]');
     assert.true(this.didSave, 'onSave callback triggered');
-    assert.strictEqual(this.model.issuer, 'Vault', 'Issuer property set on model');
+    assert.strictEqual(this.model.issuer, 'OpenBao', 'Issuer property set on model');
   });
 
   test('it should populate form fields with model data', async function (assert) {
     assert.expect(3);
 
-    this.model.issuer = 'Vault';
+    this.model.issuer = 'OpenBao';
     this.model.period = '30s';
     this.model.algorithm = 'SHA512';
 
@@ -78,7 +78,7 @@ module('Integration | Component | mfa-method-form', function (hooks) {
       />
       <div id="modal-wormhole"></div>
     `);
-    assert.dom('[data-test-input="issuer"]').hasValue('Vault', 'Issuer input is populated');
+    assert.dom('[data-test-input="issuer"]').hasValue('OpenBao', 'Issuer input is populated');
     assert.dom('[data-test-ttl-value="Period"]').hasValue('30', 'Period input ttl is populated');
     const checkedAlgorithm = this.element.querySelector('input[name=algorithm]:checked');
     assert.dom(checkedAlgorithm).hasValue('SHA512', 'SHA512 radio input is selected');

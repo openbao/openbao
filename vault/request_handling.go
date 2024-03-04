@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +22,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	uberAtomic "go.uber.org/atomic"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/identity/mfa"
@@ -42,7 +42,7 @@ import (
 
 const (
 	replTimeout                           = 1 * time.Second
-	EnvVaultDisableLocalAuthMountEntities = "VAULT_DISABLE_LOCAL_AUTH_MOUNT_ENTITIES"
+	EnvVaultDisableLocalAuthMountEntities = "BAO_DISABLE_LOCAL_AUTH_MOUNT_ENTITIES"
 	// base path to store locked users
 	coreLockedUsersPath = "core/login/lockedUsers/"
 )
@@ -686,7 +686,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			requestBodyToken = token.(string)
 			if IsSSCToken(token.(string)) {
 				token, err = c.CheckSSCToken(ctx, token.(string), c.isLoginRequest(ctx, req), c.perfStandby)
-
 				// If we receive an error from CheckSSCToken, we can assume the token is bad somehow, and the client
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
@@ -1607,7 +1606,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			mEntry != nil &&
 			c.identityStore != nil {
 
-			if mEntry.Local && os.Getenv(EnvVaultDisableLocalAuthMountEntities) != "" {
+			if mEntry.Local && api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
 				goto CREATE_TOKEN
 			}
 
@@ -1997,11 +1996,11 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 	}
 
 	// check environment variable
-	if disableUserLockoutEnv := os.Getenv(consts.VaultDisableUserLockout); disableUserLockoutEnv != "" {
+	if disableUserLockoutEnv := api.ReadBaoVariable(consts.VaultDisableUserLockout); disableUserLockoutEnv != "" {
 		var err error
 		disableUserLockout, err := strconv.ParseBool(disableUserLockoutEnv)
 		if err != nil {
-			return false, errors.New("Error parsing the environment variable VAULT_DISABLE_USER_LOCKOUT")
+			return false, errors.New("Error parsing the environment variable BAO_DISABLE_USER_LOCKOUT")
 		}
 		if disableUserLockout {
 			return true, nil

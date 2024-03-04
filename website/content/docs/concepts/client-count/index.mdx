@@ -1,10 +1,11 @@
 ---
-layout: docs
-page_title: Clients and entities
+sidebar_label: Overview
 description: |-
   Technical overview covering the concept of clients, entities, and entity IDs
   in OpenBao 
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Clients and entities
 
@@ -38,7 +39,7 @@ Self                       | AppRole, tokens with no associated authN path or ro
 ![OpenBao client types](https://www.datocms-assets.com/2885/1617325030-vault-clients.png)
 
 When a client authenticates, OpenBao assigns a unique identifier
-(**client entity**) in the [OpenBao identity system](/vault/docs/secrets/identity)
+(**client entity**) in the [OpenBao identity system](/docs/secrets/identity)
 based on the authentication method used or a previously assigned alias.
 **Entity aliases** let clients authenticate with multiple methods but still be
 associated with a single policy, share resources, and count as the same entity,
@@ -108,10 +109,10 @@ For example:
 ## Entity assignment with non-entity tokens
 
 OpenBao uses tokens as the core method for authentication. You can use tokens to
-authenticate directly, or use token [auth methods](/vault/docs/concepts/auth)
+authenticate directly, or use token [auth methods](/docs/concepts/auth)
 to dynamically generate tokens based on external identities.
 
-When clients authenticate with the [token auth method](/vault/docs/auth/token)
+When clients authenticate with the [token auth method](/docs/auth/token)
 **without** a client identity, the result is a **non-entity token**. For example,
 a service might use the token authentication method to create a token for a user
 whose explicit identity is unknown. 
@@ -130,51 +131,39 @@ token as a unique client for production usage. We strongly discourage the use of
 unaffiliated tokens and recommend that you always associate a token with an
 entity alias and token role.
 
-<Note title="Behavior change in Vault 1.9+">
-  As of Vault 1.9, all non-entity tokens with the same namespace and policy
-  assignments are treated as the same client entity. Prior to Vault 1.9, every
-  non-entity token was treated as a unique client entity, which drastically
-  inflated telemetry around client count.
+:::note[Behavior of non-entity tokens]
+  All non-entity tokens with the same namespace and policy assignments are
+  treated as the same client entity. 
 
-  If you are using Vault 1.8 or earlier, and need to address client count
-  inflation without upgrading, we recommend creating a
-  [token role](/vault/api-docs/auth/token#create-update-token-role) with
-  allowable entity aliases and assigning all tokens to an appropriate
-  [role and entity alias name](/vault/api-docs/auth/token#create-token) before
-  using them.
-</Note>
-
-@include "content-footer-title.mdx"
+:::
 
 <Tabs>
+<TabItem value="Related concepts" heading="Related concepts">
 
-<Tab heading="Related concepts">
 <ul>
   <li>
-    <a href="/vault/docs/concepts/client-count/counting">Client count calculation</a>
+    <a href="/docs/concepts/client-count/counting">Client count calculation</a>
   </li>
   <li>
-    <a href="/vault/docs/concepts/client-count/faq">Client count FAQ</a>
+    <a href="/docs/concepts/client-count/faq">Client count FAQ</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Related tutorials">
+<TabItem value="Related tutorials" heading="Related tutorials">
 <ul>
   <li>
-    <a href="/vault/tutorials/auth-methods/identity">Identity: Entities and Groups</a>
+    <a href="/tutorials/auth-methods/identity">Identity: Entities and Groups</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Other resources">
+<TabItem value="Other resources" heading="Other resources">
 <ul>
   <li>
-    Article: <a href="https://www.hashicorp.com/identity-based-security-and-low-trust-networks">
-      Identity-based Security and Low-trust Networks
-    </a>
+    Article: 
+    <a href="https://www.hashicorp.com/identity-based-security-and-low-trust-networks">Identity-based Security and Low-trust Networks</a>
   </li>
 </ul>
-</Tab>
-
+</TabItem>
 </Tabs>

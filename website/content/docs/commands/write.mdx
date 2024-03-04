@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: write - Command
 description: |-
   The "write" command writes data to OpenBao at the given path. The data can be
   credentials, secrets, configuration, or arbitrary data. The specific behavior
@@ -74,8 +72,8 @@ $ curl --header "X-Vault-Token: $OPENBAO_TOKEN" \
 The `bao write` command simplifies the API call.
 
 Since token management is a common task, OpenBao CLI provides a
-[`token`](/vault/docs/commands/token) command with
-[`create`](/vault/docs/commands/token/create) subcommand. The CLI command simplifies
+[`token`](/docs/commands/token) command with
+[`create`](/docs/commands/token/create) subcommand. The CLI command simplifies
 the token creation. Use the `bao create` command with options to set the token
 TTL, policies, and use limit.
 
@@ -83,14 +81,18 @@ TTL, policies, and use limit.
 $ bao token create -policy=admin -policy=secops -ttl=8h -use-limit=3
 ```
 
--> **Syntax:** The command options start with `-` (e.g. `-ttl`) while API path
+:::info
+
+**Syntax:** The command options start with `-` (e.g. `-ttl`) while API path
 parameters do not (e.g. `ttl`). You always set the API parameters after the path
 you are invoking.
+
+:::
 
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 

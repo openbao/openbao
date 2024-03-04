@@ -30,8 +30,8 @@ import (
 func TestMain(m *testing.M) {
 	if os.Getenv("INTEGRATION_TESTS") != "" {
 		checkKubectlVersion()
-		os.Setenv("VAULT_ADDR", "http://127.0.0.1:38300")
-		os.Setenv("VAULT_TOKEN", "root")
+		os.Setenv("BAO_ADDR", "http://127.0.0.1:38300")
+		os.Setenv("BAO_TOKEN", "root")
 		os.Setenv("KUBERNETES_CA", getK8sCA())
 		os.Setenv("KUBE_HOST", getKubeHost(os.Getenv("KIND_CLUSTER_NAME")))
 		os.Setenv("SUPER_JWT", getSuperJWT())

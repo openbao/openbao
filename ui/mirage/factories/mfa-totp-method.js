@@ -8,7 +8,7 @@ import { Factory } from 'ember-cli-mirage';
 export default Factory.extend({
   algorithm: 'SHA1',
   digits: 6,
-  issuer: 'Vault',
+  issuer: 'OpenBao',
   key_size: 20,
   max_validation_attempts: 5,
   name: '', // returned but cannot be set at this time

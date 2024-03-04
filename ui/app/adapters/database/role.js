@@ -164,7 +164,9 @@ export default ApplicationAdapter.extend({
         db: db[0],
       });
     } catch (e) {
-      throw new Error('Could not update allowed roles for selected database. Check Vault logs for details');
+      throw new Error(
+        'Could not update allowed roles for selected database. Check the OpenBao logs for details'
+      );
     }
 
     return this.ajax(this.urlFor(backend, id, roleType), 'POST', { data }).then(() => {

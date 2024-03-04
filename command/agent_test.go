@@ -834,7 +834,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(10 * time.Second)
+				timeout := time.After(20 * time.Second)
 				var err error
 				for {
 					select {
@@ -1016,13 +1016,13 @@ func TestAgent_Template_VaultClientFromEnv(t *testing.T) {
 	testCases := map[string]struct {
 		env map[string]string
 	}{
-		"VAULT_ADDR and VAULT_CACERT": {
+		"BAO_ADDR and BAO_CACERT": {
 			env: map[string]string{
 				api.EnvVaultAddress: vaultAddr,
 				api.EnvVaultCACert:  cluster.CACertPEMFile,
 			},
 		},
-		"VAULT_ADDR and VAULT_CACERT_BYTES": {
+		"BAO_ADDR and BAO_CACERT_BYTES": {
 			env: map[string]string{
 				api.EnvVaultAddress:     vaultAddr,
 				api.EnvVaultCACertBytes: string(cluster.CACertPEM),

@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: OpenBao Transit - Seals - Configuration
+sidebar_label: OpenBao Transit
 description: |-
   The Transit seal configures OpenBao to use OpenBao's Transit Secret Engine as the
   autoseal mechanism.
@@ -90,16 +89,20 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 ## Authentication
 
 Authentication-related values must be provided, either as environment
 variables or as configuration parameters.
 
-~> **Note:** Although the configuration file allows you to pass in
+:::warning
+
+**Note:** Although the configuration file allows you to pass in
 `VAULT_TOKEN` as part of the seal's parameters, it is _strongly_ recommended
 to set these values via environment variables.
+
+:::
 
 The OpenBao token used to authenticate needs the following permissions on the
 transit key:
@@ -115,18 +118,18 @@ path "<mount path>/decrypt/<key name>" {
 ```
 
 Other considerations for the token used:
-* it should probably be an [orphan token](/vault/docs/concepts/tokens#token-hierarchies-and-orphan-tokens),
+* it should probably be an [orphan token](/docs/concepts/tokens#token-hierarchies-and-orphan-tokens),
 otherwise when the parent token expires or gets revoked the seal will break.
-* consider making it a [periodic token](/vault/docs/concepts/tokens#periodic-tokens)
+* consider making it a [periodic token](/docs/concepts/tokens#periodic-tokens)
 and not setting an explicit max TTL, otherwise at some point it will cease to be renewable.
 
 ## Key rotation
 
 This seal supports key rotation using the Transit Secret Engine's key rotation endpoints. See
-[doc](/vault/api-docs/secret/transit#rotate-key). Old keys must not be disabled or deleted and are
+[doc](/api-docs/secret/transit#rotate-key). Old keys must not be disabled or deleted and are
 used to decrypt older data.
 
 ## Tutorial
 
-Refer to the [Auto-unseal using Transit Secrets Engine](/vault/tutorials/auto-unseal/autounseal-transit)
+Refer to the [Auto-unseal using Transit Secrets Engine](/tutorials/auto-unseal/autounseal-transit)
 tutorial to learn how use the transit secrets engine to automatically unseal OpenBao.

@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 	"net"
-	"os"
 
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/certutil"
 )
 
@@ -24,8 +24,8 @@ const (
 	// We generally recommend preferring environmental settings over configured
 	// ones, allowing settings from the Downward API to override hard-coded
 	// ones.
-	EnvVarKubernetesNamespace = "VAULT_K8S_NAMESPACE"
-	EnvVarKubernetesPodName   = "VAULT_K8S_POD_NAME"
+	EnvVarKubernetesNamespace = "BAO_K8S_NAMESPACE"
+	EnvVarKubernetesPodName   = "BAO_K8S_POD_NAME"
 
 	// The service host and port environment variables are
 	// set by default inside a Kubernetes environment.
@@ -49,7 +49,7 @@ var (
 // inClusterConfig is based on this:
 // https://github.com/kubernetes/client-go/blob/a56922badea0f2a91771411eaa1173c9e9243908/rest/config.go#L451
 func inClusterConfig() (*Config, error) {
-	host, port := os.Getenv(EnvVarKubernetesServiceHost), os.Getenv(EnvVarKubernetesServicePort)
+	host, port := api.ReadBaoVariable(EnvVarKubernetesServiceHost), api.ReadBaoVariable(EnvVarKubernetesServicePort)
 	if len(host) == 0 || len(port) == 0 {
 		return nil, ErrNotInCluster
 	}

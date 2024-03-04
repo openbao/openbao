@@ -1,6 +1,4 @@
 ---
-layout: api
-page_title: /sys/leases - HTTP API
 description: The `/sys/leases` endpoints are used to view and manage leases.
 ---
 
@@ -261,8 +259,6 @@ per mount point. Note that it currently only supports type "irrevocable".
 This can help determine if particular endpoints are disproportionately
 resulting in irrevocable leases.
 
-This endpoint was added in Vault 1.8.
-
 ### Parameters
 
 - `type` `(string: <required>)` - Specifies the type of lease.
@@ -291,8 +287,6 @@ of leases per mount point. Note that it currently only supports type
 
 This can help determine if particular endpoints or causes are disproportionately
 resulting in irrevocable leases.
-
-This endpoint was added in Vault 1.8.
 
 ### Parameters
 

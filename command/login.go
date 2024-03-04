@@ -319,7 +319,7 @@ func (c *LoginCommand) Run(args []string) int {
 	} else if !c.flagTokenOnly {
 		// If token-only the user knows it won't be stored, so don't warn
 		c.UI.Warn(wrapAtLength(
-			"The token was not stored in token helper. Set the VAULT_TOKEN "+
+			"The token was not stored in token helper. Set the BAO_TOKEN "+
 				"environment variable or pass the token below with each request to "+
 				"Vault.") + "\n")
 	}
@@ -378,13 +378,13 @@ func (c *LoginCommand) extractToken(client *api.Client, secret *api.Secret, unwr
 	}
 }
 
-// Warn if the VAULT_TOKEN environment variable is set, as that will take
+// Warn if the BAO_TOKEN environment variable is set, as that will take
 // precedence. We output as a warning, so piping should still work since it
 // will be on a different stream.
 func (c *LoginCommand) checkForAndWarnAboutLoginToken() {
-	if os.Getenv("VAULT_TOKEN") != "" {
-		c.UI.Warn(wrapAtLength("WARNING! The VAULT_TOKEN environment variable "+
+	if api.ReadBaoVariable("BAO_TOKEN") != "" {
+		c.UI.Warn(wrapAtLength("WARNING! The BAO_TOKEN environment variable "+
 			"is set! The value of this variable will take precedence; if this is unwanted "+
-			"please unset VAULT_TOKEN or update its value accordingly.") + "\n")
+			"please unset BAO_TOKEN or update its value accordingly.") + "\n")
 	}
 }

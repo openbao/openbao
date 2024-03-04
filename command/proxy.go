@@ -18,7 +18,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -27,6 +26,7 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
@@ -236,7 +236,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	// Tests might not want to start a vault server and just want to verify
 	// the configuration.
 	if c.flagTestVerifyOnly {
-		if os.Getenv("VAULT_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
+		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
 				pretty.Sprint(*c.config)))
@@ -346,7 +346,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	// We do this after auto-auth has been configured, because we don't want to
 	// confuse the issue of retries for auth failures which have their own
 	// config and are handled a bit differently.
-	if os.Getenv(api.EnvVaultMaxRetries) == "" {
+	if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 		client.SetMaxRetries(ctconfig.DefaultRetryAttempts)
 		if config.Vault != nil {
 			if config.Vault.Retry != nil {
@@ -835,7 +835,7 @@ func (c *ProxyCommand) setStringFlag(f *FlagSets, configVal string, fVar *String
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line
@@ -859,7 +859,7 @@ func (c *ProxyCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line

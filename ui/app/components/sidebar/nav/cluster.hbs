@@ -1,5 +1,5 @@
 <Hds::SideNav::Portal @ariaLabel="Cluster Navigation Links" data-test-sidebar-nav-panel="Cluster" as |Nav|>
-  <Nav.Title data-test-sidebar-nav-heading="Vault">Vault</Nav.Title>
+  <Nav.Title data-test-sidebar-nav-heading="OpenBao">OpenBao</Nav.Title>
 
   <Nav.Link
     @route="vault.cluster.secrets"
@@ -51,15 +51,6 @@
       @text="Disaster Recovery"
       data-test-sidebar-nav-link="Disaster Recovery"
     />
-
-    {{#if (has-feature "Performance Replication")}}
-      <Nav.Link
-        @route="vault.cluster.replication.mode.index"
-        @model="performance"
-        @text="Performance"
-        data-test-sidebar-nav-link="Performance"
-      />
-    {{/if}}
   {{/if}}
 
   {{#if
@@ -105,8 +96,8 @@
     <Nav.Link
       @route="vault.cluster.settings.seal"
       @model={{this.cluster.name}}
-      @text="Seal Vault"
-      data-test-sidebar-nav-link="Seal Vault"
+      @text="Seal OpenBao"
+      data-test-sidebar-nav-link="Seal OpenBao"
     />
   {{/if}}
 </Hds::SideNav::Portal>

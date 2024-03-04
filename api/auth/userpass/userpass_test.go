@@ -36,6 +36,7 @@ func testHTTPServer(
 }
 
 func init() {
+	os.Setenv("BAO_TOKEN", "")
 	os.Setenv("VAULT_TOKEN", "")
 }
 

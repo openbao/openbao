@@ -25,22 +25,6 @@ const testCases = [
     ],
   },
   {
-    pluginType: 'elasticsearch-database-plugin',
-    staticRoleFields: ['username', 'rotation_period'],
-    dynamicRoleFields: ['creation_statement', 'default_ttl', 'max_ttl'],
-  },
-  {
-    pluginType: 'mongodb-database-plugin',
-    staticRoleFields: ['username', 'rotation_period'],
-    dynamicRoleFields: ['creation_statement', 'revocation_statement', 'default_ttl', 'max_ttl'],
-    statementsHidden: true,
-  },
-  {
-    pluginType: 'mssql-database-plugin',
-    staticRoleFields: ['username', 'rotation_period'],
-    dynamicRoleFields: ['creation_statements', 'revocation_statements', 'default_ttl', 'max_ttl'],
-  },
-  {
     pluginType: 'mysql-database-plugin',
     staticRoleFields: ['username', 'rotation_period'],
     dynamicRoleFields: ['creation_statements', 'revocation_statements', 'default_ttl', 'max_ttl'],
@@ -57,11 +41,6 @@ const testCases = [
   },
   {
     pluginType: 'mysql-legacy-database-plugin',
-    staticRoleFields: ['username', 'rotation_period'],
-    dynamicRoleFields: ['creation_statements', 'revocation_statements', 'default_ttl', 'max_ttl'],
-  },
-  {
-    pluginType: 'vault-plugin-database-oracle',
     staticRoleFields: ['username', 'rotation_period'],
     dynamicRoleFields: ['creation_statements', 'revocation_statements', 'default_ttl', 'max_ttl'],
   },

@@ -44,7 +44,7 @@ module('Integration | Component | sidebar-frame', function (hooks) {
       <Sidebar::Frame @showSidebar={{true}} />
     `);
 
-    assert.dom('[data-test-sidebar-logo]').exists('Vault logo renders in sidebar header');
+    assert.dom('[data-test-sidebar-logo]').exists('OpenBao logo renders in sidebar header');
     assert.dom('[data-test-console-toggle]').exists('Console toggle button renders in sidebar header');
     await click('[data-test-console-toggle]');
     assert.dom('.panel-open').exists('Console ui panel opens');

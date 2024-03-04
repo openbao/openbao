@@ -17,7 +17,7 @@ module('Unit | Lib | console helpers', function () {
   const testCommands = [
     {
       name: 'write with data',
-      command: `vault write aws/config/root \
+      command: `bao write aws/config/root \
       access_key=AKIAJWVN5Z4FOFT7NLNA \
       secret_key=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 \
       region=us-east-1`,
@@ -34,7 +34,7 @@ module('Unit | Lib | console helpers', function () {
     },
     {
       name: 'write with space in a value',
-      command: `vault write \
+      command: `bao write \
       auth/ldap/config \
       url=ldap://ldap.example.com:3268 \
       binddn="CN=ServiceViewDev,OU=Service Accounts,DC=example,DC=com" \
@@ -61,7 +61,7 @@ module('Unit | Lib | console helpers', function () {
     },
     {
       name: 'write with double quotes',
-      command: `vault write \
+      command: `bao write \
       auth/token/create \
       policies="foo"
       `,
@@ -69,7 +69,7 @@ module('Unit | Lib | console helpers', function () {
     },
     {
       name: 'write with single quotes',
-      command: `vault write \
+      command: `bao write \
       auth/token/create \
       policies='foo'
       `,
@@ -77,7 +77,7 @@ module('Unit | Lib | console helpers', function () {
     },
     {
       name: 'write with unmatched quotes',
-      command: `vault write \
+      command: `bao write \
       auth/token/create \
       policies="'foo"
       `,
@@ -86,7 +86,7 @@ module('Unit | Lib | console helpers', function () {
     {
       name: 'write with shell characters',
       /* eslint-disable no-useless-escape */
-      command: `vault write  database/roles/api-prod db_name=apiprod creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{name}}\";" default_ttl=1h max_ttl=24h
+      command: `bao write  database/roles/api-prod db_name=apiprod creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{name}}\";" default_ttl=1h max_ttl=24h
       `,
       expected: {
         method: 'write',
@@ -103,7 +103,7 @@ module('Unit | Lib | console helpers', function () {
 
     {
       name: 'read with field',
-      command: `vault read -field=access_key aws/creds/my-role`,
+      command: `bao read -field=access_key aws/creds/my-role`,
       expected: {
         method: 'read',
         flagArray: ['-field=access_key'],
@@ -122,7 +122,7 @@ module('Unit | Lib | console helpers', function () {
 
   test('#parseCommand: invalid commands', function (assert) {
     assert.expect(1);
-    const command = 'vault kv get foo';
+    const command = 'bao kv get foo';
     assert.throws(
       () => {
         parseCommand(command);

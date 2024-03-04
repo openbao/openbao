@@ -4,7 +4,6 @@
 package command
 
 import (
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -40,7 +39,7 @@ func (p *Predict) Client() *api.Client {
 			}
 
 			// Turn off retries for prediction
-			if os.Getenv(api.EnvVaultMaxRetries) == "" {
+			if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 				client.SetMaxRetries(0)
 			}
 

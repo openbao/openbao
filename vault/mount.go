@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -18,6 +17,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/copystructure"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -1750,7 +1750,7 @@ func (c *Core) defaultMountTable() *MountTable {
 	}
 	table.Entries = append(table.Entries, c.requiredMountTable().Entries...)
 
-	if os.Getenv("VAULT_INTERACTIVE_DEMO_SERVER") != "" {
+	if api.ReadBaoVariable("BAO_INTERACTIVE_DEMO_SERVER") != "" {
 		mountUUID, err := uuid.GenerateUUID()
 		if err != nil {
 			panic(fmt.Sprintf("could not create default secret mount UUID: %v", err))

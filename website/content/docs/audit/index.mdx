@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Audit Devices
+sidebar_label: Overview
 description: Audit devices are mountable devices that log requests and responses in OpenBao.
 ---
 
@@ -44,13 +43,17 @@ a way to check for data tampering in the logs themselves.
 
 OpenBao considers a request to be successful if it can log to *at least* one
 configured audit device (see: [Blocked Audit
-Devices](/vault/docs/audit#blocked-audit-devices) section below).  Therefore in order
+Devices](/docs/audit#blocked-audit-devices) section below).  Therefore in order
 to build a complete picture of all audited actions, use the aggregate/union of
 the logs from each audit device.
 
-~> Note: It is **highly recommended** that you configure OpenBao to use multiple audit
+:::warning
+
+Note: It is **highly recommended** that you configure OpenBao to use multiple audit
 devices. Audit failures can prevent OpenBao from servicing requests, so it is
 important to provide at least one other device.
+
+:::
 
 
 ## Format
@@ -69,20 +72,24 @@ unique identifier assigned to each request.
 
 Most strings contained within requests and responses are hashed with a salt using HMAC-SHA256. The purpose of the hash is so that secrets aren't in plaintext within your audit logs. However, you're still able to check the value of secrets by generating HMACs yourself; this can be done with the audit device's hash function and salt by using the `/sys/audit-hash` API endpoint (see the documentation for more details).
 
-~> Currently, only strings that come from JSON or returned in JSON are
+:::warning
+
+Currently, only strings that come from JSON or returned in JSON are
 HMAC'd. Other data types, like integers, booleans, and so on, are passed
 through in plaintext. We recommend that all sensitive data be provided as string values
 inside all JSON sent to OpenBao (i.e., that integer values are provided in quotes).
 
-While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/vault/docs/commands/secrets/enable) command, and then tune it afterward.
+:::
+
+While most strings are hashed, OpenBao does make some exceptions, such as auth and secrets, and users can enable additional exceptions using the [secrets enable](/docs/commands/secrets/enable) command, and then tune it afterward.
 
 **see also**:
 
-[secrets tune](/vault/docs/commands/secrets/tune)
+[secrets tune](/docs/commands/secrets/tune)
 
-[auth enable](/vault/docs/commands/auth/enable)
+[auth enable](/docs/commands/auth/enable)
 
-[auth tune](/vault/docs/commands/auth/tune)
+[auth tune](/docs/commands/auth/tune)
 
 ## Enabling/Disabling audit devices
 
@@ -100,18 +107,26 @@ In the command above, we passed the "file_path" parameter to specify the path
 where the audit log will be written to. Each audit device has its own
 set of parameters. See the documentation to the left for more details.
 
-~> Note: Audit device configuration is replicated to all nodes within a cluster
+:::warning
+
+Note: Audit device configuration is replicated to all nodes within a cluster
 by default.  Before enabling an audit device, ensure that all nodes within the
 cluster(s) will be able to successfully log to the audit device to avoid OpenBao
 being blocked from serving requests.
-An audit device can be limited to only within the node's cluster with the [`local`](/vault/api-docs/system/audit#local) parameter.
+An audit device can be limited to only within the node's cluster with the [`local`](/api-docs/system/audit#local) parameter.
+
+:::
 
 When an audit device is disabled, it will stop receiving logs immediately.
 The existing logs that it did store are untouched.
 
-~> Note: Once an audit device is disabled, you will no longer be able to HMAC values
+:::warning
+
+Note: Once an audit device is disabled, you will no longer be able to HMAC values
 for comparison with entries in the audit logs. This is true even if you re-enable
 the audit device at the same path, as a new salt will be created for hashing.
+
+:::
 
 ## Blocked audit devices
 
@@ -127,17 +142,17 @@ In other words, OpenBao will not complete any requests until the blocked audit d
 
 ## Tutorial
 
-Refer to [Blocked Audit Devices](/vault/tutorials/monitoring/blocked-audit-devices) for a step-by-step tutorial.
+Refer to [Blocked Audit Devices](/tutorials/monitoring/blocked-audit-devices) for a step-by-step tutorial.
 
 ## API
 
 Audit devices also have a full HTTP API. Please see the [Audit device API
-docs](/vault/api-docs/system/audit) for more details.
+docs](/api-docs/system/audit) for more details.
 
 ## Common configuration options
 
 - `elide_list_responses` `(bool: false)` - See [Eliding list response
-  bodies](/vault/docs/audit#eliding-list-response-bodies) below.
+  bodies](/docs/audit#eliding-list-response-bodies) below.
 
 - `format` `(string: "json")` - Allows selecting the output format. Valid values
   are `"json"` and `"jsonx"`, which formats the normal log entries as XML.

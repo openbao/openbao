@@ -24,7 +24,6 @@ import (
 	mathrand "math/rand"
 	"net"
 	"net/url"
-	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -350,7 +349,7 @@ func TestBackend_Roles(t *testing.T) {
 			}
 
 			testCase.Steps = append(testCase.Steps, generateRoleSteps(t, tc.useCSR)...)
-			if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+			if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 				for i, v := range testCase.Steps {
 					data := map[string]interface{}{}
 					var keys []string
@@ -743,6 +742,38 @@ func generateCSRSteps(t *testing.T, caCert, caKey string, intdata, reqdata map[s
 				"common_name":     "Root Cert",
 				"ttl":             "180h",
 				"max_path_length": 0,
+				"format":          "der",
+				"key_usage":       "DigitalSignature",
+				"ext_key_usage":   "ClientAuth",
+			},
+			Check: func(resp *logical.Response) error {
+				certString := resp.Data["certificate"].(string)
+				if certString == "" {
+					return fmt.Errorf("no certificate returned")
+				}
+				certBytes, _ := base64.StdEncoding.DecodeString(certString)
+				certs, err := x509.ParseCertificates(certBytes)
+				if err != nil {
+					return fmt.Errorf("returned cert cannot be parsed: %w", err)
+				}
+				if len(certs) != 1 {
+					return fmt.Errorf("unexpected returned length of certificates: %d", len(certs))
+				}
+				cert := certs[0]
+
+				if cert.KeyUsage != x509.KeyUsage(x509.KeyUsageCertSign|x509.KeyUsageCRLSign|x509.KeyUsageDigitalSignature) {
+					return fmt.Errorf("got key usage %v ; expected %v with CertSign, CRLSign, and DigitalSignature", cert.KeyUsage, x509.KeyUsage(x509.KeyUsageCertSign|x509.KeyUsageCRLSign|x509.KeyUsageDigitalSignature))
+				}
+
+				if len(cert.ExtKeyUsage) != 1 {
+					return fmt.Errorf("expected 1 ExtKeyUsage got %v: %v", len(cert.ExtKeyUsage), cert.ExtKeyUsage)
+				}
+
+				if cert.ExtKeyUsage[0] != x509.ExtKeyUsageClientAuth {
+					return fmt.Errorf("unexpected ExtKeyUsage value: got %v / expected %v", cert.ExtKeyUsage[0], x509.ExtKeyUsageClientAuth)
+				}
+
+				return nil
 			},
 		},
 
@@ -893,7 +924,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		// testing we use a randomized time for maximum fuzziness.
 	*/
 	var seed int64 = 1
-	fixedSeed := os.Getenv("VAULT_PKITESTS_FIXED_SEED")
+	fixedSeed := api.ReadBaoVariable("BAO_PKITESTS_FIXED_SEED")
 	if len(fixedSeed) == 0 {
 		seed = time.Now().UnixNano()
 	} else {
@@ -1258,7 +1289,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		default:
 			panic("invalid key type: " + keyType)
 		}
-		if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+		if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 			t.Logf("roleKeyBits=%d testBitSize=%d errorOk=%v", plan.roleKeyBits, testBitSize, plan.errorOk)
 		}
 
@@ -1395,7 +1426,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		getOrganizationCheck, getOuCheck, getPostalCodeCheck, getRandCsr, getStreetAddressCheck,
 		getProvinceCheck,
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("funcs=%d", len(funcs))
 	}
 
@@ -2589,10 +2620,12 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 	require.ErrorContains(t, err, "that is beyond the expiration of the CA certificate")
 
 	resp, err = CBWrite(b_root, s_root, "root/sign-intermediate", map[string]interface{}{
-		"common_name": "myint.com",
-		"other_sans":  "1.3.6.1.4.1.311.20.2.3;utf8:caadmin@example.com",
-		"csr":         csr,
-		"ttl":         "60h",
+		"common_name":   "myint.com",
+		"other_sans":    "1.3.6.1.4.1.311.20.2.3;utf8:caadmin@example.com",
+		"csr":           csr,
+		"ttl":           "60h",
+		"key_usage":     "DigitalSignature",
+		"ext_key_usage": "ClientAuth",
 	})
 	if err != nil {
 		t.Fatalf("got error: %v", err)
@@ -2607,6 +2640,18 @@ func TestBackend_SignIntermediate_AllowedPastCAValidity(t *testing.T) {
 	cert := parseCert(t, resp.Data["certificate"].(string))
 	certSkid := certutil.GetHexFormatted(cert.SubjectKeyId, ":")
 	require.Equal(t, intSkid, certSkid)
+
+	if cert.KeyUsage != x509.KeyUsage(x509.KeyUsageCertSign|x509.KeyUsageCRLSign|x509.KeyUsageDigitalSignature) {
+		t.Fatalf("got key usage %v ; expected %v with CertSign, CRLSign, and DigitalSignature", cert.KeyUsage, x509.KeyUsage(x509.KeyUsageCertSign|x509.KeyUsageCRLSign|x509.KeyUsageDigitalSignature))
+	}
+
+	if len(cert.ExtKeyUsage) != 1 {
+		t.Fatalf("expected 1 ExtKeyUsage got %v: %v", len(cert.ExtKeyUsage), cert.ExtKeyUsage)
+	}
+
+	if cert.ExtKeyUsage[0] != x509.ExtKeyUsageClientAuth {
+		t.Fatalf("unexpected ExtKeyUsage value: got %v / expected %v", cert.ExtKeyUsage[0], x509.ExtKeyUsageClientAuth)
+	}
 }
 
 func TestBackend_ConsulSignLeafWithLegacyRole(t *testing.T) {
@@ -3056,7 +3101,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 1 to check:\n%s", certStr)
 	}
 
@@ -3086,7 +3131,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 		cert.DNSNames[2] != "bar.foobar.com" {
 		t.Fatalf("unexpected DNS SANs %v", cert.DNSNames)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 2 to check:\n%s", certStr)
 	}
 
@@ -3130,7 +3175,7 @@ func TestBackend_OID_SANs(t *testing.T) {
 	if diff := deep.Equal(expectedOtherNames, foundOtherNames); len(diff) != 0 {
 		t.Errorf("unexpected otherNames: %v", diff)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 3 to check:\n%s", certStr)
 	}
 }
@@ -3216,7 +3261,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 	if cert.Subject.SerialNumber != "f00bar" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 1 to check:\n%s", certStr)
 	}
 
@@ -3237,7 +3282,7 @@ func TestBackend_AllowedSerialNumbers(t *testing.T) {
 	if cert.Subject.SerialNumber != "b4rf00" {
 		t.Fatalf("unexpected Subject SerialNumber %s", cert.Subject.SerialNumber)
 	}
-	if len(os.Getenv("VAULT_VERBOSE_PKITESTS")) > 0 {
+	if len(api.ReadBaoVariable("BAO_VERBOSE_PKITESTS")) > 0 {
 		t.Logf("certificate 2 to check:\n%s", certStr)
 	}
 }

@@ -126,7 +126,7 @@ func (c *BaseCommand) Client() (*api.Client, error) {
 	}
 
 	// Turn off retries on the CLI
-	if os.Getenv(api.EnvVaultMaxRetries) == "" {
+	if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 		client.SetMaxRetries(0)
 	}
 

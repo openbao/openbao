@@ -19,7 +19,12 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
+<<<<<<< HEAD
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+=======
+
+	bApi "github.com/openbao/openbao/api"
+>>>>>>> main
 	cserver "github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -314,7 +319,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 		// Check for raft quorum status
 		if config.Storage.Type == storageTypeRaft {
-			path := os.Getenv(raft.EnvVaultRaftPath)
+			path := bApi.ReadBaoVariable(raft.EnvVaultRaftPath)
 			if path == "" {
 				path, ok := config.Storage.Config["path"]
 				if !ok {

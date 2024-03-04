@@ -593,9 +593,7 @@ basic constraints.`,
 	return fields
 }
 
-// addSignVerbatimRoleFields provides the fields and defaults to be used by anything that is building up the fields
-// and their corresponding default values when generating/using a sign-verbatim type role such as buildSignVerbatimRole.
-func addSignVerbatimRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+func addKeyUsageRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
 	fields["key_usage"] = &framework.FieldSchema{
 		Type:    framework.TypeCommaStringSlice,
 		Default: []string{"DigitalSignature", "KeyAgreement", "KeyEncipherment"},
@@ -621,6 +619,14 @@ this value to an empty list.`,
 		Type:        framework.TypeCommaStringSlice,
 		Description: `A comma-separated string or list of extended key usage oids.`,
 	}
+
+	return fields
+}
+
+// addSignVerbatimRoleFields provides the fields and defaults to be used by anything that is building up the fields
+// and their corresponding default values when generating/using a sign-verbatim type role such as buildSignVerbatimRole.
+func addSignVerbatimRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fields = addKeyUsageRoleFields(fields)
 
 	fields["signature_bits"] = &framework.FieldSchema{
 		Type:    framework.TypeInt,

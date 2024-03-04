@@ -20,8 +20,6 @@
             {{this.clusterIdDisplay}}
           </code>
         </small>
-      {{else if (and (eq this.mode "performance") (not (has-feature "Performance Replication")))}}
-        Learn more
       {{else if this.auth.currentToken}}
         Enable
         {{if (eq this.mode "performance") "Performance" "Disaster Recovery"}}
@@ -55,21 +53,7 @@
   <div class="level">
     <div class="replication-description level-left">
       <div>
-        {{#if (and (eq this.mode "performance") (not (has-feature "Performance Replication")))}}
-          <p>
-            Performance Replication is a feature of Vault Enterprise Premium.
-          </p>
-          <p class="has-text-centered">
-            <ExternalLink
-              @href="https://hashicorp.com/products/vault/trial?source=vaultui_Performance%20Replication"
-              class="button is-ghost has-icon-right"
-              data-test-upgrade-link
-            >
-              Learn more
-              <Chevron />
-            </ExternalLink>
-          </p>
-        {{else if this.replicationEnabled}}
+        {{#if this.replicationEnabled}}
           <h6 class="title is-6 is-uppercase">
             Enabled
           </h6>

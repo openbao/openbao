@@ -46,7 +46,7 @@ export default class PkiCertificateDetailsComponent extends Component<Args> {
       }
     } catch (error) {
       this.flashMessages.danger(
-        errorMessage(error, 'Could not revoke certificate. See Vault logs for details.')
+        errorMessage(error, 'Could not revoke certificate. See OpenBao logs for details.')
       );
     }
   }

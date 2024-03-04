@@ -16,7 +16,7 @@ export default class WizardSecretsKeymgmtComponent extends Component {
 
   get body() {
     return {
-      provider: 'This process connects an external provider to Vault. You will need its credentials.',
+      provider: 'This process connects an external provider to OpenBao. You will need its credentials.',
       displayProvider: 'A key can now be created and distributed to this destination.',
       distribute: 'This process creates a key and distributes it to your provider.',
     }[this.args.featureState];

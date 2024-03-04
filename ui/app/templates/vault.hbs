@@ -8,17 +8,10 @@
   </span>
   <span>
     <ExternalLink @href={{changelog-url-for this.auth.activeCluster.leaderNode.version}} class="link has-text-grey">
-      Vault
+      OpenBao
       {{this.auth.activeCluster.leaderNode.version}}
     </ExternalLink>
   </span>
-  {{#if (is-version "OSS")}}
-    <span>
-      <ExternalLink @href="https://hashicorp.com/products/vault/trial?source=vaultui" class="link has-text-grey">
-        Upgrade to Vault Enterprise
-      </ExternalLink>
-    </span>
-  {{/if}}
   <span>
     <DocLink @path="/vault" class="has-text-grey">
       Documentation

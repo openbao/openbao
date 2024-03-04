@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/mediocregopher/radix/v4"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/ory/dockertest/v3"
 	dc "github.com/ory/dockertest/v3/docker"
@@ -207,14 +208,13 @@ func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
 		"insecure_tls": true,
 	}
 	err = setupRedisDBInitialize(t, connectionDetails)
-
 	if err != nil {
 		t.Fatalf("Testing TLS Init() failed: error: %s", err)
 	}
 }
 
 func testRedisDBCreateUser(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -286,7 +286,7 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 }
 
 func checkCredsExist(t *testing.T, username, password, address string, port int) error {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -330,7 +330,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 }
 
 func checkRuleAllowed(t *testing.T, username, password, address string, port int, cmd string, rules []string) error {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -376,7 +376,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 }
 
 func revokeUser(t *testing.T, username, address string, port int) error {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -426,7 +426,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 }
 
 func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -508,7 +508,7 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 }
 
 func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -582,7 +582,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 
 // g1 & g2 must exist in the database.
 func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -659,7 +659,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 }
 
 func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -736,7 +736,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 }
 
 func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
@@ -870,7 +870,7 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 }
 
 func testRedisDBSetCredentials(t *testing.T, address string, port int) {
-	if os.Getenv("VAULT_ACC") == "" {
+	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 

@@ -19,7 +19,7 @@ export const KEY_TYPES = [
 export default class KeymgmtKeyModel extends Model {
   @attr('string', {
     label: 'Key name',
-    subText: 'This is the name of the key that shows in Vault.',
+    subText: 'This is the name of the key that shows in OpenBao.',
   })
   name;
 

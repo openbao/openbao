@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Resource Quotas
 description: Providing measures against misbehaving applications and users overdrawing resources in OpenBao.
 ---
 
@@ -47,7 +45,7 @@ to a non-zero value, any client that hits a rate limit threshold will be blocked
 from all subsequent requests for a duration of `block_interval` seconds.
 
 OpenBao also allows the inspection of the state of rate limiting in an OpenBao node
-through various [metrics](/vault/docs/internals/telemetry#Resource-Quota-Metrics) exposed
+through various [metrics](/docs/internals/telemetry#Resource-Quota-Metrics) exposed
 and through enabling optional audit logging.
 
 ## Exempt routes
@@ -67,10 +65,10 @@ resource quotas by updating the `rate_limit_exempt_paths` configuration field.
 ## Tutorial
 
 Refer to [Protecting OpenBao with Resource
-Quotas](/vault/tutorials/operations/resource-quotas) for a
+Quotas](/tutorials/operations/resource-quotas) for a
 step-by-step tutorial.
 
 ## API
 
 Rate limit quotas can be managed over the HTTP API. Please see
-[Rate Limit Quotas API](/vault/api-docs/system/rate-limit-quotas) for more details.
+[Rate Limit Quotas API](/api-docs/system/rate-limit-quotas) for more details.

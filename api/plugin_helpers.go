@@ -11,7 +11,6 @@ import (
 	"errors"
 	"flag"
 	"net/url"
-	"os"
 	"regexp"
 
 	"github.com/go-jose/go-jose/v3/jwt"
@@ -22,15 +21,15 @@ import (
 const (
 	// PluginAutoMTLSEnv is used to ensure AutoMTLS is used. This will override
 	// setting a TLSProviderFunc for a plugin.
-	PluginAutoMTLSEnv = "VAULT_PLUGIN_AUTOMTLS_ENABLED"
+	PluginAutoMTLSEnv = "BAO_PLUGIN_AUTOMTLS_ENABLED"
 
 	// PluginMetadataModeEnv is an ENV name used to disable TLS communication
 	// to bootstrap mounting plugins.
-	PluginMetadataModeEnv = "VAULT_PLUGIN_METADATA_MODE"
+	PluginMetadataModeEnv = "BAO_PLUGIN_METADATA_MODE"
 
 	// PluginUnwrapTokenEnv is the ENV name used to pass unwrap tokens to the
 	// plugin.
-	PluginUnwrapTokenEnv = "VAULT_UNWRAP_TOKEN"
+	PluginUnwrapTokenEnv = "BAO_UNWRAP_TOKEN"
 )
 
 // sudoPaths is a map containing the paths that require a token's policy
@@ -130,12 +129,12 @@ func VaultPluginTLSProvider(apiTLSConfig *TLSConfig) func() (*tls.Config, error)
 // VaultPluginTLSProviderContext is run inside a plugin and retrieves the response
 // wrapped TLS certificate from vault. It returns a configured TLS Config.
 func VaultPluginTLSProviderContext(ctx context.Context, apiTLSConfig *TLSConfig) func() (*tls.Config, error) {
-	if os.Getenv(PluginAutoMTLSEnv) == "true" || os.Getenv(PluginMetadataModeEnv) == "true" {
+	if ReadBaoVariable(PluginAutoMTLSEnv) == "true" || ReadBaoVariable(PluginMetadataModeEnv) == "true" {
 		return nil
 	}
 
 	return func() (*tls.Config, error) {
-		unwrapToken := os.Getenv(PluginUnwrapTokenEnv)
+		unwrapToken := ReadBaoVariable(PluginUnwrapTokenEnv)
 
 		parsedJWT, err := jwt.ParseSigned(unwrapToken)
 		if err != nil {

@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: OpenBao Proxy Caching
+sidebar_label: Overview
 description: |-
   OpenBao Proxy Caching allows client-side caching of responses containing newly
   created tokens and responses containing leased secrets generated off of these
@@ -13,11 +12,6 @@ OpenBao Proxy Caching allows client-side caching of responses containing newly
 created tokens and responses containing leased secrets generated off of these
 newly created tokens. The renewals of the cached tokens and leases are also
 managed by the proxy.
-
--> **Note:** OpenBao Proxy Caching works best with servers/clusters that are
-running on Vault 1.1 and above due to changes that were introduced
-alongside this feature, such as the exposure of the `orphan` field in token
-creation responses.
 
 ## Caching and renewals
 
@@ -42,7 +36,7 @@ OpenBao Proxy can restore tokens and leases from a persistent cache file created
 by a previous OpenBao Proxy process.
 
 Refer to the [OpenBao Proxy Persistent
-Caching](/vault/docs/agent-and-proxy/proxy/caching/persistent-caches) page for more information on
+Caching](/docs/agent-and-proxy/proxy/caching/persistent-caches) page for more information on
 this functionality.
 
 ## Cache evictions
@@ -154,10 +148,14 @@ The top level `cache` block has the following configuration entry:
 
 - `persist` `(object: optional)` - Configuration for the persistent cache.
 
--> **Note:** When the `cache` block is defined, a [listener][proxy-listener] must also be defined
+:::info
+
+**Note:** When the `cache` block is defined, a [listener][proxy-listener] must also be defined
 in the config, otherwise there is no way to utilize the cache.
 
-[proxy-listener]: /vault/docs/agent-and-proxy/proxy#listener-stanza
+:::
+
+[proxy-listener]: /docs/agent-and-proxy/proxy#listener-stanza
 
 ### Configuration (Persist)
 
@@ -186,9 +184,9 @@ Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 - `listener` `(array of objects: required)` - Configuration for the listeners.
 
 There can be one or more `listener` blocks at the top level. Adding a listener enables
-the [API Proxy](/vault/docs/agent-and-proxy/proxy/apiproxy) and enables the API proxy to use the cache, if configured.
+the [API Proxy](/docs/agent-and-proxy/proxy/apiproxy) and enables the API proxy to use the cache, if configured.
 These configuration values are common to both `tcp` and `unix` listener blocks. Blocks of type
-`tcp` support the standard `tcp` [listener](/vault/docs/configuration/listener/tcp)
+`tcp` support the standard `tcp` [listener](/docs/configuration/listener/tcp)
 options. Additionally, the `role` string option is available as part of the top level
 of the `listener` block, which can be configured to `metrics_only` to serve only metrics,
 or the default role, `default`, which serves everything (including metrics).

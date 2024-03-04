@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: pki issue - Command
+sidebar_label: issue
 description: |-
   The "pki issue" command issues a new intermediate ("issuer") certificate,
   using a parent certificate in OpenBao.
@@ -25,7 +24,7 @@ Usage: `bao pki issue [flags] <parent> <child_mount> [options]`
 
 - `[options]` are the superset of the k=v options passed to generate-intermediate-csr
   and sign-intermediate commands.  At least one option must be set.
-  See [below](/vault/docs/commands/pki/issue#options).
+  See [below](/docs/commands/pki/issue#options).
 
 ### Flags
 
@@ -43,8 +42,8 @@ Usage: `bao pki issue [flags] <parent> <child_mount> [options]`
 
 Other than `type` (which is passed as a flag, see above), this command accepts
 all options provided to the
-[Generate CSR](/vault/api-docs/secret/pki#generate-intermediate-csr) and
-[Sign Intermediate](/vault/api-docs/secret/pki#sign-intermediate) endpoints.
+[Generate CSR](/api-docs/secret/pki#generate-intermediate-csr) and
+[Sign Intermediate](/api-docs/secret/pki#sign-intermediate) endpoints.
 
 ### Accessed APIs
 

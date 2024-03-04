@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Agent Sidecar Injector Overview
+sidebar_label: Overview
 description: >-
   The Vault Agent Sidecar Injector is a Kubernetes admission webhook that adds
   Vault Agent containers to pods for consuming Vault secrets.
@@ -10,7 +9,7 @@ description: >-
 
 The Vault Agent Injector alters pod specifications to include Vault Agent
 containers that render Vault secrets to a shared memory volume using
-[Vault Agent Templates](/vault/docs/agent-and-proxy/agent/template).
+[Vault Agent Templates](/docs/agent-and-proxy/agent/template).
 By rendering secrets to a shared volume, containers within the pod can consume
 Vault secrets without being Vault aware.
 
@@ -108,8 +107,12 @@ The secret unique name must consist of alphanumeric characters, `.`, `_` or `-`.
 
 ##### Secret templates
 
-~> Vault Agent uses the Consul Template project to render secrets. For more information
+:::warning
+
+Vault Agent uses the Consul Template project to render secrets. For more information
 on writing templates, see the [Consul Template documentation](https://github.com/hashicorp/consul-template).
+
+:::
 
 How the secret is rendered to the file is also configurable. To configure the template
 used, the user must supply a _template_ annotation using the same unique name of
@@ -141,7 +144,11 @@ $ cat /vault/secrets/foo
 postgres://v-kubernet-pg-app-q0Z7WPfVN:A1a-BUEuQR52oAqPrP1J@postgres:5432/mydb?sslmode=disable
 ```
 
-~> The default left and right template delimiters are `{{` and `}}`.
+:::warning
+
+The default left and right template delimiters are `{{` and `}}`.
+
+:::
 
 If no template is provided the following generic template is used:
 
@@ -169,12 +176,16 @@ password: A1a-BUEuQR52oAqPrP1J
 username: v-kubernet-pg-app-q0Z7WPfVNqqTJuoDqCTY-1576529094
 ```
 
-~> Some secrets such as KV are stored in maps. Their data can be accessed using `.Data.data.<NAME>`
+:::warning
+
+Some secrets such as KV are stored in maps. Their data can be accessed using `.Data.data.<NAME>`
+
+:::
 
 ### Renewals and updating secrets
 
 For more information on when Vault Agent fetches and renews secrets, see the
-[Agent documentation](/vault/docs/agent-and-proxy/agent/template#renewals-and-updating-secrets).
+[Agent documentation](/docs/agent-and-proxy/agent/template#renewals-and-updating-secrets).
 
 ### Vault agent configuration map
 
@@ -188,10 +199,10 @@ The configuration map must contain either one or both of the following files:
 - **config-init.hcl** used by the init container. This must have `exit_after_auth` set to `true`.
 - **config.hcl** used by the sidecar container. This must have `exit_after_auth` set to `false`.
 
-An example of mounting a Vault Agent configmap [can be found here](/vault/docs/platform/k8s/injector/examples#configmap-example).
+An example of mounting a Vault Agent configmap [can be found here](/docs/platform/k8s/injector/examples#configmap-example).
 
 ## Tutorial
 
 Refer to the [Injecting Secrets into Kubernetes Pods via Vault Helm
-Sidecar](/vault/tutorials/kubernetes/kubernetes-sidecar) guide
+Sidecar](/tutorials/kubernetes/kubernetes-sidecar) guide
 for a step-by-step tutorial.

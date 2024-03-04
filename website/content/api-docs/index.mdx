@@ -1,7 +1,6 @@
 ---
-layout: api
-page_title: HTTP API
 description: OpenBao has an HTTP API that can be used to control every aspect of OpenBao.
+displayed_sidebar: api
 ---
 
 # HTTP API
@@ -14,12 +13,16 @@ All API routes are prefixed with `/v1/`.
 
 This documentation is only for the v1 API, which is currently the only version.
 
-~> **Backwards compatibility:** At the current version, OpenBao does not yet
+:::warning
+
+**Backwards compatibility:** At the current version, OpenBao does not yet
 promise backwards compatibility even with the v1 prefix. We'll remove this
 warning when this policy changes. At this point in time the core API (that
 is, `sys/` routes) change very infrequently, but various secrets engines/auth
 methods/etc. sometimes have minor changes to accommodate new features as
 they're developed.
+
+:::
 
 ## Transport
 
@@ -36,7 +39,7 @@ either the `X-Vault-Token` HTTP Header or as `Authorization` HTTP Header using
 the `Bearer <token>` scheme.
 
 Otherwise, a client token can be retrieved using an [authentication
-engine](/vault/docs/auth).
+engine](/docs/auth).
 
 Each auth method has one or more unauthenticated login endpoints. These
 endpoints can be reached without any authentication, and are used for
@@ -58,8 +61,8 @@ Typically the request data, body and response data to and from OpenBao is in JSO
 OpenBao sets the `Content-Type` header appropriately with its response and does
 not require it from the clients request.
 
-The demonstration below uses the [`KVv1` secrets engine](/vault/api-docs/secret/kv/kv-v1), which is a
-simple Key/Value store. Please read [the API documentation of KV secret engines](/vault/api-docs/secret/kv)
+The demonstration below uses the [`KVv1` secrets engine](/api-docs/secret/kv/kv-v1), which is a
+simple Key/Value store. Please read [the API documentation of KV secret engines](/api-docs/secret/kv)
 for details of `KVv1` compared to `KVv2` and how they differ in their URI paths
 as well as the features available in version 2 of the KV secrets engine.
 
@@ -132,7 +135,7 @@ discover whether an operation is actually a create or update operation based on
 the data already stored within OpenBao. This makes permission management via ACLs
 more flexible.
 
-A [KVv2 example](/vault/api-docs/secret/kv/kv-v2#sample-request-3) for the engine path of `secret` requires that URI is
+A [KVv2 example](/api-docs/secret/kv/kv-v2#sample-request-3) for the engine path of `secret` requires that URI is
 appended with ***`data/`***  prior to the secret name (`baz`) such as:
 
 ```shell-session
@@ -173,7 +176,7 @@ methods, etc. then append `?help=1` to any URL. If you have valid permission to
 access the path, then the help text will be returned as a markdown-formatted block
 in the `help` attribute of the response.
 
-Additionally, with the [OpenAPI generation](/vault/api-docs/system/internal-specs-openapi) in OpenBao, you will get back a small
+Additionally, with the [OpenAPI generation](/api-docs/system/internal-specs-openapi) in OpenBao, you will get back a small
 OpenAPI document in the `openapi` attribute. This document is relevant for the
 path you're looking up and any paths under it - also note paths in the OpenAPI
 document are relative to the initial path queried.
@@ -246,10 +249,14 @@ The following HTTP status codes are used throughout the API. OpenBao tries to
 adhere to these whenever possible, but in case it doesn't -- then feel free to
 [raise a bug](https://github.com/openbao/openbao/issues) for our attention!
 
-~> _Note_: Applications should be prepared to accept both `200` and `204` as
+:::warning
+
+_Note_: Applications should be prepared to accept both `200` and `204` as
 success. `204` is simply an indication that there is no response body to parse,
 but API endpoints that indicate that they return a `204` may return a `200` if
 warnings are generated during the operation.
+
+:::
 
 - `200` - Success with data.
 - `204` - Success, no data returned.
@@ -278,4 +285,4 @@ A maximum request size of 32MB is imposed to prevent a denial of service attack
 with arbitrarily large requests; this can be tuned per `listener` block in
 OpenBao's server configuration file.
 
-[proxy]: /vault/docs/agent-and-proxy/proxy#listener-stanza
+[proxy]: /docs/agent-and-proxy/proxy#listener-stanza

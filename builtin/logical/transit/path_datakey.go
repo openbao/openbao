@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/errutil"
 	"github.com/openbao/openbao/sdk/helper/keysutil"
@@ -41,11 +40,6 @@ ciphertext; "wrapped" will return the ciphertext only.`,
 			"context": {
 				Type:        framework.TypeString,
 				Description: "Context for key derivation. Required for derived keys.",
-			},
-
-			"nonce": {
-				Type:        framework.TypeString,
-				Description: "Nonce for when convergent encryption v1 is used (only in Vault 0.6.1 before OpenBao's fork)",
 			},
 
 			"bits": {
@@ -99,16 +93,6 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		}
 	}
 
-	// Decode the nonce if any
-	nonceRaw := d.Get("nonce").(string)
-	var nonce []byte
-	if len(nonceRaw) != 0 {
-		nonce, err = base64.StdEncoding.DecodeString(nonceRaw)
-		if err != nil {
-			return logical.ErrorResponse("failed to base64-decode nonce"), logical.ErrInvalidRequest
-		}
-	}
-
 	// Get the policy
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
@@ -141,7 +125,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	ciphertext, err := p.EncryptWithFactory(ver, context, nonce, base64.StdEncoding.EncodeToString(newKey), nil)
+	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), nil)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:
@@ -168,14 +152,6 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 			"ciphertext":  ciphertext,
 			"key_version": keyVersion,
 		},
-	}
-
-	if len(nonce) > 0 && !nonceAllowed(p) {
-		return nil, ErrNonceNotAllowed
-	}
-
-	if constants.IsFIPS() && shouldWarnAboutNonceUsage(p, nonce) {
-		resp.AddWarning("A provided nonce value was used within FIPS mode, this violates FIPS 140 compliance.")
 	}
 
 	if plaintextAllowed {

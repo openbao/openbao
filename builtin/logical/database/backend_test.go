@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	_ "github.com/jackc/pgx/v4"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
@@ -59,7 +60,7 @@ func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {
 }
 
 func TestBackend_PluginMain_Postgres(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -72,7 +73,7 @@ func TestBackend_PluginMain_Postgres(t *testing.T) {
 }
 
 func TestBackend_PluginMain_PostgresMultiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -1455,7 +1456,7 @@ func (h hangingPlugin) Close() error {
 var _ v5.Database = (*hangingPlugin)(nil)
 
 func TestBackend_PluginMain_Hanging(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 	v5.Serve(&hangingPlugin{})

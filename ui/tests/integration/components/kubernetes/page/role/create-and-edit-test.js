@@ -55,7 +55,7 @@ module('Integration | Component | kubernetes | Page::Role::CreateAndEdit', funct
     assert
       .dom('[data-test-empty-state-message]')
       .hasText(
-        'To configure a Vault role, choose what should be generated in Kubernetes by Vault.',
+        'To configure a OpenBao role, choose what should be generated in Kubernetes by OpenBao.',
         'Empty state message renders'
       );
     assert.dom('[data-test-save]').isDisabled('Save button is disabled');

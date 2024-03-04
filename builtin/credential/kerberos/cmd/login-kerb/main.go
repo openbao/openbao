@@ -18,6 +18,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/jcmturner/gokrb5/v8/spnego"
+	"github.com/openbao/openbao/api"
 	kerberos "github.com/openbao/openbao/builtin/credential/kerberos"
 )
 
@@ -77,7 +78,7 @@ func main() {
 		os.Exit(1)
 	}
 	if vaultAddr == "" {
-		vaultAddr = os.Getenv("VAULT_ADDR")
+		vaultAddr = api.ReadBaoVariable("BAO_ADDR")
 		if vaultAddr == "" {
 			fmt.Println(`"vault_addr" is required`)
 			os.Exit(1)

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 	"path"
 	"sort"
 	"strconv"
@@ -23,6 +22,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/fairshare"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -68,7 +68,7 @@ const (
 	// number of workers to use for general purpose testing
 	numExpirationWorkersTest = 10
 
-	fairshareWorkersOverrideVar = "VAULT_LEASE_REVOCATION_WORKERS"
+	fairshareWorkersOverrideVar = "BAO_LEASE_REVOCATION_WORKERS"
 
 	// limit irrevocable error messages to 240 characters to be respectful of
 	// storage/memory
@@ -310,7 +310,7 @@ func (r *revocationJob) revokeExponentialBackoff(attempt uint8) time.Duration {
 func getNumExpirationWorkers(c *Core, l log.Logger) int {
 	numWorkers := c.numExpirationWorkers
 
-	workerOverride := os.Getenv(fairshareWorkersOverrideVar)
+	workerOverride := api.ReadBaoVariable(fairshareWorkersOverrideVar)
 	if workerOverride != "" {
 		i, err := strconv.Atoi(workerOverride)
 		if err != nil {
@@ -362,7 +362,7 @@ func NewExpirationManager(c *Core, view *BarrierView, e ExpireLeaseStrategy, log
 		quitContext:       c.activeContext,
 		leaseCheckCounter: new(uint32),
 
-		logLeaseExpirations: os.Getenv("VAULT_SKIP_LOGGING_LEASE_EXPIRATIONS") == "",
+		logLeaseExpirations: api.ReadBaoVariable("BAO_SKIP_LOGGING_LEASE_EXPIRATIONS") == "",
 
 		jobManager:      jobManager,
 		revokeRetryBase: c.expirationRevokeRetryBase,

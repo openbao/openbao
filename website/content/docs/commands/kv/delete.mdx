@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: kv delete - Command
+sidebar_label: delete
 description: |-
   The "kv delete" command deletes the data for the provided path in the key/value secrets engine.
 ---
@@ -30,7 +29,7 @@ Success! Data deleted (if it existed) at: secret/data/creds
 
 ## Usage
 
-There are no flags beyond the [standard set of flags](/vault/docs/commands)
+There are no flags beyond the [standard set of flags](/docs/commands)
 included on all commands.
 
 ### Command options
@@ -45,4 +44,4 @@ included on all commands.
   data will not be deleted, but it will no longer be returned in normal get
   requests.
 
-~> **NOTE:** The `-versions` command option is only for K/V v2.
+**NOTE:** The `-versions` command option is only for K/V v2.

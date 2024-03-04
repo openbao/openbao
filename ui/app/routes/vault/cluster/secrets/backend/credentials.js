@@ -38,7 +38,7 @@ export default Route.extend({
       const status = error?.httpStatus;
       let title;
       let message = `We ran into a problem and could not continue: ${
-        error?.errors ? error.errors[0] : 'See Vault logs for details.'
+        error?.errors ? error.errors[0] : 'See OpenBao logs for details.'
       }`;
       if (status === 403) {
         // 403 is forbidden

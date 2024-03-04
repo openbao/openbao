@@ -1,6 +1,4 @@
 ---
-layout: api
-page_title: /sys/locked-users - HTTP API
 description: The `/sys/locked-users` endpoint is used to manage locked users in OpenBao.
 ---
 
@@ -8,7 +6,7 @@ description: The `/sys/locked-users` endpoint is used to manage locked users in 
 
 The `/sys/locked-users` endpoint is used to list and unlock locked users in OpenBao.
 
-Refer to the [user lockout](/vault/docs/concepts/user-lockout) overview for more details about how OpenBao handles lockouts.
+Refer to the [user lockout](/docs/concepts/user-lockout) overview for more details about how OpenBao handles lockouts.
 
 ## List locked users
 
@@ -20,8 +18,6 @@ be listed as "deleted namespace :ID:." Deleted namespaces are reported only for
 queries in the root namespace because the information about the namespace path
 is unknown. The response will be returned in the decreasing order of locked user
 counts.
-
-This endpoint was added in Vault 1.13.
 
 | Method | Path             |
 | :----- | :--------------- |
@@ -196,9 +192,6 @@ $ curl \
 
 The unlock user endpoint frees a locked user with the provided `mount_accessor` and `alias_identifier` in the given namespace.
 The unlock command is idempotent. Calls to the endpoint succeed even if the user matching the provided `mount_accessor` and `alias_identifier` is not currently locked.
-
-
-This endpoint was added in Vault 1.13.
 
 | Method | Path             |
 | :----- | :--------------- |

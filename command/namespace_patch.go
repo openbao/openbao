@@ -35,7 +35,7 @@ func (c *NamespacePatchCommand) Help() string {
 Usage: bao namespace patch [options] PATH
 
   Patch an existing namespace. The namespace patched will be relative to the
-  namespace provided in either the VAULT_NAMESPACE environment variable or
+  namespace provided in either the BAO_NAMESPACE environment variable or
   -namespace CLI flag.
 
   Patch an existing child namespace by adding and removing custom-metadata (e.g. ns1/):

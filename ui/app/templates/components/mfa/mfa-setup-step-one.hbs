@@ -1,7 +1,7 @@
 <div ...attributes>
   <p>
     TOTP Multi-factor authentication (MFA) can be enabled here if it is required by your administrator. This will ensure that
-    you are not prevented from logging into Vault in the future, once MFA is fully enforced.
+    you are not prevented from logging into OpenBao in the future, once MFA is fully enforced.
   </p>
   <form id="mfa-setup-step-one" {{on "submit" this.verifyUUID}}>
     <MessageError @errorMessage={{this.error}} class="has-top-margin-s" />

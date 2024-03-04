@@ -1,9 +1,9 @@
 ---
-layout: docs
-page_title: Client count calculation
 description: |-
   Technical overview of client count calculations in OpenBao 
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Client count calculation
 
@@ -20,16 +20,16 @@ CLIENT_COUNT_PER_CLUSTER = UNIQUE_STANDARD_ENTITIES +
                            UNIQUE CERTIFICATE_ENTITIES
 ```
 
-<Note heading="Certificate entities currently reported as non-entity clients">
+:::note[Certificate entities currently reported as non-entity clients]
 
   OpenBao currently rolls certificate entities into the non-entity client count
   in the UI and API query requests. For more detailed information on certificate
   entities, use the
-  [internal counter endpoint](/vault/api-docs/system/internal-counters) to query
+  [internal counter endpoint](/api-docs/system/internal-counters) to query
   monthly data for the PKI mount path or export historic data and look for
   `client_type=pki-acme`.
 
-</Note>
+:::
 
 ## How OpenBao tracks clients
 
@@ -101,7 +101,7 @@ sample the values we found during testing for `CM`, `BP`, and `ER`.
 
 <Tabs>
 
-<Tab heading="Single-month tests">
+<TabItem value="Single-month tests" heading="Single-month tests">
 
 | Current month (`CM`) | Billing period (`BP`) | Error rate (`ER`) |
 | :-----------------: | :------------------: | :---------------: |
@@ -115,9 +115,9 @@ sample the values we found during testing for `CM`, `BP`, and `ER`.
 | 400                 | 6000                 | 5%                |
 | 2000                | 10000                | 4%                |
 
-</Tab>
+</TabItem>
 
-<Tab heading="Multi-month / multi-segment tests">
+<TabItem value="Multi-month / multi-segment tests" heading="Multi-month / multi-segment tests">
 
 | Current month (`CM`) | Billing period (`BP`) | Error rate (`ER`) |
 | :-----------------: | :------------------: | :---------------: |
@@ -128,7 +128,7 @@ sample the values we found during testing for `CM`, `BP`, and `ER`.
 | 200                 | 10000                |      6%           |
 | 2000                | 10000                |      2%           |
 
-</Tab>
+</TabItem>
 
 </Tabs>
 
@@ -142,56 +142,53 @@ records to 656,000 per month, but typical storage costs are much less.
 On average, 1000 monthly active entities requires 1.5 MiB of storage capacity
 over the default 24-month retention period.
 
-@include "content-footer-title.mdx"
-
 <Tabs>
 
-<Tab heading="Related concepts">
+<TabItem value="Related concepts" heading="Related concepts">
 <ul>
   <li>
-    <a href="/vault/docs/concepts/client-count/">Clients and entities</a>
+    <a href="/docs/concepts/client-count/">Clients and entities</a>
   </li>
   <li>
-    <a href="/vault/docs/concepts/client-count/faq">Client count FAQ</a>
+    <a href="/docs/concepts/client-count/faq">Client count FAQ</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Related API docs">
+<TabItem value="Related API docs" heading="Related API docs">
 <ul>
   <li>
-    <a href="/vault/api-docs/system/internal-counters#client-count">Client Count API</a>
+    <a href="/api-docs/system/internal-counters#client-count">Client Count API</a>
   </li>
   <li>
-    <a href="/vault/api-docs/system/internal-counters">Internal counters API</a>
+    <a href="/api-docs/system/internal-counters">Internal counters API</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Related tutorials">
+<TabItem value="Related tutorials" heading="Related tutorials">
 <ul>
   <li>
-    <a href="/vault/tutorials/monitoring/usage-metrics">
+    <a href="/tutorials/monitoring/usage-metrics">
       OpenBao Usage Metrics in OpenBao UI
     </a>
   </li>
   <li>
-    <a href="/vault/tutorials/monitoring/usage-metrics">KMIP Client metrics</a>
+    <a href="/tutorials/monitoring/usage-metrics">KMIP Client metrics</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
-<Tab heading="Other resources">
+<TabItem value="Other resources" heading="Other resources">
 <ul>
   <li>
     <a href="https://github.com/axiomhq/hyperloglog#readme">Accuracy estimates for the axiomhq hyperloglog library</a>
   </li>
   <li>
-    Blog post: <a href="https://www.hashicorp.com/blog/onboarding-applications-to-vault-using-terraform-a-practical-guide">
-      Onboarding Applications to Vault Using Terraform: A Practical Guide
-    </a>
+    Blog post: 
+    <a href="https://www.hashicorp.com/blog/onboarding-applications-to-vault-using-terraform-a-practical-guide">Onboarding Applications to Vault Using Terraform: A Practical Guide</a>
   </li>
 </ul>
-</Tab>
+</TabItem>
 
 </Tabs>

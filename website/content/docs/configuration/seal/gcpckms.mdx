@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: GCP Cloud KMS - Seals - Configuration
+sidebar_label: GCP Cloud KMS
 description: >-
   The GCP Cloud KMS seal configures OpenBao to use GCP Cloud KMS as the seal
   wrapping
@@ -60,7 +59,7 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 ## Authentication &amp; permissions
 
@@ -114,5 +113,5 @@ encrypted with the primary key version.
 
 ## Tutorial
 
-Refer to the [Auto-unseal using GCP Cloud KMS](/vault/tutorials/auto-unseal/autounseal-gcp-kms)
+Refer to the [Auto-unseal using GCP Cloud KMS](/tutorials/auto-unseal/autounseal-gcp-kms)
 guide for a step-by-step tutorial.

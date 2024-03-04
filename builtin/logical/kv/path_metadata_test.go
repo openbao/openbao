@@ -433,7 +433,6 @@ func TestVersionedKV_Metadata_Put_Bad_CustomMetadata(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Read err: %#v, resp: %#v", err, resp)
 	}
@@ -527,7 +526,6 @@ func TestVersionedKv_Metadata_Put_Too_Many_CustomMetadata_Keys(t *testing.T) {
 	}
 
 	resp, err = b.HandleRequest(context.Background(), req)
-
 	if err != nil {
 		t.Fatalf("Read err: %#v, resp :%#v", err, resp)
 	}
@@ -912,7 +910,6 @@ func TestVersionedKV_Metadata_Patch_Validation(t *testing.T) {
 			}
 
 			resp, err = b.HandleRequest(context.Background(), req)
-
 			if err != nil {
 				t.Fatalf("unexpected patch error, err: %#v", err)
 			}

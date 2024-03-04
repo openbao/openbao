@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Login MFA FAQ
+sidebar_label: FAQ
 description: An FAQ page to answer the most commonly asked questions about login mfa.
 ---
 
@@ -18,16 +17,20 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 
 | MFA workflow                                   | What does it do?                                                                                                                                                                                                                                                                                    | Who manages the MFA?              | 
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| [Login MFA](/vault/docs/auth/login-mfa)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by Vault           | 
-| [Okta Auth MFA](/vault/docs/auth/okta#mfa)           | This is MFA as part of [Okta Auth method](/vault/docs/auth/okta) in OpenBao, where MFA is enforced by Okta on login. MFA must be satisfied for authentication to be successful. This is different from the Okta MFA method used with Login MFA. CLI/API login are supported. | MFA is managed externally by Okta | 
+| [Login MFA](/docs/auth/login-mfa)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by OpenBao | 
+| [Okta Auth MFA](/docs/auth/okta#mfa)           | This is MFA as part of [Okta Auth method](/docs/auth/okta) in OpenBao, where MFA is enforced by Okta on login. MFA must be satisfied for authentication to be successful. This is different from the Okta MFA method used with Login MFA. CLI/API login are supported. | MFA is managed externally by Okta | 
 
 
 ### Q: what is Single-Phase MFA vs. Two-Phase MFA?
 
 - **Single-Phase MFA:** This is a single request mechanism where the required MFA information, such as MFA method ID, is provided via the X-Vault-MFA header in a single MFA request that is used to authenticate into Openbao.
 
-~> **Note**: If the configured MFA methods need a passcode, it needs to be provided in the request, such as in the case of TOTP or Duo.
+:::warning
+
+**Note**: If the configured MFA methods need a passcode, it needs to be provided in the request, such as in the case of TOTP or Duo.
 If the configured MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have out of band mechanisms for verifying the extra factor, Openbao will send an inquiry to the other service's APIs to determine whether the MFA request has yet been verified.
+
+:::
 
 - **Two-Phase MFA:** This is a two-request MFA method that is more conventionally used.
   - The MFA passcode required for the configured MFA method is not provided in a header of the login request that is MFA-restricted. Instead, the user first authenticates to the auth method, and on successful authentication to the auth method, an MFA requirement is returned to the user. The MFA requirement contains the MFA RequestID and constraints applicable to the MFA as configured by the operator.
@@ -37,15 +40,15 @@ If the configured MFA methods, such as PingID, Okta, or Duo, do not require a pa
 
 | MFA workflow                                   | Configuration methods                                                                     | Details                                                                                                                                                                                                                                                                                     |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Login MFA](/vault/docs/auth/login-mfa)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
-| [Okta Auth MFA](/vault/docs/auth/okta)               | CLI/API                                                                                   | MFA methods supported: [TOTP](https://help.okta.com/en/prod/Content/Topics/Security/mfa-totp-seed.htm) , [Okta Verify Push](https://help.okta.com/en/prod/Content/Topics/Mobile/ov-admin-config.htm). |
+| [Login MFA](/docs/auth/login-mfa)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
+| [Okta Auth MFA](/docs/auth/okta)               | CLI/API                                                                                   | MFA methods supported: [TOTP](https://help.okta.com/en/prod/Content/Topics/Security/mfa-totp-seed.htm) , [Okta Verify Push](https://help.okta.com/en/prod/Content/Topics/Mobile/ov-admin-config.htm). |
 
 ### Q: which MFA mechanism is used with the different MFA workflows in OpenBao?
 
 | MFA workflow                                   | UI        | CLI/API                                                                                                                                   | Single-Phase                | Two-Phase                   |
 | ---------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------- |
-| [Login MFA](/vault/docs/auth/login-mfa)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
-| [Okta Auth MFA](/vault/docs/auth/okta)               | N/A       | N/A                                                                                                                                       | MFA is not managed by OpenBao | MFA is not managed by OpenBao |
+| [Login MFA](/docs/auth/login-mfa)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
+| [Okta Auth MFA](/docs/auth/okta)               | N/A       | N/A                                                                                                                                       | MFA is not managed by OpenBao | MFA is not managed by OpenBao |
 
 ### Q: i use the OpenBao agent. does MFA pose any challenges for me?
 

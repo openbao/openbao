@@ -60,7 +60,7 @@ module('Acceptance | auth', function (hooks) {
   });
 
   test('it sends the right attributes when authenticating', async function (assert) {
-    assert.expect(8);
+    assert.expect(6);
     const backends = supportedAuthBackends();
     await visit('/vault/auth');
     for (const backend of backends.reverse()) {
@@ -78,7 +78,7 @@ module('Acceptance | auth', function (hooks) {
       if (backend.type === 'token') {
         assert.ok(
           Object.keys(lastRequest.requestHeaders).includes('X-Vault-Token'),
-          'token uses vault token header'
+          'token uses OpenBao token header'
         );
       } else if (backend.type === 'github') {
         assert.ok(Object.keys(body).includes('token'), 'GitHub includes token');

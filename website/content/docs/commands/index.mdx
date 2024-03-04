@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Commands (CLI)
+sidebar_label: Overview
 description: |-
   In addition to a verbose HTTP API, OpenBao features a command-line interface
   that wraps common functionality and formats output. The OpenBao CLI is a single
@@ -10,13 +9,7 @@ description: |-
 
 # OpenBao commands (CLI)
 
-~> **Note:** The Vault command-line interface (CLI) changed substantially in
-0.9.2+ and may cause confusion while using older versions of Vault with this
-documentation. Read our [upgrade
-guide](/vault/docs/upgrading/upgrade-to-0.9.2#backwards-compatible-cli-changes) for
-more information.
-
-In addition to a verbose [HTTP API](/vault/api-docs), OpenBao features a command-line
+In addition to a verbose [HTTP API](/api-docs), OpenBao features a command-line
 interface (CLI) that wraps common functionality and formats output. The OpenBao
 CLI is a single static binary. It is a thin wrapper around the HTTP API. Every
 CLI command maps directly to the HTTP API internally.
@@ -30,26 +23,26 @@ command-specific options.
 Construct your OpenBao CLI command such that the command options precede its path
 and arguments if any:
 
-<CodeBlockConfig hideClipboard>
-
 ```text
 bao <command> [options] [path] [args]
 ```
 
-</CodeBlockConfig>
-
-- `options` - [Flags](/vault/docs/commands#flags) to specify additional settings
+- `options` - [Flags](/docs/commands#flags) to specify additional settings
 - `args` - API arguments specific to the operation
 
--> **NOTE:** Use the [command help](#command-help) to display available options
+:::info
+
+**NOTE:** Use the [command help](#command-help) to display available options
 and arguments.
+
+:::
 
 #### Examples:
 
 The following `write` command creates a new user (`bob`) in the userpass auth
 method. It passes the `-address` flag to specify the OpenBao server address which
 precedes the path (`auth/userpass/users/bob`) and its
-[argument](/vault/api-docs/auth/userpass#create-update-user)
+[argument](/api-docs/auth/userpass#create-update-user)
 (`password="long-password"`) at last.
 
 ```shell-session
@@ -57,7 +50,7 @@ $ bao write -address="http://127.0.0.1:8200" auth/userpass/users/bob password="l
 ```
 
 If multiple options (`-address` and `-namespace`) and
-[arguments](/vault/api-docs/auth/userpass#create-update-user) (`password` and
+[arguments](/api-docs/auth/userpass#create-update-user) (`password` and
 `policies`) are specified, the command would look like:
 
 ```shell-session
@@ -68,9 +61,9 @@ $ bao write -address="http://127.0.0.1:8200" -namespace="my-organization" \
 The options (flags) come after the command (or subcommand) preceding the path,
 and the args always follow the path to set API parameter values.
 
-The four most common operations in OpenBao are [read](/vault/docs/commands/read),
-[write](/vault/docs/commands/write), [delete](/vault/docs/commands/delete), and
-[list](/vault/docs/commands/list). These operations work on most paths in OpenBao. Some
+The four most common operations in OpenBao are [read](/docs/commands/read),
+[write](/docs/commands/write), [delete](/docs/commands/delete), and
+[list](/docs/commands/list). These operations work on most paths in OpenBao. Some
 paths will contain secrets while other paths may contain configuration. Whatever it
 is, the primary interface for reading and writing data to OpenBao is similar.
 
@@ -123,10 +116,10 @@ The help output displays available subcommands, parameters, and command flags.
 
 ### API help
 
-To invoke the OpenBao API paths, you can use the [read](/vault/docs/commands/read) (for
-HTTP GET), [write](/vault/docs/commands/write) (for HTTP PUT or POST),
-[delete](/vault/docs/commands/delete) (for HTTP DELETE), and
-[list](/vault/docs/commands/list) (for HTTP LIST) commands.
+To invoke the OpenBao API paths, you can use the [read](/docs/commands/read) (for
+HTTP GET), [write](/docs/commands/write) (for HTTP PUT or POST),
+[delete](/docs/commands/delete) (for HTTP DELETE), and
+[list](/docs/commands/list) (for HTTP LIST) commands.
 
 Use `path-help` to get OpenBao API help:
 
@@ -138,7 +131,7 @@ The `path-help` retrieves API help on any API paths. OpenBao API paths provide
 built-in help in markdown format. This includes system paths, secret engines,
 and auth methods.
 
-**Example:** API help on the [`sys/mounts/`](/vault/api-docs/system/mounts) path.
+**Example:** API help on the [`sys/mounts/`](/api-docs/system/mounts) path.
 
 ```shell-session
 $ bao path-help sys/mounts
@@ -250,7 +243,11 @@ Enable autocompletion by running:
 $ bao -autocomplete-install
 ```
 
-~> Be sure to **restart your shell** after installing autocompletion!
+:::warning
+
+Be sure to **restart your shell** after installing autocompletion!
+
+:::
 
 When you start typing an OpenBao command, press the `<tab>` character to show a
 list of available completions. Type `-<tab>` to show available flag completions.
@@ -273,15 +270,15 @@ this file at any time to "logout" of OpenBao.
 The CLI reads the following environment variables to set behavioral defaults.
 This can alleviate the need to repetitively type a flag. Flags always take
 precedence over the environment variables. Each of the following environment 
-variables must be set on the OpenBao process.  In Vault 1.13+, all environment 
-variables available to the OpenBao process will be logged during startup.
+variables must be set on the OpenBao process. All environment  variables
+available to the OpenBao process will be logged during startup.
 
 ### `VAULT_TOKEN`
 
 OpenBao authentication token. Conceptually similar to a session token on a
 website, the `VAULT_TOKEN` environment variable holds the contents of the token.
 For more information, please see the [token
-concepts](/vault/docs/concepts/tokens) page.
+concepts](/docs/concepts/tokens) page.
 
 ### `VAULT_ADDR`
 
@@ -344,7 +341,7 @@ High Availability mode.
 
 Do not verify OpenBao's presented certificate before communicating with it.
 Setting this variable is not recommended and voids OpenBao's [security
-model](/vault/docs/internals/security).
+model](/docs/internals/security).
 
 ### `VAULT_TLS_SERVER_NAME`
 
@@ -368,7 +365,7 @@ limiting is off by default.
 _Note:_ The rate is limited for each invocation of the `bao` CLI. Since
 each invocation of the `bao` CLI typically only makes a few requests,
 this environment variable is most useful when using the Go
-[OpenBao client API](/vault/api-docs/libraries#go).
+[OpenBao client API](/api-docs/libraries#go).
 
 ### `VAULT_NAMESPACE`
 
@@ -396,20 +393,32 @@ HTTP or HTTPS proxy location which should be used by all requests to access Open
  When present, this overrides the default proxy resolution behavior.
 Format should be `http://server:port` or `https://server:port`.
 
-~> Note: When using `VAULT_HTTP_PROXY` or `VAULT_PROXY_ADDR` any of the standard
+:::warning
+
+Note: When using `VAULT_HTTP_PROXY` or `VAULT_PROXY_ADDR` any of the standard
  proxy variables found in the environment will be ignored.
 Specifically `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY`.
 All requests will resolve the specified proxy; there is no way to exclude
  domains from consulting the proxy server.
 
-~> Note: If both `VAULT_HTTP_PROXY` and `VAULT_PROXY_ADDR` environment
+:::
+
+:::warning
+
+Note: If both `VAULT_HTTP_PROXY` and `VAULT_PROXY_ADDR` environment
 variables are supplied, `VAULT_PROXY_ADDR` will be prioritized and preferred.
+
+:::
 
 ### `VAULT_DISABLE_REDIRECTS`
 
 Prevents the OpenBao client from following redirects. By default, the OpenBao client will automatically follow a single redirect.
 
-~> **Note:** Disabling redirect following behavior could cause issues with commands such as 'bao operator raft snapshot' as this command redirects the request to the cluster's primary node.
+:::warning
+
+**Note:** Disabling redirect following behavior could cause issues with commands such as 'bao operator raft snapshot' as this command redirects the request to the cluster's primary node.
+
+:::
 
 ## Flags
 

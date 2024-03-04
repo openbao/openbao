@@ -15,6 +15,46 @@ talk to us! You can find out our thoughts and ensure that your contribution
 won't clash or be obviated by OpenBao's normal direction. A great way to do this
 is via the [GitHub Discussions][2].
 
+## Source-Available License Policy
+
+This policy prohibits the utilization or copy from any source that is protected 
+by a source-available license agreement including Business Source License 1.1. 
+This specifically includes all source repository members under the Hashicorp GitHub 
+organization. It is the intention of this policy that when developing for feature 
+parity, bug fixes, CVEs, etc. in comparison to Hashicorp Vault that a clean room 
+methodology be used and all deliverables made original.
+
+## Developer Certificate of Origin (DCO) Sign Off Policy
+
+OpenBao adheres to the Linux Foundation's [DCO](https://developercertificate.org/).
+All contributors are required to confirm their legal rights to the source they 
+contribute. This is done through a "DCO Sign Off". Note that this is different from 
+commit signing, such as using `PGP` or `gitsign`.
+
+To add your sign-off, include the --signoff option in your `git commit` or `git rebase` 
+commands:
+
+```
+# Sign off a commit
+git commit --signoff -m"my commit"
+
+# Add a signoff to the last commit you made
+git commit --amend --signoff
+
+# Sign off every commit in your branch
+git rebase --signoff master
+```
+
+This will add a line similar to the following at the end of your commit:
+
+```
+Signed-off-by: Alex Smith <alex@example.com>
+```
+
+Signing off a commit signifies your agreement to the terms outlined at 
+https://developercertificate.org/ for that specific contribution. Any contribution 
+that lacks a sign-off to this agreement will not be accepted by the OpenBao project.
+
 ## Issues
 
 This section will cover what we're looking for in terms of reporting issues.
@@ -135,31 +175,5 @@ And most of all, if you have any questions, please ask!
 If you have never worked with Go before, you will have to complete the
 following steps listed in the README, under the section [Developing OpenBao][1].
 
-
 [1]: https://github.com/openbao/openbao#developing-openbao
 [2]: https://github.com/openbao/openbao/discussions
-
-## DCO Sign Off
-
-All contributors are required to confirm their legal rights to the code they contribute. This is done throught a "DCO Sign Off". Note that this is different from commit signing, such as using `PGP` or `gitsign`.
-
-To add your sign-off, include the --signoff option in your `git commit` or `git rebase` commands:
-
-```
-# Sign off a commit
-git commit --signoff -m"my commit"
-
-# Add a signoff to the last commit you made
-git commit --amend --signoff
-
-# Sign off every commit in your branch
-git rebase --signoff master
-```
-
-This will add a line similar to the following at the end of your commit:
-
-```
-Signed-off-by: Alex Smith <alex@example.com>
-```
-
-Signing off a commit signifies your agreement to the terms outlined at https://developercertificate.org/ for that specific contribution.

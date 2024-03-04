@@ -18,7 +18,6 @@ import (
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
-	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
@@ -33,7 +32,6 @@ import (
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
-	srconsul "github.com/openbao/openbao/serviceregistration/consul"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/openbao/openbao/version"
@@ -382,30 +380,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 			diagnose.Skipped(ctx, "No service registration configured.")
 			return nil
 		}
-		srConfig := config.ServiceRegistration.Config
 
-		diagnose.Test(ctx, "Check Consul Service Discovery TLS", func(ctx context.Context) error {
-			// SetupSecureTLS for service discovery uses the same cert and key to set up physical
-			// storage. See the consul package in physical for details.
-			err := srconsul.SetupSecureTLS(ctx, api.DefaultConfig(), srConfig, server.logger, true)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
-		if config.ServiceRegistration != nil && config.ServiceRegistration.Type == "consul" {
-			diagnose.Test(ctx, "Check Consul Direct Service Discovery", func(ctx context.Context) error {
-				dirAccess := diagnose.ConsulDirectAccess(config.ServiceRegistration.Config)
-				if dirAccess != "" {
-					diagnose.Warn(ctx, dirAccess)
-				}
-				if dirAccess == diagnose.DirAccessErr {
-					diagnose.Advise(ctx, diagnose.DirAccessAdvice)
-				}
-				return nil
-			})
-		}
 		return nil
 	})
 

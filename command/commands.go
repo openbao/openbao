@@ -41,7 +41,6 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
 
 	sr "github.com/openbao/openbao/serviceregistration"
-	csr "github.com/openbao/openbao/serviceregistration/consul"
 	ksr "github.com/openbao/openbao/serviceregistration/kubernetes"
 )
 
@@ -167,7 +166,6 @@ var (
 	}
 
 	serviceRegistrations = map[string]sr.Factory{
-		"consul":     csr.NewServiceRegistration,
 		"kubernetes": ksr.NewServiceRegistration,
 	}
 

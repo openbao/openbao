@@ -107,7 +107,6 @@ const sidebars: SidebarsConfig = {
                     ],
                     service_registration: [
                         "configuration/service-registration/index",
-                        "configuration/service-registration/consul",
                         "configuration/service-registration/kubernetes",
                     ],
                     storage: [

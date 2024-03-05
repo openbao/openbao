@@ -218,31 +218,6 @@ jobs:
           tags: |
             docker.io/openbao/${{ env.repo }}-ubi:${{ env.version }}
 
-  report-build-failures:
-    name: Report Build Failures
-    needs:
-      - build-other
-      - build-linux
-      - build-darwin
-      - build-docker
-      - build-ubi
-    if: (success() || failure()) && github.head_ref != ''
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - name: Build Status
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RUN_ID: ${{ github.run_id }}
-          REPO: ${{ github.event.repository.name }}
-          BUILD_OTHER: ${{ needs.build-other.result }}
-          BUILD_LINUX: ${{ needs.build-linux.result }}
-          BUILD_DARWIN: ${{ needs.build-darwin.result }}
-          BUILD_DOCKER: ${{ needs.build-docker.result }}
-          BUILD_UBI: ${{ needs.build-ubi.result }}
-        run: ./.github/scripts/report_failed_builds.sh
-
   completed-successfully:
     # We force a failure if any of the dependent jobs fail,
     # this is a workaround for the issue reported https://github.com/actions/runner/issues/2566

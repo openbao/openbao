@@ -18,9 +18,9 @@ import (
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/helper/shamir"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/shamir"
 	"github.com/openbao/openbao/vault/seal"
 )
 

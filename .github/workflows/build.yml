@@ -64,7 +64,7 @@ jobs:
           repositoryOwner: 'openbao'
           version: ${{ steps.set-product-version.outputs.product-version }}
           product: ${{ steps.get-metadata.outputs.package-name }}
-      - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
         with:
           name: metadata.json
           path: ${{ steps.generate-metadata-file.outputs.filepath }}

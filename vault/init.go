@@ -18,7 +18,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/shamir"
+	"github.com/openbao/openbao/sdk/helper/shamir"
 )
 
 // InitParams keeps the init function from being littered with too many

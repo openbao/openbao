@@ -14,7 +14,7 @@ import (
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/roottoken"
-	"github.com/openbao/openbao/shamir"
+	"github.com/openbao/openbao/sdk/helper/shamir"
 )
 
 const coreDROperationTokenPath = "core/dr-operation-token"

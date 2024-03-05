@@ -2340,3 +2340,343 @@ func TestBackend_CertUpgrade(t *testing.T) {
 		t.Fatal(diff)
 	}
 }
+
+const (
+	RegTrustedLeafCertA = `-----BEGIN CERTIFICATE-----
+MIIFcTCCA1mgAwIBAgICBAAwDQYJKoZIhvcNAQELBQAwRzESMBAGA1UEChMJQ0lQ
+SEVSQk9ZMRMwEQYDVQQLEwpwa2ktdG9tY2F0MRwwGgYDVQQDExNDQSBSb290IENl
+cnRpZmljYXRlMCAXDTI0MDMwNDE0MDMxOVoYDzIxMjQwMzA0MTQwMzE5WjAuMRIw
+EAYDVQQKEwlDSVBIRVJCT1kxGDAWBgNVBAMTD2EuY2lwaGVyYm95LmNvbTCCAiIw
+DQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBALy9sQmv3OBXiIJD+CYZ8UNx6Tix
+AKmpXwBwvHsM/GzbIHW5DbJtCdmM2RPN6qmRRiBwc+8Sogj7Lm4h2vY0+AWOldfe
+g533cMI1uAWMtJEdcrRO7V7HdHPiO0bbBX3F3ZRIqYEWlYLWWqYEPQrPv5UtbDyv
+Gg7+OXqmd+qMk76+klOAZ0CCxJf/AHGdYGaBsh/+Z8dEi1L6VDSAXhmdNfSlAsZt
+zZAUk0FiNQpxqZjI38MOvVYKAUGnqIkJatoqMPH+krYQxCA+HhKGepsCWfchAcFG
+Fa2FoLM/+akLId5QKJ5jLLoZ0BMScjmRgp9VCmPmt5hoVvgMiOwABz5SnGpgqgLJ
+uOxkOtm+VFoyD3qKH72KQZOTwU4mzqrWHIiYCThYzJwWvwmSQ4u2QNSF5pXU2Mct
+sT8sJzDPu02fMGR+cZzcVSdYSJWiDgHc/IlfREeBiNO2HayPkgpiETv1UX/mNBbf
+CYLJnGnYrtLyWb4tX898cfKWFt0LMdOYcKIjvc/78F45O9LD4oqKR8QTv9LkRdF6
+cNfPECieBhR7gITmqMew85LmF87yscEEPUGYF7LPPz2B2Gfrs5bIuIlhiCOR7xso
+xOQDGToIHw6cLdYW9aPAOkUJwBtp6TL5nrgX1EAaUutPluhHqC60JJxITTEtfqcQ
+aFcvHfgRxDxUC6nPAgMBAAGjfjB8MEAGCCsGAQUFBwEBBDQwMjAwBggrBgEFBQcw
+AYYkaHR0cDovL2NhLmNpcGhlcmJveS5jb206ODA4MC9jYS9vY3NwMAkGA1UdIwQC
+MAAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMA4GA1UdDwEB/wQEAwIE
+sDANBgkqhkiG9w0BAQsFAAOCAgEAj/kfWWOfvokxk0cN0vngml61uEw6HkMs2D9C
+68vuH3L+EBnU+RjUngVbeZ08H/dxQHwymW25CwdnfAXMn7PzSrUwjD1Qd/K0mWFg
+CexGKpXnepyo2mL3ZEzRfdQ87DCfyIX6C1SVlGkU5/kLYd20nbJaqNe1OVHj1Vrr
+aZpdbO2v2gMhbUP4EqEtfFNa41jnSZE845nE+2N/avbfLlq//v4FwU1JZVdeyP1Q
+o4rGNaGpWLveRrtqhNLEyq35gN4uRElE0SxYuYzXInfJC5h1gB1yBtvi7Wson8S8
+Hn/Sf95SBHJwSPs49WwWBtIaQyfvqnYrjX2mwp/TCbUuhIB8edlOWD8BTZ7+AKFH
+7qji8Qj+rHauEMryR30x6wqrSQyh30Xv0azaVIpK/kT/XsvRCowgCRhgaejHAN5a
+zKtj41B6VfVCRxGYC5wr8tWOWpJysBej1OtmQwEP7XhZFQh/ME3OPwqXXAXOUUnv
+0Up84wvWFHBkDPJeTSiS2qefZk/HDeEL5xgFp0A4PLjrSO43KTc6nyPxl5+xFJ7b
+/zY+XAR1YD5SzsgI7rkdx538u89vR+sKKJ+XPAJUa5JhPQjTVL9Exr3cqc5kazwT
+Rp+Yy6n6wYsGA9916PqKVfC3dqSbNyO5Gdw8V5bMdp/E0j9f+D6sgsJFFFVKCB2t
+arXtCcc=
+-----END CERTIFICATE-----
+`
+	RegTrustedLeafKeyA = `-----BEGIN PRIVATE KEY-----
+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
+Qy9lVAuKDEh15921mPxb074a6ByNMg==
+-----END PRIVATE KEY-----
+`
+	RegTrustedLeafCertB = `-----BEGIN CERTIFICATE-----
+MIIFcDCCA1igAwIBAgICBAAwDQYJKoZIhvcNAQELBQAwRjESMBAGA1UEChMJQ0lQ
+SEVSQk9ZMRMwEQYDVQQLEwpwa2ktdG9tY2F0MRswGQYDVQQDExJDQSBTdWIgQ2Vy
+dGlmaWNhdGUwIBcNMjQwMzA0MTQwMzIwWhgPMjEyNDAzMDQxNDAzMjBaMC4xEjAQ
+BgNVBAoTCUNJUEhFUkJPWTEYMBYGA1UEAxMPYi5jaXBoZXJib3kuY29tMIICIjAN
+BgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAztMFwBX8R7lsWz9WpFtEK5ZXXBjk
+IZ5GkdY9gPXRyKPdBj0gckjNOWy74xJ+TYxT2+EPPDwe4KD7IGDM0PG9JGATzG9O
+OQ7kJuNycG4zFu+BSzMGcfRc1y88j/GBubfy2R4tNpUb4KJ4C8JaWo2BIjjmywJS
+ywq4CwaDUVgJOGIr57y2iljCuCVGfTpB6g5AHlJ6eMX6Yl254dHmcUA9JlP49C5H
+XmJbAB9vn4EHEBN8zIjWLUIckwAxKjDdfjrwNfheHSGVs+uP8u8PC09pAs7y6jnT
+3QEwqg9wIoK4L4bxy4Gj0D4ZxDpEgYlZNIFRcHrabm+IjKSy2eB01Vpkc2tgZmfs
+uYEzuxg/HfujosJYrfeYD3lZGU8xnoJzE0MXbfGCEQLyCm3XShqNIh/D4st/gptJ
+5IxknNfIKtQ8n5KIbVvCasPxyy0hHN6NE2Z4pzA59JoWQa8gBC7pHCJ/kLLbgLf1
+5dHwJcf444oh54hddQOgzhVxiMxwcJDEh/jKiqAYw4cF559QYBlrHx3U8VMJNi0M
+ai9jWVsz7/KRrjuO1bvV/M6BrAVfmeywrmcFaZF6r3q5JThdPoao24ba9j5m8brx
+F1vN2tSxml/xNCNrgdjPUTw8rBexoCmt9NRF4SGZyhL3EjYSNvECncqRRTIkdgP+
+x0FEbsI7NxrpMokCAwEAAaN+MHwwQAYIKwYBBQUHAQEENDAyMDAGCCsGAQUFBzAB
+hiRodHRwOi8vY2EuY2lwaGVyYm95LmNvbTo4MDgwL2NhL29jc3AwCQYDVR0jBAIw
+ADAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwEwDgYDVR0PAQH/BAQDAgSw
+MA0GCSqGSIb3DQEBCwUAA4ICAQC7JJ3kIB0hW5wRTUZKKWL2cfJ3To7YStXh78P3
+h2nby4cD6UbPkQW9Yn3Av0sMqBHr6Pk3mHKL+3sE895/PyGMTqQbLyVDMi4HOd2i
+sUf3snhNjRRRvM7IeHNhjvI004XKlGIqo9rfn3CFnWo663za3He8jsc4i+hxTnya
+KaW8D8gJkTJRW3fg1ACsESEG4ITY83PkERrzBJvPLcza75tjtrPUrHy4qEwVnQcD
+XWZN0Y6pTD4M4mtBXfaoKKeujxf+kT/XvnPgAR1OL0vs3ttotZSAQe35hn5hlNX3
+Aa4ZzxIhNGihyNHPKD1I/F3izCkUeDHtk/aLAgv9F7CfJux80cbnkzAqE0S/bdbR
+PQlPKDp0REy6nOXbJ35R5Agadn6i4r8fFDKzR8aGylymGcsF4YOlowo+PaS51SFc
+lBOM/sQdZVs3K7HEIzUkAudwVE2/sj5cZlNykW741LkB+Ezk2QMAVwkyCsaC9Tu/
+GTdMC0+AtueG9NvJ7fv36hBeXAFuS728K5mPPtzhCmmHcplNaf23NiTob++sb96k
+EJy3f0IRpQji0cgIfrqcgbm4BNwepGAq46c+gyGWD7HOTaNVe0hNOgmBAZRDfIJ8
+Mt/hEsvQYDL/Y4OSv+fQD/KVy9nx7zbXPMqcko+9w+TT/2AVfqX2uRo3DPoVwJy7
+mLG5gA==
+-----END CERTIFICATE-----
+`
+	RegTrustedLeafKeyB = `-----BEGIN PRIVATE KEY-----
+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
+mr2dJsMn54TXDOZYRQd5WVKDDu8xoJI=
+-----END PRIVATE KEY-----
+`
+)
+
+func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
+	// Cert auth method
+	coreConfig := &vault.CoreConfig{
+		DisableMlock: true,
+		DisableCache: true,
+		Logger:       log.NewNullLogger(),
+		CredentialBackends: map[string]logical.Factory{
+			"cert": Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	cores := cluster.Cores
+	vault.TestWaitActive(t, cores[0].Core)
+	client := cores[0].Client
+
+	var err error
+
+	// Enable the cert auth method
+	err = client.Sys().EnableAuthWithOptions("cert", &api.EnableAuthOptions{
+		Type: "cert",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set the first leaf cert as a trusted certificate in the backend
+	_, err = client.Logical().Write("auth/cert/certs/trusted-leaf", map[string]interface{}{
+		"display_name": "trusted-cert",
+		"policies":     "default",
+		"certificate":  RegTrustedLeafCertA,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create temporary files for CA cert, client cert and client cert key.
+	// This is used to configure TLS in the api client.
+	caCertFile, err := ioutil.TempFile("", "caCert")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(caCertFile.Name())
+	if _, err := caCertFile.Write([]byte(cluster.CACertPEM)); err != nil {
+		t.Fatal(err)
+	}
+	if err := caCertFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertAFile, err := ioutil.TempFile("", "leafCertA")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertAFile.Name())
+	if _, err := leafCertAFile.Write([]byte(RegTrustedLeafCertA)); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertAFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertAKeyFile, err := ioutil.TempFile("", "leafCertAKey")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertAKeyFile.Name())
+	if _, err := leafCertAKeyFile.Write([]byte(RegTrustedLeafKeyA)); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertAKeyFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertBFile, err := ioutil.TempFile("", "leafCertB")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertBFile.Name())
+	if _, err := leafCertBFile.Write([]byte(RegTrustedLeafCertB)); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertBFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	leafCertBKeyFile, err := ioutil.TempFile("", "leafCertBKey")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(leafCertBKeyFile.Name())
+	if _, err := leafCertBKeyFile.Write([]byte(RegTrustedLeafKeyB)); err != nil {
+		t.Fatal(err)
+	}
+	if err := leafCertBKeyFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// This function is a copy-pasta from the NewTestCluster, with the
+	// modification to reconfigure the TLS on the api client with the leaf
+	// certificate generated above.
+	getAPIClient := func(port int, tlsConfig *tls.Config, leafCert string, leafKey string) *api.Client {
+		transport := cleanhttp.DefaultPooledTransport()
+		transport.TLSClientConfig = tlsConfig.Clone()
+		if err := http2.ConfigureTransport(transport); err != nil {
+			t.Fatal(err)
+		}
+		client := &http.Client{
+			Transport: transport,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				// This can of course be overridden per-test by using its own client
+				return fmt.Errorf("redirects not allowed in these tests")
+			},
+		}
+		config := api.DefaultConfig()
+		if config.Error != nil {
+			t.Fatal(config.Error)
+		}
+		config.Address = fmt.Sprintf("https://127.0.0.1:%d", port)
+		config.HttpClient = client
+
+		// Set the above issued certificates as the client certificates
+		config.ConfigureTLS(&api.TLSConfig{
+			CACert:     caCertFile.Name(),
+			ClientCert: leafCert,
+			ClientKey:  leafKey,
+		})
+
+		apiClient, err := api.NewClient(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return apiClient
+	}
+
+	// Create a new api client with the incorrect leaf; it should fail.
+	newBClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertBFile.Name(), leafCertBKeyFile.Name())
+
+	secret, err := newBClient.Logical().Write("auth/cert/login", map[string]interface{}{
+		"name": "trusted-leaf",
+	})
+	if err == nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected err but got none: err=%v / secret=%v", err, secret)
+	}
+	if secret != nil {
+		t.Fatalf("when logging in with different leaf from trusted, expected empty secret but got %v", secret)
+	}
+
+	// Create a new API client with the correct leaf; it should succeed.
+	newAClient := getAPIClient(cores[0].Listeners[0].Address.Port, cores[0].TLSConfig(), leafCertAFile.Name(), leafCertAKeyFile.Name())
+
+	secret, err = newAClient.Logical().Write("auth/cert/login", map[string]interface{}{
+		"name": "trusted-leaf",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secret.Auth == nil || secret.Auth.ClientToken == "" {
+		t.Fatalf("expected a successful authentication")
+	}
+}

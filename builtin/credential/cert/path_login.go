@@ -4,8 +4,8 @@
 package cert
 
 import (
-	"bytes"
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
@@ -277,8 +277,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 		for _, trustedNonCA := range trustedNonCAs {
 			tCert := trustedNonCA.Certificates[0]
 			// Check for client cert being explicitly listed in the config (and matching other constraints)
-			if tCert.SerialNumber.Cmp(clientCert.SerialNumber) == 0 &&
-				bytes.Equal(tCert.AuthorityKeyId, clientCert.AuthorityKeyId) {
+			if subtle.ConstantTimeCompare(tCert.Raw, clientCert.Raw) == 1 {
 				matches, err := b.matchesConstraints(ctx, clientCert, trustedNonCA.Certificates, trustedNonCA, verifyConf)
 
 				// matchesConstraints returns an error when OCSP verification fails,

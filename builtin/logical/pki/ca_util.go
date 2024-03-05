@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"

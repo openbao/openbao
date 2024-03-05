@@ -2,7 +2,7 @@
 
 if [ "$1" = "purge" ]
 then
-  userdel vault
+  userdel openbao
 fi
 
 exit 0

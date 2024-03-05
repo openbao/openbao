@@ -2,7 +2,7 @@
 
 set -eu
 
-USER="vault"
+USER="openbao"
 
 if ! id -u $USER > /dev/null 2>&1; then
 	useradd \

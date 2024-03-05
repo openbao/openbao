@@ -3,9 +3,6 @@ name: Set up Go with a shared module cache
 description: Set up Go with a shared module cache
 
 inputs:
-  github-token:
-    description: "An elevated Github token to access private modules if necessary"
-    type: string
   no-restore:
     description: "Whether or not to restore the Go module cache on a cache hit"
     type: boolean
@@ -61,7 +58,6 @@ runs:
       name: Download go modules
       shell: bash
       run: |
-        git config --global url."https://${{ inputs.github-token }}@github.com".insteadOf https://github.com
         for mod in $(find . -type f -name go.mod); do
           pushd "$(dirname $mod)"
             go list ./...

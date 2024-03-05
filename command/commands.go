@@ -41,7 +41,6 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
 
 	sr "github.com/openbao/openbao/serviceregistration"
-	csr "github.com/openbao/openbao/serviceregistration/consul"
 	ksr "github.com/openbao/openbao/serviceregistration/kubernetes"
 )
 
@@ -162,7 +161,6 @@ var (
 	}
 
 	serviceRegistrations = map[string]sr.Factory{
-		"consul":     csr.NewServiceRegistration,
 		"kubernetes": ksr.NewServiceRegistration,
 	}
 
@@ -420,11 +418,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"operator raft snapshot": func() (cli.Command, error) {
 			return &OperatorRaftSnapshotCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
-		"operator raft snapshot inspect": func() (cli.Command, error) {
-			return &OperatorRaftSnapshotInspectCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

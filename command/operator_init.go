@@ -5,16 +5,12 @@ package command
 
 import (
 	"fmt"
-	"net/url"
-	"runtime"
 	"strings"
 
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/posener/complete"
-
-	consulapi "github.com/hashicorp/consul/api"
 )
 
 var (
@@ -36,10 +32,6 @@ type OperatorInitCommand struct {
 	flagRecoveryThreshold int
 	flagRecoveryPGPKeys   []string
 	flagStoredShares      int
-
-	// Consul
-	flagConsulAuto    bool
-	flagConsulService string
 }
 
 const (
@@ -150,33 +142,6 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 		Target:  &c.flagStoredShares,
 		Default: -1,
 		Usage:   "DEPRECATED: This flag does nothing. It will be removed in Vault 1.3.",
-	})
-
-	// Consul Options
-	f = set.NewFlagSet("Consul Options")
-
-	f.BoolVar(&BoolVar{
-		Name:    "consul-auto",
-		Target:  &c.flagConsulAuto,
-		Default: false,
-		Usage: "Perform automatic service discovery using Consul in HA mode. " +
-			"When all nodes in a Vault HA cluster are registered with Consul, " +
-			"enabling this option will trigger automatic service discovery based " +
-			"on the provided -consul-service value. When Consul is Vault's HA " +
-			"backend, this functionality is automatically enabled. Ensure the " +
-			"proper Consul environment variables are set (CONSUL_HTTP_ADDR, etc). " +
-			"When only one Vault server is discovered, it will be initialized " +
-			"automatically. When more than one Vault server is discovered, they " +
-			"will each be output for selection.",
-	})
-
-	f.StringVar(&StringVar{
-		Name:       "consul-service",
-		Target:     &c.flagConsulService,
-		Default:    "vault",
-		Completion: complete.PredictAnything,
-		Usage: "Name of the service in Consul under which the Vault servers are " +
-			"registered.",
 	})
 
 	// Auto Unseal Options
@@ -292,150 +257,8 @@ func (c *OperatorInitCommand) Run(args []string) int {
 	switch {
 	case c.flagStatus:
 		return c.status(client)
-	case c.flagConsulAuto:
-		return c.consulAuto(client, initReq)
 	default:
 		return c.init(client, initReq)
-	}
-}
-
-// consulAuto enables auto-joining via Consul.
-func (c *OperatorInitCommand) consulAuto(client *api.Client, req *api.InitRequest) int {
-	// Capture the client original address and reset it
-	originalAddr := client.Address()
-	defer client.SetAddress(originalAddr)
-
-	// Create a client to communicate with Consul
-	consulClient, err := consulapi.NewClient(consulapi.DefaultConfig())
-	if err != nil {
-		c.UI.Error(fmt.Sprintf("Failed to create Consul client:%v", err))
-		return 1
-	}
-
-	// Pull the scheme from the Vault client to determine if the Consul agent
-	// should talk via HTTP or HTTPS.
-	addr := client.Address()
-	clientURL, err := url.Parse(addr)
-	if err != nil || clientURL == nil {
-		c.UI.Error(fmt.Sprintf("Failed to parse Vault address %s: %s", addr, err))
-		return 1
-	}
-
-	var uninitedVaults []string
-	var initedVault string
-
-	// Query the nodes belonging to the cluster
-	services, _, err := consulClient.Catalog().Service(c.flagConsulService, "", &consulapi.QueryOptions{
-		AllowStale: true,
-	})
-	if err == nil {
-		for _, service := range services {
-			// Set the address on the client temporarily
-			vaultAddr := (&url.URL{
-				Scheme: clientURL.Scheme,
-				Host:   fmt.Sprintf("%s:%d", service.ServiceAddress, service.ServicePort),
-			}).String()
-			client.SetAddress(vaultAddr)
-
-			// Check the initialization status of the discovered node
-			inited, err := client.Sys().InitStatus()
-			if err != nil {
-				c.UI.Error(fmt.Sprintf("Error checking init status of %q: %s", vaultAddr, err))
-			}
-			if inited {
-				initedVault = vaultAddr
-				break
-			}
-
-			// If we got this far, we communicated successfully with Vault, but it
-			// was not initialized.
-			uninitedVaults = append(uninitedVaults, vaultAddr)
-		}
-	}
-
-	// Get the correct export keywords and quotes for *nix vs Windows
-	export := "export"
-	quote := "\""
-	if runtime.GOOS == "windows" {
-		export = "set"
-		quote = ""
-	}
-
-	if initedVault != "" {
-		vaultURL, err := url.Parse(initedVault)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Failed to parse Vault address %q: %s", initedVault, err))
-			return 2
-		}
-		vaultAddr := vaultURL.String()
-
-		c.UI.Output(wrapAtLength(fmt.Sprintf(
-			"Discovered an initialized Vault node at %q with Consul service name "+
-				"%q. Set the following environment variable to target the discovered "+
-				"Vault server:",
-			vaultURL.String(), c.flagConsulService)))
-		c.UI.Output("")
-		c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
-		c.UI.Output("")
-		return 0
-	}
-
-	switch len(uninitedVaults) {
-	case 0:
-		c.UI.Error(fmt.Sprintf("No Vault nodes registered as %q in Consul", c.flagConsulService))
-		return 2
-	case 1:
-		// There was only one node found in the Vault cluster and it was
-		// uninitialized.
-		vaultURL, err := url.Parse(uninitedVaults[0])
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Failed to parse Vault address %q: %s", initedVault, err))
-			return 2
-		}
-		vaultAddr := vaultURL.String()
-
-		// Update the client to connect to this Vault server
-		client.SetAddress(vaultAddr)
-
-		// Let the client know that initialization is performed on the
-		// discovered node.
-		c.UI.Output(wrapAtLength(fmt.Sprintf(
-			"Discovered an initialized Vault node at %q with Consul service name "+
-				"%q. Set the following environment variable to target the discovered "+
-				"Vault server:",
-			vaultURL.String(), c.flagConsulService)))
-		c.UI.Output("")
-		c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
-		c.UI.Output("")
-		c.UI.Output("Attempting to initialize it...")
-		c.UI.Output("")
-
-		// Attempt to initialize it
-		return c.init(client, req)
-	default:
-		// If more than one Vault node were discovered, print out all of them,
-		// requiring the client to update BAO_ADDR and to run init again.
-		c.UI.Output(wrapAtLength(fmt.Sprintf(
-			"Discovered %d uninitialized Vault servers with Consul service name "+
-				"%q. To initialize these Vaults, set any one of the following "+
-				"environment variables and run \"vault operator init\":",
-			len(uninitedVaults), c.flagConsulService)))
-		c.UI.Output("")
-
-		// Print valid commands to make setting the variables easier
-		for _, node := range uninitedVaults {
-			vaultURL, err := url.Parse(node)
-			if err != nil {
-				c.UI.Error(fmt.Sprintf("Failed to parse Vault address %q: %s", initedVault, err))
-				return 2
-			}
-			vaultAddr := vaultURL.String()
-
-			c.UI.Output(fmt.Sprintf("    $ %s BAO_ADDR=%s%s%s", export, quote, vaultAddr, quote))
-		}
-
-		c.UI.Output("")
-		return 0
 	}
 }
 

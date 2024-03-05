@@ -35,10 +35,6 @@ Usage: bao operator raft snapshot <subcommand> [options] [args]
 
       $ bao operator raft snapshot save raft.snap
 
-  Inspects a snapshot based on a file:
-
-      $ bao operator raft snapshot inspect raft.snap
-
   Please see the individual subcommand help for detailed usage information.
 `
 

@@ -63,6 +63,7 @@ async function processLines(input, eachLine = () => {}) {
       } else if (initError) {
         console.log('VAULT SERVER START FAILED');
         console.log(
+          // NOTE: Remove VAULT_LICENSE_PATH reference;
           'If this is happening, run `export VAULT_LICENSE_PATH=/Users/username/license.hclic` to your valid local vault license filepath, or use OpenBao'
         );
         process.exit(1);

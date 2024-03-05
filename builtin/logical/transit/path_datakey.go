@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/framework"
@@ -126,23 +125,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	var managedKeyFactory ManagedKeyFactory
-	if p.Type == keysutil.KeyType_MANAGED_KEY {
-		managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-		if !ok {
-			return nil, errors.New("unsupported system view")
-		}
-
-		managedKeyFactory = ManagedKeyFactory{
-			managedKeyParams: keysutil.ManagedKeyParameters{
-				ManagedKeySystemView: managedKeySystemView,
-				BackendUUID:          b.backendUUID,
-				Context:              ctx,
-			},
-		}
-	}
-
-	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), nil, managedKeyFactory)
+	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), nil)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:

@@ -158,26 +158,10 @@ var (
 	manualStepDownSleepPeriod = 10 * time.Second
 
 	// Functions only in the Enterprise version
-	enterprisePostUnseal         = enterprisePostUnsealImpl
-	enterprisePreSeal            = enterprisePreSealImpl
-	enterpriseSetupFilteredPaths = enterpriseSetupFilteredPathsImpl
-	enterpriseSetupQuotas        = enterpriseSetupQuotasImpl
-	enterpriseSetupAPILock       = setupAPILockImpl
-	startReplication             = startReplicationImpl
-	stopReplication              = stopReplicationImpl
-	LastWAL                      = lastWALImpl
-	LastPerformanceWAL           = lastPerformanceWALImpl
-	LastDRWAL                    = lastDRWALImpl
-	PerformanceMerkleRoot        = merkleRootImpl
-	DRMerkleRoot                 = merkleRootImpl
-	LastRemoteWAL                = lastRemoteWALImpl
-	LastRemoteUpstreamWAL        = lastRemoteUpstreamWALImpl
-	WaitUntilWALShipped          = waitUntilWALShippedImpl
-	storedLicenseCheck           = func(c *Core, conf *CoreConfig) error { return nil }
-	LicenseAutoloaded            = func(*Core) bool { return false }
-	LicenseInitCheck             = func(*Core) error { return nil }
-	LicenseSummary               = func(*Core) (*LicenseState, error) { return nil, nil }
-	LicenseReload                = func(*Core) error { return nil }
+	LastWAL               = lastWALImpl
+	LastRemoteWAL         = lastRemoteWALImpl
+	LastRemoteUpstreamWAL = lastRemoteUpstreamWALImpl
+	WaitUntilWALShipped   = waitUntilWALShippedImpl
 )
 
 // NonFatalError is an error that can be returned during NewCore that should be
@@ -817,11 +801,6 @@ type CoreConfig struct {
 	ReloadFuncs     *map[string][]reloadutil.ReloadFunc
 	ReloadFuncsLock *sync.RWMutex
 
-	// Licensing
-	License         string
-	LicensePath     string
-	LicensingConfig *LicensingConfig
-
 	// Configured Census Agent
 	CensusAgent CensusReporter
 
@@ -1158,11 +1137,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	c.barrier, err = NewAESGCMBarrier(c.physical)
 	if err != nil {
 		return nil, fmt.Errorf("barrier setup failed: %w", err)
-	}
-
-	err = storedLicenseCheck(c, conf)
-	if err != nil {
-		return nil, err
 	}
 
 	// We create the funcs here, then populate the given config with it so that
@@ -2365,9 +2339,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	if err := enterprisePostUnseal(c, false); err != nil {
-		return err
-	}
 	if !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary) {
 		// Only perf primarys should write feature flags, but we do it by
 		// excluding other states so that we don't have to change it when
@@ -2394,13 +2365,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
-	if err := enterpriseSetupFilteredPaths(c); err != nil {
-		return err
-	}
 	if err := c.setupMounts(ctx); err != nil {
-		return err
-	}
-	if err := enterpriseSetupAPILock(c, ctx); err != nil {
 		return err
 	}
 	if err := c.setupPolicyStore(ctx); err != nil {
@@ -2413,9 +2378,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 	if err := c.loadCredentials(ctx); err != nil {
-		return err
-	}
-	if err := enterpriseSetupFilteredPaths(c); err != nil {
 		return err
 	}
 	if err := c.setupCredentials(ctx); err != nil {
@@ -2490,9 +2452,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 
 	c.clusterParamsLock.Lock()
 	defer c.clusterParamsLock.Unlock()
-	if err := startReplication(c); err != nil {
-		return err
-	}
 
 	c.metricsCh = make(chan struct{})
 	go c.emitMetricsActiveNode(c.metricsCh)
@@ -2648,12 +2607,6 @@ func (c *Core) preSeal() error {
 
 	c.stopRaftActiveNode()
 
-	c.clusterParamsLock.Lock()
-	if err := stopReplication(c); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error stopping replication: %w", err))
-	}
-	c.clusterParamsLock.Unlock()
-
 	if err := c.teardownAudits(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down audits: %w", err))
 	}
@@ -2677,10 +2630,6 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
-	}
-
-	if err := enterprisePreSeal(c); err != nil {
-		result = multierror.Append(result, err)
 	}
 
 	if c.autoRotateCancel != nil {
@@ -2709,32 +2658,6 @@ func (c *Core) preSeal() error {
 	c.logger.Info("pre-seal teardown complete")
 	return result
 }
-
-func enterprisePostUnsealImpl(c *Core, isStandby bool) error {
-	return nil
-}
-
-func enterprisePreSealImpl(c *Core) error {
-	return nil
-}
-
-func enterpriseSetupFilteredPathsImpl(c *Core) error {
-	return nil
-}
-
-func enterpriseSetupQuotasImpl(ctx context.Context, c *Core) error {
-	return nil
-}
-
-func startReplicationImpl(c *Core) error {
-	return nil
-}
-
-func stopReplicationImpl(c *Core) error {
-	return nil
-}
-
-func setupAPILockImpl(_ *Core, _ context.Context) error { return nil }
 
 func (c *Core) ReplicationState() consts.ReplicationState {
 	return consts.ReplicationState(atomic.LoadUint32(c.replicationState))
@@ -2771,19 +2694,7 @@ func waitUntilWALShippedImpl(ctx context.Context, c *Core, index uint64) bool {
 	return true
 }
 
-func merkleRootImpl(c *Core) string {
-	return ""
-}
-
 func lastWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastPerformanceWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastDRWALImpl(c *Core) uint64 {
 	return 0
 }
 
@@ -3478,12 +3389,6 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 
 func (c *Core) isPrimary() bool {
 	return !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary)
-}
-
-type LicenseState struct {
-	State      string
-	ExpiryTime time.Time
-	Terminated bool
 }
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/helper/constants"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/logical"
@@ -1445,17 +1444,6 @@ func TestCRLIssuerRemoval(t *testing.T) {
 
 	ctx := context.Background()
 	b, s := CreateBackendWithStorage(t)
-
-	if constants.IsEnterprise {
-		// We don't really care about the whole cross cluster replication
-		// stuff, but we do want to enable unified CRLs if we can, so that
-		// unified CRLs get built.
-		_, err := CBWrite(b, s, "config/crl", map[string]interface{}{
-			"cross_cluster_revocation": true,
-			"auto_rebuild":             true,
-		})
-		require.NoError(t, err, "failed enabling unified CRLs on enterprise")
-	}
 
 	// Create a single root, configure delta CRLs, and rotate CRLs to prep a
 	// starting state.

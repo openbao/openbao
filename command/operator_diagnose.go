@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/term"
-
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
 	log "github.com/hashicorp/go-hclog"
@@ -25,7 +23,6 @@ import (
 
 	bApi "github.com/openbao/openbao/api"
 	cserver "github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
@@ -36,6 +33,7 @@ import (
 	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
+	"golang.org/x/term"
 )
 
 const CoreConfigUninitializedErr = "Diagnose cannot attempt this step because core config could not be set."
@@ -561,23 +559,6 @@ SEALFAIL:
 	if vaultCore == nil {
 		return fmt.Errorf("Diagnose could not initialize the Vault core from the Vault server configuration.")
 	}
-
-	licenseCtx, licenseSpan := diagnose.StartSpan(ctx, "Check For Autoloaded License")
-	// If we are not in enterprise, return from the check
-	if !constants.IsEnterprise {
-		diagnose.Skipped(licenseCtx, "License check will not run on OSS Vault.")
-	} else {
-		// Load License from environment variables. These take precedence over the
-		// configured license.
-		if envLicensePath := bApi.ReadBaoVariable(EnvVaultLicensePath); envLicensePath != "" {
-			coreConfig.LicensePath = envLicensePath
-		}
-		if envLicense := bApi.ReadBaoVariable(EnvVaultLicense); envLicense != "" {
-			coreConfig.License = envLicense
-		}
-		vault.DiagnoseCheckLicense(licenseCtx, vaultCore, coreConfig, false)
-	}
-	licenseSpan.End()
 
 	var lns []listenerutil.Listener
 	diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {

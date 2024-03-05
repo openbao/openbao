@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/timeutil"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/activity"
@@ -171,12 +169,6 @@ func validateClientCount(t *testing.T, client *api.Client, mount string, expecte
 	// namespace, we default to the value root.
 	mountNamespace := ""
 	mountPath := mount + "/"
-	if constants.IsEnterprise && strings.Contains(mount, "/") {
-		pieces := strings.Split(mount, "/")
-		require.Equal(t, 2, len(pieces), "we do not support nested namespaces in this test")
-		mountNamespace = pieces[0] + "/"
-		mountPath = pieces[1] + "/"
-	}
 
 	require.Contains(t, monthlyInfo, "namespaces", "expected monthly info to contain a namespaces key")
 	monthlyNamespaces := monthlyInfo["namespaces"].([]interface{})

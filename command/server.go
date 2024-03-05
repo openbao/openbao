@@ -41,7 +41,6 @@ import (
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/experiments"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -431,11 +430,6 @@ func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError,
 		} else {
 			config = config.Merge(current)
 		}
-	}
-
-	if config != nil && config.Entropy != nil && config.Entropy.Mode == configutil.EntropyAugmentation && constants.IsFIPS() {
-		c.UI.Warn("WARNING: Entropy Augmentation is not supported in FIPS 140-2 Inside mode; disabling from server configuration!\n")
-		config.Entropy = nil
 	}
 
 	return config, configErrors, nil
@@ -1134,13 +1128,6 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	if envLicensePath := api.ReadBaoVariable(EnvVaultLicensePath); envLicensePath != "" {
-		config.LicensePath = envLicensePath
-	}
-	if envLicense := api.ReadBaoVariable(EnvVaultLicense); envLicense != "" {
-		config.License = envLicense
-	}
-
 	if err := server.ExperimentsFromEnvAndCLI(config, EnvVaultExperiments, c.flagExperiments); err != nil {
 		c.UI.Error(err.Error())
 		return 1
@@ -1652,11 +1639,6 @@ func (c *ServerCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
 			}
 
-			// Reload license file
-			if err = vault.LicenseReload(core); err != nil {
-				c.UI.Error(err.Error())
-			}
-
 			if err := core.ReloadCensus(); err != nil {
 				c.UI.Error(err.Error())
 			}
@@ -1981,14 +1963,6 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}, nil)
 	testCluster := vault.NewTestCluster(&testing.RuntimeT{}, conf, opts)
 	defer c.cleanupGuard.Do(testCluster.Cleanup)
-
-	if constants.IsEnterprise {
-		err := testcluster.WaitForActiveNodeAndPerfStandbys(context.Background(), testCluster)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("perf standbys didn't become ready: %v", err))
-			return 1
-		}
-	}
 
 	info["cluster parameters path"] = testCluster.TempDir
 	infoKeys = append(infoKeys, "cluster parameters path")
@@ -2748,8 +2722,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		License:                        config.License,
-		LicensePath:                    config.LicensePath,
 		DisableSSCTokens:               config.DisableSSCTokens,
 		Experiments:                    config.Experiments,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,

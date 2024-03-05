@@ -49,11 +49,6 @@ const (
 	EnvVaultCLINoColor = `BAO_CLI_NO_COLOR`
 	// EnvVaultFormat is the output format
 	EnvVaultFormat = `BAO_FORMAT`
-	// EnvVaultLicense is an env var used in Vault Enterprise to provide a license blob
-	EnvVaultLicense = "BAO_LICENSE"
-	// EnvVaultLicensePath is an env var used in Vault Enterprise to provide a
-	// path to a license file on disk
-	EnvVaultLicensePath = "BAO_LICENSE_PATH"
 	// EnvVaultDetailed is to output detailed information (e.g., ListResponseWithInfo).
 	EnvVaultDetailed = `BAO_DETAILED`
 	// EnvVaultLogFormat is used to specify the log format. Supported values are "standard" and "json"

@@ -21,10 +21,10 @@ func TestCore_Init(t *testing.T) {
 }
 
 func testCore_NewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
-	return testCore_NewTestCoreLicensing(t, seal, nil)
+	return testCore_NewTestCoreLicensing(t, seal)
 }
 
-func testCore_NewTestCoreLicensing(t *testing.T, seal Seal, licensingConfig *LicensingConfig) (*Core, *CoreConfig) {
+func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	logger := logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmem(nil, logger)
@@ -37,8 +37,7 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal, licensingConfig *Lic
 		LogicalBackends: map[string]logical.Factory{
 			"kv": LeasedPassthroughBackendFactory,
 		},
-		Seal:            seal,
-		LicensingConfig: licensingConfig,
+		Seal: seal,
 	}
 	c, err := NewCore(conf)
 	if err != nil {

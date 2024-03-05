@@ -24,11 +24,6 @@ func (c *SharedConfig) Merge(c2 *SharedConfig) *SharedConfig {
 		result.UserLockouts = append(result.UserLockouts, userlockout)
 	}
 
-	result.Entropy = c.Entropy
-	if c2.Entropy != nil {
-		result.Entropy = c2.Entropy
-	}
-
 	for _, s := range c.Seals {
 		result.Seals = append(result.Seals, s)
 	}

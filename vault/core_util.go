@@ -1,8 +1,6 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-//go:build !enterprise
-
 package vault
 
 import (
@@ -30,10 +28,6 @@ type (
 
 func (e entCoreConfig) Clone() entCoreConfig {
 	return entCoreConfig{}
-}
-
-type LicensingConfig struct {
-	AdditionalPublicKeys []interface{}
 }
 
 func coreInit(c *Core, conf *CoreConfig) error {

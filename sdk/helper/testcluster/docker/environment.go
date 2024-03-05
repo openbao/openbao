@@ -630,19 +630,6 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	if opts.VaultNodeConfig != nil {
 		localCfg := *opts.VaultNodeConfig
-		if opts.VaultNodeConfig.LicensePath != "" {
-			b, err := os.ReadFile(opts.VaultNodeConfig.LicensePath)
-			if err != nil || len(b) == 0 {
-				return fmt.Errorf("unable to read LicensePath at %q: %w", opts.VaultNodeConfig.LicensePath, err)
-			}
-			localCfg.LicensePath = "/vault/config/license"
-			dest := filepath.Join(n.WorkDir, "license")
-			err = os.WriteFile(dest, b, 0o644)
-			if err != nil {
-				return fmt.Errorf("error writing license to %q: %w", dest, err)
-			}
-
-		}
 		userJSON, err := json.Marshal(localCfg)
 		if err != nil {
 			return err
@@ -695,7 +682,6 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			// anyway, and because it prevents us using external plugins.
 			"SKIP_SETCAP=true",
 			"VAULT_LOG_FORMAT=json",
-			"VAULT_LICENSE=" + opts.VaultLicense,
 		},
 		Ports:           []string{"8200/tcp", "8201/tcp"},
 		ContainerName:   n.Name(),

@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -221,7 +220,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.EnableRaw = opts.EnableRaw
 	conf.EnableIntrospection = opts.EnableIntrospection
 	conf.Seal = opts.Seal
-	conf.LicensingConfig = opts.LicensingConfig
 	conf.DisableKeyEncodingChecks = opts.DisableKeyEncodingChecks
 	conf.MetricsHelper = opts.MetricsHelper
 	conf.MetricSink = opts.MetricSink
@@ -887,14 +885,6 @@ WAITACTIVE:
 		if err != nil {
 			t.Fatalf("error setting up global rate limit quota: %v", err)
 		}
-		if constants.IsEnterprise {
-			_, err = cli.Logical().Write("sys/quotas/lease-count/lc-NewTestCluster", map[string]interface{}{
-				"max_leases": 1000000,
-			})
-			if err != nil {
-				t.Fatalf("error setting up global lease count quota: %v", err)
-			}
-		}
 	}
 }
 
@@ -1547,9 +1537,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.EnableRaw = base.EnableRaw
 		coreConfig.DisableSealWrap = base.DisableSealWrap
 		coreConfig.DisableCache = base.DisableCache
-		coreConfig.LicensingConfig = base.LicensingConfig
-		coreConfig.License = base.License
-		coreConfig.LicensePath = base.LicensePath
 		coreConfig.DisablePerformanceStandby = base.DisablePerformanceStandby
 		coreConfig.MetricsHelper = base.MetricsHelper
 		coreConfig.MetricSink = base.MetricSink
@@ -1966,15 +1953,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	if opts != nil && opts.ClusterLayers != nil {
 		localConfig.ClusterNetworkLayer = opts.ClusterLayers.Layers()[idx]
 		localConfig.ClusterAddr = "https://" + localConfig.ClusterNetworkLayer.Listeners()[0].Addr().String()
-	}
-
-	switch {
-	case localConfig.LicensingConfig != nil:
-		if pubKey != nil {
-			localConfig.LicensingConfig.AdditionalPublicKeys = append(localConfig.LicensingConfig.AdditionalPublicKeys, pubKey)
-		}
-	default:
-		localConfig.LicensingConfig = testGetLicensingConfig(pubKey)
 	}
 
 	if localConfig.MetricsHelper == nil {

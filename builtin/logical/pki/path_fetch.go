@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/helper/constants"
-
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/errutil"
 	"github.com/openbao/openbao/sdk/logical"
@@ -202,9 +200,6 @@ hyphen-separated octal`,
 // This returns the CRL in a non-raw format
 func pathFetchCRLViaCertPath(b *backend) *framework.Path {
 	pattern := `cert/(crl|delta-crl)`
-	if constants.IsEnterprise {
-		pattern = `cert/(crl|delta-crl|unified-crl|unified-delta-crl)`
-	}
 
 	return &framework.Path{
 		Pattern: pattern,

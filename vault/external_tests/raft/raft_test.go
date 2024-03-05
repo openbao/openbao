@@ -23,7 +23,6 @@ import (
 	"github.com/openbao/openbao/api"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/benchhelpers"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
@@ -595,29 +594,6 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 		},
 	}
 
-	if constants.IsEnterprise {
-		tCases = append(tCases, []testCase{
-			{
-				Name:               "rekey-with-perf-standby",
-				Rekey:              true,
-				Rotate:             false,
-				DisablePerfStandby: false,
-			},
-			{
-				Name:               "rotate-with-perf-standby",
-				Rekey:              false,
-				Rotate:             true,
-				DisablePerfStandby: false,
-			},
-			{
-				Name:               "both-with-perf-standby",
-				Rekey:              true,
-				Rotate:             true,
-				DisablePerfStandby: false,
-			},
-		}...)
-	}
-
 	for _, tCase := range tCases {
 		t.Run(tCase.Name, func(t *testing.T) {
 			// bind locally
@@ -787,36 +763,6 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			ShouldSeal:         true,
 			DisablePerfStandby: true,
 		},
-	}
-
-	if constants.IsEnterprise {
-		tCases = append(tCases, []testCase{
-			{
-				Name:               "rekey-with-perf-standby",
-				Rekey:              true,
-				Rotate:             false,
-				ShouldSeal:         false,
-				DisablePerfStandby: false,
-			},
-			{
-				Name:   "rotate-with-perf-standby",
-				Rekey:  false,
-				Rotate: true,
-				// Rotate writes a new master key upgrade using the new term, which
-				// we can no longer decrypt. We must seal here.
-				ShouldSeal:         true,
-				DisablePerfStandby: false,
-			},
-			{
-				Name:   "both-with-perf-standby",
-				Rekey:  true,
-				Rotate: true,
-				// If we are moving forward and we have rekeyed and rotated there
-				// isn't any way to restore the latest keys so expect to seal.
-				ShouldSeal:         true,
-				DisablePerfStandby: false,
-			},
-		}...)
 	}
 
 	for _, tCase := range tCases {

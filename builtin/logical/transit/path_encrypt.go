@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -445,23 +444,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			factory = AssocDataFactory{item.AssociatedData}
 		}
 
-		var managedKeyFactory ManagedKeyFactory
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				batchResponseItems[i].Error = errors.New("unsupported system view").Error()
-			}
-
-			managedKeyFactory = ManagedKeyFactory{
-				managedKeyParams: keysutil.ManagedKeyParameters{
-					ManagedKeySystemView: managedKeySystemView,
-					BackendUUID:          b.backendUUID,
-					Context:              ctx,
-				},
-			}
-		}
-
-		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, nil, item.Plaintext, factory, managedKeyFactory)
+		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, nil, item.Plaintext, factory)
 		if err != nil {
 			switch err.(type) {
 			case errutil.InternalError:

@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/errutil"
 	"github.com/openbao/openbao/sdk/logical"
@@ -387,12 +386,12 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		}
 	}
 
-	if !constants.IsEnterprise && config.UseGlobalQueue {
-		return logical.ErrorResponse("Global, cross-cluster revocation queue (cross_cluster_revocation) can only be enabled on Vault Enterprise."), nil
+	if config.UseGlobalQueue {
+		return logical.ErrorResponse("Global, cross-cluster revocation queue (cross_cluster_revocation) cannot be enabled on OpenBao"), nil
 	}
 
-	if !constants.IsEnterprise && config.UnifiedCRL {
-		return logical.ErrorResponse("unified_crl can only be enabled on Vault Enterprise"), nil
+	if config.UnifiedCRL {
+		return logical.ErrorResponse("unified_crl cannot only be enabled on Openbao"), nil
 	}
 
 	isLocalMount := b.System().LocalMount()

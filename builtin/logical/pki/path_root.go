@@ -271,7 +271,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 	// For intermediates, this doesn't hold (not this endpoint) as that
 	// reflects the parent key's preferences. For imports, this doesn't
 	// hold as the old system might've allowed other signature types that
-	// the new system (whether Vault or a managed key) doesn't.
+	// the new system doesn't.
 	//
 	// Previously we did this conditionally on whether or not PSS was in
 	// use. This is insufficient as some cloud KMS providers (namely, GCP)

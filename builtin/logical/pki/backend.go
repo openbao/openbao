@@ -51,18 +51,12 @@ const (
  * will issue the certificate and not forward the request to the active node, as this does not
  * need to write to storage.
  *
- * Following the same pattern, if a managed key is involved to sign an issued certificate request
- * and the local node does not have access for some reason to it, the request will be forwarded to
- * the active node within the cluster only.
- *
  * To make sense of what goes where the following bits need to be analyzed within the codebase.
  *
  * 1. The backend LocalStorage paths determine what storage paths will remain within a
  *    cluster and not be forwarded to a performance primary
  * 2. Within each path's OperationHandler definition, check to see if ForwardPerformanceStandby &
  *    ForwardPerformanceSecondary flags are set to short-circuit the request to a given active node
- * 3. Within the managed key util class in pki, an initialization failure could cause the request
- *    to be forwarded to an active node if not already on it.
  */
 
 // Factory creates a new backend implementing the logical.Backend interface

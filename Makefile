@@ -2,6 +2,8 @@
 # Be sure to place this BEFORE `include` directives, if any.
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
+GO_CMD?=go
+
 TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep -v /vendor/ | grep -v /integ)
 TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
@@ -12,7 +14,6 @@ SED?=$(shell command -v gsed || command -v sed)
 
 GO_VERSION_MIN=$$(cat $(CURDIR)/.go-version)
 PROTOC_VERSION_MIN=3.21.12
-GO_CMD?=go
 CGO_ENABLED?=0
 ifneq ($(FDB_ENABLED), )
 	CGO_ENABLED=1
@@ -343,3 +344,19 @@ ci-prepare-legal:
 .PHONY: openapi
 openapi: dev
 	@$(CURDIR)/scripts/gen_openapi.sh
+
+.PHONY: vulncheck
+vulncheck:
+	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose ./...
+	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose github.com/openbao/openbao/api/...
+	$(GO_CMD) run golang.org/x/vuln/cmd/govulncheck@latest -show verbose github.com/openbao/openbao/sdk/...
+
+.PHONY: tidy-all
+tidy-all:
+	cd api && $(GO_CMD) mod tidy
+	cd api/auth/approle && $(GO_CMD) mod tidy
+	cd api/auth/kubernetes && $(GO_CMD) mod tidy
+	cd api/auth/ldap && $(GO_CMD) mod tidy
+	cd api/auth/userpass && $(GO_CMD) mod tidy
+	cd sdk && $(GO_CMD) mod tidy
+	$(GO_CMD) mod tidy

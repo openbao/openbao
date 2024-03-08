@@ -70,42 +70,44 @@ jobs:
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
           if-no-files-found: error
 
-  build-ui:
-    name: UI
-    runs-on: ubuntu-latest
-    outputs:
-      cache-key: ui-${{ steps.ui-hash.outputs.ui-hash }}
-    steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - name: Get UI hash
-        id: ui-hash
-        run: echo "ui-hash=$(git ls-tree HEAD ui --object-only)" >> "$GITHUB_OUTPUT"
-      - name: Set up UI asset cache
-        id: cache-ui-assets
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
-        with:
-          enableCrossOsArchive: true
-          lookup-only: true
-          path: http/web_ui
-          # Only restore the UI asset cache if we haven't modified anything in the ui directory.
-          # Never do a partial restore of the web_ui if we don't get a cache hit.
-          key: ui-${{ steps.ui-hash.outputs.ui-hash }}
-      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
-        name: Set up node and yarn
-        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
-        with:
-          node-version-file: ui/package.json
-          cache: yarn
-          cache-dependency-path: ui/yarn.lock
-      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
-        name: Build UI
-        run: make ci-build-ui
+## Disable UI temporarily.
+#
+#  build-ui:
+#    name: UI
+#    runs-on: ubuntu-latest
+#    outputs:
+#      cache-key: ui-${{ steps.ui-hash.outputs.ui-hash }}
+#    steps:
+#      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+#      - name: Get UI hash
+#        id: ui-hash
+#        run: echo "ui-hash=$(git ls-tree HEAD ui --object-only)" >> "$GITHUB_OUTPUT"
+#      - name: Set up UI asset cache
+#        id: cache-ui-assets
+#        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+#        with:
+#          enableCrossOsArchive: true
+#          lookup-only: true
+#          path: http/web_ui
+#          # Only restore the UI asset cache if we haven't modified anything in the ui directory.
+#          # Never do a partial restore of the web_ui if we don't get a cache hit.
+#          key: ui-${{ steps.ui-hash.outputs.ui-hash }}
+#      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
+#        name: Set up node and yarn
+#        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
+#        with:
+#          node-version-file: ui/package.json
+#          cache: yarn
+#          cache-dependency-path: ui/yarn.lock
+#      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
+#        name: Build UI
+#        run: make ci-build-ui
 
   build-other:
     name: Other
     needs:
       - product-metadata
-      - build-ui
+#      - build-ui
     strategy:
       matrix:
         goos: [freebsd, windows, netbsd, openbsd, solaris]
@@ -123,9 +125,9 @@ jobs:
       create-packages: false
       goarch: ${{ matrix.goarch }}
       goos: ${{ matrix.goos }}
-      go-tags: ui
+      go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 
@@ -133,7 +135,7 @@ jobs:
     name: Linux
     needs:
       - product-metadata
-      - build-ui
+#      - build-ui
     strategy:
       matrix:
         goos: [linux]
@@ -143,9 +145,9 @@ jobs:
     with:
       goarch: ${{ matrix.goarch }}
       goos: ${{ matrix.goos }}
-      go-tags: ui
+      go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 
@@ -153,7 +155,7 @@ jobs:
     name: Darwin
     needs:
       - product-metadata
-      - build-ui
+#      - build-ui
     strategy:
       matrix:
         goos: [darwin]
@@ -164,9 +166,9 @@ jobs:
       create-packages: false
       goarch: ${{ matrix.goarch }}
       goos: ${{ matrix.goos }}
-      go-tags: ui
+      go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 

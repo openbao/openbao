@@ -633,5 +633,11 @@ SHA-2-512. Defaults to 0 to automatically detect based on key length
 RSA key-type issuer. Defaults to false.`,
 	}
 
+	fields["basic_constraints_valid_for_non_ca"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Default:     false,
+		Description: `Mark Basic Constraints valid when issuing non-CA certificates.`,
+	}
+
 	return fields
 }

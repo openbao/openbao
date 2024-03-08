@@ -63,9 +63,6 @@ env: ${{ fromJSON(inputs.env-vars) }}
 
 jobs:
   test-matrix:
-    permissions:
-      id-token: write  # Note: this permission is explicitly required for Vault auth
-      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
@@ -73,9 +70,6 @@ jobs:
           ref: ${{ inputs.checkout-ref }}
       - uses: ./.github/actions/set-up-go
         name: Setup Git configuration (public)
-      - id: setup-git-public
-        run: |
-          git config --global url."https://${{ secrets.ELEVATED_GITHUB_TOKEN}}@github.com".insteadOf https://github.com
       - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
       - uses: actions/cache/restore@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
@@ -151,10 +145,6 @@ jobs:
 
   test-go:
     needs: test-matrix
-    permissions:
-      actions: read
-      contents: read
-      id-token: write  # Note: this permission is explicitly required for Vault auth
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

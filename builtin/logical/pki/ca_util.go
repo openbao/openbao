@@ -230,11 +230,12 @@ func buildSignVerbatimRole(data *framework.FieldData, role *roleEntry) *roleEntr
 		CNValidations:             []string{"disabled"},
 		GenerateLease:             new(bool),
 		// If adding new fields to be read, update the field list within addSignVerbatimRoleFields
-		KeyUsage:        data.Get("key_usage").([]string),
-		ExtKeyUsage:     data.Get("ext_key_usage").([]string),
-		ExtKeyUsageOIDs: data.Get("ext_key_usage_oids").([]string),
-		SignatureBits:   data.Get("signature_bits").(int),
-		UsePSS:          data.Get("use_pss").(bool),
+		KeyUsage:                      data.Get("key_usage").([]string),
+		ExtKeyUsage:                   data.Get("ext_key_usage").([]string),
+		ExtKeyUsageOIDs:               data.Get("ext_key_usage_oids").([]string),
+		SignatureBits:                 data.Get("signature_bits").(int),
+		UsePSS:                        data.Get("use_pss").(bool),
+		BasicConstraintsValidForNonCA: data.Get("basic_constraints_valid_for_non_ca").(bool),
 	}
 	*entry.AllowWildcardCertificates = true
 	*entry.GenerateLease = false

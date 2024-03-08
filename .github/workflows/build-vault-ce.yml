@@ -31,7 +31,7 @@ on:
         required: true
       web-ui-cache-key:
         type: string
-        required: true
+        default: ""
 
 jobs:
   build:
@@ -41,6 +41,7 @@ jobs:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       - uses: ./.github/actions/set-up-go
       - name: Restore UI from cache
+        if: inputs.web-ui-cache-key != ''
         uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           # Restore the UI asset from the UI build workflow. Never use a partial restore key.

@@ -221,8 +221,10 @@ func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {
 						return
 					}
 
+					b.tlsMu.RLock()
 					assertTLSConfigEquals(t, b.tlsConfig, config.expectTLSConfig)
 					assertValidTransport(t, b, config.expectTLSConfig)
+					b.tlsMu.RUnlock()
 				})
 			}
 		})
@@ -316,9 +318,12 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 				}
 			}
 
+			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
+				b.tlsMu.RUnlock()
 				t.Fatalf("tlsConfigUpdater started before initialize()")
 			}
+			b.tlsMu.RUnlock()
 
 			ctx, _ := context.WithTimeout(tt.ctx, time.Second*30)
 			err := b.initialize(ctx, tt.req)
@@ -335,13 +340,18 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 			}
 
 			if tt.config != nil {
+				b.tlsMu.RLock()
 				assertTLSConfigEquals(t, b.tlsConfig, tt.expectTLSConfig)
 				assertValidTransport(t, b, tt.expectTLSConfig)
+				b.tlsMu.RUnlock()
 			}
 
+			b.tlsMu.RLock()
 			if !b.tlsConfigUpdaterRunning {
+				b.tlsMu.RUnlock()
 				t.Fatalf("tlsConfigUpdater not started from initialize()")
 			}
+			b.tlsMu.RUnlock()
 		})
 	}
 }
@@ -431,9 +441,12 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				t.Fatalf("failed to setup the backend, err=%v", err)
 			}
 
+			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
+				b.tlsMu.RUnlock()
 				t.Fatalf("tlsConfigUpdater already started")
 			}
+			b.tlsMu.RUnlock()
 
 			configCount := len(tt.configs)
 			ctx, cancel := context.WithTimeout(tt.ctx, tt.horizon*time.Duration(configCount*2))
@@ -451,9 +464,12 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 				return
 			}
 
+			b.tlsMu.RLock()
 			if !b.tlsConfigUpdaterRunning {
+				b.tlsMu.RUnlock()
 				t.Fatalf("tlsConfigUpdater not started")
 			}
+			b.tlsMu.RUnlock()
 
 			if configCount > 0 {
 				for idx := 0; idx < configCount; idx++ {
@@ -470,12 +486,15 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 							}
 						}
 
-						time.Sleep(tt.horizon * 3)
+						time.Sleep(tt.horizon * 2)
 						if b.tlsConfig == nil {
 							t.Fatalf("runTLSConfigUpdater(), expected tlsConfig initialization")
 						}
+
+						b.tlsMu.RLock()
 						assertTLSConfigEquals(t, b.tlsConfig, config.expectTLSConfig)
 						assertValidTransport(t, b, config.expectTLSConfig)
+						b.tlsMu.RUnlock()
 					})
 				}
 			} else {
@@ -486,9 +505,12 @@ func Test_kubeAuthBackend_runTLSConfigUpdater(t *testing.T) {
 
 			cancel()
 			time.Sleep(tt.horizon)
+			b.tlsMu.RLock()
 			if b.tlsConfigUpdaterRunning {
+				b.tlsMu.RUnlock()
 				t.Fatalf("tlsConfigUpdater did not shutdown cleanly")
 			}
+			b.tlsMu.RUnlock()
 		})
 	}
 }

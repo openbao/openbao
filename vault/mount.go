@@ -651,16 +651,8 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	// Sync values to the cache
 	entry.SyncCache()
 
-	// Resolution to absolute storage paths (versus uuid-relative) needs
-	// to happen prior to calling into the forwarded writer. Thus we
-	// intercept writes just before they hit barrier storage.
-	forwarded, err := c.NewForwardedWriter(ctx, c.barrier, entry.Local)
-	if err != nil {
-		return fmt.Errorf("error creating forwarded writer: %v", err)
-	}
-
 	viewPath := entry.ViewPath()
-	view := NewBarrierView(forwarded, viewPath)
+	view := NewBarrierView(c.barrier, viewPath)
 
 	// Singleton mounts cannot be filtered manually on a per-secondary basis
 	// from replication.
@@ -1487,16 +1479,8 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		// Initialize the backend, special casing for system
 		barrierPath := entry.ViewPath()
 
-		// Resolution to absolute storage paths (versus uuid-relative) needs
-		// to happen prior to calling into the forwarded writer. Thus we
-		// intercept writes just before they hit barrier storage.
-		forwarded, err := c.NewForwardedWriter(ctx, c.barrier, entry.Local)
-		if err != nil {
-			return fmt.Errorf("error creating forwarded writer: %v", err)
-		}
-
 		// Create a barrier storage view using the UUID
-		view := NewBarrierView(forwarded, barrierPath)
+		view := NewBarrierView(c.barrier, barrierPath)
 
 		// Singleton mounts cannot be filtered manually on a per-secondary basis
 		// from replication

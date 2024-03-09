@@ -42,7 +42,7 @@ jobs:
       - uses: ./.github/actions/set-up-go
       - name: Restore UI from cache
         if: inputs.web-ui-cache-key != ''
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
         with:
           # Restore the UI asset from the UI build workflow. Never use a partial restore key.
           enableCrossOsArchive: true

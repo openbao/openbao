@@ -20,15 +20,6 @@ const (
 	activityLogEnabledDefaultValue = "default-disabled"
 )
 
-type (
-	entCore       struct{}
-	entCoreConfig struct{}
-)
-
-func (e entCoreConfig) Clone() entCoreConfig {
-	return entCoreConfig{}
-}
-
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
 	_, txnOK := phys.(physical.Transactional)

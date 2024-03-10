@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -153,9 +152,6 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
-	if key == nil && p.Type != keysutil.KeyType_MANAGED_KEY {
-		return nil, fmt.Errorf("HMAC key value could not be computed")
-	}
 
 	hashAlgorithm, ok := keysutil.HashTypeMap[algorithm]
 	if !ok {
@@ -204,23 +200,9 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 			continue
 		}
 
-		var retBytes []byte
-
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				response[i].err = errors.New("unsupported system view")
-			}
-
-			retBytes, err = p.HMACWithManagedKey(ctx, ver, managedKeySystemView, b.backendUUID, algorithm, input)
-			if err != nil {
-				response[i].err = err
-			}
-		} else {
-			hf := hmac.New(hashAlg, key)
-			hf.Write(input)
-			retBytes = hf.Sum(nil)
-		}
+		hf := hmac.New(hashAlg, key)
+		hf.Write(input)
+		retBytes := hf.Sum(nil)
 
 		retStr := base64.StdEncoding.EncodeToString(retBytes)
 		retStr = fmt.Sprintf("vault:v%s:%s", strconv.Itoa(ver), retStr)

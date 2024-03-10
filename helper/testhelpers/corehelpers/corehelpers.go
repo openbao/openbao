@@ -182,15 +182,6 @@ func (m *mockBuiltinRegistry) Keys(pluginType consts.PluginType) []string {
 	return []string{}
 }
 
-func (r *mockBuiltinRegistry) IsBuiltinEntPlugin(name string, pluginType consts.PluginType) bool {
-	for _, i := range externalPlugins {
-		if i == name {
-			return true
-		}
-	}
-	return false
-}
-
 func (m *mockBuiltinRegistry) Contains(name string, pluginType consts.PluginType) bool {
 	for _, key := range m.Keys(pluginType) {
 		if key == name {

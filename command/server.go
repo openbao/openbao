@@ -1639,9 +1639,6 @@ func (c *ServerCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
 			}
 
-			if err := core.ReloadCensus(); err != nil {
-				c.UI.Error(err.Error())
-			}
 			select {
 			case c.licenseReloadedCh <- err:
 			default:

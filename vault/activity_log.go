@@ -177,14 +177,6 @@ type ActivityLog struct {
 
 	inprocessExport *atomic.Bool
 
-	// CensusReportDone is a channel used to signal tests upon successful calls
-	// to (CensusReporter).Write() in CensusReport.
-	CensusReportDone chan bool
-
-	// CensusReportInterval is the testing configuration for time between
-	// Write() calls initiated in CensusReport.
-	CensusReportInterval time.Duration
-
 	// clock is used to support manipulating time in unit and integration tests
 	clock timeutil.Clock
 	// precomputedQueryWritten receives an element whenever a precomputed query
@@ -201,9 +193,6 @@ type ActivityLogCoreConfig struct {
 
 	// Do not start timers to send or persist fragments.
 	DisableTimers bool
-
-	// CensusReportInterval is the testing configuration for time
-	CensusReportInterval time.Duration
 
 	// MinimumRetentionMonths defines the minimum value for retention
 	MinimumRetentionMonths int
@@ -236,7 +225,6 @@ func NewActivityLog(core *Core, logger log.Logger, view *BarrierView, metrics me
 		writeCh:                   make(chan struct{}, 1), // same for full segment
 		doneCh:                    make(chan struct{}, 1),
 		partialMonthClientTracker: make(map[string]*activity.EntityRecord),
-		CensusReportInterval:      time.Hour * 1,
 		clock:                     clock,
 		currentSegment: segmentInfo{
 			startTimestamp: 0,
@@ -977,10 +965,6 @@ func (a *ActivityLog) SetConfigInit(config activityConfig) {
 	if a.retentionMonths < a.configOverrides.MinimumRetentionMonths {
 		a.retentionMonths = a.configOverrides.MinimumRetentionMonths
 	}
-
-	if a.configOverrides.CensusReportInterval > 0 {
-		a.CensusReportInterval = a.configOverrides.CensusReportInterval
-	}
 }
 
 // This version reacts to user changes
@@ -1088,13 +1072,8 @@ func (c *Core) setupActivityLogLocked(ctx context.Context, wg *sync.WaitGroup) e
 	c.AddLogger(logger)
 
 	if api.ReadBaoVariable("BAO_DISABLE_ACTIVITY_LOG") != "" {
-		if c.CensusLicensingEnabled() {
-			logger.Warn("activity log disabled via environment variable while reporting is enabled. " +
-				"Reporting will override, and the activity log will be enabled")
-		} else {
-			logger.Info("activity log disabled via environment variable")
-			return nil
-		}
+		logger.Info("activity log disabled via environment variable")
+		return nil
 	}
 
 	view := c.systemBarrierView.SubView(activitySubPath)
@@ -1128,9 +1107,6 @@ func (c *Core) setupActivityLogLocked(ctx context.Context, wg *sync.WaitGroup) e
 		manager.retentionWorker(ctx, manager.clock.Now(), months)
 		close(manager.retentionDone)
 	}(manager.retentionMonths)
-
-	manager.CensusReportDone = make(chan bool)
-	go c.activityLog.CensusReport(ctx, c.CensusAgent(), c.BillingStart())
 
 	return nil
 }
@@ -1766,8 +1742,6 @@ type activityConfig struct {
 
 	// Enabled is one of enable, disable, default.
 	Enabled string `json:"enabled"`
-
-	CensusReportInterval time.Duration `json:"census_report_interval"`
 }
 
 func defaultActivityConfig() activityConfig {

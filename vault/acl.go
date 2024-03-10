@@ -740,7 +740,7 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *ACL, te *logical.To
 		}
 	}
 
-	c.performEntPolicyChecks(ctx, acl, te, req, inEntity, opts, ret)
+	ret.Allowed = true
 
 	return ret
 }

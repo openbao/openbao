@@ -21,11 +21,9 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/strutil"
 	"github.com/openbao/openbao/sdk/helper/testcluster"
 )
 
@@ -35,14 +33,9 @@ const (
 	VaultDevKeyFilename  = "vault-key.pem"
 )
 
-var (
-	entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
-		return nil
-	}
-
-	// Modified internally for testing.
-	validExperiments = experiments.ValidExperiments()
-)
+var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
+	return nil
+}
 
 // Config is the configuration for the vault server.
 type Config struct {
@@ -55,8 +48,6 @@ type Config struct {
 	HAStorage *Storage `hcl:"-"`
 
 	ServiceRegistration *ServiceRegistration `hcl:"-"`
-
-	Experiments []string `hcl:"experiments"`
 
 	CacheSize                int         `hcl:"cache_size"`
 	DisableCache             bool        `hcl:"-"`
@@ -452,8 +443,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 
-	result.Experiments = mergeExperiments(c.Experiments, c2.Experiments)
-
 	return result
 }
 
@@ -731,10 +720,6 @@ func ParseConfig(d, source string) (*Config, error) {
 		}
 	}
 
-	if err := validateExperiments(result.Experiments); err != nil {
-		return nil, fmt.Errorf("error validating experiment(s) from config: %w", err)
-	}
-
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
 	result.UnusedKeys = configutil.UnusedFieldDifference(result.UnusedKeys, nil, append(result.FoundKeys, sharedConfig.FoundKeys...))
 	// Assign file info
@@ -745,69 +730,6 @@ func ParseConfig(d, source string) (*Config, error) {
 	}
 
 	return result, nil
-}
-
-func ExperimentsFromEnvAndCLI(config *Config, envKey string, flagExperiments []string) error {
-	if envExperimentsRaw := api.ReadBaoVariable(envKey); envExperimentsRaw != "" {
-		envExperiments := strings.Split(envExperimentsRaw, ",")
-		err := validateExperiments(envExperiments)
-		if err != nil {
-			return fmt.Errorf("error validating experiment(s) from environment variable %q: %w", envKey, err)
-		}
-
-		config.Experiments = mergeExperiments(config.Experiments, envExperiments)
-	}
-
-	if len(flagExperiments) != 0 {
-		err := validateExperiments(flagExperiments)
-		if err != nil {
-			return fmt.Errorf("error validating experiment(s) from command line flag: %w", err)
-		}
-
-		config.Experiments = mergeExperiments(config.Experiments, flagExperiments)
-	}
-
-	return nil
-}
-
-// Validate checks each experiment is a known experiment.
-func validateExperiments(experiments []string) error {
-	var invalid []string
-
-	for _, experiment := range experiments {
-		if !strutil.StrListContains(validExperiments, experiment) {
-			invalid = append(invalid, experiment)
-		}
-	}
-
-	if len(invalid) != 0 {
-		return fmt.Errorf("valid experiment(s) are %s, but received the following invalid experiment(s): %s",
-			strings.Join(validExperiments, ", "),
-			strings.Join(invalid, ", "))
-	}
-
-	return nil
-}
-
-// mergeExperiments returns the logical OR of the two sets.
-func mergeExperiments(left, right []string) []string {
-	processed := map[string]struct{}{}
-	var result []string
-	for _, l := range left {
-		if _, seen := processed[l]; !seen {
-			result = append(result, l)
-		}
-		processed[l] = struct{}{}
-	}
-
-	for _, r := range right {
-		if _, seen := processed[r]; !seen {
-			result = append(result, r)
-			processed[r] = struct{}{}
-		}
-	}
-
-	return result
 }
 
 // LoadConfigDir loads all the configurations in the given directory
@@ -1127,7 +1049,6 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"enable_response_header_raft_node_id": c.EnableResponseHeaderRaftNodeID,
 
 		"log_requests_level": c.LogRequestsLevel,
-		"experiments":        c.Experiments,
 
 		"detect_deadlocks": c.DetectDeadlocks,
 

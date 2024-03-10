@@ -41,7 +41,6 @@ import (
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/experiments"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -122,7 +121,6 @@ type ServerCommand struct {
 
 	flagConfigs            []string
 	flagRecovery           bool
-	flagExperiments        []string
 	flagDev                bool
 	flagDevTLS             bool
 	flagDevTLSCertDir      string
@@ -210,17 +208,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Target: &c.flagRecovery,
 		Usage: "Enable recovery mode. In this mode, Vault is used to perform recovery actions." +
 			"Using a recovery operation token, \"sys/raw\" API can be used to manipulate the storage.",
-	})
-
-	f.StringSliceVar(&StringSliceVar{
-		Name:       "experiment",
-		Target:     &c.flagExperiments,
-		Completion: complete.PredictSet(experiments.ValidExperiments()...),
-		Usage: "Name of an experiment to enable. Experiments should NOT be used in production, and " +
-			"the associated APIs may have backwards incompatible changes between releases. This " +
-			"flag can be specified multiple times to specify multiple experiments. This can also be " +
-			fmt.Sprintf("specified via the %s environment variable as a comma-separated list. ", EnvVaultExperiments) +
-			"Valid experiments are: " + strings.Join(experiments.ValidExperiments(), ", "),
 	})
 
 	f = set.NewFlagSet("Dev Options")
@@ -1128,11 +1115,6 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	if err := server.ExperimentsFromEnvAndCLI(config, EnvVaultExperiments, c.flagExperiments); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-
 	// If mlockall(2) isn't supported, show a warning. We disable this in dev
 	// because it is quite scary to see when first using Vault. We also disable
 	// this if the user has explicitly disabled mlock in configuration.
@@ -1202,12 +1184,6 @@ func (c *ServerCommand) Run(args []string) int {
 	key := "environment variables"
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
-
-	if len(config.Experiments) != 0 {
-		expKey := "experiments"
-		info[expKey] = strings.Join(config.Experiments, ", ")
-		infoKeys = append(infoKeys, expKey)
-	}
 
 	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, infoKeys, info)
 	// Check error here
@@ -2720,7 +2696,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
 		DisableSSCTokens:               config.DisableSSCTokens,
-		Experiments:                    config.Experiments,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
 	}
 

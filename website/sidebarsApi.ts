@@ -87,7 +87,6 @@ const sidebars: SidebarsConfig = {
         "system/config-state",
         "system/config-ui",
         "system/decode-token",
-        "system/experiments",
         "system/generate-recovery-token",
         "system/generate-root",
         "system/health",

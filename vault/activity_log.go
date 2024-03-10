@@ -682,18 +682,13 @@ func (a *ActivityLog) loadCurrentClientSegment(ctx context.Context, startTime ti
 		return err
 	}
 
-	if !a.core.perfStandby {
-		a.currentSegment = segmentInfo{
-			startTimestamp: startTime.Unix(),
-			currentClients: &activity.EntityActivityLog{
-				Clients: out.Clients,
-			},
-			tokenCount:           a.currentSegment.tokenCount,
-			clientSequenceNumber: sequenceNum,
-		}
-	} else {
-		// populate this for edge case checking (if end of month passes while background loading on standby)
-		a.currentSegment.startTimestamp = startTime.Unix()
+	a.currentSegment = segmentInfo{
+		startTimestamp: startTime.Unix(),
+		currentClients: &activity.EntityActivityLog{
+			Clients: out.Clients,
+		},
+		tokenCount:           a.currentSegment.tokenCount,
+		clientSequenceNumber: sequenceNum,
 	}
 
 	for _, client := range out.Clients {
@@ -886,12 +881,7 @@ func (a *ActivityLog) refreshFromStoredLog(ctx context.Context, wg *sync.WaitGro
 
 	if len(decreasingLogTimes) == 0 {
 		if a.enabled {
-			if a.core.perfStandby {
-				// reset the log without updating the timestamp
-				a.resetCurrentLog()
-			} else {
-				a.startNewCurrentLogLocked(now)
-			}
+			a.startNewCurrentLogLocked(now)
 		}
 
 		return nil
@@ -901,7 +891,7 @@ func (a *ActivityLog) refreshFromStoredLog(ctx context.Context, wg *sync.WaitGro
 
 	if !a.enabled {
 		a.logger.Debug("activity log not enabled, skipping refresh from storage")
-		if !a.core.perfStandby && timeutil.IsCurrentMonth(mostRecent, now) {
+		if timeutil.IsCurrentMonth(mostRecent, now) {
 			a.logger.Debug("activity log is disabled, cleaning up logs for the current month")
 			go a.deleteLogWorker(ctx, mostRecent.Unix(), make(chan struct{}))
 		}
@@ -925,12 +915,7 @@ func (a *ActivityLog) refreshFromStoredLog(ctx context.Context, wg *sync.WaitGro
 		// the most recent log in storage is 2+ months in the past
 
 		a.logger.Warn("most recent log in storage is 2 or more months in the past.", "timestamp", mostRecent)
-		if a.core.perfStandby {
-			// reset the log without updating the timestamp
-			a.resetCurrentLog()
-		} else {
-			a.startNewCurrentLogLocked(now)
-		}
+		a.startNewCurrentLogLocked(now)
 
 		return nil
 	}
@@ -938,11 +923,9 @@ func (a *ActivityLog) refreshFromStoredLog(ctx context.Context, wg *sync.WaitGro
 	// load token counts from storage into memory. As of 1.9, this functionality
 	// is still required since without it, we would lose replicated TWE counts for the
 	// current segment.
-	if !a.core.perfStandby {
-		err = a.loadTokenCount(ctx, mostRecent)
-		if err != nil {
-			return err
-		}
+	err = a.loadTokenCount(ctx, mostRecent)
+	if err != nil {
+		return err
 	}
 
 	// load entity logs from storage into memory
@@ -1129,31 +1112,25 @@ func (c *Core) setupActivityLogLocked(ctx context.Context, wg *sync.WaitGroup) e
 	}
 
 	// Start the background worker, depending on type
-	// Lock already held here, can't use .PerfStandby()
-	// The workers need to know the current segment time.
-	if c.perfStandby {
-		go manager.perfStandbyFragmentWorker(ctx)
-	} else {
-		go manager.activeFragmentWorker(ctx)
+	go manager.activeFragmentWorker(ctx)
 
-		// Check for any intent log, in the background
-		manager.computationWorkerDone = make(chan struct{})
-		go func() {
-			manager.precomputedQueryWorker(ctx)
-			close(manager.computationWorkerDone)
-		}()
+	// Check for any intent log, in the background
+	manager.computationWorkerDone = make(chan struct{})
+	go func() {
+		manager.precomputedQueryWorker(ctx)
+		close(manager.computationWorkerDone)
+	}()
 
-		// Catch up on garbage collection
-		// Signal when this is done so that unit tests can proceed.
-		manager.retentionDone = make(chan struct{})
-		go func(months int) {
-			manager.retentionWorker(ctx, manager.clock.Now(), months)
-			close(manager.retentionDone)
-		}(manager.retentionMonths)
+	// Catch up on garbage collection
+	// Signal when this is done so that unit tests can proceed.
+	manager.retentionDone = make(chan struct{})
+	go func(months int) {
+		manager.retentionWorker(ctx, manager.clock.Now(), months)
+		close(manager.retentionDone)
+	}(manager.retentionMonths)
 
-		manager.CensusReportDone = make(chan bool)
-		go c.activityLog.CensusReport(ctx, c.CensusAgent(), c.BillingStart())
-	}
+	manager.CensusReportDone = make(chan bool)
+	go c.activityLog.CensusReport(ctx, c.CensusAgent(), c.BillingStart())
 
 	return nil
 }
@@ -1191,92 +1168,6 @@ func (a *ActivityLog) StartOfNextMonth() time.Time {
 	// Basing this on the segment start will mean we trigger EOM rollover when
 	// necessary because we were down.
 	return timeutil.StartOfNextMonth(segmentStart)
-}
-
-// perfStandbyFragmentWorker handles scheduling fragments
-// to send via RPC; it runs on perf standby nodes only.
-func (a *ActivityLog) perfStandbyFragmentWorker(ctx context.Context) {
-	timer := a.clock.NewTimer(time.Duration(0))
-	fragmentWaiting := false
-	// Eat first event, so timer is stopped
-	<-timer.C
-
-	endOfMonth := a.clock.NewTimer(a.StartOfNextMonth().Sub(a.clock.Now()))
-	if a.configOverrides.DisableTimers {
-		endOfMonth.Stop()
-	}
-
-	sendFunc := func() {
-		ctx, cancel := context.WithTimeout(ctx, activityFragmentSendTimeout)
-		defer cancel()
-		err := a.sendCurrentFragment(ctx)
-		if err != nil {
-			a.logger.Warn("activity log fragment lost", "error", err)
-		}
-	}
-
-	for {
-		select {
-		case <-a.doneCh:
-			// Shutting down activity log.
-			if fragmentWaiting && !timer.Stop() {
-				<-timer.C
-			}
-			if !endOfMonth.Stop() {
-				<-endOfMonth.C
-			}
-			return
-		case <-a.newFragmentCh:
-			// New fragment created, start the timer if not
-			// already running
-			if !fragmentWaiting {
-				fragmentWaiting = true
-				if !a.configOverrides.DisableTimers {
-					a.logger.Trace("reset fragment timer")
-					timer.Reset(activityFragmentStandbyTime)
-				}
-			}
-		case <-timer.C:
-			a.logger.Trace("sending fragment on timer expiration")
-			fragmentWaiting = false
-			sendFunc()
-		case <-a.sendCh:
-			a.logger.Trace("sending fragment on request")
-			// It might be that we get sendCh before fragmentCh
-			// if a fragment is created and then immediately fills
-			// up to its limit. So we attempt to send even if the timer's
-			// not running.
-			if fragmentWaiting {
-				fragmentWaiting = false
-				if !timer.Stop() {
-					<-timer.C
-				}
-			}
-			sendFunc()
-		case <-endOfMonth.C:
-			a.logger.Trace("sending fragment on end of month")
-			// Flush the current fragment, if any
-			if fragmentWaiting {
-				fragmentWaiting = false
-				if !timer.Stop() {
-					<-timer.C
-				}
-			}
-			sendFunc()
-
-			// clear active entity set
-			a.fragmentLock.Lock()
-			a.partialMonthClientTracker = make(map[string]*activity.EntityRecord)
-
-			a.fragmentLock.Unlock()
-
-			// Set timer for next month.
-			// The current segment *probably* hasn't been set yet (via invalidation),
-			// so don't rely on it.
-			target := timeutil.StartOfNextMonth(a.clock.Now().UTC())
-			endOfMonth.Reset(target.Sub(a.clock.Now()))
-		}
-	}
 }
 
 // activeFragmentWorker handles scheduling the write of the next

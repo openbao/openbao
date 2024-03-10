@@ -81,10 +81,6 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 // On success, return (nil, nil) and mutates resp.  On failure, returns
 // either a response describing the failure or an error.
 func (c *Core) wrapInCubbyhole(ctx context.Context, req *logical.Request, resp *logical.Response, auth *logical.Auth) (*logical.Response, error) {
-	if c.perfStandby {
-		return forwardWrapRequest(ctx, c, req, resp, auth)
-	}
-
 	// Before wrapping, obey special rules for listing: if no entries are
 	// found, 404. This prevents unwrapping only to find empty data.
 	if req.Operation == logical.ListOperation {
@@ -351,7 +347,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		return false, consts.ErrSealed
 	}
 
-	if c.standby && !c.perfStandby {
+	if c.standby {
 		return false, consts.ErrStandby
 	}
 

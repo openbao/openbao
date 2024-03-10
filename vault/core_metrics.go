@@ -35,15 +35,11 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 	// Only emit on active node of cluster that is not a DR secondary.
 	if stopped, haState := stopOrHAState(); stopped {
 		return
-	} else if haState == consts.Standby || c.IsDRSecondary() {
+	} else if haState == consts.Standby {
 		identityCountTimer = nil
 	}
 
 	writeTimer := time.Tick(time.Second * 30)
-	// Do not process the writeTimer on DR Secondary nodes
-	if c.IsDRSecondary() {
-		writeTimer = nil
-	}
 
 	// This loop covers
 	// vault.expire.num_leases
@@ -86,36 +82,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
 			}
 
-			if haState == consts.PerfStandby {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "performance_standby"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "performance_standby"}, 0, nil)
-			}
-
-			if c.ReplicationState().HasState(consts.ReplicationPerformancePrimary) {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "primary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "primary"}, 0, nil)
-			}
-
-			if c.IsPerfSecondary() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "secondary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "secondary"}, 0, nil)
-			}
-
-			if c.ReplicationState().HasState(consts.ReplicationDRPrimary) {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "primary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "primary"}, 0, nil)
-			}
-
-			if c.IsDRSecondary() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "secondary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "secondary"}, 0, nil)
-			}
-
 			// If we're using a raft backend, emit raft metrics
 			if rb, ok := c.underlyingPhysical.(*raft.RaftBackend); ok {
 				rb.CollectMetrics(c.MetricSink())
@@ -131,14 +97,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				return
-			}
-			// Ship barrier encryption counts if a perf standby or the active node
-			// on a performance secondary cluster
-			if c.perfStandby || c.IsPerfSecondary() { // already have lock here, do not re-acquire
-				err := syncBarrierEncryptionCounter(c)
-				if err != nil {
-					c.logger.Error("writing syncing encryption counters", "err", err)
-				}
 			}
 			c.stateLock.RUnlock()
 		case <-identityCountTimer:
@@ -164,11 +122,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 // TokenStore; there is one per method because an additional level of abstraction
 // seems confusing.
 func (c *Core) tokenGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	// stateLock or authLock protects the tokenStore pointer
 	c.stateLock.RLock()
 	ts := c.tokenStore
@@ -180,11 +133,6 @@ func (c *Core) tokenGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLabe
 }
 
 func (c *Core) tokenGaugePolicyCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -206,11 +154,6 @@ func (c *Core) leaseExpiryGaugeCollector(ctx context.Context) ([]metricsutil.Gau
 }
 
 func (c *Core) tokenGaugeMethodCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -221,11 +164,6 @@ func (c *Core) tokenGaugeMethodCollector(ctx context.Context) ([]metricsutil.Gau
 }
 
 func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -307,7 +245,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 	// node or DR secondary cluster.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
-	} else if standby, _ := c.Standby(); !standby && !c.IsDRSecondary() {
+	} else if standby, _ := c.Standby(); !standby {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
 				if api.ReadBaoVariable(init.DisableEnvVar) != "" {

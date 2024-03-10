@@ -42,7 +42,6 @@ type RaftClusterOpts struct {
 	InmemCluster                   bool
 	EnableAutopilot                bool
 	PhysicalFactoryConfig          map[string]interface{}
-	DisablePerfStandby             bool
 	EnableResponseHeaderRaftNodeID bool
 	NumCores                       int
 	Seal                           vault.Seal
@@ -70,7 +69,6 @@ func raftCluster(t testing.TB, ropts *RaftClusterOpts) (*vault.TestCluster, *vau
 	}
 	opts.InmemClusterLayers = ropts.InmemCluster
 	opts.PhysicalFactoryConfig = ropts.PhysicalFactoryConfig
-	conf.DisablePerformanceStandby = ropts.DisablePerfStandby
 	opts.NumCores = ropts.NumCores
 	opts.VersionMap = ropts.VersionMap
 	opts.RedundancyZoneMap = ropts.RedundancyZoneMap
@@ -567,30 +565,26 @@ func TestRaft_SnapshotAPI_MidstreamFailure(t *testing.T) {
 
 func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 	type testCase struct {
-		Name               string
-		Rekey              bool
-		Rotate             bool
-		DisablePerfStandby bool
+		Name   string
+		Rekey  bool
+		Rotate bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:               "rekey",
-			Rekey:              true,
-			Rotate:             false,
-			DisablePerfStandby: true,
+			Name:   "rekey",
+			Rekey:  true,
+			Rotate: false,
 		},
 		{
-			Name:               "rotate",
-			Rekey:              false,
-			Rotate:             true,
-			DisablePerfStandby: true,
+			Name:   "rotate",
+			Rekey:  false,
+			Rotate: true,
 		},
 		{
-			Name:               "both",
-			Rekey:              true,
-			Rotate:             true,
-			DisablePerfStandby: true,
+			Name:   "both",
+			Rekey:  true,
+			Rotate: true,
 		},
 	}
 
@@ -600,7 +594,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 			tCaseLocal := tCase
 			t.Parallel()
 
-			cluster, _ := raftCluster(t, &RaftClusterOpts{DisablePerfStandby: tCaseLocal.DisablePerfStandby})
+			cluster, _ := raftCluster(t, &RaftClusterOpts{})
 			defer cluster.Cleanup()
 
 			leaderClient := cluster.Cores[0].Client
@@ -730,20 +724,18 @@ func TestRaft_SnapshotAPI_RekeyRotate_Backward(t *testing.T) {
 
 func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 	type testCase struct {
-		Name               string
-		Rekey              bool
-		Rotate             bool
-		ShouldSeal         bool
-		DisablePerfStandby bool
+		Name       string
+		Rekey      bool
+		Rotate     bool
+		ShouldSeal bool
 	}
 
 	tCases := []testCase{
 		{
-			Name:               "rekey",
-			Rekey:              true,
-			Rotate:             false,
-			ShouldSeal:         false,
-			DisablePerfStandby: true,
+			Name:       "rekey",
+			Rekey:      true,
+			Rotate:     false,
+			ShouldSeal: false,
 		},
 		{
 			Name:   "rotate",
@@ -751,8 +743,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			Rotate: true,
 			// Rotate writes a new master key upgrade using the new term, which
 			// we can no longer decrypt. We must seal here.
-			ShouldSeal:         true,
-			DisablePerfStandby: true,
+			ShouldSeal: true,
 		},
 		{
 			Name:   "both",
@@ -760,8 +751,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			Rotate: true,
 			// If we are moving forward and we have rekeyed and rotated there
 			// isn't any way to restore the latest keys so expect to seal.
-			ShouldSeal:         true,
-			DisablePerfStandby: true,
+			ShouldSeal: true,
 		},
 	}
 
@@ -771,7 +761,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			tCaseLocal := tCase
 			t.Parallel()
 
-			cluster, _ := raftCluster(t, &RaftClusterOpts{DisablePerfStandby: tCaseLocal.DisablePerfStandby})
+			cluster, _ := raftCluster(t, &RaftClusterOpts{})
 			defer cluster.Cleanup()
 
 			leaderClient := cluster.Cores[0].Client
@@ -834,18 +824,6 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 				err = leaderClient.Sys().Rotate()
 				if err != nil {
 					t.Fatal(err)
-				}
-
-				if !tCaseLocal.DisablePerfStandby {
-					// Without the key upgrade the perf standby nodes will seal and
-					// raft will get into a failure state. Make sure we get the
-					// cluster back into a healthy state before moving forward.
-					testhelpers.WaitForNCoresSealed(t, cluster, 2)
-					testhelpers.EnsureCoresUnsealed(t, cluster)
-					testhelpers.WaitForActiveNodeAndStandbys(t, cluster)
-
-					active := testhelpers.DeriveActiveCore(t, cluster)
-					leaderClient = active.Client
 				}
 			}
 

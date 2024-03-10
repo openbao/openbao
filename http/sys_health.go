@@ -84,13 +84,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 			return http.StatusBadRequest, nil, fmt.Errorf("bad value for standbyok parameter: %w", err)
 		}
 	}
-	perfStandbyOKStr, perfStandbyOK := r.URL.Query()["perfstandbyok"]
-	if perfStandbyOK {
-		perfStandbyOK, err = parseutil.ParseBool(perfStandbyOKStr[0])
-		if err != nil {
-			return http.StatusBadRequest, nil, fmt.Errorf("bad value for perfstandbyok parameter: %w", err)
-		}
-	}
 
 	uninitCode := http.StatusNotImplemented
 	if code, found, ok := fetchStatusCode(r, "uninitcode"); !ok {
@@ -120,25 +113,11 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		activeCode = code
 	}
 
-	drSecondaryCode := 472 // unofficial 4xx status code
-	if code, found, ok := fetchStatusCode(r, "drsecondarycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		drSecondaryCode = code
-	}
-
-	perfStandbyCode := 473 // unofficial 4xx status code
-	if code, found, ok := fetchStatusCode(r, "performancestandbycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		perfStandbyCode = code
-	}
-
 	ctx := context.Background()
 
 	// Check system status
 	sealed := core.Sealed()
-	standby, perfStandby := core.StandbyStates()
+	standby := core.StandbyStates()
 	var replicationState consts.ReplicationState
 	if standby {
 		replicationState = core.ActiveNodeReplicationState()
@@ -158,12 +137,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		code = uninitCode
 	case sealed:
 		code = sealedCode
-	case replicationState.HasState(consts.ReplicationDRSecondary):
-		code = drSecondaryCode
-	case perfStandby:
-		if !perfStandbyOK {
-			code = perfStandbyCode
-		}
 	case standby:
 		if !standbyOK {
 			code = standbyCode
@@ -189,7 +162,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		Initialized:                init,
 		Sealed:                     sealed,
 		Standby:                    standby,
-		PerformanceStandby:         perfStandby,
 		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
 		ReplicationDRMode:          replicationState.GetDRString(),
 		ServerTimeUTC:              time.Now().UTC().Unix(),

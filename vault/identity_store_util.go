@@ -47,9 +47,6 @@ func (c *Core) loadIdentityStoreArtifacts(ctx context.Context) error {
 		if err := c.identityStore.loadOIDCClients(ctx); err != nil {
 			return err
 		}
-		if err := c.identityStore.loadCachedEntitiesOfLocalAliases(ctx); err != nil {
-			return err
-		}
 
 		return nil
 	}
@@ -121,14 +118,12 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 			}
 			if ns == nil {
 				// Remove dangling groups
-				if !(i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) || i.localNode.HAState() == consts.PerfStandby) {
-					// Group's namespace doesn't exist anymore but the group
-					// from the namespace still exists.
-					i.logger.Warn("deleting group and its any existing aliases", "name", group.Name, "namespace_id", group.NamespaceID)
-					err = i.groupPacker.DeleteItem(ctx, group.ID)
-					if err != nil {
-						return err
-					}
+				// Group's namespace doesn't exist anymore but the group
+				// from the namespace still exists.
+				i.logger.Warn("deleting group and its any existing aliases", "name", group.Name, "namespace_id", group.NamespaceID)
+				err = i.groupPacker.DeleteItem(ctx, group.ID)
+				if err != nil {
+					return err
 				}
 				continue
 			}
@@ -181,134 +176,6 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 
 	if i.logger.IsInfo() {
 		i.logger.Info("groups restored")
-	}
-
-	return nil
-}
-
-func (i *IdentityStore) loadCachedEntitiesOfLocalAliases(ctx context.Context) error {
-	// If we are performance secondary, load from temporary location those
-	// entities that were created by the secondary via RPCs to the primary, and
-	// also happen to have not yet been shipped to the secondary through
-	// performance replication.
-	if !i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) {
-		return nil
-	}
-
-	i.logger.Debug("loading cached entities of local aliases")
-	existing, err := i.localAliasPacker.View().List(ctx, localAliasesBucketsPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to scan for cached entities of local alias: %w", err)
-	}
-
-	i.logger.Debug("cached entities of local alias entries", "num_buckets", len(existing))
-
-	// Make the channels used for the worker pool
-	broker := make(chan string)
-	quit := make(chan bool)
-
-	// Buffer these channels to prevent deadlocks
-	errs := make(chan error, len(existing))
-	result := make(chan *storagepacker.Bucket, len(existing))
-
-	// Use a wait group
-	wg := &sync.WaitGroup{}
-
-	// Create 64 workers to distribute work to
-	for j := 0; j < consts.ExpirationRestoreWorkerCount; j++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			for {
-				select {
-				case key, ok := <-broker:
-					// broker has been closed, we are done
-					if !ok {
-						return
-					}
-
-					bucket, err := i.localAliasPacker.GetBucket(ctx, localAliasesBucketsPrefix+key)
-					if err != nil {
-						errs <- err
-						continue
-					}
-
-					// Write results out to the result channel
-					result <- bucket
-
-				// quit early
-				case <-quit:
-					return
-				}
-			}
-		}()
-	}
-
-	// Distribute the collected keys to the workers in a go routine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for j, key := range existing {
-			if j%500 == 0 {
-				i.logger.Debug("cached entities of local aliases loading", "progress", j)
-			}
-
-			select {
-			case <-quit:
-				return
-
-			default:
-				broker <- key
-			}
-		}
-
-		// Close the broker, causing worker routines to exit
-		close(broker)
-	}()
-
-	defer func() {
-		// Let all go routines finish
-		wg.Wait()
-
-		i.logger.Info("cached entities of local aliases restored")
-	}()
-
-	// Restore each key by pulling from the result chan
-	for j := 0; j < len(existing); j++ {
-		select {
-		case err := <-errs:
-			// Close all go routines
-			close(quit)
-
-			return err
-
-		case bucket := <-result:
-			// If there is no entry, nothing to restore
-			if bucket == nil {
-				continue
-			}
-
-			for _, item := range bucket.Items {
-				if !strings.HasSuffix(item.ID, tmpSuffix) {
-					continue
-				}
-				entity, err := i.parseCachedEntity(item)
-				if err != nil {
-					return err
-				}
-				ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-				if err != nil {
-					return err
-				}
-				nsCtx := namespace.ContextWithNamespace(ctx, ns)
-
-				err = i.upsertEntity(nsCtx, entity, nil, false)
-				if err != nil {
-					return fmt.Errorf("failed to update entity in MemDB: %w", err)
-				}
-			}
-		}
 	}
 
 	return nil
@@ -418,14 +285,12 @@ LOOP:
 				}
 				if ns == nil {
 					// Remove dangling entities
-					if !(i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) || i.localNode.HAState() == consts.PerfStandby) {
-						// Entity's namespace doesn't exist anymore but the
-						// entity from the namespace still exists.
-						i.logger.Warn("deleting entity and its any existing aliases", "name", entity.Name, "namespace_id", entity.NamespaceID)
-						err = i.entityPacker.DeleteItem(ctx, entity.ID)
-						if err != nil {
-							return err
-						}
+					// Entity's namespace doesn't exist anymore but the
+					// entity from the namespace still exists.
+					i.logger.Warn("deleting entity and its any existing aliases", "name", entity.Name, "namespace_id", entity.NamespaceID)
+					err = i.entityPacker.DeleteItem(ctx, entity.ID)
+					if err != nil {
+						return err
 					}
 					continue
 				}
@@ -734,31 +599,6 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 	}
 
 	return alias, nil
-}
-
-// cacheTemporaryEntity stores in secondary's storage, the entity returned by
-// the primary cluster via the CreateEntity RPC. This is so that the secondary
-// cluster knows and retains information about the existence of these entities
-// before the replication invalidation informs the secondary of the same. This
-// also happens to cover the case where the secondary's replication is lagging
-// behind the primary by hours and/or days which sometimes may happen. Even if
-// the nodes of the secondary are restarted in the interim, the cluster would
-// still be aware of the entities. This temporary cache will be cleared when the
-// invalidation hits the secondary nodes.
-func (i *IdentityStore) cacheTemporaryEntity(ctx context.Context, entity *identity.Entity) error {
-	if i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) && i.localNode.HAState() != consts.PerfStandby {
-		marshaledEntity, err := ptypes.MarshalAny(entity)
-		if err != nil {
-			return err
-		}
-		if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
-			ID:      entity.ID + tmpSuffix,
-			Message: marshaledEntity,
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Entity) error {

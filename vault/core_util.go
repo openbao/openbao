@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/helper/license"
-	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/physical"
 	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/replication"
@@ -127,13 +126,7 @@ func (c *Core) collectNamespaces() []*namespace.Namespace {
 	}
 }
 
-func (c *Core) HasWALState(required *logical.WALState, perfStandby bool) bool {
-	return true
-}
-
 func (c *Core) setupReplicatedClusterPrimary(*replication.Cluster) error { return nil }
-
-func (c *Core) perfStandbyCount() int { return 0 }
 
 func (c *Core) removePathFromFilteredPaths(context.Context, string, string) error {
 	return nil
@@ -144,14 +137,6 @@ func (c *Core) checkReplicatedFiltering(context.Context, *MountEntry, string) (b
 }
 
 func (c *Core) invalidateSentinelPolicy(PolicyType, string) {}
-
-func (c *Core) removePerfStandbySecondary(context.Context, string) {}
-
-func (c *Core) removeAllPerfStandbySecondaries() {}
-
-func (c *Core) perfStandbyClusterHandler() (*replication.Cluster, chan struct{}, error) {
-	return nil, make(chan struct{}), nil
-}
 
 func (c *Core) initSealsForMigration() {}
 
@@ -183,10 +168,6 @@ func (c *Core) AllowForwardingViaHeader() bool {
 
 func (c *Core) ForwardToActive() string {
 	return ""
-}
-
-func (c *Core) MissingRequiredState(raw []string, perfStandby bool) bool {
-	return false
 }
 
 func DiagnoseCheckLicense(ctx context.Context, vaultCore *Core, coreConfig CoreConfig, generate bool) (bool, []string) {

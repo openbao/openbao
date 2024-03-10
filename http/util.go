@@ -135,7 +135,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			}
 
 			if core.RateLimitAuditLoggingEnabled() {
-				req, _, status, err := buildLogicalRequestNoAuth(core.PerfStandby(), w, r)
+				req, _, status, err := buildLogicalRequestNoAuth(w, r)
 				if err != nil || status != 0 {
 					respondError(w, status, err)
 					return

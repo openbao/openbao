@@ -721,10 +721,6 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	if updateStorage {
 		if err := c.persistMounts(ctx, newTable, &entry.Local); err != nil {
 			c.logger.Error("failed to update mount table", "error", err)
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-
 			return logical.CodedError(500, "failed to update mount table")
 		}
 	}
@@ -895,24 +891,10 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 	switch {
 	case !updateStorage:
 		// Don't attempt to clear data, replication will handle this
-	case c.IsDRSecondary():
-		// If we are a dr secondary we want to clear the view, but the provided
-		// view is marked as read only. We use the barrier here to get around
-		// it.
-		if err := logical.ClearViewWithLogging(ctx, NewBarrierView(c.barrier, viewPath), c.logger.Named("secrets.deletion").With("namespace", ns.ID, "path", path)); err != nil {
-			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case entry.Local, !c.IsPerfSecondary():
+	default:
 		// Have writable storage, remove the whole thing
 		if err := logical.ClearViewWithLogging(ctx, view, c.logger.Named("secrets.deletion").With("namespace", ns.ID, "path", path)); err != nil {
 			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case !entry.Local && c.IsPerfSecondary():
-		if err := clearIgnoredPaths(ctx, c, backend, viewPath); err != nil {
 			return err
 		}
 	}
@@ -1006,10 +988,6 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 	if updateStorage {
 		// Update the mount table
 		if err := c.persistMounts(ctx, c.mounts, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-
 			c.logger.Error("failed to taint entry in mounts table", "error", err)
 			return logical.CodedError(500, "failed to taint entry in mounts table")
 		}
@@ -1141,24 +1119,22 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 		return err
 	}
 
-	if !c.IsDRSecondary() {
-		// Invoke the rollback manager a final time. This is not fatal as
-		// various periodic funcs (e.g., PKI) can legitimately error; the
-		// periodic rollback manager logs these errors rather than failing
-		// replication like returning this error would do.
-		rCtx := namespace.ContextWithNamespace(c.activeContext, ns)
-		if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
-			if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
-				c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
-				err = nil
-			}
+	// Invoke the rollback manager a final time. This is not fatal as
+	// various periodic funcs (e.g., PKI) can legitimately error; the
+	// periodic rollback manager logs these errors rather than failing
+	// replication like returning this error would do.
+	rCtx := namespace.ContextWithNamespace(c.activeContext, ns)
+	if c.rollback != nil && c.router.MatchingBackend(ctx, srcRelativePath) != nil {
+		if err := c.rollback.Rollback(rCtx, srcRelativePath); err != nil {
+			c.logger.Error("ignoring rollback error during remount", "error", err, "path", src.Namespace.Path+src.MountPath)
+			err = nil
 		}
+	}
 
-		revokeCtx := namespace.ContextWithNamespace(ctx, src.Namespace)
-		// Revoke all the dynamic keys
-		if err := c.expiration.RevokePrefix(revokeCtx, src.MountPath, true); err != nil {
-			return err
-		}
+	revokeCtx := namespace.ContextWithNamespace(ctx, src.Namespace)
+	// Revoke all the dynamic keys
+	if err := c.expiration.RevokePrefix(revokeCtx, src.MountPath, true); err != nil {
+		return err
 	}
 
 	c.mountsLock.Lock()
@@ -1178,10 +1154,6 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 		srcMatch.Path = srcPath
 		srcMatch.Tainted = true
 		c.mountsLock.Unlock()
-		if err == logical.ErrReadOnly && c.perfStandby {
-			return err
-		}
-
 		return fmt.Errorf("failed to update mount table with error %+v", err)
 	}
 
@@ -1267,12 +1239,10 @@ func (c *Core) loadMounts(ctx context.Context) error {
 
 	// If this node is a performance standby we do not want to attempt to
 	// upgrade the mount table, this will be the active node's responsibility.
-	if !c.perfStandby {
-		err := c.runMountUpdates(ctx, needPersist)
-		if err != nil {
-			c.logger.Error("failed to run mount table upgrades", "error", err)
-			return err
-		}
+	err = c.runMountUpdates(ctx, needPersist)
+	if err != nil {
+		c.logger.Error("failed to run mount table upgrades", "error", err)
+		return err
 	}
 
 	for _, entry := range c.mounts.Entries {
@@ -1320,7 +1290,7 @@ func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
 		// ensure this comes over. If we upgrade first, we simply don't
 		// create the mount, so we won't conflict when we sync. If this is
 		// local (e.g. cubbyhole) we do still add it.
-		if !foundRequired && (!c.IsPerfSecondary() || requiredMount.Local) {
+		if !foundRequired {
 			c.mounts.Entries = append(c.mounts.Entries, requiredMount)
 			needPersist = true
 		}
@@ -1328,7 +1298,7 @@ func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
 
 	// Upgrade to table-scoped entries
 	for _, entry := range c.mounts.Entries {
-		if !c.PR1103disabled && entry.Type == mountTypeNSCubbyhole && !entry.Local && !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary|consts.ReplicationDRSecondary) {
+		if !c.PR1103disabled && entry.Type == mountTypeNSCubbyhole && !entry.Local {
 			entry.Local = true
 			needPersist = true
 		}

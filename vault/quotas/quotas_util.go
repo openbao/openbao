@@ -24,19 +24,8 @@ func (m *Manager) recomputeLeaseCounts(ctx context.Context, txn *memdb.Txn) erro
 	return nil
 }
 
-func (m *Manager) setIsPerfStandby(quota Quota) {}
-
 func (m *Manager) inLeasePathCache(path string) bool {
 	return false
-}
-
-type entManager struct {
-	isPerfStandby bool
-	isDRSecondary bool
-}
-
-func (*entManager) Reset() error {
-	return nil
 }
 
 type LeaseCountQuota struct{}

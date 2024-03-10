@@ -45,7 +45,7 @@ func (b *bufferedReader) Close() error {
 
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
-func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
+func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
 	ns, err := namespace.FromContext(r.Context())
 	if err != nil {
 		return nil, nil, http.StatusBadRequest, nil
@@ -135,7 +135,7 @@ func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.
 
 				data = formData
 			} else {
-				origBody, err = parseJSONRequest(perfStandby, r, w, &data)
+				origBody, err = parseJSONRequest(r, w, &data)
 				if err == io.EOF {
 					data = nil
 					err = nil
@@ -163,7 +163,7 @@ func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.
 			return nil, nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		origBody, err = parseJSONRequest(perfStandby, r, w, &data)
+		origBody, err = parseJSONRequest(r, w, &data)
 
 		if err == io.EOF {
 			data = nil
@@ -264,7 +264,7 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 }
 
 func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
-	req, origBody, status, err := buildLogicalRequestNoAuth(core.PerfStandby(), w, r)
+	req, origBody, status, err := buildLogicalRequestNoAuth(w, r)
 	if err != nil || status != 0 {
 		return nil, nil, status, err
 	}
@@ -316,7 +316,7 @@ func handleLogicalNoForward(core *vault.Core) http.Handler {
 
 func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, _, statusCode, err := buildLogicalRequestNoAuth(false, w, r)
+		req, _, statusCode, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return

@@ -152,8 +152,6 @@ func (a *access) QuotaID() string {
 // Manager holds all the existing quota rules. For any given input. the manager
 // checks them against any applicable quota rules.
 type Manager struct {
-	entManager
-
 	// db holds the in memory instances of all active quota rules indexed by
 	// some of the quota properties.
 	db *memdb.MemDB
@@ -341,10 +339,6 @@ func (m *Manager) setQuotaLocked(ctx context.Context, qType string, quota Quota,
 // any runtime elements such as goroutines, using the transaction passed in
 // It should be called with the write lock held.
 func (m *Manager) setQuotaLockedWithTxn(ctx context.Context, qType string, quota Quota, loading bool, txn *memdb.Txn) error {
-	if qType == TypeLeaseCount.String() {
-		m.setIsPerfStandby(quota)
-	}
-
 	raw, err := txn.First(qType, indexID, quota.quotaID())
 	if err != nil {
 		return err
@@ -798,7 +792,7 @@ func (m *Manager) Reset() error {
 	m.storage = nil
 	m.ctx = nil
 
-	return m.entManager.Reset()
+	return nil
 }
 
 // Must be called with the lock held
@@ -991,11 +985,6 @@ func (m *Manager) Invalidate(key string) {
 		qType := splitKeys[0]
 		name := splitKeys[1]
 
-		if qType == TypeLeaseCount.String() && m.isDRSecondary {
-			// lease count invalidation not supported on DR Secondary
-			return
-		}
-
 		// Read quota rule from storage
 		quota, err := Load(m.ctx, m.storage, qType, name)
 		if err != nil {
@@ -1069,7 +1058,7 @@ func Load(ctx context.Context, storage logical.Storage, qType, name string) (Quo
 
 // Setup loads the quota configuration and all the quota rules into the
 // quota manager.
-func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStandby, isDRSecondary bool) error {
+func (m *Manager) Setup(ctx context.Context, storage logical.Storage) error {
 	m.quotaLock.Lock()
 	m.quotaConfigLock.Lock()
 	m.dbAndCacheLock.Lock()
@@ -1079,8 +1068,6 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStan
 
 	m.storage = storage
 	m.ctx = ctx
-	m.isPerfStandby = isPerfStandby
-	m.isDRSecondary = isDRSecondary
 
 	// Load the quota configuration from storage and load it into the quota
 	// manager.
@@ -1125,11 +1112,6 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStan
 }
 
 func (m *Manager) setupQuotaType(ctx context.Context, storage logical.Storage, quotaType string) error {
-	if quotaType == TypeLeaseCount.String() && m.isDRSecondary {
-		m.logger.Trace("lease count quotas are not processed on DR Secondaries")
-		return nil
-	}
-
 	names, err := logical.CollectKeys(ctx, logical.NewStorageView(storage, StoragePrefix+quotaType+"/"))
 	if err != nil {
 		return err

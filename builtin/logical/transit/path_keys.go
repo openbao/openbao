@@ -120,14 +120,6 @@ key.`,
 				Default:     0,
 				Description: fmt.Sprintf("The key size in bytes for the algorithm.  Only applies to HMAC and must be no fewer than %d bytes and no more than %d", keysutil.HmacMinKeySize, keysutil.HmacMaxKeySize),
 			},
-			"managed_key_name": {
-				Type:        framework.TypeString,
-				Description: "The name of the managed key to use for this transit key",
-			},
-			"managed_key_id": {
-				Type:        framework.TypeString,
-				Description: "The UUID of the managed key to use for this transit key",
-			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -174,8 +166,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	exportable := d.Get("exportable").(bool)
 	allowPlaintextBackup := d.Get("allow_plaintext_backup").(bool)
 	autoRotatePeriod := time.Second * time.Duration(d.Get("auto_rotate_period").(int))
-	managedKeyName := d.Get("managed_key_name").(string)
-	managedKeyId := d.Get("managed_key_id").(string)
 
 	if autoRotatePeriod != 0 && autoRotatePeriod < time.Hour {
 		return logical.ErrorResponse("auto rotate period must be 0 to disable or at least an hour"), nil
@@ -234,15 +224,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 			return logical.ErrorResponse(fmt.Sprintf("invalid key_size %d", keySize)), logical.ErrInvalidRequest
 		}
 		polReq.KeySize = keySize
-	}
-
-	if polReq.KeyType == keysutil.KeyType_MANAGED_KEY {
-		keyId, err := GetManagedKeyUUID(ctx, b, managedKeyName, managedKeyId)
-		if err != nil {
-			return nil, err
-		}
-
-		polReq.ManagedKeyUUID = keyId
 	}
 
 	p, upserted, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())

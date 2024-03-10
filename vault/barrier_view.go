@@ -67,13 +67,9 @@ func (v *BarrierView) Put(ctx context.Context, entry *logical.StorageEntry) erro
 		return errors.New("cannot write nil entry")
 	}
 
-	expandedKey := v.storage.ExpandKey(entry.Key)
-
 	roErr := v.getReadOnlyErr()
 	if roErr != nil {
-		if runICheck(v, expandedKey, roErr) {
-			return roErr
-		}
+		return roErr
 	}
 
 	return v.storage.Put(ctx, entry)
@@ -81,13 +77,9 @@ func (v *BarrierView) Put(ctx context.Context, entry *logical.StorageEntry) erro
 
 // logical.Storage impl.
 func (v *BarrierView) Delete(ctx context.Context, key string) error {
-	expandedKey := v.storage.ExpandKey(key)
-
 	roErr := v.getReadOnlyErr()
 	if roErr != nil {
-		if runICheck(v, expandedKey, roErr) {
-			return roErr
-		}
+		return roErr
 	}
 
 	return v.storage.Delete(ctx, key)

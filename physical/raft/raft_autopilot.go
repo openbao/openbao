@@ -314,7 +314,7 @@ func (d *Delegate) AutopilotConfig() *autopilot.Config {
 		MaxTrailingLogs:         d.autopilotConfig.MaxTrailingLogs,
 		MinQuorum:               d.autopilotConfig.MinQuorum,
 		ServerStabilizationTime: d.autopilotConfig.ServerStabilizationTime,
-		Ext:                     d.autopilotConfigExt(),
+		Ext:                     nil,
 	}
 	d.l.RUnlock()
 	return config
@@ -428,9 +428,9 @@ func (d *Delegate) KnownServers() map[raft.ServerID]*autopilot.Server {
 			ID:          currentServerID,
 			Name:        id,
 			RaftVersion: raft.ProtocolVersionMax,
-			Meta:        d.meta(state),
+			Meta:        nil,
 			Version:     followerVersion,
-			Ext:         d.autopilotServerExt(state),
+			Ext:         nil,
 		}
 
 		// As KnownServers is a delegate called by autopilot let's check if we already
@@ -464,13 +464,10 @@ func (d *Delegate) KnownServers() map[raft.ServerID]*autopilot.Server {
 		RaftVersion: raft.ProtocolVersionMax,
 		NodeStatus:  autopilot.NodeAlive,
 		NodeType:    autopilot.NodeVoter, // The leader must be a voter
-		Meta: d.meta(&FollowerState{
-			UpgradeVersion: d.EffectiveVersion(),
-			RedundancyZone: d.RedundancyZone(),
-		}),
-		Version:  d.effectiveSDKVersion,
-		Ext:      d.autopilotServerExt(nil),
-		IsLeader: true,
+		Meta:        nil,
+		Version:     d.effectiveSDKVersion,
+		Ext:         nil,
+		IsLeader:    true,
 	}
 
 	return ret
@@ -748,11 +745,6 @@ func autopilotToAPIState(state *autopilot.State) (*AutopilotState, error) {
 		out.Servers[string(id)] = aps
 	}
 
-	err := autopilotToAPIStateEnterprise(state, out)
-	if err != nil {
-		return nil, err
-	}
-
 	return out, nil
 }
 
@@ -770,11 +762,6 @@ func autopilotToAPIServer(srv *autopilot.ServerState) (*AutopilotServer, error) 
 		Status:      string(srv.State),
 		Version:     srv.Server.Version,
 		NodeType:    string(srv.Server.NodeType),
-	}
-
-	err := autopilotToAPIServerEnterprise(&srv.Server, apiSrv)
-	if err != nil {
-		return nil, err
 	}
 
 	return apiSrv, nil
@@ -831,7 +818,7 @@ func (b *RaftBackend) SetupAutopilot(ctx context.Context, storageConfig *Autopil
 	// Create the autopilot instance
 	options := []autopilot.Option{
 		autopilot.WithLogger(b.logger),
-		autopilot.WithPromoter(b.autopilotPromoter()),
+		autopilot.WithPromoter(autopilot.DefaultPromoter()),
 	}
 	if b.autopilotReconcileInterval != 0 {
 		options = append(options, autopilot.WithReconcileInterval(b.autopilotReconcileInterval))

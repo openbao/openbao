@@ -69,14 +69,6 @@ func (a AssocDataFactory) GetAssociatedData() ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Encoded)
 }
 
-type ManagedKeyFactory struct {
-	managedKeyParams keysutil.ManagedKeyParameters
-}
-
-func (m ManagedKeyFactory) GetManagedKeyParameters() keysutil.ManagedKeyParameters {
-	return m.managedKeyParams
-}
-
 func (b *backend) pathEncrypt() *framework.Path {
 	return &framework.Path{
 		Pattern: "encrypt/" + framework.GenericNameRegex("name"),
@@ -400,8 +392,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		case "ecdsa-p256", "ecdsa-p384", "ecdsa-p521":
 			return logical.ErrorResponse(fmt.Sprintf("key type %v not supported for this operation", keyType)), logical.ErrInvalidRequest
-		case "managed_key":
-			polReq.KeyType = keysutil.KeyType_MANAGED_KEY
 		default:
 			return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
 		}

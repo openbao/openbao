@@ -211,8 +211,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_RSA4096
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
-	case "managed_key":
-		polReq.KeyType = keysutil.KeyType_MANAGED_KEY
 	default:
 		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
 	}

@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -373,13 +372,6 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support signing", p.Type)), logical.ErrInvalidRequest
 	}
 
-	// Allow managed keys to specify no hash algo without additional conditions.
-	if hashAlgorithm == keysutil.HashTypeNone && p.Type != keysutil.KeyType_MANAGED_KEY {
-		if !prehashed || sigAlgorithm != "pkcs1v15" {
-			return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
-		}
-	}
-
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestSignItem
 	if batchInputRaw != nil {
@@ -437,26 +429,11 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 			}
 		}
 
-		var managedKeyParameters keysutil.ManagedKeyParameters
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				return nil, errors.New("unsupported system view")
-			}
-
-			managedKeyParameters = keysutil.ManagedKeyParameters{
-				ManagedKeySystemView: managedKeySystemView,
-				BackendUUID:          b.backendUUID,
-				Context:              ctx,
-			}
-		}
-
 		sig, err := p.SignWithOptions(ver, context, input, &keysutil.SigningOptions{
-			HashAlgorithm:    hashAlgorithm,
-			Marshaling:       marshaling,
-			SaltLength:       saltLength,
-			SigAlgorithm:     sigAlgorithm,
-			ManagedKeyParams: managedKeyParameters,
+			HashAlgorithm: hashAlgorithm,
+			Marshaling:    marshaling,
+			SaltLength:    saltLength,
+			SigAlgorithm:  sigAlgorithm,
 		})
 		if err != nil {
 			if batchInputRaw != nil {
@@ -627,13 +604,6 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support verification", p.Type)), logical.ErrInvalidRequest
 	}
 
-	// Allow managed keys to specify no hash algo without additional conditions.
-	if hashAlgorithm == keysutil.HashTypeNone && p.Type != keysutil.KeyType_MANAGED_KEY {
-		if !prehashed || sigAlgorithm != "pkcs1v15" {
-			return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
-		}
-	}
-
 	response := make([]batchResponseVerifyItem, len(batchInputItems))
 
 	for i, item := range batchInputItems {
@@ -677,26 +647,12 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 				continue
 			}
 		}
-		var managedKeyParameters keysutil.ManagedKeyParameters
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				return nil, errors.New("unsupported system view")
-			}
-
-			managedKeyParameters = keysutil.ManagedKeyParameters{
-				ManagedKeySystemView: managedKeySystemView,
-				BackendUUID:          b.backendUUID,
-				Context:              ctx,
-			}
-		}
 
 		signingOptions := &keysutil.SigningOptions{
-			HashAlgorithm:    hashAlgorithm,
-			Marshaling:       marshaling,
-			SaltLength:       saltLength,
-			SigAlgorithm:     sigAlgorithm,
-			ManagedKeyParams: managedKeyParameters,
+			HashAlgorithm: hashAlgorithm,
+			Marshaling:    marshaling,
+			SaltLength:    saltLength,
+			SigAlgorithm:  sigAlgorithm,
 		}
 
 		valid, err := p.VerifySignatureWithOptions(context, input, sig, signingOptions)

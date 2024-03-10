@@ -209,15 +209,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
 	}
 
-	// If the node is in a DR secondary cluster, gate some raft operations by
-	// the DR operation token.
-	if core.IsDRSecondary() {
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/autopilot/configuration")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/autopilot/state")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/configuration")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/remove-peer")
-	}
-
 	b.Backend.Invalidate = sysInvalidate(b)
 	return b
 }
@@ -1044,15 +1035,7 @@ func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Reque
 
 // handleMount is used to mount a new path
 func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	local := data.Get("local").(bool)
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -1320,15 +1303,7 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	repState := b.Core.ReplicationState()
 	entry := b.Core.router.MatchingMountEntry(ctx, path)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
@@ -1389,8 +1364,6 @@ func validateMountPath(p string) error {
 
 // handleRemount is used to remount a path
 func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -1459,13 +1432,6 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("path already in use at %q", match))
 	}
 
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
-
 	migrationID, err := b.Core.createMigrationStatus(fromPathDetails, toPathDetails)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating migration status %+v", err)
@@ -1506,9 +1472,9 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	// Attempt remount
 	switch entry.Table {
 	case credentialTableType:
-		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, !b.Core.perfStandby)
+		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
 	case mountTableType:
-		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, !b.Core.perfStandby)
+		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
 	}
@@ -1556,8 +1522,6 @@ func (b *SystemBackend) handleAuthTuneRead(ctx context.Context, req *logical.Req
 }
 
 func (b *SystemBackend) handleRemountStatusCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	migrationID := data.Get("migration_id").(string)
 	if migrationID == "" {
 		return logical.ErrorResponse(
@@ -1567,11 +1531,6 @@ func (b *SystemBackend) handleRemountStatusCheck(ctx context.Context, req *logic
 
 	migrationInfo := b.Core.readMigrationStatus(migrationID)
 	if migrationInfo == nil {
-		// If the migration info is not found and this is a perf secondary
-		// forward the request to the primary cluster
-		if repState.HasState(consts.ReplicationPerformanceSecondary) {
-			return nil, logical.ErrReadOnly
-		}
 		return nil, nil
 	}
 	resp := &logical.Response{
@@ -1699,8 +1658,6 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 
 // handleTuneWriteCommon is used to set config settings on a path
 func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	path = sanitizePath(path)
 
 	// Prevent protected paths from being changed
@@ -1715,9 +1672,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	if mountEntry == nil {
 		b.Backend.Logger().Error("tune failed", "error", "no mount entry found", "path", path)
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
-	}
-	if mountEntry != nil && !mountEntry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	var lock *locking.DeadlockRWMutex
@@ -1736,9 +1690,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	if mountEntry == nil {
 		b.Backend.Logger().Error("tune failed", "error", "no mount entry found", "path", path)
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
-	}
-	if mountEntry != nil && !mountEntry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	// Timing configuration parameters
@@ -2532,15 +2483,7 @@ func expandStringValsWithCommas(configMap map[string]interface{}) error {
 
 // handleEnableAuth is used to enable a new credential backend
 func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
 	local := data.Get("local").(bool)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -2782,15 +2725,7 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	}
 	fullPath := credentialRoutePrefix + path
 
-	repState := b.Core.ReplicationState()
 	entry := b.Core.router.MatchingMountEntry(ctx, fullPath)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
@@ -3239,15 +3174,7 @@ func (b *SystemBackend) handleAuditHash(ctx context.Context, req *logical.Reques
 
 // handleEnableAudit is used to enable a new audit backend
 func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	local := data.Get("local").(bool)
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -3295,15 +3222,6 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 	if entry == nil {
 		return nil, nil
-	}
-
-	repState := b.Core.ReplicationState()
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	// Attempt disable
@@ -3486,11 +3404,6 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *
 
 // handleRotate is used to trigger a key rotation
 func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-	if repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return logical.ErrorResponse("cannot rotate on a replication secondary"), nil
-	}
-
 	if err := b.rotateBarrierKey(ctx); err != nil {
 		b.Backend.Logger().Error("error handling key rotation", "error", err)
 		return handleError(err)
@@ -4782,14 +4695,12 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 }
 
 type LeaderResponse struct {
-	HAEnabled                bool      `json:"ha_enabled"`
-	IsSelf                   bool      `json:"is_self"`
-	ActiveTime               time.Time `json:"active_time,omitempty"`
-	LeaderAddress            string    `json:"leader_address"`
-	LeaderClusterAddress     string    `json:"leader_cluster_address"`
-	PerfStandby              bool      `json:"performance_standby"`
-	PerfStandbyLastRemoteWAL uint64    `json:"performance_standby_last_remote_wal"`
-	LastWAL                  uint64    `json:"last_wal,omitempty"`
+	HAEnabled            bool      `json:"ha_enabled"`
+	IsSelf               bool      `json:"is_self"`
+	ActiveTime           time.Time `json:"active_time,omitempty"`
+	LeaderAddress        string    `json:"leader_address"`
+	LeaderClusterAddress string    `json:"leader_cluster_address"`
+	LastWAL              uint64    `json:"last_wal,omitempty"`
 
 	// Raft Indexes for this node
 	RaftCommittedIndex uint64 `json:"raft_committed_index,omitempty"`
@@ -4819,14 +4730,11 @@ func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
 		IsSelf:               isLeader,
 		LeaderAddress:        address,
 		LeaderClusterAddress: clusterAddr,
-		PerfStandby:          core.perfStandby,
 	}
 	if isLeader {
 		resp.ActiveTime = core.activeTime
 	}
-	if resp.PerfStandby {
-		resp.PerfStandbyLastRemoteWAL = LastRemoteWAL(core)
-	} else if isLeader || !haEnabled {
+	if isLeader || !haEnabled {
 		resp.LastWAL = LastWAL(core)
 	}
 
@@ -4870,13 +4778,6 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 		},
 	}
 	return httpResp, nil
-}
-
-func (b *SystemBackend) verifyDROperationTokenOnSecondary(f framework.OperationFunc, lock bool) framework.OperationFunc {
-	if b.Core.IsDRSecondary() {
-		return b.verifyDROperationToken(f, lock)
-	}
-	return f
 }
 
 func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {

@@ -47,15 +47,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-var (
-	addEnterpriseHaActors func(*Core, *run.Group) chan func()            = addEnterpriseHaActorsNoop
-	interruptPerfStandby  func(chan func(), chan struct{}) chan struct{} = interruptPerfStandbyNoop
-)
+var addEnterpriseHaActors func(*Core, *run.Group) chan func() = addEnterpriseHaActorsNoop
 
 func addEnterpriseHaActorsNoop(*Core, *run.Group) chan func() { return nil }
-func interruptPerfStandbyNoop(chan func(), chan struct{}) chan struct{} {
-	return make(chan struct{})
-}
 
 // Standby checks if the Vault is in standby mode
 func (c *Core) Standby() (bool, error) {
@@ -63,16 +57,6 @@ func (c *Core) Standby() (bool, error) {
 	standby := c.standby
 	c.stateLock.RUnlock()
 	return standby, nil
-}
-
-// PerfStandby checks if the vault is a performance standby
-// This function cannot be used during request handling
-// because this causes a deadlock with the statelock.
-func (c *Core) PerfStandby() bool {
-	c.stateLock.RLock()
-	perfStandby := c.perfStandby
-	c.stateLock.RUnlock()
-	return perfStandby
 }
 
 func (c *Core) ActiveTime() time.Time {
@@ -84,10 +68,9 @@ func (c *Core) ActiveTime() time.Time {
 
 // StandbyStates is meant as a way to avoid some extra locking on the very
 // common sys/health check.
-func (c *Core) StandbyStates() (standby, perfStandby bool) {
+func (c *Core) StandbyStates() (standby bool) {
 	c.stateLock.RLock()
 	standby = c.standby
-	perfStandby = c.perfStandby
 	c.stateLock.RUnlock()
 	return
 }
@@ -549,14 +532,11 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// detect flapping
 		activeTime := time.Now()
 
-		continueCh := interruptPerfStandby(newLeaderCh, stopCh)
-
 		// Grab the statelock or stop
 		l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
 		go l.grab()
 		if stopped := l.lockOrStop(); stopped {
 			lock.Unlock()
-			close(continueCh)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 			return
 		}
@@ -564,7 +544,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		if c.Sealed() {
 			c.logger.Warn("grabbed HA lock but already sealed, exiting")
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 			return
@@ -585,7 +564,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			c.logger.Warn("vault is sealed")
 			c.heldHALock = nil
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			return
 		}
@@ -614,7 +592,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 
 				c.heldHALock = nil
 				lock.Unlock()
-				close(continueCh)
 				c.stateLock.Unlock()
 				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 
@@ -638,7 +615,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			if err := c.setupCluster(activeCtx); err != nil {
 				c.heldHALock = nil
 				lock.Unlock()
-				close(continueCh)
 				c.stateLock.Unlock()
 				c.logger.Error("cluster setup failed", "error", err)
 				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -650,7 +626,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		if err := c.advertiseLeader(activeCtx, uuid, leaderLostCh); err != nil {
 			c.heldHALock = nil
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			c.logger.Error("leader advertisement setup failed", "error", err)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -665,7 +640,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
 		}
 
-		close(continueCh)
 		c.stateLock.Unlock()
 
 		// Handle a failure to unseal

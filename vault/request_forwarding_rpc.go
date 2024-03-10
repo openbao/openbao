@@ -15,17 +15,14 @@ import (
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/vault/replication"
 )
 
 type forwardedRequestRPCServer struct {
 	UnimplementedRequestForwardingServer
 
-	core                  *Core
-	handler               http.Handler
-	perfStandbySlots      chan struct{}
-	perfStandbyRepCluster *replication.Cluster
-	raftFollowerStates    *raft.FollowerStates
+	core               *Core
+	handler            http.Handler
+	raftFollowerStates *raft.FollowerStates
 }
 
 func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *forwarding.Request) (*forwarding.Response, error) {

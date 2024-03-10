@@ -499,10 +499,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 					Type:        framework.TypeBool,
 					Description: "Specifies if being a standby should still return the active status code.",
 				},
-				"perfstandbyok": {
-					Type:        framework.TypeBool,
-					Description: "Specifies if being a performance standby should still return the active status code.",
-				},
 				"activecode": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the status code for an active node.",
@@ -510,14 +506,6 @@ func (b *SystemBackend) configPaths() []*framework.Path {
 				"standbycode": {
 					Type:        framework.TypeInt,
 					Description: "Specifies the status code for a standby node.",
-				},
-				"drsecondarycode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a DR secondary node.",
-				},
-				"performancestandbycode": {
-					Type:        framework.TypeInt,
-					Description: "Specifies the status code for a performance standby node.",
 				},
 				"sealedcode": {
 					Type:        framework.TypeInt,

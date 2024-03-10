@@ -80,10 +80,7 @@ var (
 	// Set to false by stub_asset if the ui build tag isn't enabled
 	uiBuiltIn = true
 
-	// perfStandbyAlwaysForwardPaths is used to check a requested path against
-	// the always forward list
-	perfStandbyAlwaysForwardPaths = pathmanager.New()
-	alwaysRedirectPaths           = pathmanager.New()
+	alwaysRedirectPaths = pathmanager.New()
 
 	injectDataIntoTopRoutes = []string{
 		"/v1/sys/audit",
@@ -276,7 +273,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		origBody := new(bytes.Buffer)
 		reader := ioutil.NopCloser(io.TeeReader(r.Body, origBody))
 		r.Body = reader
-		req, _, status, err := buildLogicalRequestNoAuth(core.PerfStandby(), w, r)
+		req, _, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
 			respondError(w, status, err)
 			return
@@ -692,17 +689,11 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-func parseJSONRequest(perfStandby bool, r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
 	// Limit the maximum number of bytes to MaxRequestSize to protect
 	// against an indefinite amount of data being read.
 	reader := r.Body
 	var origBody io.ReadWriter
-	if perfStandby {
-		// Since we're checking PerfStandby here we key on origBody being nil
-		// or not later, so we need to always allocate so it's non-nil
-		origBody = new(bytes.Buffer)
-		reader = ioutil.NopCloser(io.TeeReader(reader, origBody))
-	}
 	err := jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
@@ -741,64 +732,10 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// forwardBasedOnHeaders returns true if the request headers specify that
-// we should forward to the active node - either unconditionally or because
-// a specified state isn't present locally.
-func forwardBasedOnHeaders(core *vault.Core, r *http.Request) (bool, error) {
-	rawForward := r.Header.Get(VaultForwardHeaderName)
-	if rawForward != "" {
-		if !core.AllowForwardingViaHeader() {
-			return false, fmt.Errorf("forwarding via header %s disabled in configuration", VaultForwardHeaderName)
-		}
-		if rawForward == "active-node" {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	rawInconsistent := r.Header.Get(VaultInconsistentHeaderName)
-	if rawInconsistent == "" {
-		return false, nil
-	}
-
-	switch rawInconsistent {
-	case VaultInconsistentForward:
-		if !core.AllowForwardingViaHeader() {
-			return false, fmt.Errorf("forwarding via header %s=%s disabled in configuration",
-				VaultInconsistentHeaderName, VaultInconsistentForward)
-		}
-	default:
-		return false, nil
-	}
-
-	return core.MissingRequiredState(r.Header.Values(VaultIndexHeaderName), core.PerfStandby()), nil
-}
-
 // handleRequestForwarding determines whether to forward a request or not,
 // falling back on the older behavior of redirecting the client
 func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note if the client requested forwarding
-		shouldForward, err := forwardBasedOnHeaders(core, r)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, err)
-			return
-		}
-
-		// If we are a performance standby we can maybe handle the request.
-		if core.PerfStandby() && !shouldForward {
-			ns, err := namespace.FromContext(r.Context())
-			if err != nil {
-				respondError(w, http.StatusBadRequest, err)
-				return
-			}
-			path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
-			if !perfStandbyAlwaysForwardPaths.HasPath(path) && !alwaysRedirectPaths.HasPath(path) {
-				handler.ServeHTTP(w, r)
-				return
-			}
-		}
-
 		// Note: in an HA setup, this call will also ensure that connections to
 		// the leader are set up, as that happens once the advertised cluster
 		// values are read during this function

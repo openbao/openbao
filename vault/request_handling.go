@@ -362,9 +362,6 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		return nil, te, logical.ErrPermissionDenied
 	}
 	if te != nil && te.EntityID != "" && entity == nil {
-		if c.perfStandby {
-			return nil, nil, logical.ErrPerfStandbyPleaseForward
-		}
 		c.logger.Warn("permission denied as the entity on the token is invalid")
 		return nil, te, logical.ErrPermissionDenied
 	}
@@ -477,22 +474,6 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 	if !authResults.Allowed {
 		retErr := authResults.Error
 
-		// If we get a control group error and we are a performance standby,
-		// restore the client token information to the request so that we can
-		// forward this request properly to the active node.
-		if retErr.ErrorOrNil() != nil && checkErrControlGroupTokenNeedsCreated(retErr) &&
-			c.perfStandby && len(req.ClientToken) != 0 {
-			switch req.ClientTokenSource {
-			case logical.ClientTokenFromVaultHeader:
-				req.Headers[consts.AuthHeaderName] = []string{req.ClientToken}
-			case logical.ClientTokenFromAuthzHeader:
-				req.Headers["Authorization"] = append(req.Headers["Authorization"], fmt.Sprintf("Bearer %s", req.ClientToken))
-			}
-			// We also return the appropriate error so that the caller can forward the
-			// request to the active node
-			return auth, te, logical.ErrPerfStandbyPleaseForward
-		}
-
 		if authResults.Error.ErrorOrNil() == nil || authResults.DeniedError {
 			retErr = multierror.Append(retErr, logical.ErrPermissionDenied)
 		}
@@ -532,7 +513,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	if c.Sealed() {
 		return nil, consts.ErrSealed
 	}
-	if c.standby && !c.perfStandby {
+	if c.standby {
 		return nil, consts.ErrStandby
 	}
 
@@ -601,19 +582,9 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		defer waitGroup.Done()
 	}
 
-	if c.MissingRequiredState(req.RequiredState(), c.perfStandby) {
-		return nil, logical.ErrMissingRequiredState
-	}
-
 	err = c.PopulateTokenEntry(ctx, req)
 	if err != nil {
 		return nil, err
-	}
-
-	// Always forward requests that are using a limited use count token.
-	if c.perfStandby && req.ClientTokenRemainingUses > 0 {
-		// Prevent forwarding on local-only requests.
-		return nil, logical.ErrPerfStandbyPleaseForward
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -685,12 +656,12 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			// to be returning it for these paths instead of the short token stored in vault.
 			requestBodyToken = token.(string)
 			if IsSSCToken(token.(string)) {
-				token, err = c.CheckSSCToken(ctx, token.(string), c.isLoginRequest(ctx, req), c.perfStandby)
+				token, err = c.CheckSSCToken(ctx, token.(string), c.isLoginRequest(ctx, req))
 				// If we receive an error from CheckSSCToken, we can assume the token is bad somehow, and the client
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
 				if err != nil {
-					if errors.Is(err, logical.ErrPerfStandbyPleaseForward) || errors.Is(err, logical.ErrMissingRequiredState) {
+					if errors.Is(err, logical.ErrMissingRequiredState) {
 						return nil, err
 					}
 					return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
@@ -740,7 +711,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	// Instead, we return an error since we cannot be sure if we have an
 	// active token store to validate the provided token.
 	case strings.HasPrefix(req.Path, "sys/metrics"):
-		if c.standby && !c.perfStandby {
+		if c.standby {
 			return nil, ErrCannotForwardLocalOnly
 		}
 	}
@@ -890,18 +861,10 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	if walState.LocalIndex != 0 || walState.ReplicatedIndex != 0 {
 		walState.ClusterID = c.ClusterID()
 		if walState.LocalIndex == 0 {
-			if c.perfStandby {
-				walState.LocalIndex = LastRemoteWAL(c)
-			} else {
-				walState.LocalIndex = LastWAL(c)
-			}
+			walState.LocalIndex = LastWAL(c)
 		}
 		if walState.ReplicatedIndex == 0 {
-			if c.perfStandby {
-				walState.ReplicatedIndex = LastRemoteUpstreamWAL(c)
-			} else {
-				walState.ReplicatedIndex = LastRemoteWAL(c)
-			}
+			walState.ReplicatedIndex = LastRemoteWAL(c)
 		}
 
 		req.SetResponseState(walState)
@@ -1319,30 +1282,28 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			switch resp.Auth.TokenType {
 			case logical.TokenTypeBatch:
 			case logical.TokenTypeService:
-				if !c.perfStandby {
-					registeredTokenEntry := &logical.TokenEntry{
-						TTL:         auth.TTL,
-						Policies:    auth.TokenPolicies,
-						Path:        resp.Auth.CreationPath,
-						NamespaceID: ns.ID,
-					}
-
-					// Only logins apply to role based quotas, so we can omit the role here, as we are not logging in.
-					if err := c.expiration.RegisterAuth(ctx, registeredTokenEntry, resp.Auth, ""); err != nil {
-						// Best-effort clean up on error, so we log the cleanup error as
-						// a warning but still return as internal error.
-						if err := c.tokenStore.revokeOrphan(ctx, resp.Auth.ClientToken); err != nil {
-							c.logger.Warn("failed to clean up token lease during auth/token/ request", "request_path", req.Path, "error", err)
-						}
-						c.logger.Error("failed to register token lease during auth/token/ request", "request_path", req.Path, "error", err)
-						retErr = multierror.Append(retErr, ErrInternalError)
-						return nil, auth, retErr
-					}
-					if registeredTokenEntry.ExternalID != "" {
-						resp.Auth.ClientToken = registeredTokenEntry.ExternalID
-					}
-					leaseGenerated = true
+				registeredTokenEntry := &logical.TokenEntry{
+					TTL:         auth.TTL,
+					Policies:    auth.TokenPolicies,
+					Path:        resp.Auth.CreationPath,
+					NamespaceID: ns.ID,
 				}
+
+				// Only logins apply to role based quotas, so we can omit the role here, as we are not logging in.
+				if err := c.expiration.RegisterAuth(ctx, registeredTokenEntry, resp.Auth, ""); err != nil {
+					// Best-effort clean up on error, so we log the cleanup error as
+					// a warning but still return as internal error.
+					if err := c.tokenStore.revokeOrphan(ctx, resp.Auth.ClientToken); err != nil {
+						c.logger.Warn("failed to clean up token lease during auth/token/ request", "request_path", req.Path, "error", err)
+					}
+					c.logger.Error("failed to register token lease during auth/token/ request", "request_path", req.Path, "error", err)
+					retErr = multierror.Append(retErr, ErrInternalError)
+					return nil, auth, retErr
+				}
+				if registeredTokenEntry.ExternalID != "" {
+					resp.Auth.ClientToken = registeredTokenEntry.ExternalID
+				}
+				leaseGenerated = true
 			}
 		}
 
@@ -2375,15 +2336,12 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 		// as perf standbys aren't guaranteed to have the WAL state
 		// for new tokens.
 		unauth := c.isLoginRequest(ctx, req)
-		if c.ForwardToActive() == ForwardSSCTokenToActive && c.perfStandby {
-			unauth = false
-		}
-		decodedToken, err = c.CheckSSCToken(ctx, token, unauth, c.perfStandby)
+		decodedToken, err = c.CheckSSCToken(ctx, token, unauth)
 		// If we receive an error from CheckSSCToken, we can assume the token is bad somehow, and the client
 		// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 		// specifies that we should forward the request or retry the request.
 		if err != nil {
-			if errors.Is(err, logical.ErrPerfStandbyPleaseForward) || errors.Is(err, logical.ErrMissingRequiredState) {
+			if errors.Is(err, logical.ErrMissingRequiredState) {
 				return err
 			}
 			return logical.ErrPermissionDenied
@@ -2396,7 +2354,7 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 	if err != nil {
 		// If we're missing required state, return that error
 		// as-is to the client
-		if errors.Is(err, logical.ErrPerfStandbyPleaseForward) || errors.Is(err, logical.ErrMissingRequiredState) {
+		if errors.Is(err, logical.ErrMissingRequiredState) {
 			return err
 		}
 		// If we have two dots but the second char is a dot it's a vault
@@ -2413,7 +2371,7 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 	return nil
 }
 
-func (c *Core) CheckSSCToken(ctx context.Context, token string, unauth bool, isPerfStandby bool) (string, error) {
+func (c *Core) CheckSSCToken(ctx context.Context, token string, unauth bool) (string, error) {
 	if unauth && token != "" {
 		// This token shouldn't really be here, but alas it was sent along with the request
 		// Since we're already knee deep in the token checking code pre-existing token checking
@@ -2433,7 +2391,7 @@ func (c *Core) CheckSSCToken(ctx context.Context, token string, unauth bool, isP
 		}
 		return tok, nil
 	}
-	return c.checkSSCTokenInternal(ctx, token, isPerfStandby)
+	return c.checkSSCTokenInternal(ctx, token)
 }
 
 // DecodeSSCToken returns the random part of an SSCToken without
@@ -2482,7 +2440,7 @@ func (c *Core) DecodeSSCTokenInternal(token string) (*tokens.Token, error) {
 	return plainToken, nil
 }
 
-func (c *Core) checkSSCTokenInternal(ctx context.Context, token string, isPerfStandby bool) (string, error) {
+func (c *Core) checkSSCTokenInternal(ctx context.Context, token string) (string, error) {
 	signedToken := &tokens.SignedToken{}
 
 	// Skip batch and old style service tokens. These can have the prefix "b.",
@@ -2521,26 +2479,10 @@ func (c *Core) checkSSCTokenInternal(ctx context.Context, token string, isPerfSt
 		return "", err
 	}
 
-	// Disregard SSCT on perf-standbys for non-raft storage
-	if c.perfStandby && c.getRaftBackend() == nil {
-		return plainToken.Random, nil
-	}
-
 	ep := int(plainToken.IndexEpoch)
 	if ep < c.tokenStore.GetSSCTokensGenerationCounter() {
 		return plainToken.Random, nil
 	}
 
-	requiredWalState := &logical.WALState{ClusterID: c.ClusterID(), LocalIndex: plainToken.LocalIndex, ReplicatedIndex: 0}
-	if c.HasWALState(requiredWalState, isPerfStandby) {
-		return plainToken.Random, nil
-	}
-	// Make sure to forward the request instead of checking the token if the flag
-	// is set and we're on a perf standby
-	if c.ForwardToActive() == ForwardSSCTokenToActive && isPerfStandby {
-		return "", logical.ErrPerfStandbyPleaseForward
-	}
-	// In this case, the server side consistent token cannot be used on this node. We return the appropriate
-	// status code.
-	return "", logical.ErrMissingRequiredState
+	return plainToken.Random, nil
 }

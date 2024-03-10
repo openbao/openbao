@@ -811,18 +811,17 @@ func (b *LoginMFABackend) handleMFALoginValidate(ctx context.Context, req *logic
 }
 
 func (c *Core) teardownLoginMFA() error {
-	if !c.IsDRSecondary() {
-		// Clear any cached auth response
-		c.mfaResponseAuthQueueLock.Lock()
-		c.mfaResponseAuthQueue = nil
-		c.mfaResponseAuthQueueLock.Unlock()
+	// Clear any cached auth response
+	c.mfaResponseAuthQueueLock.Lock()
+	c.mfaResponseAuthQueue = nil
+	c.mfaResponseAuthQueueLock.Unlock()
 
-		c.loginMFABackend.usedCodes = nil
+	c.loginMFABackend.usedCodes = nil
 
-		if err := c.loginMFABackend.ResetLoginMFAMemDB(); err != nil {
-			return err
-		}
+	if err := c.loginMFABackend.ResetLoginMFAMemDB(); err != nil {
+		return err
 	}
+
 	return nil
 }
 

@@ -17,7 +17,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/logical"
 )
 
@@ -254,22 +253,12 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView *BarrierView, syst
 func (c *Core) setupPolicyStore(ctx context.Context) error {
 	// Create the policy store
 	var err error
-	sysView := &dynamicSystemView{core: c, perfStandby: c.perfStandby}
+	sysView := &dynamicSystemView{core: c}
 	psLogger := c.baseLogger.Named("policy")
 	c.AddLogger(psLogger)
 	c.policyStore, err = NewPolicyStore(ctx, c, c.systemBarrierView, sysView, psLogger)
 	if err != nil {
 		return err
-	}
-
-	if c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary) {
-		// Policies will sync from the primary
-		return nil
-	}
-
-	if c.perfStandby {
-		// Policies will sync from the active
-		return nil
 	}
 
 	// Ensure that the default policy exists, and if not, create it

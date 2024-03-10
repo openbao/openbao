@@ -280,7 +280,7 @@ func (cl *Listener) Run(ctx context.Context) error {
 	}
 
 	// The server supports all of the possible protos
-	tlsConfig.NextProtos = []string{"h2", consts.RequestForwardingALPN, consts.PerfStandbyALPN, consts.PerformanceReplicationALPN, consts.DRReplicationALPN}
+	tlsConfig.NextProtos = []string{"h2", consts.RequestForwardingALPN}
 
 	for _, ln := range cl.networkLayer.Listeners() {
 		// closeCh is used to shutdown the spawned goroutines once this

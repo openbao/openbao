@@ -298,7 +298,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 		entry.namespace = ns
 	}
 
-	if !needPersist || c.perfStandby {
+	if !needPersist {
 		return nil
 	}
 

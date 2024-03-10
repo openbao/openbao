@@ -22,7 +22,6 @@ import (
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/vault/cluster"
-	"github.com/openbao/openbao/vault/replication"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -43,7 +42,7 @@ type requestForwardingClusterClient struct {
 
 // NewRequestForwardingHandler creates a cluster handler for use with request
 // forwarding.
-func NewRequestForwardingHandler(c *Core, fws *http2.Server, perfStandbySlots chan struct{}, perfStandbyRepCluster *replication.Cluster) (*requestForwardingHandler, error) {
+func NewRequestForwardingHandler(c *Core, fws *http2.Server) (*requestForwardingHandler, error) {
 	// Resolve locally to avoid races
 	ha := c.ha != nil
 
@@ -57,11 +56,9 @@ func NewRequestForwardingHandler(c *Core, fws *http2.Server, perfStandbySlots ch
 
 	if ha && c.clusterHandler != nil {
 		RegisterRequestForwardingServer(fwRPCServer, &forwardedRequestRPCServer{
-			core:                  c,
-			handler:               c.clusterHandler,
-			perfStandbySlots:      perfStandbySlots,
-			perfStandbyRepCluster: perfStandbyRepCluster,
-			raftFollowerStates:    c.raftFollowerStates,
+			core:               c,
+			handler:            c.clusterHandler,
+			raftFollowerStates: c.raftFollowerStates,
 		})
 	}
 
@@ -209,12 +206,7 @@ func (c *Core) startForwarding(ctx context.Context) error {
 		return nil
 	}
 
-	perfStandbyRepCluster, perfStandbySlots, err := c.perfStandbyClusterHandler()
-	if err != nil {
-		return err
-	}
-
-	handler, err := NewRequestForwardingHandler(c, clusterListener.Server(), perfStandbySlots, perfStandbyRepCluster)
+	handler, err := NewRequestForwardingHandler(c, clusterListener.Server())
 	if err != nil {
 		return err
 	}
@@ -228,9 +220,7 @@ func (c *Core) stopForwarding() {
 	clusterListener := c.getClusterListener()
 	if clusterListener != nil {
 		clusterListener.StopHandler(consts.RequestForwardingALPN)
-		clusterListener.StopHandler(consts.PerfStandbyALPN)
 	}
-	c.removeAllPerfStandbySecondaries()
 }
 
 // refreshRequestForwardingConnection ensures that the client/transport are
@@ -332,9 +322,6 @@ func (c *Core) clearForwardingClients() {
 // ForwardRequest forwards a given request to the active node and returns the
 // response.
 func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, error) {
-	// checking if the node is perfStandby here to avoid a deadlock between
-	// Core.stateLock and Core.requestForwardingConnectionLock
-	isPerfStandby := c.PerfStandby()
 	c.requestForwardingConnectionLock.RLock()
 	defer c.requestForwardingConnectionLock.RUnlock()
 
@@ -373,13 +360,6 @@ func (c *Core) ForwardRequest(req *http.Request) (int, http.Header, []byte, erro
 		for k, v := range resp.HeaderEntries {
 			header[k] = v.Values
 		}
-	}
-
-	// If we are a perf standby and the request was forwarded to the active node
-	// we should attempt to wait for the WAL to ship to offer best effort read after
-	// write guarantees
-	if isPerfStandby && resp.LastRemoteWal > 0 {
-		WaitUntilWALShipped(req.Context(), c, resp.LastRemoteWal)
 	}
 
 	return int(resp.StatusCode), header, resp.Body, nil

@@ -210,10 +210,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -333,25 +330,10 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 	switch {
 	case !updateStorage:
 		// Don't attempt to clear data, replication will handle this
-	case c.IsDRSecondary():
-		// If we are a dr secondary we want to clear the view, but the provided
-		// view is marked as read only. We use the barrier here to get around
-		// it.
-
-		if err := logical.ClearViewWithLogging(ctx, NewBarrierView(c.barrier, viewPath), c.logger.Named("auth.deletion").With("namespace", ns.ID, "path", path)); err != nil {
-			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case entry.Local, !c.IsPerfSecondary():
+	default:
 		// Have writable storage, remove the whole thing
 		if err := logical.ClearViewWithLogging(ctx, view, c.logger.Named("auth.deletion").With("namespace", ns.ID, "path", path)); err != nil {
 			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case !entry.Local && c.IsPerfSecondary():
-		if err := clearIgnoredPaths(ctx, c, backend, viewPath); err != nil {
 			return err
 		}
 	}
@@ -368,12 +350,10 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 
 	removePathCheckers(c, entry, viewPath)
 
-	if !c.IsPerfSecondary() {
-		if c.quotaManager != nil {
-			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
-				c.logger.Error("failed to update quotas after disabling auth", "path", path, "error", err)
-				return err
-			}
+	if c.quotaManager != nil {
+		if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
+			c.logger.Error("failed to update quotas after disabling auth", "path", path, "error", err)
+			return err
 		}
 	}
 
@@ -403,11 +383,7 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 	if updateStorage {
 		// Update the auth table
 		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -490,11 +466,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		srcMatch.Path = srcPath
 		srcMatch.Tainted = true
 		c.authLock.Unlock()
-		if err == logical.ErrReadOnly && c.perfStandby {
-			return err
-		}
-
-		return fmt.Errorf("failed to update auth table with error %+v", err)
+		return fmt.Errorf("failed to update auth table with error %w", err)
 	}
 
 	// Remount the backend, setting the existing route entry
@@ -561,10 +533,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 	if updateStorage {
 		// Update the auth table
 		if err := c.persistAuth(ctx, c.auth, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -892,9 +861,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 
 			// this is loaded *after* the normal mounts, including cubbyhole
 			c.router.tokenStoreSaltFunc = c.tokenStore.Salt
-			if !c.IsDRSecondary() {
-				c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, mountPathCubbyhole).(*CubbyholeBackend)
-			}
+			c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, mountPathCubbyhole).(*CubbyholeBackend)
 		}
 
 		// Populate cache

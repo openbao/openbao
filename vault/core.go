@@ -316,7 +316,6 @@ type Core struct {
 	sealed    *uint32
 
 	standby              bool
-	perfStandby          bool
 	standbyDoneCh        chan struct{}
 	standbyStopCh        *atomic.Value
 	manualStepDownCh     chan struct{}
@@ -569,10 +568,6 @@ type Core struct {
 	// unrecoverable failure.
 	replicationFailure *uint32
 
-	// disablePerfStanby is used to tell a standby not to attempt to become a
-	// perf standby
-	disablePerfStandby bool
-
 	licensingStopCh chan struct{}
 
 	// Stores loggers so we can reset the level
@@ -695,8 +690,6 @@ type Core struct {
 // c.stateLock needs to be held in read mode before calling this function.
 func (c *Core) HAState() consts.HAState {
 	switch {
-	case c.perfStandby:
-		return consts.PerfStandby
 	case c.standby:
 		return consts.Standby
 	default:
@@ -1000,7 +993,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		activeNodeReplicationState:     new(uint32),
 		keepHALockOnStepDown:           new(uint32),
 		replicationFailure:             new(uint32),
-		disablePerfStandby:             true,
 		activeContextCancelFunc:        new(atomic.Value),
 		allLoggers:                     conf.AllLoggers,
 		builtinRegistry:                conf.BuiltinRegistry,
@@ -2339,13 +2331,11 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	if !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary) {
-		// Only perf primarys should write feature flags, but we do it by
-		// excluding other states so that we don't have to change it when
-		// a non-replicated cluster becomes a primary.
-		if err := c.persistFeatureFlags(ctx); err != nil {
-			return err
-		}
+	// Only perf primarys should write feature flags, but we do it by
+	// excluding other states so that we don't have to change it when
+	// a non-replicated cluster becomes a primary.
+	if err := c.persistFeatureFlags(ctx); err != nil {
+		return err
 	}
 
 	if c.autoRotateCancel == nil {
@@ -2354,10 +2344,8 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		go c.autoRotateBarrierLoop(autoRotateCtx)
 	}
 
-	if !c.IsDRSecondary() {
-		if err := c.ensureWrappingKey(ctx); err != nil {
-			return err
-		}
+	if err := c.ensureWrappingKey(ctx); err != nil {
+		return err
 	}
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
@@ -2383,60 +2371,55 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupCredentials(ctx); err != nil {
 		return err
 	}
-	if err := c.setupQuotas(ctx, false); err != nil {
+	if err := c.setupQuotas(ctx); err != nil {
 		return err
 	}
-	if err := c.setupHeaderHMACKey(ctx, false); err != nil {
+	if err := c.setupHeaderHMACKey(ctx); err != nil {
 		return err
 	}
-	if !c.IsDRSecondary() {
-		c.updateLockedUserEntries()
 
-		if err := c.startRollback(); err != nil {
-			return err
-		}
-		if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
-			return err
-		}
-		if err := c.loadAudits(ctx); err != nil {
-			return err
-		}
-		if err := c.setupAudits(ctx); err != nil {
-			return err
-		}
-		if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
-			return err
-		}
-		if err := loadPolicyMFAConfigs(ctx, c); err != nil {
-			return err
-		}
-		c.setupCachedMFAResponseAuth()
-		if err := c.loadLoginMFAConfigs(ctx); err != nil {
-			return err
-		}
+	c.updateLockedUserEntries()
 
-		if err := c.setupAuditedHeadersConfig(ctx); err != nil {
-			return err
-		}
-
-		if err := c.setupCensusAgent(); err != nil {
-			c.logger.Error("skipping reporting for nil agent", "error", err)
-		}
-
-		// not waiting on wg to avoid changing existing behavior
-		var wg sync.WaitGroup
-		if err := c.setupActivityLog(ctx, &wg); err != nil {
-			return err
-		}
-	} else {
-		c.auditBroker = NewAuditBroker(c.logger)
+	if err := c.startRollback(); err != nil {
+		return err
+	}
+	if err := c.setupExpiration(expireLeaseStrategyFairsharing); err != nil {
+		return err
+	}
+	if err := c.loadAudits(ctx); err != nil {
+		return err
+	}
+	if err := c.setupAudits(ctx); err != nil {
+		return err
+	}
+	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
+		return err
+	}
+	if err := loadPolicyMFAConfigs(ctx, c); err != nil {
+		return err
+	}
+	c.setupCachedMFAResponseAuth()
+	if err := c.loadLoginMFAConfigs(ctx); err != nil {
+		return err
 	}
 
-	if !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary) {
-		// Cannot do this above, as we need other resources like mounts to be setup
-		if err := c.setupPluginReload(); err != nil {
-			return err
-		}
+	if err := c.setupAuditedHeadersConfig(ctx); err != nil {
+		return err
+	}
+
+	if err := c.setupCensusAgent(); err != nil {
+		c.logger.Error("skipping reporting for nil agent", "error", err)
+	}
+
+	// not waiting on wg to avoid changing existing behavior
+	var wg sync.WaitGroup
+	if err := c.setupActivityLog(ctx, &wg); err != nil {
+		return err
+	}
+
+	// Cannot do this above, as we need other resources like mounts to be setup
+	if err := c.setupPluginReload(); err != nil {
+		return err
 	}
 
 	if c.getClusterListener() != nil && (c.ha != nil || shouldStartClusterListener(c)) {
@@ -3048,15 +3031,6 @@ func (c *Core) RouterAccess() *RouterAccess {
 	return NewRouterAccess(c)
 }
 
-// IsDRSecondary returns if the current cluster state is a DR secondary.
-func (c *Core) IsDRSecondary() bool {
-	return c.ReplicationState().HasState(consts.ReplicationDRSecondary)
-}
-
-func (c *Core) IsPerfSecondary() bool {
-	return c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary)
-}
-
 func (c *Core) AddLogger(logger log.Logger) {
 	c.allLoggersLock.Lock()
 	defer c.allLoggersLock.Unlock()
@@ -3287,12 +3261,12 @@ func (c *Core) MatchingMount(ctx context.Context, reqPath string) string {
 	return c.router.MatchingMount(ctx, reqPath)
 }
 
-func (c *Core) setupQuotas(ctx context.Context, isPerfStandby bool) error {
+func (c *Core) setupQuotas(ctx context.Context) error {
 	if c.quotaManager == nil {
 		return nil
 	}
 
-	return c.quotaManager.Setup(ctx, c.systemBarrierView, isPerfStandby, c.IsDRSecondary())
+	return c.quotaManager.Setup(ctx, c.systemBarrierView)
 }
 
 // ApplyRateLimitQuota checks the request against all the applicable quota rules.
@@ -3388,7 +3362,7 @@ func (c *Core) checkBarrierAutoRotate(ctx context.Context) {
 }
 
 func (c *Core) isPrimary() bool {
-	return !c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary)
+	return true
 }
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {

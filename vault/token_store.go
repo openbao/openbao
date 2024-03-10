@@ -680,7 +680,7 @@ func (c *Core) LookupToken(ctx context.Context, token string) (*logical.TokenEnt
 		return nil, consts.ErrSealed
 	}
 
-	if c.standby && !c.perfStandby {
+	if c.standby {
 		return nil, consts.ErrStandby
 	}
 
@@ -1691,12 +1691,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	// If we are still restoring the expiration manager, we want to ensure the
 	// token is not expired
 	if ts.expiration == nil {
-		switch ts.core.IsDRSecondary() {
-		case true: // Bail if on DR secondary as expiration manager is nil
-			return nil, nil
-		default:
-			return nil, errors.New("expiration manager is nil on tokenstore")
-		}
+		return nil, errors.New("expiration manager is nil on tokenstore")
 	}
 
 	le, err := ts.expiration.FetchLeaseTimesByToken(ctx, entry)
@@ -1709,10 +1704,6 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	switch {
 	// It's any kind of expiring token with no lease, immediately delete it
 	case le == nil:
-		if ts.core.perfStandby {
-			return nil, fmt.Errorf("no lease entry found for token that ought to have one, possible eventual consistency issue")
-		}
-
 		tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
 		if err != nil {
 			return nil, err
@@ -3161,22 +3152,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		resp.AddWarning("Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups.")
 	}
 
-	// check if we are perfStandby, and if so forward the service token
-	// creation to the active node
-	var roleName string
-	if role != nil {
-		roleName = role.Name
-	}
-	if te.Type == logical.TokenTypeService && ts.core.perfStandby {
-		forwardedTokenEntry, err := forwardCreateTokenRegisterAuth(ctx, ts.core, &te, roleName, renewable, periodToUse, explicitMaxTTLToUse)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), ErrInternalError
-		}
-		te = *forwardedTokenEntry
-	} else {
-		if err := ts.create(ctx, &te); err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
+	if err := ts.create(ctx, &te); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	// Count the successful token creation.
@@ -3212,12 +3189,6 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		CreationPath:   te.Path,
 		TokenType:      te.Type,
 		Orphan:         te.Parent == "",
-	}
-
-	// We have registered the auth at this point if the token is of service
-	// type and core is perfStandby.
-	if te.Type == logical.TokenTypeService && ts.core.perfStandby && te.ExternalID != "" {
-		resp.Auth.ClientToken = te.ExternalID
 	}
 
 	for _, p := range te.Policies {

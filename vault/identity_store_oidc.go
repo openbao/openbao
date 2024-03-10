@@ -29,7 +29,6 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/identitytpl"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/patrickmn/go-cache"
@@ -1954,12 +1953,6 @@ func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) 
 // oidcPeriodFunc is invoked by the backend's periodFunc and runs regular key
 // rotations and expiration actions.
 func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
-	// Key rotations write to storage, so only run this on the primary cluster.
-	// The periodic func does not run on perf standbys or DR secondaries.
-	if i.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary) {
-		return
-	}
-
 	var nextRun time.Time
 	now := time.Now()
 

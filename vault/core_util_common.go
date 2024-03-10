@@ -41,10 +41,7 @@ func (c *Core) headerHMACKey() []byte {
 	return key.([]byte)
 }
 
-func (c *Core) setupHeaderHMACKey(ctx context.Context, isPerfStandby bool) error {
-	if c.IsPerfSecondary() || c.IsDRSecondary() || isPerfStandby {
-		return c.loadHeaderHMACKey(ctx)
-	}
+func (c *Core) setupHeaderHMACKey(ctx context.Context) error {
 	ent, err := c.barrier.Get(ctx, indexHeaderHMACKeyPath)
 	if err != nil {
 		return err

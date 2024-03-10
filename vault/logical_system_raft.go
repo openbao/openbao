@@ -88,7 +88,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.verifyDROperationTokenOnSecondary(b.handleRaftRemovePeerUpdate(), false),
+					Callback: b.handleRaftRemovePeerUpdate(),
 					Summary:  "Remove a peer from the raft cluster.",
 				},
 			},
@@ -115,7 +115,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 				// operation to allow consuming the DR operation token for
 				// authenticating the request.
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.verifyDROperationToken(b.handleRaftConfigurationGet(), false),
+					Callback: b.handleRaftConfigurationGet(),
 					Summary:  "Returns the configuration of the raft cluster in a DR secondary cluster.",
 				},
 			},
@@ -155,7 +155,7 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 			Pattern: "storage/raft/autopilot/state",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback:                  b.verifyDROperationTokenOnSecondary(b.handleStorageRaftAutopilotState(), false),
+					Callback:                  b.handleStorageRaftAutopilotState(),
 					Summary:                   "Returns the state of the raft cluster under integrated storage as seen by autopilot.",
 					ForwardPerformanceStandby: true,
 				},
@@ -203,10 +203,10 @@ func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.verifyDROperationTokenOnSecondary(b.handleStorageRaftAutopilotConfigRead(), false),
+					Callback: b.handleStorageRaftAutopilotConfigRead(),
 				},
 				logical.UpdateOperation: &framework.PathOperation{
-					Callback: b.verifyDROperationTokenOnSecondary(b.handleStorageRaftAutopilotConfigUpdate(), false),
+					Callback: b.handleStorageRaftAutopilotConfigUpdate(),
 				},
 			},
 

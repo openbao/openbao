@@ -5526,13 +5526,6 @@ func TestSystemBackend_LoggersByName(t *testing.T) {
 			false,
 		},
 		{
-			"activity",
-			"warning",
-			"warn",
-			false,
-			false,
-		},
-		{
 			"identity",
 			"err",
 			"error",

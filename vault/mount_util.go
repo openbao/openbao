@@ -67,7 +67,8 @@ func (c *Core) mountEntrySysView(entry *MountEntry) extendedSystemView {
 	if entry.Type != "pki" {
 		return esi
 	}
-	return c.NewAcmeBillingSystemView(esi)
+
+	return esi
 }
 
 func (c *Core) entBuiltinPluginMetrics(ctx context.Context, entry *MountEntry, val float32) error {

@@ -258,7 +258,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 		conf.NumRollbackWorkers = opts.NumRollbackWorkers
 	}
 
-	conf.ActivityLogConfig = opts.ActivityLogConfig
 	testApplyEntBaseConfig(conf, opts)
 
 	c, err := NewCore(conf)
@@ -1595,7 +1594,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.DisableCache = base.DisableCache
 		coreConfig.DevToken = base.DevToken
 		coreConfig.RecoveryMode = base.RecoveryMode
-		coreConfig.ActivityLogConfig = base.ActivityLogConfig
 		coreConfig.EnableResponseHeaderHostname = base.EnableResponseHeaderHostname
 		coreConfig.EnableResponseHeaderRaftNodeID = base.EnableResponseHeaderRaftNodeID
 		coreConfig.RollbackPeriod = base.RollbackPeriod

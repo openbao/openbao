@@ -233,12 +233,6 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 			c.entityGaugeCollectorByMount,
 			"",
 		},
-		{
-			[]string{"identity", "entity", "active", "partial_month"},
-			[]metrics.Label{{"gauge", "identity_active_month"}},
-			c.activeEntityGaugeCollector,
-			"",
-		},
 	}
 
 	// Disable collection if configured, or if we're a performance standby

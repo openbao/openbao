@@ -197,7 +197,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.inFlightRequestPath())
 	b.Backend.Paths = append(b.Backend.Paths, b.hostInfoPath())
 	b.Backend.Paths = append(b.Backend.Paths, b.quotasPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rootActivityPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.loginMFAPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.experimentPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.introspectionPaths()...)
@@ -5897,22 +5896,6 @@ This path responds to the following HTTP methods.
 		`Information about the host instance that this OpenBao server is running on.
 		The information that gets collected includes host hardware information, and CPU,
 		disk, and memory utilization`,
-	},
-	"activity-query": {
-		"Query the historical count of clients.",
-		"Query the historical count of clients.",
-	},
-	"activity-export": {
-		"Export the historical activity of clients.",
-		"Export the historical activity of clients.",
-	},
-	"activity-monthly": {
-		"Count of active clients so far this month.",
-		"Count of active clients so far this month.",
-	},
-	"activity-config": {
-		"Control the collection and reporting of client counts.",
-		"Control the collection and reporting of client counts.",
 	},
 	"count-leases": {
 		"Count of leases associated with this OpenBao cluster",

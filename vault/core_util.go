@@ -15,11 +15,6 @@ import (
 	"github.com/openbao/openbao/vault/replication"
 )
 
-const (
-	activityLogEnabledDefault      = false
-	activityLogEnabledDefaultValue = "default-disabled"
-)
-
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
 	_, txnOK := phys.(physical.Transactional)

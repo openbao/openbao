@@ -91,8 +91,6 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			responseWriter = w
 		case path == "sys/storage/raft/snapshot":
 			responseWriter = w
-		case path == "sys/internal/counters/activity/export":
-			responseWriter = w
 		case path == "sys/monitor":
 			passHTTPReq = true
 			responseWriter = w

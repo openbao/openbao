@@ -404,11 +404,6 @@ type Core struct {
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
 
-	// activityLog is used to track active client count
-	activityLog *ActivityLog
-	// activityLogLock protects the activityLog and activityLogConfig
-	activityLogLock sync.RWMutex
-
 	// metricsCh is used to stop the metrics streaming
 	metricsCh chan struct{}
 
@@ -614,10 +609,6 @@ type Core struct {
 
 	clusterHeartbeatInterval time.Duration
 
-	// activityLogConfig contains override values for the activity log
-	// it is protected by activityLogLock
-	activityLogConfig ActivityLogCoreConfig
-
 	// activeTime is set on active nodes indicating the time at which this node
 	// became active.
 	activeTime time.Time
@@ -803,9 +794,6 @@ type CoreConfig struct {
 	ClusterNetworkLayer cluster.NetworkLayer
 
 	ClusterHeartbeatInterval time.Duration
-
-	// Activity log controls
-	ActivityLogConfig ActivityLogCoreConfig
 
 	// number of workers to use for lease revocation in the expiration manager
 	NumExpirationWorkers int
@@ -997,7 +985,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		raftInfo:                       new(atomic.Value),
 		raftJoinDoneCh:                 make(chan struct{}),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
-		activityLogConfig:              conf.ActivityLogConfig,
 		keyRotateGracePeriod:           new(int64),
 		numExpirationWorkers:           conf.NumExpirationWorkers,
 		raftFollowerStates:             raft.NewFollowerStates(),
@@ -2397,12 +2384,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	// not waiting on wg to avoid changing existing behavior
-	var wg sync.WaitGroup
-	if err := c.setupActivityLog(ctx, &wg); err != nil {
-		return err
-	}
-
 	// Cannot do this above, as we need other resources like mounts to be setup
 	if err := c.setupPluginReload(); err != nil {
 		return err
@@ -2582,8 +2563,6 @@ func (c *Core) preSeal() error {
 	if err := c.stopExpiration(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping expiration: %w", err))
 	}
-	c.stopActivityLog()
-
 	if err := c.teardownCredentials(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down credentials: %w", err))
 	}

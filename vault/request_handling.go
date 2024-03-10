@@ -439,7 +439,6 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 	}
 
 	var clientID string
-	var isTWE bool
 	if te != nil {
 		auth.IdentityPolicies = identityPolicies[te.NamespaceID]
 		auth.TokenPolicies = te.Policies
@@ -456,7 +455,7 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		if te.CreationTime > 0 {
 			auth.IssueTime = time.Unix(te.CreationTime, 0)
 		}
-		clientID, isTWE = te.CreateClientID()
+		clientID, _ = te.CreateClientID()
 		req.ClientID = clientID
 	}
 
@@ -487,16 +486,6 @@ func (c *Core) CheckToken(ctx context.Context, req *logical.Request, unauth bool
 		auth.PolicyResults.GrantingPolicies = append(auth.PolicyResults.GrantingPolicies, authResults.SentinelResults.GrantingPolicies...)
 	}
 
-	c.activityLogLock.RLock()
-	activityLog := c.activityLog
-	c.activityLogLock.RUnlock()
-	// If it is an authenticated ( i.e. with vault token ) request, increment client count
-	if !unauth && activityLog != nil {
-		err := activityLog.HandleTokenUsage(ctx, te, clientID, isTWE)
-		if err != nil {
-			return auth, te, err
-		}
-	}
 	return auth, te, nil
 }
 

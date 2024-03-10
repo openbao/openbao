@@ -75,13 +75,6 @@ const sidebars: SidebarsConfig = {
                 "concepts/pgp-gpg-keybase",
                 "concepts/recovery-mode",
                 "concepts/resource-quotas",
-                {
-                    "Client Clount": [
-                        "concepts/client-count/index",
-                        "concepts/client-count/counting",
-                        "concepts/client-count/faq",
-                    ],
-                },
                 "concepts/transform",
                 "concepts/mount-migration",
                 "concepts/duration-format",
@@ -182,7 +175,6 @@ const sidebars: SidebarsConfig = {
                         "commands/operator/seal",
                         "commands/operator/step-down",
                         "commands/operator/unseal",
-                        "commands/operator/usage",
                     ],
                 },
                 "commands/patch",
@@ -491,7 +483,6 @@ const sidebars: SidebarsConfig = {
             FAQ: [
                 "faq/index",
                 "deprecation/faq",
-                "concepts/client-count/faq",
                 "auth/login-mfa/faq",
             ],
         },

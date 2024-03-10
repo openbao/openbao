@@ -238,8 +238,6 @@ type migrationInformation struct {
 // interface for API handlers and is responsible for managing the logical and physical
 // backends, router, security barrier, and audit trails.
 type Core struct {
-	entCore
-
 	// The registry of builtin plugins is passed in here as an interface because
 	// if it's used directly, it results in import cycles.
 	builtinRegistry BuiltinRegistry
@@ -704,8 +702,6 @@ func (c *Core) HAStateWithLock() consts.HAState {
 
 // CoreConfig is used to parameterize a core
 type CoreConfig struct {
-	entCoreConfig
-
 	DevToken string
 
 	BuiltinRegistry BuiltinRegistry
@@ -949,7 +945,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 
 	// Setup the core
 	c := &Core{
-		entCore:              entCore{},
 		devToken:             conf.DevToken,
 		physical:             conf.Physical,
 		serviceRegistration:  conf.GetServiceRegistration(),

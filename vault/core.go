@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -58,7 +57,6 @@ import (
 	"github.com/openbao/openbao/sdk/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault/cluster"
-	"github.com/openbao/openbao/vault/eventbus"
 	"github.com/openbao/openbao/vault/quotas"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
@@ -650,12 +648,8 @@ type Core struct {
 	numRollbackWorkers int
 	rollbackPeriod     time.Duration
 
-	experiments []string
-
 	pendingRemovalMountsAllowed bool
 	expirationRevokeRetryBase   time.Duration
-
-	events *eventbus.EventBus
 
 	// writeForwardedPaths are a set of storage paths which are GRPC forwarded
 	// to the active node of the primary cluster, when present. This PathManager
@@ -811,8 +805,6 @@ type CoreConfig struct {
 	EffectiveSDKVersion string
 
 	RollbackPeriod time.Duration
-
-	Experiments []string
 
 	PendingRemovalMountsAllowed bool
 
@@ -995,7 +987,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		disableSSCTokens:               conf.DisableSSCTokens,
 		effectiveSDKVersion:            effectiveSDKVersion,
 		userFailedLoginInfo:            make(map[FailedLoginUser]*FailedLoginInfo),
-		experiments:                    conf.Experiments,
 		pendingRemovalMountsAllowed:    conf.PendingRemovalMountsAllowed,
 		expirationRevokeRetryBase:      conf.ExpirationRevokeRetryBase,
 		numRollbackWorkers:             conf.NumRollbackWorkers,
@@ -1201,19 +1192,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	if c.versionHistory == nil {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
-	}
-
-	// Events
-	eventsLogger := conf.Logger.Named("events")
-	c.allLoggers = append(c.allLoggers, eventsLogger)
-	// start the event system
-	events, err := eventbus.NewEventBus(eventsLogger)
-	if err != nil {
-		return nil, err
-	}
-	c.events = events
-	if c.IsExperimentEnabled(experiments.VaultExperimentEventsAlpha1) {
-		c.events.Start()
 	}
 
 	return c, nil
@@ -3909,11 +3887,6 @@ func (c *Core) SetGroupPolicyApplicationMode(ctx context.Context, mode string) e
 	})
 }
 
-// IsExperimentEnabled is true if the experiment is enabled in the core.
-func (c *Core) IsExperimentEnabled(experiment string) bool {
-	return strutil.StrListContains(c.experiments, experiment)
-}
-
 // ListenerAddresses provides a slice of configured listener addresses
 func (c *Core) ListenerAddresses() ([]string, error) {
 	addresses := make([]string, 0)
@@ -3968,11 +3941,6 @@ func (c *Core) GetRaftAutopilotState(ctx context.Context) (*raft.AutopilotState,
 	}
 
 	return raftBackend.GetAutopilotServerState(ctx)
-}
-
-// Events returns a reference to the common event bus for sending and subscribint to events.
-func (c *Core) Events() *eventbus.EventBus {
-	return c.events
 }
 
 func (c *Core) DetectStateLockDeadlocks() bool {

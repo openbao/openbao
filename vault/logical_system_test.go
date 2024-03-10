@@ -24,7 +24,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
@@ -5941,34 +5940,5 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		if !ok || pluginVersion != "" {
 			t.Errorf("expected empty plugin version in config: %#v", config)
 		}
-	}
-}
-
-func TestSystemBackend_ReadExperiments(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
-
-	for name, tc := range map[string][]string{
-		"no experiments enabled": {},
-		"one experiment enabled": {experiments.VaultExperimentEventsAlpha1},
-	} {
-		t.Run(name, func(t *testing.T) {
-			// Set the enabled experiments.
-			c.experiments = tc
-
-			req := logical.TestRequest(t, logical.ReadOperation, "experiments")
-			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
-			if resp == nil {
-				t.Fatal("Expected a response")
-			}
-			if !reflect.DeepEqual(experiments.ValidExperiments(), resp.Data["available"]) {
-				t.Fatalf("Expected %v but got %v", experiments.ValidExperiments(), resp.Data["available"])
-			}
-			if !reflect.DeepEqual(tc, resp.Data["enabled"]) {
-				t.Fatal("No experiments should be enabled by default")
-			}
-		})
 	}
 }

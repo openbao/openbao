@@ -13,7 +13,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/plugin"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/helper/consts"
@@ -965,17 +964,6 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 
 	authLogger := c.baseLogger.Named(fmt.Sprintf("auth.%s.%s", t, entry.Accessor))
 	c.AddLogger(authLogger)
-	pluginEventSender, err := c.events.WithPlugin(entry.namespace, &logical.EventPluginInfo{
-		MountClass:    consts.PluginTypeCredential.String(),
-		MountAccessor: entry.Accessor,
-		MountPath:     entry.Path,
-		Plugin:        entry.Type,
-		PluginVersion: entry.RunningVersion,
-		Version:       entry.Version,
-	})
-	if err != nil {
-		return nil, "", err
-	}
 
 	config := &logical.BackendConfig{
 		StorageView: view,
@@ -983,9 +971,6 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 		Config:      conf,
 		System:      sysView,
 		BackendUUID: entry.BackendAwareUUID,
-	}
-	if c.IsExperimentEnabled(experiments.VaultExperimentEventsAlpha1) {
-		config.EventsSender = pluginEventSender
 	}
 
 	b, err := f(ctx, config)

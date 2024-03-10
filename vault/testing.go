@@ -41,7 +41,6 @@ import (
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
@@ -229,7 +228,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.DisableSSCTokens = opts.DisableSSCTokens
 	conf.PluginDirectory = opts.PluginDirectory
 	conf.DetectDeadlocks = opts.DetectDeadlocks
-	conf.Experiments = []string{experiments.VaultExperimentEventsAlpha1}
 	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
 	conf.ImpreciseLeaseRoleTracking = opts.ImpreciseLeaseRoleTracking
 

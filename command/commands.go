@@ -56,12 +56,6 @@ const (
 	// EnvVaultLogLevel is used to specify the log level applied to logging
 	// Supported log levels: Trace, Debug, Error, Warn, Info
 	EnvVaultLogLevel = "BAO_LOG_LEVEL"
-	// EnvVaultExperiments defines the experiments to enable for a server as a
-	// comma separated list. See experiments.ValidExperiments() for the list of
-	// valid experiments. Not mutable or persisted in storage, only read and
-	// logged at startup _per node_. This was initially introduced for the events
-	// system being developed over multiple release cycles.
-	EnvVaultExperiments = "BAO_EXPERIMENTS"
 
 	// flagNameAddress is the flag used in the base command to read in the
 	// address of the Vault server.
@@ -270,11 +264,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"delete": func() (cli.Command, error) {
 			return &DeleteCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
-		"events subscribe": func() (cli.Command, error) {
-			return &EventsSubscribeCommands{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

@@ -907,6 +907,22 @@ type DockerClusterOptions struct {
 	Storage     testcluster.ClusterStorage
 }
 
+func DefaultOptions(t *testing.T) *DockerClusterOptions {
+	return &DockerClusterOptions{
+		// TODO - update to openbao's Docker location when it is published.
+		ImageRepo:   "hashicorp/vault",
+		ImageTag:    "latest",
+		VaultBinary: api.ReadBaoVariable("BAO_BINARY"),
+		ClusterOptions: testcluster.ClusterOptions{
+			NumCores:    3,
+			ClusterName: strings.ReplaceAll(t.Name(), "/", "-"),
+			VaultNodeConfig: &testcluster.VaultNodeConfig{
+				LogLevel: "TRACE",
+			},
+		},
+	}
+}
+
 func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(response *api.LeaderResponse) error) error {
 	var leader *api.LeaderResponse
 	var err error

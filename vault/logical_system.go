@@ -4646,7 +4646,6 @@ type HAStatusNode struct {
 	LastEcho       *time.Time `json:"last_echo"`
 	Version        string     `json:"version"`
 	UpgradeVersion string     `json:"upgrade_version,omitempty"`
-	RedundancyZone string     `json:"redundancy_zone,omitempty"`
 }
 
 func (b *SystemBackend) handleVersionHistoryList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

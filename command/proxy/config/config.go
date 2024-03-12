@@ -96,8 +96,6 @@ type APIProxy struct {
 	UseAutoAuthTokenRaw interface{} `hcl:"use_auto_auth_token"`
 	UseAutoAuthToken    bool        `hcl:"-"`
 	ForceAutoAuthToken  bool        `hcl:"-"`
-	EnforceConsistency  string      `hcl:"enforce_consistency"`
-	WhenInconsistent    string      `hcl:"when_inconsistent"`
 }
 
 // Cache contains any configuration needed for Cache mode

@@ -355,30 +355,6 @@ func (c *ProxyCommand) Run(args []string) int {
 		}
 	}
 
-	enforceConsistency := cache.EnforceConsistencyNever
-	whenInconsistent := cache.WhenInconsistentFail
-	if config.APIProxy != nil {
-		switch config.APIProxy.EnforceConsistency {
-		case "always":
-			enforceConsistency = cache.EnforceConsistencyAlways
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for enforce_consistency: %q", config.APIProxy.EnforceConsistency))
-			return 1
-		}
-
-		switch config.APIProxy.WhenInconsistent {
-		case "retry":
-			whenInconsistent = cache.WhenInconsistentRetry
-		case "forward":
-			whenInconsistent = cache.WhenInconsistentForward
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for when_inconsistent: %q", config.APIProxy.WhenInconsistent))
-			return 1
-		}
-	}
-
 	// Warn if cache _and_ cert auto-auth is enabled but certificates were not
 	// provided in the auto_auth.method["cert"].config stanza.
 	if config.Cache != nil && (config.AutoAuth != nil && config.AutoAuth.Method != nil && config.AutoAuth.Method.Type == "cert") {
@@ -423,8 +399,6 @@ func (c *ProxyCommand) Run(args []string) int {
 	apiProxy, err := cache.NewAPIProxy(&cache.APIProxyConfig{
 		Client:                  proxyClient,
 		Logger:                  apiProxyLogger,
-		EnforceConsistency:      enforceConsistency,
-		WhenInconsistentAction:  whenInconsistent,
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})

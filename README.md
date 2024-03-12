@@ -158,9 +158,6 @@ Acceptance tests typically require other environment variables to be set for
 things such as access keys. The test itself should error early and tell
 you what to set, so it is not documented here.
 
-<!--
-TODO: verify this works in OpenBao
-
 ### Docker-based Tests
 
 We have created an experimental new testing mechanism inspired by NewTestCluster.
@@ -188,27 +185,8 @@ func Test_Something_With_Docker(t *testing.T) {
 }
 ```
 
-Or for Enterprise:
-
-```go
-import (
-  "testing"
-  "github.com/openbao/openbao/sdk/helper/testcluster/docker"
-)
-
-func Test_Something_With_Docker(t *testing.T) {
-  opts := &docker.DockerClusterOptions{
-    ImageRepo: "hashicorp/vault-enterprise",
-    ImageTag:  "latest",
-	VaultLicense: licenseString, // not a path, the actual license bytes
-  }
-  cluster := docker.NewTestDockerCluster(t, opts)
-  defer cluster.Cleanup()
-}
-```
-
 Here is a more realistic example of how we use it in practice.  DefaultOptions uses 
-`openbao/openbao`:`latest` as the repo and tag, but it also looks at the environment
+`hashicorp/vault:latest` as the repo and tag, but it also looks at the environment
 variable OPENBAO_BINARY. If populated, it will copy the local file referenced by
 OPENBAO_BINARY into the container. This is useful when testing local changes.
 
@@ -223,48 +201,6 @@ func Test_Custom_Build_With_Docker(t *testing.T) {
 }
 ```
 
-There are a variety of helpers in the `github.com/openbao/openbao/sdk/helper/testcluster`
-package, e.g. these tests below will create a pair of 3-node clusters and link them using
-PR or DR replication respectively, and fail if the replication state doesn't become healthy
-before the passed context expires.
-
-Again, as written, these depend on having a Vault Enterprise binary locally and the env
-var VAULT_BINARY set to point to it, as well as having VAULT_LICENSE_CI set.
-
-```go
-func TestStandardPerfReplication_Docker(t *testing.T) {
-  opts := docker.DefaultOptions(t)
-  r, err := docker.NewReplicationSetDocker(t, opts)
-  if err != nil {
-      t.Fatal(err)
-  }
-  defer r.Cleanup()
-
-  ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-  defer cancel()
-  err = r.StandardPerfReplication(ctx)
-  if err != nil {
-    t.Fatal(err)
-  }
-}
-
-func TestStandardDRReplication_Docker(t *testing.T) {
-  opts := docker.DefaultOptions(t)
-  r, err := docker.NewReplicationSetDocker(t, opts)
-  if err != nil {
-    t.Fatal(err)
-  }
-  defer r.Cleanup()
-
-  ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-  defer cancel()
-  err = r.StandardDRReplication(ctx)
-  if err != nil {
-    t.Fatal(err)
-  }
-}
-```
-
 Finally, here's an example of running an existing OSS docker test with a custom binary:
 
 ```bash
@@ -272,4 +208,3 @@ $ GOOS=linux make dev
 $ VAULT_BINARY=$(pwd)/bin/bao go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
 ok      github.com/openbao/openbao/vault/external_tests/raft/raft_binary        20.960s
 ```
--->

@@ -5,11 +5,7 @@ package api
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -26,7 +22,6 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 )
@@ -52,9 +47,6 @@ const (
 	EnvHTTPProxy             = "BAO_HTTP_PROXY"
 	EnvVaultProxyAddr        = "BAO_PROXY_ADDR"
 	EnvVaultDisableRedirects = "BAO_DISABLE_REDIRECTS"
-	HeaderIndex              = "X-Vault-Index"
-	HeaderForward            = "X-Vault-Forward"
-	HeaderInconsistent       = "X-Vault-Inconsistent"
 
 	// NamespaceHeaderName is the header set to specify which namespace the
 	// request is indented for.
@@ -183,15 +175,6 @@ type Config struct {
 
 	// CloneToken from parent.
 	CloneToken bool
-
-	// ReadYourWrites ensures isolated read-after-write semantics by
-	// providing discovered cluster replication states in each request.
-	// The shared state is automatically propagated to all Client clones.
-	//
-	// Note: Careful consideration should be made prior to enabling this setting
-	// since there will be a performance penalty paid upon each request.
-	// This feature requires Enterprise server-side.
-	ReadYourWrites bool
 
 	// DisableRedirects when set to true, will prevent the client from
 	// automatically following a (single) redirect response to its initial
@@ -567,17 +550,16 @@ func parseRateLimit(val string) (rate float64, burst int, err error) {
 
 // Client is the client to the Vault API. Create a client with NewClient.
 type Client struct {
-	modifyLock            sync.RWMutex
-	addr                  *url.URL
-	config                *Config
-	token                 string
-	headers               http.Header
-	wrappingLookupFunc    WrappingLookupFunc
-	mfaCreds              []string
-	policyOverride        bool
-	requestCallbacks      []RequestCallback
-	responseCallbacks     []ResponseCallback
-	replicationStateStore *replicationStateStore
+	modifyLock         sync.RWMutex
+	addr               *url.URL
+	config             *Config
+	token              string
+	headers            http.Header
+	wrappingLookupFunc WrappingLookupFunc
+	mfaCreds           []string
+	policyOverride     bool
+	requestCallbacks   []RequestCallback
+	responseCallbacks  []ResponseCallback
 }
 
 // NewClient returns a new client for the given configuration.
@@ -635,10 +617,6 @@ func NewClient(c *Config) (*Client, error) {
 		headers: make(http.Header),
 	}
 
-	if c.ReadYourWrites {
-		client.replicationStateStore = &replicationStateStore{}
-	}
-
 	// Add the VaultRequest SSRF protection header
 	client.headers[RequestHeaderName] = []string{"true"}
 
@@ -671,7 +649,6 @@ func (c *Client) CloneConfig() *Config {
 	newConfig.SRVLookup = c.config.SRVLookup
 	newConfig.CloneHeaders = c.config.CloneHeaders
 	newConfig.CloneToken = c.config.CloneToken
-	newConfig.ReadYourWrites = c.config.ReadYourWrites
 	newConfig.clientTLSConfig = c.config.clientTLSConfig
 
 	// we specifically want a _copy_ of the client here, not a pointer to the original one
@@ -1114,34 +1091,6 @@ func (c *Client) CloneToken() bool {
 	return c.config.CloneToken
 }
 
-// SetReadYourWrites to prevent reading stale cluster replication state.
-func (c *Client) SetReadYourWrites(preventStaleReads bool) {
-	c.modifyLock.Lock()
-	defer c.modifyLock.Unlock()
-	c.config.modifyLock.Lock()
-	defer c.config.modifyLock.Unlock()
-
-	if preventStaleReads {
-		if c.replicationStateStore == nil {
-			c.replicationStateStore = &replicationStateStore{}
-		}
-	} else {
-		c.replicationStateStore = nil
-	}
-
-	c.config.ReadYourWrites = preventStaleReads
-}
-
-// ReadYourWrites gets the configured value of ReadYourWrites
-func (c *Client) ReadYourWrites() bool {
-	c.modifyLock.RLock()
-	defer c.modifyLock.RUnlock()
-	c.config.modifyLock.RLock()
-	defer c.config.modifyLock.RUnlock()
-
-	return c.config.ReadYourWrites
-}
-
 // Clone creates a new client with the same configuration. Note that the same
 // underlying http.Client is used; modifying the client from more than one
 // goroutine at once may not be safe, so modify the client as needed and then
@@ -1172,21 +1121,20 @@ func (c *Client) clone(cloneHeaders bool) (*Client, error) {
 	defer config.modifyLock.RUnlock()
 
 	newConfig := &Config{
-		Address:        config.Address,
-		HttpClient:     config.HttpClient,
-		MinRetryWait:   config.MinRetryWait,
-		MaxRetryWait:   config.MaxRetryWait,
-		MaxRetries:     config.MaxRetries,
-		Timeout:        config.Timeout,
-		Backoff:        config.Backoff,
-		CheckRetry:     config.CheckRetry,
-		Logger:         config.Logger,
-		Limiter:        config.Limiter,
-		AgentAddress:   config.AgentAddress,
-		SRVLookup:      config.SRVLookup,
-		CloneHeaders:   config.CloneHeaders,
-		CloneToken:     config.CloneToken,
-		ReadYourWrites: config.ReadYourWrites,
+		Address:      config.Address,
+		HttpClient:   config.HttpClient,
+		MinRetryWait: config.MinRetryWait,
+		MaxRetryWait: config.MaxRetryWait,
+		MaxRetries:   config.MaxRetries,
+		Timeout:      config.Timeout,
+		Backoff:      config.Backoff,
+		CheckRetry:   config.CheckRetry,
+		Logger:       config.Logger,
+		Limiter:      config.Limiter,
+		AgentAddress: config.AgentAddress,
+		SRVLookup:    config.SRVLookup,
+		CloneHeaders: config.CloneHeaders,
+		CloneToken:   config.CloneToken,
 	}
 	client, err := NewClient(newConfig)
 	if err != nil {
@@ -1200,8 +1148,6 @@ func (c *Client) clone(cloneHeaders bool) (*Client, error) {
 	if config.CloneToken {
 		client.SetToken(c.token)
 	}
-
-	client.replicationStateStore = c.replicationStateStore
 
 	return client, nil
 }
@@ -1336,10 +1282,6 @@ func (c *Client) rawRequestWithContext(ctx context.Context, r *Request) (*Respon
 		cb(r)
 	}
 
-	if c.config.ReadYourWrites {
-		c.replicationStateStore.requireState(r)
-	}
-
 	if limiter != nil {
 		limiter.Wait(ctx)
 	}
@@ -1442,10 +1384,6 @@ START:
 	if result != nil {
 		for _, cb := range c.responseCallbacks {
 			cb(result)
-		}
-
-		if c.config.ReadYourWrites {
-			c.replicationStateStore.recordState(result)
 		}
 	}
 	if err := result.Error(); err != nil {
@@ -1621,150 +1559,6 @@ func (c *Client) withConfiguredTimeout(ctx context.Context) (context.Context, co
 	return ctx, func() {}
 }
 
-// RecordState returns a response callback that will record the state returned
-// by Vault in a response header.
-func RecordState(state *string) ResponseCallback {
-	return func(resp *Response) {
-		*state = resp.Header.Get(HeaderIndex)
-	}
-}
-
-// RequireState returns a request callback that will add a request header to
-// specify the state we require of Vault. This state was obtained from a
-// response header seen previous, probably captured with RecordState.
-func RequireState(states ...string) RequestCallback {
-	return func(req *Request) {
-		for _, s := range states {
-			req.Headers.Add(HeaderIndex, s)
-		}
-	}
-}
-
-// compareReplicationStates returns 1 if s1 is newer or identical, -1 if s1 is older, and 0
-// if neither s1 or s2 is strictly greater. An error is returned if s1 or s2
-// are invalid or from different clusters.
-func compareReplicationStates(s1, s2 string) (int, error) {
-	w1, err := ParseReplicationState(s1, nil)
-	if err != nil {
-		return 0, err
-	}
-	w2, err := ParseReplicationState(s2, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	if w1.ClusterID != w2.ClusterID {
-		return 0, fmt.Errorf("can't compare replication states with different ClusterIDs")
-	}
-
-	switch {
-	case w1.LocalIndex >= w2.LocalIndex && w1.ReplicatedIndex >= w2.ReplicatedIndex:
-		return 1, nil
-	// We've already handled the case where both are equal above, so really we're
-	// asking here if one or both are lesser.
-	case w1.LocalIndex <= w2.LocalIndex && w1.ReplicatedIndex <= w2.ReplicatedIndex:
-		return -1, nil
-	}
-
-	return 0, nil
-}
-
-// MergeReplicationStates returns a merged array of replication states by iterating
-// through all states in `old`. An iterated state is merged to the result before `new`
-// based on the result of compareReplicationStates
-func MergeReplicationStates(old []string, new string) []string {
-	if len(old) == 0 || len(old) > 2 {
-		return []string{new}
-	}
-
-	var ret []string
-	for _, o := range old {
-		c, err := compareReplicationStates(o, new)
-		if err != nil {
-			return []string{new}
-		}
-		switch c {
-		case 1:
-			ret = append(ret, o)
-		case -1:
-			ret = append(ret, new)
-		case 0:
-			ret = append(ret, o, new)
-		}
-	}
-	return strutil.RemoveDuplicates(ret, false)
-}
-
-type WALState struct {
-	ClusterID       string
-	LocalIndex      uint64
-	ReplicatedIndex uint64
-}
-
-func ParseReplicationState(raw string, hmacKey []byte) (*WALState, error) {
-	cooked, err := base64.StdEncoding.DecodeString(raw)
-	if err != nil {
-		return nil, err
-	}
-	s := string(cooked)
-
-	lastIndex := strings.LastIndexByte(s, ':')
-	if lastIndex == -1 {
-		return nil, fmt.Errorf("invalid full state header format")
-	}
-	state, stateHMACRaw := s[:lastIndex], s[lastIndex+1:]
-	stateHMAC, err := hex.DecodeString(stateHMACRaw)
-	if err != nil {
-		return nil, fmt.Errorf("invalid state header HMAC: %v, %w", stateHMACRaw, err)
-	}
-
-	if len(hmacKey) != 0 {
-		hm := hmac.New(sha256.New, hmacKey)
-		hm.Write([]byte(state))
-		if !hmac.Equal(hm.Sum(nil), stateHMAC) {
-			return nil, fmt.Errorf("invalid state header HMAC (mismatch)")
-		}
-	}
-
-	pieces := strings.Split(state, ":")
-	if len(pieces) != 4 || pieces[0] != "v1" || pieces[1] == "" {
-		return nil, fmt.Errorf("invalid state header format")
-	}
-	localIndex, err := strconv.ParseUint(pieces[2], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid local index in state header: %w", err)
-	}
-	replicatedIndex, err := strconv.ParseUint(pieces[3], 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid replicated index in state header: %w", err)
-	}
-
-	return &WALState{
-		ClusterID:       pieces[1],
-		LocalIndex:      localIndex,
-		ReplicatedIndex: replicatedIndex,
-	}, nil
-}
-
-// ForwardInconsistent returns a request callback that will add a request
-// header which says: if the state required isn't present on the node receiving
-// this request, forward it to the active node.  This should be used in
-// conjunction with RequireState.
-func ForwardInconsistent() RequestCallback {
-	return func(req *Request) {
-		req.Headers.Set(HeaderInconsistent, "forward-active-node")
-	}
-}
-
-// ForwardAlways returns a request callback which adds a header telling any
-// performance standbys handling the request to forward it to the active node.
-// This feature must be enabled in Vault's configuration.
-func ForwardAlways() RequestCallback {
-	return func(req *Request) {
-		req.Headers.Set(HeaderForward, "active-node")
-	}
-}
-
 // DefaultRetryPolicy is the default retry policy used by new Client objects.
 // It is the same as retryablehttp.DefaultRetryPolicy except that it also retries
 // 412 requests, which are returned by Vault when a X-Vault-Index header isn't
@@ -1778,42 +1572,6 @@ func DefaultRetryPolicy(ctx context.Context, resp *http.Response, err error) (bo
 		return true, nil
 	}
 	return false, nil
-}
-
-// replicationStateStore is used to track cluster replication states
-// in order to ensure proper read-after-write semantics for a Client.
-type replicationStateStore struct {
-	m     sync.RWMutex
-	store []string
-}
-
-// recordState updates the store's replication states with the merger of all
-// states.
-func (w *replicationStateStore) recordState(resp *Response) {
-	w.m.Lock()
-	defer w.m.Unlock()
-	newState := resp.Header.Get(HeaderIndex)
-	if newState != "" {
-		w.store = MergeReplicationStates(w.store, newState)
-	}
-}
-
-// requireState updates the Request with the store's current replication states.
-func (w *replicationStateStore) requireState(req *Request) {
-	w.m.RLock()
-	defer w.m.RUnlock()
-	for _, s := range w.store {
-		req.Headers.Add(HeaderIndex, s)
-	}
-}
-
-// states currently stored.
-func (w *replicationStateStore) states() []string {
-	w.m.RLock()
-	defer w.m.RUnlock()
-	c := make([]string, len(w.store))
-	copy(c, w.store)
-	return c
 }
 
 // validateToken will check for non-printable characters to prevent a call that will fail at the api

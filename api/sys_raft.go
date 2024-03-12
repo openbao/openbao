@@ -47,7 +47,6 @@ type AutopilotConfig struct {
 	MaxTrailingLogs                uint64        `json:"max_trailing_logs" mapstructure:"max_trailing_logs"`
 	MinQuorum                      uint          `json:"min_quorum" mapstructure:"min_quorum"`
 	ServerStabilizationTime        time.Duration `json:"server_stabilization_time" mapstructure:"-"`
-	DisableUpgradeMigration        bool          `json:"disable_upgrade_migration" mapstructure:"disable_upgrade_migration"`
 }
 
 // MarshalJSON makes the autopilot config fields JSON compatible
@@ -59,7 +58,6 @@ func (ac *AutopilotConfig) MarshalJSON() ([]byte, error) {
 		"max_trailing_logs":                  ac.MaxTrailingLogs,
 		"min_quorum":                         ac.MinQuorum,
 		"server_stabilization_time":          ac.ServerStabilizationTime.String(),
-		"disable_upgrade_migration":          ac.DisableUpgradeMigration,
 	})
 }
 
@@ -95,7 +93,6 @@ type AutopilotState struct {
 	Leader                     string                      `mapstructure:"leader"`
 	Voters                     []string                    `mapstructure:"voters"`
 	NonVoters                  []string                    `mapstructure:"non_voters"`
-	RedundancyZones            map[string]AutopilotZone    `mapstructure:"redundancy_zones,omitempty"`
 	Upgrade                    *AutopilotUpgrade           `mapstructure:"upgrade_info,omitempty"`
 	OptimisticFailureTolerance int                         `mapstructure:"optimistic_failure_tolerance,omitempty"`
 }
@@ -115,7 +112,6 @@ type AutopilotServer struct {
 	Status         string `mapstructure:"status"`
 	Version        string `mapstructure:"version"`
 	UpgradeVersion string `mapstructure:"upgrade_version,omitempty"`
-	RedundancyZone string `mapstructure:"redundancy_zone,omitempty"`
 	NodeType       string `mapstructure:"node_type,omitempty"`
 }
 
@@ -126,15 +122,14 @@ type AutopilotZone struct {
 }
 
 type AutopilotUpgrade struct {
-	Status                    string                                  `mapstructure:"status"`
-	TargetVersion             string                                  `mapstructure:"target_version,omitempty"`
-	TargetVersionVoters       []string                                `mapstructure:"target_version_voters,omitempty"`
-	TargetVersionNonVoters    []string                                `mapstructure:"target_version_non_voters,omitempty"`
-	TargetVersionReadReplicas []string                                `mapstructure:"target_version_read_replicas,omitempty"`
-	OtherVersionVoters        []string                                `mapstructure:"other_version_voters,omitempty"`
-	OtherVersionNonVoters     []string                                `mapstructure:"other_version_non_voters,omitempty"`
-	OtherVersionReadReplicas  []string                                `mapstructure:"other_version_read_replicas,omitempty"`
-	RedundancyZones           map[string]AutopilotZoneUpgradeVersions `mapstructure:"redundancy_zones,omitempty"`
+	Status                    string   `mapstructure:"status"`
+	TargetVersion             string   `mapstructure:"target_version,omitempty"`
+	TargetVersionVoters       []string `mapstructure:"target_version_voters,omitempty"`
+	TargetVersionNonVoters    []string `mapstructure:"target_version_non_voters,omitempty"`
+	TargetVersionReadReplicas []string `mapstructure:"target_version_read_replicas,omitempty"`
+	OtherVersionVoters        []string `mapstructure:"other_version_voters,omitempty"`
+	OtherVersionNonVoters     []string `mapstructure:"other_version_non_voters,omitempty"`
+	OtherVersionReadReplicas  []string `mapstructure:"other_version_read_replicas,omitempty"`
 }
 
 type AutopilotZoneUpgradeVersions struct {

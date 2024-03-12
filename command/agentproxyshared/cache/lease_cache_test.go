@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -25,7 +24,6 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/keymanager"
 	"github.com/openbao/openbao/helper/useragent"
-	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/logging"
 	"github.com/stretchr/testify/assert"
@@ -89,60 +87,6 @@ func testNewLeaseCacheWithPersistence(t *testing.T, responses []*SendResponse, s
 	require.NoError(t, err)
 
 	return lc
-}
-
-func TestCache_ComputeIndexID(t *testing.T) {
-	type args struct {
-		req *http.Request
-	}
-	tests := []struct {
-		name    string
-		req     *SendRequest
-		want    string
-		wantErr bool
-	}{
-		{
-			"basic",
-			&SendRequest{
-				Request: &http.Request{
-					URL: &url.URL{
-						Path: "test",
-					},
-				},
-			},
-			"7b5db388f211fd9edca8c6c254831fb01ad4e6fe624dbb62711f256b5e803717",
-			false,
-		},
-		{
-			"ignore consistency headers",
-			&SendRequest{
-				Request: &http.Request{
-					URL: &url.URL{
-						Path: "test",
-					},
-					Header: http.Header{
-						vaulthttp.VaultIndexHeaderName:        []string{"foo"},
-						vaulthttp.VaultInconsistentHeaderName: []string{"foo"},
-						vaulthttp.VaultForwardHeaderName:      []string{"foo"},
-					},
-				},
-			},
-			"7b5db388f211fd9edca8c6c254831fb01ad4e6fe624dbb62711f256b5e803717",
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := computeIndexID(tt.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("actual_error: %v, expected_error: %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, string(tt.want)) {
-				t.Errorf("bad: index id; actual: %q, expected: %q", got, string(tt.want))
-			}
-		})
-	}
 }
 
 func TestLeaseCache_EmptyToken(t *testing.T) {

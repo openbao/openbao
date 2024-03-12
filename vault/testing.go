@@ -1214,7 +1214,6 @@ type TestClusterOptions struct {
 
 	// this stores the vault version that should be used for each core config
 	VersionMap             map[int]string
-	RedundancyZoneMap      map[int]string
 	KVVersion              string
 	EffectiveSDKVersionMap map[int]string
 
@@ -1900,9 +1899,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		}
 		if len(opts.VersionMap) > 0 {
 			pfc["autopilot_upgrade_version"] = opts.VersionMap[idx]
-		}
-		if len(opts.RedundancyZoneMap) > 0 {
-			pfc["autopilot_redundancy_zone"] = opts.RedundancyZoneMap[idx]
 		}
 		physBundle := opts.PhysicalFactory(t, idx, localConfig.Logger, pfc)
 		switch {

@@ -208,9 +208,6 @@ func formatServer(srv *api.AutopilotServer) string {
 	if srv.UpgradeVersion != "" {
 		buffer.WriteString(fmt.Sprintf("      Upgrade Version:   %s\n", srv.UpgradeVersion))
 	}
-	if srv.RedundancyZone != "" {
-		buffer.WriteString(fmt.Sprintf("      Redundancy Zone:   %s\n", srv.RedundancyZone))
-	}
 	if srv.NodeType != "" {
 		buffer.WriteString(fmt.Sprintf("      Node Type:         %s\n", srv.NodeType))
 	}
@@ -250,27 +247,6 @@ func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data interface{}) {
 		buffer.WriteString(output.value)
 	}
 
-	// Redundancy Zones
-	if len(state.RedundancyZones) > 0 {
-		buffer.WriteString("Redundancy Zones:\n")
-		zoneList := make([]string, 0, len(state.RedundancyZones))
-		for z := range state.RedundancyZones {
-			zoneList = append(zoneList, z)
-		}
-		sort.Strings(zoneList)
-		for _, zoneName := range zoneList {
-			zone := state.RedundancyZones[zoneName]
-			servers := zone.Servers
-			voters := zone.Voters
-			sort.Strings(servers)
-			sort.Strings(voters)
-			buffer.WriteString(fmt.Sprintf("   %s\n", zoneName))
-			buffer.WriteString(fmt.Sprintf("      Servers: %s\n", strings.Join(servers, ", ")))
-			buffer.WriteString(fmt.Sprintf("      Voters: %s\n", strings.Join(voters, ", ")))
-			buffer.WriteString(fmt.Sprintf("      Failure Tolerance: %d\n", zone.FailureTolerance))
-		}
-	}
-
 	// Upgrade Info
 	if state.Upgrade != nil {
 		buffer.WriteString("Upgrade Info:\n")
@@ -280,17 +256,6 @@ func (p PrettyFormatter) OutputAutopilotState(ui cli.Ui, data interface{}) {
 		buffer.WriteString(fmt.Sprintf("   Target Version Non-Voters: %s\n", strings.Join(state.Upgrade.TargetVersionNonVoters, ", ")))
 		buffer.WriteString(fmt.Sprintf("   Other Version Voters: %s\n", strings.Join(state.Upgrade.OtherVersionVoters, ", ")))
 		buffer.WriteString(fmt.Sprintf("   Other Version Non-Voters: %s\n", strings.Join(state.Upgrade.OtherVersionNonVoters, ", ")))
-
-		if len(state.Upgrade.RedundancyZones) > 0 {
-			buffer.WriteString("   Redundancy Zones:\n")
-			for zoneName, zoneVersion := range state.Upgrade.RedundancyZones {
-				buffer.WriteString(fmt.Sprintf("      %s\n", zoneName))
-				buffer.WriteString(fmt.Sprintf("         Target Version Voters: %s\n", strings.Join(zoneVersion.TargetVersionVoters, ", ")))
-				buffer.WriteString(fmt.Sprintf("         Target Version Non-Voters: %s\n", strings.Join(zoneVersion.TargetVersionNonVoters, ", ")))
-				buffer.WriteString(fmt.Sprintf("         Other Version Voters: %s\n", strings.Join(zoneVersion.OtherVersionVoters, ", ")))
-				buffer.WriteString(fmt.Sprintf("         Other Version Non-Voters: %s\n", strings.Join(zoneVersion.OtherVersionNonVoters, ", ")))
-			}
-		}
 	}
 
 	ui.Output(buffer.String())
@@ -681,9 +646,6 @@ func OutputSealStatus(ui cli.Ui, client *api.Client, status *api.SealStatusRespo
 	sealStatusOutput.ActiveTime = leaderStatus.ActiveTime
 	sealStatusOutput.LeaderAddress = leaderStatus.LeaderAddress
 	sealStatusOutput.LeaderClusterAddress = leaderStatus.LeaderClusterAddress
-	sealStatusOutput.PerfStandby = leaderStatus.PerfStandby
-	sealStatusOutput.PerfStandbyLastRemoteWAL = leaderStatus.PerfStandbyLastRemoteWAL
-	sealStatusOutput.LastWAL = leaderStatus.LastWAL
 	sealStatusOutput.RaftCommittedIndex = leaderStatus.RaftCommittedIndex
 	sealStatusOutput.RaftAppliedIndex = leaderStatus.RaftAppliedIndex
 	OutputData(ui, sealStatusOutput)

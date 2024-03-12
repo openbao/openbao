@@ -266,7 +266,6 @@ func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Reques
 		return nil, nil, status, err
 	}
 
-	req.SetRequiredState(r.Header.Values(VaultIndexHeaderName))
 	requestAuth(r, req)
 
 	req, err = requestWrapInfo(r, req)

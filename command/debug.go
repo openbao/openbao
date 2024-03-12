@@ -433,15 +433,6 @@ func (c *DebugCommand) preflight(rawArgs []string) (string, error) {
 		return "", fmt.Errorf("unable to connect to the server: %s", err)
 	}
 
-	// Check if server is DR Secondary and we need to further
-	// ignore any targets due to endpoint restrictions
-	if serverHealth.ReplicationDRMode == "secondary" {
-		invalidDRTargets := strutil.Difference(c.flagTargets, c.validDRSecondaryTargets(), true)
-		if len(invalidDRTargets) != 0 {
-			c.UI.Info(fmt.Sprintf("Ignoring invalid targets for DR Secondary: %s", strings.Join(invalidDRTargets, ", ")))
-			c.flagTargets = strutil.Difference(c.flagTargets, invalidDRTargets, true)
-		}
-	}
 	c.cachedClient = client
 
 	captureTime := time.Now().UTC()
@@ -513,10 +504,6 @@ func (c *DebugCommand) preflight(rawArgs []string) (string, error) {
 
 func (c *DebugCommand) defaultTargets() []string {
 	return []string{"config", "host", "requests", "metrics", "pprof", "replication-status", "server-status", "log"}
-}
-
-func (c *DebugCommand) validDRSecondaryTargets() []string {
-	return []string{"metrics", "replication-status", "server-status"}
 }
 
 func (c *DebugCommand) captureStaticTargets() error {

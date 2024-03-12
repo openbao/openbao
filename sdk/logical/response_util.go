@@ -130,8 +130,6 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			statusCode = http.StatusTooManyRequests
 		case errwrap.Contains(err, ErrLeaseCountQuotaExceeded.Error()):
 			statusCode = http.StatusTooManyRequests
-		case errwrap.Contains(err, ErrMissingRequiredState.Error()):
-			statusCode = http.StatusPreconditionFailed
 		case errwrap.Contains(err, ErrPathFunctionalityRemoved.Error()):
 			statusCode = http.StatusNotFound
 		case errwrap.Contains(err, ErrRelativePath.Error()):

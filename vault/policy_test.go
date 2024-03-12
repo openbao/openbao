@@ -356,69 +356,6 @@ nope = "yes"
 	}
 }
 
-// TestPolicy_ParseControlGroupWrongCaps makes sure an appropriate error is
-// thrown when a factor's controlled_capabilities are not a subset of
-// the path capabilities.
-func TestPolicy_ParseControlGroupWrongCaps(t *testing.T) {
-	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
-	name = "controlgroups"
-	path "secret/*" {
-		capabilities = ["create", "read"]
-		control_group = {
-			max_ttl = "1h"
-			factor "ops_manager" {
-				controlled_capabilities = ["read", "write"]
-				identity {
-					group_names = ["blah"]
-					approvals = 1
-				}
-			}
-		}
-	}
-	`))
-	if err == nil {
-		t.Fatalf("Bad policy was successfully parsed")
-	}
-	if !strings.Contains(err.Error(), ControlledCapabilityPolicySubsetError) {
-		t.Fatalf("Wrong error returned when control group's controlled capabilities are not a subset of the path capabilities: error was %s", err.Error())
-	}
-}
-
-func TestPolicy_ParseControlGroup(t *testing.T) {
-	pol, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`
-	name = "controlgroups"
-	path "secret/*" {
-		capabilities = ["create", "read"]
-		control_group = {
-			max_ttl = "1h"
-			factor "ops_manager" {
-				controlled_capabilities = ["create"]
-				identity {
-					group_names = ["blah"]
-					approvals = 1
-				}
-			}
-		}
-	}
-	`))
-	if err != nil {
-		t.Fatalf("Policy could not be parsed")
-	}
-
-	// At this point paths haven't been merged yet. We must simply make sure
-	// that each factor has the correct associated permissions.
-
-	permFactors := pol.Paths[0].Permissions.ControlGroup.Factors
-
-	if len(permFactors) != 1 {
-		t.Fatalf("Expected 1 control group factor: got %d", len(permFactors))
-	}
-
-	if len(permFactors[0].ControlledCapabilities) != 1 && permFactors[0].ControlledCapabilities[0] != "create" {
-		t.Fatalf("controlled_capabilities on the first factor was not correct: %+v", permFactors[0].ControlledCapabilities)
-	}
-}
-
 func TestPolicy_ParseBadPath(t *testing.T) {
 	// The wrong spelling is intended here
 	_, err := ParseACLPolicy(namespace.RootNamespace, strings.TrimSpace(`

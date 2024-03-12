@@ -209,10 +209,6 @@ type Request struct {
 	// the request, used for best-effort avoidance of stale read-after-write
 	lastRemoteWAL uint64
 
-	// ControlGroup holds the authorizations that have happened on this
-	// request
-	ControlGroup *ControlGroup `json:"control_group" structs:"control_group" mapstructure:"control_group" sentinel:""`
-
 	// ClientTokenSource tells us where the client token was sourced from, so
 	// we can delete it before sending off to plugins
 	ClientTokenSource ClientTokenSource

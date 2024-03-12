@@ -36,7 +36,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/policyutil"
 	"github.com/openbao/openbao/sdk/helper/wrapping"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/vault/quotas"
 	"github.com/openbao/openbao/vault/tokens"
 )
 
@@ -54,12 +53,6 @@ var (
 
 	ErrNoApplicablePolicies    = errors.New("no applicable policies")
 	ErrPolicyNotExistInTypeMap = errors.New("policy does not exist in type map")
-
-	egpDebugLogging bool
-
-	// if this returns an error, the request should be blocked and the error
-	// should be returned to the client
-	enterpriseBlockRequestIfError = blockRequestIfErrorImpl
 )
 
 // HandlerProperties is used to seed configuration into a vaulthttp.Handler.
@@ -193,10 +186,6 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 		}
 
 		switch *t {
-		case PolicyTypeRGP:
-			if tokenNS.HasParent(policyNS) {
-				filteredPolicies = append(filteredPolicies, policyName)
-			}
 		case PolicyTypeACL:
 			if policyApplicationMode != groupPolicyApplicationModeWithinNamespaceHierarchy {
 				// Group policy application mode isn't set to enforce
@@ -301,8 +290,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	var tokenCtx context.Context
 	if len(policyNames) == 1 &&
 		len(policyNames[te.NamespaceID]) == 1 &&
-		(policyNames[te.NamespaceID][0] == responseWrappingPolicyName ||
-			policyNames[te.NamespaceID][0] == controlGroupPolicyName) &&
+		policyNames[te.NamespaceID][0] == responseWrappingPolicyName &&
 		(strings.HasSuffix(req.Path, "sys/wrapping/unwrap") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/lookup") ||
 			strings.HasSuffix(req.Path, "sys/wrapping/rewrap")) {
@@ -557,19 +545,10 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			req.Operation == logical.PatchOperation) {
 		return logical.ErrorResponse("cannot write to a path ending in '/'"), nil
 	}
-	waitGroup, err := waitForReplicationState(ctx, c, req)
-	if err != nil {
-		return nil, err
-	}
 
 	// MountPoint will not always be set at this point, so we ensure the req contains it
 	// as it is depended on by some functionality (e.g. quotas)
 	req.MountPoint = c.router.MatchingMount(ctx, req.Path)
-
-	// Decrement the wait group when our request is done
-	if waitGroup != nil {
-		defer waitGroup.Done()
-	}
 
 	err = c.PopulateTokenEntry(ctx, req)
 	if err != nil {
@@ -710,7 +689,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, errwrap.Wrapf("could not parse namespace from http context: {{err}}", err)
 	}
 
-	if !hasNamespaces(c) && ns.Path != "" {
+	if ns.Path != "" {
 		return nil, logical.CodedError(403, "namespaces feature not enabled")
 	}
 
@@ -828,74 +807,25 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 	}
 
 	// Create an audit trail of the response
-	if !isControlGroupRun(req) {
-		switch req.Path {
-		case "sys/replication/dr/status", "sys/replication/performance/status", "sys/replication/status":
-		default:
-			logInput := &logical.LogInput{
-				Auth:                auth,
-				Request:             req,
-				Response:            auditResp,
-				OuterErr:            err,
-				NonHMACReqDataKeys:  nonHMACReqDataKeys,
-				NonHMACRespDataKeys: nonHMACRespDataKeys,
-			}
-			if auditErr := c.auditBroker.LogResponse(ctx, logInput, c.auditedHeaders); auditErr != nil {
-				c.logger.Error("failed to audit response", "request_path", req.Path, "error", auditErr)
-				return nil, ErrInternalError
-			}
-		}
+	logInput := &logical.LogInput{
+		Auth:                auth,
+		Request:             req,
+		Response:            auditResp,
+		OuterErr:            err,
+		NonHMACReqDataKeys:  nonHMACReqDataKeys,
+		NonHMACRespDataKeys: nonHMACRespDataKeys,
 	}
-
-	if walState.LocalIndex != 0 || walState.ReplicatedIndex != 0 {
-		walState.ClusterID = c.ClusterID()
-		if walState.LocalIndex == 0 {
-			walState.LocalIndex = LastWAL(c)
-		}
-		if walState.ReplicatedIndex == 0 {
-			walState.ReplicatedIndex = LastRemoteWAL(c)
-		}
-
-		req.SetResponseState(walState)
+	if auditErr := c.auditBroker.LogResponse(ctx, logInput, c.auditedHeaders); auditErr != nil {
+		c.logger.Error("failed to audit response", "request_path", req.Path, "error", auditErr)
+		return nil, ErrInternalError
 	}
 
 	return
 }
 
-func isControlGroupRun(req *logical.Request) bool {
-	return req.ControlGroup != nil
-}
-
 func (c *Core) doRouting(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 	// If we're replicating and we get a read-only error from a backend, need to forward to primary
-	resp, err := c.router.Route(ctx, req)
-	if shouldForward(c, resp, err) {
-		fwdResp, fwdErr := forward(ctx, c, req)
-		if fwdErr != nil && err != logical.ErrReadOnly {
-			// When handling the request locally, we got an error that
-			// contained ErrReadOnly, but had additional information.
-			// Since we've now forwarded this request and got _another_
-			// error, we should tell the user about both errors, so
-			// they know about both.
-			//
-			// When there is no error from forwarding, the request
-			// succeeded and so no additional context is necessary. When
-			// the initial error here was only ErrReadOnly, it's likely
-			// the plugin authors intended to forward this request
-			// remotely anyway.
-			repErr, ok := fwdErr.(*logical.ReplicationCodedError)
-			if ok {
-				fwdErr = &logical.ReplicationCodedError{
-					Msg:  fmt.Sprintf("errors from both primary and secondary; primary error was %s; secondary errors follow: %s", repErr.Error(), err.Error()),
-					Code: repErr.Code,
-				}
-			} else {
-				fwdErr = multierror.Append(fwdErr, err)
-			}
-		}
-		return fwdResp, fwdErr
-	}
-	return resp, err
+	return c.router.Route(ctx, req)
 }
 
 func (c *Core) isLoginRequest(ctx context.Context, req *logical.Request) bool {
@@ -946,7 +876,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	// We run this logic first because we want to decrement the use count even
 	// in the case of an error (assuming we can successfully look up; if we
 	// need to forward, we exit before now)
-	if te != nil && !isControlGroupRun(req) {
+	if te != nil {
 		// Attempt to use the token (decrement NumUses)
 		var err error
 		te, err = c.tokenStore.UseToken(ctx, te)
@@ -987,17 +917,6 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	}
 
 	if ctErr != nil {
-		newCtErr, cgResp, cgAuth, cgRetErr := checkNeedsCG(ctx, c, req, auth, ctErr, nonHMACReqDataKeys)
-		switch {
-		case newCtErr != nil:
-			ctErr = newCtErr
-		case cgResp != nil || cgAuth != nil:
-			if cgRetErr != nil {
-				retErr = multierror.Append(retErr, cgRetErr)
-			}
-			return cgResp, cgAuth, retErr
-		}
-
 		// If it is an internal error we return that, otherwise we
 		// return invalid request so that the status codes can be correct
 		switch {
@@ -1015,16 +934,14 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			retErr = multierror.Append(retErr, logical.ErrInvalidRequest)
 		}
 
-		if !isControlGroupRun(req) {
-			logInput := &logical.LogInput{
-				Auth:               auth,
-				Request:            req,
-				OuterErr:           ctErr,
-				NonHMACReqDataKeys: nonHMACReqDataKeys,
-			}
-			if err := c.auditBroker.LogRequest(ctx, logInput, c.auditedHeaders); err != nil {
-				c.logger.Error("failed to audit request", "path", req.Path, "error", err)
-			}
+		logInput := &logical.LogInput{
+			Auth:               auth,
+			Request:            req,
+			OuterErr:           ctErr,
+			NonHMACReqDataKeys: nonHMACReqDataKeys,
+		}
+		if err := c.auditBroker.LogRequest(ctx, logInput, c.auditedHeaders); err != nil {
+			c.logger.Error("failed to audit request", "path", req.Path, "error", err)
 		}
 
 		if errwrap.Contains(retErr, ErrInternalError.Error()) {
@@ -1037,52 +954,16 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 	req.DisplayName = auth.DisplayName
 
 	// Create an audit trail of the request
-	if !isControlGroupRun(req) {
-		logInput := &logical.LogInput{
-			Auth:               auth,
-			Request:            req,
-			NonHMACReqDataKeys: nonHMACReqDataKeys,
-		}
-		if err := c.auditBroker.LogRequest(ctx, logInput, c.auditedHeaders); err != nil {
-			c.logger.Error("failed to audit request", "path", req.Path, "error", err)
-			retErr = multierror.Append(retErr, ErrInternalError)
-			return nil, auth, retErr
-		}
+	logInput := &logical.LogInput{
+		Auth:               auth,
+		Request:            req,
+		NonHMACReqDataKeys: nonHMACReqDataKeys,
 	}
-
-	if err := enterpriseBlockRequestIfError(c, ns.Path, req.Path); err != nil {
-		return nil, nil, multierror.Append(retErr, err)
-	}
-
-	leaseGenerated := false
-	quotaResp, quotaErr := c.applyLeaseCountQuota(ctx, &quotas.Request{
-		Path:          req.Path,
-		MountPath:     strings.TrimPrefix(req.MountPoint, ns.Path),
-		NamespacePath: ns.Path,
-	})
-	if quotaErr != nil {
-		c.logger.Error("failed to apply quota", "path", req.Path, "error", quotaErr)
-		retErr = multierror.Append(retErr, quotaErr)
+	if err := c.auditBroker.LogRequest(ctx, logInput, c.auditedHeaders); err != nil {
+		c.logger.Error("failed to audit request", "path", req.Path, "error", err)
+		retErr = multierror.Append(retErr, ErrInternalError)
 		return nil, auth, retErr
 	}
-
-	if !quotaResp.Allowed {
-		if c.logger.IsTrace() {
-			c.logger.Trace("request rejected due to lease count quota violation", "request_path", req.Path)
-		}
-
-		retErr = multierror.Append(retErr, fmt.Errorf("request path %q: %w", req.Path, quotas.ErrLeaseCountQuotaExceeded))
-		return nil, auth, retErr
-	}
-
-	defer func() {
-		if quotaResp.Access != nil {
-			quotaAckErr := c.ackLeaseQuota(quotaResp.Access, leaseGenerated)
-			if quotaAckErr != nil {
-				retErr = multierror.Append(retErr, quotaAckErr)
-			}
-		}
-	}()
 
 	// Route the request
 	resp, routeErr := c.doRouting(ctx, req)
@@ -1191,19 +1072,12 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 			}
 			resp.Secret.TTL = ttl
 
-			registerFunc, funcGetErr := getLeaseRegisterFunc(c)
-			if funcGetErr != nil {
-				retErr = multierror.Append(retErr, funcGetErr)
-				return nil, auth, retErr
-			}
-
-			leaseID, err := registerFunc(ctx, req, resp, "")
+			leaseID, err := c.expiration.Register(ctx, req, resp, "")
 			if err != nil {
 				c.logger.Error("failed to register lease", "request_path", req.Path, "error", err)
 				retErr = multierror.Append(retErr, ErrInternalError)
 				return nil, auth, retErr
 			}
-			leaseGenerated = true
 			resp.Secret.LeaseID = leaseID
 
 			// Count the lease creation
@@ -1292,7 +1166,6 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				if registeredTokenEntry.ExternalID != "" {
 					resp.Auth.ClientToken = registeredTokenEntry.ExternalID
 				}
-				leaseGenerated = true
 			}
 		}
 
@@ -1390,7 +1263,6 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 
 	switch req.Path {
-	case "sys/replication/dr/status", "sys/replication/performance/status", "sys/replication/status":
 	default:
 		// Create an audit trail of the request. Attach auth if it was returned,
 		// e.g. if a token was provided.
@@ -1498,54 +1370,12 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 	// If the response generated an authentication, then generate the token
 	if resp != nil && resp.Auth != nil && req.Path != "sys/mfa/validate" {
-		leaseGenerated := false
-
-		// by placing this after the authorization check, we don't leak
-		// information about locked namespaces to unauthenticated clients.
-		if err := enterpriseBlockRequestIfError(c, ns.Path, req.Path); err != nil {
-			retErr = multierror.Append(retErr, err)
-			return
-		}
-
 		// Check for request role in context to role based quotas
 		var role string
 		reqRole := ctx.Value(logical.CtxKeyRequestRole{})
 		if reqRole != nil {
 			role = reqRole.(string)
 		}
-
-		// The request successfully authenticated itself. Run the quota checks
-		// before creating lease.
-		quotaResp, quotaErr := c.applyLeaseCountQuota(ctx, &quotas.Request{
-			Path:          req.Path,
-			MountPath:     strings.TrimPrefix(req.MountPoint, ns.Path),
-			Role:          role,
-			NamespacePath: ns.Path,
-		})
-
-		if quotaErr != nil {
-			c.logger.Error("failed to apply quota", "path", req.Path, "error", quotaErr)
-			retErr = multierror.Append(retErr, quotaErr)
-			return
-		}
-
-		if !quotaResp.Allowed {
-			if c.logger.IsTrace() {
-				c.logger.Trace("request rejected due to lease count quota violation", "request_path", req.Path)
-			}
-
-			retErr = multierror.Append(retErr, fmt.Errorf("request path %q: %w", req.Path, quotas.ErrLeaseCountQuotaExceeded))
-			return
-		}
-
-		defer func() {
-			if quotaResp.Access != nil {
-				quotaAckErr := c.ackLeaseQuota(quotaResp.Access, leaseGenerated)
-				if quotaAckErr != nil {
-					retErr = multierror.Append(retErr, quotaAckErr)
-				}
-			}
-		}()
 
 		var entity *identity.Entity
 		auth = resp.Auth
@@ -1574,27 +1404,6 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			// Fetch the entity for the alias, or create an entity if one
 			// doesn't exist.
 			entity, entityCreated, err := c.identityStore.CreateOrFetchEntity(ctx, auth.Alias)
-			if err != nil {
-				switch auth.Alias.Local {
-				case true:
-					// Only create a new entity if the error was a readonly error and the creation flag is true
-					// i.e the entity was in the middle of being created
-					if entityCreated && errors.Is(err, logical.ErrReadOnly) {
-						entity, err = possiblyForwardEntityCreation(ctx, c, err, auth, nil)
-						if err != nil {
-							if strings.Contains(err.Error(), errCreateEntityUnimplemented) {
-								resp.AddWarning("primary cluster doesn't yet issue entities for local auth mounts; falling back to not issuing entities for local auth mounts")
-								goto CREATE_TOKEN
-							} else {
-								return nil, nil, err
-							}
-						}
-					}
-					err = updateLocalAlias(ctx, c, auth, entity)
-				default:
-					entity, entityCreated, err = possiblyForwardAliasCreation(ctx, c, err, auth, entity)
-				}
-			}
 			if err != nil {
 				return nil, nil, err
 			}
@@ -1692,10 +1501,10 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 					TimeOfStorage:         time.Now(),
 					RequestID:             mfaRequestID,
 				}
-				err = possiblyForwardSaveCachedAuthResponse(ctx, c, respAuth)
-				if err != nil {
+				if err := c.SaveMFAResponseAuth(respAuth); err != nil {
 					return nil, nil, err
 				}
+
 				auth = nil
 				resp.Auth = &logical.Auth{
 					MFARequirement: mfaRequirement,
@@ -1724,8 +1533,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 			role = c.DetermineRoleFromLoginRequest(ctx, req.MountPoint, req.Data)
 		}
 
-		leaseGen, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp)
-		leaseGenerated = leaseGen
+		_, respTokenCreate, errCreateToken := c.LoginCreateToken(ctx, ns, req.Path, source, role, resp)
 		if errCreateToken != nil {
 			return respTokenCreate, nil, errCreateToken
 		}
@@ -1747,7 +1555,7 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 		// We don't need to try to delete the lockedUsers storage entry, since we're
 		// processing a login request. If a login attempt is allowed, it means the user is
 		// unlocked and we only add storage entry when the user gets locked.
-		err = updateUserFailedLoginInfo(ctx, c, loginUserInfoKey, nil, true)
+		err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1763,11 +1571,6 @@ func (c *Core) handleLoginRequest(ctx context.Context, req *logical.Request) (re
 	}
 	if routeErr != nil {
 		return resp, auth, routeErr
-	}
-
-	// this check handles the bad login credential case
-	if err := enterpriseBlockRequestIfError(c, ns.Path, req.Path); err != nil {
-		return nil, nil, multierror.Append(retErr, err)
 	}
 
 	return resp, auth, routeErr
@@ -1824,20 +1627,8 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 		}
 	}
 
-	var registerFunc RegisterAuthFunc
-	var funcGetErr error
-	// Batch tokens should not be forwarded to perf standby
-	if auth.TokenType == logical.TokenTypeBatch {
-		registerFunc = c.RegisterAuth
-	} else {
-		registerFunc, funcGetErr = getAuthRegisterFunc(c)
-	}
-	if funcGetErr != nil {
-		return false, nil, funcGetErr
-	}
-
 	leaseGenerated := false
-	err = registerFunc(ctx, tokenTTL, reqPath, auth, role)
+	err = c.RegisterAuth(ctx, tokenTTL, reqPath, auth, role)
 	switch {
 	case err == nil:
 		if auth.TokenType != logical.TokenTypeBatch {
@@ -1887,10 +1678,7 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 	}
 
 	// get entry from userFailedLoginInfo map for the key
-	userFailedLoginInfo, err := getUserFailedLoginInfo(ctx, c, loginUserInfoKey)
-	if err != nil {
-		return err
-	}
+	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 
 	// update the last failed login time with current time
 	failedLoginInfo := FailedLoginInfo{
@@ -1913,7 +1701,7 @@ func (c *Core) failedUserLoginProcess(ctx context.Context, mountEntry *MountEntr
 	}
 
 	// update the userFailedLoginInfo map (and/or storage) with the updated/new entry
-	err = updateUserFailedLoginInfo(ctx, c, loginUserInfoKey, &failedLoginInfo, false)
+	err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &failedLoginInfo, false)
 	if err != nil {
 		return err
 	}
@@ -1983,10 +1771,8 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 	}
 
 	// get entry from userFailedLoginInfo map for the key
-	userFailedLoginInfo, err := getUserFailedLoginInfo(ctx, c, loginUserInfoKey)
-	if err != nil {
-		return false, err
-	}
+	userFailedLoginInfo := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
+
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
 	switch userFailedLoginInfo {
@@ -2139,8 +1925,6 @@ func (c *Core) buildMfaEnforcementResponse(eConfig *mfa.MFAEnforcementConfig) (*
 	return mfaAny, nil
 }
 
-func blockRequestIfErrorImpl(_ *Core, _, _ string) error { return nil }
-
 // RegisterAuth uses a logical.Auth object to create a token entry in the token
 // store, and registers a corresponding token lease to the expiration manager.
 // role is the login role used as part of the creation of the token entry. If not
@@ -2217,7 +2001,7 @@ func (c *Core) RegisterAuth(ctx context.Context, tokenTTL time.Duration, path st
 			// We don't need to try to delete the lockedUsers storage entry, since we're
 			// processing a login request. If a login attempt is allowed, it means the user is
 			// unlocked and we only add storage entry when the user gets locked.
-			err = updateUserFailedLoginInfo(ctx, c, loginUserInfoKey, nil, true)
+			err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true)
 			if err != nil {
 				return err
 			}

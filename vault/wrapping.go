@@ -463,7 +463,7 @@ func IsWrappingToken(te *logical.TokenEntry) bool {
 		return false
 	}
 
-	if te.Policies[0] != responseWrappingPolicyName && te.Policies[0] != controlGroupPolicyName {
+	if te.Policies[0] != responseWrappingPolicyName {
 		return false
 	}
 

@@ -32,7 +32,7 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 	}
 
 	identityCountTimer := time.Tick(time.Minute * 10)
-	// Only emit on active node of cluster that is not a DR secondary.
+	// Only emit on active node of cluster.
 	if stopped, haState := stopOrHAState(); stopped {
 		return
 	} else if haState == consts.Standby {
@@ -67,12 +67,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 0, nil)
 			} else {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
-			}
-
-			if c.UndoLogsEnabled() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "write_undo_logs"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "write_undo_logs"}, 0, nil)
 			}
 
 			// Refresh the standby gauge, on all nodes
@@ -235,8 +229,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 		},
 	}
 
-	// Disable collection if configured, or if we're a performance standby
-	// node or DR secondary cluster.
+	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
 	} else if standby, _ := c.Standby(); !standby {

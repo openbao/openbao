@@ -170,10 +170,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		ClusterID:                  clusterID,
 	}
 
-	if init && !sealed && !standby {
-		body.LastWAL = vault.LastWAL(core)
-	}
-
 	return code, body, nil
 }
 

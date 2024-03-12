@@ -32,7 +32,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/helper/locksutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/vault/quotas"
 	uberAtomic "go.uber.org/atomic"
 )
 
@@ -503,17 +502,6 @@ func (m *ExpirationManager) invalidate(key string) {
 				pending.timer.Stop()
 				m.pending.Delete(leaseID)
 				m.leaseCount--
-
-				// Avoid nil pointer dereference. Without cachedLeaseInfo we do not have enough information to
-				// accurately update quota lease information.
-				// Note that cachedLeaseInfo should never be nil under normal operation.
-				if pending.cachedLeaseInfo != nil {
-					leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: leaseID, Role: pending.cachedLeaseInfo.LoginRole}
-					if err := m.core.quotasHandleLeases(ctx, quotas.LeaseActionDeleted, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-						m.logger.Error("failed to update quota on lease invalidation", "error", err)
-						return
-					}
-				}
 			default:
 				// Update the lease in memory
 				m.updatePendingInternal(le)
@@ -525,20 +513,11 @@ func (m *ExpirationManager) invalidate(key string) {
 				// other maps, and update metrics/quotas if appropriate.
 				m.nonexpiring.Delete(leaseID)
 
-				if info, ok := m.irrevocable.Load(leaseID); ok {
-					ile := info.(*leaseEntry)
+				if _, ok := m.irrevocable.Load(leaseID); ok {
 					m.irrevocable.Delete(leaseID)
 					m.irrevocableLeaseCount--
 
 					m.leaseCount--
-					// Note that the leaseEntry should never be nil under normal operation.
-					if ile != nil {
-						leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: leaseID, Role: ile.LoginRole}
-						if err := m.core.quotasHandleLeases(ctx, quotas.LeaseActionDeleted, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-							m.logger.Error("failed to update quota on lease invalidation", "error", err)
-							return
-						}
-					}
 				}
 				return
 			}
@@ -845,20 +824,8 @@ func (m *ExpirationManager) processRestore(ctx context.Context, leaseID string) 
 	}
 
 	// Load lease and restore expiration timer
-	le, err := m.loadEntryInternal(ctx, leaseID, true, false)
-	if err != nil {
+	if _, err := m.loadEntryInternal(ctx, leaseID, true, false); err != nil {
 		return err
-	}
-
-	// Update quotas with relevant lease information
-	if le != nil {
-		leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: le.LeaseID, Role: le.LoginRole}
-		if err := m.core.quotasHandleLeases(context.Background(), quotas.LeaseActionLoaded, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-			// We don't want to fail the start-up due to leases not being able
-			// to be loaded into the quota manager. When the leases get loaded,
-			// quota manager will be updated individually too.
-			m.logger.Error("failed to load lease into the quota sub-system", "LeaseID:", leaseID, "LoginRole", le.LoginRole, "error", err)
-		}
 	}
 
 	return nil
@@ -1853,16 +1820,6 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 			info.(pendingInfo).timer.Stop()
 			m.pending.Delete(le.LeaseID)
 			m.leaseCount--
-			// Avoid nil pointer dereference. Without cachedLeaseInfo we do not have enough information to
-			// accurately update quota lease information.
-			// Note that cachedLeaseInfo should never be nil under normal operation.
-			if pending.cachedLeaseInfo != nil {
-				leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: le.LeaseID, Role: le.LoginRole}
-				if err := m.core.quotasHandleLeases(m.quitContext, quotas.LeaseActionDeleted, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-					m.logger.Error("failed to update quota on lease deletion", "error", err)
-					return
-				}
-			}
 		}
 		return
 	}
@@ -1914,23 +1871,6 @@ func (m *ExpirationManager) updatePendingInternal(le *leaseEntry) {
 	}
 	if leaseCreated {
 		m.leaseCount++
-
-		// If we're in restore mode, Vault is still starting. While we may get leases created, it is likely
-		// 'catching up' on old creates. There will be a core.quotasHandleLeases call to register these leases in
-		// restore process instead - in other words, !m.inRestoreMode() prevents double counting for quotas.
-		// We keep m.leaseCount++ out of this check as it is not called in processRestore
-		if !m.inRestoreMode() {
-			// Avoid nil pointer dereference. Without cachedLeaseInfo we do not have enough information to
-			// accurately update quota lease information.
-			// Note that cachedLeaseInfo should never be nil under normal operation.
-			if pending.cachedLeaseInfo != nil {
-				leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: le.LeaseID, Role: le.LoginRole}
-				if err := m.core.quotasHandleLeases(m.quitContext, quotas.LeaseActionCreated, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-					m.logger.Error("failed to update quota on lease creation", "error", err)
-					return
-				}
-			}
-		}
 	}
 }
 
@@ -2538,16 +2478,6 @@ func (m *ExpirationManager) removeFromPending(ctx context.Context, leaseID strin
 		m.pending.Delete(leaseID)
 		if decrementCounters {
 			m.leaseCount--
-			// Avoid nil pointer dereference. Without cachedLeaseInfo we do not have enough information to
-			// accurately update quota lease information.
-			// Note that cachedLeaseInfo should never be nil under normal operation.
-			if pending.cachedLeaseInfo != nil {
-				leaseInfo := &quotas.QuotaLeaseInformation{LeaseId: leaseID, Role: pending.cachedLeaseInfo.LoginRole}
-				// Log but do not fail; unit tests (and maybe Tidy on production systems)
-				if err := m.core.quotasHandleLeases(ctx, quotas.LeaseActionDeleted, []*quotas.QuotaLeaseInformation{leaseInfo}); err != nil {
-					m.logger.Error("failed to update quota on revocation", "error", err)
-				}
-			}
 		}
 	}
 }

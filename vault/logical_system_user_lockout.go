@@ -47,7 +47,7 @@ func unlockUser(ctx context.Context, core *Core, mountAccessor string, aliasName
 	}
 
 	// remove entry for locked user from userFailedLoginInfo map and storage
-	if err := updateUserFailedLoginInfo(ctx, core, loginUserInfoKey, nil, true); err != nil {
+	if err := core.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
 		return err
 	}
 

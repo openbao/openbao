@@ -61,31 +61,16 @@ func systemBackendMemDBSchema() *memdb.DBSchema {
 		Tables: make(map[string]*memdb.TableSchema),
 	}
 
-	schemas := getSystemSchemas()
-
-	for _, schemaFunc := range schemas {
-		schema := schemaFunc()
-		if _, ok := systemSchema.Tables[schema.Name]; ok {
-			panic(fmt.Sprintf("duplicate table name: %s", schema.Name))
-		}
-		systemSchema.Tables[schema.Name] = schema
-	}
-
 	return systemSchema
-}
-
-type PolicyMFABackend struct {
-	*MFABackend
 }
 
 func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	db, _ := memdb.NewMemDB(systemBackendMemDBSchema())
 
 	b := &SystemBackend{
-		Core:       core,
-		db:         db,
-		logger:     logger,
-		mfaBackend: NewPolicyMFABackend(core, logger),
+		Core:   core,
+		db:     db,
+		logger: logger,
 	}
 
 	b.Backend = &framework.Backend{
@@ -100,12 +85,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"audit/*",
 				"raw",
 				"raw/*",
-				"replication/primary/secondary-token",
-				"replication/performance/primary/secondary-token",
-				"replication/dr/primary/secondary-token",
-				"replication/reindex",
-				"replication/dr/reindex",
-				"replication/performance/reindex",
 				"rotate",
 				"config/cors",
 				"config/auditing/*",
@@ -116,7 +95,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"leases/revoke-prefix/*",
 				"leases/revoke-force/*",
 				"leases/lookup/*",
-				"storage/raft/snapshot-auto/config/*",
 				"leases",
 				"internal/inspect/*",
 			},
@@ -129,18 +107,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"internal/ui/mounts",
 				"internal/ui/mounts/*",
 				"internal/ui/namespaces",
-				"replication/performance/status",
-				"replication/dr/status",
-				"replication/dr/secondary/promote",
-				"replication/dr/secondary/disable",
-				"replication/dr/secondary/recover",
-				"replication/dr/secondary/update-primary",
-				"replication/dr/secondary/operation-token/delete",
-				"replication/dr/secondary/license",
-				"replication/dr/secondary/license/signed",
-				"replication/dr/secondary/license/status",
-				"replication/dr/secondary/sys/config/reload/license",
-				"replication/dr/secondary/reindex",
 				"storage/raft/bootstrap/challenge",
 				"storage/raft/bootstrap/answer",
 				"init",
@@ -164,14 +130,9 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				expirationSubPath,
 				countersSubPath,
 			},
-
-			SealWrapStorage: []string{
-				managedKeyRegistrySubPath,
-			},
 		},
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, entPaths(b)...)
 	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
@@ -206,7 +167,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
 	}
 
-	b.Backend.Invalidate = sysInvalidate(b)
 	return b
 }
 
@@ -214,9 +174,6 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 	r := &RawBackend{
 		barrier: b.Core.barrier,
 		logger:  b.logger,
-		checkRaw: func(path string) error {
-			return checkRaw(b, path)
-		},
 	}
 	return rawPaths("", r)
 }
@@ -226,10 +183,9 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 // prefix. Conceptually it is similar to procfs on Linux.
 type SystemBackend struct {
 	*framework.Backend
-	Core       *Core
-	db         *memdb.MemDB
-	logger     log.Logger
-	mfaBackend *PolicyMFABackend
+	Core   *Core
+	db     *memdb.MemDB
+	logger log.Logger
 }
 
 // handleConfigStateSanitized returns the current configuration state. The configuration
@@ -245,13 +201,6 @@ func (b *SystemBackend) handleConfigStateSanitized(ctx context.Context, req *log
 
 // handleConfigReload handles reloading specific pieces of the configuration.
 func (b *SystemBackend) handleConfigReload(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	subsystem := data.Get("subsystem").(string)
-
-	switch subsystem {
-	case "license":
-		return handleLicenseReload(b)(ctx, req, data)
-	}
-
 	return nil, logical.ErrUnsupportedPath
 }
 
@@ -664,11 +613,6 @@ func getVersion(d *framework.FieldData) (version string, builtin bool, err error
 func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	pluginName := d.Get("plugin").(string)
 	pluginMounts := d.Get("mounts").([]string)
-	scope := d.Get("scope").(string)
-
-	if scope != "" && scope != globalScope {
-		return logical.ErrorResponse("reload scope must be omitted or 'global'"), nil
-	}
 
 	if pluginName != "" && len(pluginMounts) > 0 {
 		return logical.ErrorResponse("plugin and mounts cannot be set at the same time"), nil
@@ -695,13 +639,6 @@ func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logic
 		},
 	}
 
-	if scope == globalScope {
-		err := handleGlobalPluginReload(ctx, b.Core, req.ID, pluginName, pluginMounts)
-		if err != nil {
-			return nil, err
-		}
-		return logical.RespondWithStatusCode(&r, req, http.StatusAccepted)
-	}
 	return &r, nil
 }
 
@@ -1013,14 +950,6 @@ func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Reque
 			continue
 		}
 
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, "")
-		if err != nil {
-			return nil, err
-		}
-		if cont {
-			continue
-		}
-
 		// Populate mount info
 		info := b.mountInfo(ctx, entry)
 
@@ -1300,8 +1229,6 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	entry := b.Core.router.MatchingMountEntry(ctx, path)
-
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
 	match := b.Core.router.MatchingMount(ctx, path)
@@ -1318,18 +1245,6 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 	// Attempt unmount
 	if err := b.Core.unmount(ctx, path); err != nil {
 		b.Backend.Logger().Error("unmount failed", "path", path, "error", err)
-		return handleError(err)
-	}
-
-	// Get the view path if available
-	var viewPath string
-	if entry != nil {
-		viewPath = entry.ViewPath()
-	}
-
-	// Remove from filtered mounts
-	if err := b.Core.removePathFromFilteredPaths(ctx, ns.Path+path, viewPath); err != nil {
-		b.Backend.Logger().Error("filtered path removal failed", path, "error", err)
 		return handleError(err)
 	}
 
@@ -1477,16 +1392,6 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	}
 
 	if err != nil {
-		return err
-	}
-
-	if err := revokeCtx.Err(); err != nil {
-		return err
-	}
-
-	logger.Info("Removing the source mount from filtered paths on secondaries")
-	// Remove from filtered mounts and restart evaluation process
-	if err := b.Core.removePathFromFilteredPaths(revokeCtx, fromPathDetails.GetFullPath(), entry.ViewPath()); err != nil {
 		return err
 	}
 
@@ -2403,14 +2308,6 @@ func (b *SystemBackend) handleAuthTable(ctx context.Context, req *logical.Reques
 			continue
 		}
 
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, credentialRoutePrefix)
-		if err != nil {
-			return nil, err
-		}
-		if cont {
-			continue
-		}
-
 		info := b.mountInfo(ctx, entry)
 		resp.Data[entry.Path] = info
 	}
@@ -2433,14 +2330,6 @@ func (b *SystemBackend) handleReadAuth(ctx context.Context, req *logical.Request
 	for _, entry := range b.Core.auth.Entries {
 		// Only show entry for current namespace
 		if entry.Namespace().Path != ns.Path || entry.Path != path {
-			continue
-		}
-
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, credentialRoutePrefix)
-		if err != nil {
-			return nil, err
-		}
-		if cont {
 			continue
 		}
 
@@ -2722,8 +2611,6 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	}
 	fullPath := credentialRoutePrefix + path
 
-	entry := b.Core.router.MatchingMountEntry(ctx, fullPath)
-
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
 	match := b.Core.router.MatchingMount(ctx, fullPath)
@@ -2740,18 +2627,6 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	// Attempt disable
 	if err := b.Core.disableCredential(ctx, path); err != nil {
 		b.Backend.Logger().Error("disable auth mount failed", "path", path, "error", err)
-		return handleError(err)
-	}
-
-	// Get the view path if available
-	var viewPath string
-	if entry != nil {
-		viewPath = entry.ViewPath()
-	}
-
-	// Remove from filtered mounts
-	if err := b.Core.removePathFromFilteredPaths(ctx, fullPath, viewPath); err != nil {
-		b.Backend.Logger().Error("filtered path removal failed", path, "error", err)
 		return handleError(err)
 	}
 
@@ -2772,7 +2647,6 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 
 		switch policyType {
 		case PolicyTypeACL:
-			// Add the special "root" policy if not egp and we are at the root namespace
 			if ns.ID == namespace.RootNamespaceID {
 				policies = append(policies, "root")
 			}
@@ -2783,18 +2657,6 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 				resp.Data["policies"] = resp.Data["keys"]
 			}
 			return resp, nil
-
-		case PolicyTypeRGP:
-			return logical.ListResponse(policies), nil
-
-		case PolicyTypeEGP:
-			nsScopedKeyInfo := getEGPListResponseKeyInfo(b, ns)
-			return &logical.Response{
-				Data: map[string]interface{}{
-					"keys":     policies,
-					"key_info": nsScopedKeyInfo,
-				},
-			}, nil
 		}
 
 		return logical.ErrorResponse("unknown policy type"), nil
@@ -2828,11 +2690,6 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 				"name":             policy.Name,
 				respDataPolicyName: policy.Raw,
 			},
-		}
-
-		switch policy.Type {
-		case PolicyTypeRGP, PolicyTypeEGP:
-			addSentinelPolicyData(resp.Data, policy)
 		}
 
 		return resp, nil
@@ -2888,16 +2745,8 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			policy.Paths = p.Paths
 			policy.Templated = p.Templated
 
-		case PolicyTypeRGP, PolicyTypeEGP:
-
 		default:
 			return logical.ErrorResponse("unknown policy type"), nil
-		}
-
-		if policy.Type == PolicyTypeRGP || policy.Type == PolicyTypeEGP {
-			if errResp := inputSentinelPolicyData(data, policy); errResp != nil {
-				return errResp, nil
-			}
 		}
 
 		// Update the policy
@@ -3437,8 +3286,7 @@ func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Req
 	}, nil
 }
 
-// handleWrappingUnwrap will unwrap a response wrapping token or complete a
-// request that required a control group.
+// handleWrappingUnwrap will unwrap a response wrapping token.
 func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	// If a third party is unwrapping (rather than the calling token being the
 	// wrapping token) we detect this so that we can revoke the original
@@ -3453,7 +3301,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 	}
 
 	// Get the policies so we can determine if this is a normal response
-	// wrapping request or a control group token.
+	// wrapping request.
 	//
 	// We use lookupTainted here because the token might have already been used
 	// by handleRequest(), this happens when it's a normal response wrapping
@@ -3482,8 +3330,6 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 
 	var response string
 	switch te.Policies[0] {
-	case controlGroupPolicyName:
-		response, err = controlGroupUnwrap(unwrapCtx, b, token, thirdParty)
 	case responseWrappingPolicyName:
 		response, err = b.responseWrappingUnwrap(unwrapCtx, te, thirdParty)
 	}
@@ -4148,16 +3994,6 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 
 	b.Core.mountsLock.RLock()
 	for _, entry := range b.Core.mounts.Entries {
-		ctxWithNamespace := namespace.ContextWithNamespace(ctx, entry.Namespace())
-		filtered, err := b.Core.checkReplicatedFiltering(ctxWithNamespace, entry, "")
-		if err != nil {
-			b.Core.mountsLock.RUnlock()
-			return nil, err
-		}
-		if filtered {
-			continue
-		}
-
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -4175,16 +4011,6 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 
 	b.Core.authLock.RLock()
 	for _, entry := range b.Core.auth.Entries {
-		ctxWithNamespace := namespace.ContextWithNamespace(ctx, entry.Namespace())
-		filtered, err := b.Core.checkReplicatedFiltering(ctxWithNamespace, entry, credentialRoutePrefix)
-		if err != nil {
-			b.Core.authLock.RUnlock()
-			return nil, err
-		}
-		if filtered {
-			continue
-		}
-
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -4238,18 +4064,6 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 		return errResp, logical.ErrPermissionDenied
 	}
 
-	var routerPrefix string
-	if strings.HasPrefix(me.APIPathNoNamespace(), credentialRoutePrefix) {
-		routerPrefix = credentialRoutePrefix
-	}
-
-	filtered, err := b.Core.checkReplicatedFiltering(ctx, me, routerPrefix)
-	if err != nil {
-		return nil, err
-	}
-	if filtered {
-		return errResp, logical.ErrPermissionDenied
-	}
 	resp := &logical.Response{
 		Data: b.mountInfo(ctx, me),
 	}
@@ -4697,7 +4511,6 @@ type LeaderResponse struct {
 	ActiveTime           time.Time `json:"active_time,omitempty"`
 	LeaderAddress        string    `json:"leader_address"`
 	LeaderClusterAddress string    `json:"leader_cluster_address"`
-	LastWAL              uint64    `json:"last_wal,omitempty"`
 
 	// Raft Indexes for this node
 	RaftCommittedIndex uint64 `json:"raft_committed_index,omitempty"`
@@ -4730,9 +4543,6 @@ func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
 	}
 	if isLeader {
 		resp.ActiveTime = core.activeTime
-	}
-	if isLeader || !haEnabled {
-		resp.LastWAL = LastWAL(core)
 	}
 
 	resp.RaftCommittedIndex, resp.RaftAppliedIndex = core.GetRaftIndexesLocked()

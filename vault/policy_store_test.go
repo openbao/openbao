@@ -322,9 +322,9 @@ func TestDefaultPolicy(t *testing.T) {
 }
 
 // TestPolicyStore_GetNonEGPPolicyType has five test cases:
-//   - happy-acl and happy-rgp: we store a policy in the policy type map and
+//   - happy-acl: we store a policy in the policy type map and
 //     then look up its type successfully.
-//   - not-in-map-acl and not-in-map-rgp: ensure that GetNonEGPPolicyType fails
+//   - not-in-map-acl: ensure that GetNonEGPPolicyType fails
 //     returning a nil and an error when the policy doesn't exist in the map.
 //   - unknown-policy-type: ensures that GetNonEGPPolicyType fails returning a nil
 //     and an error when the policy type in the type map is a value that
@@ -347,24 +347,9 @@ func TestPolicyStore_GetNonEGPPolicyType(t *testing.T) {
 			paramPolicyName:  "policy1",
 			paramPolicyType:  PolicyTypeACL,
 		},
-		"happy-rgp": {
-			policyStoreKey:   "1AbcD/policy1",
-			policyStoreValue: PolicyTypeRGP,
-			paramNamespace:   "1AbcD",
-			paramPolicyName:  "policy1",
-			paramPolicyType:  PolicyTypeRGP,
-		},
 		"not-in-map-acl": {
 			policyStoreKey:       "2WxyZ/policy2",
 			policyStoreValue:     PolicyTypeACL,
-			paramNamespace:       "1AbcD",
-			paramPolicyName:      "policy1",
-			isErrorExpected:      true,
-			expectedErrorMessage: "policy does not exist in type map",
-		},
-		"not-in-map-rgp": {
-			policyStoreKey:       "2WxyZ/policy2",
-			policyStoreValue:     PolicyTypeRGP,
 			paramNamespace:       "1AbcD",
 			paramPolicyName:      "policy1",
 			isErrorExpected:      true,

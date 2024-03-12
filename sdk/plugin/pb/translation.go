@@ -623,7 +623,6 @@ func LogicalTokenEntryToProtoTokenEntry(t *logical.TokenEntry) *TokenEntry {
 		NamespaceID:        t.NamespaceID,
 		CubbyholeID:        t.CubbyholeID,
 		Type:               uint32(t.Type),
-		ExternalID:         t.ExternalID,
 	}
 }
 
@@ -664,7 +663,6 @@ func ProtoTokenEntryToLogicalTokenEntry(t *TokenEntry) (*logical.TokenEntry, err
 		NamespaceID:        t.NamespaceID,
 		CubbyholeID:        t.CubbyholeID,
 		Type:               logical.TokenType(t.Type),
-		ExternalID:         t.ExternalID,
 	}, nil
 }
 

@@ -383,7 +383,8 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		c.logger.Error("root token generation failed", "error", err)
 		return nil, err
 	}
-	results.RootToken = rootToken.ExternalID
+
+	results.RootToken = rootToken.ID
 	c.logger.Info("root token generated")
 
 	if initParams.RootTokenPGPKey != "" {

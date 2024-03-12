@@ -237,10 +237,6 @@ type Request struct {
 	// client token.
 	ClientID string `json:"client_id" structs:"client_id" mapstructure:"client_id" sentinel:""`
 
-	// InboundSSCToken is the token that arrives on an inbound request, supplied
-	// by the vault user.
-	InboundSSCToken string
-
 	// When a request has been forwarded, contains information of the host the request was forwarded 'from'
 	ForwardedFrom string `json:"forwarded_from,omitempty"`
 }

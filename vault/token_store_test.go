@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -57,14 +56,6 @@ func TestTokenStore_CreateOrphanResponse(t *testing.T) {
 // can be used and that the cubbyhole is removed after the token is revoked.
 func TestTokenStore_CubbyholeDeletion(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	testTokenStore_CubbyholeDeletion(t, c, root)
-}
-
-// TestTokenStore_CubbyholeDeletionSSCTokensDisabled tests that a legacy token's
-// cubbyhole can be used, and that the cubbyhole is removed after the token is revoked.
-func TestTokenStore_CubbyholeDeletionSSCTokensDisabled(t *testing.T) {
-	c, _, root := TestCoreUnsealed(t)
-	c.disableSSCTokens = true
 	testTokenStore_CubbyholeDeletion(t, c, root)
 }
 
@@ -244,7 +235,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatalf("expected sha1 hash; got sha2-256 hmac")
 	}
 
-	saltedID, err = ts.SaltID(namespace.RootContext(nil), "hvs.foo")
+	saltedID, err = ts.SaltID(namespace.RootContext(nil), "s.foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +252,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatalf("expected sha2-256 hmac; got sha1 hash")
 	}
 
-	saltedID, err = ts.SaltID(nsCtx, "hvs.foo")
+	saltedID, err = ts.SaltID(nsCtx, "s.foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -774,7 +765,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 	}
 
 	// Revoke root to make the number of accessors match
-	internalRoot, _ := c.DecodeSSCToken(root)
+	internalRoot := root
 	salted, err := ts.SaltID(namespace.RootContext(nil), internalRoot)
 	if err != nil {
 		t.Fatal(err)
@@ -1673,7 +1664,7 @@ func TestTokenStore_HandleRequest_CreateToken_DisplayName(t *testing.T) {
 }
 
 func deepEqualTokenEntries(t *testing.T, a *logical.TokenEntry, b *logical.TokenEntry) {
-	if diff := cmp.Diff(a, b, cmpopts.IgnoreFields(logical.TokenEntry{}, "ExternalID")); diff != "" {
+	if diff := cmp.Diff(a, b); diff != "" {
 		t.Fatalf("bad diff in token entries: %s", diff)
 	}
 }
@@ -2435,7 +2426,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	internalRoot, _ := c.DecodeSSCToken(root)
+	internalRoot := root
 
 	exp := map[string]interface{}{
 		"id":               internalRoot,
@@ -6026,7 +6017,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if !strings.HasPrefix(resp.Auth.ClientToken, consts.ServiceTokenPrefix) {
-			t.Fatalf("token %q does not have a 'hvs.' prefix", resp.Auth.ClientToken)
+			t.Fatalf("token %q does not have a 's.' prefix", resp.Auth.ClientToken)
 		}
 	})
 
@@ -6063,13 +6054,13 @@ func TestTokenStore_TokenID(t *testing.T) {
 			Path:        "create",
 			Operation:   logical.UpdateOperation,
 			Data: map[string]interface{}{
-				"id": "hvs.foobar",
+				"id": "s.foobar",
 			},
 		})
 		if err == nil {
 			t.Fatalf("expected an error")
 		}
-		if resp.Error().Error() != "custom token ID cannot have the 'hvs.' prefix" {
+		if resp.Error().Error() != "custom token ID cannot have the 's.' prefix" {
 			t.Fatalf("expected input error not present in error response")
 		}
 	})

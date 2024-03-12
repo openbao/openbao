@@ -7,12 +7,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/license"
 	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/vault/quotas"
-	"github.com/openbao/openbao/vault/replication"
 )
 
 func coreInit(c *Core, conf *CoreConfig) error {
@@ -39,12 +35,6 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	return nil
 }
 
-func (c *Core) setupReplicationResolverHandler() error {
-	return nil
-}
-
-func NewPolicyMFABackend(core *Core, logger hclog.Logger) *PolicyMFABackend { return nil }
-
 func (c *Core) barrierViewForNamespace(namespaceId string) (*BarrierView, error) {
 	if namespaceId != namespace.RootNamespaceID {
 		return nil, fmt.Errorf("failed to find barrier view for non-root namespace")
@@ -52,22 +42,6 @@ func (c *Core) barrierViewForNamespace(namespaceId string) (*BarrierView, error)
 
 	return c.systemBarrierView, nil
 }
-
-func (c *Core) UndoLogsEnabled() bool            { return false }
-func (c *Core) UndoLogsPersisted() (bool, error) { return false, nil }
-func (c *Core) EnableUndoLogs()                  {}
-func (c *Core) PersistUndoLogs() error           { return nil }
-
-func (c *Core) teardownReplicationResolverHandler() {}
-func (c *Core) createSecondaries(_ hclog.Logger)    {}
-
-func (c *Core) addExtraLogicalBackends(_ string) {}
-
-func (c *Core) addExtraCredentialBackends() {}
-
-func preUnsealInternal(context.Context, *Core) error { return nil }
-
-func postSealInternal(*Core) {}
 
 func preSealPhysical(c *Core) {
 	switch c.sealUnwrapper.(type) {
@@ -92,70 +66,8 @@ func postUnsealPhysical(c *Core) error {
 	return nil
 }
 
-func loadPolicyMFAConfigs(context.Context, *Core) error { return nil }
-
-func shouldStartClusterListener(*Core) bool { return true }
-
-func hasNamespaces(*Core) bool { return false }
-
-func (c *Core) Features() license.Features {
-	return license.FeatureNone
-}
-
-func (c *Core) HasFeature(license.Features) bool {
-	return false
-}
-
 func (c *Core) collectNamespaces() []*namespace.Namespace {
 	return []*namespace.Namespace{
 		namespace.RootNamespace,
 	}
-}
-
-func (c *Core) setupReplicatedClusterPrimary(*replication.Cluster) error { return nil }
-
-func (c *Core) removePathFromFilteredPaths(context.Context, string, string) error {
-	return nil
-}
-
-func (c *Core) checkReplicatedFiltering(context.Context, *MountEntry, string) (bool, error) {
-	return false, nil
-}
-
-func (c *Core) invalidateSentinelPolicy(PolicyType, string) {}
-
-func (c *Core) initSealsForMigration() {}
-
-func (c *Core) postSealMigration(ctx context.Context) error { return nil }
-
-func (c *Core) applyLeaseCountQuota(_ context.Context, in *quotas.Request) (*quotas.Response, error) {
-	return &quotas.Response{Allowed: true}, nil
-}
-
-func (c *Core) ackLeaseQuota(access quotas.Access, leaseGenerated bool) error {
-	return nil
-}
-
-func (c *Core) quotaLeaseWalker(ctx context.Context, callback func(request *quotas.Request) bool) error {
-	return nil
-}
-
-func (c *Core) quotasHandleLeases(ctx context.Context, action quotas.LeaseAction, leases []*quotas.QuotaLeaseInformation) error {
-	return nil
-}
-
-func (c *Core) namespaceByPath(path string) *namespace.Namespace {
-	return namespace.RootNamespace
-}
-
-func (c *Core) AllowForwardingViaHeader() bool {
-	return false
-}
-
-func (c *Core) ForwardToActive() string {
-	return ""
-}
-
-func DiagnoseCheckLicense(ctx context.Context, vaultCore *Core, coreConfig CoreConfig, generate bool) (bool, []string) {
-	return false, nil
 }

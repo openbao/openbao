@@ -1195,8 +1195,7 @@ type TestClusterOptions struct {
 	FirstCoreNumber   int
 	RequireClientAuth bool
 	// SetupFunc is called after the cluster is started.
-	SetupFunc      func(t testing.T, c *TestCluster)
-	PR1103Disabled bool
+	SetupFunc func(t testing.T, c *TestCluster)
 
 	// ClusterLayers are used to override the default cluster connection layer
 	ClusterLayers cluster.NetworkLayerSet
@@ -1876,11 +1875,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	cleanupFunc := func() {}
 	var handler http.Handler
 
-	var disablePR1103 bool
-	if opts != nil && opts.PR1103Disabled {
-		disablePR1103 = true
-	}
-
 	var firstCoreNumber int
 	if opts != nil {
 		firstCoreNumber = opts.FirstCoreNumber
@@ -1970,7 +1964,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		t.Fatalf("err: %v", err)
 	}
 	c.coreNumber = firstCoreNumber + idx
-	c.PR1103disabled = disablePR1103
 	if opts != nil && opts.HandlerFunc != nil {
 		props := opts.DefaultHandlerProperties
 		props.Core = c

@@ -51,14 +51,6 @@ func (e extendedSystemViewImpl) Auditor() logical.Auditor {
 }
 
 func (e extendedSystemViewImpl) ForwardGenericRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {
-	// Forward the request if allowed
-	if couldForward(e.core) {
-		ctx = namespace.ContextWithNamespace(ctx, e.mountEntry.Namespace())
-		ctx = logical.IndexStateContext(ctx, &logical.WALState{})
-		ctx = context.WithValue(ctx, ctxKeyForwardedRequestMountAccessor{}, e.mountEntry.Accessor)
-		return forward(ctx, e.core, req)
-	}
-
 	return nil, logical.ErrReadOnly
 }
 
@@ -140,11 +132,6 @@ func (e extendedSystemViewImpl) APILockShouldBlockRequest() (bool, error) {
 	if mountEntry == nil {
 		return false, fmt.Errorf("no mount entry")
 	}
-	ns := mountEntry.Namespace()
-
-	if err := enterpriseBlockRequestIfError(e.core, ns.Path, mountEntry.Path); err != nil {
-		return true, nil
-	}
 
 	return false, nil
 }
@@ -199,7 +186,7 @@ func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
 }
 
 func (d dynamicSystemView) HasFeature(feature license.Features) bool {
-	return d.core.HasFeature(feature)
+	return false
 }
 
 // ResponseWrapData wraps the given data in a cubbyhole and returns the

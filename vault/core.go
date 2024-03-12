@@ -72,8 +72,7 @@ const (
 
 	// The poison pill is used as a check during certain scenarios to indicate
 	// to standby nodes that they should seal
-	poisonPillPath   = "core/poison-pill"
-	poisonPillDRPath = "core/poison-pill-dr"
+	poisonPillPath = "core/poison-pill"
 
 	// coreLeaderPrefix is the prefix used for the UUID that contains
 	// the currently elected leader.
@@ -115,10 +114,6 @@ const (
 
 	WrapperTypeHsmAutoDeprecated = wrapping.WrapperType("hsm-auto")
 
-	// undoLogsAreSafeStoragePath is a storage path that we write once we know undo logs are
-	// safe, so we don't have to keep checking all the time.
-	undoLogsAreSafeStoragePath = "core/raft/undo_logs_are_safe"
-
 	ErrMlockFailedTemplate = "Failed to lock memory: %v\n\n" +
 		"This usually means that the mlock syscall is not available.\n" +
 		"Vault uses mlock to prevent memory from being swapped to\n" +
@@ -154,12 +149,6 @@ var (
 	// step down of the active node, to prevent instantly regrabbing the lock.
 	// It's var not const so that tests can manipulate it.
 	manualStepDownSleepPeriod = 10 * time.Second
-
-	// Functions only in the Enterprise version
-	LastWAL               = lastWALImpl
-	LastRemoteWAL         = lastRemoteWALImpl
-	LastRemoteUpstreamWAL = lastRemoteUpstreamWALImpl
-	WaitUntilWALShipped   = waitUntilWALShippedImpl
 )
 
 // NonFatalError is an error that can be returned during NewCore that should be
@@ -287,8 +276,7 @@ type Core struct {
 	// migrationInfo is used during (and possibly after) a seal migration.
 	// This contains information about the seal we are migrating *from*.  Even
 	// post seal migration, provided the old seal is still in configuration
-	// migrationInfo will be populated, which on enterprise may be necessary for
-	// seal rewrap.
+	// migrationInfo will be populated, which may be necessary for seal rewrap.
 	migrationInfo     *migrationInformation
 	sealMigrationDone *uint32
 
@@ -596,12 +584,6 @@ type Core struct {
 	recoveryMode bool
 
 	clusterNetworkLayer cluster.NetworkLayer
-
-	// PR1103disabled is used to test upgrade workflows: when set to true,
-	// the correct behaviour for namespaced cubbyholes is disabled, so we
-	// can test an upgrade to a version that includes the fixes from
-	// https://github.com/hashicorp/vault-enterprise/pull/1103
-	PR1103disabled bool
 
 	quotaManager *quotas.Manager
 
@@ -1132,9 +1114,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		c.pluginFilePermissions = conf.PluginFilePermissions
 	}
 
-	// Create secondaries (this will only impact Enterprise versions of Vault)
-	c.createSecondaries(conf.Logger)
-
 	if conf.HAPhysical != nil && conf.HAPhysical.HAEnabled() {
 		c.ha = conf.HAPhysical
 	}
@@ -1178,7 +1157,7 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		}
 	}
 
-	c.quotaManager, err = quotas.NewManager(quotasLogger, c.quotaLeaseWalker, c.metricSink, detectDeadlocks)
+	c.quotaManager, err = quotas.NewManager(quotasLogger, c.metricSink, detectDeadlocks)
 	if err != nil {
 		return nil, err
 	}
@@ -1259,8 +1238,6 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 	}
 
 	c.credentialBackends = credentialBackends
-
-	c.addExtraCredentialBackends()
 }
 
 // configureLogicalBackends configures the Core with the ability to create
@@ -1300,8 +1277,6 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 
 	c.logicalBackends = logicalBackends
-
-	c.addExtraLogicalBackends(adminNamespacePath)
 }
 
 // handleVersionTimeStamps stores the current version at the current time to
@@ -1873,20 +1848,12 @@ func (c *Core) unsealInternal(ctx context.Context, masterKey []byte) error {
 		return err
 	}
 
-	if err := preUnsealInternal(ctx, c); err != nil {
-		return err
-	}
-
 	if err := c.startClusterListener(ctx); err != nil {
 		return err
 	}
 
 	if err := c.startRaftBackend(ctx); err != nil {
 		return err
-	}
-
-	if err := c.setupReplicationResolverHandler(); err != nil {
-		c.logger.Warn("failed to start replication resolver server", "error", err)
 	}
 
 	// Do post-unseal setup if HA is not enabled
@@ -2224,8 +2191,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 		c.logger.Debug("runStandby done")
 	}
 
-	c.teardownReplicationResolverHandler()
-
 	// Perform additional cleanup upon sealing.
 	if performCleanup {
 		if raftBackend := c.getRaftBackend(); raftBackend != nil {
@@ -2258,8 +2223,6 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 			c.logger.Error("error resetting quota manager", "error", err)
 		}
 	}
-
-	postSealInternal(c)
 
 	c.logger.Info("vault is sealed")
 
@@ -2314,9 +2277,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupPolicyStore(ctx); err != nil {
 		return err
 	}
-	if err := c.setupManagedKeyRegistry(); err != nil {
-		return err
-	}
 	if err := c.loadCORSConfig(ctx); err != nil {
 		return err
 	}
@@ -2350,9 +2310,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.loadIdentityStoreArtifacts(ctx); err != nil {
 		return err
 	}
-	if err := loadPolicyMFAConfigs(ctx, c); err != nil {
-		return err
-	}
 	c.setupCachedMFAResponseAuth()
 	if err := c.loadLoginMFAConfigs(ctx); err != nil {
 		return err
@@ -2362,12 +2319,7 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 		return err
 	}
 
-	// Cannot do this above, as we need other resources like mounts to be setup
-	if err := c.setupPluginReload(); err != nil {
-		return err
-	}
-
-	if c.getClusterListener() != nil && (c.ha != nil || shouldStartClusterListener(c)) {
+	if c.getClusterListener() != nil {
 		if err := c.setupRaftActiveNode(ctx); err != nil {
 			return err
 		}
@@ -2491,19 +2443,10 @@ func (c *Core) postUnseal(ctx context.Context, ctxCancelFunc context.CancelFunc,
 		close(jobs)
 	}
 
-	if atomic.LoadUint32(c.sealMigrationDone) == 1 {
-		if err := c.postSealMigration(ctx); err != nil {
-			c.logger.Warn("post-unseal post seal migration failed", "error", err)
-		}
-	}
-
 	if api.ReadBaoVariable(EnvVaultDisableLocalAuthMountEntities) != "" {
 		c.logger.Warn("disabling entities for local auth mounts through env var", "env", EnvVaultDisableLocalAuthMountEntities)
 	}
 	c.loginMFABackend.usedCodes = cache.New(0, 30*time.Second)
-	if c.systemBackend != nil && c.systemBackend.mfaBackend != nil {
-		c.systemBackend.mfaBackend.usedCodes = cache.New(0, 30*time.Second)
-	}
 	c.logger.Info("post-unseal setup complete")
 	return nil
 }
@@ -2568,9 +2511,6 @@ func (c *Core) preSeal() error {
 		seal.StopHealthCheck()
 	}
 
-	if c.systemBackend != nil && c.systemBackend.mfaBackend != nil {
-		c.systemBackend.mfaBackend.usedCodes = nil
-	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA, error: %w", err))
 	}
@@ -2610,22 +2550,6 @@ func (c *Core) BarrierKeyLength() (min, max int) {
 
 func (c *Core) AuditedHeadersConfig() *AuditedHeadersConfig {
 	return c.auditedHeaders
-}
-
-func waitUntilWALShippedImpl(ctx context.Context, c *Core, index uint64) bool {
-	return true
-}
-
-func lastWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastRemoteWALImpl(c *Core) uint64 {
-	return 0
-}
-
-func lastRemoteUpstreamWALImpl(c *Core) uint64 {
-	return 0
 }
 
 func (c *Core) PhysicalSealConfigs(ctx context.Context) (*SealConfig, *SealConfig, error) {
@@ -2768,7 +2692,6 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 		// and after migration.
 		c.adjustSealConfigDuringMigration(existBarrierSealConfig, existRecoverySealConfig)
 	}
-	c.initSealsForMigration()
 	c.logger.Warn("entering seal migration mode; Vault will not automatically unseal even if using an autoseal", "from_barrier_type", c.migrationInfo.seal.BarrierType(), "to_barrier_type", c.seal.BarrierType())
 
 	return nil
@@ -3127,18 +3050,15 @@ type FeatureFlags struct {
 }
 
 func (c *Core) persistFeatureFlags(ctx context.Context) error {
-	if !c.PR1103disabled {
-		c.logger.Debug("persisting feature flags")
-		json, err := jsonutil.EncodeJSON(&FeatureFlags{NamespacesCubbyholesLocal: !c.PR1103disabled})
-		if err != nil {
-			return err
-		}
-		return c.barrier.Put(ctx, &logical.StorageEntry{
-			Key:   consts.CoreFeatureFlagPath,
-			Value: json,
-		})
+	c.logger.Debug("persisting feature flags")
+	json, err := jsonutil.EncodeJSON(&FeatureFlags{NamespacesCubbyholesLocal: true})
+	if err != nil {
+		return err
 	}
-	return nil
+	return c.barrier.Put(ctx, &logical.StorageEntry{
+		Key:   consts.CoreFeatureFlagPath,
+		Value: json,
+	})
 }
 
 func (c *Core) readFeatureFlags(ctx context.Context) (*FeatureFlags, error) {
@@ -3501,7 +3421,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 			}
 			// remove entry for this user from userFailedLoginInfo map if present as the user is not locked
 			if failedLoginInfoFromMap != nil {
-				if err = updateUserFailedLoginInfo(ctx, c, loginUserInfoKey, nil, true); err != nil {
+				if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
 					return 0, err
 				}
 			}
@@ -3518,7 +3438,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 
 		if failedLoginInfoFromMap != &actualFailedLoginInfo {
 			// entry is invalid, updating the entry in userFailedLoginMap with correct information
-			if err = updateUserFailedLoginInfo(ctx, c, loginUserInfoKey, &actualFailedLoginInfo, false); err != nil {
+			if err = c.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, &actualFailedLoginInfo, false); err != nil {
 				return 0, err
 			}
 		}

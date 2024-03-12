@@ -17,17 +17,9 @@ import (
 	"github.com/openbao/openbao/sdk/helper/shamir"
 )
 
-const coreDROperationTokenPath = "core/dr-operation-token"
-
-var (
-	// GenerateStandardRootTokenStrategy is the strategy used to generate a
-	// typical root token
-	GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
-
-	// GenerateDROperationTokenStrategy is the strategy used to generate a
-	// DR operational token
-	GenerateDROperationTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
-)
+// GenerateStandardRootTokenStrategy is the strategy used to generate a
+// typical root token
+var GenerateStandardRootTokenStrategy GenerateRootStrategy = generateStandardRootToken{}
 
 // GenerateRootStrategy allows us to swap out the strategy we want to use to
 // create a token upon completion of the generate root process.

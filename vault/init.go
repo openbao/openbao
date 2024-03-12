@@ -40,10 +40,7 @@ type InitResult struct {
 	RootToken      string
 }
 
-var (
-	initPTFunc     = func(c *Core) func() { return nil }
-	initInProgress uint32
-)
+var initInProgress uint32
 
 func (c *Core) InitializeRecovery(ctx context.Context) error {
 	if !c.recoveryMode {
@@ -260,11 +257,6 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	initPTCleanup := initPTFunc(c)
-	if initPTCleanup != nil {
-		defer initPTCleanup()
-	}
-
 	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)
@@ -351,11 +343,6 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	if err := c.setupCluster(ctx); err != nil {
 		c.logger.Error("cluster setup failed during init", "error", err)
 		return nil, err
-	}
-
-	// Start tracking
-	if initPTCleanup != nil {
-		initPTCleanup()
 	}
 
 	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(nil))

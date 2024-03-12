@@ -746,8 +746,7 @@ type TokenStore struct {
 
 	// sscTokensGenerationCounter is a per-cluster version that counts how many
 	// "sync points" the cluster has  encountered in its lifecycle. "Sync points" are the
-	// number of times all nodes in the cluster have stepped down. Currently the only sync
-	// point is a DR cluster promoting to the primary.
+	// number of times all nodes in the cluster have stepped down.
 	sscTokensGenerationCounter SSCTokenGenerationCounter
 }
 
@@ -1394,12 +1393,6 @@ func (ts *TokenStore) UseToken(ctx context.Context, te *logical.TokenEntry) (*lo
 	// from 1 to -1. So it's a nice optimization to check this without a read
 	// lock.
 	if te.NumUses == 0 {
-		return te, nil
-	}
-
-	// If we are attempting to unwrap a control group request, don't use the token.
-	// It will be manually revoked by the handler.
-	if len(te.Policies) == 1 && te.Policies[0] == controlGroupPolicyName {
 		return te, nil
 	}
 
@@ -2744,13 +2737,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// handle readonly ourselves.
 		entity, _, err := ts.core.identityStore.CreateOrFetchEntity(ctx, alias)
 		if err != nil {
-			auth := &logical.Auth{
-				Alias: alias,
-			}
-			entity, _, err = possiblyForwardAliasCreation(ctx, ts.core, err, auth, entity)
-			if err != nil {
-				return nil, err
-			}
+			return nil, err
 		}
 		if entity == nil {
 			return nil, errors.New("failed to create or fetch entity from given entity alias")

@@ -39,7 +39,6 @@ import (
 	"github.com/openbao/openbao/sdk/helper/parseutil"
 	"github.com/openbao/openbao/sdk/helper/strutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/vault/quotas"
 	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
@@ -846,40 +845,7 @@ func (c *Core) LoginMFACreateToken(ctx context.Context, reqPath string, cachedAu
 		role = reqRole.(string)
 	}
 
-	// The request successfully authenticated itself. Run the quota checks on
-	// the original login request path before creating the token.
-	quotaResp, quotaErr := c.applyLeaseCountQuota(ctx, &quotas.Request{
-		Path:          reqPath,
-		MountPath:     strings.TrimPrefix(mountPoint, ns.Path),
-		Role:          role,
-		NamespacePath: ns.Path,
-	})
-
-	if quotaErr != nil {
-		c.logger.Error("failed to apply quota", "path", reqPath, "error", quotaErr)
-		return nil, quotaErr
-	}
-
-	if !quotaResp.Allowed {
-		if c.logger.IsTrace() {
-			c.logger.Trace("request rejected due to lease count quota violation", "request_path", reqPath)
-		}
-
-		return nil, fmt.Errorf("request path %q: %w", reqPath, quotas.ErrLeaseCountQuotaExceeded)
-	}
-
-	// note that we don't need to handle the error for the following function right away.
-	// The function takes the response as in input variable and modify it. So, the returned
-	// arguments are resp and err.
-	leaseGenerated, resp, err := c.LoginCreateToken(ctx, ns, reqPath, mountPoint, role, resp)
-
-	if quotaResp.Access != nil {
-		quotaAckErr := c.ackLeaseQuota(quotaResp.Access, leaseGenerated)
-		if quotaAckErr != nil {
-			err = multierror.Append(err, quotaAckErr)
-		}
-	}
-
+	_, resp, err = c.LoginCreateToken(ctx, ns, reqPath, mountPoint, role, resp)
 	return resp, err
 }
 
@@ -1073,14 +1039,6 @@ func (b *LoginMFABackend) validateAuthEntriesForAccessorOrType(ctx context.Conte
 	for _, entry := range b.Core.auth.Entries {
 		// only check auth methods in the current namespace
 		if entry.Namespace().ID != ns.ID {
-			continue
-		}
-
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, credentialRoutePrefix)
-		if err != nil {
-			return false, err
-		}
-		if cont {
 			continue
 		}
 

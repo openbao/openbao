@@ -145,7 +145,6 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 	// identity
 	// kv
 	// system
-	// In addition Enterprise versions of Vault may add additional engines.
 
 	tests := map[string]struct {
 		backends               map[string]logical.Factory

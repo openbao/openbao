@@ -111,11 +111,10 @@ type ServerCommand struct {
 
 	cleanupGuard sync.Once
 
-	reloadFuncsLock   *sync.RWMutex
-	reloadFuncs       *map[string][]reloadutil.ReloadFunc
-	startedCh         chan (struct{}) // for tests
-	reloadedCh        chan (struct{}) // for tests
-	licenseReloadedCh chan (error)    // for tests
+	reloadFuncsLock *sync.RWMutex
+	reloadFuncs     *map[string][]reloadutil.ReloadFunc
+	startedCh       chan (struct{}) // for tests
+	reloadedCh      chan (struct{}) // for tests
 
 	allLoggers []hclog.Logger
 
@@ -1614,15 +1613,6 @@ func (c *ServerCommand) Run(args []string) int {
 			if err := c.Reload(c.reloadFuncsLock, c.reloadFuncs, c.flagConfigs, core); err != nil {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
 			}
-
-			select {
-			case c.licenseReloadedCh <- err:
-			default:
-			}
-
-			// Let the managedKeyRegistry react to configuration changes (i.e.
-			// changes in kms_libraries)
-			core.ReloadManagedKeyRegistryConfig()
 
 			// Notify systemd that the server has completed reloading config
 			c.notifySystemd(systemd.SdNotifyReady)

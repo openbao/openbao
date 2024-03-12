@@ -301,7 +301,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 		}
 
 		mountPath := sanitizePath(d.Get("path").(string))
-		ns := b.Core.namespaceByPath(mountPath)
+		ns := namespace.RootNamespace
 		if ns.ID != namespace.RootNamespaceID {
 			mountPath = strings.TrimPrefix(mountPath, ns.Path)
 		}

@@ -225,7 +225,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.NumExpirationWorkers = numExpirationWorkersTest
 	conf.RawConfig = opts.RawConfig
 	conf.EnableResponseHeaderHostname = opts.EnableResponseHeaderHostname
-	conf.DisableSSCTokens = opts.DisableSSCTokens
 	conf.PluginDirectory = opts.PluginDirectory
 	conf.DetectDeadlocks = opts.DetectDeadlocks
 	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
@@ -355,11 +354,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	innerToken, err := core.DecodeSSCToken(result.RootToken)
-	if err != nil {
-		t.Fatalf("err: %s", err)
-	}
-	return result.SecretShares, result.RecoveryShares, innerToken
+	return result.SecretShares, result.RecoveryShares, result.RootToken
 }
 
 func TestCoreUnseal(core *Core, key []byte) (bool, error) {

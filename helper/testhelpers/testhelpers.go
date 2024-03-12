@@ -65,8 +65,6 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 	switch kind {
 	case GenerateRootRegular:
 		status, err = client.Sys().GenerateRootInit("", "")
-	case GenerateRootDR:
-		status, err = client.Sys().GenerateDROperationTokenInit("", "")
 	case GenerateRecovery:
 		status, err = client.Sys().GenerateRecoveryOperationTokenInit("", "")
 	}
@@ -89,8 +87,6 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 		switch kind {
 		case GenerateRootRegular:
 			status, err = client.Sys().GenerateRootUpdate(strKey, status.Nonce)
-		case GenerateRootDR:
-			status, err = client.Sys().GenerateDROperationTokenUpdate(strKey, status.Nonce)
 		case GenerateRecovery:
 			status, err = client.Sys().GenerateRecoveryOperationTokenUpdate(strKey, status.Nonce)
 		}

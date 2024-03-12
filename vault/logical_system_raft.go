@@ -440,7 +440,6 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigRead() framework.Operati
 				"max_trailing_logs":                  config.MaxTrailingLogs,
 				"min_quorum":                         config.MinQuorum,
 				"server_stabilization_time":          config.ServerStabilizationTime.String(),
-				"disable_upgrade_migration":          config.DisableUpgradeMigration,
 			},
 		}, nil
 	}
@@ -495,11 +494,6 @@ func (b *SystemBackend) handleStorageRaftAutopilotConfigUpdate() framework.Opera
 		serverStabilizationTime, ok := d.GetOk("server_stabilization_time")
 		if ok {
 			config.ServerStabilizationTime = time.Duration(serverStabilizationTime.(int)) * time.Second
-			persist = true
-		}
-		disableUpgradeMigration, ok := d.GetOk("disable_upgrade_migration")
-		if ok {
-			config.DisableUpgradeMigration = disableUpgradeMigration.(bool)
 			persist = true
 		}
 

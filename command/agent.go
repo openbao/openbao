@@ -383,67 +383,6 @@ func (c *AgentCommand) Run(args []string) int {
 		}
 	}
 
-	enforceConsistency := cache.EnforceConsistencyNever
-	whenInconsistent := cache.WhenInconsistentFail
-	if config.APIProxy != nil {
-		switch config.APIProxy.EnforceConsistency {
-		case "always":
-			enforceConsistency = cache.EnforceConsistencyAlways
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for enforce_consistency: %q", config.APIProxy.EnforceConsistency))
-			return 1
-		}
-
-		switch config.APIProxy.WhenInconsistent {
-		case "retry":
-			whenInconsistent = cache.WhenInconsistentRetry
-		case "forward":
-			whenInconsistent = cache.WhenInconsistentForward
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for when_inconsistent: %q", config.APIProxy.WhenInconsistent))
-			return 1
-		}
-	}
-	// Keep Cache configuration for legacy reasons, but error if defined alongside API Proxy
-	if config.Cache != nil {
-		switch config.Cache.EnforceConsistency {
-		case "always":
-			if enforceConsistency != cache.EnforceConsistencyNever {
-				c.UI.Error("enforce_consistency configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				enforceConsistency = cache.EnforceConsistencyAlways
-			}
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown cache setting for enforce_consistency: %q", config.Cache.EnforceConsistency))
-			return 1
-		}
-
-		switch config.Cache.WhenInconsistent {
-		case "retry":
-			if whenInconsistent != cache.WhenInconsistentFail {
-				c.UI.Error("when_inconsistent configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				whenInconsistent = cache.WhenInconsistentRetry
-			}
-		case "forward":
-			if whenInconsistent != cache.WhenInconsistentFail {
-				c.UI.Error("when_inconsistent configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				whenInconsistent = cache.WhenInconsistentForward
-			}
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown cache setting for when_inconsistent: %q", config.Cache.WhenInconsistent))
-			return 1
-		}
-	}
-
 	// Warn if cache _and_ cert auto-auth is enabled but certificates were not
 	// provided in the auto_auth.method["cert"].config stanza.
 	if config.Cache != nil && (config.AutoAuth != nil && config.AutoAuth.Method != nil && config.AutoAuth.Method.Type == "cert") {
@@ -488,8 +427,6 @@ func (c *AgentCommand) Run(args []string) int {
 	apiProxy, err := cache.NewAPIProxy(&cache.APIProxyConfig{
 		Client:                  proxyClient,
 		Logger:                  apiProxyLogger,
-		EnforceConsistency:      enforceConsistency,
-		WhenInconsistentAction:  whenInconsistent,
 		UserAgentStringFunction: useragent.AgentProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.AgentProxyString(),
 	})

@@ -6,6 +6,7 @@ package command
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/api"
@@ -537,6 +538,8 @@ func TestPredict_PathsKVv2(t *testing.T) {
 
 	client, closer := testVaultServerWithKVVersion(t, "2")
 	defer closer()
+
+	time.Sleep(250 * time.Millisecond)
 
 	data := map[string]interface{}{"data": map[string]interface{}{"a": "b"}}
 	if _, err := client.Logical().Write("secret/data/bar", data); err != nil {

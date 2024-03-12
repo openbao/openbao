@@ -26,9 +26,8 @@ var (
 type generateRootKind int
 
 const (
-	generateRootRegular generateRootKind = iota
-	generateRootDR
-	generateRootRecovery
+	generateRootRegular  generateRootKind = iota
+	generateRootRecovery                  = iota + 1
 )
 
 type OperatorGenerateRootCommand struct {
@@ -42,7 +41,6 @@ type OperatorGenerateRootCommand struct {
 	flagPGPKey        string
 	flagNonce         string
 	flagGenerateOTP   bool
-	flagDRToken       bool
 	flagRecoveryToken bool
 
 	testStdin io.Reader // for tests
@@ -144,16 +142,6 @@ func (c *OperatorGenerateRootCommand) Flags() *FlagSets {
 	})
 
 	f.BoolVar(&BoolVar{
-		Name:       "dr-token",
-		Target:     &c.flagDRToken,
-		Default:    false,
-		EnvVar:     "",
-		Completion: complete.PredictNothing,
-		Usage: "Set this flag to do generate root operations on DR Operational " +
-			"tokens.",
-	})
-
-	f.BoolVar(&BoolVar{
 		Name:       "recovery-token",
 		Target:     &c.flagRecoveryToken,
 		Default:    false,
@@ -220,11 +208,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagDRToken && c.flagRecoveryToken {
-		c.UI.Error("Both -recovery-token and -dr-token flags are set")
-		return 1
-	}
-
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -233,8 +216,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 
 	kind := generateRootRegular
 	switch {
-	case c.flagDRToken:
-		kind = generateRootDR
 	case c.flagRecoveryToken:
 		kind = generateRootRecovery
 	}
@@ -277,8 +258,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind generateRootKind) (string, int) {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -337,8 +316,6 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -377,8 +354,6 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 	// Start the root generation
 	f := client.Sys().GenerateRootInit
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenInit
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenInit
 	}
@@ -401,8 +376,6 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, kind generateRootKind) int {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -492,8 +465,6 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 	// Provide the key, this may potentially complete the update
 	fUpd := client.Sys().GenerateRootUpdate
 	switch kind {
-	case generateRootDR:
-		fUpd = client.Sys().GenerateDROperationTokenUpdate
 	case generateRootRecovery:
 		fUpd = client.Sys().GenerateRecoveryOperationTokenUpdate
 	}
@@ -514,8 +485,6 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRootKind) int {
 	f := client.Sys().GenerateRootCancel
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenCancel
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenCancel
 	}
@@ -531,8 +500,6 @@ func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRo
 func (c *OperatorGenerateRootCommand) status(client *api.Client, kind generateRootKind) int {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}

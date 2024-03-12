@@ -19,7 +19,6 @@ var (
 
 type OperatorRaftJoinCommand struct {
 	flagRetry            bool
-	flagNonVoter         bool
 	flagLeaderCACert     string
 	flagLeaderClientCert string
 	flagLeaderClientKey  string
@@ -114,13 +113,6 @@ func (c *OperatorRaftJoinCommand) Flags() *FlagSets {
 		Usage:   "Continuously retry joining the Raft cluster upon failures.",
 	})
 
-	f.BoolVar(&BoolVar{
-		Name:    "non-voter",
-		Target:  &c.flagNonVoter,
-		Default: false,
-		Usage:   "(Enterprise-only) This flag is used to make the server not participate in the Raft quorum, and have it only receive the data replication stream. This can be used to add read scalability to a cluster in cases where a high volume of reads to servers are needed.",
-	})
-
 	return set
 }
 
@@ -187,7 +179,6 @@ func (c *OperatorRaftJoinCommand) Run(args []string) int {
 		LeaderClientCert: leaderClientCert,
 		LeaderClientKey:  leaderClientKey,
 		Retry:            c.flagRetry,
-		NonVoter:         c.flagNonVoter,
 	}
 
 	if strings.Contains(leaderInfo, "provider=") {

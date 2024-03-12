@@ -31,14 +31,11 @@ func (c *Sys) LeaderWithContext(ctx context.Context) (*LeaderResponse, error) {
 }
 
 type LeaderResponse struct {
-	HAEnabled                bool      `json:"ha_enabled"`
-	IsSelf                   bool      `json:"is_self"`
-	ActiveTime               time.Time `json:"active_time"`
-	LeaderAddress            string    `json:"leader_address"`
-	LeaderClusterAddress     string    `json:"leader_cluster_address"`
-	PerfStandby              bool      `json:"performance_standby"`
-	PerfStandbyLastRemoteWAL uint64    `json:"performance_standby_last_remote_wal"`
-	LastWAL                  uint64    `json:"last_wal"`
-	RaftCommittedIndex       uint64    `json:"raft_committed_index,omitempty"`
-	RaftAppliedIndex         uint64    `json:"raft_applied_index,omitempty"`
+	HAEnabled            bool      `json:"ha_enabled"`
+	IsSelf               bool      `json:"is_self"`
+	ActiveTime           time.Time `json:"active_time"`
+	LeaderAddress        string    `json:"leader_address"`
+	LeaderClusterAddress string    `json:"leader_cluster_address"`
+	RaftCommittedIndex   uint64    `json:"raft_committed_index,omitempty"`
+	RaftAppliedIndex     uint64    `json:"raft_applied_index,omitempty"`
 }

@@ -675,8 +675,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, logical.CodedError(403, "namespaces feature not enabled")
 	}
 
-	walState := &logical.WALState{}
-	ctx = logical.IndexStateContext(ctx, walState)
 	var auth *logical.Auth
 	if c.isLoginRequest(ctx, req) {
 		resp, auth, err = c.handleLoginRequest(ctx, req)
@@ -2050,11 +2048,6 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 	// JWTs.
 	te, err := c.LookupToken(ctx, req.ClientToken)
 	if err != nil {
-		// If we're missing required state, return that error
-		// as-is to the client
-		if errors.Is(err, logical.ErrMissingRequiredState) {
-			return err
-		}
 		// If we have two dots but the second char is a dot it's a vault
 		// token of the form s.SOMETHING.nsid, not a JWT
 		if !IsJWT(req.ClientToken) {

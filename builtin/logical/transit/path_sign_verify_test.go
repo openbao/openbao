@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/helper/constants"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
@@ -983,10 +982,6 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 			t.Log("\t", "Marshaling type:", marshalingName)
 			testName := fmt.Sprintf("%s-%s", hashAlgorithm, marshalingName)
 			t.Run(testName, func(t *testing.T) {
-				if constants.IsFIPS() && strings.HasPrefix(hashAlgorithm, "sha3-") {
-					t.Skip("\t", "Skipping hashing algo on fips:", hashAlgorithm)
-				}
-
 				testCombinatorics(t, hashAlgorithm, marshalingName)
 				testAutoSignAndVerify(t, hashAlgorithm, marshalingName)
 			})

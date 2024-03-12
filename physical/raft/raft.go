@@ -179,9 +179,6 @@ type RaftBackend struct {
 	// upgradeVersion is used to override the Vault SDK version when performing an autopilot automated upgrade.
 	upgradeVersion string
 
-	// redundancyZone specifies a redundancy zone for autopilot.
-	redundancyZone string
-
 	// nonVoter specifies whether the node should join the cluster as a non-voter. Non-voters get
 	// replicated to and can serve reads, but do not take part in leader elections.
 	nonVoter bool
@@ -519,7 +516,6 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		followerHeartbeatTicker:    time.NewTicker(time.Second),
 		autopilotReconcileInterval: reconcileInterval,
 		autopilotUpdateInterval:    updateInterval,
-		redundancyZone:             conf["autopilot_redundancy_zone"],
 		nonVoter:                   nonVoter,
 		upgradeVersion:             upgradeVersion,
 		failGetInTxn:               new(uint32),
@@ -588,13 +584,6 @@ func (b *RaftBackend) SetEffectiveSDKVersion(sdkVersion string) {
 	b.l.Unlock()
 }
 
-func (b *RaftBackend) RedundancyZone() string {
-	b.l.RLock()
-	defer b.l.RUnlock()
-
-	return b.redundancyZone
-}
-
 func (b *RaftBackend) NonVoter() bool {
 	b.l.RLock()
 	defer b.l.RUnlock()
@@ -611,18 +600,6 @@ func (b *RaftBackend) EffectiveVersion() string {
 	}
 
 	return version.GetVersion().Version
-}
-
-// DisableUpgradeMigration returns the state of the DisableUpgradeMigration config flag and whether it was set or not
-func (b *RaftBackend) DisableUpgradeMigration() (bool, bool) {
-	b.l.RLock()
-	defer b.l.RUnlock()
-
-	if b.autopilotConfig == nil {
-		return false, false
-	}
-
-	return b.autopilotConfig.DisableUpgradeMigration, true
 }
 
 func (b *RaftBackend) CollectMetrics(sink *metricsutil.ClusterMetricSink) {

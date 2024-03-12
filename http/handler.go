@@ -63,12 +63,6 @@ const (
 	// soft-mandatory Sentinel policies.
 	PolicyOverrideHeaderName = "X-Vault-Policy-Override"
 
-	VaultIndexHeaderName        = "X-Vault-Index"
-	VaultInconsistentHeaderName = "X-Vault-Inconsistent"
-	VaultForwardHeaderName      = "X-Vault-Forward"
-	VaultInconsistentForward    = "forward-active-node"
-	VaultInconsistentFail       = "fail"
-
 	// DefaultMaxRequestSize is the default maximum accepted request size. This
 	// is to prevent a denial of service attack where no Content-Length is
 	// provided and the server is fed ever more data until it exhausts memory.

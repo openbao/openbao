@@ -628,12 +628,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
-
 	// Server configuration output
 	padding := 24
 
@@ -1276,15 +1270,6 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Apply any enterprise configuration onto the coreConfig.
-	adjustCoreConfigForEnt(config, &coreConfig)
-
-	if !storageSupportedForEnt(&coreConfig) {
-		c.UI.Warn("")
-		c.UI.Warn(wrapAtLength(fmt.Sprintf("WARNING: storage configured to use %q which is not supported for Vault Enterprise, must be \"raft\" or \"consul\"", coreConfig.StorageType)))
-		c.UI.Warn("")
-	}
-
 	if !c.flagDev {
 		inMemStorageTypes := []string{
 			"inmem", "inmem_ha", "inmem_transactional", "inmem_transactional_ha",
@@ -1381,12 +1366,6 @@ func (c *ServerCommand) Run(args []string) int {
 
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
-
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
 
 	infoKeys = append(infoKeys, "administrative namespace")
 	info["administrative namespace"] = config.AdministrativeNamespacePath
@@ -1951,12 +1930,6 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
-
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
 
 	// Server configuration output
 	padding := 24

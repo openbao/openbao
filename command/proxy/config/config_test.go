@@ -72,8 +72,6 @@ func TestLoadConfigFile_ProxyCache(t *testing.T) {
 			},
 		},
 		APIProxy: &APIProxy{
-			EnforceConsistency:  "always",
-			WhenInconsistent:    "retry",
 			UseAutoAuthTokenRaw: true,
 			UseAutoAuthToken:    true,
 			ForceAutoAuthToken:  false,

@@ -28,7 +28,6 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	nshelper "github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/useragent"
-	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/cryptoutil"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
@@ -566,9 +565,7 @@ func computeIndexID(req *SendRequest) (string, error) {
 	var b bytes.Buffer
 
 	cloned := req.Request.Clone(context.Background())
-	cloned.Header.Del(vaulthttp.VaultIndexHeaderName)
-	cloned.Header.Del(vaulthttp.VaultForwardHeaderName)
-	cloned.Header.Del(vaulthttp.VaultInconsistentHeaderName)
+
 	// Serialize the request
 	if err := cloned.Write(&b); err != nil {
 		return "", fmt.Errorf("failed to serialize request: %v", err)

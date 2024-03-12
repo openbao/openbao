@@ -93,7 +93,6 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 
 	if rb := c.getRaftBackend(); rb != nil {
 		leader.UpgradeVersion = rb.EffectiveVersion()
-		leader.RedundancyZone = rb.RedundancyZone()
 	}
 
 	nodes := []HAStatusNode{leader}
@@ -107,7 +106,6 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 			LastEcho:       &lastEcho,
 			Version:        peerNode.Version,
 			UpgradeVersion: peerNode.UpgradeVersion,
-			RedundancyZone: peerNode.RedundancyZone,
 		})
 	}
 

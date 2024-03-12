@@ -372,6 +372,10 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support signing", p.Type)), logical.ErrInvalidRequest
 	}
 
+	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") {
+		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
+	}
+
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []batchRequestSignItem
 	if batchInputRaw != nil {
@@ -602,6 +606,10 @@ func (b *backend) pathVerifyWrite(ctx context.Context, req *logical.Request, d *
 
 	if !p.Type.SigningSupported() {
 		return logical.ErrorResponse(fmt.Sprintf("key type %v does not support verification", p.Type)), logical.ErrInvalidRequest
+	}
+
+	if hashAlgorithm == keysutil.HashTypeNone && (!prehashed || sigAlgorithm != "pkcs1v15") {
+		return logical.ErrorResponse("hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15"), logical.ErrInvalidRequest
 	}
 
 	response := make([]batchResponseVerifyItem, len(batchInputItems))

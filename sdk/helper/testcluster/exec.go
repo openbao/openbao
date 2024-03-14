@@ -150,7 +150,7 @@ func (dc *ExecDevCluster) setupExecDevCluster(ctx context.Context, opts *ExecDev
 	}
 	cmd := exec.CommandContext(execCtx, bin, args...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "VAULT_LOG_FORMAT=json")
+	cmd.Env = append(cmd.Env, "BAO_LOG_FORMAT=json")
 	cmd.Env = append(cmd.Env, "VAULT_DEV_TEMP_DIR="+dc.tmpDir)
 	if opts.Logger != nil {
 		stdout, err := cmd.StdoutPipe()

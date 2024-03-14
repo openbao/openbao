@@ -40,7 +40,7 @@ func Test_ParseLogFormat(t *testing.T) {
 	}
 }
 
-func Test_ParseEnv_VAULT_LOG_FORMAT(t *testing.T) {
+func Test_ParseEnv_BAO_LOG_FORMAT(t *testing.T) {
 	oldVLF := api.ReadBaoVariable("BAO_LOG_FORMAT")
 	defer os.Setenv("BAO_LOG_FORMAT", oldVLF)
 

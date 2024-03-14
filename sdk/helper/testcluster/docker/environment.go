@@ -681,7 +681,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			// For now we're using disable_mlock, because this is for testing
 			// anyway, and because it prevents us using external plugins.
 			"SKIP_SETCAP=true",
-			"VAULT_LOG_FORMAT=json",
+			"BAO_LOG_FORMAT=json",
 		},
 		Ports:           []string{"8200/tcp", "8201/tcp"},
 		ContainerName:   n.Name(),

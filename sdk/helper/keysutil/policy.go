@@ -2332,8 +2332,11 @@ func (p *Policy) WrapKey(ver int, targetKey interface{}, targetKeyType KeyType, 
 func (ke *KeyEntry) WrapKey(targetKey interface{}, targetKeyType KeyType, hash hash.Hash) (string, error) {
 	// Presently this method implements a CKM_RSA_AES_KEY_WRAP-compatible
 	// wrapping interface and only works on RSA keyEntries as a result.
-	if ke.RSAPublicKey == nil {
+	if ke.RSAPublicKey == nil && ke.RSAKey == nil {
 		return "", fmt.Errorf("unsupported key type in use; must be a rsa key")
+	}
+	if !ke.IsPrivateKeyMissing() {
+		ke.RSAPublicKey = &ke.RSAKey.PublicKey
 	}
 
 	var preppedTargetKey []byte

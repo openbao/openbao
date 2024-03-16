@@ -95,6 +95,10 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 		return logical.ErrorResponse("private key material is not exportable"), nil
 	}
 
+	if p.SoftDeleted {
+		return nil, fmt.Errorf("%v", keysutil.ErrSoftDeleted)
+	}
+
 	switch exportType {
 	case exportTypeEncryptionKey:
 		if !p.Type.EncryptionSupported() {

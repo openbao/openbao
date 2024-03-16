@@ -73,9 +73,13 @@ const (
 )
 
 const (
-	// ErrTooOld is returned whtn the ciphertext or signatures's key version is
+	// ErrTooOld is returned when the ciphertext or signatures's key version is
 	// too old.
 	ErrTooOld = "ciphertext or signature version is disallowed by policy (too old)"
+
+	// ErrSoftDeleted is returned when the key has been marked as soft
+	// deleted.
+	ErrSoftDeleted = "refusing to use soft-deleted key"
 
 	// DefaultVersionTemplate is used when no version template is provided.
 	DefaultVersionTemplate = "vault:v{{version}}:"
@@ -303,7 +307,7 @@ type PolicyConfig struct {
 	AllowPlaintextBackup bool
 
 	// VersionTemplate is used to prefix the ciphertext with information about
-	// the key version. It must inclide {{version}} and a delimiter between the
+	// the key version. It must include {{version}} and a delimiter between the
 	// version prefix and the ciphertext.
 	VersionTemplate string
 
@@ -457,6 +461,9 @@ type Policy struct {
 
 	// AllowImportedKeyRotation indicates whether an imported key may be rotated by Vault
 	AllowImportedKeyRotation bool
+
+	// Whether the key has been soft deleted.
+	SoftDeleted bool `json:"soft_deleted"`
 }
 
 func (p *Policy) Lock(exclusive bool) {
@@ -781,6 +788,10 @@ func (p *Policy) Upgrade(ctx context.Context, storage logical.Storage, randReade
 // is required, otherwise the KDF mode is used with the context to derive the
 // proper key.
 func (p *Policy) GetKey(context []byte, ver, numBytes int) ([]byte, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	// Fast-path non-derived keys
 	if !p.Derived {
 		keyEntry, err := p.safeGetKeyEntry(ver)
@@ -798,6 +809,10 @@ func (p *Policy) GetKey(context []byte, ver, numBytes int) ([]byte, error) {
 // check the policies Derived flag, but just implements the derivation logic.  GetKey
 // is responsible for switching on the policy config.
 func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.DerivationSupported() {
 		return nil, errutil.UserError{Err: fmt.Sprintf("derivation not supported for key type %v", p.Type)}
 	}
@@ -900,6 +915,10 @@ func (p *Policy) Decrypt(context, nonce []byte, value string) (string, error) {
 }
 
 func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factories ...interface{}) (string, error) {
+	if p.SoftDeleted {
+		return "", errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.DecryptionSupported() {
 		return "", errutil.UserError{Err: fmt.Sprintf("message decryption not supported for key type %v", p.Type)}
 	}
@@ -1014,6 +1033,10 @@ func (p *Policy) DecryptWithFactory(context, nonce []byte, value string, factori
 }
 
 func (p *Policy) HMACKey(version int) ([]byte, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	switch {
 	case version < 0:
 		return nil, fmt.Errorf("key version does not exist (cannot be negative)")
@@ -1058,6 +1081,10 @@ func (p *Policy) validRSAPSSSaltLength(keyBitLen int, hash crypto.Hash, saltLeng
 }
 
 func (p *Policy) SignWithOptions(ver int, context, input []byte, options *SigningOptions) (*SigningResult, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.SigningSupported() {
 		return nil, fmt.Errorf("message signing not supported for key type %v", p.Type)
 	}
@@ -1238,6 +1265,10 @@ func (p *Policy) VerifySignature(context, input []byte, hashAlgorithm HashType, 
 }
 
 func (p *Policy) VerifySignatureWithOptions(context, input []byte, sig string, options *SigningOptions) (bool, error) {
+	if p.SoftDeleted {
+		return false, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("message verification not supported for key type %v", p.Type)}
 	}
@@ -1407,6 +1438,10 @@ func (p *Policy) Import(ctx context.Context, storage logical.Storage, key []byte
 }
 
 func (p *Policy) ImportPublicOrPrivate(ctx context.Context, storage logical.Storage, key []byte, isPrivateKey bool, randReader io.Reader) error {
+	if p.SoftDeleted {
+		return errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	now := time.Now()
 	entry := KeyEntry{
 		CreationTime:           now,
@@ -1517,6 +1552,10 @@ func (p *Policy) ImportPublicOrPrivate(ctx context.Context, storage logical.Stor
 // Rotate rotates the policy and persists it to storage.
 // If the rotation partially fails, the policy state will be restored.
 func (p *Policy) Rotate(ctx context.Context, storage logical.Storage, randReader io.Reader) (retErr error) {
+	if p.SoftDeleted {
+		return errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	priorLatestVersion := p.LatestVersion
 	priorMinDecryptionVersion := p.MinDecryptionVersion
 	var priorKeys keyEntryMap
@@ -1550,6 +1589,10 @@ func (p *Policy) Rotate(ctx context.Context, storage logical.Storage, randReader
 
 // RotateInMemory rotates the policy but does not persist it to storage.
 func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
+	if p.SoftDeleted {
+		return errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	now := time.Now()
 	entry := KeyEntry{
 		CreationTime:           now,
@@ -1686,6 +1729,10 @@ func (p *Policy) MigrateKeyToKeysMap() {
 
 // Backup should be called with an exclusive lock held on the policy
 func (p *Policy) Backup(ctx context.Context, storage logical.Storage) (out string, retErr error) {
+	if p.SoftDeleted {
+		return "", errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Exportable {
 		return "", fmt.Errorf("exporting is disallowed on the policy")
 	}
@@ -1788,6 +1835,10 @@ type SymmetricOpts struct {
 
 // Symmetrically encrypt a plaintext given the convergence configuration and appropriate keys
 func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts SymmetricOpts) ([]byte, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	var aead cipher.AEAD
 	var err error
 	nonce := opts.Nonce
@@ -1864,6 +1915,10 @@ func (p *Policy) SymmetricEncryptRaw(ver int, encKey, plaintext []byte, opts Sym
 
 // Symmetrically decrypt a ciphertext given the convergence configuration and appropriate keys
 func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOpts) ([]byte, error) {
+	if p.SoftDeleted {
+		return nil, errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	var aead cipher.AEAD
 	var err error
 	var nonce []byte
@@ -1922,6 +1977,10 @@ func (p *Policy) SymmetricDecryptRaw(encKey, ciphertext []byte, opts SymmetricOp
 }
 
 func (p *Policy) EncryptWithFactory(ver int, context []byte, nonce []byte, value string, factories ...interface{}) (string, error) {
+	if p.SoftDeleted {
+		return "", errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.EncryptionSupported() {
 		return "", errutil.UserError{Err: fmt.Sprintf("message encryption not supported for key type %v", p.Type)}
 	}
@@ -2066,6 +2125,10 @@ func (p *Policy) KeyVersionCanBeUpdated(keyVersion int, isPrivateKey bool) error
 }
 
 func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical.Storage, keyVersion int, key []byte) error {
+	if p.SoftDeleted {
+		return errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	keyEntry, err := p.safeGetKeyEntry(keyVersion)
 	if err != nil {
 		return err
@@ -2239,6 +2302,10 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 }
 
 func (p *Policy) WrapKey(ver int, targetKey interface{}, targetKeyType KeyType, hash hash.Hash) (string, error) {
+	if p.SoftDeleted {
+		return "", errutil.UserError{Err: ErrSoftDeleted}
+	}
+
 	if !p.Type.SigningSupported() {
 		return "", fmt.Errorf("message signing not supported for key type %v", p.Type)
 	}

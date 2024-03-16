@@ -148,6 +148,66 @@ key.`,
 	}
 }
 
+func (b *backend) pathKeysSoftDelete() *framework.Path {
+	return &framework.Path{
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/soft-delete",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixTransit,
+			OperationSuffix: "key",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "Name of the key",
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathPolicySoftDelete,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "soft-delete",
+				},
+			},
+		},
+
+		HelpSynopsis:    pathPolicyHelpSyn,
+		HelpDescription: pathPolicyHelpDesc,
+	}
+}
+
+func (b *backend) pathKeysSoftDeleteRestore() *framework.Path {
+	return &framework.Path{
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/soft-delete-restore",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixTransit,
+			OperationSuffix: "key",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "Name of the key",
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathPolicySoftDeleteRestore,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "soft-delete-restore",
+				},
+			},
+		},
+
+		HelpSynopsis:    pathPolicyHelpSyn,
+		HelpDescription: pathPolicyHelpDesc,
+	}
+}
+
 func (b *backend) pathKeysList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	entries, err := req.Storage.List(ctx, "policy/")
 	if err != nil {
@@ -303,6 +363,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 			"supports_derivation":    p.Type.DerivationSupported(),
 			"auto_rotate_period":     int64(p.AutoRotatePeriod.Seconds()),
 			"imported_key":           p.Imported,
+			"soft_deleted":           p.SoftDeleted,
 		},
 	}
 	if p.KeySize != 0 {
@@ -421,10 +482,90 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 	return nil, nil
 }
 
+func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := d.Get("name").(string)
+
+	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		Storage: req.Storage,
+		Name:    name,
+	}, b.GetRandomReader())
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	if !b.System().CachingDisabled() {
+		p.Lock(true)
+	}
+	defer p.Unlock()
+
+	wasDeleted := !p.SoftDeleted
+	p.SoftDeleted = true
+
+	if err := p.Persist(ctx, req.Storage); err != nil {
+		return nil, err
+	}
+
+	resp, err := b.formatKeyPolicy(p, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if !wasDeleted {
+		resp.AddWarning("key was already marked as soft deleted")
+	}
+
+	return resp, nil
+}
+
+func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := d.Get("name").(string)
+
+	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		Storage: req.Storage,
+		Name:    name,
+	}, b.GetRandomReader())
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	if !b.System().CachingDisabled() {
+		p.Lock(true)
+	}
+	defer p.Unlock()
+
+	wasRestored := p.SoftDeleted
+	p.SoftDeleted = false
+
+	if err := p.Persist(ctx, req.Storage); err != nil {
+		return nil, err
+	}
+
+	resp, err := b.formatKeyPolicy(p, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if !wasRestored {
+		resp.AddWarning("key was already restored")
+	}
+
+	return resp, nil
+}
+
 const pathPolicyHelpSyn = `Managed named encryption keys`
 
 const pathPolicyHelpDesc = `
 This path is used to manage the named keys that are available.
 Doing a write with no value against a new named key will create
 it using a randomly generated key.
+
+Keys can be soft deleted, preserving the current configuration, by
+calling DELETE /transit/keys/:name/soft-delete; this can be undone
+by calling UPDATE /transit/keys/:name/soft-delete-restore. While the
+key is in the soft deleted state, it cannot be used for any operations
+and update or rotate will not work.
 `

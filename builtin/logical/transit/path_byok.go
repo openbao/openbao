@@ -78,6 +78,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	}
 	defer dstP.Unlock()
 
+	if dstP.SoftDeleted {
+		return nil, fmt.Errorf("for destination key: %v", keysutil.ErrSoftDeleted)
+	}
+
 	srcP, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    src,
@@ -95,6 +99,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 
 	if !srcP.Exportable {
 		return logical.ErrorResponse("key is not exportable"), nil
+	}
+
+	if srcP.SoftDeleted {
+		return nil, fmt.Errorf("for source key: %v", keysutil.ErrSoftDeleted)
 	}
 
 	retKeys := map[string]string{}

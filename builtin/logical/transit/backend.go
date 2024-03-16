@@ -56,6 +56,8 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 			b.pathImport(),
 			b.pathImportVersion(),
 			b.pathKeys(),
+			b.pathKeysSoftDelete(),
+			b.pathKeysSoftDeleteRestore(),
 			b.pathListKeys(),
 			b.pathBYOKExportKeys(),
 			b.pathExportKeys(),

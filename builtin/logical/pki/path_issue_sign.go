@@ -103,6 +103,31 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 	}
 
 	ret.Fields = addNonCACommonFields(map[string]*framework.FieldSchema{})
+
+	ret.Fields["key_bits"] = &framework.FieldSchema{
+		Type:    framework.TypeInt,
+		Default: 0,
+		Description: `The number of bits to use. Allowed values are
+0 (universal default); with rsa key_type: 2048 (default), 3072, or
+4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
+ed25519.`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: 0,
+		},
+	}
+
+	ret.Fields["key_type"] = &framework.FieldSchema{
+		Type:    framework.TypeString,
+		Default: "",
+		Description: `The type of key to use; defaults to the empty string
+to use whatever is specified by the role. "rsa","ec", and "ed25519" are the
+only valid values outside of the empty string.`,
+		AllowedValues: []interface{}{"", "rsa", "ec", "ed25519"},
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "",
+		},
+	}
+
 	return ret
 }
 
@@ -306,11 +331,40 @@ See the API documentation for more information about required parameters.
 // pathIssue issues a certificate and private key from given parameters,
 // subject to role restrictions
 func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+	keyTypeRaw, keyTypePresent := data.GetOk("key_type")
+	keyBitsRaw, keyBitsPresent := data.GetOk("key_bits")
+
+	// Allow overriding the role when it is explicitly any; this means the
+	// operator didn't set limitations around the types of certificates
+	// that could be issued (provided a CSR was given) and thus we can allow
+	// anything.
+	addWarning := false
 	if role.KeyType == "any" {
-		return logical.ErrorResponse("role key type \"any\" not allowed for issuing certificates, only signing"), nil
+		if !keyTypePresent {
+			return logical.ErrorResponse("role key type \"any\" not allowed for issuing certificates without providing key_type and/or key_bits request parameters"), nil
+		}
+
+		role.KeyType = keyTypeRaw.(string)
+		if keyBitsPresent {
+			role.KeyBits = keyBitsRaw.(int)
+		}
+
+		// Perform validation of the new role parameters, updating an explicit
+		// zero-valued KeyBits to a useful value.
+		var err error
+		role.KeyBits, role.SignatureBits, err = certutil.ValidateDefaultOrValueKeyTypeSignatureLength(role.KeyType, role.KeyBits, role.SignatureBits)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate role: %w", err)
+		}
+	} else if keyTypePresent || keyBitsPresent {
+		addWarning = true
 	}
 
-	return b.pathIssueSignCert(ctx, req, data, role, false, false)
+	resp, err := b.pathIssueSignCert(ctx, req, data, role, false, false)
+	if addWarning && resp != nil {
+		resp.AddWarning("parameters key_type and key_bits ignored as role had specific values")
+	}
+	return resp, err
 }
 
 // pathSign issues a certificate from a submitted CSR, subject to role

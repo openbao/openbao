@@ -52,6 +52,20 @@ func getClaim(logger log.Logger, allClaims map[string]interface{}, claim string)
 		}
 	}
 
+	if claim == "aud" && val != nil {
+		// Per RFC 7519 Section 4.1.3:
+		//
+		// > In the special case when the JWT has one audience, the "aud"
+		// > value MAY be a single case-sensitive string containing a
+		// > StringOrURI value.
+		//
+		// Because other code expects audience to be a slice, update our
+		// copy if we only have a single value.
+		if singleVal, ok := val.(string); ok {
+			val = []interface{}{singleVal}
+		}
+	}
+
 	// The claims unmarshalled by go-oidc don't use UseNumber, so there will
 	// be mismatches if they're coming in as float64 since Vault's config will
 	// be represented as json.Number. If the operator can coerce claims data to

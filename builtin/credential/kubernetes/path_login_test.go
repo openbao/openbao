@@ -21,11 +21,11 @@ import (
 	"testing"
 	"time"
 
+	josejwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
-	josejwt "gopkg.in/square/go-jose.v2/jwt"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

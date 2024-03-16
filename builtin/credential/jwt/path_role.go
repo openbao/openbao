@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
-	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 var reservedMetadata = []string{"role"}

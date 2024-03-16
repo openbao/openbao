@@ -1,0 +1,6 @@
+```release-note:improvement
+secret/transit: Allow soft deletion of keys, preventing their use and rotation but retaining key material until restored or fully deleted.
+```
+```release-note:bug
+secret/transit: Allow use of generated destination wrapping keys rather than strictly requiring exported keys.
+```

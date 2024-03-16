@@ -270,7 +270,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 	}
 
-	// Test missing audience
+	// Test missing audience on role
 	{
 
 		cfg := testConfig{
@@ -283,6 +283,61 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			Issuer:    "https://team-vault.auth0.com/",
 			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
 			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		privateCl := struct {
+			User   string   `json:"https://vault/user"`
+			Groups []string `json:"https://vault/groups"`
+		}{
+			"jeff",
+			[]string{"foo", "bar"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.1",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+		if !resp.IsError() {
+			t.Fatalf("expected error: %v / %v via JWT: %v", resp, resp.Auth, jwtData)
+		}
+		if !strings.Contains(resp.Error().Error(), "no audiences bound to the role") {
+			t.Fatalf("unexpected error: %v", resp.Error())
+		}
+	}
+
+	// Test missing audience on role (multiple on token)
+	{
+
+		cfg := testConfig{
+			jwks: jwks,
+		}
+		b, storage := setupBackend(t, cfg)
+
+		cl := sqjwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test", "https://vault2.plugin.auth.jwt.test"},
 		}
 
 		privateCl := struct {

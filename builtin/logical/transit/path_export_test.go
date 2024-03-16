@@ -5,9 +5,13 @@ package transit
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/logical"
@@ -384,5 +388,170 @@ func TestTransit_Export_EncryptionKey_DoesNotExportHMACKey(t *testing.T) {
 
 	if reflect.DeepEqual(encryptionKeyRsp.Data, hmacKeyRsp.Data) {
 		t.Fatal("Encryption key data matched hmac key data")
+	}
+}
+
+func TestTransit_Export_CorrectFormat(t *testing.T) {
+	verifyExportsCorrectFormat(t, "encryption-key", "aes128-gcm96")
+	verifyExportsCorrectFormat(t, "encryption-key", "aes256-gcm96")
+	verifyExportsCorrectFormat(t, "encryption-key", "chacha20-poly1305")
+	verifyExportsCorrectFormat(t, "encryption-key", "xchacha20-poly1305")
+	verifyExportsCorrectFormat(t, "encryption-key", "rsa-2048")
+	verifyExportsCorrectFormat(t, "encryption-key", "rsa-3072")
+	verifyExportsCorrectFormat(t, "encryption-key", "rsa-4096")
+	verifyExportsCorrectFormat(t, "signing-key", "ecdsa-p256")
+	verifyExportsCorrectFormat(t, "signing-key", "ecdsa-p384")
+	verifyExportsCorrectFormat(t, "signing-key", "ecdsa-p521")
+	verifyExportsCorrectFormat(t, "signing-key", "ed25519")
+	verifyExportsCorrectFormat(t, "signing-key", "rsa-2048")
+	verifyExportsCorrectFormat(t, "signing-key", "rsa-3072")
+	verifyExportsCorrectFormat(t, "signing-key", "rsa-4096")
+	verifyExportsCorrectFormat(t, "public-key", "ecdsa-p256")
+	verifyExportsCorrectFormat(t, "public-key", "ecdsa-p384")
+	verifyExportsCorrectFormat(t, "public-key", "ecdsa-p521")
+	verifyExportsCorrectFormat(t, "public-key", "ed25519")
+	verifyExportsCorrectFormat(t, "public-key", "rsa-2048")
+	verifyExportsCorrectFormat(t, "public-key", "rsa-3072")
+	verifyExportsCorrectFormat(t, "public-key", "rsa-4096")
+	verifyExportsCorrectFormat(t, "hmac-key", "aes128-gcm96")
+	verifyExportsCorrectFormat(t, "hmac-key", "aes256-gcm96")
+	verifyExportsCorrectFormat(t, "hmac-key", "chacha20-poly1305")
+	verifyExportsCorrectFormat(t, "hmac-key", "xchacha20-poly1305")
+	verifyExportsCorrectFormat(t, "hmac-key", "ecdsa-p256")
+	verifyExportsCorrectFormat(t, "hmac-key", "ecdsa-p384")
+	verifyExportsCorrectFormat(t, "hmac-key", "ecdsa-p521")
+	verifyExportsCorrectFormat(t, "hmac-key", "rsa-2048")
+	verifyExportsCorrectFormat(t, "hmac-key", "rsa-3072")
+	verifyExportsCorrectFormat(t, "hmac-key", "rsa-4096")
+	verifyExportsCorrectFormat(t, "hmac-key", "ed25519")
+	verifyExportsCorrectFormat(t, "hmac-key", "hmac")
+}
+
+func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
+	b, storage := createBackendWithSysView(t)
+
+	// First create a key
+	req := &logical.Request{
+		Storage:   storage,
+		Operation: logical.UpdateOperation,
+		Path:      "keys/foo",
+	}
+	req.Data = map[string]interface{}{
+		"exportable": true,
+		"type":       keyType,
+	}
+	if keyType == "hmac" {
+		req.Data["key_size"] = 32
+	}
+	_, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	verifyFormat := func(formatRequest string) {
+		t.Logf("handling key: %v / %v / %v", exportType, keyType, formatRequest)
+
+		req := &logical.Request{
+			Storage:   storage,
+			Operation: logical.ReadOperation,
+			Path:      fmt.Sprintf("export/%s/foo", exportType),
+			Data: map[string]interface{}{
+				"format": formatRequest,
+			},
+		}
+
+		rsp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("on req to %v: %v", req.Path, err)
+		}
+
+		keysRaw, ok := rsp.Data["keys"]
+		if !ok {
+			t.Fatal("could not find keys value")
+		}
+		keys, ok := keysRaw.(map[string]string)
+		if !ok {
+			t.Fatal("could not cast to keys map")
+		}
+		if len(keys) != 1 {
+			t.Fatal("unexpected number of keys found")
+		}
+
+		for _, k := range keys {
+			if exportType != "hmac-key" && formatRequest == "" && (strings.HasPrefix(keyType, "rsa") || strings.HasPrefix(keyType, "ecdsa")) {
+				block, rest := pem.Decode([]byte(k))
+				if len(strings.TrimSpace(string(rest))) > 0 {
+					t.Fatalf("remainder when decoding raw %v key (%v): block=%v rest=%v", keyType, k, block, rest)
+				}
+
+				if block == nil {
+					t.Fatalf("no pem block when decoding raw %v key (%v): block=%v rest=%v", keyType, k, block, rest)
+				}
+
+				if exportType == "public-key" {
+					if _, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
+						t.Fatalf("failed to parse raw rsa key (%v): %v", k, err)
+					}
+				} else if strings.HasPrefix(keyType, "rsa") {
+					if _, err := x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
+						t.Fatalf("failed to parse raw rsa key (%v): %v", k, err)
+					}
+				} else {
+					if _, err := x509.ParseECPrivateKey(block.Bytes); err != nil {
+						t.Fatalf("failed to parse raw ec key (%v): %v", k, err)
+					}
+				}
+			} else if formatRequest == "" && strings.HasPrefix(keyType, "ec") {
+			} else if formatRequest == "der" || formatRequest == "pem" {
+				var keyData []byte
+				var err error
+
+				if formatRequest == "der" {
+					keyData, err = base64.StdEncoding.DecodeString(k)
+					if err != nil {
+						t.Fatalf("error decoding der key (%v): %v", k, err)
+					}
+				} else {
+					block, rest := pem.Decode([]byte(k))
+					if len(strings.TrimSpace(string(rest))) > 0 {
+						t.Fatalf("remainder when decoding pem key (%v): block=%v rest=%v", k, block, rest)
+					}
+
+					if block == nil {
+						t.Fatalf("no pem block when decoding pem key (%v): block=%v rest=%v", k, block, rest)
+					}
+
+					keyData = block.Bytes
+				}
+
+				if exportType == "public-key" {
+					_, err := x509.ParsePKIXPublicKey(keyData)
+					if err != nil {
+						t.Fatalf("error decoding `%v` key (%v): %v", formatRequest, k, err)
+					}
+				} else {
+					_, err := x509.ParsePKCS8PrivateKey(keyData)
+					if err != nil {
+						t.Fatalf("error decoding `%v` key (%v): %v", formatRequest, k, err)
+					}
+				}
+			} else {
+				if _, err := base64.StdEncoding.DecodeString(k); err != nil {
+					t.Fatalf("error decoding raw key (%v / %v): %v", formatRequest, keyType, k)
+				}
+			}
+		}
+	}
+
+	verifyFormat("")
+	if exportType == "hmac-key" || strings.Contains(keyType, "aes") || strings.Contains(keyType, "chacha20") || keyType == "hmac" {
+		verifyFormat("raw")
+	} else if keyType == "ed25519" {
+		verifyFormat("raw")
+		verifyFormat("der")
+		verifyFormat("pem")
+	} else {
+		verifyFormat("der")
+		verifyFormat("pem")
 	}
 }

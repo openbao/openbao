@@ -1,0 +1,3 @@
+```release-note:improvement
+sdk/helper/shamir: Use CS-PRNG for shuffling X coordinates; do not rely on math/rand.
+```

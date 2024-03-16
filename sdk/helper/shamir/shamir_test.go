@@ -103,6 +103,7 @@ func TestCombine(t *testing.T) {
 				if k == i || k == j {
 					continue
 				}
+
 				parts := [][]byte{out[i], out[j], out[k]}
 				recomb, err := Combine(parts)
 				if err != nil {
@@ -173,9 +174,18 @@ func TestPolynomial_Eval(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	if out := p.evaluate(0); out != 42 {
-		t.Fatalf("bad: %v", out)
-	}
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatalf("expected panic trying to call p.evaluate(0)")
+			}
+		}()
+
+		if out := p.evaluate(0); out != 42 {
+			t.Fatalf("bad: %v", out)
+		}
+	}()
 
 	out := p.evaluate(1)
 	exp := add(42, mult(1, p.coefficients[1]))

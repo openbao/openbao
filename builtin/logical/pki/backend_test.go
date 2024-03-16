@@ -7248,6 +7248,83 @@ func TestGenerateRootCAWithAIA(t *testing.T) {
 	require.True(t, foundExt)
 }
 
+func TestPKI_IssueKeyTypeAny(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	keyTypeBits := map[string][]int{
+		"rsa":     {0, 2048, 3072, 4096},
+		"ec":      {0, 256, 384, 521},
+		"ed25519": {0},
+	}
+
+	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "myvault.com",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Create a role with key_type=any.
+	_, err = CBWrite(b, s, "roles/example", map[string]interface{}{
+		"allow_any_name": true,
+		"key_type":       "any",
+		"max_ttl":        "2h",
+	})
+	require.NoError(t, err)
+
+	// Ensure that all values are accepted.
+	for keyType, allKeyBits := range keyTypeBits {
+		for _, keyBits := range allKeyBits {
+			// Issuing a certificate with the desired key type should succeed.
+			resp, err = CBWrite(b, s, "issue/example", map[string]interface{}{
+				"common_name": "foobar.com",
+				"key_type":    keyType,
+				"key_bits":    keyBits,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.Equal(t, string(resp.Data["private_key_type"].(certutil.PrivateKeyType)), keyType)
+		}
+	}
+
+	// Ensure that providing no value fails to issue.
+	_, err = CBWrite(b, s, "issue/example", map[string]interface{}{
+		"common_name": "foobar.com",
+	})
+	require.Error(t, err)
+
+	// Now update the role and ensure we always get what we expected.
+	for roleKeyType, allRoleKeyBits := range keyTypeBits {
+		for _, roleKeyBits := range allRoleKeyBits {
+			_, err = CBPatch(b, s, "roles/example", map[string]interface{}{
+				"key_type": roleKeyType,
+				"key_bits": roleKeyBits,
+			})
+			require.NoError(t, err)
+
+			for keyType, allKeyBits := range keyTypeBits {
+				for _, keyBits := range allKeyBits {
+					// Issuing a certificate with the desired key type should succeed.
+					resp, err = CBWrite(b, s, "issue/example", map[string]interface{}{
+						"common_name": "foobar.com",
+						"key_type":    keyType,
+						"key_bits":    keyBits,
+					})
+					require.NoError(t, err)
+					require.NotNil(t, resp)
+
+					// Always prefer the role's key type. We don't validate
+					// key bits here as that'd require parsing the
+					// certificate.
+					require.Equal(t, string(resp.Data["private_key_type"].(certutil.PrivateKeyType)), roleKeyType)
+					require.NotEmpty(t, resp.Warnings)
+				}
+			}
+		}
+	}
+}
+
 var (
 	initTest  sync.Once
 	rsaCAKey  string

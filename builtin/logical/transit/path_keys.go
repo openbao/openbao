@@ -455,7 +455,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 					key.Name = "rsa-4096"
 				}
 
-				pubKey, err := encodeRSAPublicKey(&v)
+				pubKey, err := encodeRSAPublicKey(&v, "")
 				if err != nil {
 					return nil, err
 				}

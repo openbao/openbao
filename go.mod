@@ -37,7 +37,7 @@ require (
 	github.com/gammazero/workerpool v1.1.3
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-errors/errors v1.4.2
-	github.com/go-jose/go-jose/v3 v3.0.1
+	github.com/go-jose/go-jose/v3 v3.0.3
 	github.com/go-ldap/ldap/v3 v3.4.4
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
 	github.com/go-sql-driver/mysql v1.6.0
@@ -86,7 +86,7 @@ require (
 	github.com/hashicorp/raft-snapshot v1.0.4
 	github.com/hashicorp/vault-plugin-mock v0.16.1
 	github.com/influxdata/influxdb1-client v0.0.0-20200827194710-b269163b24ab
-	github.com/jackc/pgx/v4 v4.18.1
+	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f
 	github.com/jefferai/jsonx v1.0.0
@@ -108,7 +108,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
 	github.com/oklog/run v1.1.0
-	github.com/okta/okta-sdk-golang/v2 v2.12.1
+	github.com/okta/okta-sdk-golang/v2 v2.20.0
 	github.com/openbao/go-kms-wrapping/v2 v2.0.16-0.20240122151027-4d142be5e262
 	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.0.9-0.20240122151027-4d142be5e262
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.0.3-0.20240122151027-4d142be5e262
@@ -157,7 +157,6 @@ require (
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gotest.tools/gotestsum v1.10.0
 	honnef.co/go/tools v0.4.3
 	k8s.io/api v0.27.2
@@ -263,12 +262,12 @@ require (
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.14.0 // indirect
+	github.com/jackc/pgconn v1.14.3 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgtype v1.14.0 // indirect
+	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
+	github.com/jackc/pgtype v1.14.2 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
 	github.com/jcmturner/gofork v1.7.6 // indirect

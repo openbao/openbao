@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-jose/go-jose/v3"
+	sqjwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/square/go-jose.v2"
-	sqjwt "gopkg.in/square/go-jose.v2/jwt"
 )
 
 type H map[string]interface{}
@@ -318,7 +318,7 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 			t.Fatal("got nil response")
 		}
 		if !resp.IsError() {
-			t.Fatal("expected error")
+			t.Fatalf("expected error: %v / %v via JWT: %v", resp, resp.Auth, jwtData)
 		}
 		if !strings.Contains(resp.Error().Error(), "no audiences bound to the role") {
 			t.Fatalf("unexpected error: %v", resp.Error())

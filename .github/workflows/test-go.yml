@@ -185,8 +185,8 @@ jobs:
 
           # shellcheck disable=SC2034
           if [ -f bin/bao ]; then
-            VAULT_BINARY="$(pwd)/bin/bao"
-            export VAULT_BINARY
+            BAO_BINARY="$(pwd)/bin/bao"
+            export BAO_BINARY
           fi
 
           # On a release branch, add a flag to rerun failed tests

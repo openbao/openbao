@@ -192,6 +192,12 @@ for the issuing certificate attribute. See also RFC 5280 Section 4.2.2.1.`,
 		Description: `Comma-separated list of URLs to be used
 for the CRL distribution points attribute. See also RFC 5280 Section 4.2.1.13.`,
 	}
+	fields["delta_crl_distribution_points"] = &framework.FieldSchema{
+		Type: framework.TypeCommaStringSlice,
+		Description: `Comma-separated list of URLs to be used
+for the Delta CRL distribution points attribute. See also RFC 5280 Section 4.2.1.15
+and Section 5.2.6.`,
+	}
 	fields["ocsp_servers"] = &framework.FieldSchema{
 		Type: framework.TypeCommaStringSlice,
 		Description: `Comma-separated list of URLs to be used
@@ -279,6 +285,11 @@ to be set on all PR secondary clusters.`,
 				"crl_distribution_points": {
 					Type:        framework.TypeStringSlice,
 					Description: `CRL Distribution Points`,
+					Required:    false,
+				},
+				"delta_crl_distribution_points": {
+					Type:        framework.TypeStringSlice,
+					Description: `Delta CRL Distribution Points`,
 					Required:    false,
 				},
 				"ocsp_servers": {
@@ -451,6 +462,7 @@ func respondReadIssuer(issuer *issuerEntry) (*logical.Response, error) {
 		"revoked":                        issuer.Revoked,
 		"issuing_certificates":           []string{},
 		"crl_distribution_points":        []string{},
+		"delta_crl_distribution_points":  []string{},
 		"ocsp_servers":                   []string{},
 	}
 
@@ -462,6 +474,7 @@ func respondReadIssuer(issuer *issuerEntry) (*logical.Response, error) {
 	if issuer.AIAURIs != nil {
 		data["issuing_certificates"] = issuer.AIAURIs.IssuingCertificates
 		data["crl_distribution_points"] = issuer.AIAURIs.CRLDistributionPoints
+		data["delta_crl_distribution_points"] = issuer.AIAURIs.DeltaCRLDistributionPoints
 		data["ocsp_servers"] = issuer.AIAURIs.OCSPServers
 		data["enable_aia_url_templating"] = issuer.AIAURIs.EnableTemplating
 	}
@@ -568,6 +581,10 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 	crlDistributionPoints := data.Get("crl_distribution_points").([]string)
 	if badURL := validateURLs(crlDistributionPoints); !enableTemplating && badURL != "" {
 		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
+	}
+	deltaCRLDistributionPoints := data.Get("delta_crl_distribution_points").([]string)
+	if badURL := validateURLs(deltaCRLDistributionPoints); !enableTemplating && badURL != "" {
+		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
 	}
 	ocspServers := data.Get("ocsp_servers").([]string)
 	if badURL := validateURLs(ocspServers); !enableTemplating && badURL != "" {
@@ -883,6 +900,10 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 		{
 			Source: "crl_distribution_points",
 			Dest:   &issuer.AIAURIs.CRLDistributionPoints,
+		},
+		{
+			Source: "delta_crl_distribution_points",
+			Dest:   &issuer.AIAURIs.DeltaCRLDistributionPoints,
 		},
 		{
 			Source: "ocsp_servers",

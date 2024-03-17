@@ -592,6 +592,11 @@ func pathRevokeIssuer(b *backend) *framework.Path {
 								Description: `Specifies the URL values for the CRL Distribution Points field`,
 								Required:    true,
 							},
+							"delta_crl_distribution_points": {
+								Type:        framework.TypeStringSlice,
+								Description: `Specifies the URL values for the Delta CRL Distribution Points field`,
+								Required:    true,
+							},
 							"ocsp_servers": {
 								Type:        framework.TypeStringSlice,
 								Description: `Specifies the URL values for the OCSP Servers field`,

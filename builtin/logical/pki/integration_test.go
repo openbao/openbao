@@ -526,10 +526,11 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = client.Logical().Write("pki/config/urls", map[string]interface{}{
-		"enable_templating":       true,
-		"crl_distribution_points": "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der",
-		"issuing_certificates":    "{{cluster_aia_path}}/issuer/{{issuer_id}}/der",
-		"ocsp_servers":            "{{cluster_aia_path}}/ocsp",
+		"enable_templating":             true,
+		"crl_distribution_points":       "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der",
+		"issuing_certificates":          "{{cluster_aia_path}}/issuer/{{issuer_id}}/der",
+		"ocsp_servers":                  "{{cluster_aia_path}}/ocsp",
+		"delta_crl_distribution_points": "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/delta/der",
 	})
 	require.NoError(t, err)
 

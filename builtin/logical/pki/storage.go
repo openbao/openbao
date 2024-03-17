@@ -202,10 +202,11 @@ type clusterConfigEntry struct {
 }
 
 type aiaConfigEntry struct {
-	IssuingCertificates   []string `json:"issuing_certificates"`
-	CRLDistributionPoints []string `json:"crl_distribution_points"`
-	OCSPServers           []string `json:"ocsp_servers"`
-	EnableTemplating      bool     `json:"enable_templating"`
+	IssuingCertificates        []string `json:"issuing_certificates"`
+	CRLDistributionPoints      []string `json:"crl_distribution_points"`
+	DeltaCRLDistributionPoints []string `json:"delta_crl_distribution_points"`
+	OCSPServers                []string `json:"ocsp_servers"`
+	EnableTemplating           bool     `json:"enable_templating"`
 }
 
 func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*certutil.URLEntries, error) {
@@ -214,9 +215,10 @@ func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*cer
 	}
 
 	result := certutil.URLEntries{
-		IssuingCertificates:   c.IssuingCertificates[:],
-		CRLDistributionPoints: c.CRLDistributionPoints[:],
-		OCSPServers:           c.OCSPServers[:],
+		IssuingCertificates:        c.IssuingCertificates[:],
+		CRLDistributionPoints:      c.CRLDistributionPoints[:],
+		DeltaCRLDistributionPoints: c.DeltaCRLDistributionPoints[:],
+		OCSPServers:                c.OCSPServers[:],
 	}
 
 	if c.EnableTemplating {
@@ -226,9 +228,10 @@ func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*cer
 		}
 
 		for name, source := range map[string]*[]string{
-			"issuing_certificates":    &result.IssuingCertificates,
-			"crl_distribution_points": &result.CRLDistributionPoints,
-			"ocsp_servers":            &result.OCSPServers,
+			"issuing_certificates":          &result.IssuingCertificates,
+			"crl_distribution_points":       &result.CRLDistributionPoints,
+			"delta_crl_distribution_points": &result.DeltaCRLDistributionPoints,
+			"ocsp_servers":                  &result.OCSPServers,
 		} {
 			templated := make([]string, len(*source))
 			for index, uri := range *source {

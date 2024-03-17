@@ -91,6 +91,11 @@ var CRLNumberOID = asn1.ObjectIdentifier([]int{2, 5, 29, 20})
 // > id-ce-deltaCRLIndicator OBJECT IDENTIFIER ::= { id-ce 27 }
 var DeltaCRLIndicatorOID = asn1.ObjectIdentifier([]int{2, 5, 29, 27})
 
+// OID for RFC 5280 Freshest CRL extension.
+//
+// > id-ce-freshestCRL OBJECT IDENTIFIER ::=  { id-ce 46 }
+var FreshestCRLOID = asn1.ObjectIdentifier([]int{2, 5, 29, 46})
+
 // GetHexFormatted returns the byte buffer formatted in hex with
 // the specified separator between bytes.
 func GetHexFormatted(buf []byte, sep string) string {
@@ -927,6 +932,14 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	certTemplate.CRLDistributionPoints = data.Params.URLs.CRLDistributionPoints
 	certTemplate.OCSPServer = data.Params.URLs.OCSPServers
 
+	if len(data.Params.URLs.DeltaCRLDistributionPoints) > 0 {
+		ext, err := CreateFreshestCRLExt(data.Params.URLs.DeltaCRLDistributionPoints)
+		if err != nil {
+			return nil, err
+		}
+		certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
+	}
+
 	var certBytes []byte
 	if data.SigningBundle != nil {
 		privateKeyType := data.SigningBundle.PrivateKeyType
@@ -1240,6 +1253,14 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	certTemplate.CRLDistributionPoints = data.Params.URLs.CRLDistributionPoints
 	certTemplate.OCSPServer = data.SigningBundle.URLs.OCSPServers
 
+	if len(data.Params.URLs.DeltaCRLDistributionPoints) > 0 {
+		ext, err := CreateFreshestCRLExt(data.Params.URLs.DeltaCRLDistributionPoints)
+		if err != nil {
+			return nil, err
+		}
+		certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
+	}
+
 	if data.Params.IsCA {
 		certTemplate.BasicConstraintsValid = true
 		certTemplate.IsCA = true
@@ -1382,6 +1403,54 @@ func CreateDeltaCRLIndicatorExt(completeCRLNumber int64) (pkix.Extension, error)
 		// But, this needs to be encoded as a big number for encoding/asn1
 		// to work properly.
 		Value: bigNumValue,
+	}, nil
+}
+
+// CreateFreshestCRLExt allows creating Delta CRL distribution point
+// extensions that allow clients to look up the path to the latest
+// delta CRL from a certificate or a complete CRL.
+func CreateFreshestCRLExt(paths []string) (pkix.Extension, error) {
+	// distributionPoint and distributionPointName are copied from
+	// crypto/x509 as of the go1.22.1 tag.
+	type distributionPointName struct {
+		FullName     []asn1.RawValue  `asn1:"optional,tag:0"`
+		RelativeName pkix.RDNSequence `asn1:"optional,tag:1"`
+	}
+
+	type distributionPoint struct {
+		DistributionPoint distributionPointName `asn1:"optional,tag:0"`
+		Reason            asn1.BitString        `asn1:"optional,tag:1"`
+		CRLIssuer         asn1.RawValue         `asn1:"optional,tag:2"`
+	}
+
+	var distributionPoints []distributionPoint
+
+	for _, path := range paths {
+		dp := distributionPoint{
+			DistributionPoint: distributionPointName{
+				FullName: []asn1.RawValue{
+					{Tag: 6, Class: 2, Bytes: []byte(path)},
+				},
+			},
+		}
+
+		distributionPoints = append(distributionPoints, dp)
+	}
+
+	distributionPointsValue, err := asn1.Marshal(distributionPoints)
+	if err != nil {
+		return pkix.Extension{}, fmt.Errorf("unable to marshal freshest CRL distribution point (%v): %v", paths, err)
+	}
+
+	return pkix.Extension{
+		Id: FreshestCRLOID,
+		// > The extension MUST be marked as non-critical by conforming
+		// > CAs.
+		Critical: false,
+		// > The same syntax is used for this extension and the
+		// > cRLDistributionPoints extension, and is described in Section
+		// > 4.2.1.13.  The same conventions apply to both extensions.
+		Value: distributionPointsValue,
 	}, nil
 }
 

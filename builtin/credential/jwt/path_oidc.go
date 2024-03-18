@@ -351,7 +351,9 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		BoundCIDRs: role.BoundCIDRs,
 	}
 
-	role.PopulateTokenAuth(auth)
+	if err := role.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	resp := &logical.Response{
 		Auth: auth,

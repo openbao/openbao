@@ -274,7 +274,9 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, d *
 		Alias:       &logical.Alias{Name: identity.UserName()},
 	}
 
-	ldapCfg.PopulateTokenAuth(auth)
+	if err := ldapCfg.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	// This is done after PopulateTokenAuth because it forces Renewable to be true.
 	// Renewable was always false at the time of the code's introduction, and we would

@@ -170,7 +170,9 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		auth.Alias.Metadata = metadata
 	}
 
-	matched.Entry.PopulateTokenAuth(auth)
+	if err := matched.Entry.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	return &logical.Response{
 		Auth: auth,

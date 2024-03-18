@@ -375,7 +375,9 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 			Metadata: metadata,
 		},
 	}
-	role.PopulateTokenAuth(auth)
+	if err := role.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	// Allow for overridden token bound CIDRs
 	auth.BoundCIDRs = tokenBoundCIDRs

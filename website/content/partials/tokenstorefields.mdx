@@ -1,6 +1,9 @@
 - `token_bound_cidrs` `(array: [] or comma-delimited string: "")` - List of
   CIDR blocks; if set, specifies blocks of IP addresses which can authenticate
   successfully, and ties the resulting token to these blocks as well.
+- `token_strictly_bind_ip` `(bool: false)` - If set, the token will be
+  restricted to the source IP address making the initial login request. This
+  conflicts with `token_bound_cidrs`.
 - `token_explicit_max_ttl` `(integer: 0 or string: "")` - If set, will encode
   an [explicit max
   TTL](/docs/concepts/tokens#token-time-to-live-periodic-tokens-and-explicit-max-ttls)

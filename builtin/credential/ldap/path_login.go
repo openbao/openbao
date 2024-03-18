@@ -103,7 +103,9 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 		},
 	}
 
-	cfg.PopulateTokenAuth(auth)
+	if err := cfg.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	// Add in configured policies from mappings
 	if len(policies) > 0 {

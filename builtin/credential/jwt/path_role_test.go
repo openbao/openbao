@@ -791,6 +791,7 @@ func TestPath_Read(t *testing.T) {
 		"token_type":              logical.TokenTypeDefault.String(),
 		"token_no_default_policy": false,
 		"token_explicit_max_ttl":  int64(0),
+		"token_strictly_bind_ip":  false,
 		"max_age":                 int64(0),
 	}
 

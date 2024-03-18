@@ -178,7 +178,9 @@ func (b *kubeAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d
 		DisplayName: fmt.Sprintf("%s-%s", serviceAccount.namespace(), serviceAccount.name()),
 	}
 
-	role.PopulateTokenAuth(auth)
+	if err := role.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	return &logical.Response{
 		Auth: auth,

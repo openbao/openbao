@@ -483,9 +483,16 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 			// If we didn't find it and aren't configured to reject, simply
 			// don't trust it
 			if !rejectNotAuthz {
+				// We need to delete the X-Forwarded-For header before
+				// passing it along, otherwise downstream systems will not
+				// know whether or not to trust it.
+				r.Header.Del(textproto.CanonicalMIMEHeaderKey("X-Forwarded-For"))
+
+				// Now serve the request, having rejected the header.
 				h.ServeHTTP(w, r)
 				return
 			}
+
 			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
 			return
 		}

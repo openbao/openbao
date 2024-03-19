@@ -4,7 +4,7 @@
 rules:
   - id: fmt.Printf
     languages: [go]
-    message: fmt.Printf/Println is forbidden outside of cmd and test files
+    message: fmt.Printf/Println is forbidden outside of cmd, tools, and test files
     patterns:
       - pattern-either:
         - pattern: fmt.Printf
@@ -13,6 +13,7 @@ rules:
     paths:
       exclude:
         - "*_test.go"
+        - "tools/*.go"
         - "cmd/*.go"
         - "cmd/**/*.go"
         - sdk/database/dbplugin/server.go # effectively a cmd

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fatih/structs"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/logical"
@@ -106,8 +105,33 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 		return nil, nil
 	}
 
+	resp := map[string]interface{}{}
+	resp["tags"] = role.Tags
+	respVHost := map[string]interface{}{}
+	for key, value := range role.VHosts {
+		respVHost[key] = map[string]interface{}{
+			"configure": value.Configure,
+			"write":     value.Write,
+			"read":      value.Read,
+		}
+	}
+	resp["vhosts"] = respVHost
+
+	respVHostTopics := map[string]interface{}{}
+	for key, topic := range role.VHostTopics {
+		respVHostTopic := map[string]interface{}{}
+		for topicKey, value := range topic {
+			respVHostTopic[topicKey] = map[string]interface{}{
+				"write": value.Write,
+				"read":  value.Read,
+			}
+		}
+		respVHostTopics[key] = respVHostTopic
+	}
+	resp["vhost_topics"] = respVHostTopics
+
 	return &logical.Response{
-		Data: structs.New(role).Map(),
+		Data: resp,
 	}, nil
 }
 

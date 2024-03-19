@@ -44,7 +44,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/openbao/openbao/tree/main/website/",
-          remarkPlugins: [
+          beforeDefaultRemarkPlugins: [
             [
               includeMarkdown,
               {
@@ -71,7 +71,7 @@ const config: Config = {
         routeBasePath: "api-docs",
         sidebarPath: "./sidebarsApi.ts",
         editUrl: "https://github.com/openbao/openbao/tree/main/website/",
-        remarkPlugins: [
+        beforeDefaultRemarkPlugins: [
           [
             includeMarkdown,
             {

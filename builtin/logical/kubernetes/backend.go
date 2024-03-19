@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
 	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/helper/parseutil"
 	"github.com/openbao/openbao/sdk/logical"
 )
 
@@ -80,7 +81,7 @@ func newBackend() (*backend, error) {
 		localCACertReader:  fileutil.NewCachingFileReader(localCACertPath, caReloadPeriod),
 	}
 
-	walRollbackMinAge, err := time.ParseDuration(WALRollbackMinAge)
+	walRollbackMinAge, err := parseutil.ParseDurationSecond(WALRollbackMinAge)
 	if err != nil {
 		return nil, err
 	}

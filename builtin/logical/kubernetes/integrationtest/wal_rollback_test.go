@@ -21,8 +21,8 @@ import (
 )
 
 func TestCreds_wal_rollback(t *testing.T) {
-	if _, ok := os.LookupEnv("SKIP_WAL_TEST"); ok {
-		t.Skip("Skipping WAL rollback test")
+	if _, ok := os.LookupEnv("K8S_WAL_TEST"); !ok {
+		t.Skip("Skipping WAL rollback test because K8S_WAL_TEST isn't defined")
 	}
 
 	// Pick up VAULT_ADDR and VAULT_TOKEN from env vars

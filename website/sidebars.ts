@@ -479,6 +479,10 @@ const sidebars: SidebarsConfig = {
                 "policies/deprecation",
                 "policies/plugins",
             ],
+            RFCs: [
+                "rfcs/index",
+                "rfcs/paginated-lists",
+            ],
             FAQ: [
                 "faq/index",
                 "deprecation/faq",

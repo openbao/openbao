@@ -13,10 +13,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
+	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/helper/docker"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/vault"
 )
 
 const (
@@ -346,4 +349,72 @@ func testAccStepReadRole(t *testing.T, name, tags, rawVHosts string, rawVHostTop
 			return nil
 		},
 	}
+}
+
+func TestBackend_RoleReadCrash(t *testing.T) {
+	// Reproducer from https://github.com/openbao/openbao/issues/97.
+
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"rabbitmq": Factory,
+		},
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	cleanup, uri := prepareRabbitMQTestContainer(t)
+	defer cleanup()
+
+	err := client.Sys().Mount("rabbitmq", &api.MountInput{
+		Type: "rabbitmq",
+	})
+	if err != nil {
+		t.Fatalf("failed to mount: %v", err)
+	}
+
+	resp, err := client.Logical().Write("rabbitmq/config/connection", map[string]interface{}{
+		"connection_uri": uri,
+		"username":       "guest",
+		"password":       "guest",
+	})
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+
+	resp, err = client.Logical().Write("rabbitmq/roles/newrole", map[string]interface{}{
+		"tags": "administrator",
+		"vhosts": `
+{
+  "/": {
+    "configure": ".*",
+    "write": ".*",
+    "read": ".*"
+  }
+}
+`,
+		"vhost_topics": `
+{
+	"/": {
+		"amq.topic": {
+			"write": ".*",
+			"read": ".*"
+		}
+	}
+}
+`,
+	})
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+
+	// Crash here in audit subsystem due to typing of vhost_topics.
+	resp, err = client.Logical().Read("rabbitmq/roles/newrole")
+	if err != nil {
+		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	}
+	t.Logf("response: %#v", resp)
 }

@@ -1,0 +1,3 @@
+```release-note:bug
+secret/rabbitmq: Fix role reading causing audit log panic when vhost_topics are set.
+```

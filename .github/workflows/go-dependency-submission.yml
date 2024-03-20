@@ -5,7 +5,7 @@ name: Go Dependency Submission
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
+    branches: [ "main", "issue-227" ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -35,12 +35,12 @@ jobs:
 
       - name: 'Submit Dependencies To GitHub'
         uses: actions/go-dependency-submission@v2.0.1
-        #with:
+        with:
           # GitHub Personal Access Token (PAT). Defaults to PAT provided by Action runner
           # token: # optional, default is ${{ github.token }}
           # User provided map of max key/value pairs of metadata to include with the snapshot e.g. {"lastModified": "12-31-2022"}
           # metadata: # optional
           # Repo path to the go.mod file used to detect dependencies for the Go build target. Defaults to go.mod in the root of the repository.
-          # go-mod-path: # default is go.mod
+          go-mod-path: go.mod
           # Build target to detect build dependencies. If unspecified, will use "all", with will detect all dependencies used in all build targets (including tests and tools).
-          # go-build-target: # default is all
+          go-build-target: main.go

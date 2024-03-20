@@ -4,6 +4,7 @@
 name: Check Changelog
 
 on:
+  merge_group:
   pull_request:
     types: [opened, synchronize, labeled, unlabeled]
     # Runs on PRs to main

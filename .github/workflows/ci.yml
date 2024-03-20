@@ -1,5 +1,6 @@
 name: CI
 on:
+  merge_group:
   pull_request:
     # The default types for pull_request are [ opened, synchronize, reopened ].
     # This is insufficient for our needs, since we're skipping stuff on PRs in

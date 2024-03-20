@@ -1,7 +1,7 @@
 name: build
 
 on:
-  workflow_dispatch:
+  merge_group:
   pull_request:
     # The default types for pull_request are [ opened, synchronize, reopened ].
     # This is insufficient for our needs, since we're skipping stuff on PRs in
@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - release/**
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}-build

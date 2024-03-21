@@ -1,0 +1,23 @@
+.accordion__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding-top: 0.5rem !important;
+  margin-top: 0.5rem !important;
+  padding-bottom: 1rem !important;
+  margin-bottom: 0.5rem !important;
+  border-bottom: solid 1px var(--ifm-table-border-color);
+}
+
+.accordion__item__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  cursor: pointer;
+}
+
+.accordion__item__description {
+  margin-top: 1rem !important;
+  font-size: var(--ifm-h4-font-size);
+}

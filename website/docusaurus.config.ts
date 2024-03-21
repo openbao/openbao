@@ -7,7 +7,7 @@ import path from "path";
 const config: Config = {
   title: "OpenBao",
   tagline: "Manage, store and distribute sensitive data",
-  favicon: "img/favicon.ico",
+  favicon: "img/favicon.svg",
 
   // Set the production url of your site here
   url: "https://openbao.github.io",
@@ -86,11 +86,20 @@ const config: Config = {
   ],
 
   themeConfig: {
+    announcementBar: {
+      id: "support_us",
+      content:
+        'The documentation is still work in progress. If you find any mistakes, please open an <a href="https://github.com/openbao/openbao/issues" target="_blank">issue</a>',
+      backgroundColor: "#ffba00",
+      textColor: "#091E42",
+      isCloseable: false,
+    },
     navbar: {
       title: "OpenBao",
       logo: {
         alt: "OpenBao Logo",
-        src: "img/logo.svg",
+        src: "img/logo-black.svg",
+        srcDark: "img/logo-white.svg",
       },
       items: [
         {
@@ -100,26 +109,9 @@ const config: Config = {
         },
         { to: "/api-docs/", label: "API", position: "left" },
         {
-          href: "https://github.com/openbao/openbao",
-          label: "GitHub",
-          position: "right",
-        },
-      ],
-    },
-    footer: {
-      style: "dark",
-      links: [
-        {
-          title: "Docs",
-          items: [
-            {
-              label: "Intro",
-              to: "/docs/",
-            },
-          ],
-        },
-        {
-          title: "Community",
+          type: "dropdown",
+          label: "Community",
+          position: "left",
           items: [
             {
               label: "GitHub Discussions",
@@ -136,16 +128,18 @@ const config: Config = {
           ],
         },
         {
-          title: "More",
-          items: [
-            {
-              label: "GitHub",
-              href: "https://github.com/openbao/openbao",
-            },
-          ],
+          href: "https://github.com/openbao/openbao",
+          label: "GitHub",
+          position: "right",
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} The OpenBao Authors. Built with Docusaurus.`,
+    },
+    footer: {
+      copyright: [
+        `Copyright © ${new Date().getFullYear()} The OpenBao Authors. OpenBao is a`,
+        `<a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
+        `<a href="https://www.lfedge.org/"><img src="/openbao/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
+      ].join(" "),
     },
     prism: {
       theme: prismThemes.github,

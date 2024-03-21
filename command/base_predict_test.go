@@ -364,7 +364,6 @@ func TestPredict_Plugins(t *testing.T) {
 				"postgresql-database-plugin",
 				"rabbitmq",
 				"radius",
-				"redis-database-plugin",
 				"ssh",
 				"totp",
 				"transit",

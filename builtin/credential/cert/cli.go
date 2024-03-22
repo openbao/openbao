@@ -13,7 +13,7 @@ import (
 
 type CLIHandler struct{}
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	var data struct {
 		Mount string `mapstructure:"mount"`
 		Name  string `mapstructure:"name"`

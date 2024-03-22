@@ -22,7 +22,7 @@ import (
 type CLIHandler struct{}
 
 // Auth takes a client and a config map, and returns a secret if appropriate.
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	mount, ok := m["mount"]
 	if !ok {
 		mount = "kerberos"

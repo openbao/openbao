@@ -48,7 +48,7 @@ type loginResp struct {
 	err    error
 }
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	// handle ctrl-c while waiting for the callback
 	sigintCh := make(chan os.Signal, 1)
 	signal.Notify(sigintCh, authHalts...)

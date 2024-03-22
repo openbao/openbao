@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -488,6 +489,9 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 
 	cmd := exec.Command(c.flagSSHExecutable, args...)
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -578,6 +582,9 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 	cmd.Env = env
 
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -649,6 +656,9 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 
 	cmd := exec.Command(c.flagSSHExecutable, args...)
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()

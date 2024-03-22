@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -81,6 +82,10 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 	}
 
 	stdin := (io.Reader)(os.Stdin)
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
+
 	userData, err := parseArgsData(stdin, args[3:])
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Failed to parse K=V data: %s", err))

@@ -129,6 +129,11 @@ func (c *OperatorUnsealCommand) Run(args []string) int {
 	}
 
 	if unsealKey == "" {
+		if c.flagNonInteractive {
+			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify unseal key as an argument to this command")))
+			return 1
+		}
+
 		// Override the output
 		writer := (io.Writer)(os.Stdout)
 		if c.testOutput != nil {

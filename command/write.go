@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -125,6 +126,9 @@ func (c *WriteCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	path := sanitizePath(args[0])

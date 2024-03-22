@@ -20,7 +20,7 @@ type CLIHandler struct {
 	testStdout io.Writer
 }
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	// Parse "lookup" first - we want to return an early error if the user
 	// supplied an invalid value here before we prompt them for a token. It would
 	// be annoying to type your token and then be told you supplied an invalid
@@ -41,6 +41,10 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		stdout := h.testStdout
 		if stdout == nil {
 			stdout = os.Stderr
+		}
+
+		if nonInteractive {
+			return nil, fmt.Errorf("'token' not supplied and refusing to pull from stdin")
 		}
 
 		// No arguments given, read the token from user input

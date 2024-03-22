@@ -317,6 +317,9 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -433,6 +436,9 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -444,6 +450,11 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
 		nonce = status.Nonce
+
+		if c.flagNonInteractive {
+			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			return 1
+		}
 
 		w := getWriterFromUI(c.UI)
 		fmt.Fprintf(w, "Operation nonce: %s\n", nonce)

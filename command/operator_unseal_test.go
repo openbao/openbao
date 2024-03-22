@@ -50,6 +50,28 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		}
 	})
 
+	t.Run("error_non_interactive", func(t *testing.T) {
+		t.Parallel()
+
+		client, closer := testVaultServer(t)
+		defer closer()
+
+		ui, cmd := testOperatorUnsealCommand(t)
+		cmd.client = client
+		cmd.testOutput = ioutil.Discard
+
+		code := cmd.Run([]string{"-non-interactive"})
+		if exp := 1; code != exp {
+			t.Errorf("expected %d to be %d", code, exp)
+		}
+
+		expected := "Refusing to read from stdin"
+		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if !strings.Contains(combined, expected) {
+			t.Errorf("expected %q to contain %q", combined, expected)
+		}
+	})
+
 	t.Run("reset", func(t *testing.T) {
 		t.Parallel()
 

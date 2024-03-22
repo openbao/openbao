@@ -14,7 +14,7 @@ import (
 
 type CLIHandler struct{}
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	mount, ok := m["mount"]
 	if !ok {
 		mount = "ldap"
@@ -31,6 +31,10 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	if !ok {
 		password = passwordFromEnv()
 		if password == "" {
+			if nonInteractive {
+				return nil, fmt.Errorf("'password' not supplied and refusing to pull from stdin")
+			}
+
 			fmt.Fprintf(os.Stderr, "Password (will be hidden): ")
 			var err error
 			password, err = pwd.Read(os.Stdin)

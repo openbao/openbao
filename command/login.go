@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -16,7 +17,7 @@ import (
 // LoginHandler is the interface that any auth handlers must implement to enable
 // auth via the CLI.
 type LoginHandler interface {
-	Auth(*api.Client, map[string]string) (*api.Secret, error)
+	Auth(*api.Client, map[string]string, bool) (*api.Secret, error)
 	Help() string
 }
 
@@ -194,6 +195,9 @@ func (c *LoginCommand) Run(args []string) int {
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
 
 	// If the user provided a token, pass it along to the auth provider.
 	if authMethod == "token" && len(args) > 0 && !strings.Contains(args[0], "=") {
@@ -225,7 +229,7 @@ func (c *LoginCommand) Run(args []string) int {
 	}
 
 	// Authenticate delegation to the auth handler
-	secret, err := authHandler.Auth(client, config)
+	secret, err := authHandler.Auth(client, config, c.flagNonInteractive)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error authenticating: %s", err))
 		return 2

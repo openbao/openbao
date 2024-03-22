@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -86,6 +87,10 @@ func (c *PKIIssueCACommand) Run(args []string) int {
 	}
 
 	stdin := (io.Reader)(os.Stdin)
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
+
 	data, err := parseArgsData(stdin, args[2:])
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Failed to parse K=V data: %s", err))

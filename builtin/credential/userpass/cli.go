@@ -17,7 +17,7 @@ type CLIHandler struct {
 	DefaultMount string
 }
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	var data struct {
 		Username string `mapstructure:"username"`
 		Password string `mapstructure:"password"`
@@ -31,6 +31,10 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		return nil, fmt.Errorf("'username' must be specified")
 	}
 	if data.Password == "" {
+		if nonInteractive {
+			return nil, fmt.Errorf("'password' must be specified and refusing to pull from stdin")
+		}
+
 		fmt.Fprintf(os.Stderr, "Password (will be hidden): ")
 		password, err := pwd.Read(os.Stdin)
 		fmt.Fprintf(os.Stderr, "\n")

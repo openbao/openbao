@@ -450,6 +450,9 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -460,6 +463,11 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		key = buf.String()
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
+		if c.flagNonInteractive {
+			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			return 1
+		}
+
 		w := getWriterFromUI(c.UI)
 		fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
 		fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)

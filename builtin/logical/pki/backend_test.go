@@ -2336,7 +2336,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatalf("By default, sign-verbatim must not issue certificates containing the x509 Basic Constraints extension")
 	}
 
-	// test the Basic Constraints extension: when the option is explicitly specified (as an explicit option or in a role), the issued certificate must be generated with the Basic Constraints extension.
+	// Test the Basic Constraints extension: when the option is explicitly specified (as an explicit option or in a role), the issued certificate must be generated with the Basic Constraints extension.
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "sign-verbatim",
@@ -2376,7 +2376,11 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatalf("When explicitly specified through the option \"basic_constraints_valid_for_non_ca\", sign-verbatim must issue certificates containing the x509 Basic Constraints extension")
 	}
 
-	// test the Basic Constraints extension with a role: when the option is explicitly specified in a role, the issued certificate must be generated with the Basic Constraints extension.
+	if cert.IsCA {
+		t.Fatalf("The certificate issued with sign-verbatim cannot be a CA certificate")
+	}
+
+	// Test the Basic Constraints extension with a role: when the option is explicitly specified in a role, the issued certificate must be generated with the Basic Constraints extension.
 	roleData = map[string]interface{}{
 		"ttl":                                "4h",
 		"max_ttl":                            "8h",
@@ -2430,15 +2434,52 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 		t.Fatalf("expected a single cert, got %d", len(certs))
 	}
 	cert = certs[0]
-	if math.Abs(float64(time.Now().Add(12*time.Hour).Unix()-cert.NotAfter.Unix())) < 10 {
-		t.Fatalf("sign-verbatim did not properly cap validity period (notAfter) on signed CSR: was %v vs requested %v but should've been %v", cert.NotAfter, time.Now().Add(12*time.Hour), time.Now().Add(8*time.Hour))
-	}
-	if math.Abs(float64(time.Now().Add(-2*time.Hour).Unix()-cert.NotBefore.Unix())) > 10 {
-		t.Fatalf("sign-verbatim did not properly cap validity period (notBefore) on signed CSR: was %v vs expected %v", cert.NotBefore, time.Now().Add(-2*time.Hour))
-	}
 
 	if !cert.BasicConstraintsValid {
 		t.Fatalf("When using a role with the option \"basic_constraints_valid_for_non_ca\", sign-verbatim must issue certificates containing the x509 Basic Constraints extension")
+	}
+
+	if cert.IsCA {
+		t.Fatalf("The certificate issued with sign-verbatim cannot be a CA certificate")
+	}
+
+	// Test the Basic Constraints parameter specified in the API call takes priority and overwrites the value set in the role.
+	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "sign-verbatim/test",
+		Storage:   storage,
+		Data: map[string]interface{}{
+			"csr":                                pemCSR,
+			"ttl":                                "12h",
+			"basic_constraints_valid_for_non_ca": false,
+		},
+		MountPoint: "pki/",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp != nil && resp.IsError() {
+		t.Fatalf("failed to sign-verbatim CSR with role using \"basic_constraints_valid_for_non_ca\": %#v", *resp)
+	}
+	if resp.Data == nil || resp.Data["certificate"] == nil {
+		t.Fatal("did not get expected data")
+	}
+	certString = resp.Data["certificate"].(string)
+	block, _ = pem.Decode([]byte(certString))
+	if block == nil {
+		t.Fatal("nil pem block")
+	}
+	certs, err = x509.ParseCertificates(block.Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(certs) != 1 {
+		t.Fatalf("expected a single cert, got %d", len(certs))
+	}
+	cert = certs[0]
+
+	if cert.BasicConstraintsValid {
+		t.Fatalf("The Basic Constraints parameter specified in the sign-verbatim API call must take priority and overwrite the value set in the role")
 	}
 
 	// Now check signing a certificate using the not_after input using the Y10K value

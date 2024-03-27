@@ -255,7 +255,9 @@ func buildSignVerbatimRole(data *framework.FieldData, role *roleEntry) *roleEntr
 		}
 		entry.NoStore = role.NoStore
 		entry.Issuer = role.Issuer
-		entry.BasicConstraintsValidForNonCA = role.BasicConstraintsValidForNonCA
+		if _, ok := data.GetOk("basic_constraints_valid_for_non_ca"); !ok {
+			entry.BasicConstraintsValidForNonCA = role.BasicConstraintsValidForNonCA
+		}
 	}
 
 	if len(entry.Issuer) == 0 {

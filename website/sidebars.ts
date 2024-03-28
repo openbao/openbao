@@ -400,7 +400,6 @@ const sidebars: SidebarsConfig = {
             Platforms: [
                 "platform/index",
                 {
-                    AWS: ["platform/aws/lambda-extension"],
                     GitHub: ["platform/github-actions"],
                     Kubernetes: [
                         "platform/k8s/index",
@@ -478,15 +477,8 @@ const sidebars: SidebarsConfig = {
                 "policies/deprecation",
                 "policies/plugins",
             ],
-            RFCs: [
-                "rfcs/index",
-                "rfcs/paginated-lists",
-            ],
-            FAQ: [
-                "faq/index",
-                "deprecation/faq",
-                "auth/login-mfa/faq",
-            ],
+            RFCs: ["rfcs/index", "rfcs/paginated-lists"],
+            FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",
     ],

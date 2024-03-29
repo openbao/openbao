@@ -102,3 +102,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
+
+retract [v0.1.8, v0.11.0]

@@ -19,7 +19,7 @@ before:
 builds:
   - id: builds-linux
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
+      - -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -55,7 +55,7 @@ builds:
     skip: false
   - id: builds-other
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
+      - -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
     env:
       - CGO_ENABLED=0
     goos:
@@ -133,7 +133,7 @@ nfpms:
         file_info:
           mode: 0644
       - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
-        dst: /usr/systemd/system/openbao.service
+        dst: /usr/lib/systemd/system/openbao.service
         file_info:
           mode: 0644
     scripts:

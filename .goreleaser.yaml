@@ -192,6 +192,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
@@ -225,6 +226,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm"
@@ -258,6 +260,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64"
@@ -290,6 +293,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/riscv64"
@@ -322,6 +326,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/amd64"
@@ -355,6 +360,7 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
+    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
       - "--platform=linux/arm64"

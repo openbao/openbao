@@ -74,6 +74,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: returntocorp/semgrep@sha256:ffc6f3567654f9431456d49fd059dfe548f007c494a7eb6cd5a1a3e50d813fb3
+    # Skip any PR created by dependabot and any check triggered by merge group
+    if: (github.actor != 'dependabot[bot]') && (github.event != 'merge_group')
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
       - name: Run Semgrep Rules

@@ -73,6 +73,82 @@ ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["server", "-dev"]
 
 
+
+
+## DOCKERHUB DOCKERFILE RISCV64 ##
+FROM alpine:20240315 as default-riscv64
+
+ARG BIN_NAME
+# NAME and PRODUCT_VERSION are the name of the software in releases.hashicorp.com
+# and the version to download. Example: NAME=openbao PRODUCT_VERSION=1.2.3.
+ARG NAME=openbao
+ARG PRODUCT_VERSION
+ARG PRODUCT_REVISION
+# TARGETARCH and TARGETOS are set automatically when --platform is provided.
+ARG TARGETOS TARGETARCH
+
+# Additional metadata labels used by container registries, platforms
+# and certification scanners.
+LABEL name="OpenBao" \
+      maintainer="OpenBao Team <openbao@lists.lfedge.org>" \
+      vendor="OpenBao" \
+      version=${PRODUCT_VERSION} \
+      release=${PRODUCT_REVISION} \
+      revision=${PRODUCT_REVISION} \
+      summary="OpenBao is a tool for securely accessing secrets." \
+      description="OpenBao is a tool for securely accessing secrets. A secret is anything that you want to tightly control access to, such as API keys, passwords, certificates, and more. OpenBao provides a unified interface to any secret, while providing tight access control and recording a detailed audit log."
+
+COPY LICENSE /licenses/mozilla.txt
+
+# Set ARGs as ENV so that they can be used in ENTRYPOINT/CMD
+ENV NAME=$NAME
+ENV VERSION=$VERSION
+
+# Create a non-root user to run the software.
+RUN addgroup ${NAME} && adduser -S -G ${NAME} ${NAME}
+
+RUN apk add --no-cache libcap su-exec dumb-init tzdata
+
+COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
+
+# /vault/logs is made available to use as a location to store audit logs, if
+# desired; /vault/file is made available to use as a location with the file
+# storage backend, if desired; the server will be started with /vault/config as
+# the configuration directory so you can add additional config files in that
+# location.
+RUN mkdir -p /openbao/logs && \
+    mkdir -p /openbao/file && \
+    mkdir -p /openbao/config && \
+    chown -R ${NAME}:${NAME} /openbao
+
+# Expose the logs directory as a volume since there's potentially long-running
+# state in there
+VOLUME /openbao/logs
+
+# Expose the file directory as a volume since there's potentially long-running
+# state in there
+VOLUME /openbao/file
+
+# 8200/tcp is the primary interface that applications use to interact with
+# OpenBao.
+EXPOSE 8200
+
+# The entry point script uses dumb-init as the top-level process to reap any
+# zombie processes created by OpenBao sub-processes.
+#
+# For production derivatives of this container, you shoud add the IPC_LOCK
+# capability so that OpenBao can mlock memory.
+COPY .release/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+
+# # By default you'll get a single-node development server that stores everything
+# # in RAM and bootstraps itself. Don't use this configuration for production.
+CMD ["server", "-dev"]
+
+
+
+
 ## UBI DOCKERFILE ##
 FROM registry.access.redhat.com/ubi9-minimal:9.3 as ubi
 

@@ -18,6 +18,7 @@ before:
 
 builds:
   - id: builds-linux
+    binary: "dist/{{ .Os }}/{{ .Arch }}/{{ .ProjectName }}"
     ldflags:
       - -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }}
     env:
@@ -31,6 +32,7 @@ builds:
       - riscv64
     goarm:
       - "6"
+    no_unique_dist_dir: true
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
   - id: builds-other
@@ -71,6 +73,9 @@ builds:
         goarch: arm
       - goos: solaris
         goarch: arm64
+      - goos: windows
+        goarch: arm
+        goarm: "7"
       - goos: windows
         goarch: riscv64
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -170,9 +175,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{.ProjectName}}"
+      - "--build-arg=REVISION={{.FullCommit}}"
+      - "--build-arg=TARGETARCH=amd64"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{.Version}}"
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -187,8 +196,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=default"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64"
@@ -204,9 +211,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=TARGETARCH=arm"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -221,8 +232,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=default"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm"
@@ -238,9 +247,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=TARGETARCH=arm64"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -255,8 +268,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=default"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64"
@@ -271,9 +282,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=TARGETARCH=riscv64"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/riscv64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -288,8 +303,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=default-riscv64"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
@@ -304,9 +317,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=TARGETARCH=amd64"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -321,8 +338,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64"
@@ -338,9 +353,13 @@ dockers:
     skip_push: false
     ids:
       - builds-linux
-    dockerfile: "Dockerfile.release"
     build_flag_templates:
       - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=TARGETARCH=arm64"
+      - "--build-arg=TARGETOS=linux"
+      - "--build-arg=VERSION={{ .Version }}"
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title={{ .ProjectName }}"
       - "--label=org.opencontainers.image.vendor=OpenBao"
@@ -355,8 +374,6 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--build-arg=REVISION={{ .FullCommit }}"
-      - "--build-arg=VERSION={{ .Version }}"
       - "--target=ubi"
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64"

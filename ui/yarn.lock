@@ -6971,19 +6971,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"autoprefixer@npm:^7.0.0":
-  version: 7.2.6
-  resolution: "autoprefixer@npm:7.2.6"
+"autoprefixer@npm:^10.3.7":
+  version: 10.4.19
+  resolution: "autoprefixer@npm:10.4.19"
   dependencies:
-    browserslist: ^2.11.3
-    caniuse-lite: ^1.0.30000805
+    browserslist: ^4.23.0
+    caniuse-lite: ^1.0.30001599
+    fraction.js: ^4.3.7
     normalize-range: ^0.1.2
-    num2fraction: ^1.2.2
-    postcss: ^6.0.17
-    postcss-value-parser: ^3.2.3
+    picocolors: ^1.0.0
+    postcss-value-parser: ^4.2.0
+  peerDependencies:
+    postcss: ^8.1.0
   bin:
-    autoprefixer-info: ./bin/autoprefixer-info
-  checksum: 7ad12a58ca128d3e6b6dc5e4b3d83f2a12151216d30bcea1f1f2f8a91d2a019c58dd62fd039a6c1cf218f2ab557b03224703a4396c1b4f01b5c0818bc6ba4dd9
+    autoprefixer: bin/autoprefixer
+  checksum: 3a4bc5bace05e057396dca2b306503efc175e90e8f2abf5472d3130b72da1d54d97c0ee05df21bf04fe66a7df93fd8c8ec0f1aca72a165f4701a02531abcbf11
   languageName: node
   linkType: hard
 
@@ -8240,14 +8242,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"broccoli-autoprefixer@npm:^5.0.0":
-  version: 5.0.0
-  resolution: "broccoli-autoprefixer@npm:5.0.0"
+"broccoli-autoprefixer@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "broccoli-autoprefixer@npm:9.0.0"
   dependencies:
-    autoprefixer: ^7.0.0
-    broccoli-persistent-filter: ^1.1.6
-    postcss: ^6.0.1
-  checksum: 468df300b679e2afa3d14091f42313300424218d74911dba8dd61a16ce4b0888c76c517ac524f043c01304b3bb78d6e87927e931c96446f9921e4504f5361654
+    autoprefixer: ^10.3.7
+    broccoli-persistent-filter: ^3.1.2
+    postcss: ^8.3.11
+  checksum: 59f2cd8908401b84b3108d51a481fee57d6c0f08ec97e1f8d55f2aabf551a655d3c464e14be4799e33711b12ef14313aab484096fa665406175718e28d800bb9
   languageName: node
   linkType: hard
 
@@ -9165,18 +9167,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"browserslist@npm:^2.11.3":
-  version: 2.11.3
-  resolution: "browserslist@npm:2.11.3"
-  dependencies:
-    caniuse-lite: ^1.0.30000792
-    electron-to-chromium: ^1.3.30
-  bin:
-    browserslist: ./cli.js
-  checksum: 2ff908162669461e881bad516885b703fd594a0b7a139bf150c1952a74fe4ed8668ac46367a0d136d39a717de65e51c867316951e9fe0f92664c65b205eb9d93
-  languageName: node
-  linkType: hard
-
 "browserslist@npm:^3.2.6":
   version: 3.2.8
   resolution: "browserslist@npm:3.2.8"
@@ -9261,6 +9251,20 @@ __metadata:
   bin:
     browserslist: cli.js
   checksum: 18e09beeae32e69fea45fc3642240fb63027b1460d90e24da86377177dca3d82c80f8fa44469d95109e3962f08eb2a23e03037bd5e1f1ec38e4866e2a8572435
+  languageName: node
+  linkType: hard
+
+"browserslist@npm:^4.23.0":
+  version: 4.23.0
+  resolution: "browserslist@npm:4.23.0"
+  dependencies:
+    caniuse-lite: ^1.0.30001587
+    electron-to-chromium: ^1.4.668
+    node-releases: ^2.0.14
+    update-browserslist-db: ^1.0.13
+  bin:
+    browserslist: cli.js
+  checksum: 436f49e796782ca751ebab7edc010cfc9c29f68536f387666cd70ea22f7105563f04dd62c6ff89cb24cc3254d17cba385f979eeeb3484d43e012412ff7e75def
   languageName: node
   linkType: hard
 
@@ -9505,10 +9509,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"caniuse-lite@npm:^1.0.0, caniuse-lite@npm:^1.0.30000792, caniuse-lite@npm:^1.0.30000805, caniuse-lite@npm:^1.0.30000844, caniuse-lite@npm:^1.0.30001219, caniuse-lite@npm:^1.0.30001264, caniuse-lite@npm:^1.0.30001280, caniuse-lite@npm:^1.0.30001304, caniuse-lite@npm:^1.0.30001317, caniuse-lite@npm:^1.0.30001349":
+"caniuse-lite@npm:^1.0.0, caniuse-lite@npm:^1.0.30000844, caniuse-lite@npm:^1.0.30001219, caniuse-lite@npm:^1.0.30001264, caniuse-lite@npm:^1.0.30001280, caniuse-lite@npm:^1.0.30001304, caniuse-lite@npm:^1.0.30001317, caniuse-lite@npm:^1.0.30001349":
   version: 1.0.30001487
   resolution: "caniuse-lite@npm:1.0.30001487"
   checksum: b5a9e72ec165765fb3e07913cc389685ce8a30ac48967f99baec773a4353d2037fb534241e87b3c95d40a5081079be2263710b784883183bb2998b73f7202233
+  languageName: node
+  linkType: hard
+
+"caniuse-lite@npm:^1.0.30001587, caniuse-lite@npm:^1.0.30001599":
+  version: 1.0.30001600
+  resolution: "caniuse-lite@npm:1.0.30001600"
+  checksum: 1aae03be0e9f96163e88b9305531ef8db0e01f224aff545c61a32ce0b0ca323e22531bf680bacac3e34f98e23f71ac31a21b328fa0fcbbecea65a2c2638c70c4
   languageName: node
   linkType: hard
 
@@ -11600,13 +11611,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-to-chromium@npm:^1.3.30":
-  version: 1.3.725
-  resolution: "electron-to-chromium@npm:1.3.725"
-  checksum: 90801f5cc30f76495412ce86cef141cd22924ec75c88c276eaa42435d09370d9df5d8127060dae4fdb96a3ea0b0a726ee228788affb997e7f4172f4e54001c5d
-  languageName: node
-  linkType: hard
-
 "electron-to-chromium@npm:^1.3.47, electron-to-chromium@npm:^1.3.723":
   version: 1.3.906
   resolution: "electron-to-chromium@npm:1.3.906"
@@ -11632,6 +11636,13 @@ __metadata:
   version: 1.4.148
   resolution: "electron-to-chromium@npm:1.4.148"
   checksum: 3730c2eb46c7d0602b418a5a80e8d37e673c61d7cdc6a431a0d23bf08b6db6375c5f842d9e4285549ef2c5bad9189da34f05f28993fdb43920df5befc72db87a
+  languageName: node
+  linkType: hard
+
+"electron-to-chromium@npm:^1.4.668":
+  version: 1.4.722
+  resolution: "electron-to-chromium@npm:1.4.722"
+  checksum: 613c8d015246857028e6ee6adf14fe8fcf8f03c99a77ddae40df12d62a9164421276acc0ed34e59a4fbe1e3fdb2c197bd534066f6a8e4d7d86eb19f9c361cb57
   languageName: node
   linkType: hard
 
@@ -11925,13 +11936,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-autoprefixer@npm:^0.8.1":
-  version: 0.8.1
-  resolution: "ember-cli-autoprefixer@npm:0.8.1"
+"ember-cli-autoprefixer@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "ember-cli-autoprefixer@npm:2.0.0"
   dependencies:
-    broccoli-autoprefixer: ^5.0.0
-    lodash: ^4.0.0
-  checksum: b756a311abe4d3e91cd170fa801d0cb5601f7e6d2b9d7406018719636479ee80e1ec3ca633ca1419971ec56bf5417bc6000fc2a128bd3e3f2ddbe4e22d8ea8da
+    broccoli-autoprefixer: ^9.0.0
+    ember-cli-htmlbars: ^5.0.0
+  checksum: 90f5e77bc60e8536a4a83b286d5c7854a3f6b2b2e5e7b19ba1468517830efa6bd82a75b6fee45e5beee37b6cecea8fce3b7b9933496d142f6b3ab07c2c83757b
   languageName: node
   linkType: hard
 
@@ -12097,7 +12108,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-htmlbars@npm:^5.2.0, ember-cli-htmlbars@npm:^5.3.2":
+"ember-cli-htmlbars@npm:^5.0.0, ember-cli-htmlbars@npm:^5.2.0, ember-cli-htmlbars@npm:^5.3.2":
   version: 5.7.2
   resolution: "ember-cli-htmlbars@npm:5.7.2"
   dependencies:
@@ -15070,6 +15081,13 @@ __metadata:
   version: 0.1.2
   resolution: "forwarded@npm:0.1.2"
   checksum: 54695c574292f9bc6bfa52111844337bc2e61cfcc5ec82f16b816d721a67a0c76b4849a34b57e38e51d64ddbb81aef974f393579f610ed1b990470e75abad2e0
+  languageName: node
+  linkType: hard
+
+"fraction.js@npm:^4.3.7":
+  version: 4.3.7
+  resolution: "fraction.js@npm:4.3.7"
+  checksum: e1553ae3f08e3ba0e8c06e43a3ab20b319966dfb7ddb96fd9b5d0ee11a66571af7f993229c88ebbb0d4a816eb813a24ed48207b140d442a8f76f33763b8d1f3f
   languageName: node
   linkType: hard
 
@@ -18058,7 +18076,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash@npm:^4.0.0, lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.12, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.21, lodash@npm:^4.17.4, lodash@npm:^4.5.1, lodash@npm:^4.7.0":
+"lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.12, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.21, lodash@npm:^4.17.4, lodash@npm:^4.5.1, lodash@npm:^4.7.0":
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: eb835a2e51d381e561e508ce932ea50a8e5a68f4ebdd771ea240d3048244a8d13658acbd502cd4829768c56f2e16bdd4340b9ea141297d472517b83868e677f7
@@ -19163,6 +19181,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nanoid@npm:^3.3.7":
+  version: 3.3.7
+  resolution: "nanoid@npm:3.3.7"
+  bin:
+    nanoid: bin/nanoid.cjs
+  checksum: d36c427e530713e4ac6567d488b489a36582ef89da1d6d4e3b87eded11eb10d7042a877958c6f104929809b2ab0bafa17652b076cdf84324aa75b30b722204f2
+  languageName: node
+  linkType: hard
+
 "nanomatch@npm:^1.2.9":
   version: 1.2.13
   resolution: "nanomatch@npm:1.2.13"
@@ -19356,6 +19383,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node-releases@npm:^2.0.14":
+  version: 2.0.14
+  resolution: "node-releases@npm:2.0.14"
+  checksum: 59443a2f77acac854c42d321bf1b43dea0aef55cd544c6a686e9816a697300458d4e82239e2d794ea05f7bbbc8a94500332e2d3ac3f11f52e4b16cbe638b3c41
+  languageName: node
+  linkType: hard
+
 "node-releases@npm:^2.0.2":
   version: 2.0.2
   resolution: "node-releases@npm:2.0.2"
@@ -19544,13 +19578,6 @@ __metadata:
   dependencies:
     boolbase: ^1.0.0
   checksum: 5afc3dafcd1573b08877ca8e6148c52abd565f1d06b1eb08caf982e3fa289a82f2cae697ffb55b5021e146d60443f1590a5d6b944844e944714a5b549675bcd3
-  languageName: node
-  linkType: hard
-
-"num2fraction@npm:^1.2.2":
-  version: 1.2.2
-  resolution: "num2fraction@npm:1.2.2"
-  checksum: 1da9c6797b505d3f5b17c7f694c4fa31565bdd5c0e5d669553253aed848a580804cd285280e8a73148bd9628839267daee4967f24b53d4e893e44b563e412635
   languageName: node
   linkType: hard
 
@@ -20404,28 +20431,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss-value-parser@npm:^3.2.3":
-  version: 3.3.1
-  resolution: "postcss-value-parser@npm:3.3.1"
-  checksum: 62cd26e1cdbcf2dcc6bcedf3d9b409c9027bc57a367ae20d31dd99da4e206f730689471fd70a2abe866332af83f54dc1fa444c589e2381bf7f8054c46209ce16
-  languageName: node
-  linkType: hard
-
-"postcss-value-parser@npm:^4.1.0":
+"postcss-value-parser@npm:^4.1.0, postcss-value-parser@npm:^4.2.0":
   version: 4.2.0
   resolution: "postcss-value-parser@npm:4.2.0"
   checksum: 819ffab0c9d51cf0acbabf8996dffbfafbafa57afc0e4c98db88b67f2094cb44488758f06e5da95d7036f19556a4a732525e84289a425f4f6fd8e412a9d7442f
-  languageName: node
-  linkType: hard
-
-"postcss@npm:^6.0.1, postcss@npm:^6.0.17":
-  version: 6.0.23
-  resolution: "postcss@npm:6.0.23"
-  dependencies:
-    chalk: ^2.4.1
-    source-map: ^0.6.1
-    supports-color: ^5.4.0
-  checksum: cc6cb2c1dbcdefa6f57a71d67fe535c9e96543298bbe28f9a6a64c4f1e21b6127113890dd4cda8873d3f4e6613a0566b7b4bbb230204f3a9a309190bda065d81
   languageName: node
   linkType: hard
 
@@ -20437,6 +20446,17 @@ __metadata:
     picocolors: ^1.0.0
     source-map-js: ^1.0.2
   checksum: fe58766ff32e4becf65a7d57678995cfd239df6deed2fe0557f038b47c94e4132e7e5f68b5aa820c13adfec32e523b693efaeb65798efb995ce49ccd83953816
+  languageName: node
+  linkType: hard
+
+"postcss@npm:^8.3.11":
+  version: 8.4.38
+  resolution: "postcss@npm:8.4.38"
+  dependencies:
+    nanoid: ^3.3.7
+    picocolors: ^1.0.0
+    source-map-js: ^1.2.0
+  checksum: 649f9e60a763ca4b5a7bbec446a069edf07f057f6d780a5a0070576b841538d1ecf7dd888f2fbfd1f76200e26c969e405aeeae66332e6927dbdc8bdcb90b9451
   languageName: node
   linkType: hard
 
@@ -22413,6 +22433,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"source-map-js@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "source-map-js@npm:1.2.0"
+  checksum: 791a43306d9223792e84293b00458bf102a8946e7188f3db0e4e22d8d530b5f80a4ce468eb5ec0bf585443ad55ebbd630bf379c98db0b1f317fd902500217f97
+  languageName: node
+  linkType: hard
+
 "source-map-resolve@npm:^0.5.0":
   version: 0.5.3
   resolution: "source-map-resolve@npm:0.5.3"
@@ -23002,7 +23029,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"supports-color@npm:^5.3.0, supports-color@npm:^5.4.0, supports-color@npm:^5.5.0":
+"supports-color@npm:^5.3.0, supports-color@npm:^5.5.0":
   version: 5.5.0
   resolution: "supports-color@npm:5.5.0"
   dependencies:
@@ -24024,6 +24051,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"update-browserslist-db@npm:^1.0.13":
+  version: 1.0.13
+  resolution: "update-browserslist-db@npm:1.0.13"
+  dependencies:
+    escalade: ^3.1.1
+    picocolors: ^1.0.0
+  peerDependencies:
+    browserslist: ">= 4.21.0"
+  bin:
+    update-browserslist-db: cli.js
+  checksum: 1e47d80182ab6e4ad35396ad8b61008ae2a1330221175d0abd37689658bdb61af9b705bfc41057fd16682474d79944fb2d86767c5ed5ae34b6276b9bed353322
+  languageName: node
+  linkType: hard
+
 "update-section@npm:^0.3.3":
   version: 0.3.3
   resolution: "update-section@npm:0.3.3"
@@ -24258,7 +24299,7 @@ __metadata:
     ember-auto-import: 2.4.2
     ember-basic-dropdown: 6.0.1
     ember-cli: ~4.4.0
-    ember-cli-autoprefixer: ^0.8.1
+    ember-cli-autoprefixer: ^2.0.0
     ember-cli-babel: ^7.26.11
     ember-cli-clipboard: 0.16.0
     ember-cli-content-security-policy: 2.0.3

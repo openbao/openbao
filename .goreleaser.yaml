@@ -42,13 +42,20 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
-      #- illumos
+      - dragonfly
+      - freebsd
+      - illumos
+      - netbsd
+      - openbsd
+      - solaris
+      - wasip1
       - windows
     goarch:
       - amd64
       - arm
       - arm64
       - riscv64
+      - wasm
     goarm:
       - "6"
       - "7"
@@ -59,25 +66,51 @@ builds:
         goarch: arm
       - goos: darwin
         goarch: riscv64
+      - goos: darwin
+        goarch: wasm
+      - goos: dragofly
+        goarch: arm
+      - goos: dragofly
+        goarch: arm64
+      - goos: dragofly
+        goarch: riscv64
+      - goos: dragofly
+        goarch: wasm
       - goos: freebsd
         goarm: "7"
+      - goos: freebsd
+        goarch: wasm
       - goos: illumos
         goarch: arm
       - goos: illumos
         goarch: arm64
+      - goos: illumos
+        goarch: wasm
+      - goos: netbsd
+        goarch: riscv64
+      - goos: netbsd
+        goarch: wasm
+      - goos: netbsd
+        goarm: "7"
       - goos: openbsd
         goarch: riscv64
+      - goos: openbsd
+        goarch: wasm
       - goos: openbsd
         goarm: "7"
       - goos: solaris
         goarch: arm
       - goos: solaris
         goarch: arm64
+      - goos: solaris
+        goarch: wasm
       - goos: windows
         goarch: arm
         goarm: "7"
       - goos: windows
         goarch: riscv64
+      - goos: windows
+        goarch: wasm
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
 
@@ -95,7 +128,7 @@ nfpms:
       # - apk
       - deb
       - rpm
-      #- archlinux
+      - archlinux
     dependencies:
       - openssl
     provides:

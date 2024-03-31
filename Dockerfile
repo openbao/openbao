@@ -10,8 +10,6 @@ ARG BIN_NAME
 ARG NAME=openbao
 ARG PRODUCT_VERSION
 ARG PRODUCT_REVISION
-# TARGETARCH and TARGETOS are set automatically when --platform is provided.
-ARG TARGETOS TARGETARCH
 
 # Additional metadata labels used by container registries, platforms
 # and certification scanners.
@@ -35,7 +33,7 @@ RUN addgroup ${NAME} && adduser -S -G ${NAME} ${NAME}
 
 RUN apk add --no-cache libcap su-exec dumb-init tzdata
 
-COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
+COPY $BIN_NAME /bin/
 
 # /vault/logs is made available to use as a location to store audit logs, if
 # desired; /vault/file is made available to use as a location with the file
@@ -84,8 +82,6 @@ ARG BIN_NAME
 ARG NAME=openbao
 ARG PRODUCT_VERSION
 ARG PRODUCT_REVISION
-# TARGETARCH and TARGETOS are set automatically when --platform is provided.
-ARG TARGETOS TARGETARCH
 
 # Additional metadata labels used by container registries, platforms
 # and certification scanners.
@@ -109,7 +105,7 @@ RUN addgroup ${NAME} && adduser -S -G ${NAME} ${NAME}
 
 RUN apk add --no-cache libcap su-exec dumb-init tzdata
 
-COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
+COPY $BIN_NAME /bin/
 
 # /vault/logs is made available to use as a location to store audit logs, if
 # desired; /vault/file is made available to use as a location with the file
@@ -157,8 +153,6 @@ ARG BIN_NAME
 # which we COPY in later. Example: PRODUCT_VERSION=1.2.3.
 ARG PRODUCT_VERSION
 ARG PRODUCT_REVISION
-# TARGETARCH and TARGETOS are set automatically when --platform is provided.
-ARG TARGETOS TARGETARCH
 
 # Additional metadata labels used by container registries, platforms
 # and certification scanners.
@@ -190,7 +184,7 @@ RUN groupadd --gid 1000 openbao && \
 
 # Copy in the new OpenBao from CRT pipeline, rather than fetching it from our
 # public releases.
-COPY dist/$TARGETOS/$TARGETARCH/$BIN_NAME /bin/
+COPY $BIN_NAME /bin/
 
 # /vault/logs is made available to use as a location to store audit logs, if
 # desired; /vault/file is made available to use as a location with the file

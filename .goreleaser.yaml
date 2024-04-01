@@ -40,20 +40,20 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
-      - dragonfly
+      #- dragonfly
       - freebsd
       - illumos
       - netbsd
       - openbsd
       - solaris
-      - wasip1
+      #- wasip1
       - windows
     goarch:
       - amd64
       - arm
       - arm64
       - riscv64
-      - wasm
+      #- wasm
     goarm:
       - "6"
       - "7"
@@ -455,7 +455,7 @@ archives:
     builds_info:
       group: root
       owner: root
-      mode: 0644
+      mode: 0755
       # format is `time.RFC3339Nano`
       mtime: 2008-01-02T15:04:05Z
 

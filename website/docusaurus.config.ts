@@ -6,7 +6,7 @@ import path from "path";
 
 const config: Config = {
   title: "OpenBao",
-  tagline: "Manage, store and distribute sensitive data",
+  tagline: "Manage, store, and distribute sensitive data",
   favicon: "img/favicon.svg",
 
   // Set the production url of your site here

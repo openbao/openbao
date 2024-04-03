@@ -477,6 +477,10 @@ const sidebars: SidebarsConfig = {
                 "policies/deprecation",
                 "policies/plugins",
             ],
+            Contributing: [
+                "contributing/index",
+                "contributing/code-organization",
+            ],
             RFCs: ["rfcs/index", "rfcs/paginated-lists"],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

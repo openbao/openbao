@@ -29,8 +29,8 @@ function HomepageHeader() {
               {siteConfig.tagline} with {siteConfig.title}
             </Heading>
             <p className="hero__subtitle">
-              {siteConfig.title} is a community driven fork of Vault which is
-              open source and managed by the Linux foundation.
+              {siteConfig.title} is an open source, community-driven fork of Vault
+              managed by the Linux Foundation.
             </p>
             <div className={styles.buttons}>
               <Link

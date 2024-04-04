@@ -1,7 +1,7 @@
 # OpenBao Website
 
 This subdirectory contains the content for the [OpenBao
-Website](https://openbao.github.io/openbao/).  It is built using
+Website](https://openbao.org).  It is built using
 [Docusaurus](https://docusaurus.io), a modern static site generator.
 
 ## Table of Contents

@@ -62,7 +62,7 @@ jobs:
       - uses: hashicorp/actions-generate-metadata@v1
         id: generate-metadata-file
         with:
-          repositoryOwner: 'openbao'
+          repositoryOwner: "openbao"
           version: ${{ steps.set-product-version.outputs.product-version }}
           product: ${{ steps.get-metadata.outputs.package-name }}
       - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
@@ -71,45 +71,44 @@ jobs:
           path: ${{ steps.generate-metadata-file.outputs.filepath }}
           if-no-files-found: error
 
-## Disable UI temporarily.
-#
-#  build-ui:
-#    name: UI
-#    runs-on: ubuntu-latest
-#    outputs:
-#      cache-key: ui-${{ steps.ui-hash.outputs.ui-hash }}
-#    steps:
-#      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-#      - name: Get UI hash
-#        id: ui-hash
-#        run: echo "ui-hash=$(git ls-tree HEAD ui --object-only)" >> "$GITHUB_OUTPUT"
-#      - name: Set up UI asset cache
-#        id: cache-ui-assets
-#        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
-#        with:
-#          enableCrossOsArchive: true
-#          lookup-only: true
-#          path: http/web_ui
-#          # Only restore the UI asset cache if we haven't modified anything in the ui directory.
-#          # Never do a partial restore of the web_ui if we don't get a cache hit.
-#          key: ui-${{ steps.ui-hash.outputs.ui-hash }}
-#      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
-#        name: Set up node and yarn
-#        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
-#        with:
-#          node-version-file: ui/package.json
-#          cache: yarn
-#          cache-dependency-path: ui/yarn.lock
-#      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
-#        name: Build UI
-#        run: make ci-build-ui
-
+  ## Disable UI temporarily.
+  #
+  #  build-ui:
+  #    name: UI
+  #    runs-on: ubuntu-latest
+  #    outputs:
+  #      cache-key: ui-${{ steps.ui-hash.outputs.ui-hash }}
+  #    steps:
+  #      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+  #      - name: Get UI hash
+  #        id: ui-hash
+  #        run: echo "ui-hash=$(git ls-tree HEAD ui --object-only)" >> "$GITHUB_OUTPUT"
+  #      - name: Set up UI asset cache
+  #        id: cache-ui-assets
+  #        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+  #        with:
+  #          enableCrossOsArchive: true
+  #          lookup-only: true
+  #          path: http/web_ui
+  #          # Only restore the UI asset cache if we haven't modified anything in the ui directory.
+  #          # Never do a partial restore of the web_ui if we don't get a cache hit.
+  #          key: ui-${{ steps.ui-hash.outputs.ui-hash }}
+  #      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
+  #        name: Set up node and yarn
+  #        uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
+  #        with:
+  #          node-version-file: ui/package.json
+  #          cache: yarn
+  #          cache-dependency-path: ui/yarn.lock
+  #      - if: steps.cache-ui-assets.outputs.cache-hit != 'true'
+  #        name: Build UI
+  #        run: make ci-build-ui
 
   build-other:
     name: Other
     needs:
       - product-metadata
-#      - build-ui
+    #      - build-ui
     strategy:
       matrix:
         goos: [freebsd, windows, netbsd, openbsd, solaris]
@@ -127,7 +126,7 @@ jobs:
       goos: ${{ matrix.goos }}
       go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+      #      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 
@@ -135,7 +134,7 @@ jobs:
     name: Linux
     needs:
       - product-metadata
-#      - build-ui
+    #      - build-ui
     strategy:
       matrix:
         goos: [linux]
@@ -147,7 +146,7 @@ jobs:
       goos: ${{ matrix.goos }}
       go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+      #      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 
@@ -155,7 +154,7 @@ jobs:
     name: Darwin
     needs:
       - product-metadata
-#      - build-ui
+    #      - build-ui
     strategy:
       matrix:
         goos: [darwin]
@@ -168,7 +167,7 @@ jobs:
       goos: ${{ matrix.goos }}
       go-tags:
       package-name: ${{ needs.product-metadata.outputs.package-name }}
-#      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
+      #      web-ui-cache-key: ${{ needs.build-ui.outputs.cache-key }}
       bao-version: ${{ needs.product-metadata.outputs.bao-version }}
     secrets: inherit
 
@@ -181,6 +180,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm, arm64, amd64]
+        registry: [hub.docker.com, quay.io, ghcr.io]
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.product-metadata.outputs.bao-version }}
@@ -194,7 +194,7 @@ jobs:
           arch: ${{ matrix.arch }}
           zip_artifact_name: openbao_${{ env.version }}_linux_${{ matrix.arch }}.zip
           tags: |
-            docker.io/openbao/${{ env.repo }}:${{ env.version }}
+            ${{ matrix.registry }}/openbao/${{ env.repo }}:${{ env.version }}
 
   build-ubi:
     name: UBI image

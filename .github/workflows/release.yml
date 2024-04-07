@@ -16,13 +16,13 @@ on:
       prerelease:
         description: "Mark this release as a prerelease"
         required: false
-        default: 'auto'
+        default: "auto"
         type: choice
         # auto follows semver. Prerelease versions are hyphenated with a label. ex. 0.0.0-alpha, 1.0.0-rc1
         options:
           - auto
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
       make-latest:
         description: "Latest release"
         required: false
@@ -71,7 +71,6 @@ jobs:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
 
-
       - name: Cache Setup
         uses: actions/cache@v4
         with:
@@ -97,7 +96,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: "Docker Login: ghcr.io"
+      - name: "Docker Login: quay.io"
         if: startsWith(github.ref, 'refs/tags/')
         uses: docker/login-action@v3
         with:
@@ -113,7 +112,7 @@ jobs:
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -di > "${GPG_KEY_FILE}"
           echo "GPG_KEY_FILE=${GPG_KEY_FILE}" >> "${GITHUB_ENV}"
         env:
-          GPG_TTY: /dev/ttys000  # Set the GPG_TTY to avoid issues with pinentry
+          GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
       - name: "GoReleaser: Release"
         if: startsWith(github.ref, 'refs/tags/')

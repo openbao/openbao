@@ -58,9 +58,10 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend   = (*RaftBackend)(nil)
-	_ physical.HABackend = (*RaftBackend)(nil)
-	_ physical.Lock      = (*RaftLock)(nil)
+	_ physical.Backend       = (*RaftBackend)(nil)
+	_ physical.Transactional = (*RaftBackend)(nil)
+	_ physical.HABackend     = (*RaftBackend)(nil)
+	_ physical.Lock          = (*RaftLock)(nil)
 )
 
 var (
@@ -134,6 +135,9 @@ type RaftBackend struct {
 
 	// permitPool is used to limit the number of concurrent storage calls.
 	permitPool *physical.PermitPool
+
+	// txnPermitPool is used to limit the number of concurrent storage transactions.
+	txnPermitPool *physical.PermitPool
 
 	// maxEntrySize imposes a size limit (in bytes) on a raft entry (put or transaction).
 	// It is suggested to use a value of 2x the Raft chunking size for optimal
@@ -510,6 +514,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		dataDir:                    path,
 		localID:                    localID,
 		permitPool:                 physical.NewPermitPool(physical.DefaultParallelOperations),
+		txnPermitPool:              physical.NewPermitPool(physical.DefaultParallelOperations),
 		maxEntrySize:               maxEntrySize,
 		followerHeartbeatTicker:    time.NewTicker(time.Second),
 		autopilotReconcileInterval: reconcileInterval,
@@ -1583,14 +1588,15 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return err
 	}
 
+	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)
 	if err != nil {
 		return err
 	}
 
 	cmdSize := len(commandBytes)
-	if uint64(cmdSize) > b.maxEntrySize {
-		return fmt.Errorf("%s; got %d bytes, max: %d bytes", physical.ErrValueTooLarge, cmdSize, b.maxEntrySize)
+	if !isTx && uint64(cmdSize) > b.maxEntrySize {
+		return fmt.Errorf("%s; got %d bytes, max: %d bytes: %v", physical.ErrValueTooLarge, cmdSize, b.maxEntrySize, command.Operations)
 	}
 
 	defer metrics.AddSample([]string{"raft-storage", "entry_size"}, float32(cmdSize))
@@ -1643,20 +1649,36 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return errors.New("entries on FSM response were empty")
 	}
 
-	for i, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			fsmEntry := fsmar.EntrySlice[i]
+	if !isTx {
+		for i, logOp := range command.Operations {
+			if logOp.OpType == getOp {
+				fsmEntry := fsmar.EntrySlice[i]
 
-			// this should always be true because the entries in the slice were created in the same order as
-			// the command operations.
-			if logOp.Key == fsmEntry.Key {
-				if len(fsmEntry.Value) > 0 {
-					logOp.Value = fsmEntry.Value
+				// this should always be true because the entries in the slice were created in the same order as
+				// the command operations.
+				if logOp.Key == fsmEntry.Key {
+					if len(fsmEntry.Value) > 0 {
+						logOp.Value = fsmEntry.Value
+					}
+				} else {
+					// this shouldn't happen
+					return errors.New("entries in FSM response were out of order")
 				}
-			} else {
-				// this shouldn't happen
-				return errors.New("entries in FSM response were out of order")
 			}
+		}
+	} else {
+		// There should be at most one EntrySlice entry.
+		if len(fsmar.EntrySlice) > 1 {
+			return fmt.Errorf("multiple responses in entry slice: %v", len(fsmar.EntrySlice))
+		}
+
+		if len(fsmar.EntrySlice) == 1 {
+			fsmEntry := fsmar.EntrySlice[0]
+			if !fsmEntry.IsTxError() {
+				return fmt.Errorf("unknown FSMEntry response type")
+			}
+
+			return fsmEntry.AsTxError()
 		}
 	}
 
@@ -1699,6 +1721,14 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 
 func (b *RaftBackend) DesiredSuffrage() string {
 	return b.fsm.DesiredSuffrage()
+}
+
+func (b *RaftBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, false)
+}
+
+func (b *RaftBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, true)
 }
 
 // RaftLock implements the physical Lock interface and enables HA for this

@@ -9,7 +9,7 @@ StartLimitBurst=3
 
 [Service]
 Type=notify
-EnvironmentFile=/etc/openbao.d/openbao.env
+EnvironmentFile=/etc/openbao/openbao.env
 User=openbao
 Group=openbao
 ProtectSystem=full

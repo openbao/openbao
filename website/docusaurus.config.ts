@@ -138,7 +138,7 @@ const config: Config = {
       copyright: [
         `Copyright © ${new Date().getFullYear()} The OpenBao Authors. OpenBao is a`,
         `<a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
-        `<a href="https://www.lfedge.org/"><img src="/openbao/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
+        `<a href="https://www.lfedge.org/"><img src="/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
       ].join(" "),
     },
     prism: {

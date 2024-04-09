@@ -119,7 +119,7 @@ nfpms:
     homepage: https://github.com/openbao/openbao
     maintainer: OpenBao
     description: |
-      OpenBao exists to provide a software solution to manage, store, and distribute 
+      OpenBao exists to provide a software solution to manage, store, and distribute
       sensitive data including secrets, certificates, and keys.
     license: MPL-2.0
     formats:
@@ -229,7 +229,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64"
       - "quay.io/openbao/openbao:{{ .Version }}-alpine-amd64"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-alpine-amd64"
+      - "docker.io/openbao/openbao:{{ .Version }}-alpine-amd64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -265,7 +265,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm"
       - "quay.io/openbao/openbao:{{ .Version }}-alpine-arm"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm"
+      - "docker.io/openbao/openbao:{{ .Version }}-alpine-arm"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -301,7 +301,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64"
       - "quay.io/openbao/openbao:{{ .Version }}-alpine-arm64"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm64"
+      - "docker.io/openbao/openbao:{{ .Version }}-alpine-arm64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -336,7 +336,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
       - "quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-alpine-riscv64"
+      - "docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -371,7 +371,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64"
       - "quay.io/openbao/openbao:{{ .Version }}-ubi-amd64"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-ubi-amd64"
+      - "docker.io/openbao/openbao:{{ .Version }}-ubi-amd64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
@@ -407,7 +407,7 @@ dockers:
     image_templates:
       - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64"
       - "quay.io/openbao/openbao:{{ .Version }}-ubi-arm64"
-      - "hub.docker.com/openbao/openbao:{{ .Version }}-ubi-arm64"
+      - "docker.io/openbao/openbao:{{ .Version }}-ubi-arm64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
@@ -450,42 +450,42 @@ docker_manifests:
       - ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64
       - ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64
       - ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: hub.docker.com/openbao/openbao:{{ .Version }}
+  - name_template: docker.io/openbao/openbao:{{ .Version }}
     skip_push: false
     image_templates:
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: hub.docker.com/openbao/openbao:{{ .Major }}.{{ .Minor }}
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
+  - name_template: docker.io/openbao/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: hub.docker.com/openbao/openbao:{{ .Major }}
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
+  - name_template: docker.io/openbao/openbao:{{ .Major }}
     skip_push: false
     image_templates:
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: hub.docker.com/openbao/openbao:latest
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
+  - name_template: docker.io/openbao/openbao:latest
     skip_push: false
     image_templates:
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-arm64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-amd64
-      - hub.docker.com/openbao/openbao:{{ .Version }}-ubi-arm64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
+      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
+      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
   - name_template: quay.io/openbao/openbao:{{ .Version }}
     skip_push: false
     image_templates:

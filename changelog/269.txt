@@ -1,0 +1,3 @@
+```release-note:change
+IMPROVEMENTS: added other registries for docker images
+```

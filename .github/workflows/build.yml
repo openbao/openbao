@@ -181,7 +181,7 @@ jobs:
     strategy:
       matrix:
         arch: [arm, arm64, amd64]
-        registry: [hub.docker.com, quay.io, ghcr.io]
+        registry: [docker.io, quay.io, ghcr.io]
     env:
       repo: ${{ github.event.repository.name }}
       version: ${{ needs.product-metadata.outputs.bao-version }}

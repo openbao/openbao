@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	pwd "github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/api"
 )
 

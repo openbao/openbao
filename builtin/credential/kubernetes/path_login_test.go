@@ -23,7 +23,7 @@ import (
 
 	josejwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

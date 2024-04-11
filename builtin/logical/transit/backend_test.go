@@ -34,7 +34,7 @@ import (
 	"github.com/openbao/openbao/vault"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 
 	"github.com/stretchr/testify/require"
 )

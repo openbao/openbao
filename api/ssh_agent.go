@@ -18,7 +18,7 @@ import (
 	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 const (

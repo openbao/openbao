@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // ToMap renders an input value of any type as a map.  This is intended for

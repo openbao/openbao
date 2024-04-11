@@ -9,7 +9,7 @@ import (
 	"time"
 
 	josejwt "github.com/go-jose/go-jose/v3/jwt"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/strutil"
 	"github.com/openbao/openbao/sdk/helper/template"

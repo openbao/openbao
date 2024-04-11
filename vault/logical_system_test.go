@@ -21,7 +21,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
 	semver "github.com/hashicorp/go-version"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/identity"

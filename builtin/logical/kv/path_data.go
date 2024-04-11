@@ -12,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/locksutil"
 	"github.com/openbao/openbao/sdk/logical"

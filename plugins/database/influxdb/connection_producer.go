@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	influx "github.com/influxdata/influxdb1-client/v2"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/database/helper/connutil"
 	"github.com/openbao/openbao/sdk/helper/certutil"

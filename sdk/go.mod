@@ -21,6 +21,7 @@ require (
 	github.com/fatih/structs v1.1.0
 	github.com/go-ldap/ldap/v3 v3.4.1
 	github.com/go-test/deep v1.1.0
+	github.com/go-viper/mapstructure/v2 v2.0.0-alpha.1
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
 	github.com/google/tink/go v1.7.0
@@ -44,7 +45,6 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-testing-interface v1.14.1
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/v2 v2.1.0
 	github.com/openbao/openbao/api/v2 v2.0.0-00010101000000-000000000000
@@ -79,6 +79,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/moby/patternmatcher v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect

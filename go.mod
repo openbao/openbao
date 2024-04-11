@@ -45,6 +45,7 @@ require (
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/go-test/deep v1.1.0
+	github.com/go-viper/mapstructure/v2 v2.2.1
 	github.com/gocql/gocql v1.0.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/protobuf v1.5.4
@@ -105,7 +106,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/mitchellh/go-wordwrap v1.0.1
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
@@ -292,6 +292,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/miekg/dns v1.1.43 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/patternmatcher v0.5.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect

@@ -31,7 +31,7 @@ const SupportList: SupportItem[] = [
         description: "Open-source community efforts",
     },
     {
-        title: "Viacess-Orca",
+        title: "Viaccess-Orca",
         description: "Development; open-source community efforts",
     },
     {

@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api"
 	"github.com/ryanuber/columnize"
+	"sigs.k8s.io/yaml"
 )
 
 const (

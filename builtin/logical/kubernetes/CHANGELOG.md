@@ -9,6 +9,7 @@
   * golang.org/x/net v0.15.0 -> v0.17.0
   * golang.org/x/sys v0.12.0 -> v0.13.0
   * golang.org/x/term v0.12.0 -> v0.13.0
+  * github.com/cenkalti/backoff/v4 v3.2.2 -> v4.3.0
   * github.com/docker/docker v24.0.5 -> v24.0.7
   * github.com/hashicorp/vault/sdk v0.10.0 -> v0.10.2
   * k8s.io/api v0.28.1 -> v0.28.3

@@ -45,7 +45,7 @@ var (
 // plugins are automatically detected and included in the catalog.
 type PluginCatalog struct {
 	builtinRegistry BuiltinRegistry
-	catalogView     *BarrierView
+	catalogView     BarrierView
 	directory       string
 	logger          log.Logger
 

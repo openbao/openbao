@@ -150,7 +150,7 @@ var (
 // manage ACLs associated with them.
 type PolicyStore struct {
 	core    *Core
-	aclView *BarrierView
+	aclView BarrierView
 
 	tokenPoliciesLRU *lru.TwoQueueCache
 	egpLRU           *lru.TwoQueueCache
@@ -177,7 +177,7 @@ type PolicyEntry struct {
 
 // NewPolicyStore creates a new PolicyStore that is backed
 // using a given view. It used used to durable store and manage named policy.
-func NewPolicyStore(ctx context.Context, core *Core, baseView *BarrierView, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
+func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
 	ps := &PolicyStore{
 		aclView:    baseView.SubView(policyACLSubPath),
 		modifyLock: new(sync.RWMutex),
@@ -382,7 +382,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	index := ps.cacheKey(ns, name)
 
 	var cache *lru.TwoQueueCache
-	var view *BarrierView
+	var view BarrierView
 
 	switch policyType {
 	case PolicyTypeACL:

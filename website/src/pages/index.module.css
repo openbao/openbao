@@ -22,3 +22,8 @@
   justify-content: center;
   flex-wrap: wrap;
 }
+
+.options {
+  background-color: var(--ifm-dropdown-background-color);
+  color: var(--ifm-dropdown-link-color);
+}

@@ -31,6 +31,10 @@ func testListAndPage(t testing.TB, b Backend, prefix string, expected []string) 
 	require.NoError(t, err, "initial list page failed")
 	sortaEqualSlice(t, expected, page, "expected list page to match")
 
+	page, err = b.ListPage(context.Background(), prefix, ".", -100)
+	require.NoError(t, err, "initial list page failed")
+	sortaEqualSlice(t, expected, page, "expected list page with after=. to match bare list")
+
 	page, err = b.ListPage(context.Background(), prefix, "", -1)
 	require.NoError(t, err, "initial list page failed")
 	sortaEqualSlice(t, expected, page, "expected list page to match")

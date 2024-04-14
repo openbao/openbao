@@ -543,6 +543,12 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	seekPrefix := []byte(filepath.Join(prefix, after))
 	if after == "" {
 		seekPrefix = prefixBytes
+	} else if !bytes.HasPrefix(seekPrefix, prefixBytes) {
+		// filepath.Join has the very unfortunate behavior of trimming the
+		// trailing slash when after=".". When e.g., prefix=foo/, this gives
+		// us seekPrefix=foo, which fails the initial HasPrefix check,
+		// skipping all results.
+		seekPrefix = prefixBytes
 	}
 
 	var keys []string

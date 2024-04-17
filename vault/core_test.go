@@ -464,6 +464,154 @@ func TestCore_Unseal_MultiShare(t *testing.T) {
 	}
 }
 
+// TestCore_UseSSCTokenToggleOn will check that the root SSC
+// token can be used even when disableSSCTokens is toggled on
+func TestCore_UseSSCTokenToggleOn(t *testing.T) {
+	c, _, root := TestCoreUnsealed(t)
+	c.disableSSCTokens = true
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "secret/test",
+		Data: map[string]interface{}{
+			"foo":   "bar",
+			"lease": "1h",
+		},
+		ClientToken: root,
+	}
+	ctx := namespace.RootContext(nil)
+	resp, err := c.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Read the key
+	req.Operation = logical.ReadOperation
+	req.Data = nil
+	err = c.PopulateTokenEntry(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	resp, err = c.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Secret == nil || resp.Data == nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+	if resp.Secret.TTL != time.Hour {
+		t.Fatalf("bad: %#v", resp.Secret)
+	}
+	if resp.Secret.LeaseID == "" {
+		t.Fatalf("bad: %#v", resp.Secret)
+	}
+	if resp.Data["foo"] != "bar" {
+		t.Fatalf("bad: %#v", resp.Data)
+	}
+}
+
+// TestCore_UseNonSSCTokenToggleOff will check that the root
+// non-SSC token can be used even when disableSSCTokens is toggled
+// off.
+func TestCore_UseNonSSCTokenToggleOff(t *testing.T) {
+	coreConfig := &CoreConfig{
+		DisableSSCTokens: true,
+	}
+	c, _, root := TestCoreUnsealedWithConfig(t, coreConfig)
+	if len(root) > TokenLength+OldTokenPrefixLength || !strings.HasPrefix(root, consts.LegacyServiceTokenPrefix) {
+		t.Fatalf("token is not an old token type: %s, %d", root, len(root))
+	}
+	c.disableSSCTokens = false
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "secret/test",
+		Data: map[string]interface{}{
+			"foo":   "bar",
+			"lease": "1h",
+		},
+		ClientToken: root,
+	}
+	ctx := namespace.RootContext(nil)
+	resp, err := c.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+
+	// Read the key
+	req.Operation = logical.ReadOperation
+	req.Data = nil
+	err = c.PopulateTokenEntry(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	resp, err = c.HandleRequest(ctx, req)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if resp == nil || resp.Secret == nil || resp.Data == nil {
+		t.Fatalf("bad: %#v", resp)
+	}
+	if resp.Secret.TTL != time.Hour {
+		t.Fatalf("bad: %#v", resp.Secret)
+	}
+	if resp.Secret.LeaseID == "" {
+		t.Fatalf("bad: %#v", resp.Secret)
+	}
+	if resp.Data["foo"] != "bar" {
+		t.Fatalf("bad: %#v", resp.Data)
+	}
+}
+
+func TestCore_Unseal_Single(t *testing.T) {
+	c := TestCore(t)
+
+	_, err := TestCoreUnseal(c, invalidKey)
+	if err != ErrNotInit {
+		t.Fatalf("err: %v", err)
+	}
+
+	sealConf := &SealConfig{
+		SecretShares:    1,
+		SecretThreshold: 1,
+	}
+	res, err := c.Initialize(namespace.RootContext(nil), &InitParams{
+		BarrierConfig:  sealConf,
+		RecoveryConfig: nil,
+	})
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if !c.Sealed() {
+		t.Fatalf("should be sealed")
+	}
+
+	if prog, _ := c.SecretProgress(true); prog != 0 {
+		t.Fatalf("bad progress: %d", prog)
+	}
+
+	unseal, err := TestCoreUnseal(c, res.SecretShares[0])
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	if !unseal {
+		t.Fatalf("should be unsealed")
+	}
+	if prog, _ := c.SecretProgress(true); prog != 0 {
+		t.Fatalf("bad progress: %d", prog)
+	}
+
+	if c.Sealed() {
+		t.Fatalf("should not be sealed")
+	}
+}
+
 func TestCore_Route_Sealed(t *testing.T) {
 	c := TestCore(t)
 	sealConf := &SealConfig{
@@ -694,8 +842,37 @@ func TestCore_Seal_BadToken(t *testing.T) {
 	}
 }
 
-func TestCore_BatchTokens(t *testing.T) {
+func TestCore_PreOneTen_BatchTokens(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
+
+	// load up some versions and ensure that 1.9 is the most recent one by timestamp (even though this isn't realistic)
+	upgradeTimePlusEpsilon := time.Now().UTC()
+
+	versionEntries := []VaultVersion{
+		{Version: "1.10.1", TimestampInstalled: upgradeTimePlusEpsilon.Add(-4 * time.Hour)},
+		{Version: "1.9.2", TimestampInstalled: upgradeTimePlusEpsilon.Add(2 * time.Hour)},
+	}
+
+	for _, entry := range versionEntries {
+		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		if err != nil {
+			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
+		}
+	}
+
+	err := c.loadVersionHistory(c.activeContext)
+	if err != nil {
+		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
+	}
+
+	// double check that we're working with 1.9
+	v, _, err := c.FindNewestVersionTimestamp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v != "1.9.2" {
+		t.Fatalf("expected 1.9.2, found: %s", v)
+	}
 
 	// generate a batch token
 	te := &logical.TokenEntry{
@@ -704,14 +881,64 @@ func TestCore_BatchTokens(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 		Type:        logical.TokenTypeBatch,
 	}
-	err := c.tokenStore.create(namespace.RootContext(nil), te)
+	err = c.tokenStore.create(namespace.RootContext(nil), te)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// verify it uses the legacy prefix
+	if !strings.HasPrefix(te.ID, consts.LegacyBatchTokenPrefix) {
+		t.Fatalf("expected 1.9 batch token IDs to start with b. but it didn't: %s", te.ID)
+	}
+}
+
+func TestCore_OneTenPlus_BatchTokens(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+
+	// load up some versions and ensure that 1.10 is the most recent version
+	upgradeTimePlusEpsilon := time.Now().UTC()
+
+	versionEntries := []VaultVersion{
+		{Version: "1.9.2", TimestampInstalled: upgradeTimePlusEpsilon.Add(-4 * time.Hour)},
+		{Version: "1.10.1", TimestampInstalled: upgradeTimePlusEpsilon.Add(2 * time.Hour)},
+	}
+
+	for _, entry := range versionEntries {
+		_, err := c.storeVersionEntry(context.Background(), &entry, false)
+		if err != nil {
+			t.Fatalf("failed to write version entry %#v, err: %s", entry, err.Error())
+		}
+	}
+
+	err := c.loadVersionHistory(c.activeContext)
+	if err != nil {
+		t.Fatalf("failed to populate version history cache, err: %s", err.Error())
+	}
+
+	// double check that we're working with 1.10
+	v, _, err := c.FindNewestVersionTimestamp()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v != "1.10.1" {
+		t.Fatalf("expected 1.10.1, found: %s", v)
+	}
+
+	// generate a batch token
+	te := &logical.TokenEntry{
+		NumUses:     1,
+		Policies:    []string{"root"},
+		NamespaceID: namespace.RootNamespaceID,
+		Type:        logical.TokenTypeBatch,
+	}
+	err = c.tokenStore.create(namespace.RootContext(nil), te)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// verify it uses the legacy prefix
 	if !strings.HasPrefix(te.ID, consts.BatchTokenPrefix) {
-		t.Fatalf("expected batch token IDs to start with b. but it didn't: %s", te.ID)
+		t.Fatalf("expected 1.10 batch token IDs to start with hvb. but it didn't: %s", te.ID)
 	}
 }
 
@@ -1175,13 +1402,13 @@ func TestCore_HandleLogin_Token(t *testing.T) {
 	}
 
 	// Check the policy and metadata
-	innerToken := clientToken
+	innerToken, _ := c.DecodeSSCToken(clientToken)
 	te, err := c.tokenStore.Lookup(namespace.RootContext(nil), innerToken)
 	if err != nil || te == nil {
 		t.Fatalf("tok: %s, err: %v", clientToken, err)
 	}
 
-	expectedID := clientToken
+	expectedID, _ := c.DecodeSSCToken(clientToken)
 	expect := &logical.TokenEntry{
 		ID:       expectedID,
 		Accessor: te.Accessor,
@@ -1493,8 +1720,8 @@ func TestCore_HandleRequest_CreateToken_Lease(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	expectedID := clientToken
-	expectedRootID := root
+	expectedID, _ := c.DecodeSSCToken(clientToken)
+	expectedRootID, _ := c.DecodeSSCToken(root)
 
 	expect := &logical.TokenEntry{
 		ID:           expectedID,
@@ -1545,8 +1772,8 @@ func TestCore_HandleRequest_CreateToken_NoDefaultPolicy(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	expectedID := clientToken
-	expectedRootID := root
+	expectedID, _ := c.DecodeSSCToken(clientToken)
+	expectedRootID, _ := c.DecodeSSCToken(root)
 
 	expect := &logical.TokenEntry{
 		ID:           expectedID,

@@ -58,10 +58,9 @@ var getMmapFlags = func(string) int { return 0 }
 
 // Verify RaftBackend satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*RaftBackend)(nil)
-	_ physical.Transactional = (*RaftBackend)(nil)
-	_ physical.HABackend     = (*RaftBackend)(nil)
-	_ physical.Lock          = (*RaftLock)(nil)
+	_ physical.Backend   = (*RaftBackend)(nil)
+	_ physical.HABackend = (*RaftBackend)(nil)
+	_ physical.Lock      = (*RaftLock)(nil)
 )
 
 var (
@@ -1571,70 +1570,6 @@ func (b *RaftBackend) ListPage(ctx context.Context, prefix string, after string,
 	}
 
 	return b.fsm.ListPage(ctx, prefix, after, limit)
-}
-
-// Transaction applies all the given operations into a single log and
-// applies it.
-func (b *RaftBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	defer metrics.MeasureSince([]string{"raft-storage", "transaction"}, time.Now())
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	failGetInTxn := atomic.LoadUint32(b.failGetInTxn)
-	for _, t := range txns {
-		if t.Operation == physical.GetOperation && failGetInTxn != 0 {
-			return GetInTxnDisabledError
-		}
-	}
-
-	txnMap := make(map[string]*physical.TxnEntry)
-
-	command := &LogData{
-		Operations: make([]*LogOperation, len(txns)),
-	}
-	for i, txn := range txns {
-		op := &LogOperation{}
-		switch txn.Operation {
-		case physical.PutOperation:
-			if len(txn.Entry.Key) > bolt.MaxKeySize {
-				return fmt.Errorf("%s, max key size for integrated storage is %d", physical.ErrKeyTooLarge, bolt.MaxKeySize)
-			}
-			op.OpType = putOp
-			op.Key = txn.Entry.Key
-			op.Value = txn.Entry.Value
-		case physical.DeleteOperation:
-			op.OpType = deleteOp
-			op.Key = txn.Entry.Key
-		case physical.GetOperation:
-			op.OpType = getOp
-			op.Key = txn.Entry.Key
-			txnMap[op.Key] = txn
-		default:
-			return fmt.Errorf("%q is not a supported transaction operation", txn.Operation)
-		}
-
-		command.Operations[i] = op
-	}
-
-	b.permitPool.Acquire()
-	defer b.permitPool.Release()
-
-	b.l.RLock()
-	err := b.applyLog(ctx, command)
-	b.l.RUnlock()
-
-	// loop over results and update pointers to get operations
-	for _, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			if txn, found := txnMap[logOp.Key]; found {
-				txn.Entry.Value = logOp.Value
-			}
-		}
-	}
-
-	return err
 }
 
 // applyLog will take a given log command and apply it to the raft log. applyLog

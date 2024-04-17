@@ -145,13 +145,10 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"file_transactional":     physFile.NewTransactionalFileBackend,
-		"file":                   physFile.NewFileBackend,
-		"inmem_ha":               physInmem.NewInmemHA,
-		"inmem_transactional_ha": physInmem.NewTransactionalInmemHA,
-		"inmem_transactional":    physInmem.NewTransactionalInmem,
-		"inmem":                  physInmem.NewInmem,
-		"raft":                   physRaft.NewRaftBackend,
+		"file":     physFile.NewFileBackend,
+		"inmem_ha": physInmem.NewInmemHA,
+		"inmem":    physInmem.NewInmem,
+		"raft":     physRaft.NewRaftBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{

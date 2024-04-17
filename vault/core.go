@@ -107,6 +107,11 @@ const (
 	// user needs to wait until a fresh totp passcode is generated.
 	defaultMaxTOTPValidateAttempts = 5
 
+	// ForwardSSCTokenToActive is the value that must be set in the
+	// forwardToActive to trigger forwarding if a perf standby encounters
+	// an SSC Token that it does not have the WAL state for.
+	ForwardSSCTokenToActive = "new_token"
+
 	WrapperTypeHsmAutoDeprecated = wrapping.WrapperType("hsm-auto")
 
 	ErrMlockFailedTemplate = "Failed to lock memory: %v\n\n" +
@@ -608,6 +613,9 @@ type Core struct {
 	enableResponseHeaderHostname   bool
 	enableResponseHeaderRaftNodeID bool
 
+	// disableSSCTokens is used to disable server side consistent token creation/usage
+	disableSSCTokens bool
+
 	// versionHistory is a map of vault versions to VaultVersion. The
 	// VaultVersion.TimestampInstalled when the version will denote when the version
 	// was first run. Note that because perf standbys should be upgraded first, and
@@ -772,6 +780,9 @@ type CoreConfig struct {
 	// Whether to send headers in the HTTP response showing hostname or raft node ID
 	EnableResponseHeaderHostname   bool
 	EnableResponseHeaderRaftNodeID bool
+
+	// DisableSSCTokens is used to disable the use of server side consistent tokens
+	DisableSSCTokens bool
 
 	EffectiveSDKVersion string
 
@@ -955,6 +966,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		enableResponseHeaderHostname:   conf.EnableResponseHeaderHostname,
 		enableResponseHeaderRaftNodeID: conf.EnableResponseHeaderRaftNodeID,
 		mountMigrationTracker:          &sync.Map{},
+		disableSSCTokens:               conf.DisableSSCTokens,
 		effectiveSDKVersion:            effectiveSDKVersion,
 		userFailedLoginInfo:            make(map[FailedLoginUser]*FailedLoginInfo),
 		pendingRemovalMountsAllowed:    conf.PendingRemovalMountsAllowed,
@@ -1304,6 +1316,11 @@ func (c *Core) HostnameHeaderEnabled() bool {
 // to HTTP responses.
 func (c *Core) RaftNodeIDHeaderEnabled() bool {
 	return c.enableResponseHeaderRaftNodeID
+}
+
+// DisableSSCTokens determines whether to use server side consistent tokens or not.
+func (c *Core) DisableSSCTokens() bool {
+	return c.disableSSCTokens
 }
 
 // ShutdownCoreError logs a shutdown error and shuts down the Vault core.

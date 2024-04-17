@@ -107,6 +107,8 @@ type Config struct {
 
 	EnableResponseHeaderRaftNodeID    bool        `hcl:"-"`
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
+
+	DisableSSCTokens bool `hcl:"-"`
 }
 
 const (

@@ -107,13 +107,19 @@ func SplitIDFromString(input string) (string, string) {
 	slashIdx := strings.LastIndex(input, "/")
 
 	switch {
-	case strings.HasPrefix(input, consts.BatchTokenPrefix):
-		prefix = consts.BatchTokenPrefix
+	case strings.HasPrefix(input, consts.LegacyBatchTokenPrefix):
+		prefix = consts.LegacyBatchTokenPrefix
 		input = input[2:]
 
+	case strings.HasPrefix(input, consts.LegacyServiceTokenPrefix):
+		prefix = consts.LegacyServiceTokenPrefix
+		input = input[2:]
+	case strings.HasPrefix(input, consts.BatchTokenPrefix):
+		prefix = consts.BatchTokenPrefix
+		input = input[4:]
 	case strings.HasPrefix(input, consts.ServiceTokenPrefix):
 		prefix = consts.ServiceTokenPrefix
-		input = input[2:]
+		input = input[4:]
 
 	case slashIdx > 0:
 		// Leases will never have a b./s. to start

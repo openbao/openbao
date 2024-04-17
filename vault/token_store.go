@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
+	"github.com/hashicorp/go-version"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -39,6 +40,7 @@ import (
 	"github.com/openbao/openbao/sdk/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/logical"
 	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/vault/tokens"
 )
 
 const (
@@ -74,12 +76,20 @@ const (
 	// MaxNsIdLength is the maximum namespace ID length (5 characters prepended by a ".")
 	MaxNsIdLength = 6
 
-	// TokenPrefixLength is the length of the old token prefixes ("s.", "b.". "r.")
-	TokenPrefixLength = 2
+	// TokenPrefixLength is the length of the new token prefixes ("hvs.", "hvb.",
+	// and "hvr.")
+	TokenPrefixLength = 4
+
+	// OldTokenPrefixLength is the length of the old token prefixes ("s.", "b.". "r.")
+	OldTokenPrefixLength = 2
 
 	// GenerationCounterBuffer is a buffer for the generation counter estimation in the
 	// case where a counter cannot be retrieved from storage
 	GenerationCounterBuffer = 5
+
+	// MaxRetrySSCTokensGenerationCounter is the maximum number of retries the TokenStore
+	// will make when attempting to get the SSCTokensGenerationCounter
+	MaxRetrySSCTokensGenerationCounter = 3
 
 	// IgnoreForBilling used for HCP Link batch tokens and inserted into the InternalMeta
 	// Tokens created for the purpose of HCP Link should bypass counting for billing purposes
@@ -733,6 +743,11 @@ type TokenStore struct {
 	identityPoliciesDeriverFunc func(string) (*identity.Entity, []string, error)
 
 	quitContext context.Context
+
+	// sscTokensGenerationCounter is a per-cluster version that counts how many
+	// "sync points" the cluster has  encountered in its lifecycle. "Sync points" are the
+	// number of times all nodes in the cluster have stepped down.
+	sscTokensGenerationCounter SSCTokenGenerationCounter
 }
 
 // NewTokenStore is used to construct a token store that is
@@ -786,6 +801,10 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 	t.Backend.Paths = append(t.Backend.Paths, t.paths()...)
 
 	t.Backend.Setup(ctx, config)
+
+	if err := t.loadSSCTokensGenerationCounter(ctx); err != nil {
+		return t, err
+	}
 
 	return t, nil
 }
@@ -1067,6 +1086,8 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		if userSelectedID {
 			switch {
 			case strings.HasPrefix(entry.ID, consts.ServiceTokenPrefix):
+				return fmt.Errorf("custom token ID cannot have the 'hvs.' prefix")
+			case strings.HasPrefix(entry.ID, consts.LegacyServiceTokenPrefix):
 				return fmt.Errorf("custom token ID cannot have the 's.' prefix")
 			case strings.Contains(entry.ID, "."):
 				return fmt.Errorf("custom token ID cannot have a '.' in the value")
@@ -1074,7 +1095,11 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		}
 
 		if !userSelectedID {
-			entry.ID = consts.ServiceTokenPrefix + entry.ID
+			if !ts.core.DisableSSCTokens() {
+				entry.ID = fmt.Sprintf("hvs.%s", entry.ID)
+			} else {
+				entry.ID = fmt.Sprintf("s.%s", entry.ID)
+			}
 		}
 
 		// Attach namespace ID for tokens that are not belonging to the root
@@ -1083,7 +1108,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 			entry.ID = fmt.Sprintf("%s.%s", entry.ID, tokenNS.ID)
 		}
 
-		if tokenNS.ID != namespace.RootNamespaceID || strings.HasPrefix(entry.ID, consts.ServiceTokenPrefix) {
+		if tokenNS.ID != namespace.RootNamespaceID || strings.HasPrefix(entry.ID, consts.ServiceTokenPrefix) || strings.HasPrefix(entry.ID, consts.LegacyServiceTokenPrefix) {
 			if entry.CubbyholeID == "" {
 				cubbyholeID, err := base62.Random(TokenLength)
 				if err != nil {
@@ -1111,7 +1136,10 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		if err != nil {
 			return err
 		}
-
+		entry.ExternalID = entry.ID
+		if !userSelectedID && !ts.core.DisableSSCTokens() {
+			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, logical.IndexStateFromContext(ctx), entry)
+		}
 		return nil
 
 	case logical.TokenTypeBatch:
@@ -1152,8 +1180,30 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		}
 
 		bEntry := base64.RawURLEncoding.EncodeToString(eEntry)
+		ver, _, err := ts.core.FindNewestVersionTimestamp()
+		if err != nil {
+			return err
+		}
 
-		entry.ID = consts.BatchTokenPrefix + bEntry
+		var newestVersion *version.Version
+		var oneTen *version.Version
+
+		if ver != "" {
+			newestVersion, err = version.NewVersion(ver)
+			if err != nil {
+				return err
+			}
+			oneTen, err = version.NewVersion("1.10.0")
+			if err != nil {
+				return err
+			}
+		}
+
+		if ts.core.DisableSSCTokens() || (newestVersion != nil && newestVersion.LessThan(oneTen)) {
+			entry.ID = consts.LegacyBatchTokenPrefix + bEntry
+		} else {
+			entry.ID = consts.BatchTokenPrefix + bEntry
+		}
 
 		if tokenNS.ID != namespace.RootNamespaceID {
 			entry.ID = fmt.Sprintf("%s.%s", entry.ID, tokenNS.ID)
@@ -1164,6 +1214,73 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 	default:
 		return fmt.Errorf("cannot create a token of type %d", entry.Type)
 	}
+}
+
+// GenerateSSCTokenID generates the ID field of the TokenEntry struct for newly
+// minted service tokens. This function is meant to be robust so as to allow vault
+// to continue operating even in the case where IDs can't be generated. Thus it logs
+// errors as opposed to throwing them.
+func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WALState, te *logical.TokenEntry) string {
+	// Set up the prefix prepending function. This should really only be used in
+	// the token ID generation code itself.
+	prependServicePrefix := func(externalToken string) string {
+		if strings.HasPrefix(externalToken, consts.ServiceTokenPrefix) {
+			// We didn't generate a SSC token and furthermore are attempting
+			// to regenerate a token that already has passed through
+			// GenerateSSCTokenID, as it has a prefix.
+			return externalToken
+		}
+		return consts.ServiceTokenPrefix + externalToken
+	}
+
+	// If we are not using server side consistent tokens, log it and return here
+	if ts.core.DisableSSCTokens() {
+		ts.logger.Trace("server side consistent tokens are disabled")
+		return prependServicePrefix(innerToken)
+	}
+
+	// If there is no WAL state, do not throw an error as it may be a single
+	// node cluster, or an OSS core. Instead, log that this has happened and
+	// create a walState with nil values to signify that these values should
+	// be ignored
+	if walState == nil {
+		ts.logger.Debug("no wal state found when generating token")
+		walState = &logical.WALState{}
+	}
+	if te.IsRoot() {
+		return prependServicePrefix(innerToken)
+	}
+
+	// If the token is a root token, we will always set the index and epoch to 0 so as to ensure
+	// that root tokens are always fixed size. This is required because during root token
+	// generation, the size needs to be known to create the OTP.
+
+	localIndex := walState.LocalIndex
+	tokenGenerationCounter := uint32(ts.GetSSCTokensGenerationCounter())
+
+	t := tokens.Token{Random: innerToken, LocalIndex: localIndex, IndexEpoch: tokenGenerationCounter}
+	marshalledToken, err := proto.Marshal(&t)
+	if err != nil {
+		ts.logger.Error("unable to marshal token", "error", err)
+		return prependServicePrefix(innerToken)
+	}
+
+	hmac, err := ts.CalculateSignedTokenHMAC(marshalledToken)
+	if err != nil {
+		// If we can't calculate the HMAC for any reason, we should log an error
+		// but still allow vault to function, using the old token instead.
+		ts.logger.Error("unable to calculate token signature", "error", err)
+		return prependServicePrefix(innerToken)
+	}
+	st := tokens.SignedToken{TokenVersion: 1, Token: marshalledToken, Hmac: hmac}
+
+	marshalledSignedToken, err := proto.Marshal(&st)
+	if err != nil {
+		ts.logger.Error("unable to marshal signed token", "error", err)
+		return prependServicePrefix(innerToken)
+	}
+	generatedSSCToken := base64.RawURLEncoding.EncodeToString(marshalledSignedToken)
+	return prependServicePrefix(generatedSSCToken)
 }
 
 func (ts *TokenStore) CalculateSignedTokenHMAC(marshalledToken []byte) ([]byte, error) {
@@ -1345,8 +1462,11 @@ func (ts *TokenStore) Lookup(ctx context.Context, id string) (*logical.TokenEntr
 }
 
 func (ts *TokenStore) stripBatchPrefix(id string) string {
-	if strings.HasPrefix(id, consts.BatchTokenPrefix) {
+	if strings.HasPrefix(id, consts.LegacyBatchTokenPrefix) {
 		return id[2:]
+	}
+	if strings.HasPrefix(id, consts.BatchTokenPrefix) {
+		return id[4:]
 	}
 	return ""
 }
@@ -1432,6 +1552,20 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	// If it starts with "b." or consts.BatchTokenPrefix it's a batch token
 	if IsBatchToken(id) {
 		return ts.lookupBatchToken(ctx, id)
+	}
+
+	// lookupInternal is called internally with tokens that oftentimes come from request
+	// parameters that we cannot really guess. Most notably, these calls come from either
+	// validateWrappedToken and/or lookupTokenTainted, used in the wrapping token logic.
+	// We can't really catch all these instances of lookup token, so we have to check the
+	// SSC token in this function itself.
+	if IsSSCToken(id) {
+		internalID, err := ts.core.DecodeSSCToken(id)
+		if err == nil && internalID != "" {
+			// A malformed token was passed in, is our best guess here. Just use id going
+			// forward.
+			id = internalID
+		}
 	}
 
 	var raw *logical.StorageEntry

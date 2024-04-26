@@ -325,6 +325,7 @@ func LogicalConnectionToProtoConnection(c *logical.Connection) *Connection {
 
 	return &Connection{
 		RemoteAddr:      c.RemoteAddr,
+		RemotePort:      int32(c.RemotePort),
 		ConnectionState: TLSConnectionStateToProtoConnectionState(c.ConnState),
 	}
 }
@@ -341,6 +342,7 @@ func ProtoConnectionToLogicalConnection(c *Connection) (*logical.Connection, err
 
 	return &logical.Connection{
 		RemoteAddr: c.RemoteAddr,
+		RemotePort: int(c.RemotePort),
 		ConnState:  cs,
 	}, nil
 }

@@ -402,16 +402,6 @@ constrain requests, using the following options:
     }
     ```
 
-:::info
-
-**Usage example:** The [ACL Policy Path
-     Templating](/tutorials/policies/policy-templating)
-     tutorial demonstrates the use of `allowed_parameters` to permit a user to
-     update the user's password when using the [userpass auth
-     method](/docs/auth/userpass) to log in with OpenBao.
-
-:::
-
   - Setting a parameter with a value of a populated list allows the parameter
     to contain only those values.
 
@@ -701,11 +691,6 @@ $ curl \
   https://openbao.hashicorp.rocks/v1/auth/token/revoke
 ```
 
-For more information, please read:
-
-- [Production Hardening](/tutorials/operations/production-hardening)
-- [Generating a Root Token](/tutorials/operations/generate-root)
-
 ## Managing policies
 
 Policies are authored (written) in your editor of choice. They can be authored
@@ -897,10 +882,3 @@ new set of policies.
 However, the _contents_ of policies are parsed in real-time whenever the token is used.
 As a result, if a policy is modified, the modified rules will be in force the
 next time a token, with that policy attached, is used to make a call to OpenBao.
-
-## Tutorial
-
-Refer to the following tutorials for further learning:
-
-- [OpenBao Policies](/tutorials/policies/policies)
-- [ACL Policy Path Templating](/tutorials/policies/policy-templating)

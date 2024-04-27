@@ -85,10 +85,7 @@ Identities (MSI) to access Azure instead of an environment and shared client id
 and secret. MSI must be
 [enabled](https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/qs-configure-portal-windows-vm)
 on the VMs hosting OpenBao, and it is the preferred configuration since MSI
-prevents your Azure credentials from being stored as clear text. Refer to the
-[Production
-Hardening](/tutorials/operations/production-hardening) tutorial
-for more best practices.
+prevents your Azure credentials from being stored as clear text.
 
 :::
 
@@ -115,8 +112,3 @@ stored with the encrypted data to ensure the correct key is used during
 decryption operations. Simply [set up Azure Key Vault with key
 rotation](https://docs.microsoft.com/en-us/azure/key-vault/key-vault-key-rotation-log-monitoring)
 using Azure Automation Account and OpenBao will recognize newly rotated keys.
-
-## Tutorial
-
-Refer to the [Auto-unseal using Azure Key Vault](/tutorials/auto-unseal/autounseal-azure-keyvault)
-tutorial to learn how to use the Azure Key Vault to auto-unseal an OpenBao server.

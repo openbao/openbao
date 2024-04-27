@@ -48,8 +48,7 @@ checklist](/docs/platform/k8s/helm/run#architecture).
 ### Install Vault
 
 Helm must be installed and configured on your machine. Please refer to the [Helm
-documentation](https://helm.sh/) or the [Vault Installation to Minikube via
-Helm](/tutorials/kubernetes/kubernetes-minikube-consul) tutorial.
+documentation](https://helm.sh/) for more information.
 
 To use the Helm chart, add the Hashicorp helm repository and check that you have
 access to the chart:
@@ -141,10 +140,6 @@ $ helm install vault hashicorp/vault \
     --set "server.ha.enabled=true"
 ```
 
-Refer to the [Vault Installation to Minikube via
-Helm](/tutorials/kubernetes/kubernetes-minikube-consul) tutorial
-to learn how to set up Consul and Vault in HA mode.
-
 #### External mode
 
 The Helm chart may be run in external mode. This installs no Vault server and
@@ -156,10 +151,6 @@ Install the latest Vault Helm chart in external mode.
 $ helm install vault hashicorp/vault \
     --set "injector.externalVaultAddr=http://external-vault:8200"
 ```
-
-Refer to the [Integrate a Kubernetes Cluster with an
-External Vault](/tutorials/kubernetes/kubernetes-external-vault)
-tutorial to learn how to use an external Vault within a Kubernetes cluster.
 
 ### View the Vault UI
 
@@ -555,9 +546,7 @@ $ helm install vault hashicorp/vault \
 We recommend running Vault on Kubernetes with the same
 [general architecture](/docs/internals/architecture)
 as running it anywhere else. There are some benefits Kubernetes can provide
-that eases operating a Vault cluster and we document those below. The standard
-[production deployment](/tutorials/operations/production-hardening) tutorial is still an
-important read even if running Vault within Kubernetes.
+that eases operating a Vault cluster and we document those below.
 
 ### Production deployment checklist
 

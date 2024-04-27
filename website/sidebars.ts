@@ -470,7 +470,7 @@ const sidebars: SidebarsConfig = {
                 "upgrading/vault-ha-upgrade",
                 "upgrading/plugins",
             ],
-            "Release Notes": ["release-notes/index"],
+            "Release Notes": ["release-notes/index", "release-notes/2-0-0"],
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",

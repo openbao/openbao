@@ -12,6 +12,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
+	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/consts"
 )
 
@@ -47,20 +48,26 @@ func (rc runConfig) makeConfig(ctx context.Context) (*plugin.ClientConfig, error
 	// Add the mlock setting to the ENV of the plugin
 	if rc.MLock || (rc.Wrapper != nil && rc.Wrapper.MlockEnabled()) {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginMlockEnabled, "true"))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginMlockEnabled), "true"))
 	}
 	version, err := rc.Wrapper.VaultVersion(ctx)
 	if err != nil {
 		return nil, err
 	}
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginVaultVersionEnv, version))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), version))
 
 	if rc.IsMetadataMode {
 		rc.Logger = rc.Logger.With("metadata", "true")
 	}
 	metadataEnv := fmt.Sprintf("%s=%t", PluginMetadataModeEnv, rc.IsMetadataMode)
 	cmd.Env = append(cmd.Env, metadataEnv)
+	metadataEnv = fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMetadataModeEnv), rc.IsMetadataMode)
+	cmd.Env = append(cmd.Env, metadataEnv)
 
 	automtlsEnv := fmt.Sprintf("%s=%t", PluginAutoMTLSEnv, rc.AutoMTLS)
+	cmd.Env = append(cmd.Env, automtlsEnv)
+	automtlsEnv = fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginAutoMTLSEnv), rc.AutoMTLS)
 	cmd.Env = append(cmd.Env, automtlsEnv)
 
 	var clientTLSConfig *tls.Config
@@ -86,6 +93,7 @@ func (rc runConfig) makeConfig(ctx context.Context) (*plugin.ClientConfig, error
 
 		// Add the response wrap token to the ENV of the plugin
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", PluginUnwrapTokenEnv, wrapToken))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginUnwrapTokenEnv), wrapToken))
 	}
 
 	secureConfig := &plugin.SecureConfig{

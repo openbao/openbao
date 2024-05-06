@@ -15,7 +15,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "3.2.0",
+    "@docusaurus/core": "3.3.2",
     "@docusaurus/preset-classic": "3.2.0",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.0.0",

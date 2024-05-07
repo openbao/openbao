@@ -136,8 +136,9 @@ const config: Config = {
     },
     footer: {
       copyright: [
-        `Copyright © ${new Date().getFullYear()} The OpenBao Authors. OpenBao is a`,
-        `<a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
+        `Copyright © ${new Date().getFullYear()} OpenBao a Series of LF Projects, LLC <br>`,
+        `For web site terms of use, trademark policy and other project policies please see <a href="https://lfprojects.org">lfprojects.org</a>. <br>`,
+        ` OpenBao is a <a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
         `<a href="https://www.lfedge.org/"><img src="/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
       ].join(" "),
     },

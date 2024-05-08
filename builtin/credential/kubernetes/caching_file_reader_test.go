@@ -4,7 +4,6 @@
 package kubeauth
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -15,7 +14,7 @@ func TestCachingFileReader(t *testing.T) {
 	content2 := "after"
 
 	// Create temporary file.
-	f, err := ioutil.TempFile("", "testfile")
+	f, err := os.CreateTemp("", "testfile")
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +29,7 @@ func TestCachingFileReader(t *testing.T) {
 		})
 
 	// Write initial content to file and check that we can read it.
-	err = ioutil.WriteFile(f.Name(), []byte(content1), 0o644)
+	err = os.WriteFile(f.Name(), []byte(content1), 0o644)
 	if err != nil {
 		t.Error(err)
 	}
@@ -43,7 +42,7 @@ func TestCachingFileReader(t *testing.T) {
 	}
 
 	// Write new content to the file.
-	err = ioutil.WriteFile(f.Name(), []byte(content2), 0o644)
+	err = os.WriteFile(f.Name(), []byte(content2), 0o644)
 	if err != nil {
 		t.Error(err)
 	}

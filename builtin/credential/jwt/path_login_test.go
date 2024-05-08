@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -194,7 +194,7 @@ func getTestOIDC(t *testing.T) string {
 	}
 
 	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	type a0r struct {
 		AccessToken string `json:"access_token"`

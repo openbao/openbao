@@ -5,7 +5,6 @@ package file
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,7 +24,7 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, err := ioutil.TempDir("", "vault-test_audit_file-file_mode_new")
+	path, err := os.MkdirTemp("", "vault-test_audit_file-file_mode_new")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +57,7 @@ func TestAuditFile_fileModeNew(t *testing.T) {
 }
 
 func TestAuditFile_fileModeExisting(t *testing.T) {
-	f, err := ioutil.TempFile("", "test")
+	f, err := os.CreateTemp("", "test")
 	if err != nil {
 		t.Fatalf("Failure to create test file.")
 	}
@@ -97,7 +96,7 @@ func TestAuditFile_fileModeExisting(t *testing.T) {
 }
 
 func TestAuditFile_fileMode0000(t *testing.T) {
-	f, err := ioutil.TempFile("", "test")
+	f, err := os.CreateTemp("", "test")
 	if err != nil {
 		t.Fatalf("Failure to create test file. The error is %v", err)
 	}

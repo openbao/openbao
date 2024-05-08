@@ -6,7 +6,6 @@ package plugin_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -598,7 +597,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 	}
 
 	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := ioutil.TempDir("", "vault-test-cluster")
+	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,7 +671,7 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 		},
 	}
 	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := ioutil.TempDir("", "vault-test-cluster")
+	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -3358,7 +3357,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	}
 
 	// Set a plugin
-	file, err := ioutil.TempFile(os.TempDir(), "temp")
+	file, err := os.CreateTemp(os.TempDir(), "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5815,7 +5814,7 @@ func TestValidateVersion_HelpfulErrorWhenBuiltinOverridden(t *testing.T) {
 	b := core.systemBackend
 
 	// Shadow a builtin and test getting a helpful error back.
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}

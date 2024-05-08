@@ -4,7 +4,7 @@
 package command
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -173,7 +173,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		client, closer := testVaultServerAllBackends(t)
 		defer closer()
 
-		files, err := ioutil.ReadDir("../builtin/credential")
+		files, err := os.ReadDir("../builtin/credential")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -185,7 +185,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 			}
 		}
 
-		modFile, err := ioutil.ReadFile("../go.mod")
+		modFile, err := os.ReadFile("../go.mod")
 		if err != nil {
 			t.Fatal(err)
 		}

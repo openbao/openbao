@@ -5,7 +5,6 @@ package kubesecrets
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -21,14 +20,14 @@ const (
 )
 
 func setupLocalFiles(t *testing.T, b logical.Backend) func() {
-	cert, err := ioutil.TempFile("", "ca.crt")
+	cert, err := os.CreateTemp("", "ca.crt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	cert.WriteString(testLocalCACert)
 	cert.Close()
 
-	token, err := ioutil.TempFile("", "token")
+	token, err := os.CreateTemp("", "token")
 	if err != nil {
 		t.Fatal(err)
 	}

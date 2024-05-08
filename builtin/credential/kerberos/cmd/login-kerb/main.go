@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -114,7 +114,7 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	b, _ := ioutil.ReadAll(resp.Body)
+	b, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
 		fmt.Printf("unexpected OpenBao response %d: %s\n", resp.StatusCode, b)
 		os.Exit(1)

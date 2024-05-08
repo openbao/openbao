@@ -8,7 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -205,7 +205,7 @@ func assertNewUser(t *testing.T, db *Cassandra, sslOpts *gocql.SslOptions) {
 func loadServerCA(t *testing.T, file string) *tls.Config {
 	t.Helper()
 
-	pemData, err := ioutil.ReadFile(file)
+	pemData, err := os.ReadFile(file)
 	require.NoError(t, err)
 
 	pool := x509.NewCertPool()
@@ -220,7 +220,7 @@ func loadServerCA(t *testing.T, file string) *tls.Config {
 func loadFile(t *testing.T, filename string) string {
 	t.Helper()
 
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := os.ReadFile(filename)
 	require.NoError(t, err)
 	return string(contents)
 }

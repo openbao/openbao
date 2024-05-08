@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -58,7 +57,7 @@ func TestSinkServer(t *testing.T) {
 	}
 
 	for _, path := range []string{path1, path2} {
-		fileBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/token", path))
+		fileBytes, err := os.ReadFile(fmt.Sprintf("%s/token", path))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -83,7 +82,7 @@ func TestCert_RoleResolve(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := ioutil.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
+	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -140,7 +139,7 @@ func TestCert_RoleResolveWithoutProvidingCertName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := ioutil.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
+	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -251,7 +250,7 @@ func TestCert_RoleResolve_RoleDoesNotExist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := ioutil.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
+	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -303,13 +302,13 @@ func TestCert_RoleResolveOCSP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error testing connection state: %v", err)
 	}
-	ca, err := ioutil.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
+	ca, err := os.ReadFile(filepath.Join(tempDir, "ca_cert.pem"))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	issuer := parsePEM(ca)
-	pkf, err := ioutil.ReadFile(filepath.Join(tempDir, "ca_key.pem"))
+	pkf, err := os.ReadFile(filepath.Join(tempDir, "ca_key.pem"))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

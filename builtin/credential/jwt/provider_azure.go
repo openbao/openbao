@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -164,7 +164,7 @@ func (a *AzureProvider) getAzureGroups(groupsURL string, tokenSource oauth2.Toke
 		return nil, fmt.Errorf("unable to call Microsoft Graph API: %s", err)
 	}
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Microsoft Graph API response: %s", err)
 	}

@@ -6,7 +6,7 @@ package jwtauth
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/logical"
@@ -28,7 +28,7 @@ func pathUI(b *jwtAuthBackend) *framework.Path {
 }
 
 func (b *jwtAuthBackend) pathUI(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	data, err := ioutil.ReadFile("test_ui.html")
+	data, err := os.ReadFile("test_ui.html")
 	if err != nil {
 		panic(err)
 	}

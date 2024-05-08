@@ -4,7 +4,6 @@
 package listenerutil
 
 import (
-	"io/ioutil"
 	"os"
 	osuser "os/user"
 	"strconv"
@@ -13,7 +12,7 @@ import (
 
 func TestUnixSocketListener(t *testing.T) {
 	t.Run("ids", func(t *testing.T) {
-		socket, err := ioutil.TempFile("", "socket")
+		socket, err := os.CreateTemp("", "socket")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +56,7 @@ func TestUnixSocketListener(t *testing.T) {
 		}
 	})
 	t.Run("names", func(t *testing.T) {
-		socket, err := ioutil.TempFile("", "socket")
+		socket, err := os.CreateTemp("", "socket")
 		if err != nil {
 			t.Fatal(err)
 		}

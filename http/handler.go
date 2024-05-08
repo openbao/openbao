@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -264,7 +263,7 @@ func (w *copyResponseWriter) WriteHeader(code int) {
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origBody := new(bytes.Buffer)
-		reader := ioutil.NopCloser(io.TeeReader(r.Body, origBody))
+		reader := io.NopCloser(io.TeeReader(r.Body, origBody))
 		r.Body = reader
 		req, _, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
@@ -272,7 +271,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 			return
 		}
 		if origBody != nil {
-			r.Body = ioutil.NopCloser(origBody)
+			r.Body = io.NopCloser(origBody)
 		}
 		input := &logical.LogInput{
 			Request: req,
@@ -699,7 +698,7 @@ func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
 	if origBody != nil {
-		return ioutil.NopCloser(origBody), err
+		return io.NopCloser(origBody), err
 	}
 	return nil, err
 }

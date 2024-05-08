@@ -57,13 +57,13 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 
 ## Technical Steering Committee (TSC) Members
 
-| Member            | Email                               | GitHub    | Alternate | Company/Organization | TSC Position |
-|-------------------|-------------------------------------|-----------|-----------|----------------------|--------------|
-| James Butcher     | james@iotechsys.com                 |           |           | IOtech Systems       | Member       |
-| Julian Cassignol  | jcassignol@wallix.com               |           |           | Wallix               | Member       |
-| Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |           |           | Viaccess-Orca        | Member       |
-| Michael Maxey     | maxey@zededa.com                    |           |           | Zededa               | Member       |
-| Nathan Phelps     | naphelps@us.ibm.com                 | @naphelps |           | IBM                  | Chair        |
+| Member            | Email                               | GitHub                                   | Alternate | Company/Organization | TSC Position |
+|-------------------|-------------------------------------|------------------------------------------|-----------|----------------------|--------------|
+| James Butcher     | james@iotechsys.com                 |                                          |           | IOtech Systems       | Member       |
+| Julian Cassignol  | jcassignol@wallix.com               |                                          |           | Wallix               | Member       |
+| Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |                                          |           | Viaccess-Orca        | Member       |
+| Michael Maxey     | maxey@zededa.com                    |                                          |           | Zededa               | Member       |
+| Nathan Phelps     | naphelps@us.ibm.com                 | [@naphelps](https://github.com/naphelps) |           | IBM                  | Chair        |
 
 ## Issues
 

@@ -1,6 +1,9 @@
 ## 2.0.0-alpha20240329
 ### March 29, 2024
 
+> [!WARNING]
+> OpenBao's Alpha Release does not include the builtin WebUI! You can only access a running Bao instance via the CLI or API.
+
 SECURITY:
 
 * auth/cert: compare full bytes of trusted leaf certificates with incoming client certificates to prevent trusting certs with the same serial number but not the same public/private key. [[GH-173](https://github.com/openbao/openbao/pull/173)]

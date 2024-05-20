@@ -123,22 +123,11 @@ const Docker = ({ version, name }) => {
     const { options } = useOptions();
     return (
         <Tabs>
-            {version &&
-                Object(options)[version]["assets"][name] &&
-                Object(options)[version]["assets"][name]["docker"] &&
-                Object(options)[version]["assets"][name]["docker"].map(
-                    (url) => (
-                        <TabItem
-                            value={AssetArchitecture(url)}
-                            label={AssetArchitecture(url).toUpperCase()}
-                        >
-                            <CodeBlock language="shell">
-                                {`curl -sL "${url}" -o openbao.tar;
-unzip -p openbao.tar | docker load`}
-                            </CodeBlock>
-                        </TabItem>
-                    ),
-                )}
+            <TabItem value="amd64" label="AMD64">
+                <CodeBlock language="shell">
+                    {`docker pull quay.io/openbao/openbao:${version.slice(1)}`}
+                </CodeBlock>
+            </TabItem>
         </Tabs>
     );
 };

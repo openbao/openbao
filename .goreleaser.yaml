@@ -40,7 +40,7 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
-      #- dragonfly
+      - dragonfly
       - freebsd
       - illumos
       - netbsd
@@ -66,13 +66,13 @@ builds:
         goarch: riscv64
       - goos: darwin
         goarch: wasm
-      - goos: dragofly
+      - goos: dragonfly
         goarch: arm
-      - goos: dragofly
+      - goos: dragonfly
         goarch: arm64
-      - goos: dragofly
+      - goos: dragonfly
         goarch: riscv64
-      - goos: dragofly
+      - goos: dragonfly
         goarch: wasm
       - goos: freebsd
         goarm: "7"
@@ -227,9 +227,9 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=default"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64"
-      - "quay.io/openbao/openbao:{{ .Version }}-alpine-amd64"
-      - "docker.io/openbao/openbao:{{ .Version }}-alpine-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -263,9 +263,9 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=default"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm"
-      - "quay.io/openbao/openbao:{{ .Version }}-alpine-arm"
-      - "docker.io/openbao/openbao:{{ .Version }}-alpine-arm"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -299,9 +299,9 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=default"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64"
-      - "quay.io/openbao/openbao:{{ .Version }}-alpine-arm64"
-      - "docker.io/openbao/openbao:{{ .Version }}-alpine-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -334,9 +334,9 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=default-riscv64"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
-      - "quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
-      - "docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -369,9 +369,9 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=ubi"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64"
-      - "quay.io/openbao/openbao:{{ .Version }}-ubi-amd64"
-      - "docker.io/openbao/openbao:{{ .Version }}-ubi-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
@@ -405,123 +405,159 @@ dockers:
       - "--label=version={{ .Version }}"
       - "--target=ubi"
     image_templates:
-      - "ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64"
-      - "quay.io/openbao/openbao:{{ .Version }}-ubi-arm64"
-      - "docker.io/openbao/openbao:{{ .Version }}-ubi-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64"
     extra_files:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
       - ./CHANGELOG.md
 
 docker_manifests:
-  - name_template: ghcr.io/openbao/openbao:{{ .Version }}
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
     skip_push: false
     image_templates:
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: ghcr.io/openbao/openbao:{{ .Major }}.{{ .Minor }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: ghcr.io/openbao/openbao:{{ .Major }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
     skip_push: false
     image_templates:
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: ghcr.io/openbao/openbao:latest
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
     skip_push: false
     image_templates:
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - ghcr.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - ghcr.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: docker.io/openbao/openbao:{{ .Version }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
     skip_push: false
     image_templates:
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: docker.io/openbao/openbao:{{ .Major }}.{{ .Minor }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: docker.io/openbao/openbao:{{ .Major }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
     skip_push: false
     image_templates:
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: docker.io/openbao/openbao:latest
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
     skip_push: false
     image_templates:
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - docker.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - docker.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: quay.io/openbao/openbao:{{ .Version }}
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
     skip_push: false
     image_templates:
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: quay.io/openbao/openbao:{{ .Major }}.{{ .Minor }}
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: quay.io/openbao/openbao:{{ .Major }}
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
     skip_push: false
     image_templates:
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-arm64
-  - name_template: quay.io/openbao/openbao:latest
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
     skip_push: false
     image_templates:
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-arm64
-      - quay.io/openbao/openbao:{{ .Version }}-alpine-riscv64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-amd64
-      - quay.io/openbao/openbao:{{ .Version }}-ubi-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 
 archives:
   - format: tar.gz
@@ -583,7 +619,7 @@ docker_signs:
 
 release:
   github:
-    owner: openbao
+    owner: ${{ .Env.GITHUB_REPOSITORY_OWNER }}
     name: openbao
   draft: true #${{ .Env.GITHUB_RELEASE_DRAFT }}
   replace_existing_draft: false

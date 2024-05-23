@@ -40,7 +40,7 @@ builds:
       - CGO_ENABLED=0
     goos:
       - darwin
-      - dragonfly
+      #- dragonfly
       - freebsd
       - illumos
       - netbsd

@@ -12,7 +12,7 @@
 - [Chat Server](https://chat.lfx.linuxfoundation.org/) -- look for `openbao-` prefixed rooms.
 
 <p align="center">
-  <img width="300" alt="OpenBao Mascot" src="website/public/img/logo.svg">
+  <img width="300" alt="OpenBao Mascot" src="https://raw.githubusercontent.com/openbao/artwork/main/color/openbao-color.svg">
 </p>
 
 **OpenBao exists to provide a software solution to manage, store, and distribute sensitive data including secrets, certificates, and keys. The OpenBao community intends to provide this software under an OSI-approved open-source license, led by a community run under open governance principles.**

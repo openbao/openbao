@@ -16,6 +16,13 @@ before:
     - go generate ./...
     - make bootstrap
 
+# Cannot have replace directives in the go modules.
+#gomod:
+#  proxy: true
+#  env:
+#    - GOPROXY=https://proxy.golang.org,direct
+#    - GOSUMDB=sum.golang.org
+
 builds:
   - id: builds-linux
     ldflags:
@@ -28,7 +35,9 @@ builds:
       - amd64
       - arm
       - arm64
+      - ppc64le
       - riscv64
+      - s390x
     goarm:
       - "6"
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -52,7 +61,9 @@ builds:
       - amd64
       - arm
       - arm64
+      #- ppc64le
       - riscv64
+      #- s390x
       #- wasm
     goarm:
       - "6"
@@ -63,7 +74,11 @@ builds:
       - goos: darwin
         goarch: arm
       - goos: darwin
+        goarch: ppc64le
+      - goos: darwin
         goarch: riscv64
+      - goos: darwin
+        goarch: s390x
       - goos: darwin
         goarch: wasm
       - goos: dragonfly
@@ -77,21 +92,37 @@ builds:
       - goos: freebsd
         goarm: "7"
       - goos: freebsd
+        goarch: ppc64le
+      - goos: freebsd
+        goarch: s390x
+      - goos: freebsd
         goarch: wasm
       - goos: illumos
         goarch: arm
       - goos: illumos
         goarch: arm64
       - goos: illumos
+        goarch: ppc64le
+      - goos: illumos
+        goarch: s390x
+      - goos: illumos
         goarch: wasm
       - goos: netbsd
+        goarch: ppc64le
+      - goos: netbsd
         goarch: riscv64
+      - goos: netbsd
+        goarch: s390x
       - goos: netbsd
         goarch: wasm
       - goos: netbsd
         goarm: "7"
       - goos: openbsd
+        goarch: ppc64le
+      - goos: openbsd
         goarch: riscv64
+      - goos: openbsd
+        goarch: s390x
       - goos: openbsd
         goarch: wasm
       - goos: openbsd
@@ -101,12 +132,28 @@ builds:
       - goos: solaris
         goarch: arm64
       - goos: solaris
+        goarch: ppc64le
+      - goos: solaris
+        goarch: s390x
+      - goos: solaris
         goarch: wasm
+      - goos: wasip1
+        goarch: amd64
+      - goos: wasip1
+        goarch: arm
+      - goos: wasip1
+        goarch: arm64
+      - goos: wasip1
+        goarch: riscv64
       - goos: windows
         goarch: arm
         goarm: "7"
       - goos: windows
+        goarch: ppc64le
+      - goos: windows
         goarch: riscv64
+      - goos: windows
+        goarch: s390x
       - goos: windows
         goarch: wasm
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -116,8 +163,8 @@ report_sizes: true
 
 nfpms:
   - vendor: OpenBao
-    homepage: https://github.com/openbao/openbao
-    maintainer: OpenBao
+    homepage: https://openbao.org
+    maintainer: OpenBao <openbao@lists.lfedge.org>
     description: |
       OpenBao exists to provide a software solution to manage, store, and distribute
       sensitive data including secrets, certificates, and keys.
@@ -306,6 +353,41 @@ dockers:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
       - ./CHANGELOG.md
+  - id: alpine-ppc64le
+    use: buildx
+    goos: linux
+    goarch: ppc64le
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{.ProjectName}}"
+      - "--build-arg=REVISION={{.FullCommit}}"
+      - "--build-arg=VERSION={{.Version}}"
+      - "--platform=linux/ppc64le"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ time \"2006-01-02T15:04:05Z07:00\" }}"
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=default"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
   - id: alpine-riscv64
     use: buildx
     goos: linux
@@ -332,11 +414,46 @@ dockers:
       - "--label=release={{ .Version }}"
       - "--label=revision={{ .FullCommit }}"
       - "--label=version={{ .Version }}"
-      - "--target=default-riscv64"
+      - "--target=default"
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
       - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
       - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/docker-entrypoint.sh
+      - ./CHANGELOG.md
+  - id: alpine-s390x
+    use: buildx
+    goos: linux
+    goarch: s390x
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/s390x"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ time \"2006-01-02T15:04:05Z07:00\" }}"
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=default"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x"
     extra_files:
       - ./LICENSE
       - ./.release/docker/docker-entrypoint.sh
@@ -412,6 +529,76 @@ dockers:
       - ./LICENSE
       - ./.release/docker/ubi-docker-entrypoint.sh
       - ./CHANGELOG.md
+  - id: ubi-ppc64le
+    use: buildx
+    goos: linux
+    goarch: ppc64le
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/ppc64le"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ time \"2006-01-02T15:04:05Z07:00\" }}"
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=ubi"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/ubi-docker-entrypoint.sh
+      - ./CHANGELOG.md
+  - id: ubi-s390x
+    use: buildx
+    goos: linux
+    goarch: s390x
+    skip_push: false
+    ids:
+      - builds-linux
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/s390x"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.created={{ time \"2006-01-02T15:04:05Z07:00\" }}"
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=ubi"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/ubi-docker-entrypoint.sh
+      - ./CHANGELOG.md
 
 docker_manifests:
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
@@ -420,144 +607,192 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
     skip_push: false
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
     skip_push: false
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
     skip_push: false
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 
 archives:
   - format: tar.gz
@@ -572,6 +807,7 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+      -
     builds_info:
       group: root
       owner: root
@@ -579,8 +815,15 @@ archives:
       # format is `time.RFC3339Nano`
       mtime: 2008-01-02T15:04:05Z
 
+#source:
+#  enabled: true
+
 sboms:
   - artifacts: archive
+  - id: binary
+    artifacts: binary
+  - id: package
+    artifacts: package
 
 changelog:
   use: github
@@ -622,7 +865,7 @@ docker_signs:
 
 release:
   github:
-    owner: ${{ .Env.GITHUB_REPOSITORY_OWNER }}
+    owner: openbao
     name: openbao
   draft: true #${{ .Env.GITHUB_RELEASE_DRAFT }}
   replace_existing_draft: false

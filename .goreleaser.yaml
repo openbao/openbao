@@ -807,7 +807,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-      -
     builds_info:
       group: root
       owner: root

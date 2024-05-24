@@ -75,9 +75,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
+            ./dist/**/bao
+            ./dist/**/*.exe
             ./dist/**/*.deb
             ./dist/**/*.rpm
             ./dist/*.tar.gz
+            ./dist/*.tar.gz.zst
             ./dist/*.zip
           key: ${{ github.ref }}
 

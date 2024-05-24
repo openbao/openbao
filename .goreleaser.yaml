@@ -579,6 +579,9 @@ archives:
       # format is `time.RFC3339Nano`
       mtime: 2008-01-02T15:04:05Z
 
+sboms:
+  - artifacts: archive
+
 changelog:
   use: github
   sort: asc

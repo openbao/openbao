@@ -108,7 +108,7 @@ type Config struct {
 	EnableResponseHeaderRaftNodeID    bool        `hcl:"-"`
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
 
-	DisableSSCTokens bool `hcl:"-"`
+	DisableSSCTokens *bool `hcl:"-"`
 }
 
 const (
@@ -675,6 +675,13 @@ func ParseConfig(d, source string) (*Config, error) {
 		if result.EnableResponseHeaderRaftNodeID, err = parseutil.ParseBool(result.EnableResponseHeaderRaftNodeIDRaw); err != nil {
 			return nil, err
 		}
+	}
+
+	// We default to disabling SSCTs if it is not enabled in the
+	// configuration explicitly.
+	if result.DisableSSCTokens == nil {
+		disableSSCTokens := true
+		result.DisableSSCTokens = &disableSSCTokens
 	}
 
 	list, ok := obj.Node.(*ast.ObjectList)

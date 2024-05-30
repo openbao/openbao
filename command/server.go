@@ -2657,7 +2657,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		DisableSSCTokens:               config.DisableSSCTokens,
+		DisableSSCTokens:               *config.DisableSSCTokens,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
 	}
 

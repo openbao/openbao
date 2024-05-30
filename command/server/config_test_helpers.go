@@ -34,6 +34,8 @@ func testConfigRaftRetryJoin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	disableSSCTs := true
 	retryJoinConfig := `[{"leader_api_addr":"http://127.0.0.1:8200"},{"leader_api_addr":"http://127.0.0.2:8200"},{"leader_api_addr":"http://127.0.0.3:8200"}]`
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -55,6 +57,8 @@ func testConfigRaftRetryJoin(t *testing.T) {
 				"retry_join": retryJoinConfig,
 			},
 		},
+
+		DisableSSCTokens: &disableSSCTs,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -68,6 +72,7 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 		t.Fatalf("err: %s", err)
 	}
 
+	disableSSCTs := true
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
@@ -161,6 +166,8 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 
 		APIAddr:     "top_level_api_addr",
 		ClusterAddr: "top_level_cluster_addr",
+
+		DisableSSCTokens: &disableSSCTs,
 	}
 	addExpectedEntConfig(expected, []string{})
 
@@ -175,6 +182,8 @@ func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	disableSSCTs := true
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -249,6 +258,8 @@ func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
 
 		DisableSealWrap:    true,
 		DisableSealWrapRaw: true,
+
+		DisableSSCTokens: &disableSSCTs,
 	}
 	addExpectedEntConfig(expected, []string{"http"})
 
@@ -271,6 +282,8 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	disableSSCTs := true
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -302,6 +315,8 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 		DisableCacheRaw: true,
 		EnableUI:        true,
 		EnableUIRaw:     true,
+
+		DisableSSCTokens: &disableSSCTs,
 	}
 
 	config.Prune()
@@ -315,6 +330,8 @@ func testLoadConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	disableSSCTs := true
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -397,6 +414,8 @@ func testLoadConfigFile(t *testing.T) {
 		EnableResponseHeaderHostnameRaw:   true,
 		EnableResponseHeaderRaftNodeID:    true,
 		EnableResponseHeaderRaftNodeIDRaw: true,
+
+		DisableSSCTokens: &disableSSCTs,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -525,6 +544,8 @@ func testLoadConfigFile_json(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	disableSSCTs := true
+
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
 			Listeners: []*configutil.Listener{
@@ -592,6 +613,7 @@ func testLoadConfigFile_json(t *testing.T) {
 		EnableRawEndpointRaw: true,
 		DisableSealWrap:      true,
 		DisableSealWrapRaw:   true,
+		DisableSSCTokens:     &disableSSCTs,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -935,6 +957,8 @@ EOF
 		t.Fatal(err)
 	}
 
+	disableSSCTs := true
+
 	expected := &Config{
 		APIAddr: "127.0.0.1",
 		SharedConfig: &configutil.SharedConfig{
@@ -948,6 +972,7 @@ EOF
 				},
 			},
 		},
+		DisableSSCTokens: &disableSSCTs,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -974,6 +999,8 @@ ha_storage "consul" {
 		t.Fatal(err)
 	}
 
+	disableSSCTs := true
+
 	expected := &Config{
 		Storage: &Storage{
 			Type: "consul",
@@ -990,7 +1017,8 @@ ha_storage "consul" {
 				"max_parallel":    "128",
 			},
 		},
-		SharedConfig: &configutil.SharedConfig{},
+		SharedConfig:     &configutil.SharedConfig{},
+		DisableSSCTokens: &disableSSCTs,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {
@@ -1004,6 +1032,8 @@ func testParseSeals(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	config.Listeners[0].RawConfig = nil
+
+	disableSSCTs := true
 
 	expected := &Config{
 		Storage: &Storage{
@@ -1052,6 +1082,7 @@ func testParseSeals(t *testing.T) {
 				},
 			},
 		},
+		DisableSSCTokens: &disableSSCTs,
 	}
 	addExpectedDefaultEntConfig(expected)
 	config.Prune()
@@ -1063,6 +1094,8 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
+	disableSSCTs := true
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1138,6 +1171,7 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 		MaxLeaseTTLRaw:     "10h",
 		DefaultLeaseTTL:    10 * time.Hour,
 		DefaultLeaseTTLRaw: "10h",
+		DisableSSCTokens:   &disableSSCTs,
 	}
 
 	addExpectedEntConfig(expected, []string{})
@@ -1154,6 +1188,7 @@ func testConfigRaftAutopilot(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	disableSSCTs := true
 	autopilotConfig := `[{"cleanup_dead_servers":true,"last_contact_threshold":"500ms","max_trailing_logs":250,"min_quorum":3,"server_stabilization_time":"10s"}]`
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
@@ -1174,6 +1209,7 @@ func testConfigRaftAutopilot(t *testing.T) {
 				"autopilot": autopilotConfig,
 			},
 		},
+		DisableSSCTokens: &disableSSCTs,
 	}
 	config.Prune()
 	if diff := deep.Equal(config, expected); diff != nil {

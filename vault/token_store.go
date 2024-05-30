@@ -1138,7 +1138,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		}
 		entry.ExternalID = entry.ID
 		if !userSelectedID && !ts.core.DisableSSCTokens() {
-			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, logical.IndexStateFromContext(ctx), entry)
+			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, entry)
 		}
 		return nil
 
@@ -1220,7 +1220,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 // minted service tokens. This function is meant to be robust so as to allow vault
 // to continue operating even in the case where IDs can't be generated. Thus it logs
 // errors as opposed to throwing them.
-func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WALState, te *logical.TokenEntry) string {
+func (ts *TokenStore) GenerateSSCTokenID(innerToken string, te *logical.TokenEntry) string {
 	// Set up the prefix prepending function. This should really only be used in
 	// the token ID generation code itself.
 	prependServicePrefix := func(externalToken string) string {
@@ -1239,14 +1239,6 @@ func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WA
 		return prependServicePrefix(innerToken)
 	}
 
-	// If there is no WAL state, do not throw an error as it may be a single
-	// node cluster, or an OSS core. Instead, log that this has happened and
-	// create a walState with nil values to signify that these values should
-	// be ignored
-	if walState == nil {
-		ts.logger.Debug("no wal state found when generating token")
-		walState = &logical.WALState{}
-	}
 	if te.IsRoot() {
 		return prependServicePrefix(innerToken)
 	}
@@ -1255,10 +1247,9 @@ func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WA
 	// that root tokens are always fixed size. This is required because during root token
 	// generation, the size needs to be known to create the OTP.
 
-	localIndex := walState.LocalIndex
 	tokenGenerationCounter := uint32(ts.GetSSCTokensGenerationCounter())
 
-	t := tokens.Token{Random: innerToken, LocalIndex: localIndex, IndexEpoch: tokenGenerationCounter}
+	t := tokens.Token{Random: innerToken, LocalIndex: 0, IndexEpoch: tokenGenerationCounter}
 	marshalledToken, err := proto.Marshal(&t)
 	if err != nil {
 		ts.logger.Error("unable to marshal token", "error", err)

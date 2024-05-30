@@ -629,9 +629,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 				// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 				// specifies that we should forward the request or retry the request.
 				if err != nil {
-					if errors.Is(err, logical.ErrMissingRequiredState) {
-						return nil, err
-					}
 					return logical.ErrorResponse("bad token"), logical.ErrPermissionDenied
 				}
 				req.Data["token"] = token
@@ -2112,9 +2109,6 @@ func (c *Core) PopulateTokenEntry(ctx context.Context, req *logical.Request) err
 		// should receive a 403 bad token error like they do for all other invalid tokens, unless the error
 		// specifies that we should forward the request or retry the request.
 		if err != nil {
-			if errors.Is(err, logical.ErrMissingRequiredState) {
-				return err
-			}
 			return logical.ErrPermissionDenied
 		}
 	}

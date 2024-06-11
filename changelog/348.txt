@@ -1,4 +1,5 @@
 ```release-note:bug
 cli: Always pass `BAO_ADDR` to the token helper, so the token helper can know
-the address even if it was provided through the `-address` flag.
+the address even if it was provided through the `-address` flag. For
+compatibility we also set `VAULT_ADDR`.
 ```

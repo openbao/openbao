@@ -2657,8 +2657,13 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		DisableSSCTokens:               *config.DisableSSCTokens,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
+	}
+
+	if config.DisableSSCTokens != nil {
+		coreConfig.DisableSSCTokens = *config.DisableSSCTokens
+	} else {
+		coreConfig.DisableSSCTokens = true
 	}
 
 	if c.flagDev {

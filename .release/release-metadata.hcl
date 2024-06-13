@@ -1,5 +1,0 @@
-url_docker_registry_dockerhub = "https://hub.docker.com/r/openbao/openbao"
-url_license = "https://github.com/openbao/openbao/blob/main/LICENSE"
-url_project_website = "https://github.com/openbao/openbao"
-url_source_repository = "https://github.com/openbao/openbao"
-url_release_notes = "https://github.com/openbao/openbao/tree/main/CHANGELOG.md"

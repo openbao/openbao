@@ -19,7 +19,7 @@
     "@docusaurus/preset-classic": "^3.3.2",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.0.0",
-    "clsx": "^2.0.0",
+    "clsx": "^2.1.1",
     "docusaurus-lunr-search": "^3.3.2",
     "prism-react-renderer": "^2.3.0",
     "react": "^18.0.0",

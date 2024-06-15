@@ -3160,8 +3160,10 @@ auto_auth {
 
 	// Start Vault Agent
 	go func() {
-		code := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
-		require.Equalf(t, 0, code, "Vault Agent returned a non-zero exit code")
+		exitCode := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
+		if exitCode != 0 {
+			panic(fmt.Sprintf("expected zero exit code from agent invocation"))
+		}
 	}()
 
 	select {

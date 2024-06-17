@@ -3,7 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -61,7 +61,7 @@ func (d *Runner) Start(ctx context.Context) (*types.ContainerJSON, error) {
 		return nil, err
 	}
 	if resp != nil {
-		_, _ = ioutil.ReadAll(resp)
+		_, _ = io.ReadAll(resp)
 	}
 
 	cfg := *d.ContainerConfig

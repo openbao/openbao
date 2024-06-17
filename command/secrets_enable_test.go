@@ -5,7 +5,6 @@ package command
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -210,7 +209,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		client, closer := testVaultServerAllBackends(t)
 		defer closer()
 
-		files, err := ioutil.ReadDir("../builtin/logical")
+		files, err := os.ReadDir("../builtin/logical")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -229,7 +228,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			}
 		}
 
-		modFile, err := ioutil.ReadFile("../go.mod")
+		modFile, err := os.ReadFile("../go.mod")
 		if err != nil {
 			t.Fatal(err)
 		}

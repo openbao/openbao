@@ -1,0 +1,3 @@
+```release-note:bug
+core: re-introduce Server Side Consistent Tokens (SSCTs) from upstream, defaulting to disabled
+```

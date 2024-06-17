@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -72,7 +71,7 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +153,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	core.pluginCatalog.directory = tempDir
 
 	// Set a versioned plugin.
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +262,7 @@ func TestPluginCatalog_List(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +333,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +425,7 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 	}
 	core.pluginCatalog.directory = tempDir
 
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}

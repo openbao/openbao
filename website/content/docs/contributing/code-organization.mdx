@@ -1,0 +1,180 @@
+---
+description: |-
+  Documentation
+displayed_sidebar: docs
+---
+
+# Code organization
+
+OpenBao repository is organized into five main modules:
+
+ - An API client ([in `api/`](https://github.com/openbao/openbao/tree/main/api))
+   for interacting with OpenBao instances,
+ - A collection of useful helper modules
+   ([in `sdk/`](https://github.com/openbao/openbao/tree/main/sdk/)),
+ - The Web UI, built with Ember and [temporarily disabled](https://github.com/openbao/openbao/issues/189)
+   ([in `ui/`](https://github.com/openbao/openbao/tree/main/ui/)),
+ - The API and documentation website ([in `website/`](https://github.com/openbao/openbao/tree/main/website/)), and
+ - The cli and server code, [everywhere else](https://github.com/openbao/openbao/tree/main/).
+
+Of these, `api/` and `sdk/` are separate Go modules meant to be importable
+into other applications. The Go module in the root of the project is for
+the server and is not meant to be externally importable.
+
+## API
+
+The included API is a bespoke API client written in Go. Because this is
+expected to be stable, we need to carefully consider whether a change will be
+breaking to consumers of the library. Some key files are:
+
+ - [`api/client.go`](https://github.com/openbao/openbao/blob/main/api/client.go) is
+   the main entry point of the client.
+ - [`api/logical.go`](https://github.com/openbao/openbao/blob/main/api/logical.go) has
+   backend-agnostic utilities for speaking OpenBao API semantics.
+ - [`api/secret.go`](https://github.com/openbao/openbao/blob/main/api/secret.go) has
+   structured response parsing.
+ - [`api/auth`](https://github.com/openbao/openbao/tree/main/api/auth) has various
+   specialized authentication plugin helpers.
+ - [`api/sys_*.go`](https://github.com/search?q=repo%3Aopenbao%2Fopenbao%20api%2Fsys&type=code),
+   [`api/kv*.go`](https://github.com/search?q=repo%3Aopenbao%2Fopenbao%20api%2Fkv&type=code),
+   [`api/auth.go`](https://github.com/openbao/openbao/blob/main/api/auth.go), and
+   [`api/ssh.go`](https://github.com/openbao/openbao/blob/main/api/ssh.go) have
+   backend-specific calls for various portions of the API space (such as
+   [`sys/`](/api-docs/system), authenticating to OpenBao, or the
+   [`ssh` plugin](/docs/secrets/ssh)).
+
+Upstream also includes [OpenAPI-based client libraries](https://github.com/openbao/openbao/issues/41)
+that haven't yet been forked; if maintainers are interested in helping to
+support these libraries, let us know!
+
+## SDK
+
+The SDK module exists to share externally usable, independent modules with
+people outside of OpenBao. These may be things useful in conjunction with
+OpenBao (e.g., [`sdk/plugin`](https://github.com/openbao/openbao/tree/main/sdk/plugin)
+for building auth and secret plugins), they might be testing libraries
+(such as [`sdk/helper/testcluster`](https://github.com/openbao/openbao/tree/main/sdk/helper/testcluster)
+for testing plugins or external projects that rely on OpenBao from Go tests),
+or they might be standalone libraries provided to the community (such as
+[`sdk/helper/shamir/`](https://github.com/openbao/openbao/tree/main/sdk/helper/shamir).
+
+Each of these packages are different and serve a different goal; some commonly
+used packages are:
+
+ - [`sdk/framework/`](https://github.com/openbao/openbao/tree/main/sdk/framework)
+   contains various HTTP helpers such as typing and parsing for request parameters.
+ - [`sdk/logical/`](https://github.com/openbao/openbao/tree/main/sdk/logical)
+   contains the type definitions for core and plugin interoperability, including
+   requests, responses, and the underlying storage model.
+ - [`sdk/plugin/`](https://github.com/openbao/openbao/tree/main/sdk/plugin)
+   contains the GRPC bindings for external auth and secret plugins.
+ - [`sdk/database/`](https://github.com/openbao/openbao/tree/main/sdk/database)
+   contains the same bindings but for external database plugins.
+ - [`sdk/physical/`](https://github.com/openbao/openbao/tree/main/sdk/physical)
+   contains the interface definition of a storage backend, including
+   implementations of the File and InMemory non-production backends.
+ - [`sdk/helper/`](https://github.com/openbao/openbao/tree/main/sdk/helper)
+   contains many external libraries. Some highlights are:
+    - [`sdk/helper/shamir/`](https://github.com/openbao/openbao/tree/main/sdk/helper/shamir)
+      implements Shamir's secret sharing and has been moved for external
+      consumption.
+    - [`sdk/helper/certutil/`](https://github.com/openbao/openbao/tree/main/sdk/helper/certutil)
+      has leaf and CA certificate creation code used by the PKI engine and
+      the database secrets engine.
+    - [`sdk/helper/ocsp/`](https://github.com/openbao/openbao/tree/main/sdk/helper/ocsp)
+      contains an OCSP client utilized by the cert auth method, originally
+      forked from Snowflake.
+
+Note that the SDK has a loose breakage policy: while we aim to minimize
+disruption, the SDK firstly serves OpenBao's server and thus will be updated
+as requirements here change. As such, the SDK is versioned with a 0 major
+version to indicate this potential lack of compatibility.
+
+## UI
+
+The Web UI is built with Ember.
+
+## Website
+
+The website is built [with Docusaurus](https://docusaurus.io/) and includes
+two main sections:
+
+ - [`api-docs`](/api-docs) a hand-maintained API reference to all endpoints
+   in OpenBao.
+ - [`docs`](/docs), for everything else, including information about
+   [various](/docs/secrets/) [plugins](/docs/auth/), this
+   [contributing guide](/docs/contributing/), and [various](/docs/policies/)
+   [decisions](/docs/rfcs/) made by the TSC and the OpenBao community.
+
+To add a new page, create the `.mdx` file in the appropriate subfolder within
+[`website/content`](https://github.com/openbao/openbao/tree/main/website/content/)
+and then add the page to the sidebar (if the page is under `docs/`, then to
+[`website/sidebars.ts`](https://github.com/openbao/openbao/tree/main/website/sidebars.ts)
+else if the page is under `api-docs/`, then to
+[`website/sidebarsApi.ts`](https://github.com/openbao/openbao/tree/main/website/sidebarsApi.ts)).
+
+## OpenBao CLI, server, and plugins
+
+The remaining code is for the OpenBao CLI, server, and a few built-in plugins.
+
+At a high level, these directories are:
+
+ - [`audit/`](https://github.com/openbao/openbao/tree/main/audit/) contains
+   interface definitions for auditing requests and responses.
+ - [`builtin/`](https://github.com/openbao/openbao/tree/main/builtin/) contains
+   the builtin plugins:
+   - [`builtin/audit/`](https://github.com/openbao/openbao/tree/main/builtin/audit)
+     contains the built-in audit backends such as [file](/docs/audit/file/) or
+     [syslog](/docs/audit/syslog/).
+   - [`builtin/credential/`](https://github.com/openbao/openbao/tree/main/builtin/credential)
+     contains the built-in authentication plugins such as
+     [AppRole](/docs/auth/approle/) or [cert](/docs/auth/cert/).
+   - [`builtin/logical/`](https://github.com/openbao/openbao/tree/main/builtin/logical)
+     contains the built-in secret engines such as
+     [PKI](/docs/secrets/pki/) or [kv](/docs/secrets/kv/).
+   - [`builtin/plugin/`](https://github.com/openbao/openbao/tree/main/builtin/plugin)
+     contains a source-agnostic plugin wrapper (either using the builtin
+     plugin or handling the GRPC connection to an external plugin).
+ - [`command/`](https://github.com/openbao/openbao/tree/main/command/) contains
+   the CLI interface definitions: each command is in a separate file connected
+   through [`command/commands.go`](https://github.com/openbao/openbao/blob/main/command/commands.go).
+   Many plugins reuse the same generic `read`, `write`, `list`, ... commands,
+   but a few (like K/V or PKI) have plugin-specific commands. This also
+   includes Agent, Proxy, and Server configuration parsing and startup code,
+   though much of the functionality for the latter is elsewhere.
+ - [`helper/`](https://github.com/openbao/openbao/tree/main/helper/) includes
+   various internal libraries useful only in the context of OpenBao.
+ - [`http/`](https://github.com/openbao/openbao/tree/main/http/) contains
+   the main server code [creating](https://github.com/openbao/openbao/blob/42e77de61c145aa768ada9c1883f570e76e8708e/http/handler.go#L130-L132)
+   the [http.ServeMux](https://pkg.go.dev/net/http#ServeMux).
+ - [`internalshared/`](https://github.com/openbao/openbao/tree/main/internalshared/)
+   contains shared configuration objects used by Agent, Proxy, and Server,
+   accessible to `vault.Core` as well.
+ - [`physical/`](https://github.com/openbao/openbao/tree/main/physical/)
+   contains production quality physical storage backend implementations.
+   This currently only includes Raft.
+ - [`plugins/database/`](https://github.com/openbao/openbao/tree/main/plugins/database/)
+   contains the plugins for the database secrets engine to support creating
+   short-lived dynamic credentials for these database types.
+ - [`serviceregistration/`](https://github.com/openbao/openbao/tree/main/serviceregistration/)
+   contains helpers for supporting service registration against various
+   providers. This is only utilized by OpenBao Server.
+ - [`vault/`](https://github.com/openbao/openbao/tree/main/vault/)
+   contains the [Core](https://github.com/openbao/openbao/blob/main/vault/core.go)
+   of the server: this implements
+   [barrier encryption](https://github.com/openbao/openbao/blob/main/vault/barrier.go),
+   [identity storage](https://github.com/openbao/openbao/blob/main/vault/identity_store.go),
+   [token storage](https://github.com/openbao/openbao/blob/main/vault/token_store.go),
+   and many `sys/` endpoint implementations.
+
+Key dependencies of the server code are:
+
+ - [`go-secure-stdlib`](https://github.com/hashicorp/go-secure-stdlib) which
+   is a collection of shared parsing and configuration utility libraries used
+   by many plugins and the Core.
+ - [`go-kms-wrapping`](https://github.com/openbao/go-kms-wrapping) which
+   implements auto-unseal for various providers (such as Transit or GCP).
+ - [`raft`](https://github.com/hashicorp/raft) which implements the core Raft
+   storage backend.
+ - [`openbao-template`](https://github.com/openbao/openbao-template) which
+   implements templating for OpenBao Agent.

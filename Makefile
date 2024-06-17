@@ -305,40 +305,6 @@ mongodb-database-plugin:
 
 .NOTPARALLEL: ember-dist ember-dist-dev
 
-# These ci targets are used for used for building and testing in Github Actions
-# workflows and for Enos scenarios.
-.PHONY: ci-build
-ci-build:
-	@$(CURDIR)/scripts/ci-helper.sh build
-
-.PHONY: ci-build-ui
-ci-build-ui:
-	@$(CURDIR)/scripts/ci-helper.sh build-ui
-
-.PHONY: ci-bundle
-ci-bundle:
-	@$(CURDIR)/scripts/ci-helper.sh bundle
-
-.PHONY: ci-get-artifact-basename
-ci-get-artifact-basename:
-	@$(CURDIR)/scripts/ci-helper.sh artifact-basename
-
-.PHONY: ci-get-date
-ci-get-date:
-	@$(CURDIR)/scripts/ci-helper.sh date
-
-.PHONY: ci-get-revision
-ci-get-revision:
-	@$(CURDIR)/scripts/ci-helper.sh revision
-
-.PHONY: ci-get-version-package
-ci-get-version-package:
-	@$(CURDIR)/scripts/ci-helper.sh version-package
-
-.PHONY: ci-prepare-legal
-ci-prepare-legal:
-	@$(CURDIR)/scripts/ci-helper.sh prepare-legal
-
 .PHONY: openapi
 openapi: dev
 	@$(CURDIR)/scripts/gen_openapi.sh

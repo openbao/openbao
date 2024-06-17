@@ -6,7 +6,7 @@ package raft
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/go-hclog"
@@ -14,7 +14,7 @@ import (
 )
 
 func GetRaft(t testing.TB, bootstrap bool, noStoreState bool) (*RaftBackend, string) {
-	raftDir, err := ioutil.TempDir("", "vault-raft-")
+	raftDir, err := os.MkdirTemp("", "vault-raft-")
 	if err != nil {
 		t.Fatal(err)
 	}

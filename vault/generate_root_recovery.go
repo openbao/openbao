@@ -50,8 +50,12 @@ func (g *generateRecoveryToken) generate(ctx context.Context, c *Core) (string, 
 	if err != nil {
 		return "", nil, err
 	}
-
-	token := consts.RecoveryTokenPrefix + id
+	var token string
+	if c.DisableSSCTokens() {
+		token = consts.LegacyRecoveryTokenPrefix + id
+	} else {
+		token = consts.RecoveryTokenPrefix + id
+	}
 	g.token.Store(token)
 
 	return token, func() { g.token.Store("") }, nil

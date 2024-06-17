@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/mitchellh/mapstructure"
@@ -97,7 +96,7 @@ func (g *GSuiteProvider) Initialize(ctx context.Context, jc *jwtConfig) error {
 		var err error
 		keyJSON := []byte(config.ServiceAccount)
 		if fileExists(config.ServiceAccount) {
-			keyJSON, err = ioutil.ReadFile(config.ServiceAccount)
+			keyJSON, err = os.ReadFile(config.ServiceAccount)
 			if err != nil {
 				return err
 			}

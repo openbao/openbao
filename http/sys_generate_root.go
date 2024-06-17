@@ -67,8 +67,12 @@ func handleSysGenerateRootAttemptGet(core *vault.Core, w http.ResponseWriter, r 
 		respondError(w, http.StatusInternalServerError, err)
 		return
 	}
-
-	otpLength := vault.TokenLength + vault.TokenPrefixLength
+	var otpLength int
+	if core.DisableSSCTokens() {
+		otpLength = vault.TokenLength + vault.OldTokenPrefixLength
+	} else {
+		otpLength = vault.TokenLength + vault.TokenPrefixLength
+	}
 
 	// Format the status
 	status := &GenerateRootStatusResponse{
@@ -103,7 +107,11 @@ func handleSysGenerateRootAttemptPut(core *vault.Core, w http.ResponseWriter, r 
 	case len(req.PGPKey) > 0, len(req.OTP) > 0:
 	default:
 		genned = true
-		req.OTP, err = base62.Random(vault.TokenLength + vault.TokenPrefixLength)
+		if core.DisableSSCTokens() {
+			req.OTP, err = base62.Random(vault.TokenLength + vault.OldTokenPrefixLength)
+		} else {
+			req.OTP, err = base62.Random(vault.TokenLength + vault.TokenPrefixLength)
+		}
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, err)
 			return

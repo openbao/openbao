@@ -5,7 +5,7 @@ package k8s
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -36,7 +36,7 @@ func SetupPortForwarding(kubeContext, namespace, pod string) (localPort int, clo
 	readyChan := make(chan struct{})
 
 	// Listen on random available local port, forwarding to 8200 in the Vault container.
-	forwarder, err := portforward.New(dialer, []string{"0:8200"}, stopChan, readyChan, ioutil.Discard, os.Stderr)
+	forwarder, err := portforward.New(dialer, []string{"0:8200"}, stopChan, readyChan, io.Discard, os.Stderr)
 	if err != nil {
 		return 0, nil, err
 	}

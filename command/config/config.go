@@ -5,7 +5,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/hashicorp/hcl"
@@ -63,7 +62,7 @@ func LoadConfig(path string) (*DefaultConfig, error) {
 		return nil, fmt.Errorf("error expanding config path %q: %w", path, err)
 	}
 
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}

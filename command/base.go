@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -73,9 +72,10 @@ type BaseCommand struct {
 	client *api.Client
 }
 
-// Client returns the HTTP API client. The client is cached on the command to
-// save performance on future calls.
-func (c *BaseCommand) Client() (*api.Client, error) {
+// Construct the HTTP API client, but do not set the token on it yet. This is to
+// avoid invoking the token helper for calls that do not need a token, such as
+// `vault login`.
+func (c *BaseCommand) ClientWithoutToken() (*api.Client, error) {
 	// Read the test client if present
 	if c.client != nil {
 		return c.client, nil
@@ -133,26 +133,6 @@ func (c *BaseCommand) Client() (*api.Client, error) {
 	// Set the wrapping function
 	client.SetWrappingLookupFunc(c.DefaultWrappingLookupFunc)
 
-	// Get the token if it came in from the environment
-	token := client.Token()
-
-	// If we don't have a token, check the token helper
-	if token == "" {
-		helper, err := c.TokenHelper()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token helper")
-		}
-		token, err = helper.Get()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get token from token helper")
-		}
-	}
-
-	// Set the token
-	if token != "" {
-		client.SetToken(token)
-	}
-
 	client.SetMFACreds(c.flagMFA)
 
 	// flagNS takes precedence over flagNamespace. After resolution, point both
@@ -182,6 +162,42 @@ func (c *BaseCommand) Client() (*api.Client, error) {
 		if len(forbiddenHeaders) > 0 {
 			return nil, fmt.Errorf("failed to setup Headers[%s]: Header starting by 'X-Vault-' are for internal usage only", strings.Join(forbiddenHeaders, ", "))
 		}
+	}
+
+	return client, nil
+}
+
+// Client returns the HTTP API client. The client is cached on the command to
+// save performance on future calls.
+func (c *BaseCommand) Client() (*api.Client, error) {
+	// Read the test client if present
+	if c.client != nil {
+		return c.client, nil
+	}
+
+	client, err := c.ClientWithoutToken()
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the token if it came in from the environment
+	token := client.Token()
+
+	// If we don't have a token, check the token helper
+	if token == "" {
+		helper, err := c.TokenHelper()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get token helper")
+		}
+		token, err = helper.Get()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get token from token helper")
+		}
+	}
+
+	// Set the token
+	if token != "" {
+		client.SetToken(token)
 	}
 
 	c.client = client
@@ -425,7 +441,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Default: false,
 				EnvVar:  api.EnvVaultDisableRedirects,
 				Usage: "Disable the default client behavior, which honors a single " +
-					"redirect response from a request",
+					"redirect response from a request.",
 			})
 
 			f.BoolVar(&BoolVar{
@@ -433,7 +449,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Target:  &c.flagPolicyOverride,
 				Default: false,
 				Usage: "Override a Sentinel policy that has a soft-mandatory " +
-					"enforcement_level specified",
+					"enforcement_level specified.",
 			})
 
 			f.DurationVar(&DurationVar{
@@ -485,8 +501,8 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Name:       "header",
 				Target:     &c.flagHeader,
 				Completion: complete.PredictAnything,
-				Usage: "Key-value pair provided as key=value to provide http header added to any request done by the CLI." +
-					"Trying to add headers starting with 'X-Vault-' is forbidden and will make the command fail " +
+				Usage: "Key-value pair provided as key=value to provide http header added to any request done by the CLI. " +
+					"Trying to add headers starting with 'X-Vault-' is forbidden and will make the command fail. " +
 					"This can be specified multiple times.",
 			})
 
@@ -534,7 +550,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 					Target:  &c.flagDetailed,
 					Default: false,
 					EnvVar:  EnvVaultDetailed,
-					Usage:   "Enables additional metadata during some operations",
+					Usage:   "Enables additional metadata during some operations.",
 				})
 			}
 		}
@@ -560,7 +576,7 @@ func NewFlagSets(ui cli.Ui) *FlagSets {
 
 	// Errors and usage are controlled by the CLI.
 	mainSet.Usage = func() {}
-	mainSet.SetOutput(ioutil.Discard)
+	mainSet.SetOutput(io.Discard)
 
 	return &FlagSets{
 		flagSets:    make([]*FlagSet, 0, 6),

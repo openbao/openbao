@@ -325,6 +325,7 @@ func LogicalConnectionToProtoConnection(c *logical.Connection) *Connection {
 
 	return &Connection{
 		RemoteAddr:      c.RemoteAddr,
+		RemotePort:      int32(c.RemotePort),
 		ConnectionState: TLSConnectionStateToProtoConnectionState(c.ConnState),
 	}
 }
@@ -341,6 +342,7 @@ func ProtoConnectionToLogicalConnection(c *Connection) (*logical.Connection, err
 
 	return &logical.Connection{
 		RemoteAddr: c.RemoteAddr,
+		RemotePort: int(c.RemotePort),
 		ConnState:  cs,
 	}, nil
 }
@@ -623,6 +625,7 @@ func LogicalTokenEntryToProtoTokenEntry(t *logical.TokenEntry) *TokenEntry {
 		NamespaceID:        t.NamespaceID,
 		CubbyholeID:        t.CubbyholeID,
 		Type:               uint32(t.Type),
+		ExternalID:         t.ExternalID,
 	}
 }
 
@@ -663,6 +666,7 @@ func ProtoTokenEntryToLogicalTokenEntry(t *TokenEntry) (*logical.TokenEntry, err
 		NamespaceID:        t.NamespaceID,
 		CubbyholeID:        t.CubbyholeID,
 		Type:               logical.TokenType(t.Type),
+		ExternalID:         t.ExternalID,
 	}, nil
 }
 

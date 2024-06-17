@@ -6,8 +6,8 @@ package client
 import (
 	"bytes"
 	"crypto/x509"
-	"io/ioutil"
 	"net"
+	"os"
 
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/certutil"
@@ -54,12 +54,12 @@ func inClusterConfig() (*Config, error) {
 		return nil, ErrNotInCluster
 	}
 
-	token, err := ioutil.ReadFile(TokenFile)
+	token, err := os.ReadFile(TokenFile)
 	if err != nil {
 		return nil, err
 	}
 
-	caBytes, err := ioutil.ReadFile(RootCAFile)
+	caBytes, err := os.ReadFile(RootCAFile)
 	if err != nil {
 		return nil, err
 	}

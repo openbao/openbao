@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -374,7 +374,7 @@ func (c *DebugCommand) generateIndex() error {
 	}
 
 	// Write out file
-	if err := ioutil.WriteFile(filepath.Join(c.flagOutput, "index.json"), bytes, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(c.flagOutput, "index.json"), bytes, 0o600); err != nil {
 		return fmt.Errorf("error generating index file; %s", err)
 	}
 
@@ -764,7 +764,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 					return
 				}
 
-				err = ioutil.WriteFile(filepath.Join(dirName, target+".prof"), data, 0o600)
+				err = os.WriteFile(filepath.Join(dirName, target+".prof"), data, 0o600)
 				if err != nil {
 					c.captureError("pprof."+target, err)
 				}
@@ -782,7 +782,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "goroutines.txt"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "goroutines.txt"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.goroutines-text", err)
 			}
@@ -806,7 +806,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "profile.prof"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "profile.prof"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.profile", err)
 			}
@@ -822,7 +822,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "trace.out"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "trace.out"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.trace", err)
 			}
@@ -958,7 +958,7 @@ func (c *DebugCommand) persistCollection(collection []map[string]interface{}, ou
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filepath.Join(c.flagOutput, outFile), bytes, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(c.flagOutput, outFile), bytes, 0o600); err != nil {
 		return err
 	}
 
@@ -994,7 +994,7 @@ func pprofTarget(ctx context.Context, client *api.Client, target string, params 
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,7 +1014,7 @@ func pprofProfile(ctx context.Context, client *api.Client, duration time.Duratio
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1034,7 +1034,7 @@ func pprofTrace(ctx context.Context, client *api.Client, duration time.Duration)
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

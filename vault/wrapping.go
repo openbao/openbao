@@ -164,7 +164,7 @@ DONELISTHANDLING:
 		},
 	)
 
-	resp.WrapInfo.Token = te.ID
+	resp.WrapInfo.Token = te.ExternalID
 	resp.WrapInfo.Accessor = te.Accessor
 	resp.WrapInfo.CreationTime = creationTime
 	// If this is not a rewrap, store the request path as creation_path

@@ -5,7 +5,6 @@ package file
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,7 +20,7 @@ const (
 )
 
 func testFileSink(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
-	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("%s.", fileServerTestDir))
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("%s.", fileServerTestDir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +73,7 @@ func TestFileSink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fileBytes, err := ioutil.ReadFile(path)
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +84,7 @@ func TestFileSink(t *testing.T) {
 }
 
 func testFileSinkMode(t *testing.T, log hclog.Logger) (*sink.SinkConfig, string) {
-	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("%s.", fileServerTestDir))
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("%s.", fileServerTestDir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +135,7 @@ func TestFileSinkMode(t *testing.T) {
 		t.Fatalf("wrong file mode was detected at %s", path)
 	}
 
-	fileBytes, err := ioutil.ReadFile(path)
+	fileBytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}

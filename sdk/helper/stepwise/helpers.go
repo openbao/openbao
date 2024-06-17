@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -86,11 +85,11 @@ func NewCertificateGetter(certFile, keyFile, passphrase string) *CertificateGett
 }
 
 func (cg *CertificateGetter) Reload() error {
-	certPEMBlock, err := ioutil.ReadFile(cg.certFile)
+	certPEMBlock, err := os.ReadFile(cg.certFile)
 	if err != nil {
 		return err
 	}
-	keyPEMBlock, err := ioutil.ReadFile(cg.keyFile)
+	keyPEMBlock, err := os.ReadFile(cg.keyFile)
 	if err != nil {
 		return err
 	}

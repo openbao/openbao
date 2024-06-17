@@ -55,6 +55,25 @@ Signing off a commit signifies your agreement to the terms outlined at
 https://developercertificate.org/ for that specific contribution. Any contribution 
 that lacks a sign-off to this agreement will not be accepted by the OpenBao project.
 
+## Technical Steering Committee (TSC) Members
+
+| Member            | Email                               | GitHub                                     | Alternate                               | Company/Organization      | TSC Position |
+|-------------------|-------------------------------------|--------------------------------------------|-----------------------------------------|---------------------------|--------------|
+| Alex Scheel       | alexander.m.scheel@gmail.com        | [@cipherboy](https://github.com/cipherboy) |                                         | Development Working Group | Member       |
+| Nathan Phelps     | naphelps@us.ibm.com                 | [@naphelps](https://github.com/naphelps)   |                                         | IBM                       | Chair        |
+| James Butcher     | james@iotechsys.com                 |                                            |                                         | IOtech Systems            | Member       |
+| Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |                                            | Dan Ghita (dan.ghita@viaccess-orca.com) | Viaccess-Orca             | Member       |
+| Julian Cassignol  | jcassignol@wallix.com               |                                            | Cristian Popi (cpopi@wallix.com)        | Wallix                    | Member       |
+| Michael Maxey     | maxey@zededa.com                    |                                            |                                         | Zededa                    | Member       |
+
+
+### OpenBao Working Groups
+
+| Working Group             | Chair       |
+|---------------------------|-------------|
+| Development Working Group | Alex Scheel |
+
+
 ## Issues
 
 This section will cover what we're looking for in terms of reporting issues.

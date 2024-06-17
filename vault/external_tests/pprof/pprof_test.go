@@ -5,7 +5,7 @@ package pprof
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -65,7 +65,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	httpRespBody, err := ioutil.ReadAll(resp.Body)
+	httpRespBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

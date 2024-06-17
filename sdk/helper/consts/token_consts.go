@@ -4,7 +4,10 @@
 package consts
 
 const (
-	ServiceTokenPrefix  = "s."
-	BatchTokenPrefix    = "b."
-	RecoveryTokenPrefix = "r."
+	ServiceTokenPrefix        = "hvs."
+	BatchTokenPrefix          = "hvb."
+	RecoveryTokenPrefix       = "hvr."
+	LegacyServiceTokenPrefix  = "s."
+	LegacyBatchTokenPrefix    = "b."
+	LegacyRecoveryTokenPrefix = "r."
 )

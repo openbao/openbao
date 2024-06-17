@@ -21,10 +21,10 @@ cd "$DIR"
 BUILD_TAGS="${BUILD_TAGS:-"openbao"}"
 
 # Get the git commit
-GIT_COMMIT="$("$SOURCE_DIR"/ci-helper.sh revision)"
+GIT_COMMIT="$(git rev-parse HEAD)"
 GIT_DIRTY="$(test -n "`git status --porcelain`" && echo "+CHANGES" || true)"
 
-BUILD_DATE="$("$SOURCE_DIR"/ci-helper.sh date)"
+BUILD_DATE="$(git show --no-show-signature -s --format=%cd --date=format:"%Y-%m-%dT%H:%M:%SZ" HEAD)"
 
 GOPATH=${GOPATH:-$(${GO_CMD} env GOPATH)}
 case $(uname) in

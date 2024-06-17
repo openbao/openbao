@@ -6,7 +6,6 @@ package file
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestFileBackend_Base64URLEncoding(t *testing.T) {
-	backendPath, err := ioutil.TempDir("", "vault")
+	backendPath, err := os.MkdirTemp("", "vault")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -180,7 +179,7 @@ func TestFileBackend_Base64URLEncoding(t *testing.T) {
 }
 
 func TestFileBackend_ValidatePath(t *testing.T) {
-	dir, err := ioutil.TempDir("", "vault")
+	dir, err := os.MkdirTemp("", "vault")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -204,7 +203,7 @@ func TestFileBackend_ValidatePath(t *testing.T) {
 }
 
 func TestFileBackend(t *testing.T) {
-	dir, err := ioutil.TempDir("", "vault")
+	dir, err := os.MkdirTemp("", "vault")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

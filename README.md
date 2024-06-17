@@ -12,7 +12,7 @@
 - [Chat Server](https://chat.lfx.linuxfoundation.org/) -- look for `openbao-` prefixed rooms.
 
 <p align="center">
-  <img width="300" alt="OpenBao Mascot" src="website/public/img/logo.svg">
+  <img width="300" alt="OpenBao Mascot" src="https://raw.githubusercontent.com/openbao/artwork/main/color/openbao-color.svg">
 </p>
 
 **OpenBao exists to provide a software solution to manage, store, and distribute sensitive data including secrets, certificates, and keys. The OpenBao community intends to provide this software under an OSI-approved open-source license, led by a community run under open governance principles.**
@@ -176,7 +176,7 @@ func Test_Something_With_Docker(t *testing.T) {
   }
   cluster := docker.NewTestDockerCluster(t, opts)
   defer cluster.Cleanup()
-  
+
   client := cluster.Nodes()[0].APIClient()
   _, err := client.Logical().Read("sys/storage/raft/configuration")
   if err != nil {
@@ -185,12 +185,12 @@ func Test_Something_With_Docker(t *testing.T) {
 }
 ```
 
-Here is a more realistic example of how we use it in practice.  DefaultOptions uses 
+Here is a more realistic example of how we use it in practice.  `DefaultOptions` uses
 `hashicorp/vault:latest` as the repo and tag, but it also looks at the environment
-variable OPENBAO_BINARY. If populated, it will copy the local file referenced by
-OPENBAO_BINARY into the container. This is useful when testing local changes.
+variable `BAO_BINARY`. If populated, it will copy the local file referenced by
+`BAO_BINARY` into the container. This is useful when testing local changes.
 
-Optionally you can set COMMIT_SHA, which will be appended to the image name we
+Optionally you can set `COMMIT_SHA`, which will be appended to the image name we
 build as a debugging convenience.
 
 ```go

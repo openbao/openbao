@@ -470,12 +470,16 @@ const sidebars: SidebarsConfig = {
                 "upgrading/vault-ha-upgrade",
                 "upgrading/plugins",
             ],
-            "Release Notes": ["release-notes/index"],
+            "Release Notes": ["release-notes/index", "release-notes/2-0-0"],
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",
                 "policies/deprecation",
                 "policies/plugins",
+            ],
+            Contributing: [
+                "contributing/index",
+                "contributing/code-organization",
             ],
             RFCs: ["rfcs/index", "rfcs/paginated-lists"],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],

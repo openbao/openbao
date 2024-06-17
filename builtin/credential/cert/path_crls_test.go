@@ -9,11 +9,11 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -59,11 +59,11 @@ func TestCRLFetch(t *testing.T) {
 	connState, err := testConnState("test-fixtures/keys/cert.pem",
 		"test-fixtures/keys/key.pem", "test-fixtures/root/rootcacert.pem")
 	require.NoError(t, err)
-	caPEM, err := ioutil.ReadFile("test-fixtures/root/rootcacert.pem")
+	caPEM, err := os.ReadFile("test-fixtures/root/rootcacert.pem")
 	require.NoError(t, err)
-	caKeyPEM, err := ioutil.ReadFile("test-fixtures/keys/key.pem")
+	caKeyPEM, err := os.ReadFile("test-fixtures/keys/key.pem")
 	require.NoError(t, err)
-	certPEM, err := ioutil.ReadFile("test-fixtures/keys/cert.pem")
+	certPEM, err := os.ReadFile("test-fixtures/keys/cert.pem")
 
 	caBundle, err := certutil.ParsePEMBundle(string(caPEM))
 	require.NoError(t, err)

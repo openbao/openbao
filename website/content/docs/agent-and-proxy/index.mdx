@@ -40,7 +40,7 @@ func getSecretWithAppRole() (string, error) {
     config := openbao.DefaultConfig()
 
     client := openbao.NewClient(config)
-    wrappingToken := ioutil.ReadFile("path/to/wrapping-token")
+    wrappingToken := os.ReadFile("path/to/wrapping-token")
     unwrappedToken := client.Logical().Unwrap(strings.TrimSuffix(string(wrappingToken), "\n"))
 
     secretID := unwrappedToken.Data["secret_id"]

@@ -5,8 +5,22 @@ import (
 	"strings"
 )
 
+const (
+	OpenBaoEnvPrefix  = "BAO_"
+	UpstreamEnvPrefix = "VAULT_"
+)
+
+func UpstreamVariableName(name string) string {
+	if !strings.HasPrefix(name, OpenBaoEnvPrefix) {
+		return name
+	}
+
+	nonPrefixedName := strings.Replace(name, OpenBaoEnvPrefix, "", 1)
+	return UpstreamEnvPrefix + nonPrefixedName
+}
+
 func ReadBaoVariable(name string) string {
-	if !strings.HasPrefix(name, "BAO_") {
+	if !strings.HasPrefix(name, OpenBaoEnvPrefix) {
 		return os.Getenv(name)
 	}
 
@@ -16,12 +30,11 @@ func ReadBaoVariable(name string) string {
 		return baoValue
 	}
 
-	nonPrefixedName := strings.Replace(name, "BAO_", "", 1)
-	return os.Getenv("VAULT_" + nonPrefixedName)
+	return os.Getenv(UpstreamVariableName(name))
 }
 
 func LookupBaoVariable(name string) (string, bool) {
-	if !strings.HasPrefix(name, "BAO_") {
+	if !strings.HasPrefix(name, OpenBaoEnvPrefix) {
 		return os.LookupEnv(name)
 	}
 
@@ -29,6 +42,5 @@ func LookupBaoVariable(name string) (string, bool) {
 		return baoValue, baoPresent
 	}
 
-	nonPrefixedName := strings.Replace(name, "BAO_", "", 1)
-	return os.LookupEnv("VAULT_" + nonPrefixedName)
+	return os.LookupEnv(UpstreamVariableName(name))
 }

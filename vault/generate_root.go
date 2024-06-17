@@ -59,7 +59,7 @@ func (g generateStandardRootToken) generate(ctx context.Context, c *Core) (strin
 		c.tokenStore.revokeOrphan(ctx, te.ID)
 	}
 
-	return te.ID, cleanupFunc, nil
+	return te.ExternalID, cleanupFunc, nil
 }
 
 // GenerateRootConfig holds the configuration for a root generation
@@ -129,7 +129,8 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	var fingerprint string
 	switch {
 	case len(otp) > 0:
-		if len(otp) != TokenLength+TokenPrefixLength {
+		if (len(otp) != TokenLength+TokenPrefixLength && !c.DisableSSCTokens()) ||
+			(len(otp) != TokenLength+OldTokenPrefixLength && c.DisableSSCTokens()) {
 			return fmt.Errorf("OTP string is wrong length")
 		}
 

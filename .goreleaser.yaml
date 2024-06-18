@@ -836,6 +836,7 @@ signs:
   - id: cosign
     artifacts: all
     cmd: cosign
+    certificate: "${artifact}.pem"
     args:
       - "sign-blob"
       - "--oidc-issuer=https://token.actions.githubusercontent.com"
@@ -852,7 +853,8 @@ signs:
       - "--batch"
       - "--default-key={{ .Env.GPG_FINGERPRINT }}"
       - "--output=${signature}"
-      - "--detach-sign=${artifact}"
+      - "--detach-sign"
+      - "${artifact}"
 
 docker_signs:
   - artifacts: all

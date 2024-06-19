@@ -32,6 +32,31 @@ holder is allowed to do within OpenBao. Other mapped information includes
 metadata that can be viewed and is added to the audit log, such as creation
 time, last renewal time, and more.
 
+## Token formats
+
+Tokens are composed of a _prefix_ and a _body_.
+
+- The _prefix_ indicates the token's type:
+
+  Token Type | Prefix
+  -- | --
+  Service tokens | s.
+  Batch tokens | b.
+  Recovery tokens | r.
+
+- The _body_ is a randomly-generated 24 or more characters
+  [Base62](https://en.wikipedia.org/wiki/Base62) string.
+
+Token are expected to match the following regexp: `[sbr]\.[a-zA-Z0-9]{24,}`
+
+Examples:
+
+```shell
+b.n6keuKu5Q6pXhaIcfnC9cFNd
+r.JaKnR2AIHNk3fC4SGyyyDVoQ9O
+s.raPGTZdARXdY0KvHcWSpp5wWZIHNT
+```
+
 ## Token types
 
 There are two types of tokens: `service` tokens and `batch` tokens. A section

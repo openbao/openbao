@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
     steps:
@@ -123,7 +123,7 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --timeout=60m --verbose --debug
+          args: release --clean --timeout=60m --verbose --debug --parallelism 2
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}

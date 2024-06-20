@@ -533,31 +533,6 @@ greater period of time. By default this is zero seconds.`,
 		Default: "0s",
 	}
 
-	fields["tidy_revocation_queue"] = &framework.FieldSchema{
-		Type: framework.TypeBool,
-		Description: `Set to true to remove stale revocation queue entries
-that haven't been confirmed by any active cluster. Only runs on the
-active primary node`,
-		Default: defaultTidyConfig.RevocationQueue,
-	}
-
-	fields["revocation_queue_safety_buffer"] = &framework.FieldSchema{
-		Type: framework.TypeDurationSecond,
-		Description: `The amount of time that must pass from the
-cross-cluster revocation request being initiated to when it will be
-slated for removal. Setting this too low may remove valid revocation
-requests before the owning cluster has a chance to process them,
-especially if the cluster is offline.`,
-		Default: int(defaultTidyConfig.QueueSafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
-	}
-
-	fields["tidy_cross_cluster_revoked_certs"] = &framework.FieldSchema{
-		Type: framework.TypeBool,
-		Description: `Set to true to enable tidying up
-the cross-cluster revoked certificate store. Only runs on the active
-primary node.`,
-	}
-
 	return fields
 }
 

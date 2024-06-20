@@ -90,24 +90,12 @@ func Backend(conf *logical.BackendConfig) *backend {
 				"issuer/+/crl/delta/der",
 				"issuer/+/crl/delta/pem",
 				"issuer/+/crl/delta",
-				"issuer/+/unified-crl/der",
-				"issuer/+/unified-crl/pem",
-				"issuer/+/unified-crl",
-				"issuer/+/unified-crl/delta/der",
-				"issuer/+/unified-crl/delta/pem",
-				"issuer/+/unified-crl/delta",
 				"issuer/+/pem",
 				"issuer/+/der",
 				"issuer/+/json",
 				"issuers/", // LIST operations append a '/' to the requested path
 				"ocsp",     // OCSP POST
 				"ocsp/*",   // OCSP GET
-				"unified-crl/delta",
-				"unified-crl/delta/pem",
-				"unified-crl/pem",
-				"unified-crl",
-				"unified-ocsp",   // Unified OCSP POST
-				"unified-ocsp/*", // Unified OCSP GET
 
 				// ACME paths are added below
 			},
@@ -131,12 +119,6 @@ func Backend(conf *logical.BackendConfig) *backend {
 				legacyCertBundlePath,
 				legacyCertBundleBackupPath,
 				keyPrefix,
-			},
-
-			WriteForwardedStorage: []string{
-				crossRevocationPath,
-				unifiedRevocationWritePathPrefix,
-				unifiedDeltaWALPath,
 			},
 		},
 
@@ -292,8 +274,6 @@ func Backend(conf *logical.BackendConfig) *backend {
 	b.possibleDoubleCountedSerials = make([]string, 0, 250)
 	b.possibleDoubleCountedRevokedSerials = make([]string, 0, 250)
 
-	b.unifiedTransferStatus = newUnifiedTransferStatus()
-
 	b.acmeState = NewACMEState()
 	return &b
 }
@@ -310,8 +290,6 @@ type backend struct {
 	tidyStatusLock sync.RWMutex
 	tidyStatus     *tidyStatus
 	lastTidy       time.Time
-
-	unifiedTransferStatus *unifiedTransferStatus
 
 	certCountEnabled                    *atomic2.Bool
 	publishCertCountMetrics             *atomic2.Bool
@@ -497,9 +475,6 @@ func (b *backend) updatePkiStorageVersion(ctx context.Context, grabIssuersLock b
 }
 
 func (b *backend) invalidate(ctx context.Context, key string) {
-	isNotPerfPrimary := b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary))
-
 	switch {
 	case strings.HasPrefix(key, legacyMigrationBundleLogKey):
 		// This is for a secondary cluster to pick up that the migration has completed
@@ -532,33 +507,6 @@ func (b *backend) invalidate(ctx context.Context, key string) {
 		b.acmeState.markConfigDirty()
 	case key == storageIssuerConfig:
 		b.crlBuilder.invalidateCRLBuildTime()
-	case strings.HasPrefix(key, crossRevocationPrefix):
-		split := strings.Split(key, "/")
-
-		if !strings.HasSuffix(key, "/confirmed") {
-			cluster := split[len(split)-2]
-			serial := split[len(split)-1]
-			b.crlBuilder.addCertForRevocationCheck(cluster, serial)
-		} else {
-			if len(split) >= 3 {
-				cluster := split[len(split)-3]
-				serial := split[len(split)-2]
-				// Only process confirmations on the perf primary. The
-				// performance secondaries cannot remove other clusters'
-				// entries, and so do not need to track them (only to
-				// ignore them). On performance primary nodes though,
-				// we do want to track them to remove them.
-				if !isNotPerfPrimary {
-					b.crlBuilder.addCertForRevocationRemoval(cluster, serial)
-				}
-			}
-		}
-	case strings.HasPrefix(key, unifiedRevocationReadPathPrefix):
-		// Three parts to this key: prefix, cluster, and serial.
-		split := strings.Split(key, "/")
-		cluster := split[len(split)-2]
-		serial := split[len(split)-1]
-		b.crlBuilder.addCertFromCrossRevocation(cluster, serial)
 	}
 }
 
@@ -576,16 +524,6 @@ func (b *backend) periodicFunc(ctx context.Context, request *logical.Request) er
 		if b.System().ReplicationState().HasState(consts.ReplicationPerformanceStandby) ||
 			b.System().ReplicationState().HasState(consts.ReplicationDRSecondary) {
 			return nil
-		}
-
-		// First handle any global revocation queue entries.
-		if err := b.crlBuilder.processRevocationQueue(sc); err != nil {
-			return err
-		}
-
-		// Then handle any unified cross-cluster revocations.
-		if err := b.crlBuilder.processCrossClusterRevocations(sc); err != nil {
-			return err
 		}
 
 		// Check if we're set to auto rebuild and a CRL is set to expire.
@@ -677,10 +615,6 @@ func (b *backend) periodicFunc(ctx context.Context, request *logical.Request) er
 
 	// First tidy any ACME nonces to free memory.
 	b.acmeState.DoTidyNonces()
-
-	// Then run unified transfer.
-	backgroundSc := b.makeStorageContext(context.Background(), b.storage)
-	go runUnifiedTransfer(backgroundSc)
 
 	// Then run the CRL rebuild and tidy operation.
 	crlErr := doCRL()

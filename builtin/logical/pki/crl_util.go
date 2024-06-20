@@ -16,25 +16,18 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/sdk/helper/errutil"
 	"github.com/openbao/openbao/sdk/logical"
 	atomic2 "go.uber.org/atomic"
 )
 
 const (
-	revokedPath                      = "revoked/"
-	crossRevocationPrefix            = "cross-revocation-queue/"
-	crossRevocationPath              = crossRevocationPrefix + "{{clusterId}}/"
-	deltaWALLastBuildSerialName      = "last-build-serial"
-	deltaWALLastRevokedSerialName    = "last-revoked-serial"
-	localDeltaWALPath                = "delta-wal/"
-	localDeltaWALLastBuildSerial     = localDeltaWALPath + deltaWALLastBuildSerialName
-	localDeltaWALLastRevokedSerial   = localDeltaWALPath + deltaWALLastRevokedSerialName
-	unifiedDeltaWALPrefix            = "unified-delta-wal/"
-	unifiedDeltaWALPath              = "unified-delta-wal/{{clusterId}}/"
-	unifiedDeltaWALLastBuildSerial   = unifiedDeltaWALPath + deltaWALLastBuildSerialName
-	unifiedDeltaWALLastRevokedSerial = unifiedDeltaWALPath + deltaWALLastRevokedSerialName
+	revokedPath                    = "revoked/"
+	deltaWALLastBuildSerialName    = "last-build-serial"
+	deltaWALLastRevokedSerialName  = "last-revoked-serial"
+	localDeltaWALPath              = "delta-wal/"
+	localDeltaWALLastBuildSerial   = localDeltaWALPath + deltaWALLastBuildSerialName
+	localDeltaWALLastRevokedSerial = localDeltaWALPath + deltaWALLastRevokedSerialName
 )
 
 type revocationInfo struct {
@@ -51,11 +44,6 @@ type revocationRequest struct {
 type revocationConfirmed struct {
 	RevokedAt string `json:"revoked_at"`
 	Source    string `json:"source"`
-}
-
-type revocationQueueEntry struct {
-	Cluster string
-	Serial  string
 }
 
 type (
@@ -102,13 +90,6 @@ type crlBuilder struct {
 	// Whether to invalidate our LastModifiedTime due to write on the
 	// global issuance config.
 	invalidate *atomic2.Bool
-
-	// Global revocation queue entries get accepted by the invalidate func
-	// and passed to the crlBuilder for processing.
-	haveInitializedQueue *atomic2.Bool
-	revQueue             *revocationQueue
-	removalQueue         *revocationQueue
-	crossQueue           *revocationQueue
 }
 
 const (
@@ -127,10 +108,6 @@ func newCRLBuilder(canRebuild bool) *crlBuilder {
 		dirty:                 atomic2.NewBool(true),
 		config:                defaultCrlConfig,
 		invalidate:            atomic2.NewBool(false),
-		haveInitializedQueue:  atomic2.NewBool(false),
-		revQueue:              newRevocationQueue(),
-		removalQueue:          newRevocationQueue(),
-		crossQueue:            newRevocationQueue(),
 	}
 }
 
@@ -155,7 +132,6 @@ func (cb *crlBuilder) reloadConfigIfRequired(sc *storageContext) error {
 			return err
 		}
 
-		previousConfig := cb.config
 		// Set the default config if none was returned to us.
 		if config != nil {
 			cb.config = *config
@@ -165,32 +141,12 @@ func (cb *crlBuilder) reloadConfigIfRequired(sc *storageContext) error {
 
 		// Updated the config; unset dirty.
 		cb.dirty.Store(false)
-		triggerChangeNotification := true
 		if !cb.haveInitializedConfig {
 			cb.haveInitializedConfig = true
-			triggerChangeNotification = false // do not trigger on the initial loading of configuration.
-		}
-
-		// Certain things need to be triggered on all server types when crlConfig is loaded.
-		if triggerChangeNotification {
-			cb.notifyOnConfigChange(sc, previousConfig, cb.config)
 		}
 	}
 
 	return nil
-}
-
-func (cb *crlBuilder) notifyOnConfigChange(sc *storageContext, priorConfig crlConfig, newConfig crlConfig) {
-	// If you need to hook into a CRL configuration change across different server types
-	// such as primary clusters as well as performance replicas, it is easier to do here than
-	// in two places (API layer and in invalidateFunc)
-	if priorConfig.UnifiedCRL != newConfig.UnifiedCRL && newConfig.UnifiedCRL {
-		sc.Backend.unifiedTransferStatus.forceRun()
-	}
-
-	if priorConfig.UseGlobalQueue != newConfig.UseGlobalQueue && newConfig.UseGlobalQueue {
-		cb.haveInitializedQueue.Store(false)
-	}
 }
 
 func (cb *crlBuilder) getConfigWithUpdate(sc *storageContext) (*crlConfig, error) {
@@ -366,31 +322,6 @@ func (cb *crlBuilder) getPresentLocalDeltaWALForClearing(sc *storageContext) ([]
 	return cb._getPresentDeltaWALForClearing(sc, localDeltaWALPath)
 }
 
-func (cb *crlBuilder) getPresentUnifiedDeltaWALForClearing(sc *storageContext) ([]string, error) {
-	walClusters, err := sc.Storage.List(sc.Context, unifiedDeltaWALPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching list of clusters with delta WAL entries: %w", err)
-	}
-
-	var allPaths []string
-	for index, cluster := range walClusters {
-		prefix := unifiedDeltaWALPrefix + cluster
-		clusterPaths, err := cb._getPresentDeltaWALForClearing(sc, prefix)
-		if err != nil {
-			return nil, fmt.Errorf("error fetching delta WAL entries for cluster (%v / %v): %w", index, cluster, err)
-		}
-
-		// Here, we don't want to include the unifiedDeltaWALPrefix because
-		// clearUnifiedDeltaWAL handles that for us. Instead, just include
-		// the cluster identifier.
-		for _, clusterPath := range clusterPaths {
-			allPaths = append(allPaths, cluster+clusterPath)
-		}
-	}
-
-	return allPaths, nil
-}
-
 func (cb *crlBuilder) _clearDeltaWAL(sc *storageContext, walSerials []string, path string) error {
 	// Clearing of the delta WAL occurs after a new complete CRL has been built.
 	for _, serial := range walSerials {
@@ -409,10 +340,6 @@ func (cb *crlBuilder) _clearDeltaWAL(sc *storageContext, walSerials []string, pa
 
 func (cb *crlBuilder) clearLocalDeltaWAL(sc *storageContext, walSerials []string) error {
 	return cb._clearDeltaWAL(sc, walSerials, localDeltaWALPath)
-}
-
-func (cb *crlBuilder) clearUnifiedDeltaWAL(sc *storageContext, walSerials []string) error {
-	return cb._clearDeltaWAL(sc, walSerials, unifiedDeltaWALPrefix)
 }
 
 func (cb *crlBuilder) rebuildDeltaCRLsIfForced(sc *storageContext, override bool) ([]string, error) {
@@ -468,12 +395,7 @@ func (cb *crlBuilder) rebuildDeltaCRLsIfForced(sc *storageContext, override bool
 		return nil, fmt.Errorf("error determining if local CRLs should be rebuilt: %w", err)
 	}
 
-	rebuildUnified, err := cb._shouldRebuildUnifiedCRLs(sc, override)
-	if err != nil {
-		return nil, fmt.Errorf("error determining if unified CRLs should be rebuilt: %w", err)
-	}
-
-	if !rebuildLocal && !rebuildUnified {
+	if !rebuildLocal {
 		return nil, nil
 	}
 
@@ -527,80 +449,6 @@ func (cb *crlBuilder) _shouldRebuildLocalCRLs(sc *storageContext, override bool)
 	return true, nil
 }
 
-func (cb *crlBuilder) _shouldRebuildUnifiedCRLs(sc *storageContext, override bool) (bool, error) {
-	// Unified CRL can only be built by the main cluster.
-	b := sc.Backend
-	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
-		return false, nil
-	}
-
-	// If we're overriding whether we should build Delta CRLs, always return
-	// true, even if storage errors might've happen.
-	if override {
-		return true, nil
-	}
-
-	// Fetch two storage entries to see if we actually need to do this
-	// rebuild, given we're within the window. We need to fetch these
-	// two entries per cluster.
-	clusters, err := sc.Storage.List(sc.Context, unifiedDeltaWALPrefix)
-	if err != nil {
-		return false, fmt.Errorf("failed to get the list of clusters having written Delta WALs: %w", err)
-	}
-
-	// If any cluster tells us to rebuild, we should rebuild.
-	shouldRebuild := false
-	for index, cluster := range clusters {
-		prefix := unifiedDeltaWALPrefix + cluster
-		clusterUnifiedLastRevokedWALEntry := prefix + deltaWALLastRevokedSerialName
-		clusterUnifiedLastBuiltWALEntry := prefix + deltaWALLastBuildSerialName
-
-		lastWALEntry, err := sc.Storage.Get(sc.Context, clusterUnifiedLastRevokedWALEntry)
-		if err != nil {
-			return false, fmt.Errorf("failed fetching last revoked WAL entry for cluster (%v / %v): %w", index, cluster, err)
-		}
-
-		if lastWALEntry == nil || lastWALEntry.Value == nil {
-			continue
-		}
-
-		lastBuildEntry, err := sc.Storage.Get(sc.Context, clusterUnifiedLastBuiltWALEntry)
-		if err != nil {
-			return false, fmt.Errorf("failed fetching last built CRL WAL entry for cluster (%v / %v): %w", index, cluster, err)
-		}
-
-		if lastBuildEntry == nil || lastBuildEntry.Value == nil {
-			// If the last build entry doesn't exist, we still want to build a
-			// new delta WAL, since this could be our very first time doing so.
-			shouldRebuild = true
-			break
-		}
-
-		// Otherwise, here, now that we know it exists, we want to check this
-		// value against the other value. Since we previously guarded the WAL
-		// entry being non-empty, we're good to decode everything within this
-		// guard.
-		var walInfo lastWALInfo
-		if err := lastWALEntry.DecodeJSON(&walInfo); err != nil {
-			return false, fmt.Errorf("failed decoding last revoked WAL entry for cluster (%v / %v): %w", index, cluster, err)
-		}
-
-		var deltaInfo lastDeltaInfo
-		if err := lastBuildEntry.DecodeJSON(&deltaInfo); err != nil {
-			return false, fmt.Errorf("failed decoding last built CRL WAL entry for cluster (%v / %v): %w", index, cluster, err)
-		}
-
-		if walInfo.Serial != deltaInfo.Serial {
-			shouldRebuild = true
-			break
-		}
-	}
-
-	// No errors occurred, so return the result.
-	return shouldRebuild, nil
-}
-
 func (cb *crlBuilder) rebuildDeltaCRLs(sc *storageContext, forceNew bool) ([]string, error) {
 	cb._builder.Lock()
 	defer cb._builder.Unlock()
@@ -610,265 +458,6 @@ func (cb *crlBuilder) rebuildDeltaCRLs(sc *storageContext, forceNew bool) ([]str
 
 func (cb *crlBuilder) rebuildDeltaCRLsHoldingLock(sc *storageContext, forceNew bool) ([]string, error) {
 	return buildAnyCRLs(sc, forceNew, true /* building delta */)
-}
-
-func (cb *crlBuilder) addCertForRevocationCheck(cluster, serial string) {
-	entry := &revocationQueueEntry{
-		Cluster: cluster,
-		Serial:  serial,
-	}
-	cb.revQueue.Add(entry)
-}
-
-func (cb *crlBuilder) addCertForRevocationRemoval(cluster, serial string) {
-	entry := &revocationQueueEntry{
-		Cluster: cluster,
-		Serial:  serial,
-	}
-	cb.removalQueue.Add(entry)
-}
-
-func (cb *crlBuilder) addCertFromCrossRevocation(cluster, serial string) {
-	entry := &revocationQueueEntry{
-		Cluster: cluster,
-		Serial:  serial,
-	}
-	cb.crossQueue.Add(entry)
-}
-
-func (cb *crlBuilder) maybeGatherQueueForFirstProcess(sc *storageContext, isNotPerfPrimary bool) error {
-	// Assume holding lock.
-	if cb.haveInitializedQueue.Load() {
-		return nil
-	}
-
-	sc.Backend.Logger().Debug(fmt.Sprintf("gathering first time existing revocations"))
-
-	clusters, err := sc.Storage.List(sc.Context, crossRevocationPrefix)
-	if err != nil {
-		return fmt.Errorf("failed to list cross-cluster revocation queue participating clusters: %w", err)
-	}
-
-	sc.Backend.Logger().Debug(fmt.Sprintf("found %v clusters: %v", len(clusters), clusters))
-
-	for cIndex, cluster := range clusters {
-		cluster = cluster[0 : len(cluster)-1]
-		cPath := crossRevocationPrefix + cluster + "/"
-		serials, err := sc.Storage.List(sc.Context, cPath)
-		if err != nil {
-			return fmt.Errorf("failed to list cross-cluster revocation queue entries for cluster %v (%v): %w", cluster, cIndex, err)
-		}
-
-		sc.Backend.Logger().Debug(fmt.Sprintf("found %v serials for cluster %v: %v", len(serials), cluster, serials))
-
-		for _, serial := range serials {
-			if serial[len(serial)-1] == '/' {
-				serial = serial[0 : len(serial)-1]
-			}
-
-			ePath := cPath + serial
-			eConfirmPath := ePath + "/confirmed"
-			removalEntry, err := sc.Storage.Get(sc.Context, eConfirmPath)
-
-			entry := &revocationQueueEntry{
-				Cluster: cluster,
-				Serial:  serial,
-			}
-
-			// No removal entry yet; add to regular queue. Otherwise, slate it
-			// for removal if we're a perfPrimary.
-			if err != nil || removalEntry == nil {
-				cb.revQueue.Add(entry)
-			} else if !isNotPerfPrimary {
-				cb.removalQueue.Add(entry)
-			} // Else, this is a confirmation but we're on a perf secondary so ignore it.
-
-			// Overwrite the error; we don't really care about its contents
-			// at this step.
-			err = nil
-		}
-	}
-
-	return nil
-}
-
-func (cb *crlBuilder) processRevocationQueue(sc *storageContext) error {
-	sc.Backend.Logger().Debug(fmt.Sprintf("starting to process revocation requests"))
-
-	isNotPerfPrimary := sc.Backend.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-		(!sc.Backend.System().LocalMount() && sc.Backend.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary))
-
-	if err := cb.maybeGatherQueueForFirstProcess(sc, isNotPerfPrimary); err != nil {
-		return fmt.Errorf("failed to gather first queue: %w", err)
-	}
-
-	revQueue := cb.revQueue.Iterate()
-	removalQueue := cb.removalQueue.Iterate()
-
-	sc.Backend.Logger().Debug(fmt.Sprintf("gathered %v revocations and %v confirmation entries", len(revQueue), len(removalQueue)))
-
-	crlConfig, err := cb.getConfigWithUpdate(sc)
-	if err != nil {
-		return err
-	}
-
-	ourClusterId, err := sc.Backend.System().ClusterID(sc.Context)
-	if err != nil {
-		return fmt.Errorf("unable to fetch clusterID to ignore local revocation entries: %w", err)
-	}
-
-	for _, req := range revQueue {
-		// Regardless of whether we're on the perf primary or a secondary
-		// cluster, we can safely ignore revocation requests originating
-		// from our node, because we've already checked them once (when
-		// they were created).
-		if ourClusterId != "" && ourClusterId == req.Cluster {
-			continue
-		}
-
-		// Fetch the revocation entry to ensure it exists.
-		rPath := crossRevocationPrefix + req.Cluster + "/" + req.Serial
-		entry, err := sc.Storage.Get(sc.Context, rPath)
-		if err != nil {
-			return fmt.Errorf("failed to read cross-cluster revocation queue entry: %w", err)
-		}
-		if entry == nil {
-			// Skipping this entry; it was likely an incorrect invalidation
-			// caused by the primary cluster removing the confirmation.
-			cb.revQueue.Remove(req)
-			continue
-		}
-
-		resp, err := tryRevokeCertBySerial(sc, crlConfig, req.Serial)
-		if err == nil && resp != nil && !resp.IsError() && resp.Data != nil && resp.Data["state"].(string) == "revoked" {
-			if isNotPerfPrimary {
-				// Write a revocation queue removal entry.
-				confirmed := revocationConfirmed{
-					RevokedAt: resp.Data["revocation_time_rfc3339"].(string),
-					Source:    req.Cluster,
-				}
-				path := crossRevocationPath + req.Serial + "/confirmed"
-				confirmedEntry, err := logical.StorageEntryJSON(path, confirmed)
-				if err != nil {
-					return fmt.Errorf("failed to create storage entry for cross-cluster revocation confirmed response: %w", err)
-				}
-
-				if err := sc.Storage.Put(sc.Context, confirmedEntry); err != nil {
-					return fmt.Errorf("error persisting cross-cluster revocation confirmation: %w", err)
-				}
-			} else {
-				// Since we're the active node of the primary cluster, go ahead
-				// and just remove it.
-				path := crossRevocationPrefix + req.Cluster + "/" + req.Serial
-				if err := sc.Storage.Delete(sc.Context, path); err != nil {
-					return fmt.Errorf("failed to delete processed revocation request: %w", err)
-				}
-			}
-		} else if err != nil {
-			// Because we fake being from a lease, we get the guarantee that
-			// err == nil == resp if the cert was already revoked; this means
-			// this err should actually be fatal.
-			return err
-		}
-		cb.revQueue.Remove(req)
-	}
-
-	if isNotPerfPrimary {
-		sc.Backend.Logger().Debug(fmt.Sprintf("not on perf primary so ignoring any revocation confirmations"))
-
-		// See note in pki/backend.go; this should be empty.
-		cb.removalQueue.RemoveAll()
-		cb.haveInitializedQueue.Store(true)
-		return nil
-	}
-
-	clusters, err := sc.Storage.List(sc.Context, crossRevocationPrefix)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range removalQueue {
-		// First remove the revocation request.
-		for cIndex, cluster := range clusters {
-			eEntry := crossRevocationPrefix + cluster + entry.Serial
-			if err := sc.Storage.Delete(sc.Context, eEntry); err != nil {
-				return fmt.Errorf("failed to delete potential cross-cluster revocation entry for cluster %v (%v) and serial %v: %w", cluster, cIndex, entry.Serial, err)
-			}
-		}
-
-		// Then remove the confirmation.
-		if err := sc.Storage.Delete(sc.Context, crossRevocationPrefix+entry.Cluster+"/"+entry.Serial+"/confirmed"); err != nil {
-			return fmt.Errorf("failed to delete cross-cluster revocation confirmation entry for cluster %v and serial %v: %w", entry.Cluster, entry.Serial, err)
-		}
-
-		cb.removalQueue.Remove(entry)
-	}
-
-	cb.haveInitializedQueue.Store(true)
-
-	return nil
-}
-
-func (cb *crlBuilder) processCrossClusterRevocations(sc *storageContext) error {
-	sc.Backend.Logger().Debug(fmt.Sprintf("starting to process unified revocations"))
-
-	crlConfig, err := cb.getConfigWithUpdate(sc)
-	if err != nil {
-		return err
-	}
-
-	if !crlConfig.UnifiedCRL {
-		cb.crossQueue.RemoveAll()
-		return nil
-	}
-
-	crossQueue := cb.crossQueue.Iterate()
-	sc.Backend.Logger().Debug(fmt.Sprintf("gathered %v unified revocations entries", len(crossQueue)))
-
-	ourClusterId, err := sc.Backend.System().ClusterID(sc.Context)
-	if err != nil {
-		return fmt.Errorf("unable to fetch clusterID to ignore local unified revocation entries: %w", err)
-	}
-
-	for _, req := range crossQueue {
-		// Regardless of whether we're on the perf primary or a secondary
-		// cluster, we can safely ignore revocation requests originating
-		// from our node, because we've already checked them once (when
-		// they were created).
-		if ourClusterId != "" && ourClusterId == req.Cluster {
-			continue
-		}
-
-		// Fetch the revocation entry to ensure it exists and this wasn't
-		// a delete.
-		rPath := unifiedRevocationReadPathPrefix + req.Cluster + "/" + req.Serial
-		entry, err := sc.Storage.Get(sc.Context, rPath)
-		if err != nil {
-			return fmt.Errorf("failed to read unified revocation entry: %w", err)
-		}
-		if entry == nil {
-			// Skip this entry: it was likely caused by the deletion of this
-			// record during tidy.
-			cb.crossQueue.Remove(req)
-			continue
-		}
-
-		resp, err := tryRevokeCertBySerial(sc, crlConfig, req.Serial)
-		if err == nil && resp != nil && !resp.IsError() && resp.Data != nil && resp.Data["state"].(string) == "revoked" {
-			// We could theoretically save ourselves from writing a global
-			// revocation entry during the above certificate revocation, as
-			// we don't really need it to appear on either the unified CRL
-			// or its delta CRL, but this would require more plumbing.
-			cb.crossQueue.Remove(req)
-		} else if err != nil {
-			// Because we fake being from a lease, we get the guarantee that
-			// err == nil == resp if the cert was already revoked; this means
-			// this err should actually be fatal.
-			return err
-		}
-	}
-
-	return nil
 }
 
 // Helper function to fetch a map of issuerID->parsed cert for revocation
@@ -1035,30 +624,6 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 		},
 	}
 
-	// If this flag is enabled after the fact, existing local entries will be published to
-	// the unified storage space through a periodic function.
-	failedWritingUnifiedCRL := false
-	if config.UnifiedCRL {
-		entry := &unifiedRevocationEntry{
-			SerialNumber:      colonSerial,
-			CertExpiration:    cert.NotAfter,
-			RevocationTimeUTC: revInfo.RevocationTimeUTC,
-			CertificateIssuer: revInfo.CertificateIssuer,
-		}
-
-		ignoreErr := writeUnifiedRevocationEntry(sc, entry)
-		if ignoreErr != nil {
-			// Just log the error if we fail to write across clusters, a separate background
-			// thread will reattempt it later on as we have the local write done.
-			sc.Backend.Logger().Error("Failed to write unified revocation entry, will re-attempt later",
-				"serial_number", colonSerial, "error", ignoreErr)
-			sc.Backend.unifiedTransferStatus.forceRun()
-
-			resp.AddWarning(fmt.Sprintf("Failed to write unified revocation entry, will re-attempt later: %v", err))
-			failedWritingUnifiedCRL = true
-		}
-	}
-
 	if !config.AutoRebuild {
 		// Note that writing the Delta WAL here isn't necessary; we've
 		// already rebuilt the full CRL so the Delta WAL will be cleared
@@ -1077,7 +642,7 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 			resp.AddWarning(fmt.Sprintf("Warning %d during CRL rebuild: %v", index+1, warning))
 		}
 	} else if config.EnableDelta {
-		if err := writeRevocationDeltaWALs(sc, config, resp, failedWritingUnifiedCRL, hyphenSerial, colonSerial); err != nil {
+		if err := writeRevocationDeltaWALs(sc, config, resp, hyphenSerial, colonSerial); err != nil {
 			return nil, fmt.Errorf("failed to write WAL entries for Delta CRLs: %w", err)
 		}
 	}
@@ -1085,36 +650,9 @@ func revokeCert(sc *storageContext, config *crlConfig, cert *x509.Certificate) (
 	return resp, nil
 }
 
-func writeRevocationDeltaWALs(sc *storageContext, config *crlConfig, resp *logical.Response, failedWritingUnifiedCRL bool, hyphenSerial string, colonSerial string) error {
+func writeRevocationDeltaWALs(sc *storageContext, config *crlConfig, resp *logical.Response, hyphenSerial string, colonSerial string) error {
 	if err := writeSpecificRevocationDeltaWALs(sc, hyphenSerial, colonSerial, localDeltaWALPath); err != nil {
 		return fmt.Errorf("failed to write local delta WAL entry: %w", err)
-	}
-
-	if config.UnifiedCRL && !failedWritingUnifiedCRL {
-		// We only need to write cross-cluster unified Delta WAL entries when
-		// it is enabled; in particular, because we rebuild CRLs when enabling
-		// this flag, any revocations that happened prior to enabling unified
-		// revocation will appear on the complete CRL (+/- synchronization:
-		// in particular, if a perf replica revokes a cert prior to seeing
-		// unified revocation enabled, but after the main node has done the
-		// listing for the unified CRL rebuild, this revocation will not
-		// appear on either the main or the next delta CRL, but will need to
-		// wait for a subsequent complete CRL rebuild).
-		//
-		// Lastly, we don't attempt this if the unified CRL entry failed to
-		// write, as we need that entry before the delta WAL entry will make
-		// sense.
-		if ignoredErr := writeSpecificRevocationDeltaWALs(sc, hyphenSerial, colonSerial, unifiedDeltaWALPath); ignoredErr != nil {
-			// Just log the error if we fail to write across clusters, a separate background
-			// thread will reattempt it later on as we have the local write done.
-			sc.Backend.Logger().Error("Failed to write cross-cluster delta WAL entry, will re-attempt later",
-				"serial_number", colonSerial, "error", ignoredErr)
-			sc.Backend.unifiedTransferStatus.forceRun()
-
-			resp.AddWarning(fmt.Sprintf("Failed to write cross-cluster delta WAL entry, will re-attempt later: %v", ignoredErr))
-		}
-	} else if failedWritingUnifiedCRL {
-		resp.AddWarning("Skipping cross-cluster delta WAL entry as cross-cluster revocation failed to write; will re-attempt later.")
 	}
 
 	return nil
@@ -1128,11 +666,6 @@ func writeSpecificRevocationDeltaWALs(sc *storageContext, hyphenSerial string, c
 	// missing Delta WAL entries), but writing extra (unused?) WAL entries
 	// versus an expensive full CRL rebuild was thought of as being
 	// probably a net wash.
-	//
-	// However, we've now added unified CRL building, adding cross-cluster
-	// writes to the revocation path. Because this is relatively expensive,
-	// we've opted to rebuild the complete+delta CRLs when toggling the
-	// state of delta enabled, instead of always writing delta CRL entries.
 	//
 	// Thus Delta WAL building happens **only** when Delta CRLs are enabled.
 	//
@@ -1309,20 +842,10 @@ func buildAnyCRLs(sc *storageContext, forceNew bool, isDelta bool) ([]string, er
 	if err != nil {
 		return nil, err
 	}
-	currUnifiedDeltaSerials, unifiedWarnings, err := buildAnyUnifiedCRLs(sc, issuersConfig, globalCRLConfig,
-		issuers, issuerIDEntryMap,
-		issuerIDCertMap, keySubjectIssuersMap,
-		wasLegacy, forceNew, isDelta)
-	if err != nil {
-		return nil, err
-	}
 
 	var warnings []string
 	for _, warning := range localWarnings {
 		warnings = append(warnings, fmt.Sprintf("warning from local CRL rebuild: %v", warning))
-	}
-	for _, warning := range unifiedWarnings {
-		warnings = append(warnings, fmt.Sprintf("warning from unified CRL rebuild: %v", warning))
 	}
 
 	// Finally, we decide if we need to rebuild the Delta CRLs again, for both
@@ -1331,9 +854,6 @@ func buildAnyCRLs(sc *storageContext, forceNew bool, isDelta bool) ([]string, er
 		// After we've confirmed the primary CRLs have built OK, go ahead and
 		// clear the delta CRL WAL and rebuild it.
 		if err := sc.Backend.crlBuilder.clearLocalDeltaWAL(sc, currLocalDeltaSerials); err != nil {
-			return nil, fmt.Errorf("error building CRLs: unable to clear Delta WAL: %w", err)
-		}
-		if err := sc.Backend.crlBuilder.clearUnifiedDeltaWAL(sc, currUnifiedDeltaSerials); err != nil {
 			return nil, fmt.Errorf("error building CRLs: unable to clear Delta WAL: %w", err)
 		}
 		deltaWarnings, err := sc.Backend.crlBuilder.rebuildDeltaCRLsHoldingLock(sc, forceNew)
@@ -1445,7 +965,7 @@ func buildAnyLocalCRLs(
 	rebuildWarnings, err := buildAnyCRLsWithCerts(sc, issuersConfig, globalCRLConfig, internalCRLConfig,
 		issuers, issuerIDEntryMap, keySubjectIssuersMap,
 		unassignedCerts, revokedCertsMap,
-		forceNew, false /* isUnified */, isDelta)
+		forceNew, isDelta)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error building CRLs: %w", err)
 	}
@@ -1486,157 +1006,6 @@ func buildAnyLocalCRLs(
 	return currDeltaCerts, warnings, nil
 }
 
-func buildAnyUnifiedCRLs(
-	sc *storageContext,
-	issuersConfig *issuerConfigEntry,
-	globalCRLConfig *crlConfig,
-	issuers []issuerID,
-	issuerIDEntryMap map[issuerID]*issuerEntry,
-	issuerIDCertMap map[issuerID]*x509.Certificate,
-	keySubjectIssuersMap map[keyID]map[string][]issuerID,
-	wasLegacy bool,
-	forceNew bool,
-	isDelta bool,
-) ([]string, []string, error) {
-	var err error
-	var warnings []string
-
-	// Unified CRL can only be built by the main cluster.
-	b := sc.Backend
-	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
-		return nil, nil, nil
-	}
-
-	// Unified CRL should only be built if enabled.
-	if !globalCRLConfig.UnifiedCRL && !forceNew {
-		return nil, nil, nil
-	}
-
-	// Before we load cert entries, we want to store the last seen delta WAL
-	// serial number. The subsequent List will have at LEAST that certificate
-	// (and potentially more) in it; when we're done writing the delta CRL,
-	// we'll write this serial as a sentinel to see if we need to rebuild it
-	// in the future.
-	//
-	// We need to do this per-cluster.
-	lastDeltaSerial := map[string]string{}
-	if isDelta {
-		clusters, err := sc.Storage.List(sc.Context, unifiedDeltaWALPrefix)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error listing clusters for unified delta WAL building: %w", err)
-		}
-
-		for index, cluster := range clusters {
-			path := unifiedDeltaWALPrefix + cluster + deltaWALLastRevokedSerialName
-			serial, err := getLastWALSerial(sc, path)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error getting last written Delta WAL serial for cluster (%v / %v): %w", index, cluster, err)
-			}
-
-			lastDeltaSerial[cluster] = serial
-		}
-	}
-
-	// We fetch a list of delta WAL entries prior to generating the complete
-	// CRL. This allows us to avoid a lock (to clear such storage): anything
-	// visible now, should also be visible on the complete CRL we're writing.
-	var currDeltaCerts []string
-	if !isDelta {
-		currDeltaCerts, err = sc.Backend.crlBuilder.getPresentUnifiedDeltaWALForClearing(sc)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error building CRLs: unable to get present delta WAL entries for removal: %w", err)
-		}
-	}
-
-	var unassignedCerts []pkix.RevokedCertificate
-	var revokedCertsMap map[issuerID][]pkix.RevokedCertificate
-
-	// If the CRL is disabled do not bother reading in all the revoked certificates.
-	if !globalCRLConfig.Disable {
-		// Next, we load and parse all revoked certificates. We need to assign
-		// these certificates to an issuer. Some certificates will not be
-		// assignable (if they were issued by a since-deleted issuer), so we need
-		// a separate pool for those.
-		unassignedCerts, revokedCertsMap, err = getUnifiedRevokedCertEntries(sc, issuerIDCertMap, isDelta)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error building CRLs: unable to get revoked certificate entries: %w", err)
-		}
-
-		if !isDelta {
-			// Revoking an issuer forces us to rebuild our complete CRL,
-			// regardless of whether or not we've enabled auto rebuilding or
-			// delta CRLs. If we elide the above isDelta check, this results
-			// in a non-empty delta CRL, containing the serial of the
-			// now-revoked issuer, even though it was generated _after_ the
-			// complete CRL with the issuer on it. There's no reason to
-			// duplicate this serial number on the delta, hence the above
-			// guard for isDelta.
-			if err := augmentWithRevokedIssuers(issuerIDEntryMap, issuerIDCertMap, revokedCertsMap); err != nil {
-				return nil, nil, fmt.Errorf("error building CRLs: unable to parse revoked issuers: %w", err)
-			}
-		}
-	}
-
-	// Fetch the cluster-local CRL mapping so we know where to write the
-	// CRLs.
-	internalCRLConfig, err := sc.getUnifiedCRLConfig()
-	if err != nil {
-		return nil, nil, fmt.Errorf("error building CRLs: unable to fetch cluster-local CRL configuration: %w", err)
-	}
-
-	rebuildWarnings, err := buildAnyCRLsWithCerts(sc, issuersConfig, globalCRLConfig, internalCRLConfig,
-		issuers, issuerIDEntryMap, keySubjectIssuersMap,
-		unassignedCerts, revokedCertsMap,
-		forceNew, true /* isUnified */, isDelta)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error building CRLs: %w", err)
-	}
-	if len(rebuildWarnings) > 0 {
-		warnings = append(warnings, rebuildWarnings...)
-	}
-
-	// Finally, persist our potentially updated local CRL config. Only do this
-	// if we didn't have a legacy CRL bundle.
-	if !wasLegacy {
-		if err := sc.setUnifiedCRLConfig(internalCRLConfig); err != nil {
-			return nil, nil, fmt.Errorf("error building CRLs: unable to persist updated cluster-local CRL config: %w", err)
-		}
-	}
-
-	if isDelta {
-		// Update our last build time here so we avoid checking for new certs
-		// for a while.
-		sc.Backend.crlBuilder.lastDeltaRebuildCheck = time.Now()
-
-		// Persist all of our known last revoked serial numbers here, as the
-		// last seen serial during build. This will allow us to detect if any
-		// new revocations have occurred, forcing us to rebuild the delta CRL.
-		for cluster, serial := range lastDeltaSerial {
-			if len(serial) == 0 {
-				continue
-			}
-
-			// Make sure to use the cluster-specific path. Since we're on the
-			// active node of the primary cluster, we own this entry and can
-			// safely write it.
-			path := unifiedDeltaWALPrefix + cluster + deltaWALLastBuildSerialName
-			deltaInfo := lastDeltaInfo{Serial: serial}
-			lastDeltaBuildEntry, err := logical.StorageEntryJSON(path, deltaInfo)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error creating last delta CRL rebuild serial entry: %w", err)
-			}
-
-			err = sc.Storage.Put(sc.Context, lastDeltaBuildEntry)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error persisting last delta CRL rebuild info: %w", err)
-			}
-		}
-	}
-
-	return currDeltaCerts, warnings, nil
-}
-
 func buildAnyCRLsWithCerts(
 	sc *storageContext,
 	issuersConfig *issuerConfigEntry,
@@ -1648,7 +1017,6 @@ func buildAnyCRLsWithCerts(
 	unassignedCerts []pkix.RevokedCertificate,
 	revokedCertsMap map[issuerID][]pkix.RevokedCertificate,
 	forceNew bool,
-	isUnified bool,
 	isDelta bool,
 ) ([]string, error) {
 	// Now we can call buildCRL once, on an arbitrary/representative issuer
@@ -1727,7 +1095,7 @@ func buildAnyCRLsWithCerts(
 				warning += strings.Join(issuers, ",")
 
 				// We only need this warning once. :-)
-				if !isUnified && !isDelta {
+				if !isDelta {
 					warnings = append(warnings, warning)
 				}
 
@@ -1769,7 +1137,7 @@ func buildAnyCRLsWithCerts(
 			}
 
 			// Lastly, build the CRL.
-			nextUpdate, err := buildCRL(sc, globalCRLConfig, forceNew, representative, revokedCerts, crlIdentifier, crlNumber, isUnified, isDelta, lastCompleteNumber)
+			nextUpdate, err := buildCRL(sc, globalCRLConfig, forceNew, representative, revokedCerts, crlIdentifier, crlNumber, isDelta, lastCompleteNumber)
 			if err != nil {
 				return nil, fmt.Errorf("error building CRLs: unable to build CRL for issuer (%v): %w", representative, err)
 			}
@@ -1983,102 +1351,6 @@ func getLocalRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID
 	return unassignedCerts, revokedCertsMap, nil
 }
 
-func getUnifiedRevokedCertEntries(sc *storageContext, issuerIDCertMap map[issuerID]*x509.Certificate, isDelta bool) ([]pkix.RevokedCertificate, map[issuerID][]pkix.RevokedCertificate, error) {
-	// Getting unified revocation entries is a bit different than getting
-	// the local ones. In particular, the full copy of the certificate is
-	// unavailable, so we'll be able to avoid parsing the stored certificate,
-	// at the expense of potentially having incorrect issuer mappings.
-	var unassignedCerts []pkix.RevokedCertificate
-	revokedCertsMap := make(map[issuerID][]pkix.RevokedCertificate)
-
-	listingPath := unifiedRevocationReadPathPrefix
-	if isDelta {
-		listingPath = unifiedDeltaWALPrefix
-	}
-
-	// First, we find all clusters that have written certificates.
-	clusterIds, err := sc.Storage.List(sc.Context, listingPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list clusters for unified CRL building: %w", err)
-	}
-
-	// We wish to prevent duplicate revocations on separate clusters from
-	// being added multiple times to the CRL. While we can't guarantee these
-	// are the same certificate, it doesn't matter as (as long as they have
-	// the same issuer), it'd imply issuance of two certs with the same
-	// serial which'd be an intentional violation of RFC 5280 before importing
-	// an issuer into Vault, and would be highly unlikely within Vault, due
-	// to 120-bit random serial numbers.
-	foundSerials := make(map[string]bool)
-
-	// Then for every cluster, we find its revoked certificates...
-	for _, clusterId := range clusterIds {
-		if !strings.HasSuffix(clusterId, "/") {
-			// No entries
-			continue
-		}
-
-		clusterPath := listingPath + clusterId
-		serials, err := sc.Storage.List(sc.Context, clusterPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to list serials in cluster (%v) for unified CRL building: %w", clusterId, err)
-		}
-
-		// At this point, we need the storage entry. Rather than using the
-		// clusterPath and adding the serial, we need to use the true
-		// cross-cluster revocation entry (as, our above listing might have
-		// used delta WAL entires without the full revocation info).
-		serialPrefix := unifiedRevocationReadPathPrefix + clusterId
-		for _, serial := range serials {
-			if isDelta && (serial == deltaWALLastBuildSerialName || serial == deltaWALLastRevokedSerialName) {
-				// Skip our placeholder entries...
-				continue
-			}
-
-			serialPath := serialPrefix + serial
-			entryRaw, err := sc.Storage.Get(sc.Context, serialPath)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to read unified revocation entry in cluster (%v) for unified CRL building: %w", clusterId, err)
-			}
-			if entryRaw == nil {
-				// Skip empty entries. We'll eventually tidy them.
-				continue
-			}
-
-			var xRevEntry unifiedRevocationEntry
-			if err := entryRaw.DecodeJSON(&xRevEntry); err != nil {
-				return nil, nil, fmt.Errorf("failed json decoding of unified revocation entry at path %v: %w ", serialPath, err)
-			}
-
-			// Convert to pkix.RevokedCertificate entries.
-			var revEntry pkix.RevokedCertificate
-			var ok bool
-			revEntry.SerialNumber, ok = serialToBigInt(serial)
-			if !ok {
-				return nil, nil, fmt.Errorf("failed to encode serial for CRL building: %v", serial)
-			}
-
-			revEntry.RevocationTime = xRevEntry.RevocationTimeUTC
-
-			if found, inFoundMap := foundSerials[normalizeSerial(serial)]; found && inFoundMap {
-				// Serial has already been added to the CRL.
-				continue
-			}
-			foundSerials[normalizeSerial(serial)] = true
-
-			// Finally, add it to the correct mapping.
-			_, present := issuerIDCertMap[xRevEntry.CertificateIssuer]
-			if !present {
-				unassignedCerts = append(unassignedCerts, revEntry)
-			} else {
-				revokedCertsMap[xRevEntry.CertificateIssuer] = append(revokedCertsMap[xRevEntry.CertificateIssuer], revEntry)
-			}
-		}
-	}
-
-	return unassignedCerts, revokedCertsMap, nil
-}
-
 func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issuerIDCertMap map[issuerID]*x509.Certificate, revokedCertsMap map[issuerID][]pkix.RevokedCertificate) error {
 	// When setup our maps with the legacy CA bundle, we only have a
 	// single entry here. This entry is never revoked, so the outer loop
@@ -2115,7 +1387,7 @@ func augmentWithRevokedIssuers(issuerIDEntryMap map[issuerID]*issuerEntry, issue
 
 // Builds a CRL by going through the list of revoked certificates and building
 // a new CRL with the stored revocation times and serial numbers.
-func buildCRL(sc *storageContext, crlInfo *crlConfig, forceNew bool, thisIssuerId issuerID, revoked []pkix.RevokedCertificate, identifier crlID, crlNumber int64, isUnified bool, isDelta bool, lastCompleteNumber int64) (*time.Time, error) {
+func buildCRL(sc *storageContext, crlInfo *crlConfig, forceNew bool, thisIssuerId issuerID, revoked []pkix.RevokedCertificate, identifier crlID, crlNumber int64, isDelta bool, lastCompleteNumber int64) (*time.Time, error) {
 	var revokedCerts []pkix.RevokedCertificate
 
 	crlLifetime, err := parseutil.ParseDurationSecond(crlInfo.Expiry)
@@ -2192,10 +1464,6 @@ WRITE:
 		// old legacy path and allow it to be updated.
 		writePath = legacyCRLPath
 	} else {
-		if isUnified {
-			writePath = unifiedCRLPathPrefix + writePath
-		}
-
 		if isDelta {
 			// Write the delta CRL to a unique storage location.
 			writePath += deltaCRLPathSuffix
@@ -2211,10 +1479,4 @@ WRITE:
 	}
 
 	return &nextUpdate, nil
-}
-
-// shouldLocalPathsUseUnified assuming a legacy path for a CRL/OCSP request, does our
-// configuration say we should be returning the unified response or not
-func shouldLocalPathsUseUnified(cfg *crlConfig) bool {
-	return cfg.UnifiedCRL && cfg.UnifiedCRLOnExistingPaths
 }

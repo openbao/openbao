@@ -1152,9 +1152,9 @@ func (b *backend) pathDeleteIssuer(ctx context.Context, req *logical.Request, da
 		response.AddWarning(msg)
 	}
 
-	// Finally, we need to rebuild both the local and the unified CRLs. This
-	// will free up any now unnecessary space used in both the CRL config
-	// and for the underlying CRL.
+	// Finally, we need to rebuild the local CRLs. This will free up any now
+	// unnecessary space used in both the CRL config and for the underlying
+	// CRL.
 	warnings, err := b.crlBuilder.rebuild(sc, true)
 	if err != nil {
 		return nil, err
@@ -1206,17 +1206,6 @@ func pathGetIssuerCRL(b *backend) *framework.Path {
 	displayAttrs := &framework.DisplayAttributes{
 		OperationPrefix: operationPrefixPKIIssuer,
 		OperationSuffix: "crl|crl-pem|crl-der|crl-delta|crl-delta-pem|crl-delta-der",
-	}
-
-	return buildPathGetIssuerCRL(b, pattern, displayAttrs)
-}
-
-func pathGetIssuerUnifiedCRL(b *backend) *framework.Path {
-	pattern := "issuer/" + framework.GenericNameRegex(issuerRefParam) + "/unified-crl(/pem|/der|/delta(/pem|/der)?)?"
-
-	displayAttrs := &framework.DisplayAttributes{
-		OperationPrefix: operationPrefixPKIIssuer,
-		OperationSuffix: "unified-crl|unified-crl-pem|unified-crl-der|unified-crl-delta|unified-crl-delta-pem|unified-crl-delta-der",
 	}
 
 	return buildPathGetIssuerCRL(b, pattern, displayAttrs)
@@ -1283,18 +1272,13 @@ func (b *backend) pathGetIssuerCRL(ctx context.Context, req *logical.Request, da
 	var certificate []byte
 	var contentType string
 
-	isUnified := strings.Contains(req.Path, "unified")
 	isDelta := strings.Contains(req.Path, "delta")
 
 	response := &logical.Response{}
 	var crlType ifModifiedReqType = ifModifiedCRL
 
-	if !isUnified && isDelta {
+	if isDelta {
 		crlType = ifModifiedDeltaCRL
-	} else if isUnified && !isDelta {
-		crlType = ifModifiedUnifiedCRL
-	} else if isUnified && isDelta {
-		crlType = ifModifiedUnifiedDeltaCRL
 	}
 
 	ret, err := sendNotModifiedResponseIfNecessary(&IfModifiedSinceHelper{req: req, reqType: crlType}, sc, response)
@@ -1305,7 +1289,7 @@ func (b *backend) pathGetIssuerCRL(ctx context.Context, req *logical.Request, da
 		return response, nil
 	}
 
-	crlPath, err := sc.resolveIssuerCRLPath(issuerName, isUnified)
+	crlPath, err := sc.resolveIssuerCRLPath(issuerName)
 	if err != nil {
 		return nil, err
 	}

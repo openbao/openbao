@@ -1467,11 +1467,6 @@ func TestCRLIssuerRemoval(t *testing.T) {
 	require.Contains(t, crlList, "config")
 	require.Greater(t, len(crlList), 1)
 
-	unifiedCRLList, err := s.List(ctx, "unified-crls/")
-	require.NoError(t, err)
-	require.Contains(t, unifiedCRLList, "config")
-	require.Greater(t, len(unifiedCRLList), 1)
-
 	// Now, create a bunch of issuers, generate CRLs, and remove them.
 	var keyIDs []string
 	var issuerIDs []string
@@ -1506,11 +1501,4 @@ func TestCRLIssuerRemoval(t *testing.T) {
 		require.Contains(t, afterCRLList, entry)
 	}
 	require.Equal(t, len(afterCRLList), len(crlList))
-
-	afterUnifiedCRLList, err := s.List(ctx, "unified-crls/")
-	require.NoError(t, err)
-	for _, entry := range unifiedCRLList {
-		require.Contains(t, afterUnifiedCRLList, entry)
-	}
-	require.Equal(t, len(afterUnifiedCRLList), len(unifiedCRLList))
 }

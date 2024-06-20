@@ -111,12 +111,6 @@ func TestTidyConfigs(t *testing.T) {
 			SecondValue:  2,
 			DefaultValue: int(defaultTidyConfig.AcmeAccountSafetyBuffer / time.Second),
 		},
-		{
-			Config:       "revocation_queue_safety_buffer",
-			FirstValue:   1,
-			SecondValue:  2,
-			DefaultValue: int(defaultTidyConfig.QueueSafetyBuffer / time.Second),
-		},
 	}
 
 	for _, flag := range configSafetyBufferValues {
@@ -555,7 +549,6 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["issuer_safety_buffer"] = int(time.Duration(defaultConfigMap["issuer_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
-	defaultConfigMap["revocation_queue_safety_buffer"] = int(time.Duration(defaultConfigMap["revocation_queue_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 
 	require.Equal(t, defaultConfigMap, resp.Data)

@@ -18,12 +18,12 @@ on:
         description: A map of environment variables as JSON.
         required: false
         type: string
-        default: '{}'
+        default: "{}"
       extra-flags:
         description: A space-separated list of additional build flags.
         required: false
         type: string
-        default: ''
+        default: ""
       runs-on:
         description: An expression indicating which kind of runners to use.
         required: false
@@ -36,7 +36,7 @@ on:
       name:
         description: A suffix to append to archived test results
         required: false
-        default: ''
+        default: ""
         type: string
       go-test-parallelism:
         description: The parallelism parameter for Go tests
@@ -114,31 +114,31 @@ jobs:
       - name: Build complete matrix
         id: build
         run: |
-            set -exo pipefail
-            matrix_file="matrix.json"
-            if [ "${{ inputs.binary-tests}}" == "true" ] && [ -n "${{ steps.list-binary-tests.outputs.list }}" ]; then
-              export BINARY_TESTS="${{ steps.list-binary-tests.outputs.list }}"
-              jq --arg BINARY "${BINARY_TESTS}" --arg BINARY_INDEX "${{ inputs.total-runners }}" \
-                '.include += [{
-                  "id": $BINARY_INDEX,
-                  "estimatedRuntime": "N/A",
-                  "packages": $BINARY,
-                  "description": "partition $BINARY_INDEX - binary test packages"
-              }]' matrix.json > new-matrix.json
-              matrix_file="new-matrix.json"
-            fi
-            # convert the json to a map keyed by id
-            (
-              echo -n "matrix="
-                jq -c \
-                '.include | map( { (.id|tostring): . } ) | add' "$matrix_file"
-            ) >> "$GITHUB_OUTPUT"
-            # extract an array of ids from the json
-            (
-              echo -n "matrix_ids="
+          set -exo pipefail
+          matrix_file="matrix.json"
+          if [ "${{ inputs.binary-tests}}" == "true" ] && [ -n "${{ steps.list-binary-tests.outputs.list }}" ]; then
+            export BINARY_TESTS="${{ steps.list-binary-tests.outputs.list }}"
+            jq --arg BINARY "${BINARY_TESTS}" --arg BINARY_INDEX "${{ inputs.total-runners }}" \
+              '.include += [{
+                "id": $BINARY_INDEX,
+                "estimatedRuntime": "N/A",
+                "packages": $BINARY,
+                "description": "partition $BINARY_INDEX - binary test packages"
+            }]' matrix.json > new-matrix.json
+            matrix_file="new-matrix.json"
+          fi
+          # convert the json to a map keyed by id
+          (
+            echo -n "matrix="
               jq -c \
-                '[ .include[].id | tostring ]' "$matrix_file"
-            ) >> "$GITHUB_OUTPUT"
+              '.include | map( { (.id|tostring): . } ) | add' "$matrix_file"
+          ) >> "$GITHUB_OUTPUT"
+          # extract an array of ids from the json
+          (
+            echo -n "matrix_ids="
+            jq -c \
+              '[ .include[].id | tostring ]' "$matrix_file"
+          ) >> "$GITHUB_OUTPUT"
     outputs:
       matrix: ${{ steps.build.outputs.matrix }}
       matrix_ids: ${{ steps.build.outputs.matrix_ids }}
@@ -212,8 +212,8 @@ jobs:
       - name: Archive test results
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
-          name: test-results${{ inputs.name != '' && '-' || '' }}${{ inputs.name }}
-          path: test-results/go-test
+          name: test-results-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{ inputs.name }}
+          path: test-results/go-test-${{ matrix.id }}
         if: success() || failure()
       # GitHub Actions doesn't expose the job ID or the URL to the job execution,
       # so we have to fetch it from the API
@@ -283,7 +283,7 @@ jobs:
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         if: success() || failure()
         with:
-          name: failure-summary
+          name: failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}
           path: failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}.md
 
   test-collect-reports:

@@ -60,7 +60,7 @@ jobs:
       binary-tests: true
       total-runners: 16
       go-arch: amd64
-      go-tags: '${{ needs.setup.outputs.go-tags }},deadlock'
+      go-tags: "${{ needs.setup.outputs.go-tags }},deadlock"
       runs-on: ubuntu-latest
       checkout-ref: ${{ needs.setup.outputs.checkout-ref }}
     secrets: inherit
@@ -79,8 +79,9 @@ jobs:
       testonly: true
       total-runners: 2 # test runners cannot be less than 2
       go-arch: amd64
-      go-tags: '${{ needs.setup.outputs.go-tags }},deadlock,testonly'
+      go-tags: "${{ needs.setup.outputs.go-tags }},deadlock,testonly"
       runs-on: ubuntu-latest
+      name: "testonly"
     secrets: inherit
 
   test-go-race:
@@ -100,7 +101,7 @@ jobs:
         {
           "VAULT_CI_GO_TEST_RACE": 1
         }
-      extra-flags: '-race'
+      extra-flags: "-race"
       go-arch: amd64
       go-tags: ${{ needs.setup.outputs.go-tags }}
       runs-on: ubuntu-latest
@@ -130,14 +131,14 @@ jobs:
       # Setup node.js without caching to allow running npm install -g yarn (next step)
       - uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
         with:
-          node-version-file: './ui/package.json'
+          node-version-file: "./ui/package.json"
       - id: install-yarn
         run: |
           npm install -g yarn
       # Setup node.js with caching using the yarn.lock file
       - uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
         with:
-          node-version-file: './ui/package.json'
+          node-version-file: "./ui/package.json"
           cache: yarn
           cache-dependency-path: ui/yarn.lock
       - id: install-browser
@@ -169,7 +170,7 @@ jobs:
           name: test-results-ui
           path: ui/test-results
         if: success() || failure()
-      - uses: test-summary/action@62bc5c68de2a6a0d02039763b8c754569df99e3f  # TSCCR: no entry for repository "test-summary/action"
+      - uses: test-summary/action@62bc5c68de2a6a0d02039763b8c754569df99e3f # TSCCR: no entry for repository "test-summary/action"
         with:
           paths: "ui/test-results/qunit/results.xml"
           show: "fail"

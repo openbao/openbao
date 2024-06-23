@@ -142,7 +142,7 @@ jobs:
           cache: yarn
           cache-dependency-path: ui/yarn.lock
       - id: install-browser
-        uses: browser-actions/setup-chrome@97349de5c98094d4fc9412f31c524d7697115ad8 # v1.5.0
+        uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
       - id: ui-dependencies
         name: ui-dependencies
         working-directory: ./ui

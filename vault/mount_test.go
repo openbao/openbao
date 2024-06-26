@@ -122,7 +122,6 @@ func TestCore_DefaultMountTable(t *testing.T) {
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
 	conf := &CoreConfig{
 		Physical:        c.physical,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		MetricSink:      metricsutil.NewClusterMetricSink("test-cluster", inmemSink),
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
@@ -167,7 +166,6 @@ func TestCore_Mount(t *testing.T) {
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
 	conf := &CoreConfig{
 		Physical:        c.physical,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		MetricSink:      metricsutil.NewClusterMetricSink("test-cluster", inmemSink),
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
@@ -239,7 +237,6 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
 	conf := &CoreConfig{
 		Physical:        c.physical,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		MetricSink:      metricsutil.NewClusterMetricSink("test-cluster", inmemSink),
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),
@@ -453,7 +450,6 @@ func TestCore_Unmount(t *testing.T) {
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
 	conf := &CoreConfig{
 		Physical:        c.physical,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 		MetricSink:      metricsutil.NewClusterMetricSink("test-cluster", inmemSink),
 		MetricsHelper:   metricsutil.NewMetricsHelper(inmemSink, false),

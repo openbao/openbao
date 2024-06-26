@@ -349,7 +349,6 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 	conf := &CoreConfig{
 		RedirectAddr: "127.0.0.1:8200",
 		Physical:     inm,
-		DisableMlock: true,
 	}
 	_, err = NewCore(conf)
 	if err == nil {
@@ -1844,7 +1843,6 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1883,7 +1881,6 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1956,7 +1953,6 @@ func TestCore_StepDown(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 		Logger:       logger.Named("core1"),
 	})
 	if err != nil {
@@ -1996,7 +1992,6 @@ func TestCore_StepDown(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 		Logger:       logger.Named("core2"),
 	})
 	defer core2.Shutdown()
@@ -2150,7 +2145,6 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2216,7 +2210,6 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2329,7 +2322,6 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Physical:        inm,
 		HAPhysical:      inmha,
 		RedirectAddr:    redirectOriginal,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	})
 	if err != nil {
@@ -2385,7 +2377,6 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Physical:     inm,
 		HAPhysical:   inmha,
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2913,7 +2904,6 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2935,7 +2925,6 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -3230,7 +3219,6 @@ func TestCore_ServiceRegistration(t *testing.T) {
 		Physical:            inm,
 		HAPhysical:          inmha.(physical.HABackend),
 		RedirectAddr:        redirectAddr,
-		DisableMlock:        true,
 	})
 	if err != nil {
 		t.Fatal(err)

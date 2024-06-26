@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
@@ -113,15 +112,6 @@ const (
 	ForwardSSCTokenToActive = "new_token"
 
 	WrapperTypeHsmAutoDeprecated = wrapping.WrapperType("hsm-auto")
-
-	ErrMlockFailedTemplate = "Failed to lock memory: %v\n\n" +
-		"This usually means that the mlock syscall is not available.\n" +
-		"Vault uses mlock to prevent memory from being swapped to\n" +
-		"disk. This requires root privileges as well as a machine\n" +
-		"that supports mlock. Please enable mlock on your system or\n" +
-		"disable Vault from using it. To disable Vault from using it,\n" +
-		"set the `disable_mlock` configuration option in your configuration\n" +
-		"file."
 )
 
 var (
@@ -522,8 +512,6 @@ type Core struct {
 	// userFailedLoginInfoLock controls access to the userFailedLoginInfoMap
 	userFailedLoginInfoLock sync.RWMutex
 
-	enableMlock bool
-
 	// This can be used to trigger operations to stop running when Vault is
 	// going to be shut down, stepped down, or sealed
 	activeContext           context.Context
@@ -713,9 +701,6 @@ type CoreConfig struct {
 
 	// Disables the LRU cache on the physical backend
 	DisableCache bool
-
-	// Disables mlock syscall
-	DisableMlock bool
 
 	// Custom cache size for the LRU cache on the physical backend, or zero for default
 	CacheSize int
@@ -934,7 +919,6 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		clusterName:                    conf.ClusterName,
 		clusterNetworkLayer:            conf.ClusterNetworkLayer,
 		clusterPeerClusterAddrsCache:   cache.New(3*clusterHeartbeatInterval, time.Second),
-		enableMlock:                    !conf.DisableMlock,
 		rawEnabled:                     conf.EnableRaw,
 		introspectionEnabled:           conf.EnableIntrospection,
 		shutdownDoneCh:                 new(atomic.Value),
@@ -1063,16 +1047,6 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	err = coreInit(c, conf)
 	if err != nil {
 		return nil, err
-	}
-
-	switch {
-	case conf.DisableMlock:
-		// User configured that memory lock should be disabled on unix systems.
-	default:
-		err = mlock.LockMemory()
-		if err != nil {
-			return nil, fmt.Errorf(ErrMlockFailedTemplate, err)
-		}
 	}
 
 	// Construct a new AES-GCM barrier

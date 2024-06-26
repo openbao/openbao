@@ -274,9 +274,9 @@ func (d dynamicSystemView) ListVersionedPlugins(ctx context.Context, pluginType 
 	return d.core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 }
 
-// MlockEnabled returns the configuration setting for enabling mlock on plugins.
+// OpenBao no longer uses mlock but MlockEnabled is retained for plugin compatibility.
 func (d dynamicSystemView) MlockEnabled() bool {
-	return d.core.enableMlock
+	return false
 }
 
 func (d dynamicSystemView) EntityInfo(entityID string) (*logical.Entity, error) {

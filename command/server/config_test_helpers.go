@@ -46,7 +46,6 @@ func testConfigRaftRetryJoin(t *testing.T) {
 					CustomResponseHeaders: DefaultCustomHeaders,
 				},
 			},
-			DisableMlock: true,
 		},
 
 		Storage: &Storage{
@@ -96,8 +95,6 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 				NumLeaseMetricsTimeBuckets:  168,
 				LeaseMetricsNameSpaceLabels: false,
 			},
-
-			DisableMlock: true,
 
 			PidFile: "./pidfile",
 
@@ -294,7 +291,6 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 					CustomResponseHeaders: DefaultCustomHeaders,
 				},
 			},
-			DisableMlock: true,
 		},
 
 		Storage: &Storage{
@@ -357,8 +353,6 @@ func testLoadConfigFile(t *testing.T) {
 				NumLeaseMetricsTimeBuckets:  168,
 				LeaseMetricsNameSpaceLabels: false,
 			},
-
-			DisableMlock: true,
 
 			PidFile: "./pidfile",
 
@@ -447,8 +441,8 @@ func testUnknownFieldValidation(t *testing.T) {
 			Problem: "unknown or unsupported field bad_value found in configuration",
 			Position: token.Pos{
 				Filename: "./test-fixtures/config.hcl",
-				Offset:   651,
-				Line:     37,
+				Offset:   630,
+				Line:     36,
 				Column:   5,
 			},
 		},
@@ -632,8 +626,6 @@ func testLoadConfigDir(t *testing.T) {
 
 	expected := &Config{
 		SharedConfig: &configutil.SharedConfig{
-			DisableMlock: true,
-
 			Listeners: []*configutil.Listener{
 				{
 					Type:                  "tcp",
@@ -707,7 +699,6 @@ func testConfig_Sanitized(t *testing.T) {
 		"disable_cache":                       true,
 		"disable_clustering":                  false,
 		"disable_indexing":                    false,
-		"disable_mlock":                       true,
 		"disable_performance_standby":         false,
 		"plugin_file_uid":                     0,
 		"plugin_file_permissions":             0,
@@ -1122,8 +1113,6 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 				LeaseMetricsNameSpaceLabels: true,
 			},
 
-			DisableMlock: true,
-
 			PidFile: "./pidfile",
 
 			ClusterName: "testcluster",
@@ -1198,7 +1187,6 @@ func testConfigRaftAutopilot(t *testing.T) {
 					Address: "127.0.0.1:8200",
 				},
 			},
-			DisableMlock: true,
 		},
 
 		Storage: &Storage{

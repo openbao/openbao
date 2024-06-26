@@ -176,11 +176,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.APIProxy = c2.APIProxy
 	}
 
-	result.DisableMlock = c.DisableMlock
-	if c2.DisableMlock {
-		result.DisableMlock = c2.DisableMlock
-	}
-
 	// For these, ignore the non-specific one and overwrite them all
 	result.DisableIdleConnsAutoAuth = c.DisableIdleConnsAutoAuth
 	if c2.DisableIdleConnsAutoAuth {

@@ -24,7 +24,6 @@ func TestTokenFileEndToEnd(t *testing.T) {
 	var err error
 	logger := logging.NewVaultLogger(log.Trace)
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 	}

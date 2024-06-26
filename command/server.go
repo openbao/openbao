@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
-	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
@@ -562,7 +561,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 		Seal:         barrierSeal,
 		LogLevel:     config.LogLevel,
 		Logger:       c.logger,
-		DisableMlock: config.DisableMlock,
 		RecoveryMode: c.flagRecovery,
 		ClusterAddr:  config.ClusterAddr,
 	}
@@ -1098,27 +1096,6 @@ func (c *ServerCommand) Run(args []string) int {
 
 	logProxyEnvironmentVariables(c.logger)
 
-	if envMlock := api.ReadBaoVariable("BAO_DISABLE_MLOCK"); envMlock != "" {
-		var err error
-		config.DisableMlock, err = strconv.ParseBool(envMlock)
-		if err != nil {
-			c.UI.Output("Error parsing the environment variable BAO_DISABLE_MLOCK")
-			return 1
-		}
-	}
-
-	// If mlockall(2) isn't supported, show a warning. We disable this in dev
-	// because it is quite scary to see when first using Vault. We also disable
-	// this if the user has explicitly disabled mlock in configuration.
-	if !c.flagDev && !config.DisableMlock && !mlock.Supported() {
-		c.UI.Warn(wrapAtLength(
-			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
-				"syscall to prevent memory from being swapped to disk is not " +
-				"supported on this system. For better security, only run Vault on " +
-				"systems where this call is supported. If you are running Vault " +
-				"in a Docker container, provide the IPC_LOCK cap to the container."))
-	}
-
 	inmemMetrics, metricSink, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
 		Ui:          c.UI,
@@ -1301,10 +1278,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Compile server information for output later
 	info["storage"] = config.Storage.Type
-	info["mlock"] = fmt.Sprintf(
-		"supported: %v, enabled: %v",
-		mlock.Supported(), !config.DisableMlock && mlock.Supported())
-	infoKeys = append(infoKeys, "mlock", "storage")
+	infoKeys = append(infoKeys, "storage")
 
 	if coreConfig.ClusterAddr != "" {
 		info["cluster address"] = coreConfig.ClusterAddr
@@ -2635,7 +2609,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		ImpreciseLeaseRoleTracking:     config.ImpreciseLeaseRoleTracking,
 		DisableSentinelTrace:           config.DisableSentinelTrace,
 		DisableCache:                   config.DisableCache,
-		DisableMlock:                   config.DisableMlock,
 		MaxLeaseTTL:                    config.MaxLeaseTTL,
 		DefaultLeaseTTL:                config.DefaultLeaseTTL,
 		ClusterName:                    config.ClusterName,

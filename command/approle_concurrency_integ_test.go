@@ -20,7 +20,6 @@ import (
 func TestAppRole_Integ_ConcurrentLogins(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

@@ -134,11 +134,9 @@ func (c *Config) validateEnt(sourceFilePath string) []configutil.ConfigError {
 	return entConfigValidate(c, sourceFilePath)
 }
 
-// DevConfig is a Config that is used for dev mode of Vault.
+// DevConfig is a Config that is used for dev mode of OpenBao.
 func DevConfig(storageType string) (*Config, error) {
 	hclStr := `
-disable_mlock = true
-
 listener "tcp" {
 	address = "127.0.0.1:8200"
 	tls_disable = true
@@ -194,8 +192,6 @@ func DevTLSConfig(storageType, certDir string) (*Config, error) {
 
 func parseDevTLSConfig(storageType, certDir string) (*Config, error) {
 	hclStr := `
-disable_mlock = true
-
 listener "tcp" {
 	address = "[::]:8200"
 	tls_cert_file = "%s/vault-cert.pem"

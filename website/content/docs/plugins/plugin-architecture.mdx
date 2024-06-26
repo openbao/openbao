@@ -108,16 +108,7 @@ Success! Registered plugin: myplugin-database-plugin
 When a backend wants to run a plugin, it first looks up the plugin, by name, in
 the catalog. It then checks the executable's SHA256 sum against the one
 configured in the plugin catalog. Finally OpenBao runs the command configured in
-the catalog, sending along the JWT formatted response wrapping token and mlock
-settings. Like OpenBao, plugins support [the use of mlock when available](/docs/configuration#disable_mlock).
-
-:::warning
-
-Note: If OpenBao is configured with `mlock` enabled, then the OpenBao executable
-and each plugin executable in your [plugins directory](/docs/plugins/plugin-architecture#plugin-directory)
-must be given the ability to use the `mlock` syscall.
-
-:::
+the catalog, sending along the JWT formatted response wrapping token.
 
 ### Plugin upgrades
 
@@ -143,25 +134,3 @@ plugin, i.e., the plugin calls the `Serve` function.
 More resources on implementing plugin multiplexing:
 * [Database secrets engines](/docs/secrets/databases/custom#serving-a-plugin-with-multiplexing)
 * [Secrets engines and auth methods](/docs/plugins/plugin-development)
-
-## Troubleshooting
-
-### Unrecognized remote plugin message
-
-If the following error is encountered when enabling a plugin secret engine or
-auth method:
-
-```sh
-Unrecognized remote plugin message:
-
-This usually means that the plugin is either invalid or simply
-needs to be recompiled to support the latest protocol.
-```
-
-Verify whether the OpenBao process has `mlock` enabled, and if so, run the
-following command against the plugin binary:
-
-```shell-session
-$ sudo setcap cap_ipc_lock=+ep <plugin-binary>
-```
-

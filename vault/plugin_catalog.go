@@ -172,8 +172,9 @@ func (c *Core) setupPluginCatalog(ctx context.Context) error {
 		catalogView:     NewBarrierView(c.barrier, pluginCatalogPath),
 		directory:       c.pluginDirectory,
 		logger:          c.logger,
-		mlockPlugins:    c.enableMlock,
-		wrapper:         logical.StaticSystemView{VersionString: version.GetVersion().Version},
+		// mlock is not currently used in OpenBao, but this setting is retained for Vault compat
+		mlockPlugins: false,
+		wrapper:      logical.StaticSystemView{VersionString: version.GetVersion().Version},
 	}
 
 	// Run upgrade if untyped plugins exist

@@ -412,7 +412,6 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 		DisableCache: true,
 	})
 	if err != nil {
@@ -435,7 +434,6 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 		DisableCache: true,
 	})
 	if err != nil {

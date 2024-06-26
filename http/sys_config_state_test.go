@@ -147,7 +147,6 @@ func TestSysConfigState_Sanitized(t *testing.T) {
 				"disable_cache":                       false,
 				"disable_clustering":                  false,
 				"disable_indexing":                    false,
-				"disable_mlock":                       false,
 				"disable_performance_standby":         false,
 				"disable_printable_check":             false,
 				"disable_sealwrap":                    false,

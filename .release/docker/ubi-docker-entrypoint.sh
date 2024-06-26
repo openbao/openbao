@@ -88,28 +88,14 @@ if [ "$1" = 'bao' ]; then
         fi
     fi
 
-    if [ -z "$SKIP_SETCAP" ]; then
-        # Allow mlock to avoid swapping OpenBao memory to disk
-        setcap cap_ipc_lock=+ep $(readlink -f /bin/bao)
-
-        # In the case bao has been started in a container without IPC_LOCK privileges
-        if ! bao -version 1>/dev/null 2>/dev/null; then
-            >&2 echo "Couldn't start bao with IPC_LOCK. Disabling IPC_LOCK, please use --cap-add IPC_LOCK"
-            setcap cap_ipc_lock=-ep $(readlink -f /bin/bao)
-        fi
-    fi
 fi
 
-# In case of Docker, where swap may be enabled, we
-# still require mlocking to be available. So this script
-# was executed as root to make this happen, however,
-# we're now rerunning the entrypoint script as the OpenBao
-# user but no longer need to run setup code for setcap
-# or chowning directories (previously done on the first run).
+# This script is first executed as root, however, it is
+# later rerun as the OpenBao user, which no longer needs to
+# chown directories (previously done on the first run).
 if [[ "$(id -u)" == '0' ]]
 then
     export SKIP_CHOWN="true"
-    export SKIP_SETCAP="true"
     exec su openbao -p "$0" -- "$@"
 else
     exec "$@"

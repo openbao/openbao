@@ -28,7 +28,6 @@ func TestSudoPaths(t *testing.T) {
 	t.Parallel()
 
 	coreConfig := &vault.CoreConfig{
-		DisableMlock:        true,
 		DisableCache:        true,
 		EnableRaw:           true,
 		EnableIntrospection: true,

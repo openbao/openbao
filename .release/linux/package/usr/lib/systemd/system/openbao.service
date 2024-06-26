@@ -17,8 +17,7 @@ ProtectHome=read-only
 PrivateTmp=yes
 PrivateDevices=yes
 SecureBits=keep-caps
-AmbientCapabilities=CAP_IPC_LOCK
-CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
+CapabilityBoundingSet=CAP_SYSLOG
 NoNewPrivileges=yes
 ExecStart=/usr/bin/bao server -config=/etc/openbao/openbao.hcl
 ExecReload=/bin/kill --signal HUP $MAINPID
@@ -28,7 +27,7 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 LimitNOFILE=65536
-LimitMEMLOCK=infinity
+MemorySwapMax=0
 
 [Install]
 WantedBy=multi-user.target

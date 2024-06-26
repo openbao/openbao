@@ -18,7 +18,6 @@ import (
 func TestApproleSecretId_Wrapped(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -78,7 +77,6 @@ func TestApproleSecretId_Wrapped(t *testing.T) {
 func TestApproleSecretId_NotWrapped(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

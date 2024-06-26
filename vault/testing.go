@@ -162,7 +162,6 @@ func TestCoreWithCustomResponseHeaderAndUI(t testing.T, CustomResponseHeaders ma
 					CustomResponseHeaders: CustomResponseHeaders,
 				},
 			},
-			DisableMlock: true,
 		},
 	}
 	conf := &CoreConfig{
@@ -305,7 +304,6 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 		AuditBackends:      noopAudits,
 		LogicalBackends:    logicalBackends,
 		CredentialBackends: credentialBackends,
-		DisableMlock:       true,
 		Logger:             logger,
 		NumRollbackWorkers: 10,
 		BuiltinRegistry:    corehelpers.NewMockBuiltinRegistry(),
@@ -1509,7 +1507,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		AuditBackends:      make(map[string]audit.Factory),
 		RedirectAddr:       fmt.Sprintf("https://127.0.0.1:%d", listeners[0][0].Address.Port),
 		ClusterAddr:        "https://127.0.0.1:0",
-		DisableMlock:       true,
 		EnableUI:           true,
 		EnableRaw:          true,
 		BuiltinRegistry:    corehelpers.NewMockBuiltinRegistry(),
@@ -1543,10 +1540,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 		if base.BuiltinRegistry != nil {
 			coreConfig.BuiltinRegistry = base.BuiltinRegistry
-		}
-
-		if !coreConfig.DisableMlock {
-			base.DisableMlock = false
 		}
 
 		if base.Physical != nil {

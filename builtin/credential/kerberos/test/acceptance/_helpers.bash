@@ -64,7 +64,7 @@ delete_network() {
 
 start_vault() {
   docker run -d -ti --net=${DNS_NAME} \
-    --cap-add=IPC_LOCK \
+    --memory-swappiness=0 \
     -v "$(pwd)/pkg/linux_amd64:/plugins:Z" \
     -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" \
     -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200" \

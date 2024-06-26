@@ -128,7 +128,7 @@ start_vault() {
     --name "${vault_docker_name}" \
     --rm \
     --detach \
-    --cap-add=IPC_LOCK \
+    --memory-swappiness=0 \
     --network "${docker_network}" \
     -v "${vault_plugin_dir}:/vault/plugins" \
     -p ${vault_port}:8200 \

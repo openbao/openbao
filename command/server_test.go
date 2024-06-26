@@ -30,7 +30,6 @@ func testBaseHCL(tb testing.TB, listenerExtras string) string {
 	tb.Helper()
 
 	return strings.TrimSpace(fmt.Sprintf(`
-		disable_mlock = true
 		listener "tcp" {
 			address     = "127.0.0.1:%d"
 			tls_disable = "true"
@@ -67,7 +66,6 @@ ha_backend "inmem" {}
 
 	reloadHCL = `
 backend "inmem" {}
-disable_mlock = true
 listener "tcp" {
   address       = "127.0.0.1:8203"
   tls_cert_file = "TMPDIR/reload_cert.pem"

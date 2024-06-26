@@ -1,6 +1,5 @@
 {
 	"disable_cache": true,
-	"disable_mlock": true,
 	"ui":true,
 	"listener": [{
 		"tcp": {

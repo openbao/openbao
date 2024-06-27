@@ -13,6 +13,11 @@ import (
 	"github.com/hashicorp/hcl/hcl/token"
 )
 
+const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
+	"the line \"disable_mlock\" = false from your config and disable\n" +
+	"or encrypt swap instead. For more information, see:\n" +
+	"https://openbao.org/docs/install/#Post-installation-hardening"
+
 // SharedConfig contains some shared values
 type SharedConfig struct {
 	FoundKeys  []string     `hcl:",decodedFields"`
@@ -25,7 +30,8 @@ type SharedConfig struct {
 
 	Seals []*KMS `hcl:"-"`
 
-	DisableMlock    bool        `hcl:"-"`
+	// mlock is no longer used by OpenBao, but this is kept as a config option for
+	// compatibility's sake and to give a warning for those expecting it.
 	DisableMlockRaw interface{} `hcl:"disable_mlock"`
 
 	Telemetry *Telemetry `hcl:"telemetry"`
@@ -75,10 +81,12 @@ func ParseConfig(d string) (*SharedConfig, error) {
 	}
 
 	if result.DisableMlockRaw != nil {
-		if result.DisableMlock, err = parseutil.ParseBool(result.DisableMlockRaw); err != nil {
-			return nil, err
+		isDisabled, err := parseutil.ParseBool(result.DisableMlockRaw)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'disable_mlock': %w", err)
+		} else if !isDisabled {
+			return nil, fmt.Errorf(mlockMsg)
 		}
-		result.FoundKeys = append(result.FoundKeys, "DisableMlock")
 		result.DisableMlockRaw = nil
 	}
 
@@ -146,7 +154,6 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	result := map[string]interface{}{
 		"default_max_request_duration":  c.DefaultMaxRequestDuration,
-		"disable_mlock":                 c.DisableMlock,
 		"log_level":                     c.LogLevel,
 		"log_format":                    c.LogFormat,
 		"pid_file":                      c.PidFile,

@@ -58,7 +58,7 @@ function delete_network() {
 }
 
 function start_vault() {
-  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK \
+  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --memory-swappiness=0 \
     -v "${REPO_ROOT}:/tmp/repo-root:Z" \
     -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" \
     -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" \

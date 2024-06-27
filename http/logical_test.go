@@ -110,7 +110,6 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr1,
-		DisableMlock: true,
 	}
 	core1, err := vault.NewCore(conf)
 	if err != nil {
@@ -133,7 +132,6 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr2,
-		DisableMlock: true,
 	}
 	core2, err := vault.NewCore(conf2)
 	if err != nil {

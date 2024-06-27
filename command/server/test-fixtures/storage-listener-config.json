@@ -1,7 +1,6 @@
 {
     "api_addr": "https://localhost:8200",
     "default_lease_ttl": "6h",
-    "disable_mlock": true,
     "listener": {
         "tcp": {
             "address": "0.0.0.0:8200"
@@ -14,4 +13,4 @@
         }
     },
     "ui": true
-} 
+}

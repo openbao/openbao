@@ -36,11 +36,6 @@ func (c *SharedConfig) Merge(c2 *SharedConfig) *SharedConfig {
 		result.Telemetry = c2.Telemetry
 	}
 
-	result.DisableMlock = c.DisableMlock
-	if c2.DisableMlock {
-		result.DisableMlock = c2.DisableMlock
-	}
-
 	result.DefaultMaxRequestDuration = c.DefaultMaxRequestDuration
 	if c2.DefaultMaxRequestDuration > result.DefaultMaxRequestDuration {
 		result.DefaultMaxRequestDuration = c2.DefaultMaxRequestDuration

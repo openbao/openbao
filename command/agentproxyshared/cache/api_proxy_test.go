@@ -191,7 +191,6 @@ func setupClusterAndAgentCommon(ctx context.Context, t *testing.T, coreConfig *v
 	// Handle sane defaults
 	if coreConfig == nil {
 		coreConfig = &vault.CoreConfig{
-			DisableMlock: true,
 			DisableCache: true,
 			Logger:       logging.NewVaultLogger(hclog.Trace),
 		}

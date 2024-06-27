@@ -82,3 +82,56 @@ on your `PATH` to avoid receiving an error that OpenBao is not found.
 ```shell-session
 $ bao -h
 ```
+
+## Post-installation hardening
+
+After installing OpenBao, you may want to take additional steps to secure it
+against leaking your secrets. OpenBao normally does this very well, but there
+is an operating system feature that undermines OpenBao's protection. This is
+[memory paging (aka swap)](https://en.wikipedia.org/wiki/Memory_paging). To
+provide extra security, you will want to make sure that your OS has swap
+disabled or that its swap space is encrypted.
+
+### Linux
+
+The example systemd service file provided with the OpenBao source code comes
+configured to disable swap for the OpenBao process. To verify that swap is
+disabled, run `systemctl cat openbao` and check for the line `MemorySwapMax=0`.
+Alternatively, to allow the openbao process to swap out, make sure that line is
+deleted.
+
+If you are not using systemd, you can achieve the same effect by setting the 
+cgroupv2 value `memory.swap.max` to `0` using your tool of choice. You can
+disable swap for the entire OS by running `swapoff` (this is not recommended).
+Encrypting swap space in Linux is possible, but as usual, there are many
+options, and a guide is outside the scope of these docs. Consult your distro's
+documentation.
+
+### BSDs and other Unix-like
+
+It is recommended to confirm that swap is encrypted. This can be done on all the
+major BSDs.
+ * [FreeBSD guide to encrypted swap](https://docs.freebsd.org/en/books/handbook/disks/#swap-encrypting)
+ * [NetBSD guide to encrypted swap](https://netbsd.org/docs/guide/en/netbsd.html#chap-cgd-swap-encryption)
+ * [OpenBSD info on encrypted swap (enabled by default)](https://man.openbsd.org/sysctl.2#VM_SWAPENCRYPT~2)
+
+### Windows
+
+You can check if your swap space is encrypted by opening Powershell and running:
+```shell-session
+> fsutil behavior query encryptpagingfile
+```
+If the value is 0 (that is, `DISABLED`), you are recommended to enable swap
+encryption by running:
+```shell-session
+> fsutil behavior set encryptpagingfile 1
+```
+Then reboot.
+
+### Docker
+
+When running the Docker image, include the flag `--memory-swappiness=0`.
+
+### macOS
+
+[The swap space on macOS is always encrypted](https://support.apple.com/guide/mac-help/what-is-secure-virtual-memory-on-mac-mh11852/mac).

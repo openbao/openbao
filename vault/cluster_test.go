@@ -60,7 +60,6 @@ func TestClusterHAFetching(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirect,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)

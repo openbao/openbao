@@ -32,8 +32,7 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig)
 		t.Fatal(err)
 	}
 	conf := &CoreConfig{
-		Physical:     inm,
-		DisableMlock: true,
+		Physical: inm,
 		LogicalBackends: map[string]logical.Factory{
 			"kv": LeasedPassthroughBackendFactory,
 		},

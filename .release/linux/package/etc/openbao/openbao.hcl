@@ -5,17 +5,9 @@
 
 ui = true
 
-#mlock = true
-#disable_mlock = true
-
 storage "file" {
   path = "/opt/openbao/data"
 }
-
-#storage "consul" {
-#  address = "127.0.0.1:8500"
-#  path    = "openbao"
-#}
 
 # HTTP listener
 #listener "tcp" {

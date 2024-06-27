@@ -32,9 +32,6 @@ chmod 700 /opt/openbao/tls
 
 echo "OpenBao TLS key and self-signed certificate have been generated in '/opt/openbao/tls'."
 
-# Set IPC_LOCK capabilities on bao
-setcap cap_ipc_lock=+ep /usr/bin/bao
-
 if [ -d /run/systemd/system ]; then
     systemctl --system daemon-reload >/dev/null || true
 fi

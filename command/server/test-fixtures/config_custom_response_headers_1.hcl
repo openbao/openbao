@@ -31,4 +31,3 @@ listener "tcp" {
      }
   }
 }
-disable_mlock = true

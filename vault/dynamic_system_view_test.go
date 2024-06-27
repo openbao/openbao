@@ -40,7 +40,6 @@ rule "charset" {
 func TestIdentity_BackendTemplating(t *testing.T) {
 	var err error
 	coreConfig := &CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -180,7 +179,6 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 	var err error
 	coreConfig := &CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{},

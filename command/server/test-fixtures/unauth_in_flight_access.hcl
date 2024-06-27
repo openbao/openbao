@@ -9,4 +9,3 @@ listener "tcp" {
      unauthenticated_in_flight_requests_access = true
   }
 }
-disable_mlock = true

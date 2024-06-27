@@ -68,7 +68,6 @@ func TestCore_EnableExternalPlugin(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			coreConfig := &CoreConfig{
-				DisableMlock:       true,
 				DisableCache:       true,
 				Logger:             log.NewNullLogger(),
 				CredentialBackends: map[string]logical.Factory{},

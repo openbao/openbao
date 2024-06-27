@@ -88,17 +88,6 @@ if [ "$1" = 'bao' ]; then
         fi
     fi
 
-    if [ -z "$SKIP_SETCAP" ]; then
-        # Allow mlock to avoid swapping OpenBao memory to disk
-        setcap cap_ipc_lock=+ep $(readlink -f $(which bao))
-
-        # In the case OpenBao has been started in a container without IPC_LOCK privileges
-        if ! bao -version 1>/dev/null 2>/dev/null; then
-            >&2 echo "Couldn't start bao with IPC_LOCK. Disabling IPC_LOCK, please use --cap-add IPC_LOCK"
-            setcap cap_ipc_lock=-ep $(readlink -f $(which bao))
-        fi
-    fi
-
     if [ "$(id -u)" = '0' ]; then
       set -- su-exec openbao "$@"
     fi

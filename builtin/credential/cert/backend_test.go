@@ -252,7 +252,6 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	// Enable PKI secret engine and Cert auth method
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -478,7 +477,6 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 func TestBackend_MetadataBasedACLPolicy(t *testing.T) {
 	// Start cluster with cert auth method enabled
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -2518,7 +2516,6 @@ mr2dJsMn54TXDOZYRQd5WVKDDu8xoJI=
 func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 	// Cert auth method
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

@@ -22,7 +22,6 @@ import (
 func TestPolicy_NoDefaultPolicy(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       hclog.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -99,7 +98,6 @@ func TestPolicy_NoDefaultPolicy(t *testing.T) {
 func TestPolicy_NoConfiguredPolicy(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       hclog.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

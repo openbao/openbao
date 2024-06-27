@@ -53,7 +53,7 @@ function delete_network() {
 }
 
 function start_vault() {
-  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --cap-add=IPC_LOCK -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_IMAGE_TAG} server -dev -dev-plugin-dir=/plugins)
+  VAULT_CONTAINER=$(docker run --net=${DNS_NAME} -d -ti --memory-swappiness=0 -v $(pwd)/pkg/linux_amd64:/plugins:Z -e "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN}" -e "VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:${VAULT_PORT}" -p ${VAULT_PORT}:${VAULT_PORT} vault:${VAULT_IMAGE_TAG} server -dev -dev-plugin-dir=/plugins)
   export VAULT_ADDR=http://127.0.0.1:${VAULT_PORT}
 }
 

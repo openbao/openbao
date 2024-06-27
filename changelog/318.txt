@@ -1,0 +1,3 @@
+```release-note:feature
+auth/oidc: Add new `callback_mode=direct` role option to cause the oidc callback to be direct to the server instead of the client, and add a `callbackmode=direct` option to the oidc login method in the cli.
+```

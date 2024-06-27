@@ -24,6 +24,8 @@ const (
 	claimDefaultLeeway    = 150
 	boundClaimsTypeString = "string"
 	boundClaimsTypeGlob   = "glob"
+	callbackModeDirect    = "direct"
+	callbackModeClient    = "client"
 )
 
 func pathRoleList(b *jwtAuthBackend) *framework.Path {
@@ -167,6 +169,11 @@ for referencing claims.`,
 				Type:        framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of allowed values for redirect_uri`,
 			},
+			"callback_mode": {
+				Type:        framework.TypeString,
+				Description: `OIDC callback mode from Authorization Server: allowed values are 'direct' to server or 'client', default 'client'`,
+				Default:     callbackModeClient,
+			},
 			"verbose_oidc_logging": {
 				Type: framework.TypeBool,
 				Description: `Log received OIDC tokens and claims when debug-level logging is active. 
@@ -235,6 +242,7 @@ type jwtRole struct {
 	GroupsClaim          string                 `json:"groups_claim"`
 	OIDCScopes           []string               `json:"oidc_scopes"`
 	AllowedRedirectURIs  []string               `json:"allowed_redirect_uris"`
+	CallbackMode         string                 `json:"callback_mode"`
 	VerboseOIDCLogging   bool                   `json:"verbose_oidc_logging"`
 	MaxAge               time.Duration          `json:"max_age"`
 	UserClaimJSONPointer bool                   `json:"user_claim_json_pointer"`
@@ -350,6 +358,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		"user_claim_json_pointer": role.UserClaimJSONPointer,
 		"groups_claim":            role.GroupsClaim,
 		"allowed_redirect_uris":   role.AllowedRedirectURIs,
+		"callback_mode":           role.CallbackMode,
 		"oidc_scopes":             role.OIDCScopes,
 		"verbose_oidc_logging":    role.VerboseOIDCLogging,
 		"max_age":                 int64(role.MaxAge.Seconds()),
@@ -374,6 +383,20 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 	}
 	if role.NumUses > 0 {
 		d["num_uses"] = role.NumUses
+	}
+
+	if role.CallbackMode == "" {
+		// Store the default value.
+		role.CallbackMode = "client"
+		d["callback_mode"] = role.CallbackMode
+
+		entry, err := logical.StorageEntryJSON(rolePrefix+roleName, role)
+		if err != nil {
+			return nil, err
+		}
+		if err = req.Storage.Put(ctx, entry); err != nil {
+			return nil, err
+		}
 	}
 
 	return &logical.Response{
@@ -559,6 +582,14 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 
 	if allowedRedirectURIs, ok := data.GetOk("allowed_redirect_uris"); ok {
 		role.AllowedRedirectURIs = allowedRedirectURIs.([]string)
+	}
+
+	callbackMode := data.Get("callback_mode").(string)
+	switch callbackMode {
+	case callbackModeDirect, callbackModeClient:
+		role.CallbackMode = callbackMode
+	default:
+		return logical.ErrorResponse("invalid 'callback_mode': %s", callbackMode), nil
 	}
 
 	if role.RoleType == "oidc" && len(role.AllowedRedirectURIs) == 0 {

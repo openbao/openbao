@@ -136,6 +136,9 @@ type RaftBackend struct {
 	// permitPool is used to limit the number of concurrent storage calls.
 	permitPool *physical.PermitPool
 
+	// txnPermitPool is used to limit the number of concurrent storage transactions.
+	txnPermitPool *physical.PermitPool
+
 	// maxEntrySize imposes a size limit (in bytes) on a raft entry (put or transaction).
 	// It is suggested to use a value of 2x the Raft chunking size for optimal
 	// performance.
@@ -511,6 +514,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		dataDir:                    path,
 		localID:                    localID,
 		permitPool:                 physical.NewPermitPool(physical.DefaultParallelOperations),
+		txnPermitPool:              physical.NewPermitPool(physical.DefaultParallelOperations),
 		maxEntrySize:               maxEntrySize,
 		followerHeartbeatTicker:    time.NewTicker(time.Second),
 		autopilotReconcileInterval: reconcileInterval,
@@ -1573,70 +1577,6 @@ func (b *RaftBackend) ListPage(ctx context.Context, prefix string, after string,
 	return b.fsm.ListPage(ctx, prefix, after, limit)
 }
 
-// Transaction applies all the given operations into a single log and
-// applies it.
-func (b *RaftBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	defer metrics.MeasureSince([]string{"raft-storage", "transaction"}, time.Now())
-
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	failGetInTxn := atomic.LoadUint32(b.failGetInTxn)
-	for _, t := range txns {
-		if t.Operation == physical.GetOperation && failGetInTxn != 0 {
-			return GetInTxnDisabledError
-		}
-	}
-
-	txnMap := make(map[string]*physical.TxnEntry)
-
-	command := &LogData{
-		Operations: make([]*LogOperation, len(txns)),
-	}
-	for i, txn := range txns {
-		op := &LogOperation{}
-		switch txn.Operation {
-		case physical.PutOperation:
-			if len(txn.Entry.Key) > bolt.MaxKeySize {
-				return fmt.Errorf("%s, max key size for integrated storage is %d", physical.ErrKeyTooLarge, bolt.MaxKeySize)
-			}
-			op.OpType = putOp
-			op.Key = txn.Entry.Key
-			op.Value = txn.Entry.Value
-		case physical.DeleteOperation:
-			op.OpType = deleteOp
-			op.Key = txn.Entry.Key
-		case physical.GetOperation:
-			op.OpType = getOp
-			op.Key = txn.Entry.Key
-			txnMap[op.Key] = txn
-		default:
-			return fmt.Errorf("%q is not a supported transaction operation", txn.Operation)
-		}
-
-		command.Operations[i] = op
-	}
-
-	b.permitPool.Acquire()
-	defer b.permitPool.Release()
-
-	b.l.RLock()
-	err := b.applyLog(ctx, command)
-	b.l.RUnlock()
-
-	// loop over results and update pointers to get operations
-	for _, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			if txn, found := txnMap[logOp.Key]; found {
-				txn.Entry.Value = logOp.Value
-			}
-		}
-	}
-
-	return err
-}
-
 // applyLog will take a given log command and apply it to the raft log. applyLog
 // doesn't return until the log has been applied to a quorum of servers and is
 // persisted to the local FSM. Caller should hold the backend's read lock.
@@ -1648,14 +1588,15 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return err
 	}
 
+	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)
 	if err != nil {
 		return err
 	}
 
 	cmdSize := len(commandBytes)
-	if uint64(cmdSize) > b.maxEntrySize {
-		return fmt.Errorf("%s; got %d bytes, max: %d bytes", physical.ErrValueTooLarge, cmdSize, b.maxEntrySize)
+	if !isTx && uint64(cmdSize) > b.maxEntrySize {
+		return fmt.Errorf("%s; got %d bytes, max: %d bytes: %v", physical.ErrValueTooLarge, cmdSize, b.maxEntrySize, command.Operations)
 	}
 
 	defer metrics.AddSample([]string{"raft-storage", "entry_size"}, float32(cmdSize))
@@ -1708,20 +1649,36 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return errors.New("entries on FSM response were empty")
 	}
 
-	for i, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			fsmEntry := fsmar.EntrySlice[i]
+	if !isTx {
+		for i, logOp := range command.Operations {
+			if logOp.OpType == getOp {
+				fsmEntry := fsmar.EntrySlice[i]
 
-			// this should always be true because the entries in the slice were created in the same order as
-			// the command operations.
-			if logOp.Key == fsmEntry.Key {
-				if len(fsmEntry.Value) > 0 {
-					logOp.Value = fsmEntry.Value
+				// this should always be true because the entries in the slice were created in the same order as
+				// the command operations.
+				if logOp.Key == fsmEntry.Key {
+					if len(fsmEntry.Value) > 0 {
+						logOp.Value = fsmEntry.Value
+					}
+				} else {
+					// this shouldn't happen
+					return errors.New("entries in FSM response were out of order")
 				}
-			} else {
-				// this shouldn't happen
-				return errors.New("entries in FSM response were out of order")
 			}
+		}
+	} else {
+		// There should be at most one EntrySlice entry.
+		if len(fsmar.EntrySlice) > 1 {
+			return fmt.Errorf("multiple responses in entry slice: %v", len(fsmar.EntrySlice))
+		}
+
+		if len(fsmar.EntrySlice) == 1 {
+			fsmEntry := fsmar.EntrySlice[0]
+			if !fsmEntry.IsTxError() {
+				return fmt.Errorf("unknown FSMEntry response type")
+			}
+
+			return fsmEntry.AsTxError()
 		}
 	}
 
@@ -1764,6 +1721,14 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 
 func (b *RaftBackend) DesiredSuffrage() string {
 	return b.fsm.DesiredSuffrage()
+}
+
+func (b *RaftBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, false)
+}
+
+func (b *RaftBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, true)
 }
 
 // RaftLock implements the physical Lock interface and enables HA for this

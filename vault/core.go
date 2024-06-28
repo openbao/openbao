@@ -362,7 +362,7 @@ type Core struct {
 	cubbyholeBackend *CubbyholeBackend
 
 	// systemBarrierView is the barrier view for the system backend
-	systemBarrierView *BarrierView
+	systemBarrierView BarrierView
 
 	// expiration manager is used for managing LeaseIDs,
 	// renewal, expiration and revocation
@@ -516,9 +516,6 @@ type Core struct {
 	// going to be shut down, stepped down, or sealed
 	activeContext           context.Context
 	activeContextCancelFunc *atomic.Value
-
-	// Stores the sealunwrapper for downgrade needs
-	sealUnwrapper physical.Backend
 
 	// unsealwithStoredKeysLock is a mutex that prevents multiple processes from
 	// unsealing with stored keys are the same time.

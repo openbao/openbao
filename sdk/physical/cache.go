@@ -59,8 +59,19 @@ func cacheRefreshFromContext(ctx context.Context) bool {
 // and provide an LRU cache layer on top. Most of the reads done by
 // Vault are for policy objects so there is a large read reduction
 // by using a simple write-through cache.
-type Cache struct {
+type Cache interface {
+	ToggleablePurgemonster
+	Backend
+}
+
+type TransactionalCache interface {
+	ToggleablePurgemonster
+	TransactionalBackend
+}
+
+type cache struct {
 	backend         Backend
+	size            int
 	lru             *lru.TwoQueueCache
 	locks           []*locksutil.LockEntry
 	logger          log.Logger
@@ -69,23 +80,29 @@ type Cache struct {
 	metricSink      metrics.MetricSink
 }
 
-// TransactionalCache is a Cache that wraps the physical that is transactional
-type TransactionalCache struct {
-	*Cache
-	Transactional
+type transactionalCache struct {
+	cache
+}
+
+type cacheTransaction struct {
+	cache
+	parent TransactionalCache
 }
 
 // Verify Cache satisfies the correct interfaces
 var (
-	_ ToggleablePurgemonster = (*Cache)(nil)
-	_ ToggleablePurgemonster = (*TransactionalCache)(nil)
-	_ Backend                = (*Cache)(nil)
-	_ Transactional          = (*TransactionalCache)(nil)
+	_ ToggleablePurgemonster = &cache{}
+	_ Backend                = &cache{}
+
+	_ ToggleablePurgemonster = &transactionalCache{}
+	_ TransactionalBackend   = &transactionalCache{}
+
+	_ Transaction = &cacheTransaction{}
 )
 
 // NewCache returns a physical cache of the given size.
 // If no size is provided, the default size is used.
-func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) *Cache {
+func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) Cache {
 	if logger.IsDebug() {
 		logger.Debug("creating LRU cache", "size", size)
 	}
@@ -96,10 +113,11 @@ func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 	pm := pathmanager.New()
 	pm.AddPaths(cacheExceptionsPaths)
 
-	cache, _ := lru.New2Q(size)
-	c := &Cache{
+	lruCache, _ := lru.New2Q(size)
+	c := &cache{
 		backend: b,
-		lru:     cache,
+		size:    size,
+		lru:     lruCache,
 		locks:   locksutil.CreateLocks(),
 		logger:  logger,
 		// This fails safe.
@@ -107,18 +125,17 @@ func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 		cacheExceptions: pm,
 		metricSink:      metricSink,
 	}
-	return c
-}
 
-func NewTransactionalCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) *TransactionalCache {
-	c := &TransactionalCache{
-		Cache:         NewCache(b, size, logger, metricSink),
-		Transactional: b.(Transactional),
+	if _, ok := b.(TransactionalBackend); ok {
+		return &transactionalCache{
+			*c,
+		}
 	}
+
 	return c
 }
 
-func (c *Cache) ShouldCache(key string) bool {
+func (c *cache) ShouldCache(key string) bool {
 	if atomic.LoadUint32(c.enabled) == 0 {
 		return false
 	}
@@ -128,7 +145,7 @@ func (c *Cache) ShouldCache(key string) bool {
 
 // SetEnabled is used to toggle whether the cache is on or off. It must be
 // called with true to actually activate the cache after creation.
-func (c *Cache) SetEnabled(enabled bool) {
+func (c *cache) SetEnabled(enabled bool) {
 	if enabled {
 		atomic.StoreUint32(c.enabled, 1)
 		return
@@ -137,7 +154,7 @@ func (c *Cache) SetEnabled(enabled bool) {
 }
 
 // Purge is used to clear the cache
-func (c *Cache) Purge(ctx context.Context) {
+func (c *cache) Purge(ctx context.Context) {
 	// Lock the world
 	for _, lock := range c.locks {
 		lock.Lock()
@@ -147,7 +164,7 @@ func (c *Cache) Purge(ctx context.Context) {
 	c.lru.Purge()
 }
 
-func (c *Cache) Put(ctx context.Context, entry *Entry) error {
+func (c *cache) Put(ctx context.Context, entry *Entry) error {
 	if entry != nil && !c.ShouldCache(entry.Key) {
 		return c.backend.Put(ctx, entry)
 	}
@@ -164,7 +181,7 @@ func (c *Cache) Put(ctx context.Context, entry *Entry) error {
 	return err
 }
 
-func (c *Cache) Get(ctx context.Context, key string) (*Entry, error) {
+func (c *cache) Get(ctx context.Context, key string) (*Entry, error) {
 	if !c.ShouldCache(key) {
 		return c.backend.Get(ctx, key)
 	}
@@ -197,7 +214,7 @@ func (c *Cache) Get(ctx context.Context, key string) (*Entry, error) {
 	return ent, nil
 }
 
-func (c *Cache) Delete(ctx context.Context, key string) error {
+func (c *cache) Delete(ctx context.Context, key string) error {
 	if !c.ShouldCache(key) {
 		return c.backend.Delete(ctx, key)
 	}
@@ -213,61 +230,69 @@ func (c *Cache) Delete(ctx context.Context, key string) error {
 	return err
 }
 
-func (c *Cache) List(ctx context.Context, prefix string) ([]string, error) {
+func (c *cache) List(ctx context.Context, prefix string) ([]string, error) {
 	// Always pass-through as this would be difficult to cache. For the same
 	// reason we don't lock as we can't reasonably know which locks to readlock
 	// ahead of time.
 	return c.backend.List(ctx, prefix)
 }
 
-func (c *Cache) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+func (c *cache) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	// See note above about List(...).
 	return c.backend.ListPage(ctx, prefix, after, limit)
 }
 
-func (c *TransactionalCache) Locks() []*locksutil.LockEntry {
-	return c.locks
+func (c *cache) cloneWithStorage(b Backend) *cache {
+	// We construct a new cache here: this starts the transaction with a
+	// fresh, localized cache. This is globally sub-optimal (as it purges
+	// everything), but easiest to implement (as the transaction can modify
+	// its cache as it pleases).
+	return NewCache(b, c.size, c.logger, c.metricSink).(*cache)
 }
 
-func (c *TransactionalCache) LRU() *lru.TwoQueueCache {
-	return c.lru
+func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
+	txn, err := c.cache.backend.(TransactionalBackend).BeginReadOnlyTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// txn does not implement TransactionalBackend because we don't support
+	// nested transactions so this will always cast to *cache.
+	ctxn := c.cache.cloneWithStorage(txn)
+	return &cacheTransaction{
+		*ctxn,
+		c,
+	}, nil
 }
 
-func (c *TransactionalCache) Transaction(ctx context.Context, txns []*TxnEntry) error {
-	// Bypass the locking below
-	if atomic.LoadUint32(c.enabled) == 0 {
-		return c.Transactional.Transaction(ctx, txns)
+func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
+	txn, err := c.cache.backend.(TransactionalBackend).BeginTx(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	// Collect keys that need to be locked
-	var keys []string
-	for _, curr := range txns {
-		keys = append(keys, curr.Entry.Key)
-	}
-	// Lock the keys
-	for _, l := range locksutil.LocksForKeys(c.locks, keys) {
-		l.Lock()
-		defer l.Unlock()
-	}
+	// See note above in BeginReadOnlyTx(...).
+	ctxn := c.cache.cloneWithStorage(txn)
+	return &cacheTransaction{
+		*ctxn,
+		c,
+	}, nil
+}
 
-	if err := c.Transactional.Transaction(ctx, txns); err != nil {
+func (c *cacheTransaction) Commit(ctx context.Context) error {
+	if err := c.cache.backend.(Transaction).Commit(ctx); err != nil {
 		return err
 	}
 
-	for _, txn := range txns {
-		if !c.ShouldCache(txn.Entry.Key) {
-			continue
-		}
+	c.parent.Purge(ctx)
+	return nil
+}
 
-		switch txn.Operation {
-		case PutOperation:
-			c.lru.Add(txn.Entry.Key, txn.Entry)
-			c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
-		case DeleteOperation:
-			c.lru.Remove(txn.Entry.Key)
-			c.metricSink.IncrCounter([]string{"cache", "delete"}, 1)
-		}
+func (c *cacheTransaction) Rollback(ctx context.Context) error {
+	if err := c.cache.backend.(Transaction).Rollback(ctx); err != nil {
+		return err
 	}
 
+	c.parent.Purge(ctx)
 	return nil
 }

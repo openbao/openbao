@@ -148,7 +148,7 @@ func TestSystemBackend_InternalUIResultantACL(t *testing.T) {
 
 func TestSystemBackend_HAStatus(t *testing.T) {
 	logger := logging.NewVaultLogger(hclog.Trace)
-	inm, err := inmem.NewTransactionalInmem(nil, logger)
+	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

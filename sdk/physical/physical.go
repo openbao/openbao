@@ -10,7 +10,10 @@ import (
 	log "github.com/hashicorp/go-hclog"
 )
 
-const DefaultParallelOperations = 128
+const (
+	DefaultParallelOperations   = 128
+	DefaultParallelTransactions = 64
+)
 
 // The operation type
 type Operation string

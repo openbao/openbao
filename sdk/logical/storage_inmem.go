@@ -68,6 +68,11 @@ func (s *InmemStorage) ListPage(ctx context.Context, prefix string, after string
 func (s *InmemStorage) Underlying() *inmem.InmemBackend {
 	s.once.Do(s.init)
 
+	ts, ok := s.underlying.(*inmem.TransactionalInmemBackend)
+	if ok {
+		return &ts.InmemBackend
+	}
+
 	return s.underlying.(*inmem.InmemBackend)
 }
 

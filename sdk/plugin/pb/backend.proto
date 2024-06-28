@@ -474,12 +474,14 @@ message StorageEntry {
 
 message StorageListArgs {
 	string prefix = 1;
+	string txn = 2;
 }
 
 message StorageListPageArgs {
 	string prefix = 1;
 	string after = 2;
 	int32 limit = 3;
+	string txn = 4;
 }
 
 message StorageListReply {
@@ -489,6 +491,7 @@ message StorageListReply {
 
 message StorageGetArgs {
 	string key = 1;
+	string txn = 2;
 }
 
 message StorageGetReply {
@@ -498,6 +501,7 @@ message StorageGetReply {
 
 message StoragePutArgs {
 	StorageEntry entry = 1;
+	string txn = 2;
 }
 
 message StoragePutReply {
@@ -506,20 +510,64 @@ message StoragePutReply {
 
 message StorageDeleteArgs {
 	string key = 1;
+	string txn = 2;
 }
 
 message StorageDeleteReply {
 	string err = 1;
 }
 
+message StorageIsTransactionalReply {
+	bool transactional = 1;
+}
+
+message StorageBeginTxReply {
+	string txn = 1;
+	string err = 2;
+}
+
+message StorageCommitTxArgs {
+	string txn = 1;
+}
+
+message StorageCommitTxReply {
+	string err = 1;
+}
+
+message StorageRollbackTxArgs {
+	string txn = 1;
+}
+
+message StorageRollbackTxReply {
+	string err = 1;
+}
+
 // Storage is the way that plugins are able read/write data. Plugins should
-// implement the client for this service.
+// implement the client for this service. If we have a transactional aware
+// client and server, the client can detect this by calling IsTransactional()
+// which returns a single boolean if the underlying storage is transactional.
+// If it is, the logical.Transaction+logical.Transactional calls will be
+// supported and logical.Storage calls can take an optional txn identifier,
+// if the call is to be made in a transaction. Transaction identifiers will
+// be UUIDs to prevent accidental confusion.
 service Storage {
+	// logical.Storage calls.
 	rpc List(StorageListArgs) returns (StorageListReply);
 	rpc ListPage(StorageListPageArgs) returns (StorageListReply);
 	rpc Get(StorageGetArgs) returns (StorageGetReply);
 	rpc Put(StoragePutArgs) returns (StoragePutReply);
 	rpc Delete(StorageDeleteArgs) returns (StorageDeleteReply);
+
+	// Sentinel call to detect transaction support.
+	rpc IsTransactional(Empty) returns (StorageIsTransactionalReply);
+
+	// logical.Transactional calls.
+	rpc BeginReadOnlyTx(Empty) returns (StorageBeginTxReply);
+	rpc BeginTx(Empty) returns (StorageBeginTxReply);
+
+	// logical.Transaction calls.
+	rpc Commit(StorageCommitTxArgs) returns (StorageCommitTxReply);
+	rpc Rollback(StorageRollbackTxArgs) returns (StorageRollbackTxReply);
 }
 
 message TTLReply {

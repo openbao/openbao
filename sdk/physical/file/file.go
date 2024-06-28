@@ -25,9 +25,7 @@ import (
 
 // Verify FileBackend satisfies the correct interfaces
 var (
-	_ physical.Backend             = (*FileBackend)(nil)
-	_ physical.Transactional       = (*TransactionalFileBackend)(nil)
-	_ physical.PseudoTransactional = (*FileBackend)(nil)
+	_ physical.Backend = (*FileBackend)(nil)
 )
 
 // FileBackend is a physical backend that stores data on disk
@@ -42,10 +40,6 @@ type FileBackend struct {
 	path       string
 	logger     log.Logger
 	permitPool *physical.PermitPool
-}
-
-type TransactionalFileBackend struct {
-	FileBackend
 }
 
 type fileEntry struct {
@@ -63,22 +57,6 @@ func NewFileBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		path:       path,
 		logger:     logger,
 		permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
-	}, nil
-}
-
-func NewTransactionalFileBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	path, ok := conf["path"]
-	if !ok {
-		return nil, fmt.Errorf("'path' must be set")
-	}
-
-	// Create a pool of size 1 so only one operation runs at a time
-	return &TransactionalFileBackend{
-		FileBackend: FileBackend{
-			path:       path,
-			logger:     logger,
-			permitPool: physical.NewPermitPool(1),
-		},
 	}, nil
 }
 
@@ -399,14 +377,4 @@ func (b *FileBackend) validatePath(path string) error {
 	}
 
 	return nil
-}
-
-func (b *TransactionalFileBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	b.permitPool.Acquire()
-	defer b.permitPool.Release()
-
-	b.Lock()
-	defer b.Unlock()
-
-	return physical.GenericTransactionHandler(ctx, b, txns)
 }

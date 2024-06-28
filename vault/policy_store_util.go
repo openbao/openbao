@@ -9,11 +9,11 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 )
 
-func (ps *PolicyStore) getACLView(*namespace.Namespace) *BarrierView {
+func (ps *PolicyStore) getACLView(*namespace.Namespace) BarrierView {
 	return ps.aclView
 }
 
-func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) *BarrierView {
+func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) BarrierView {
 	return ps.getACLView(ns)
 }
 

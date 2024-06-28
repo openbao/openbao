@@ -476,7 +476,7 @@ func TestOIDC_AuthURL_max_age(t *testing.T) {
 // pointer syntax for the user_claim of roles. For claims used
 // in assertions, see the sampleClaims function.
 func TestOIDC_UserClaim_JSON_Pointer(t *testing.T) {
-	b, storage, s := getBackendAndServer(t, false)
+	b, storage, s := getBackendAndServer(t, false, "")
 	defer s.server.Close()
 
 	type args struct {
@@ -722,14 +722,32 @@ func TestOIDC_ResponseTypeIDToken(t *testing.T) {
 func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
 		// run test with and without bound_cidrs configured
-		for _, useBoundCIDRs := range []bool{false, true} {
-			b, storage, s := getBackendAndServer(t, useBoundCIDRs)
+		//   and with and without direct callback mode
+		for i := 1; i <= 4; i++ {
+			var useBoundCIDRs bool
+			callbackMode := "client"
+
+			if i == 2 {
+				useBoundCIDRs = true
+			} else if i == 3 {
+				callbackMode = "direct"
+			} else if i == 4 {
+				callbackMode = "device"
+			}
+
+			b, storage, s := getBackendAndServer(t, useBoundCIDRs, callbackMode)
 			defer s.server.Close()
+
+			clientNonce := "456"
+
+			// set mock provider's expected code
+			s.code = "abc"
 
 			// get auth_url
 			data := map[string]interface{}{
 				"role":         "test",
 				"redirect_uri": "https://example.com",
+				"client_nonce": clientNonce,
 			}
 			req := &logical.Request{
 				Operation: logical.UpdateOperation,
@@ -743,38 +761,58 @@ func TestOIDC_Callback(t *testing.T) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
 
-			authURL := resp.Data["auth_url"].(string)
+			var state string
 
-			state := getQueryParam(t, authURL, "state")
-			nonce := getQueryParam(t, authURL, "nonce")
+			if callbackMode == "device" {
+				state = resp.Data["state"].(string)
+				s.customClaims = sampleClaims("")
+			} else {
+				authURL := resp.Data["auth_url"].(string)
+				state = getQueryParam(t, authURL, "state")
+				nonce := getQueryParam(t, authURL, "nonce")
 
-			// set provider claims that will be returned by the mock server
-			s.customClaims = sampleClaims(nonce)
+				// set provider claims that will be returned by the mock server
+				s.customClaims = sampleClaims(nonce)
 
-			// set mock provider's expected code
-			s.code = "abc"
+				// save PKCE challenge
+				s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
 
-			// save PKCE challenge
-			s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+				// invoke the callback, which will try to exchange the code
+				// with the mock provider.
+				req = &logical.Request{
+					Operation: logical.ReadOperation,
+					Path:      "oidc/callback",
+					Storage:   storage,
+					Data: map[string]interface{}{
+						"state":        state,
+						"code":         "abc",
+						"client_nonce": clientNonce,
+					},
+					Connection: &logical.Connection{
+						RemoteAddr: "127.0.0.42",
+					},
+				}
 
-			// invoke the callback, which will try to exchange the code
-			// with the mock provider.
-			req = &logical.Request{
-				Operation: logical.ReadOperation,
-				Path:      "oidc/callback",
-				Storage:   storage,
-				Data: map[string]interface{}{
-					"state": state,
-					"code":  "abc",
-				},
-				Connection: &logical.Connection{
-					RemoteAddr: "127.0.0.42",
-				},
+				resp, err = b.HandleRequest(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
-			if err != nil {
-				t.Fatal(err)
+			if callbackMode != "client" {
+				req = &logical.Request{
+					Operation: logical.UpdateOperation,
+					Path:      "oidc/poll",
+					Storage:   storage,
+					Data: map[string]interface{}{
+						"state":        state,
+						"client_nonce": clientNonce,
+					},
+				}
+				resp, err = b.HandleRequest(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 
 			expected := &logical.Auth{
@@ -823,7 +861,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed login - bad nonce", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// get auth_url
@@ -877,7 +915,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed login - bound claim mismatch", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// get auth_url
@@ -933,7 +971,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("missing state", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		req := &logical.Request{
@@ -952,7 +990,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("unknown state", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		req := &logical.Request{
@@ -974,7 +1012,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("valid state, missing code", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// get auth_url
@@ -1016,7 +1054,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed code exchange", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// get auth_url
@@ -1066,7 +1104,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("failed code exchange (PKCE)", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// get auth_url
@@ -1118,7 +1156,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("no response from provider", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 
 		// get auth_url
 		data := map[string]interface{}{
@@ -1164,7 +1202,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("test bad address", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, true)
+		b, storage, s := getBackendAndServer(t, true, "")
 		defer s.server.Close()
 
 		s.code = "abc"
@@ -1209,7 +1247,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("test invalid client_id", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		s.code = "abc"
@@ -1265,7 +1303,7 @@ func TestOIDC_Callback(t *testing.T) {
 	})
 
 	t.Run("client_nonce", func(t *testing.T) {
-		b, storage, s := getBackendAndServer(t, false)
+		b, storage, s := getBackendAndServer(t, false, "")
 		defer s.server.Close()
 
 		// General behavior is that if a client_nonce is provided during the authURL phase
@@ -1385,6 +1423,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
+				"device_authorization_endpoint": "%s/device",
 				"token_endpoint": "%s/token",
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
@@ -1396,21 +1435,38 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	case "/certs_invalid":
 		w.Write([]byte("It's not a keyset!"))
+	case "/device":
+		values := map[string]interface{}{
+			"device_code": o.code,
+		}
+		data, err := json.Marshal(values)
+		if err != nil {
+			o.t.Fatal(err)
+		}
+		w.Write(data)
 	case "/token":
-		code := r.FormValue("code")
-		codeVerifier := r.FormValue("code_verifier")
+		var code string
+		grant_type := r.FormValue("grant_type")
+		if grant_type == "urn:ietf:params:oauth:grant-type:device_code" {
+			code = r.FormValue("device_code")
+		} else {
+			code = r.FormValue("code")
+		}
 
 		if code != o.code {
 			w.WriteHeader(401)
 			break
 		}
 
-		sum := sha256.Sum256([]byte(codeVerifier))
-		computedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
+		if o.codeChallenge != "" {
+			codeVerifier := r.FormValue("code_verifier")
+			sum := sha256.Sum256([]byte(codeVerifier))
+			computedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
 
-		if computedChallenge != o.codeChallenge {
-			w.WriteHeader(401)
-			break
+			if computedChallenge != o.codeChallenge {
+				w.WriteHeader(401)
+				break
+			}
 		}
 
 		stdClaims := jwt.Claims{
@@ -1534,7 +1590,7 @@ func TestOIDC_ValidRedirect(t *testing.T) {
 	}
 }
 
-func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logical.Storage, *oidcProvider) {
+func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (logical.Backend, logical.Storage, *oidcProvider) {
 	b, storage := getBackend(t)
 	s := newOIDCProvider(t)
 	s.clientID = "abc"
@@ -1591,6 +1647,10 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
 
 	if boundCIDRs {
 		data["bound_cidrs"] = "127.0.0.42"
+	}
+
+	if callbackMode != "" {
+		data["callback_mode"] = callbackMode
 	}
 
 	req = &logical.Request{

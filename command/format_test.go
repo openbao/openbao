@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/openbao/openbao/api"
 	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"sigs.k8s.io/yaml"
 )
 
 type mockUi struct {

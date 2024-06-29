@@ -16,7 +16,7 @@ import (
 const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
 	"the line \"disable_mlock\" = false from your config and disable\n" +
 	"or encrypt swap instead. For more information, see:\n" +
-	"https://openbao.org/docs/install/#Post-installation-hardening"
+	"https://openbao.org/docs/install/#post-installation-hardening"
 
 // SharedConfig contains some shared values
 type SharedConfig struct {

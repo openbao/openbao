@@ -481,7 +481,7 @@ const sidebars: SidebarsConfig = {
                 "contributing/index",
                 "contributing/code-organization",
             ],
-            RFCs: ["rfcs/index", "rfcs/paginated-lists"],
+            RFCs: ["rfcs/index", "rfcs/paginated-lists", "rfcs/mlock-removal"],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },
         "glossary",

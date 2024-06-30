@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/helper/policyutil"
 	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
 	"github.com/openbao/openbao/sdk/helper/tokenutil"

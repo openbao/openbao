@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/framework"
 	"github.com/openbao/openbao/sdk/helper/template"
 	"github.com/openbao/openbao/sdk/logical"

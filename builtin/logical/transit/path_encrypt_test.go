@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/sdk/logical"
 )
 

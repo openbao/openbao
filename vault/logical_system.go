@@ -30,7 +30,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/locking"

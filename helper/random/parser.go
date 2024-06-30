@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/hcl"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 )
 
 // ParsePolicy is a convenience function for parsing HCL into a StringGenerator.

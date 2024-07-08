@@ -25,7 +25,7 @@ would take to configure OpenBao to authenticate using a corporate LDAP or
 ActiveDirectory installation. Even though this example uses LDAP, the concept
 applies to all auth methods.
 
-[![OpenBao Auth Workflow](/img/vault-policy-workflow.svg)](/img/vault-policy-workflow.svg)
+[![OpenBao Auth Workflow](/img/openbao-policy-workflow.png)](/img/openbao-policy-workflow.png)
 
 1. The security team configures OpenBao to connect to an auth method.
    This configuration varies by auth method. In the case of LDAP, OpenBao
@@ -53,7 +53,7 @@ Now OpenBao has an internal mapping between a backend authentication system and
 internal policy. When a user authenticates to OpenBao, the actual authentication
 is delegated to the auth method. As a user, the flow looks like:
 
-[![OpenBao Auth Workflow](/img/vault-auth-workflow.svg)](/img/vault-auth-workflow.svg)
+[![OpenBao Auth Workflow](/img/openbao-auth-workflow.png)](/img/openbao-auth-workflow.png)
 
 1. A user attempts to authenticate to OpenBao using their LDAP credentials,
    providing OpenBao with their LDAP username and password.

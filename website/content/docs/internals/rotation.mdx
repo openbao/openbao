@@ -15,7 +15,7 @@ to split the root key into 5 shares, any 3 of which are required to reconstruct 
 key. The root key is used to protect the encryption key, which is ultimately used to protect
 data written to the storage backend.
 
-![Key Rotate](/img/vault-key-rotate.png)
+![Key Rotate](/img/openbao-key-rotate.png)
 
 To support key rotation, we need to support changing the unseal keys, root key, and the
 backend encryption key. We split this into two separate operations, `rekey` and `rotate`.

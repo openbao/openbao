@@ -17,15 +17,13 @@ where OpenBao steps in.
 
 OpenBao validates and authorizes clients (users, machines, apps) before providing them access to secrets or stored sensitive data.
 
-![How OpenBao Works](/img/how-vault-works.png)
+![How OpenBao Works](/img/how-openbao-works.png)
 
 ### How does OpenBao work?
 
-OpenBao works primarily with tokens and a token is associated to the client's policy. Each policy is path-based and policy rules constrains the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token. The illustration below displays OpenBao's core workflow.
+OpenBao works primarily with tokens and a token is associated to the client's policy. Each policy is path-based and policy rules constrains the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token.
 
-![OpenBao Workflow](/img/vault-workflow-diagram1.png)
-
- The core OpenBao workflow consists of four stages:
+The core OpenBao workflow consists of four stages:
 
 * **Authenticate:** Authentication in OpenBao is the process by which a client supplies information that OpenBao uses to determine if they are who they say they are. Once the client is authenticated against an auth method, a token is generated and associated to a policy.
 * **Validation:** OpenBao validates the client against third-party trusted sources, such as Github, LDAP, AppRole, and more.

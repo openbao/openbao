@@ -13,13 +13,13 @@ Information contained within this document details the contrast between the Agen
 
 The [Vault Sidecar Agent Injector](/docs/platform/k8s/injector) leverages the [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar) to alter pod specifications to include a Vault Agent container that renders Vault secrets to a shared memory volume. By rendering secrets to a shared volume, containers within the pod can consume Vault secrets without being Vault-aware. The injector is a Kubernetes mutating webhook controller. The controller intercepts pod events and applies mutations to the pod if annotations exist within the request. This functionality is provided by the [vault-k8s](https://github.com/hashicorp/vault-k8s) project and can be automatically installed and configured using the Vault Helm chart.
 
-![Vault Sidecar Injection Workflow](/img/vault-sidecar-inject-workflow.png)
+![Vault Sidecar Injection Workflow](/img/openbao-sidecar-inject-workflow.png)
 
 ## Vault CSI provider
 
 The [Vault CSI provider](/docs/platform/k8s/csi) allows pods to consume Vault secrets by using ephemeral [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes. At a high level, the CSI Secrets Store driver enables users to create `SecretProviderClass` objects. These objects define which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes are made, the CSI Secrets Store driver sends the request to the Vault CSI provider if the provider is `vault`. The Vault CSI provider then uses the specified `SecretProviderClass` and the pod’s service account to retrieve the secrets from Vault and mount them into the pod’s CSI volume. Note that the secret is retrieved from Vault and populated to the CSI secrets store volume during the `ContainerCreation` phase. Therefore, pods are blocked from starting until the secrets are read from Vault and written to the volume.
 
-![Vault Sidecar Injection Workflow](/img/vault-csi-workflow.png)
+![Vault Sidecar Injection Workflow](/img/openbao-csi-workflow.png)
 
 :::warning
 

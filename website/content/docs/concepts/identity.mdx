@@ -25,7 +25,7 @@ For example, a user with accounts in both GitHub and LDAP can be mapped to a
 single entity in OpenBao with two aliases, one of type GitHub and one of type
 LDAP.
 
-![Entity  overview](/img/vault-identity-doc-1.png)
+![Entity  overview](/img/openbao-identity-doc-1.png)
 
 However, if both aliases are created on the same auth mount, such as
 a Github mount, both aliases cannot be mapped to the same entity. The aliases can
@@ -33,8 +33,8 @@ have the same auth type, as long as the auth mounts are different, and
 still be associated to the same entity. The diagrams below illustrate both valid
 and invalid scenarios.
 
-![Valid Alias Mapping](/img/vault-identity-doc-4.png)
-![Invalid Alias Mapping](/img/vault-identity-doc-5.png)
+![Valid Alias Mapping](/img/openbao-identity-doc-4.png)
+![Invalid Alias Mapping](/img/openbao-identity-doc-5.png)
 
 When a client authenticates via any credential backend (except the Token
 backend), OpenBao creates a new entity. It attaches a new alias to it if a
@@ -58,7 +58,7 @@ token presented on the API request contains an identifier for the entity and if
 that entity has a set of policies on it, then the token will be capable of
 performing actions allowed by the policies on the entity as well.
 
-![Entity policies](/img/vault-identity-doc-2.png)
+![Entity policies](/img/openbao-identity-doc-2.png)
 
 This is a paradigm shift in terms of _when_ the policies of the token get
 evaluated. Before identity, the policy names on the token were immutable (not
@@ -139,7 +139,7 @@ entity ID is being evaluated for the policies that it has access to, policies
 that are inherited due to group memberships are granted along with the policies
 on the entity itself.
 
-![Identity overview](/img/vault-identity-doc-3.png)
+![Identity overview](/img/openbao-identity-doc-3.png)
 
 ## Group hierarchical permissions
 

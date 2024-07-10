@@ -160,6 +160,8 @@ entities attempting to login. At least one of the bound values must be set.
   The standard scope "openid" is automatically included and need not be specified.
 - `allowed_redirect_uris` `(list: <required>)` - The list of allowed values for redirect_uri
   during OIDC logins.
+- `callback_mode` `(string: <optional>)` - The callback mode from the OIDC provider, either "client" (the default)
+  to call back to the client or "direct" to call back to the OpenBao server.
 - `verbose_oidc_logging` `(bool: false)` - Log received OIDC tokens and claims when debug-level
   logging is active. Not recommended in production since sensitive information may be present
   in OIDC responses.
@@ -369,22 +371,100 @@ against any bound claims, and if valid an OpenBao token will be returned.
 
 - `state` `(string: <required>)` - Opaque state ID that is part of the Authorization URL and will
   be included in the the redirect following successful authentication on the provider.
-- `nonce` `(string: <required>)` - Opaque nonce that is part of the Authorization URL and will
-  be included in the the redirect following successful authentication on the provider.
-- `code` `(string: <required>)` - Provider-generated authorization code that OpenBao will exchange for
-  an ID token.
+- `code` `(string: <optional>)` - Provider-generated authorization code that OpenBao will exchange for
+  an ID token.  Required if no `id_token` given.
+- `id_token` `(string: <optional>)` - If present instead of an authorization code, will be used directly
+  instead of exchanging the code to get it.  Required if no `code` given.
 - `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
   match the `client_nonce` value provided during the prior request to the
   [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+- `error_description` `(string: <optional>)` - Detailed description of an error if there was an error.
+  If present, will be included in the error message passed back to the requester.
 
 ### Sample request
 
 ```shell-session
 $ curl \
-    https://127.0.0.1:8200/v1/auth/jwt/oidc/callback?state=n2kfh3nsl&code=mn2ldl2nv98h2jl&nonce=ni42i2idj2jj
+    https://127.0.0.1:8200/v1/auth/jwt/oidc/callback?state=n2kfh3nsl&code=mn2ldl2nv98h2jl&client_nonce=ni42i2idj2jj
 ```
 
 ### Sample response
+
+```json
+{
+    "auth":{
+        "client_token":"f33f8c72-924e-11f8-cb43-ac59d697597c",
+        "accessor":"0e9e354a-520f-df04-6867-ee81cae3d42d",
+        "policies":[
+            "default",
+            "dev",
+            "prod"
+        ],
+        "lease_duration":2764800,
+        "renewable":true
+    },
+    ...
+}
+```
+
+## OIDC poll
+
+Poll for a response when using the direct callback mode in order to complete a login.
+The response from the [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API
+returns a `poll_interval` data item containing the number of seconds that the client
+should wait between invoking the poll API.
+
+If the callback hasn't yet occurred, the HTTP response code will be 400 and include
+an `errors` JSON list including either `authorization_pending` or `slow_down`.
+If the response is `slow_down` then the client should add additional time before
+calling the poll API again.
+
+When the callback has occurred, the response will include either a different `errors`
+message or sucessfully return an authorization token.
+
+| Method | Path                      |
+| :----- | :------------------------ |
+| `GET`  | `/auth/jwt/oidc/poll` |
+
+### Parameters
+
+- `state` `(string: <required>)` - Opaque state ID that was part of the Authorization URL
+  and must match the state returned from the OIDC provider.
+- `client_nonce` `(string: <optional>)` - Optional client-provided nonce that must
+  match the `client_nonce` value provided during the prior request to the
+  [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API.
+
+### Sample payload
+
+```json
+{
+  "state": "n2kfh3nsl",
+  "client_nonce": "ni42i2idj2jj"
+}
+```
+
+### Sample request
+
+```shell-session
+$ curl \
+    --request POST \
+    --data @payload.json \
+    https://127.0.0.1:8200/v1/auth/jwt/oidc/poll
+```
+
+### Sample responses
+
+When response hasn't yet occurred:
+
+```json
+{
+  "errors": [
+    "authorization_pending"
+  ]
+}
+```
+
+On success:
 
 ```json
 {

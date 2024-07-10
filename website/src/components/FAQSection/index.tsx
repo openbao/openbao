@@ -37,13 +37,14 @@ const accordionData: AccordionItem[] = [
     title: "Which version of Hashicorp Vault are you planning to fork?",
     description: (
       <>
-        The{" "}
-        <a href="https://github.com/hashicorp/vault/tree/release/1.14.x">
-          1.14.x release
-        </a>{" "}
-        is the most recent that is under an MPL 2.0 license, and will be
-        receiving official updates until December 31, 2023. Our fork will be
-        based on the newest point release in that branch.
+        OpenBao was forked prior to upstream's last commit
+        (<a href="https://github.com/hashicorp/vault/commit/8993802145833ab01d49c6070d787a9eccb81546">8993802</a>)
+        prior to the BUSL. This corresponds to a few commits after 1.14.8,
+        but prior to 1.14.9 being cut.
+
+        From here forward, we'll be adhering to our
+        <a href="/docs/policies/migration/#proposal">compatibility policy</a>
+        to provide API-compatibility with upstream when possible.
       </>
     ),
   },

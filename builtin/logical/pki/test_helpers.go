@@ -430,7 +430,7 @@ func performOcspPost(t *testing.T, cert *x509.Certificate, issuerCert *x509.Cert
 	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
 	ocspPostReq.BodyBytes = ocspReq
 	rawResp, err := baseClient.RawRequest(ocspPostReq)
-	require.NoError(t, err, "failed sending unified-ocsp post request")
+	require.NoError(t, err, "failed sending ocsp post request")
 
 	require.Equal(t, 200, rawResp.StatusCode)
 	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))

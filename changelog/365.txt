@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/pki: Remove Vault Enterprise-only cross-cluster, unified CRL stubs (breaking).
+```

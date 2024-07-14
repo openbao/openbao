@@ -303,5 +303,5 @@ jobs:
           merge-multiple: true
       - run: |
           ls -lhR test-results/go-test
-          find test-results/go-test -mindepth 1 -mtime +3 -delete
+          find test-results/go-test -type f -mindepth 1 -mtime +3 -delete
           ls -lhR test-results/go-test

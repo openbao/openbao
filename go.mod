@@ -138,7 +138,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sasha-s/go-deadlock v0.2.0
 	github.com/sethvargo/go-limiter v0.7.1
-	github.com/shirou/gopsutil/v3 v3.22.6
+	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/bbolt v1.3.7
 	go.opentelemetry.io/otel v1.19.0
@@ -318,6 +318,7 @@ require (
 	github.com/renier/xmlrpc v0.0.0-20170708154548-ce4a1a486c03 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
+	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/softlayer/softlayer-go v0.0.0-20180806151055-260589d94c7d // indirect
@@ -326,8 +327,8 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
-	github.com/tklauser/go-sysconf v0.3.10 // indirect
-	github.com/tklauser/numcpus v0.4.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
+	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vmware/govmomi v0.18.0 // indirect
@@ -335,7 +336,7 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	github.com/zclconf/go-cty v1.12.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect

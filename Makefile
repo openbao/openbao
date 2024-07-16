@@ -336,3 +336,9 @@ ci-tidy-all:
 	cd sdk && $(GO_CMD) mod tidy
 	$(GO_CMD) mod tidy
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make tidy-all' locally and commit the changes.\n" && exit 1)
+
+.PHONY: release-changelog
+release-changelog: $(wildcard changelog/*.txt)
+	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
+	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
+	changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)

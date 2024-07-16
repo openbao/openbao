@@ -198,10 +198,10 @@ github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWb
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/oklog/run v1.1.0 h1:GEenZ1cK0+q0+wsJew9qUg/DyD8k3JzYsZAi5gYi2mA=
 github.com/oklog/run v1.1.0/go.mod h1:sVPdnTZT1zYwAJeCMu2Th4T21pA3FPOQRfWjQlk7DVU=
-github.com/openbao/go-kms-wrapping/entropy/v2 v2.0.1-0.20240122151027-4d142be5e262 h1:F0hs+RHFwfDegym1ySejPWgpnTu/ZC/g+R59bEdsfdI=
-github.com/openbao/go-kms-wrapping/entropy/v2 v2.0.1-0.20240122151027-4d142be5e262/go.mod h1:FyraJlnh3slvd0o/AkRJW3zZCCdVzx8AnOam91AnG18=
-github.com/openbao/go-kms-wrapping/v2 v2.0.16-0.20240122151027-4d142be5e262 h1:MZUVj5C1R+nAq+naaj3z+oSoeascJsILXWZ7qG4BwEQ=
-github.com/openbao/go-kms-wrapping/v2 v2.0.16-0.20240122151027-4d142be5e262/go.mod h1:P6AthgtUWscKaCUje5LVr60eSrH10G0yupfoxfoEMek=
+github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0 h1:f+OX5kI8KLPYhzRhqhQTQPashOx5SxPaWtd24hoT5vo=
+github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0/go.mod h1:2ZTItykGc/yQcdNfyK2TPBYKlOibfwSPr7ugFyqGXlI=
+github.com/openbao/go-kms-wrapping/v2 v2.1.0 h1:jSyQwjGWlEoNZZUUbXdKpTrV+Y9l7B3N8qTym1AJ9Ww=
+github.com/openbao/go-kms-wrapping/v2 v2.1.0/go.mod h1:c0lWzFdDOXYr+uJ6WmnJdsWuApdt1aZzYWHknbxjMc0=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQb2IpWsCzug=

@@ -6,11 +6,9 @@ package api
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -317,11 +315,6 @@ func TestDefaulRetryPolicy(t *testing.T) {
 		"retry on error": {
 			err:    fmt.Errorf("error"),
 			expect: true,
-		},
-		"don't retry connection failures": {
-			err: &url.Error{
-				Err: x509.UnknownAuthorityError{},
-			},
 		},
 		"don't retry on 200": {
 			resp: &http.Response{

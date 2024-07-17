@@ -135,3 +135,50 @@ When running the Docker image, include the flag `--memory-swappiness=0`.
 ### macOS
 
 [The swap space on macOS is always encrypted](https://support.apple.com/guide/mac-help/what-is-secure-virtual-memory-on-mac-mh11852/mac).
+
+## Signature Verification
+
+### GPG
+
+First, download our [GPG key](pathname:///assets/openbao-gpg-pub-20240618.asc) and import it:
+
+```
+
+$ gpg2 --import openbao-gpg-pub-20240618.asc
+gpg: key D200CD702853E6D0: public key "OpenBao <openbao@lists.lfedge.org>" imported
+gpg: Total number processed: 1
+gpg:               imported: 1
+```
+
+
+To verify GPG signed artifacts, use `gpg2` from the command line. For example, to verify `checksums-freebsd.txt` with the `checksums-freebsd.txt.gpgsig` stored locally:
+
+```
+$ gpg2 --verify checksums-freebsd.txt.gpgsig checksums-freebsd.txt
+gpg: Signature made Wed 17 Jul 2024 06:12:03 PM EDT
+gpg:                using RSA key E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94
+gpg: Good signature from "OpenBao <openbao@lists.lfedge.org>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 66D1 5FDD 8728 7219 C8E1  5478 D200 CD70 2853 E6D0
+     Subkey fingerprint: E617 DCD4 065C 2AFC 0B2C  F7A7 BA8B C08C 0F69 1F94
+```
+
+### Cosign and Rekor
+
+To verify Cosign signed artifacts, use `rekor-cli` or `curl` to [pull the entry from Rekor](https://edu.chainguard.dev/open-source/sigstore/rekor/how-to-verify-file-signatures-with-rekor-or-curl/).
+
+For example, to verify `checksums.txt` with the `checksums.txt.sig` stored locally:
+
+```
+$ SHASUM="$(openssl sha256 -r checksums.txt | awk '{print $1}')"
+bc53476e7e69c98650bf69690caf1aa32dc08c19735375819ae3b29bb9c2b733
+$ curl -X POST -H "Content-type: application/json" 'https://rekor.sigstore.dev/api/v1/index/retrieve' --data-raw "{\"hash\":\"sha256:$SHASUM\"}"
+24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
+$ UUID=24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
+$ curl -X GET "https://rekor.sigstore.dev/api/v1/log/entries/${UUID}" > response.json
+$ jq -r ".[\"$UUID\"].body" < response.json | base64 -d | jq -r '.spec.signature.publicKey.content' | base64 -d > certificate.pem
+$ base64 -d < checksums-linux.txt.sig > checksums-linux.txt.rawsig
+$ openssl pkeyutl -verify -certin -inkey certificate.pem -sigfile checksums-linux.txt.rawsig -in checksums-linux.txt -rawin
+Signature Verified Successfully
+```

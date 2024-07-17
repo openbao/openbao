@@ -158,6 +158,17 @@ const LinuxPackage = ({ version, name }) => {
                         )}
                 </nav>
             </TabItem>
+            <TabItem value="pkg" label="PKG">
+                <nav className="pagination-nav">
+                    {/* Check if version is not undefined before accessing releases */}
+                    {version &&
+                        Object(options)[version]["assets"][name] &&
+                        Object(options)[version]["assets"][name]["pkg"] &&
+                        Object(options)[version]["assets"][name]["pkg"].map(
+                            (props, idx) => <Asset key={idx} url={props} />,
+                        )}
+                </nav>
+            </TabItem>
         </Tabs>
     );
 };

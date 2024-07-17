@@ -3,6 +3,7 @@ interface Release {
         linux: {
             deb: string[];
             rpm: string[];
+            pkg: string[];
             binary: string[];
             docker: string[];
         };
@@ -49,6 +50,7 @@ export function GetReleases(response): Releases {
                 linux: {
                     deb: [],
                     rpm: [],
+                    pkg: [],
                     binary: [],
                     docker: [],
                 },
@@ -80,6 +82,21 @@ export function GetReleases(response): Releases {
                 // download page
                 continue;
             }
+            if (a.browser_download_url.toLowerCase().includes(".gpgsig")) {
+                // skip signature release assets, they are not relevant for the
+                // download page
+                continue;
+            }
+            if (a.browser_download_url.toLowerCase().includes(".pem")) {
+                // skip signature release assets, they are not relevant for the
+                // download page
+                continue;
+            }
+            if (a.browser_download_url.toLowerCase().includes("checksums")) {
+                // skip checksum files, they are not relevant for the
+                // download page
+                continue;
+            }
             if (a.browser_download_url.toLowerCase().includes("windows")) {
                 release.assets.windows.binary.push(a.browser_download_url);
             }
@@ -108,6 +125,11 @@ export function GetReleases(response): Releases {
             if (a.browser_download_url.toLowerCase().includes(".deb")) {
                 release.assets.linux.deb.push(a.browser_download_url);
                 // deb urls also contain "linux", so contiune if we find it
+                continue;
+            }
+            if (a.browser_download_url.toLowerCase().includes(".pkg")) {
+                release.assets.linux.pkg.push(a.browser_download_url);
+                // pkg urls also contain "linux", so contiune if we find it
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes("linux")) {

@@ -135,3 +135,6 @@ tools/codechecker/.bin
 
 # OpenAPI
 scripts/openapi.json
+
+# auto-generated goreleaser configuration
+.goreleaser.yaml

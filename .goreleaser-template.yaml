@@ -30,7 +30,7 @@ builds:
     env:
       - CGO_ENABLED=0
     goos:
-      - linux
+      - REPLACE_WITH_RELEASE_GOOS
     goarch:
       - amd64
       - arm
@@ -40,6 +40,16 @@ builds:
       - s390x
     goarm:
       - "6"
+    ignore:
+      - goos: darwin
+      - goos: dragonfly
+      - goos: freebsd
+      - goos: illumos
+      - goos: netbsd
+      - goos: openbsd
+      - goos: solaris
+      - goos: wasip1
+      - goos: windows
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
   - id: builds-other
@@ -48,15 +58,7 @@ builds:
     env:
       - CGO_ENABLED=0
     goos:
-      - darwin
-      #- dragonfly
-      - freebsd
-      - illumos
-      - netbsd
-      - openbsd
-      - solaris
-      #- wasip1
-      - windows
+      - REPLACE_WITH_RELEASE_GOOS
     goarch:
       - amd64
       - arm
@@ -69,6 +71,7 @@ builds:
       - "6"
       - "7"
     ignore:
+      - goos: linux
       - goos: darwin
         goarm: "6"
       - goos: darwin
@@ -161,65 +164,65 @@ builds:
 
 report_sizes: true
 
-nfpms:
-  - vendor: OpenBao
-    homepage: https://openbao.org
-    maintainer: OpenBao <openbao@lists.lfedge.org>
-    description: |
-      OpenBao exists to provide a software solution to manage, store, and distribute
-      sensitive data including secrets, certificates, and keys.
-    license: MPL-2.0
-    formats:
-      # - apk
-      - deb
-      - rpm
-      - archlinux
-    dependencies:
-      - openssl
-    provides:
-      - bao
-    bindir: /usr/bin
-    section: default
-    contents:
-      - src: ./LICENSE
-        dst: /usr/share/doc/openbao/copyright
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/etc/openbao/openbao.env
-        dst: /etc/openbao/openbao.env
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/etc/openbao/openbao.hcl
-        dst: /etc/openbao/openbao.hcl
-        file_info:
-          mode: 0644
-      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
-        dst: /usr/lib/systemd/system/openbao.service
-        file_info:
-          mode: 0644
-    scripts:
-      preinstall: ".release/linux/preinst"
-      postinstall: ".release/linux/postinst"
-      postremove: ".release/linux/postrm"
-    overrides:
-      deb:
-        dependencies:
-          - openssl
-      rpm:
-        dependencies:
-          - openssl
-      archlinux:
-        dependencies:
-          - openssl
-    deb:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
-    rpm:
-      signature:
-        key_file: "{{ .Env.GPG_KEY_FILE }}"
+#LINUXONLY#nfpms:
+#LINUXONLY#  - vendor: OpenBao
+#LINUXONLY#    homepage: https://openbao.org
+#LINUXONLY#    maintainer: OpenBao <openbao@lists.lfedge.org>
+#LINUXONLY#    description: |
+#LINUXONLY#      OpenBao exists to provide a software solution to manage, store, and distribute
+#LINUXONLY#      sensitive data including secrets, certificates, and keys.
+#LINUXONLY#    license: MPL-2.0
+#LINUXONLY#    formats:
+#LINUXONLY#      # - apk
+#LINUXONLY#      - deb
+#LINUXONLY#      - rpm
+#LINUXONLY#      - archlinux
+#LINUXONLY#    dependencies:
+#LINUXONLY#      - openssl
+#LINUXONLY#    provides:
+#LINUXONLY#      - bao
+#LINUXONLY#    bindir: /usr/bin
+#LINUXONLY#    section: default
+#LINUXONLY#    contents:
+#LINUXONLY#      - src: ./LICENSE
+#LINUXONLY#        dst: /usr/share/doc/openbao/copyright
+#LINUXONLY#        file_info:
+#LINUXONLY#          mode: 0644
+#LINUXONLY#      - src: ./.release/linux/package/etc/openbao/openbao.env
+#LINUXONLY#        dst: /etc/openbao/openbao.env
+#LINUXONLY#        file_info:
+#LINUXONLY#          mode: 0644
+#LINUXONLY#      - src: ./.release/linux/package/etc/openbao/openbao.hcl
+#LINUXONLY#        dst: /etc/openbao/openbao.hcl
+#LINUXONLY#        file_info:
+#LINUXONLY#          mode: 0644
+#LINUXONLY#      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
+#LINUXONLY#        dst: /usr/lib/systemd/system/openbao.service
+#LINUXONLY#        file_info:
+#LINUXONLY#          mode: 0644
+#LINUXONLY#    scripts:
+#LINUXONLY#      preinstall: ".release/linux/preinst"
+#LINUXONLY#      postinstall: ".release/linux/postinst"
+#LINUXONLY#      postremove: ".release/linux/postrm"
+#LINUXONLY#    overrides:
+#LINUXONLY#      deb:
+#LINUXONLY#        dependencies:
+#LINUXONLY#          - openssl
+#LINUXONLY#      rpm:
+#LINUXONLY#        dependencies:
+#LINUXONLY#          - openssl
+#LINUXONLY#      archlinux:
+#LINUXONLY#        dependencies:
+#LINUXONLY#          - openssl
+#LINUXONLY#    deb:
+#LINUXONLY#      signature:
+#LINUXONLY#        key_file: "{{ .Env.GPG_KEY_FILE }}"
+#LINUXONLY#    rpm:
+#LINUXONLY#      signature:
+#LINUXONLY#        key_file: "{{ .Env.GPG_KEY_FILE }}"
 
 checksum:
-  name_template: "checksums.txt"
+  name_template: "checksums-REPLACE_WITH_RELEASE_GOOS.txt"
   disable: false
   # split: false
 
@@ -868,8 +871,15 @@ release:
   github:
     owner: openbao
     name: openbao
-  draft: true #${{ .Env.GITHUB_RELEASE_DRAFT }}
-  replace_existing_draft: false
+
   prerelease: ${{ .Env.GITHUB_PRERELEASE }}
   make_latest: ${{ .Env.GITHUB_RELEASE_MAKE_LATEST }}
   disable: false
+
+  # We overwrite the following variables to support multi-stage execution of
+  # goreleaser on the same artifacts with different GOOS values, to avoid
+  # running out of disk space. We can't support draft releases because the same
+  # release needs to be used for all artifacts uploaded from separate stages.
+  draft: false
+  replace_existing_draft: false
+  replace_existing_artifacts: false

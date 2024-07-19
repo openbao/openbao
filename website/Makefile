@@ -1,6 +1,6 @@
 NPM := $(shell which npm)
 
-.PHONY: start, clean, deploy, serve, install
+.PHONY: start, clean, deploy, serve, install, build
 
 start: node_modules
 	@$(NPM) run start

@@ -18,8 +18,6 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 | MFA workflow                                   | What does it do?                                                                                                                                                                                                                                                                                    | Who manages the MFA?              | 
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | [Login MFA](/docs/auth/login-mfa)              | MFA in OpenBao provides MFA on login. CLI, API, and UI-based login are supported.                                                                                                                                                                                                                 | MFA is managed by OpenBao | 
-| [Okta Auth MFA](/docs/auth/okta#mfa)           | This is MFA as part of [Okta Auth method](/docs/auth/okta) in OpenBao, where MFA is enforced by Okta on login. MFA must be satisfied for authentication to be successful. This is different from the Okta MFA method used with Login MFA. CLI/API login are supported. | MFA is managed externally by Okta | 
-
 
 ### Q: what is Single-Phase MFA vs. Two-Phase MFA?
 
@@ -41,14 +39,12 @@ If the configured MFA methods, such as PingID, Okta, or Duo, do not require a pa
 | MFA workflow                                   | Configuration methods                                                                     | Details                                                                                                                                                                                                                                                                                     |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Login MFA](/docs/auth/login-mfa)              | CLI/API | Configured using the `identity/mfa/method` endpoints, then passing those method IDs to the `identity/mfa/login-enforcement` endpoint. MFA methods supported: TOTP, Okta, Duo, PingID.                                                                                                       |
-| [Okta Auth MFA](/docs/auth/okta)               | CLI/API                                                                                   | MFA methods supported: [TOTP](https://help.okta.com/en/prod/Content/Topics/Security/mfa-totp-seed.htm) , [Okta Verify Push](https://help.okta.com/en/prod/Content/Topics/Mobile/ov-admin-config.htm). |
 
 ### Q: which MFA mechanism is used with the different MFA workflows in OpenBao?
 
 | MFA workflow                                   | UI        | CLI/API                                                                                                                                   | Single-Phase                | Two-Phase                   |
 | ---------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | --------------------------- |
 | [Login MFA](/docs/auth/login-mfa)              | Supported | Supported. You can select single-phase MFA by supplying the X-Vault-MFA header. In the absence of this header, the Two- Phase MFA is used | N/A                         | Supported                   |
-| [Okta Auth MFA](/docs/auth/okta)               | N/A       | N/A                                                                                                                                       | MFA is not managed by OpenBao | MFA is not managed by OpenBao |
 
 ### Q: i use the OpenBao agent. does MFA pose any challenges for me?
 

@@ -21,7 +21,7 @@ const config: Config = {
   organizationName: "openbao", // Usually your GitHub org/user name.
   projectName: "openbao", // Usually your repo name.
 
-  onBrokenLinks: "warn",
+  onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
   // ignore broken anchors as most of them are false positives
   onBrokenAnchors: "ignore",

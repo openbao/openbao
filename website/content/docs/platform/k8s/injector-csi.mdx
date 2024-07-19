@@ -1,25 +1,24 @@
 ---
-draft: true
-description: This section compares Sidecar Injector and Vault CSI Provider for Kubernetes and Vault integration.
+description: This section compares Sidecar Injector and OpenBao CSI Provider for Kubernetes and OpenBao integration.
 ---
 
-# Agent injector vs. Vault CSI provider
+# Agent injector vs. OpenBao CSI provider
 
-This document explores two different methods for integrating HashiCorp Vault with Kubernetes. The information provided is intended for DevOps practitioners who understand secret management concepts and are familiar with HashiCorp Vault and Kubernetes. This document also offers practical guidance to help you understand and choose the best method for your use case.
+This document explores two different methods for integrating HashiCorp OpenBao with Kubernetes. The information provided is intended for DevOps practitioners who understand secret management concepts and are familiar with HashiCorp OpenBao and Kubernetes. This document also offers practical guidance to help you understand and choose the best method for your use case.
 
-Information contained within this document details the contrast between the Agent Injector, also referred as _Vault Sidecar_ or _Sidecar_ in this document, and the Vault Container Storage Interface (CSI) provider used to integrate Vault and Kubernetes.
+Information contained within this document details the contrast between the Agent Injector, also referred as _OpenBao Sidecar_ or _Sidecar_ in this document, and the OpenBao Container Storage Interface (CSI) provider used to integrate OpenBao and Kubernetes.
 
-## Vault sidecar agent injector
+## OpenBao sidecar agent injector
 
-The [Vault Sidecar Agent Injector](/docs/platform/k8s/injector) leverages the [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar) to alter pod specifications to include a Vault Agent container that renders Vault secrets to a shared memory volume. By rendering secrets to a shared volume, containers within the pod can consume Vault secrets without being Vault-aware. The injector is a Kubernetes mutating webhook controller. The controller intercepts pod events and applies mutations to the pod if annotations exist within the request. This functionality is provided by the [vault-k8s](https://github.com/hashicorp/vault-k8s) project and can be automatically installed and configured using the Vault Helm chart.
+The [OpenBao Sidecar Agent Injector](/docs/platform/k8s/injector) leverages the [sidecar pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/sidecar) to alter pod specifications to include a OpenBao Agent container that renders OpenBao secrets to a shared memory volume. By rendering secrets to a shared volume, containers within the pod can consume OpenBao secrets without being OpenBao-aware. The injector is a Kubernetes mutating webhook controller. The controller intercepts pod events and applies mutations to the pod if annotations exist within the request. This functionality is provided by the [vault-k8s](https://github.com/hashicorp/vault-k8s) project and can be automatically installed and configured using the OpenBao Helm chart.
 
-![Vault Sidecar Injection Workflow](/img/openbao-sidecar-inject-workflow.png)
+![OpenBao Sidecar Injection Workflow](/img/openbao-sidecar-inject-workflow.png)
 
-## Vault CSI provider
+## OpenBao CSI provider
 
-The [Vault CSI provider](/docs/platform/k8s/csi) allows pods to consume Vault secrets by using ephemeral [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes. At a high level, the CSI Secrets Store driver enables users to create `SecretProviderClass` objects. These objects define which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes are made, the CSI Secrets Store driver sends the request to the Vault CSI provider if the provider is `vault`. The Vault CSI provider then uses the specified `SecretProviderClass` and the pod’s service account to retrieve the secrets from Vault and mount them into the pod’s CSI volume. Note that the secret is retrieved from Vault and populated to the CSI secrets store volume during the `ContainerCreation` phase. Therefore, pods are blocked from starting until the secrets are read from Vault and written to the volume.
+The [OpenBao CSI provider](/docs/platform/k8s/csi) allows pods to consume OpenBao secrets by using ephemeral [CSI Secrets Store](https://github.com/kubernetes-sigs/secrets-store-csi-driver) volumes. At a high level, the CSI Secrets Store driver enables users to create `SecretProviderClass` objects. These objects define which secret provider to use and what secrets to retrieve. When pods requesting CSI volumes are made, the CSI Secrets Store driver sends the request to the OpenBao CSI provider if the provider is `vault`. The OpenBao CSI provider then uses the specified `SecretProviderClass` and the pod’s service account to retrieve the secrets from OpenBao and mount them into the pod’s CSI volume. Note that the secret is retrieved from OpenBao and populated to the CSI secrets store volume during the `ContainerCreation` phase. Therefore, pods are blocked from starting until the secrets are read from OpenBao and written to the volume.
 
-![Vault Sidecar Injection Workflow](/img/openbao-csi-workflow.png)
+![OpenBao Sidecar Injection Workflow](/img/openbao-csi-workflow.png)
 
 :::warning
 
@@ -51,27 +50,27 @@ Now that you're familiar with some of the design considerations, we'll explore t
 
 ## Similarities
 
-Both Agent Injection and Vault CSI solutions have the following similarities:
+Both Agent Injection and OpenBao CSI solutions have the following similarities:
 
-- They simplify retrieving different types of secrets stored in Vault and expose them to the target pod running on Kubernetes without knowing the not-so-trivial Vault processes. It’s important to note that there is no need to change the application logic or code to use these solutions, therefore, making it easier to migrate brownfield applications into Kubernetes. Developers working on greenfield applications can leverage the Vault SDKs to integrate with Vault directly.
+- They simplify retrieving different types of secrets stored in OpenBao and expose them to the target pod running on Kubernetes without knowing the not-so-trivial OpenBao processes. It’s important to note that there is no need to change the application logic or code to use these solutions, therefore, making it easier to migrate brownfield applications into Kubernetes. Developers working on greenfield applications can leverage the OpenBao SDKs to integrate with OpenBao directly.
 
-- They support all types of Vault [secrets engines](/docs/secrets). This support allows you to leverage an extensive set of secret types, ranging from static key-value secrets to dynamically generated database credentials and TLS certs with customized TTL.
+- They support all types of OpenBao [secrets engines](/docs/secrets). This support allows you to leverage an extensive set of secret types, ranging from static key-value secrets to dynamically generated database credentials and TLS certs with customized TTL.
 
-- They leverage the application’s Kubernetes pod service account token as [Secret Zero](https://www.hashicorp.com/resources/secret-zero-mitigating-the-risk-of-secret-introduction-with-vault) to authenticate with Vault via the Kubernetes auth method. With this method, there is no need to manage yet another separate identity to identify the application pods when authenticating to Vault.
+- They leverage the application’s Kubernetes pod service account token as [Secret Zero](https://www.hashicorp.com/resources/secret-zero-mitigating-the-risk-of-secret-introduction-with-vault) to authenticate with OpenBao via the Kubernetes auth method. With this method, there is no need to manage yet another separate identity to identify the application pods when authenticating to OpenBao.
 
 - Secret lifetime is tied to the lifetime of the pod for both methods. While this holds true for file contents inside the pod, this also holds true for Kubernetes secrets that CSI creates. Secrets are automatically created and deleted as the pod is created and deleted.
 
-![Vault's Kubernetes auth workflow](/img/k8s-auth-workflow.png)
+![OpenBao's Kubernetes auth workflow](/img/k8s-auth-workflow.png)
 
-- They require the desired secrets to exist within Vault before deploying the application.
+- They require the desired secrets to exist within OpenBao before deploying the application.
 
-- They require the pod’s service account to bind to a Vault role with a policy enabling access to desired secrets (that is, Kubernetes RBAC isn’t used to authorize access to secrets).
+- They require the pod’s service account to bind to a OpenBao role with a policy enabling access to desired secrets (that is, Kubernetes RBAC isn’t used to authorize access to secrets).
 
 - They can both be deployed via Helm.
 
-- They require successfully retrieving secrets from Vault before the pods are started.
+- They require successfully retrieving secrets from OpenBao before the pods are started.
 
-- They rely on user-defined pod annotations to retrieve the required secrets from Vault.
+- They rely on user-defined pod annotations to retrieve the required secrets from OpenBao.
 
 ## Differences
 
@@ -80,15 +79,15 @@ Now that you understand the similarities, there are differences between these tw
 - The Sidecar Agent Injector solution is composed of two elements:
 
   - The Sidecar Service Injector, which is deployed as a cluster service and is responsible for intercepting Kubernetes apiserver pod events and mutating pod specs to add required sidecar containers
-  - The Vault Sidecar Container, which is deployed alongside each application pod and is responsible for authenticating into Vault, retrieving secrets from Vault, and rendering secrets for the application to consume.
+  - The OpenBao Sidecar Container, which is deployed alongside each application pod and is responsible for authenticating into OpenBao, retrieving secrets from OpenBao, and rendering secrets for the application to consume.
 
-- In contrast, the Vault CSI Driver is deployed as a daemonset on every node in the Kubernetes cluster and uses the Secret Provider Class specified and the pod’s service account to retrieve the secrets from Vault and mount them into the pod’s CSI volume.
+- In contrast, the OpenBao CSI Driver is deployed as a daemonset on every node in the Kubernetes cluster and uses the Secret Provider Class specified and the pod’s service account to retrieve the secrets from OpenBao and mount them into the pod’s CSI volume.
 
-- The Sidecar Agent Injector supports [all](/docs/platform/k8s/injector/annotations#vault-hashicorp-com-auth-path) Vault [auto-auth](/docs/agent-and-proxy/autoauth/methods) methods. The Sidecar CSI driver supports only Vault’s [Kubernetes auth method](/docs/platform/k8s/csi/configurations#vaultkubernetesmountpath).
+- The Sidecar Agent Injector supports [all](/docs/platform/k8s/injector/annotations#vault-hashicorp-com-auth-path) OpenBao [auto-auth](/docs/agent-and-proxy/autoauth/methods) methods. The Sidecar CSI driver supports only OpenBao’s [Kubernetes auth method](/docs/platform/k8s/csi/configurations#vaultkubernetesmountpath).
 
-- The Sidecar container launched with every application pod uses [Vault Agent](https://www.hashicorp.com/blog/why-use-the-vault-agent-for-secrets-management), which provides a powerful set of capabilities such as auto-auth, templating, and caching. The CSI driver does not use the Vault Agent and therefore lacks these functionalities.
+- The Sidecar container launched with every application pod uses [OpenBao Agent](https://www.hashicorp.com/blog/why-use-the-vault-agent-for-secrets-management), which provides a powerful set of capabilities such as auto-auth, templating, and caching. The CSI driver does not use the OpenBao Agent and therefore lacks these functionalities.
 
-- The Vault CSI driver supports rendering Vault secrets into Kubernetes secrets and environment variables. Sidecar Injector Service does not support rendering secrets into Kubernetes secrets; however, there are ways to [agent templating](/docs/platform/k8s/injector/examples#environment-variable-example) to render secrets into environment variables.
+- The OpenBao CSI driver supports rendering OpenBao secrets into Kubernetes secrets and environment variables. Sidecar Injector Service does not support rendering secrets into Kubernetes secrets; however, there are ways to [agent templating](/docs/platform/k8s/injector/examples#environment-variable-example) to render secrets into environment variables.
 
 - The CSI driver uses `hostPath` to mount ephemeral volumes into the pods, which some container platforms (e.g., OpenShift) disable by default. On the other hand, Sidecar Agent Service uses in-memory _tmpfs_ volumes.
 
@@ -122,10 +121,6 @@ Designing secrets management in Kubernetes is an intricate task. There are multi
 
 ## Additional resources
 
-- [HashiCorp Vault: Delivering Secrets with Kubernetes](https://medium.com/hashicorp-engineering/hashicorp-vault-delivering-secrets-with-kubernetes-1b358c03b2a3)
+- [OpenBao Sidecar Injector Configurations and Examples](/docs/platform/k8s/injector/annotations)
 
-- [Retrieve HashiCorp Vault Secrets with Kubernetes CSI](https://www.hashicorp.com/blog/retrieve-hashicorp-vault-secrets-with-kubernetes-csi)
-
-- [Vault Sidecar Injector Configurations and Examples](/docs/platform/k8s/injector/annotations)
-
-- [Vault CSI Driver Configurations and Examples](/docs/platform/k8s/csi/configurations)
+- [OpenBao CSI Driver Configurations and Examples](/docs/platform/k8s/csi/configurations)

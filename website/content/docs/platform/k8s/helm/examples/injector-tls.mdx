@@ -1,11 +1,9 @@
 ---
-draft: true
-sidebar_current: 'docs-platform-k8s-examples-injector-tls'
 description: |-
-  Describes how to set up the Vault Agent Injector with manually generated certificates and keys.
+  Describes how to set up the OpenBao Agent Injector with manually generated certificates and keys.
 ---
 
-# Vault agent injector TLS configuration
+# OpenBao agent injector TLS configuration
 
 :::warning
 
@@ -14,7 +12,7 @@ description: |-
 :::
 
 
-The following instructions demonstrate how to manually configure the Vault Agent Injector
+The following instructions demonstrate how to manually configure the OpenBao Agent Injector
 with self-signed certificates.
 
 ## Create a certificate authority (CA)
@@ -42,13 +40,13 @@ $ openssl req \
    -sha256 \
    -days 1825 \
    -out injector-ca.crt \
-   -subj "/C=US/ST=CA/L=San Francisco/O=HashiCorp/CN=vault-agent-injector-svc"
+   -subj "/C=US/ST=CA/L=San Francisco/O=Openbao/CN=openbao-agent-injector-svc"
 ```
 
-## Create Vault agent injector certificate
+## Create OpenBao agent injector certificate
 
 Next we can create a certificate and key signed by the certificate authority generated above. This
-certificate and key will be used by the Vault Agent Injector for TLS communications with the Kubernetes
+certificate and key will be used by the OpenBao Agent Injector for TLS communications with the Kubernetes
 API.
 
 First, create a private key for the certificate:
@@ -64,7 +62,7 @@ $ openssl req \
    -new \
    -key tls.key \
    -out tls.csr \
-   -subj "/C=US/ST=CA/L=San Francisco/O=HashiCorp/CN=vault-agent-injector-svc"
+   -subj "/C=US/ST=CA/L=San Francisco/O=Openbao/CN=openbao-agent-injector-svc"
 ```
 
 After creating the CSR, create an extension file to configure additional parameters for signing
@@ -73,11 +71,11 @@ the certificate.
 :::warning
 
 **Important Note:** The alternative names for the certificate must be configured to use the name
-of the Vault Agent Injector Kubernetes service and namespace where its created.
+of the OpenBao Agent Injector Kubernetes service and namespace where its created.
 
 :::
 
-In this example the Vault Agent Injector service name is `vault-agent-injector-svc` in the `vault` namespace.
+In this example the OpenBao Agent Injector service name is `openbao-agent-injector-svc` in the `openbao` namespace.
 This uses the pattern `<k8s service name>.<k8s namespace>.svc.cluster.local`.
 
 ```shell
@@ -88,10 +86,10 @@ keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = vault-agent-injector-svc
-DNS.2 = vault-agent-injector-svc.vault
-DNS.3 = vault-agent-injector-svc.vault.svc
-DNS.4 = vault-agent-injector-svc.vault.svc.cluster.local
+DNS.1 = openbao-agent-injector-svc
+DNS.2 = openbao-agent-injector-svc.openbao
+DNS.3 = openbao-agent-injector-svc.openbao.svc
+DNS.4 = openbao-agent-injector-svc.openbao.svc.cluster.local
 EOF
 ```
 
@@ -119,13 +117,13 @@ $ openssl x509 \
 ## Configuration
 
 Now that a certificate authority and a signed certificate have been created, we can now configure
-Helm and the Vault Agent Injector to use them.
+Helm and the OpenBao Agent Injector to use them.
 
 First, create a Kubernetes secret containing the certificate and key created above:
 
 :::warning
 
-**Important Note:** This example assumes the Vault Agent Injector is running in the `vault` namespace.
+**Important Note:** This example assumes the OpenBao Agent Injector is running in the `openbao` namespace.
 
 :::
 
@@ -133,7 +131,7 @@ First, create a Kubernetes secret containing the certificate and key created abo
 $ kubectl create secret generic injector-tls \
     --from-file tls.crt \
     --from-file tls.key \
-    --namespace=vault
+    --namespace=openbao
 ```
 
 Next, base64 encode the certificate authority so Kubernetes can verify the authenticity of the certificate:
@@ -142,11 +140,11 @@ Next, base64 encode the certificate authority so Kubernetes can verify the authe
 $ export CA_BUNDLE=$(cat injector-ca.crt | base64)
 ```
 
-Finally, install the Vault Agent Injector with the following custom values:
+Finally, install the OpenBao Agent Injector with the following custom values:
 
 ```shell
-$ helm install vault hashicorp/vault \
-  --namespace=vault \
+$ helm install openbao openbao/openbao \
+  --namespace=openbao \
   --set="injector.certs.secretName=injector-tls" \
   --set="injector.certs.caBundle=${CA_BUNDLE?}"
 ```

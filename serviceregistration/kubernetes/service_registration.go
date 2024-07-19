@@ -17,11 +17,11 @@ import (
 
 const (
 	// Labels are placed in a pod's metadata.
-	labelVaultVersion = "vault-version"
-	labelActive       = "vault-active"
-	labelSealed       = "vault-sealed"
-	labelPerfStandby  = "vault-perf-standby"
-	labelInitialized  = "vault-initialized"
+	labelVaultVersion = "openbao-version"
+	labelActive       = "openbao-active"
+	labelSealed       = "openbao-sealed"
+	labelPerfStandby  = "openbao-perf-standby"
+	labelInitialized  = "openbao-initialized"
 
 	// This is the path to where these labels are applied.
 	pathToLabels = "/metadata/labels/"

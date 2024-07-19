@@ -86,14 +86,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    announcementBar: {
-      id: "support_us",
-      content:
-        'The documentation is still work in progress. If you find any mistakes, please open an <a href="https://github.com/openbao/openbao/issues" target="_blank">issue</a>',
-      backgroundColor: "#ffba00",
-      textColor: "#091E42",
-      isCloseable: false,
-    },
     navbar: {
       title: "OpenBao",
       logo: {

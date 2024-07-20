@@ -62,7 +62,7 @@ func TestCustomPath(t *testing.T) {
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestNoStore(t *testing.T) {
 	_, cmd := testLoginCommand(t)
 	cmd.client = client
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestStores(t *testing.T) {
 	_, cmd := testLoginCommand(t)
 	cmd.client = client
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestTokenOnly(t *testing.T) {
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestFailureNoStore(t *testing.T) {
 	ui, cmd := testLoginCommand(t)
 	cmd.client = client
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -296,7 +296,7 @@ func TestWrapAutoUnwrap(t *testing.T) {
 	// Unset the wrapping
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,7 +356,7 @@ func TestWrapTokenOnly(t *testing.T) {
 	// Unset the wrapping
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,7 +417,7 @@ func TestWrapNoStore(t *testing.T) {
 	// Unset the wrapping
 	client.SetWrappingLookupFunc(func(string, string) string { return "" })
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,7 +491,7 @@ func TestLoginMFASinglePhase(t *testing.T) {
 			t.Errorf("expected %d to be %d", code, exp)
 		}
 
-		tokenHelper, err := cmd.TokenHelper()
+		tokenHelper, err := cmd.TokenHelper(client.Address())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -542,7 +542,7 @@ func TestLoginMFATwoPhase(t *testing.T) {
 		t.Fatalf("expected stored token: %q, got: %q", expected, output)
 	}
 
-	tokenHelper, err := cmd.TokenHelper()
+	tokenHelper, err := cmd.TokenHelper(client.Address())
 	if err != nil {
 		t.Fatal(err)
 	}

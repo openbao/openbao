@@ -1,8 +1,7 @@
 ---
-draft: true
 sidebar_label: Overview
 description: >-
-  The Vault Helm chart is the recommended way to install and configure Vault on
+  The OpenBao Helm chart is the recommended way to install and configure OpenBao on
   Kubernetes.
 ---
 
@@ -14,14 +13,14 @@ description: >-
 
 :::
 
-The [Vault Helm chart](https://github.com/hashicorp/vault-helm)
-is the recommended way to install and configure Vault on Kubernetes.
-In addition to running Vault itself, the Helm chart is the primary
-method for installing and configuring Vault to integrate with other
+The [OpenBao Helm chart](https://github.com/openbao/openbao-helm)
+is the recommended way to install and configure OpenBao on Kubernetes.
+In addition to running OpenBao itself, the Helm chart is the primary
+method for installing and configuring OpenBao to integrate with other
 services such as Consul for High Availability (HA) deployments.
 
 This page assumes general knowledge of [Helm](https://helm.sh/) and
-how to use it. Using Helm to install Vault requires that Helm is
+how to use it. Using Helm to install OpenBao requires that Helm is
 properly installed and configured with your Kubernetes cluster.
 
 @include 'kubernetes-supported-versions.mdx'
@@ -46,11 +45,11 @@ changes.
 
 Example chart usage:
 
-Installing the latest release of the Vault Helm chart with pods prefixed with
-the name `vault`.
+Installing the latest release of the OpenBao Helm chart with pods prefixed with
+the name `openbao`.
 
 ```shell-session
-$ helm install vault hashicorp/vault
+$ helm install openbao openbao/openbao
 ```
 
 Installing a specific version of the chart.
@@ -60,7 +59,7 @@ Installing a specific version of the chart.
 :::warning
 
 **Security Warning:** By default, the chart runs in standalone mode. This
-mode uses a single Vault server with a file storage backend. This is a less
+mode uses a single OpenBao server with a file storage backend. This is a less
 secure and less resilient installation that is **NOT** appropriate for a
 production setup. It is highly recommended to use a [properly secured Kubernetes
 cluster](https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/),

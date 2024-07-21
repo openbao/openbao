@@ -400,7 +400,6 @@ const sidebars: SidebarsConfig = {
             Platforms: [
                 "platform/index",
                 {
-                    GitHub: ["platform/github-actions"],
                     Kubernetes: [
                         "platform/k8s/index",
                         "platform/k8s/injector-csi",
@@ -456,12 +455,6 @@ const sidebars: SidebarsConfig = {
                                 "platform/k8s/vso/api-reference",
                             ],
                         },
-                    ],
-                    ServiceNow: [
-                        "platform/servicenow/index",
-                        "platform/servicenow/installation",
-                        "platform/servicenow/configuration",
-                        "platform/servicenow/troubleshooting",
                     ],
                 },
             ],

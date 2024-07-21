@@ -168,7 +168,7 @@ For Duo method, the value can be configured as part of the method configuration,
 Please see [Duo API](/api-docs/secret/identity/mfa/duo) for details
 on how to configure the boolean value for Duo.
 
-To validate the MFA restricted login request, the user sends a second request to the [validate](/api-docs/system/mfa/validate)
+To validate the MFA restricted login request, the user sends a second request to the [validate](/api-docs/system/mfa-validate)
 endpoint including the MFA request ID and MFA payload. MFA payload contains a map of methodIDs and their associated credentials.
 If the configured MFA methods, such as PingID, Okta, and Duo, do not require a passcode, the associated
 credentials will be a list with one empty string.

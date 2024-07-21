@@ -21,7 +21,7 @@ const config: Config = {
   organizationName: "openbao", // Usually your GitHub org/user name.
   projectName: "openbao", // Usually your repo name.
 
-  onBrokenLinks: "warn",
+  onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
   // ignore broken anchors as most of them are false positives
   onBrokenAnchors: "ignore",
@@ -86,14 +86,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    announcementBar: {
-      id: "support_us",
-      content:
-        'The documentation is still work in progress. If you find any mistakes, please open an <a href="https://github.com/openbao/openbao/issues" target="_blank">issue</a>',
-      backgroundColor: "#ffba00",
-      textColor: "#091E42",
-      isCloseable: false,
-    },
     navbar: {
       title: "OpenBao",
       logo: {
@@ -145,6 +137,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ["hcl"],
     },
   } satisfies Preset.ThemeConfig,
 };

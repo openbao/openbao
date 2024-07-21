@@ -235,7 +235,7 @@ and on the maximum size of any key-value secrets.
 ### Request duration
 
 The maximum duration of an OpenBao operation is
-[`max_request_duration`](/docs//configuration/listener/tcp), which defaults to
+[`max_request_duration`](/docs/configuration/listener/tcp), which defaults to
 90 seconds. If a particular secret engine takes longer than this to perform an
 operation on a remote service, the OpenBao client will see a failure.
 
@@ -260,12 +260,6 @@ unexpired leases, or a large number of simultaneous expirations.
 
 The current number of unexpired leases can be monitored via the
 [`vault.expire.num_leases`](/docs/internals/telemetry#token-identity-and-lease-metrics) metric.
-
-### Transform limits
-
-The Transform secret engine obeys the [FF3-1 minimum and maximum sizes
-on the length of an input](/docs/secrets/transform#input-limits), which
-are a function of the alphabet size.
 
 ### External plugin limits
 

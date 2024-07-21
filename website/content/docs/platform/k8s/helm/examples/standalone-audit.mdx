@@ -1,8 +1,6 @@
 ---
-draft: true
-sidebar_current: 'docs-platform-k8s-examples-standalone-audit'
 description: |-
-  Describes how to set up a standalone Vault with audit storage
+  Describes how to set up a standalone OpenBao with audit storage
 ---
 
 # Standalone server with audit storage
@@ -14,7 +12,7 @@ description: |-
 :::
 
 
-The below `values.yaml` can be used to set up a single server Vault cluster with
+The below `values.yaml` can be used to set up a single server OpenBao cluster with
 auditing enabled.
 
 ```yaml
@@ -29,7 +27,7 @@ server:
       }
 
       storage "file" {
-        path = "/vault/data"
+        path = "/openbao/data"
       }
 
   service:
@@ -48,9 +46,9 @@ server:
     accessMode: ReadWriteOnce
 ```
 
-After Vault has been deployed, initialized and unsealed, auditing can be enabled
-by running the following command against the Vault pod:
+After OpenBao has been deployed, initialized and unsealed, auditing can be enabled
+by running the following command against the OpenBao pod:
 
 ```shell-session
-$ kubectl exec -ti <POD NAME> --  vault audit enable file file_path=/vault/audit/vault_audit.log
+$ kubectl exec -ti <POD NAME> --  bao audit enable file file_path=/openbao/audit/openbao_audit.log
 ```

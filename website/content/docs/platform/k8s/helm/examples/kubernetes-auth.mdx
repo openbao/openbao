@@ -1,6 +1,4 @@
 ---
-draft: true
-sidebar_current: 'docs-platform-k8s-examples-kubernetes-auth'
 description: |-
   Describes how to set up Kubernetes Auth method
 ---
@@ -15,21 +13,21 @@ description: |-
 
 In this example, we will walk through how to set up the [Kubernetes Auth Method](/docs/auth/kubernetes).
 
-This assumes the following commands will be run inside a Vault pod running in Kubernetes.
+This assumes the following commands will be run inside a OpenBao pod running in Kubernetes.
 
-Exec into the Vault pod:
+Exec into the OpenBao pod:
 
 ```bash
-kubectl exec -it vault-0 -- /bin/sh
+kubectl exec -it openbao-0 -- /bin/sh
 ```
 
-If you didn't set `server.dev.enabled=true`, you'll need to log in to Vault first using `vault login`.
+If you didn't set `server.dev.enabled=true`, you'll need to log in to OpenBao first using `openbao login`.
 Then run the following commands to configure the Kubernetes Auth Method:
 
 ```bash
-vault auth enable kubernetes
-vault write auth/kubernetes/config \
+openbao auth enable kubernetes
+openbao write auth/kubernetes/config \
     kubernetes_host=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT
 ```
 
-From here you can continue to configure Vault from the [Kubernetes Auth Method](/docs/auth/kubernetes) documentation.
+From here you can continue to configure OpenBao from the [Kubernetes Auth Method](/docs/auth/kubernetes) documentation.

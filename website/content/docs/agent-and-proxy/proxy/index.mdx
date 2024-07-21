@@ -134,9 +134,9 @@ environment variable as a comma separated string. This environment variable will
 Valid values include: `auto-auth`, and `proxying`. Can also be configured by setting the `VAULT_PROXY_DISABLE_KEEP_ALIVES`
 environment variable as a comma separated string. This environment variable will override any values found in a configuration file.
 
-- `template` <code>([template][template]: \<optional>)</code> - Specifies options used for templating OpenBao secrets to files.
+- `template` <code>(template: \<optional>)</code> - Specifies options used for templating OpenBao secrets to files.
 
-- `template_config` <code>([template_config][template-config]: \<optional>)</code> - Specifies templating engine behavior.
+- `template_config` <code>(template_config: \<optional>)</code> - Specifies templating engine behavior.
 
 - `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
 reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/proxy#telemetry-stanza) section below
@@ -352,8 +352,6 @@ listener "tcp" {
 [caching]: /docs/agent-and-proxy/proxy/caching
 [apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
 [persistent-cache]: /docs/agent-and-proxy/proxy/caching/persistent-caches
-[template]: /docs/agent-and-proxy/proxy/template
-[template-config]: /docs/agent-and-proxy/proxy/template#template-configurations
 [proxy-api]: /docs/agent-and-proxy/proxy/#proxy_api-stanza
 [listener]: /docs/agent-and-proxy/proxy#listener-stanza
 [listener_main]: /docs/configuration/listener/tcp

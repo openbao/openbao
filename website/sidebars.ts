@@ -464,6 +464,9 @@ const sidebars: SidebarsConfig = {
                 "upgrading/plugins",
             ],
             "Release Notes": ["release-notes/index", "release-notes/2-0-0"],
+        },
+        "known-issues",
+        {
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",

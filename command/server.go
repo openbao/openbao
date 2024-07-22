@@ -82,8 +82,7 @@ const (
 
 	// Even though there are more types than the ones below, the following consts
 	// are declared internally for value comparison and reusability.
-	storageTypeRaft   = "raft"
-	storageTypeConsul = "consul"
+	storageTypeRaft = "raft"
 )
 
 type ServerCommand struct {
@@ -134,12 +133,10 @@ type ServerCommand struct {
 	flagDevSkipInit        bool
 	flagDevThreeNode       bool
 	flagDevFourCluster     bool
-	flagDevTransactional   bool
 	flagDevAutoSeal        bool
 	flagDevClusterJson     string
 	flagTestVerifyOnly     bool
 	flagTestServerConfig   bool
-	flagDevConsul          bool
 	flagExitOnCoreShutdown bool
 }
 
@@ -289,13 +286,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Hidden:  true,
 	})
 
-	f.BoolVar(&BoolVar{
-		Name:    "dev-transactional",
-		Target:  &c.flagDevTransactional,
-		Default: false,
-		Hidden:  true,
-	})
-
 	f.IntVar(&IntVar{
 		Name:   "dev-latency",
 		Target: &c.flagDevLatency,
@@ -346,13 +336,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:    "dev-four-cluster",
 		Target:  &c.flagDevFourCluster,
-		Default: false,
-		Hidden:  true,
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    "dev-consul",
-		Target:  &c.flagDevConsul,
 		Default: false,
 		Hidden:  true,
 	})
@@ -760,16 +743,6 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 
 	// Do any custom configuration needed per backend
 	switch config.Storage.Type {
-	case storageTypeConsul:
-		if config.ServiceRegistration == nil {
-			// If Consul is configured for storage and service registration is unconfigured,
-			// use Consul for service registration without requiring additional configuration.
-			// This maintains backward-compatibility.
-			config.ServiceRegistration = &server.ServiceRegistration{
-				Type:   "consul",
-				Config: config.Storage.Config,
-			}
-		}
 	case storageTypeRaft:
 		if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 			config.ClusterAddr = envCA
@@ -906,13 +879,7 @@ func configureDevTLS(c *ServerCommand) (func(), *server.Config, string, error) {
 	var devStorageType string
 
 	switch {
-	case c.flagDevConsul:
-		devStorageType = "consul"
-	case c.flagDevHA && c.flagDevTransactional:
-		devStorageType = "inmem_transactional_ha"
-	case !c.flagDevHA && c.flagDevTransactional:
-		devStorageType = "inmem_transactional"
-	case c.flagDevHA && !c.flagDevTransactional:
+	case c.flagDevHA:
 		devStorageType = "inmem_ha"
 	default:
 		devStorageType = "inmem"
@@ -988,7 +955,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Automatically enable dev mode if other dev flags are provided.
-	if c.flagDevConsul || c.flagDevHA || c.flagDevTransactional || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevFourCluster || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
+	if c.flagDevHA || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevFourCluster || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
 		c.flagDev = true
 	}
 
@@ -1248,7 +1215,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	if !c.flagDev {
 		inMemStorageTypes := []string{
-			"inmem", "inmem_ha", "inmem_transactional", "inmem_transactional_ha",
+			"inmem", "inmem_ha",
 		}
 
 		if strutil.StrListContains(inMemStorageTypes, coreConfig.StorageType) {
@@ -2651,11 +2618,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		}
 		if c.flagDevLatency > 0 {
 			injectLatency := time.Duration(c.flagDevLatency) * time.Millisecond
-			if _, txnOK := backend.(physical.Transactional); txnOK {
-				coreConfig.Physical = physical.NewTransactionalLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
-			} else {
-				coreConfig.Physical = physical.NewLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
-			}
+			coreConfig.Physical = physical.NewLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
 		}
 	}
 	return *coreConfig

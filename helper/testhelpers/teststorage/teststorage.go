@@ -30,7 +30,7 @@ import (
 )
 
 func MakeInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
-	inm, err := inmem.NewTransactionalInmem(nil, logger)
+	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,25 +51,9 @@ func MakeLatentInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBac
 	latency := time.Duration(r.Intn(15)) * time.Millisecond
 
 	pbb := MakeInmemBackend(t, logger)
-	latencyInjector := physical.NewTransactionalLatencyInjector(pbb.Backend, latency, jitter, logger)
+	latencyInjector := physical.NewLatencyInjector(pbb.Backend, latency, jitter, logger)
 	pbb.Backend = latencyInjector
 	return pbb
-}
-
-func MakeInmemNonTransactionalBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
-	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
-	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &vault.PhysicalBackendBundle{
-		Backend:   inm,
-		HABackend: inmha.(physical.HABackend),
-	}
 }
 
 func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
@@ -80,7 +64,7 @@ func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBun
 	fileConf := map[string]string{
 		"path": path,
 	}
-	fileBackend, err := physFile.NewTransactionalFileBackend(fileConf, logger)
+	fileBackend, err := physFile.NewFileBackend(fileConf, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,10 +191,6 @@ func InmemBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
 
 func InmemLatentBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
 	opts.PhysicalFactory = SharedPhysicalFactory(MakeLatentInmemBackend)
-}
-
-func InmemNonTransactionalBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
-	opts.PhysicalFactory = SharedPhysicalFactory(MakeInmemNonTransactionalBackend)
 }
 
 func FileBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {

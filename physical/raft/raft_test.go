@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand"
@@ -303,151 +302,11 @@ func TestRaft_Backend_LargeValue(t *testing.T) {
 	}
 }
 
-// TestRaft_TransactionalBackend_GetTransactions tests that passing a slice of transactions to the
-// raft backend will populate values for any transactions that are Get operations.
-func TestRaft_TransactionalBackend_GetTransactions(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
-
-	ctx := context.Background()
-	txns := make([]*physical.TxnEntry, 0)
-
-	// Add some seed values to our FSM, and prepare our slice of transactions at the same time
-	for i := 0; i < 5; i++ {
-		key := fmt.Sprintf("foo/%d", i)
-		err := b.fsm.Put(ctx, &physical.Entry{Key: key, Value: []byte(fmt.Sprintf("value-%d", i))})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		txns = append(txns, &physical.TxnEntry{
-			Operation: physical.GetOperation,
-			Entry: &physical.Entry{
-				Key: key,
-			},
-		})
-	}
-
-	// Add some additional transactions, so we have a mix of operations
-	for i := 0; i < 10; i++ {
-		txnEntry := &physical.TxnEntry{
-			Entry: &physical.Entry{
-				Key: fmt.Sprintf("lol-%d", i),
-			},
-		}
-
-		if i%2 == 0 {
-			txnEntry.Operation = physical.PutOperation
-			txnEntry.Entry.Value = []byte("lol")
-		} else {
-			txnEntry.Operation = physical.DeleteOperation
-		}
-
-		txns = append(txns, txnEntry)
-	}
-
-	err := b.Transaction(ctx, txns)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Check that our Get operations were populated with their values
-	for i, txn := range txns {
-		if txn.Operation == physical.GetOperation {
-			val := []byte(fmt.Sprintf("value-%d", i))
-			if !bytes.Equal(val, txn.Entry.Value) {
-				t.Fatalf("expected %s to equal %s but it didn't", hex.EncodeToString(val), hex.EncodeToString(txn.Entry.Value))
-			}
-		}
-	}
-}
-
-func TestRaft_TransactionalBackend_LargeKey(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
-
-	value := make([]byte, defaultMaxEntrySize+1)
-	rand.Read(value)
-
-	key, err := base62.Random(bolt.MaxKeySize + 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	txns := []*physical.TxnEntry{
-		{
-			Operation: physical.PutOperation,
-			Entry: &physical.Entry{
-				Key:   key,
-				Value: []byte(key),
-			},
-		},
-	}
-
-	err = b.Transaction(context.Background(), txns)
-	if err == nil {
-		t.Fatal("expected error for transactions")
-	}
-
-	if !strings.Contains(err.Error(), physical.ErrKeyTooLarge) {
-		t.Fatalf("expected %q, got %v", physical.ErrValueTooLarge, err)
-	}
-
-	out, err := b.Get(context.Background(), txns[0].Entry.Key)
-	if err != nil {
-		t.Fatalf("unexpected error after failed put: %v", err)
-	}
-	if out != nil {
-		t.Fatal("expected response entry to be nil after a failed put")
-	}
-}
-
-func TestRaft_TransactionalBackend_LargeValue(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
-
-	value := make([]byte, defaultMaxEntrySize+1)
-	rand.Read(value)
-
-	txns := []*physical.TxnEntry{
-		{
-			Operation: physical.PutOperation,
-			Entry: &physical.Entry{
-				Key:   "foo",
-				Value: value,
-			},
-		},
-	}
-
-	err := b.Transaction(context.Background(), txns)
-	if err == nil {
-		t.Fatal("expected error for transactions")
-	}
-
-	if !strings.Contains(err.Error(), physical.ErrValueTooLarge) {
-		t.Fatalf("expected %q, got %v", physical.ErrValueTooLarge, err)
-	}
-
-	out, err := b.Get(context.Background(), txns[0].Entry.Key)
-	if err != nil {
-		t.Fatalf("unexpected error after failed put: %v", err)
-	}
-	if out != nil {
-		t.Fatal("expected response entry to be nil after a failed put")
-	}
-}
-
 func TestRaft_Backend_ListPrefix(t *testing.T) {
 	b, dir := GetRaft(t, true, true)
 	defer os.RemoveAll(dir)
 
 	physical.ExerciseBackend_ListPrefix(t, b)
-}
-
-func TestRaft_TransactionalBackend(t *testing.T) {
-	b, dir := GetRaft(t, true, true)
-	defer os.RemoveAll(dir)
-
-	physical.ExerciseTransactionalBackend(t, b)
 }
 
 func TestRaft_HABackend(t *testing.T) {
@@ -609,28 +468,6 @@ func TestRaft_Recovery(t *testing.T) {
 
 	compareFSMs(t, raft1.fsm, raft2.fsm)
 	compareFSMs(t, raft1.fsm, raft4.fsm)
-}
-
-func TestRaft_TransactionalBackend_ThreeNode(t *testing.T) {
-	raft1, dir := GetRaft(t, true, true)
-	raft2, dir2 := GetRaft(t, false, true)
-	raft3, dir3 := GetRaft(t, false, true)
-	defer os.RemoveAll(dir)
-	defer os.RemoveAll(dir2)
-	defer os.RemoveAll(dir3)
-
-	// Add raft2 to the cluster
-	addPeer(t, raft1, raft2)
-
-	// Add raft3 to the cluster
-	addPeer(t, raft1, raft3)
-
-	physical.ExerciseTransactionalBackend(t, raft1)
-
-	time.Sleep(10 * time.Second)
-	// Make sure all stores are the same
-	compareFSMs(t, raft1.fsm, raft2.fsm)
-	compareFSMs(t, raft1.fsm, raft3.fsm)
 }
 
 func TestRaft_Backend_Performance(t *testing.T) {

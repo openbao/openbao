@@ -159,6 +159,13 @@ func TestRaft_Backend(t *testing.T) {
 	physical.ExerciseBackend(t, b)
 }
 
+func TestRaft_TransactionalBackend(t *testing.T) {
+	b, dir := GetRaft(t, true, true)
+	defer os.RemoveAll(dir)
+
+	physical.ExerciseTransactionalBackend(t, b)
+}
+
 func TestRaft_ParseAutopilotUpgradeVersion(t *testing.T) {
 	raftDir, err := os.MkdirTemp("", "vault-raft-")
 	if err != nil {

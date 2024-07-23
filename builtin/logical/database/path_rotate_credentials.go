@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/versions"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/queue"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
 func pathRotateRootCredentials(b *databaseBackend) []*framework.Path {

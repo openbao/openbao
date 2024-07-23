@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestVersionedKV_Metadata_Put(t *testing.T) {

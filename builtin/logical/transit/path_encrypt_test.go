@@ -13,7 +13,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestTransit_MissingPlaintext(t *testing.T) {

@@ -6,9 +6,9 @@ package kerberos
 import (
 	"context"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathGroupsList() *framework.Path {

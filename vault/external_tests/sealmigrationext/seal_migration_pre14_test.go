@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/vault/external_tests/sealmigration"
 )
 

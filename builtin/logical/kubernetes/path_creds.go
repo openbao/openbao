@@ -10,10 +10,10 @@ import (
 
 	josejwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/strutil"
-	"github.com/openbao/openbao/sdk/helper/template"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/strutil"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )

@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // APIProxy is an implementation of the proxier interface that is used to

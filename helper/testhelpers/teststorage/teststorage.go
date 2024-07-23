@@ -22,10 +22,10 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	physFile "github.com/openbao/openbao/sdk/physical/file"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 )
 

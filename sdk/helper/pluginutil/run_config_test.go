@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )

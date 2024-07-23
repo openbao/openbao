@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func setupLocalFiles(t *testing.T, b logical.Backend) func() {

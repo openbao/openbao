@@ -21,10 +21,10 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

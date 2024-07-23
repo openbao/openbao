@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const SecretCredsType = "creds"

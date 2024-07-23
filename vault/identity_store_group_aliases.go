@@ -11,8 +11,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func groupAliasPaths(i *IdentityStore) []*framework.Path {

@@ -14,8 +14,8 @@ import (
 	"time"
 
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
-	"github.com/openbao/openbao/sdk/helper/docker"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

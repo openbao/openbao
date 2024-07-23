@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
 )
 

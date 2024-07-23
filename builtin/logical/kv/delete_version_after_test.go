@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestDeletionTimeCalc(t *testing.T) {

@@ -14,14 +14,14 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/plugins/database/postgresql"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	backendplugin "github.com/openbao/openbao/sdk/plugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 
 	"github.com/openbao/openbao/helper/builtinplugins"
 )

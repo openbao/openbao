@@ -11,7 +11,7 @@ import (
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
 )
 

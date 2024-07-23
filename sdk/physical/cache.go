@@ -10,8 +10,8 @@ import (
 	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 )
 
 const (

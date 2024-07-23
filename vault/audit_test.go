@@ -20,9 +20,9 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {

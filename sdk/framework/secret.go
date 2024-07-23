@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Secret is a type of secret that can be returned from a backend.

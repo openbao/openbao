@@ -13,7 +13,7 @@ import (
 
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 
 	"golang.org/x/exp/slices"
 )

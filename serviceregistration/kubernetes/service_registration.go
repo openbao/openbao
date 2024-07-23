@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/serviceregistration/kubernetes/client"
 )

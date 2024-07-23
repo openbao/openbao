@@ -17,8 +17,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/database/helper/connutil"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 )
 
 // mySQLConnectionProducer implements ConnectionProducer and provides a generic producer for most sql databases

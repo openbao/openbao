@@ -1,4 +1,4 @@
-module github.com/openbao/openbao/sdk
+module github.com/openbao/openbao/sdk/v2
 
 // The Go version directive for the sdk package should normally only be updated when
 // code in the sdk package requires a newer Go version to build.  It should not
@@ -9,7 +9,7 @@ go 1.22.1
 
 toolchain go1.22.5
 
-replace github.com/openbao/openbao/api => ../api
+replace github.com/openbao/openbao/api/v2 => ../api
 
 require (
 	github.com/armon/go-metrics v0.4.1
@@ -47,7 +47,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/v2 v2.1.0
-	github.com/openbao/openbao/api v0.0.0-20231222185543-009633ab13d1
+	github.com/openbao/openbao/api/v2 v2.0.0-00010101000000-000000000000
 	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.8.4
@@ -104,5 +104,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
-
-retract [v0.1.8, v0.11.0]

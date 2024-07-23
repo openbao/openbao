@@ -4,7 +4,7 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GO_CMD?=go
 
-TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep -v /vendor/ | grep -v /integ)
+TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ | grep -v /integ)
 TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
 INTEG_TEST_TIMEOUT=120m

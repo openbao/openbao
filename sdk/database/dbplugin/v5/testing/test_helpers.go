@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 )
 
 func getRequestTimeout(t *testing.T) time.Duration {

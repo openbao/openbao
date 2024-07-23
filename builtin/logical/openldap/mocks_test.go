@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-ldap/ldif"
 	"github.com/openbao/openbao/builtin/logical/openldap/client"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/mock"
 )
 

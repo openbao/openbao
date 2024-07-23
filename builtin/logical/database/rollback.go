@@ -8,9 +8,9 @@ import (
 	"errors"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

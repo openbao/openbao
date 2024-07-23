@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 func TestInmemHA(t *testing.T) {

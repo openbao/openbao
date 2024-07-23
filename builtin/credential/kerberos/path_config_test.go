@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func getTestBackend(t *testing.T) (logical.Backend, logical.Storage) {

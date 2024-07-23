@@ -6,7 +6,7 @@ package pluginutil
 import (
 	"github.com/hashicorp/go-secure-stdlib/mlock"
 	version "github.com/hashicorp/go-version"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 const (

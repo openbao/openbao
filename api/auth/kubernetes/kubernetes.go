@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type KubernetesAuth struct {

@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/openbao/openbao/plugins/database/mysql"
-	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 )
 
 func main() {

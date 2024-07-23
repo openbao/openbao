@@ -13,15 +13,15 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	agentapprole "github.com/openbao/openbao/command/agentproxyshared/auth/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"
 	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

@@ -12,7 +12,7 @@ import (
 
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type basicLeaseTestInfo struct {

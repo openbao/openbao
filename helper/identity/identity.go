@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	proto "github.com/golang/protobuf/proto"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (g *Group) Clone() (*Group, error) {

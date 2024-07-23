@@ -17,7 +17,7 @@ import (
 	"github.com/fatih/color"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/token"
 )
 

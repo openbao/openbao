@@ -6,7 +6,7 @@ package http
 import (
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/vault"
 )
 

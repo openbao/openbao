@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
 )
 
 // Note that OSS standbys will not accept seal requests.  And ent perf standbys

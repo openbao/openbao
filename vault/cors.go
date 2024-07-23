@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

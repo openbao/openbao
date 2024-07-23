@@ -29,8 +29,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/logical/pkiext"
 	"github.com/openbao/openbao/helper/testhelpers"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	hDocker "github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 

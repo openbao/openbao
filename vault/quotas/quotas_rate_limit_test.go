@@ -13,7 +13,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"

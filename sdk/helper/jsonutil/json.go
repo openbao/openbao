@@ -11,7 +11,7 @@ import (
 	"io"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 )
 
 // Encodes/Marshals the given object into JSON

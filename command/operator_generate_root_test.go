@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
 )
 

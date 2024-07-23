@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // ValidateResponse is a test helper that validates whether the given response

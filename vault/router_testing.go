@@ -11,7 +11,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type RouterTestHandlerFunc func(context.Context, *logical.Request) (*logical.Response, error)

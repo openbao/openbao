@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
 )

@@ -11,11 +11,11 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
 const (

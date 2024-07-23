@@ -13,7 +13,7 @@ import (
 	"github.com/armon/go-metrics"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestCoreMetrics_KvSecretGauge(t *testing.T) {

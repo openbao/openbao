@@ -13,8 +13,8 @@ import (
 
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestAuditFile_fileModeNew(t *testing.T) {

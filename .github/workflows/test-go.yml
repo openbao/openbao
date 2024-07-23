@@ -86,7 +86,7 @@ jobs:
         run: |
           # testonly tests need additional build tag though let's exclude them anyway for clarity
           (
-            go list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" | gotestsum tool ci-matrix --debug \
+            go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v "_binary" | grep -v "vault/integ" | grep -v "testonly" | gotestsum tool ci-matrix --debug \
               --partitions "${{ inputs.total-runners }}" \
               --timing-files 'test-results/go-test/*.json' > matrix.json
           )

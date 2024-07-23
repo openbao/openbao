@@ -14,7 +14,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/builtin/logical/pki"
@@ -22,9 +22,9 @@ import (
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 

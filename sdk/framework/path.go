@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/sdk/helper/license"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/license"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Helper which returns a generic regex string for creating endpoint patterns

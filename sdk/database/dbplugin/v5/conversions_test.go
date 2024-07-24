@@ -11,7 +11,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5/proto"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

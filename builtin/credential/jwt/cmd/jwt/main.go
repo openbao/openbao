@@ -7,9 +7,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	jwtauth "github.com/openbao/openbao/builtin/credential/jwt"
-	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 func main() {

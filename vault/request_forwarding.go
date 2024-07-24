@@ -20,7 +20,7 @@ import (
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/forwarding"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault/cluster"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"

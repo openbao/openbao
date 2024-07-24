@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/fileutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/parseutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/parseutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (

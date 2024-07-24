@@ -24,11 +24,11 @@ import (
 	ctsignals "github.com/openbao/openbao-template/signals"
 	"k8s.io/utils/strings/slices"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )
 
 // Config is the configuration for Vault Agent.

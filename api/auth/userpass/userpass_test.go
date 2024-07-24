@@ -13,7 +13,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // testHTTPServer creates a test HTTP server that handles requests until

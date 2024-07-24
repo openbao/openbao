@@ -12,15 +12,17 @@ go 1.22.1
 
 toolchain go1.22.5
 
-replace github.com/openbao/openbao/api => ./api
+replace github.com/openbao/openbao/api v1.9.2 => github.com/openbao/openbao/api v1.100.0-development20240408
 
-replace github.com/openbao/openbao/api/auth/approle => ./api/auth/approle
+replace github.com/openbao/openbao/api/v2 => ./api
 
-replace github.com/openbao/openbao/api/auth/kubernetes => ./api/auth/kubernetes
+replace github.com/openbao/openbao/api/auth/approle/v2 => ./api/auth/approle
 
-replace github.com/openbao/openbao/api/auth/userpass => ./api/auth/userpass
+replace github.com/openbao/openbao/api/auth/kubernetes/v2 => ./api/auth/kubernetes
 
-replace github.com/openbao/openbao/sdk => ./sdk
+replace github.com/openbao/openbao/api/auth/userpass/v2 => ./api/auth/userpass
+
+replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
 require (
 	cloud.google.com/go/monitoring v1.17.0
@@ -119,10 +121,10 @@ require (
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.1.0
 	github.com/openbao/openbao-template v1.0.0
-	github.com/openbao/openbao/api v1.9.2
-	github.com/openbao/openbao/api/auth/approle v0.1.0
-	github.com/openbao/openbao/api/auth/userpass v0.1.0
-	github.com/openbao/openbao/sdk v0.9.2
+	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
+	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0
+	github.com/openbao/openbao/api/v2 v2.0.1
+	github.com/openbao/openbao/sdk/v2 v2.0.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.6.1
@@ -297,6 +299,7 @@ require (
 	github.com/nicolai86/scaleway-sdk v1.10.2-0.20180628010248-798f60e20bb2 // indirect
 	github.com/nwaples/rardecode v1.1.2 // indirect
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0 // indirect
+	github.com/openbao/openbao/api v1.9.2 // indirect
 	github.com/openbao/openbao/api/auth/kubernetes v0.0.0-20240227182507-a8c90d250c17 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect

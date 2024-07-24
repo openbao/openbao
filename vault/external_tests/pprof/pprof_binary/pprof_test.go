@@ -6,8 +6,8 @@ package pprof_binary
 import (
 	"testing"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/openbao/openbao/vault/external_tests/pprof"
 )
 

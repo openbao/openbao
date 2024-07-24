@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/postgresql"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/openbao/openbao/sdk/helper/docker"
-	"github.com/openbao/openbao/sdk/helper/template"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

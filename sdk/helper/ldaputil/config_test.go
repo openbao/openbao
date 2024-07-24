@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
 func TestCertificateValidation(t *testing.T) {

@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
 )

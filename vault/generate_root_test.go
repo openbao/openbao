@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
 )
 
 func TestCore_GenerateRoot_Lifecycle(t *testing.T) {

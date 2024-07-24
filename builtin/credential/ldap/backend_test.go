@@ -19,10 +19,10 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/ldap"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/helper/tokenutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {

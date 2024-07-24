@@ -14,10 +14,10 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-uuid"
 	v5 "github.com/openbao/openbao/builtin/plugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
-	bplugin "github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	bplugin "github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 var (

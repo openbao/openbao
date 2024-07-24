@@ -12,9 +12,9 @@ import (
 	"github.com/go-ldap/ldif"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/builtin/logical/openldap/client"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/queue"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
 var (

@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathConfigCluster(b *backend) *framework.Path {

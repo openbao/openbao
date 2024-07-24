@@ -21,7 +21,7 @@ import (
 	sqjwt "github.com/go-jose/go-jose/v3/jwt"
 	"github.com/go-test/deep"
 	"github.com/hashicorp/cap/jwt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )

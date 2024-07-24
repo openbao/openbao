@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-version"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

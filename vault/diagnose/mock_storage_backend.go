@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 const (

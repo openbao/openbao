@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
 
 func prettyIssuer(issuerIdEntryMap map[issuerID]*issuerEntry, issuer issuerID) string {

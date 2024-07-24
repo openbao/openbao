@@ -15,8 +15,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	ldapcred "github.com/openbao/openbao/builtin/credential/ldap"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (

@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/kr/pretty"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

@@ -13,7 +13,7 @@ import (
 	"time"
 
 	josejwt "github.com/go-jose/go-jose/v3/jwt"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	rbacv1 "k8s.io/api/rbac/v1"

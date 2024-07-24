@@ -18,7 +18,7 @@ import (
 
 	"github.com/hashicorp/cap/util"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 const (

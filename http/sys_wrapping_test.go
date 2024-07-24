@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/vault"
 )
 

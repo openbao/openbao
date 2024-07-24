@@ -12,7 +12,7 @@ import (
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaultjwt "github.com/openbao/openbao/builtin/credential/jwt"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	agentjwt "github.com/openbao/openbao/command/agentproxyshared/auth/jwt"
@@ -20,9 +20,9 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
 	"github.com/openbao/openbao/helper/dhutil"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

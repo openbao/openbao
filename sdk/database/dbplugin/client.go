@@ -10,7 +10,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 )
 
 // DatabasePluginClient embeds a databasePluginRPCClient and wraps it's Close

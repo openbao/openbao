@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // This allows us to record the version of the migration code within the log entry

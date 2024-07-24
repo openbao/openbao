@@ -12,9 +12,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/reflectwalk"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // HashString hashes the given opaque string and returns it

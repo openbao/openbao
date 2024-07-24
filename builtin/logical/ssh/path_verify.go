@@ -6,9 +6,9 @@ package ssh
 import (
 	"context"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathVerify(b *backend) *framework.Path {

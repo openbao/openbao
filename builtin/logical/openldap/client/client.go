@@ -15,7 +15,7 @@ import (
 	"github.com/go-ldap/ldif"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
 )
 
 type Config struct {

@@ -17,14 +17,14 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/plugins/database/mysql"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var externalPlugins = []string{"transform", "kmip", "keymgmt"}

@@ -11,7 +11,7 @@ import (
 	testing "github.com/mitchellh/go-testing-interface"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 // TestRequest is a helper to create a purely in-memory Request struct.

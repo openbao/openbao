@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"github.com/openbao/openbao/helper/random"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathRandom() *framework.Path {

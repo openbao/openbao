@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestBarrierView_impl(t *testing.T) {

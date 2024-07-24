@@ -24,7 +24,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (

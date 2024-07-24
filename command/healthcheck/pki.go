@@ -8,7 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pkiFetchIssuersList(e *Executor, versionError func()) (bool, *PathFetch, []string, error) {

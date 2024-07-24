@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestVersionedKV_Destroy_Put(t *testing.T) {

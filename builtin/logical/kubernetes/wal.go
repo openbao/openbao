@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

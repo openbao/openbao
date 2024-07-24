@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/api/auth/userpass"
-	hDocker "github.com/openbao/openbao/sdk/helper/docker"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
-	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
+	"github.com/openbao/openbao/api/auth/userpass/v2"
+	"github.com/openbao/openbao/api/v2"
+	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 
 	"github.com/stretchr/testify/require"
 )

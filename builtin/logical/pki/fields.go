@@ -6,7 +6,7 @@ package pki
 import (
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
 const (

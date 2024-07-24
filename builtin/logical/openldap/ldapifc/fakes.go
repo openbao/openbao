@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/go-ldap/ldap/v3"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
 )
 
 // FakeLDAPClient can be used to inspect the LDAP requests that have been constructed,

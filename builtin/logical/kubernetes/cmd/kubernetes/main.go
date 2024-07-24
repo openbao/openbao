@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	kubesecrets "github.com/openbao/openbao/builtin/logical/kubernetes"
-	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 func main() {

@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/roottoken"
+	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func testOperatorRekeyCommand(tb testing.TB) (*cli.MockUi, *OperatorRekeyCommand) {

@@ -23,10 +23,10 @@ import (
 	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 )

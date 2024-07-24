@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault"
 )
 

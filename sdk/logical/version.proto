@@ -4,7 +4,7 @@
 syntax = "proto3";
 package logical;
 
-option go_package = "github.com/openbao/openbao/sdk/logical";
+option go_package = "github.com/openbao/openbao/sdk/v2/logical";
 
 message Empty {}
 

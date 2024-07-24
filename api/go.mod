@@ -1,4 +1,4 @@
-module github.com/openbao/openbao/api
+module github.com/openbao/openbao/api/v2
 
 // The Go version directive for the api package should normally only be updated when
 // code in the api package requires a newer Go version to build.  It should not
@@ -38,4 +38,4 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 )
 
-retract [v1.0.1, v1.12.0]
+retract v2.0.0

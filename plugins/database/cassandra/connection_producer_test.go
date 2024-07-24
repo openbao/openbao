@@ -14,9 +14,9 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/openbao/openbao/helper/testhelpers/cassandra"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/stretchr/testify/require"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
 )
 
 func TestJSONUtil_CompressDecompressJSON(t *testing.T) {

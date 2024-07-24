@@ -11,15 +11,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	lplugin "github.com/openbao/openbao/sdk/plugin"
-	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	lplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin/mock"
 	"github.com/openbao/openbao/vault"
 )
 

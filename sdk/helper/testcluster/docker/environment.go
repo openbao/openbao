@@ -152,7 +152,7 @@ func (dc *DockerCluster) GetRootToken() string {
 }
 
 func (dc *DockerCluster) SetRootToken(s string) {
-	dc.Logger.Trace("cluster root token changed", "helpful_env", fmt.Sprintf("VAULT_TOKEN=%s VAULT_CACERT=/vault/config/ca.pem", s))
+	dc.Logger.Trace("cluster root token changed", "helpful_env", fmt.Sprintf("BAO_TOKEN=%s BAO_CACERT=/openbao/config/ca.pem", s))
 	dc.rootToken = s
 }
 
@@ -415,7 +415,7 @@ func NewTestDockerCluster(t *testing.T, opts *DockerClusterOptions) *DockerClust
 	if err != nil {
 		t.Fatal(err)
 	}
-	dc.Logger.Trace("cluster started", "helpful_env", fmt.Sprintf("VAULT_TOKEN=%s VAULT_CACERT=/vault/config/ca.pem", dc.GetRootToken()))
+	dc.Logger.Trace("cluster started", "helpful_env", fmt.Sprintf("BAO_TOKEN=%s BAO_CACERT=/openbao/config/ca.pem", dc.GetRootToken()))
 	return dc
 }
 
@@ -575,8 +575,8 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	vaultCfg["listener"] = map[string]interface{}{
 		"tcp": map[string]interface{}{
 			"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
-			"tls_cert_file": "/vault/config/cert.pem",
-			"tls_key_file":  "/vault/config/key.pem",
+			"tls_cert_file": "/openbao/config/cert.pem",
+			"tls_key_file":  "/openbao/config/key.pem",
 			"telemetry": map[string]interface{}{
 				"unauthenticated_metrics_access": true,
 			},
@@ -590,7 +590,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	storageType := "raft"
 	storageOpts := map[string]interface{}{
 		// TODO add options from vnc
-		"path":    "/vault/file",
+		"path":    "/openbao/file",
 		"node_id": n.NodeID,
 	}
 
@@ -649,7 +649,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 
 	// setup plugin bin copy if needed
 	copyFromTo := map[string]string{
-		n.WorkDir: "/vault/config",
+		n.WorkDir: "/openbao/config",
 		caDir:     "/usr/local/share/ca-certificates/",
 	}
 
@@ -705,7 +705,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		Capabilities:      []string{"NET_ADMIN"},
 		OmitLogTimestamps: true,
 		VolumeNameToMountPoint: map[string]string{
-			n.DataVolumeName: "/vault/file",
+			n.DataVolumeName: "/openbao/file",
 		},
 	})
 	if err != nil {
@@ -909,7 +909,7 @@ type DockerClusterOptions struct {
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
 	return &DockerClusterOptions{
 		// TODO - update to openbao's Docker location when it is published.
-		ImageRepo:   "hashicorp/vault",
+		ImageRepo:   "quay.io/openbao/openbao",
 		ImageTag:    "latest",
 		VaultBinary: api.ReadBaoVariable("BAO_BINARY"),
 		ClusterOptions: testcluster.ClusterOptions{
@@ -1110,14 +1110,14 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 		return "", err
 	}
 	bCtx := dockhelper.NewBuildContext()
-	bCtx["vault"] = &dockhelper.FileContents{
+	bCtx["bao"] = &dockhelper.FileContents{
 		Data: data,
 		Mode: 0o755,
 	}
 
 	containerFile := fmt.Sprintf(`
 FROM %s:%s
-COPY vault /bin/vault
+COPY bao /bin/bao
 `, opts.ImageRepo, sourceTag)
 
 	_, err = dockhelper.BuildImage(ctx, dc.DockerAPI, containerFile, bCtx,

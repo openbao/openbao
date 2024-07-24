@@ -33,7 +33,7 @@ func Test_StrictIPBinding(t *testing.T) {
 	}
 
 	opts := &docker.DockerClusterOptions{
-		ImageRepo: "docker.mirror.hashicorp.services/hashicorp/vault",
+		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about
 		// the docker image version tag.
 		ImageTag:    "latest",

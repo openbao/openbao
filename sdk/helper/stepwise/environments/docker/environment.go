@@ -538,8 +538,8 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		"listener": map[string]interface{}{
 			"tcp": map[string]interface{}{
 				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
-				"tls_cert_file": "/vault/config/cert.pem",
-				"tls_key_file":  "/vault/config/key.pem",
+				"tls_cert_file": "/openbao/config/cert.pem",
+				"tls_key_file":  "/openbao/config/key.pem",
 				"telemetry": map[string]interface{}{
 					"unauthenticated_metrics_access": true,
 				},
@@ -550,14 +550,14 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		},
 		"storage": map[string]interface{}{
 			"raft": map[string]interface{}{
-				"path":    "/vault/file",
+				"path":    "/openbao/file",
 				"node_id": n.NodeID,
 			},
 		},
 		"cluster_name":         netName,
 		"log_level":            "TRACE",
 		"raw_storage_endpoint": true,
-		"plugin_directory":     "/vault/config",
+		"plugin_directory":     "/openbao/config",
 		// disable_mlock is required for working in the Docker environment with
 		// custom plugins
 		"disable_mlock": true,
@@ -577,24 +577,26 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 	}
 	// setup plugin bin copy if needed
 	copyFromTo := map[string]string{
-		n.WorkDir: "/vault/config",
+		n.WorkDir: "/openbao/config",
 		caDir:     "/usr/local/share/ca-certificates/",
 	}
 	if pluginBinPath != "" {
 		base := path.Base(pluginBinPath)
-		copyFromTo[pluginBinPath] = filepath.Join("/vault/config", base)
+		copyFromTo[pluginBinPath] = filepath.Join("/openbao/config", base)
 	}
 
 	r := &Runner{
 		dockerAPI: cli,
 		ContainerConfig: &container.Config{
-			Image: "hashicorp/vault:latest",
-			Entrypoint: []string{"/bin/sh", "-c", "update-ca-certificates && " +
-				"exec /usr/local/bin/docker-entrypoint.sh hashicorp/vault server -log-level=trace -dev-plugin-dir=./vault/config -config /vault/config/local.json"},
+			Image: "quay.io/openbao/openbao:latest",
+			Entrypoint: []string{
+				"/bin/sh", "-c",
+				"exec /usr/local/bin/docker-entrypoint.sh bao server -log-level=trace -dev-plugin-dir=/openbao/config -config /openbao/config/local.json",
+			},
 			Env: []string{
-				"VAULT_CLUSTER_INTERFACE=eth0",
-				"VAULT_API_ADDR=https://127.0.0.1:8200",
-				fmt.Sprintf("VAULT_REDIRECT_ADDR=https://%s:8200", n.Name()),
+				"BAO_CLUSTER_INTERFACE=eth0",
+				"BAO_API_ADDR=https://127.0.0.1:8200",
+				fmt.Sprintf("BAO_REDIRECT_ADDR=https://%s:8200", n.Name()),
 			},
 			Labels:       nil,
 			ExposedPorts: nat.PortSet{"8200/tcp": {}, "8201/tcp": {}},

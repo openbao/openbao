@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 )
 

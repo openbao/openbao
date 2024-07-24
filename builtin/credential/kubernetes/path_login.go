@@ -15,9 +15,9 @@ import (
 	capjwt "github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // defaultJWTIssuer is used to verify the iss header on the JWT if the config doesn't specify an issuer.

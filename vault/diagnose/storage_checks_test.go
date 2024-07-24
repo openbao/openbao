@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 func TestStorageTimeout(t *testing.T) {

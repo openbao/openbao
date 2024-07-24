@@ -7,11 +7,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

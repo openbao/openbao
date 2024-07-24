@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListCRLs(b *backend) *framework.Path {

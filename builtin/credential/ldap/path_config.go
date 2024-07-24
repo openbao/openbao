@@ -7,11 +7,11 @@ import (
 	"context"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
-	"github.com/openbao/openbao/sdk/helper/tokenutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const userFilterWarning = "userfilter configured does not consider userattr and may result in colliding entity aliases on logins"

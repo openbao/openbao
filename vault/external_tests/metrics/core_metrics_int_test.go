@@ -13,7 +13,7 @@ import (
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/vault"

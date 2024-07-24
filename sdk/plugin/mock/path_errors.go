@@ -8,10 +8,10 @@ import (
 	"errors"
 	"net/rpc"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 // pathInternal is used to test viewing internal backend values. In this case,

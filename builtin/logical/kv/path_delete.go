@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // pathsDelete returns the path configuration for the delete and undelete paths

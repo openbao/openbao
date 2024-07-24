@@ -14,7 +14,7 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 type forwardedRequestRPCServer struct {

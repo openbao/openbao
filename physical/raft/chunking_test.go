@@ -16,7 +16,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

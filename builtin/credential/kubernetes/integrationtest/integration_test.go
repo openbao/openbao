@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/kubernetes/integrationtest/k8s"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

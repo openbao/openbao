@@ -13,7 +13,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 func TestLogger_levels(t *testing.T) {

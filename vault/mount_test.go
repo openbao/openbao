@@ -19,9 +19,9 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestMount_ReadOnlyViewDuringMount(t *testing.T) {

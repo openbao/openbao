@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 )
 
 var (

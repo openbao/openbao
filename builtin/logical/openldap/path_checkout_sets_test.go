@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // The library of service accounts that can be checked out

@@ -4,7 +4,7 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GO_CMD?=go
 
-TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep -v /vendor/ | grep -v /integ)
+TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ | grep -v /integ)
 TEST_TIMEOUT?=45m
 EXTENDED_TEST_TIMEOUT=60m
 INTEG_TEST_TIMEOUT=120m
@@ -234,6 +234,7 @@ static-dist-dev: ember-dist-dev
 
 proto: bootstrap
 	@sh -c "'$(CURDIR)/scripts/protocversioncheck.sh' '$(PROTOC_VERSION_MIN)'"
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative builtin/logical/kv/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative vault/*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/storagepacker/types.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative helper/forwarding/types.proto

@@ -11,7 +11,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 )
 
 func PrepareTestContainer(t *testing.T, version string) (func(), string) {

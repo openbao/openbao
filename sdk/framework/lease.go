@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // LeaseExtend is left for backwards compatibility for plugins. This function

@@ -16,9 +16,9 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/hclutil"
-	"github.com/openbao/openbao/sdk/helper/identitytpl"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

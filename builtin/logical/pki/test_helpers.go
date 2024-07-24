@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ocsp"
 )

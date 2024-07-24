@@ -6,7 +6,7 @@ package openldap
 import (
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestCheckInAuthorized(t *testing.T) {

@@ -17,9 +17,9 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/random"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/template"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
 )
 
 // passwordGenerator generates password credentials.

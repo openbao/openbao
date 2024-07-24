@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestPolicyMap(t *testing.T) {

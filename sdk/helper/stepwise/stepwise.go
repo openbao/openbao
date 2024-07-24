@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 // TestEnvVar must be set to a non-empty value for acceptance tests to run.

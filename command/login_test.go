@@ -12,7 +12,7 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/command/token"

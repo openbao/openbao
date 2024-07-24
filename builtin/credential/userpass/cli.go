@@ -10,7 +10,7 @@ import (
 
 	pwd "github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type CLIHandler struct {

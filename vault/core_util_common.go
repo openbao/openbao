@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // GetCoreConfigInternal returns the server configuration

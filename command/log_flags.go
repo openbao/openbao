@@ -7,7 +7,7 @@ import (
 	"flag"
 	"strconv"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/posener/complete"
 )

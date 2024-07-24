@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func Test_ParseLogFormat(t *testing.T) {

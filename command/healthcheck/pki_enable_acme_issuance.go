@@ -12,7 +12,7 @@ import (
 	"net/url"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"golang.org/x/crypto/acme"
 )

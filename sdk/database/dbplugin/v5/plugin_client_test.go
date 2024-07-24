@@ -11,11 +11,11 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5/proto"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/proto"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
 )

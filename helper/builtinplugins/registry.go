@@ -26,9 +26,9 @@ import (
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Registry is inherently thread-safe because it's immutable.

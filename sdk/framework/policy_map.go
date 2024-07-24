@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // DEPRECATED: Don't use this. It's too inflexible, nearly impossible to use

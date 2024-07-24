@@ -7,8 +7,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
 

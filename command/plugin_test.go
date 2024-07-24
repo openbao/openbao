@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // testPluginCreate creates a sample plugin in a tempdir and returns the shasum

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
-	dockhelper "github.com/openbao/openbao/sdk/helper/docker"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
-	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
+	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 )
 
 type VaultPkiCluster struct {

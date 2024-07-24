@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // noinspection SpellCheckingInspection

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestTransit_Trim(t *testing.T) {

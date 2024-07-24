@@ -16,7 +16,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // ACL is used to wrap a set of policies to provide

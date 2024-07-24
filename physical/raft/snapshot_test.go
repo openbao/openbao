@@ -19,9 +19,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 type idAddr struct {

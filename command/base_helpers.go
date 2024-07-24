@@ -15,7 +15,7 @@ import (
 	"github.com/kr/text"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/pkg/errors"
 	"github.com/ryanuber/columnize"
 )

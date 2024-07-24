@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/bcrypt"
 )
 

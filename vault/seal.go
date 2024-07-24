@@ -15,8 +15,8 @@ import (
 
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/physical"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/packet"

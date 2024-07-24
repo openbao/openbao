@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {

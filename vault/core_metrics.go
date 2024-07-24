@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (c *Core) metricsLoop(stopCh chan struct{}) {

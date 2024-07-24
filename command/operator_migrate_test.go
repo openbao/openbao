@@ -21,7 +21,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
 )
 

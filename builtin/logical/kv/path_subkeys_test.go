@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // TestVersionedKV_Subkeys_NotFound verifies that a nil logical.Response is

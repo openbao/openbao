@@ -12,9 +12,9 @@ import (
 	"net/url"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 type bufCloser struct {

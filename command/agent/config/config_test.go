@@ -15,7 +15,7 @@ import (
 
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )
 
 func TestLoadConfigFile_AgentCache(t *testing.T) {

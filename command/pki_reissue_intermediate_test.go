@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // TestPKIReIssueIntermediate tests that the pki reissue command line tool accurately copies information from the

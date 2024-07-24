@@ -6,8 +6,8 @@ package ssh
 import (
 	"context"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathFetchPublicKey(b *backend) *framework.Path {

@@ -13,10 +13,10 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

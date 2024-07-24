@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestIdentityStore_Lookup_Entity(t *testing.T) {

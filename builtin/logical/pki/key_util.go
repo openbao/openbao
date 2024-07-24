@@ -9,8 +9,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
 
 func comparePublicKey(key *keyEntry, publicKey crypto.PublicKey) (bool, error) {

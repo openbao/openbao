@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	multierror "github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 // RespondErrorCommon pulls most of the functionality from http's

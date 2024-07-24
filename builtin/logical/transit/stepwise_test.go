@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/helper/stepwise"
-	dockerEnvironment "github.com/openbao/openbao/sdk/helper/stepwise/environments/docker"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/helper/stepwise"
+	dockerEnvironment "github.com/openbao/openbao/sdk/v2/helper/stepwise/environments/docker"
 )
 
 // TestBackend_basic_docker is an example test using the Docker Environment

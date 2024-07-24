@@ -13,12 +13,12 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/kr/pretty"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
 )
 

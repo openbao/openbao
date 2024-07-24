@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func TestPKIVerifySign(t *testing.T) {

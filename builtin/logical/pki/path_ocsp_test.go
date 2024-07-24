@@ -19,8 +19,8 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ocsp"

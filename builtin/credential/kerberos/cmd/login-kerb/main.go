@@ -18,7 +18,7 @@ import (
 
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/jcmturner/gokrb5/v8/spnego"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	kerberos "github.com/openbao/openbao/builtin/credential/kerberos"
 )
 

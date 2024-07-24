@@ -27,7 +27,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-retryablehttp"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"golang.org/x/crypto/ocsp"
 )
 

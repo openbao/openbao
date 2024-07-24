@@ -20,7 +20,7 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {

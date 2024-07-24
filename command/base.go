@@ -16,7 +16,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/token"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/pkg/errors"

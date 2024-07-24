@@ -9,8 +9,8 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathUserPassword(b *backend) *framework.Path {

@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func Test_kubeAuthBackend_updateTLSConfig(t *testing.T) {

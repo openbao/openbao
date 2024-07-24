@@ -12,9 +12,9 @@ import (
 
 	stdmysql "github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/openbao/openbao/sdk/helper/template"
+	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
 )
 
 const (

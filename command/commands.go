@@ -11,8 +11,8 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/plugin"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/version"
 
 	/*
@@ -37,8 +37,8 @@ import (
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
 	physRaft "github.com/openbao/openbao/physical/raft"
-	physFile "github.com/openbao/openbao/sdk/physical/file"
-	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
+	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 
 	sr "github.com/openbao/openbao/serviceregistration"
 	ksr "github.com/openbao/openbao/serviceregistration/kubernetes"

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestBackend_config_lease_RU(t *testing.T) {

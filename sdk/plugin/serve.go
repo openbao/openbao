@@ -12,8 +12,8 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // BackendPluginName is the name of the plugin that can be

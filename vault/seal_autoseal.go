@@ -19,7 +19,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
 

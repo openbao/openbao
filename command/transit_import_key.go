@@ -18,7 +18,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 
 	"github.com/google/tink/go/kwp/subtle"
 

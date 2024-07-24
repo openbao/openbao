@@ -14,12 +14,12 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/openbao/openbao/plugins/database/postgresql/scram"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/database/helper/connutil"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/openbao/openbao/sdk/helper/dbtxn"
-	"github.com/openbao/openbao/sdk/helper/template"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/helper/dbtxn"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

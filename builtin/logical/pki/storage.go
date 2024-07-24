@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var ErrStorageItemNotFound = errors.New("storage item not found")

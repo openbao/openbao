@@ -16,7 +16,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/sdk/helper/cryptoutil"
+	"github.com/openbao/openbao/sdk/v2/helper/cryptoutil"
 	"github.com/sethvargo/go-limiter"
 	"github.com/sethvargo/go-limiter/httplimit"
 	"github.com/sethvargo/go-limiter/memorystore"

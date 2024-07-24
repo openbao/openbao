@@ -21,9 +21,9 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"go.uber.org/atomic"
 )
 

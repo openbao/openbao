@@ -9,7 +9,7 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestInspectRouter(t *testing.T) {

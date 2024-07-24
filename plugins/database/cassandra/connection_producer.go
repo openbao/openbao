@@ -15,9 +15,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/mitchellh/mapstructure"
-	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/database/helper/connutil"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 )
 
 // cassandraConnectionProducer implements ConnectionProducer and provides an

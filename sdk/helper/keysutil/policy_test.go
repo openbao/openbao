@@ -24,9 +24,9 @@ import (
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/mitchellh/copystructure"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestPolicy_KeyEntryMapUpgrade(t *testing.T) {

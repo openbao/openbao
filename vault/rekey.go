@@ -16,11 +16,11 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/shamir"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/shamir"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
 

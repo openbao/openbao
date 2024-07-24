@@ -14,7 +14,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	agentapprole "github.com/openbao/openbao/command/agentproxyshared/auth/approle"
@@ -24,9 +24,9 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/sink/inmem"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

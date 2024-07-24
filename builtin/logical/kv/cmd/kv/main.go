@@ -4,9 +4,9 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/kv"
-	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 func main() {

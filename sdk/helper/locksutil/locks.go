@@ -6,7 +6,7 @@ package locksutil
 import (
 	"sync"
 
-	"github.com/openbao/openbao/sdk/helper/cryptoutil"
+	"github.com/openbao/openbao/sdk/v2/helper/cryptoutil"
 )
 
 const (

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/openbao/openbao/sdk/database/dbplugin"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
 )
 
 // CredentialsProducer can be used as an embedded interface in the Database

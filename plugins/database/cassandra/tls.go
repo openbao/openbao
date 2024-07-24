@@ -10,8 +10,8 @@ import (
 	"encoding/pem"
 	"fmt"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
 
 func jsonBundleToTLSConfig(rawJSON string, tlsMinVersion uint16, serverName string, insecureSkipVerify bool) (*tls.Config, error) {

@@ -10,12 +10,12 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/version"
 )

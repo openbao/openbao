@@ -20,11 +20,11 @@ import (
 	"github.com/armon/go-metrics"
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
 )
 

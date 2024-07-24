@@ -15,7 +15,7 @@ import (
 
 	"github.com/openbao/openbao/helper/useragent"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // mockProxier is a mock implementation of the Proxier interface, used for testing purposes.

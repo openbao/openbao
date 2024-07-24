@@ -28,9 +28,9 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/identitytpl"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/crypto/ed25519"
 )

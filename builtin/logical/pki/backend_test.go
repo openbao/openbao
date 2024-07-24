@@ -36,7 +36,7 @@ import (
 
 	"github.com/openbao/openbao/helper/testhelpers"
 
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 
 	"github.com/stretchr/testify/require"
 
@@ -45,13 +45,13 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/api"
-	auth "github.com/openbao/openbao/api/auth/userpass"
+	auth "github.com/openbao/openbao/api/auth/userpass/v2"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/idna"
 )

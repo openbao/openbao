@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	saltpkg "github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	saltpkg "github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // DEPRECATED: Don't use this. It's too inflexible, nearly impossible to use

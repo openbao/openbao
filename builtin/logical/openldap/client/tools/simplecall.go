@@ -10,7 +10,7 @@ import (
 	"github.com/go-ldap/ldap/v3"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/builtin/logical/openldap/client"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
 )
 
 var (

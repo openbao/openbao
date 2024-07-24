@@ -6,7 +6,7 @@ package mock
 import (
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestBackend_impl(t *testing.T) {

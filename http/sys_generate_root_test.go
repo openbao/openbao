@@ -19,8 +19,8 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-	"github.com/openbao/openbao/sdk/helper/xor"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 

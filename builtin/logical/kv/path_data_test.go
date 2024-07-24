@@ -12,8 +12,8 @@ import (
 	"github.com/go-test/deep"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func getBackend(t *testing.T) (logical.Backend, logical.Storage) {

@@ -1,0 +1,3 @@
+```release-note:security
+auth/jwt: BREAKING: Fix handling of aud claims which are a single string, to behave the same as list claims.
+```

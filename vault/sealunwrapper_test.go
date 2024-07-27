@@ -21,19 +21,11 @@ func TestSealUnwrapper(t *testing.T) {
 		Mutex: &sync.Mutex{},
 	})
 
-	// Test without transactions
 	phys, err := inmem.NewInmemHA(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 	performTestSealUnwrapper(t, phys, logger)
-
-	// Test with transactions
-	tPhys, err := inmem.NewTransactionalInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
-	performTestSealUnwrapper(t, tPhys, logger)
 }
 
 func performTestSealUnwrapper(t *testing.T, phys physical.Backend, logger log.Logger) {

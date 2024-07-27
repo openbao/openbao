@@ -69,18 +69,10 @@ type Cache struct {
 	metricSink      metrics.MetricSink
 }
 
-// TransactionalCache is a Cache that wraps the physical that is transactional
-type TransactionalCache struct {
-	*Cache
-	Transactional
-}
-
 // Verify Cache satisfies the correct interfaces
 var (
 	_ ToggleablePurgemonster = (*Cache)(nil)
-	_ ToggleablePurgemonster = (*TransactionalCache)(nil)
 	_ Backend                = (*Cache)(nil)
-	_ Transactional          = (*TransactionalCache)(nil)
 )
 
 // NewCache returns a physical cache of the given size.
@@ -106,14 +98,6 @@ func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 		enabled:         new(uint32),
 		cacheExceptions: pm,
 		metricSink:      metricSink,
-	}
-	return c
-}
-
-func NewTransactionalCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) *TransactionalCache {
-	c := &TransactionalCache{
-		Cache:         NewCache(b, size, logger, metricSink),
-		Transactional: b.(Transactional),
 	}
 	return c
 }
@@ -223,51 +207,4 @@ func (c *Cache) List(ctx context.Context, prefix string) ([]string, error) {
 func (c *Cache) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	// See note above about List(...).
 	return c.backend.ListPage(ctx, prefix, after, limit)
-}
-
-func (c *TransactionalCache) Locks() []*locksutil.LockEntry {
-	return c.locks
-}
-
-func (c *TransactionalCache) LRU() *lru.TwoQueueCache {
-	return c.lru
-}
-
-func (c *TransactionalCache) Transaction(ctx context.Context, txns []*TxnEntry) error {
-	// Bypass the locking below
-	if atomic.LoadUint32(c.enabled) == 0 {
-		return c.Transactional.Transaction(ctx, txns)
-	}
-
-	// Collect keys that need to be locked
-	var keys []string
-	for _, curr := range txns {
-		keys = append(keys, curr.Entry.Key)
-	}
-	// Lock the keys
-	for _, l := range locksutil.LocksForKeys(c.locks, keys) {
-		l.Lock()
-		defer l.Unlock()
-	}
-
-	if err := c.Transactional.Transaction(ctx, txns); err != nil {
-		return err
-	}
-
-	for _, txn := range txns {
-		if !c.ShouldCache(txn.Entry.Key) {
-			continue
-		}
-
-		switch txn.Operation {
-		case PutOperation:
-			c.lru.Add(txn.Entry.Key, txn.Entry)
-			c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
-		case DeleteOperation:
-			c.lru.Remove(txn.Entry.Key)
-			c.metricSink.IncrCounter([]string{"cache", "delete"}, 1)
-		}
-	}
-
-	return nil
 }

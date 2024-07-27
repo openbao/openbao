@@ -52,10 +52,9 @@ var (
 
 // Verify FSM satisfies the correct interfaces
 var (
-	_ physical.Backend       = (*FSM)(nil)
-	_ physical.Transactional = (*FSM)(nil)
-	_ raft.FSM               = (*FSM)(nil)
-	_ raft.BatchingFSM       = (*FSM)(nil)
+	_ physical.Backend = (*FSM)(nil)
+	_ raft.FSM         = (*FSM)(nil)
+	_ raft.BatchingFSM = (*FSM)(nil)
 )
 
 type restoreCallback func(context.Context) error
@@ -594,36 +593,6 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	})
 
 	return keys, err
-}
-
-// Transaction writes all the operations in the provided transaction to the bolt
-// file.
-func (f *FSM) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	f.l.RLock()
-	defer f.l.RUnlock()
-
-	// Start a write transaction.
-	err := f.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(dataBucketName)
-		for _, txn := range txns {
-			var err error
-			switch txn.Operation {
-			case physical.PutOperation:
-				err = b.Put([]byte(txn.Entry.Key), txn.Entry.Value)
-			case physical.DeleteOperation:
-				err = b.Delete([]byte(txn.Entry.Key))
-			default:
-				return fmt.Errorf("%q is not a supported transaction operation", txn.Operation)
-			}
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	return err
 }
 
 // ApplyBatch will apply a set of logs to the FSM. This is called from the raft

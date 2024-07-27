@@ -24,32 +24,16 @@ func NewSealUnwrapper(underlying physical.Backend, logger log.Logger) physical.B
 		allowUnwraps: new(uint32),
 	}
 
-	if underTxn, ok := underlying.(physical.Transactional); ok {
-		return &transactionalSealUnwrapper{
-			sealUnwrapper: ret,
-			Transactional: underTxn,
-		}
-	}
-
 	return ret
 }
 
-var (
-	_ physical.Backend       = (*sealUnwrapper)(nil)
-	_ physical.Transactional = (*transactionalSealUnwrapper)(nil)
-)
+var _ physical.Backend = (*sealUnwrapper)(nil)
 
 type sealUnwrapper struct {
 	underlying   physical.Backend
 	logger       log.Logger
 	locks        []*locksutil.LockEntry
 	allowUnwraps *uint32
-}
-
-// transactionalSealUnwrapper is a seal unwrapper that wraps a physical that is transactional
-type transactionalSealUnwrapper struct {
-	*sealUnwrapper
-	physical.Transactional
 }
 
 func (d *sealUnwrapper) Put(ctx context.Context, entry *physical.Entry) error {
@@ -153,25 +137,6 @@ func (d *sealUnwrapper) List(ctx context.Context, prefix string) ([]string, erro
 
 func (d *sealUnwrapper) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	return d.underlying.ListPage(ctx, prefix, after, limit)
-}
-
-func (d *transactionalSealUnwrapper) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	// Collect keys that need to be locked
-	var keys []string
-	for _, curr := range txns {
-		keys = append(keys, curr.Entry.Key)
-	}
-	// Lock the keys
-	for _, l := range locksutil.LocksForKeys(d.locks, keys) {
-		l.Lock()
-		defer l.Unlock()
-	}
-
-	if err := d.Transactional.Transaction(ctx, txns); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // This should only run during preSeal which ensures that it can't be run

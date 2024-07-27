@@ -20,12 +20,9 @@ import (
 
 // Verify interfaces are satisfied
 var (
-	_ physical.Backend       = (*InmemBackend)(nil)
-	_ physical.HABackend     = (*InmemHABackend)(nil)
-	_ physical.HABackend     = (*TransactionalInmemHABackend)(nil)
-	_ physical.Lock          = (*InmemLock)(nil)
-	_ physical.Transactional = (*TransactionalInmemBackend)(nil)
-	_ physical.Transactional = (*TransactionalInmemHABackend)(nil)
+	_ physical.Backend   = (*InmemBackend)(nil)
+	_ physical.HABackend = (*InmemHABackend)(nil)
+	_ physical.Lock      = (*InmemLock)(nil)
 )
 
 var (
@@ -53,10 +50,6 @@ type InmemBackend struct {
 	maxValueSize int
 }
 
-type TransactionalInmemBackend struct {
-	InmemBackend
-}
-
 // NewInmem constructs a new in-memory backend
 func NewInmem(conf map[string]string, logger log.Logger) (physical.Backend, error) {
 	maxValueSize := 0
@@ -80,35 +73,6 @@ func NewInmem(conf map[string]string, logger log.Logger) (physical.Backend, erro
 		failGetInTxn: new(uint32),
 		logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
 		maxValueSize: maxValueSize,
-	}, nil
-}
-
-// Basically for now just creates a permit pool of size 1 so only one operation
-// can run at a time
-func NewTransactionalInmem(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	maxValueSize := 0
-	maxValueSizeStr, ok := conf["max_value_size"]
-	if ok {
-		var err error
-		maxValueSize, err = strconv.Atoi(maxValueSizeStr)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &TransactionalInmemBackend{
-		InmemBackend: InmemBackend{
-			root:         radix.New(),
-			permitPool:   physical.NewPermitPool(1),
-			logger:       logger,
-			failGet:      new(uint32),
-			failPut:      new(uint32),
-			failDelete:   new(uint32),
-			failList:     new(uint32),
-			failGetInTxn: new(uint32),
-			logOps:       api.ReadBaoVariable("BAO_INMEM_LOG_ALL_OPS") != "",
-			maxValueSize: maxValueSize,
-		},
 	}, nil
 }
 
@@ -329,22 +293,4 @@ func (i *InmemBackend) FailList(fail bool) {
 		val = 1
 	}
 	atomic.StoreUint32(i.failList, val)
-}
-
-// Transaction implements the transaction interface
-func (t *TransactionalInmemBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	t.permitPool.Acquire()
-	defer t.permitPool.Release()
-
-	t.Lock()
-	defer t.Unlock()
-
-	failGetInTxn := atomic.LoadUint32(t.failGetInTxn)
-	for _, t := range txns {
-		if t.Operation == physical.GetOperation && failGetInTxn != 0 {
-			return GetInTxnDisabledError
-		}
-	}
-
-	return physical.GenericTransactionHandler(ctx, t, txns)
 }

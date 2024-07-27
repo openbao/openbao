@@ -26,7 +26,7 @@ import (
 )
 
 func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluster, *vault.TestClusterCore) {
-	inm, err := inmem.NewTransactionalInmem(nil, logger)
+	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

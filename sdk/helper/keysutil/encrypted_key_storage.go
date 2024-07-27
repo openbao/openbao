@@ -115,12 +115,20 @@ type EncryptedKeyStorageWrapper struct {
 }
 
 func (f *EncryptedKeyStorageWrapper) Wrap(s logical.Storage) logical.Storage {
-	return &encryptedKeyStorage{
+	eksw := &encryptedKeyStorage{
 		policy: f.policy,
 		s:      s,
 		prefix: f.prefix,
 		lru:    f.lru,
 	}
+
+	if _, ok := s.(logical.TransactionalStorage); ok {
+		return &transactionalEncryptedKeyStorage{
+			*eksw,
+		}
+	}
+
+	return eksw
 }
 
 // EncryptedKeyStorage implements the logical.Storage interface and ensures the
@@ -132,6 +140,23 @@ type encryptedKeyStorage struct {
 
 	prefix string
 }
+
+type transactionalEncryptedKeyStorage struct {
+	encryptedKeyStorage
+}
+
+var _ logical.TransactionalStorage = &transactionalEncryptedKeyStorage{}
+
+// While encryptedKeyStorage maintains an LRU cache, this is used to store
+// encryption/decryptions pairs of paths, not contents. There is no move
+// operation, only a delete (+ recreate operation), and we're not caching
+// contents of the entry under that (encrypted) name, so having spurious
+// LRU entries shouldn't be a problem.
+type eksTransaction struct {
+	encryptedKeyStorage
+}
+
+var _ logical.Transaction = &eksTransaction{}
 
 func ensureTailingSlash(path string) string {
 	if !strings.HasSuffix(path, "/") {
@@ -306,4 +331,44 @@ func (s *encryptedKeyStorage) encryptPath(path string) (string, error) {
 	}
 
 	return encPath, nil
+}
+
+func (t *transactionalEncryptedKeyStorage) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {
+	tx, err := t.encryptedKeyStorage.s.(logical.TransactionalStorage).BeginReadOnlyTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &eksTransaction{
+		encryptedKeyStorage{
+			policy: t.encryptedKeyStorage.policy,
+			s:      tx,
+			lru:    t.encryptedKeyStorage.lru,
+			prefix: t.encryptedKeyStorage.prefix,
+		},
+	}, nil
+}
+
+func (t *transactionalEncryptedKeyStorage) BeginTx(ctx context.Context) (logical.Transaction, error) {
+	tx, err := t.encryptedKeyStorage.s.(logical.TransactionalStorage).BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &eksTransaction{
+		encryptedKeyStorage{
+			policy: t.encryptedKeyStorage.policy,
+			s:      tx,
+			lru:    t.encryptedKeyStorage.lru,
+			prefix: t.encryptedKeyStorage.prefix,
+		},
+	}, nil
+}
+
+func (e *eksTransaction) Commit(ctx context.Context) error {
+	return e.encryptedKeyStorage.s.(logical.Transaction).Commit(ctx)
+}
+
+func (e *eksTransaction) Rollback(ctx context.Context) error {
+	return e.encryptedKeyStorage.s.(logical.Transaction).Rollback(ctx)
 }

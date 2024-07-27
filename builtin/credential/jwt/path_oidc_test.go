@@ -106,7 +106,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 				`state=st_\w{20}`,
 				`redirect_uri=https%3A%2F%2Fexample.com`,
 				`response_type=code`,
-				`code_challenge=\w+`,
+				`code_challenge=[\w_-]+`,
 				`scope=openid`,
 			}
 
@@ -116,7 +116,7 @@ func TestOIDC_AuthURL(t *testing.T) {
 					t.Fatal(err)
 				}
 				if !matched {
-					t.Fatalf("expected to match regex: %s", test)
+					t.Fatalf("expected to match regex=%s / authURL=%v", test, authURL)
 				}
 			}
 		}

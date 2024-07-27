@@ -517,9 +517,6 @@ type Core struct {
 	activeContext           context.Context
 	activeContextCancelFunc *atomic.Value
 
-	// Stores the sealunwrapper for downgrade needs
-	sealUnwrapper physical.Backend
-
 	// unsealwithStoredKeysLock is a mutex that prevents multiple processes from
 	// unsealing with stored keys are the same time.
 	unsealWithStoredKeysLock sync.Mutex

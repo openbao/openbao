@@ -13,13 +13,10 @@ import (
 
 func coreInit(c *Core, conf *CoreConfig) error {
 	phys := conf.Physical
-	sealUnwrapperLogger := conf.Logger.Named("storage.sealunwrapper")
-	c.allLoggers = append(c.allLoggers, sealUnwrapperLogger)
-	c.sealUnwrapper = NewSealUnwrapper(phys, sealUnwrapperLogger)
 	// Wrap the physical backend in a cache layer if enabled
 	cacheLogger := c.baseLogger.Named("storage.cache")
 	c.allLoggers = append(c.allLoggers, cacheLogger)
-	c.physical = physical.NewCache(c.sealUnwrapper, conf.CacheSize, cacheLogger, c.MetricSink().Sink)
+	c.physical = physical.NewCache(phys, conf.CacheSize, cacheLogger, c.MetricSink().Sink)
 	c.physicalCache = c.physical.(physical.ToggleablePurgemonster)
 
 	// Wrap in encoding checks
@@ -39,21 +36,12 @@ func (c *Core) barrierViewForNamespace(namespaceId string) (*BarrierView, error)
 }
 
 func preSealPhysical(c *Core) {
-	switch c.sealUnwrapper.(type) {
-	case *sealUnwrapper:
-		c.sealUnwrapper.(*sealUnwrapper).stopUnwraps()
-	}
-
 	// Purge the cache
 	c.physicalCache.SetEnabled(false)
 	c.physicalCache.Purge(context.Background())
 }
 
 func postUnsealPhysical(c *Core) error {
-	switch c.sealUnwrapper.(type) {
-	case *sealUnwrapper:
-		c.sealUnwrapper.(*sealUnwrapper).runUnwraps()
-	}
 	return nil
 }
 

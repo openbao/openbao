@@ -12909,9 +12909,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-fetch@npm:^8.1.1":
-  version: 8.1.1
-  resolution: "ember-fetch@npm:8.1.1"
+"ember-fetch@npm:^8.1.2":
+  version: 8.1.2
+  resolution: "ember-fetch@npm:8.1.2"
   dependencies:
     abortcontroller-polyfill: ^1.7.3
     broccoli-concat: ^4.2.5
@@ -12927,7 +12927,7 @@ __metadata:
     ember-cli-version-checker: ^5.1.2
     node-fetch: ^2.6.1
     whatwg-fetch: ^3.6.2
-  checksum: 208486312d87d13137ff79eb3fd3cf00c5f370824273a51bed90d814fb81c9a1ce037ed7b0174703440566c100dc3a2ca9a0625085ce377e7bd6f4b09c7f6b62
+  checksum: 00b864c04776493d7c6e06c71709edb9045d4fa6c25392988dad218487d5440a8b00e994e951c6279da2522c6bb12e0780983d0083f93524e68fcdcd77dec62b
   languageName: node
   linkType: hard
 
@@ -24281,7 +24281,7 @@ __metadata:
     ember-data: ~4.5.0
     ember-engines: 0.8.23
     ember-export-application-global: ^2.0.1
-    ember-fetch: ^8.1.1
+    ember-fetch: ^8.1.2
     ember-inflector: 4.0.2
     ember-load-initializers: ^2.1.2
     ember-maybe-in-element: ^2.0.3

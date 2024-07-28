@@ -55,9 +55,15 @@ type barrierInit struct {
 
 // Validate AESGCMBarrier satisfies SecurityBarrier interface
 var (
-	_                      SecurityBarrier = &AESGCMBarrier{}
-	barrierEncryptsMetric                  = []string{"barrier", "estimated_encryptions"}
-	barrierRotationsMetric                 = []string{"barrier", "auto_rotation"}
+	_ SecurityBarrier              = &AESGCMBarrier{}
+	_ TransactionalSecurityBarrier = &TransactionalAESGCMBarrier{}
+	_ SecurityBarrierTransaction   = &AESGCMBarrierTransaction{}
+)
+
+// Barrier operation metrics.
+var (
+	barrierEncryptsMetric  = []string{"barrier", "estimated_encryptions"}
+	barrierRotationsMetric = []string{"barrier", "auto_rotation"}
 )
 
 // AESGCMBarrier is a SecurityBarrier implementation that uses the AES
@@ -93,6 +99,21 @@ type AESGCMBarrier struct {
 	totalLocalEncryptions *atomic.Int64
 }
 
+type TransactionalAESGCMBarrier struct {
+	*AESGCMBarrier
+}
+
+// We do not support transactional modification to the barrier itself within
+// the AESGCMBarrierTransaction. Further, we don't want to use the
+// transaction's view of key material or other underlying values, only for
+// decrypting requests into the barrier, and want only a single instance of
+// the barrier for bookkeeping about number of operations. Thus we deviate
+// from the standard pattern for this struct.
+type AESGCMBarrierTransaction struct {
+	aes *TransactionalAESGCMBarrier
+	txn physical.Transaction
+}
+
 func (b *AESGCMBarrier) RotationConfig() (kc KeyRotationConfig, err error) {
 	if b.keyring == nil {
 		return kc, errors.New("keyring not yet present")
@@ -114,9 +135,9 @@ func (b *AESGCMBarrier) SetRotationConfig(ctx context.Context, rotConfig KeyRota
 
 // NewAESGCMBarrier is used to construct a new barrier that uses
 // the provided physical backend for storage.
-func NewAESGCMBarrier(physical physical.Backend) (*AESGCMBarrier, error) {
+func NewAESGCMBarrier(storage physical.Backend) (SecurityBarrier, error) {
 	b := &AESGCMBarrier{
-		backend:                  physical,
+		backend:                  storage,
 		sealed:                   true,
 		cache:                    make(map[uint32]cipher.AEAD),
 		currentAESGCMVersionByte: byte(AESGCMVersion2),
@@ -124,6 +145,13 @@ func NewAESGCMBarrier(physical physical.Backend) (*AESGCMBarrier, error) {
 		RemoteEncryptions:        atomic.NewInt64(0),
 		totalLocalEncryptions:    atomic.NewInt64(0),
 	}
+
+	if _, ok := storage.(physical.TransactionalBackend); ok {
+		return &TransactionalAESGCMBarrier{
+			b,
+		}, nil
+	}
+
 	return b, nil
 }
 
@@ -198,7 +226,7 @@ func (b *AESGCMBarrier) Initialize(ctx context.Context, key, sealKey []byte, rea
 			return err
 		}
 
-		err = b.putInternal(ctx, 1, primary, &logical.StorageEntry{
+		err = b.putInternal(ctx, b.backend, 1, primary, &logical.StorageEntry{
 			Key:   shamirKekPath,
 			Value: sealKey,
 		})
@@ -420,7 +448,7 @@ func (b *AESGCMBarrier) ReloadRootKey(ctx context.Context) error {
 	b.l.Lock()
 	defer b.l.Unlock()
 
-	out, err = b.lockSwitchedGet(ctx, rootKeyPath, false)
+	out, err = b.lockSwitchedGet(ctx, b.backend, rootKeyPath, false)
 	if err != nil {
 		return fmt.Errorf("failed to read root key path: %w", err)
 	}
@@ -677,7 +705,7 @@ func (b *AESGCMBarrier) CheckUpgrade(ctx context.Context) (bool, uint32, error) 
 
 	// Check for an upgrade key
 	upgrade := fmt.Sprintf("%s%d", keyringUpgradePrefix, activeTerm)
-	entry, err := b.lockSwitchedGet(ctx, upgrade, false)
+	entry, err := b.lockSwitchedGet(ctx, b.backend, upgrade, false)
 	if err != nil {
 		b.l.RUnlock()
 		return false, 0, err
@@ -703,7 +731,7 @@ func (b *AESGCMBarrier) CheckUpgrade(ctx context.Context) (bool, uint32, error) 
 	activeTerm = b.keyring.ActiveTerm()
 
 	upgrade = fmt.Sprintf("%s%d", keyringUpgradePrefix, activeTerm)
-	entry, err = b.lockSwitchedGet(ctx, upgrade, false)
+	entry, err = b.lockSwitchedGet(ctx, b.backend, upgrade, false)
 	if err != nil {
 		return false, 0, err
 	}
@@ -809,6 +837,10 @@ func (b *AESGCMBarrier) updateRootKeyCommon(key []byte) (*Keyring, error) {
 
 // Put is used to insert or update an entry
 func (b *AESGCMBarrier) Put(ctx context.Context, entry *logical.StorageEntry) error {
+	return b.putWithBackend(ctx, b.backend, entry)
+}
+
+func (b *AESGCMBarrier) putWithBackend(ctx context.Context, backend physical.Backend, entry *logical.StorageEntry) error {
 	defer metrics.MeasureSince([]string{"barrier", "put"}, time.Now())
 	b.l.RLock()
 	if b.sealed {
@@ -823,10 +855,10 @@ func (b *AESGCMBarrier) Put(ctx context.Context, entry *logical.StorageEntry) er
 		return err
 	}
 
-	return b.putInternal(ctx, term, primary, entry)
+	return b.putInternal(ctx, backend, term, primary, entry)
 }
 
-func (b *AESGCMBarrier) putInternal(ctx context.Context, term uint32, primary cipher.AEAD, entry *logical.StorageEntry) error {
+func (b *AESGCMBarrier) putInternal(ctx context.Context, backend physical.Backend, term uint32, primary cipher.AEAD, entry *logical.StorageEntry) error {
 	value, err := b.encryptTracked(entry.Key, term, primary, entry.Value)
 	if err != nil {
 		return err
@@ -836,15 +868,15 @@ func (b *AESGCMBarrier) putInternal(ctx context.Context, term uint32, primary ci
 		Value:    value,
 		SealWrap: entry.SealWrap,
 	}
-	return b.backend.Put(ctx, pe)
+	return backend.Put(ctx, pe)
 }
 
 // Get is used to fetch an entry
 func (b *AESGCMBarrier) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
-	return b.lockSwitchedGet(ctx, key, true)
+	return b.lockSwitchedGet(ctx, b.backend, key, true)
 }
 
-func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, key string, getLock bool) (*logical.StorageEntry, error) {
+func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, backend physical.Backend, key string, getLock bool) (*logical.StorageEntry, error) {
 	defer metrics.MeasureSince([]string{"barrier", "get"}, time.Now())
 	if getLock {
 		b.l.RLock()
@@ -857,7 +889,7 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, key string, getLock
 	}
 
 	// Read the key from the backend
-	pe, err := b.backend.Get(ctx, key)
+	pe, err := backend.Get(ctx, key)
 	if err != nil {
 		if getLock {
 			b.l.RUnlock()
@@ -911,6 +943,10 @@ func (b *AESGCMBarrier) lockSwitchedGet(ctx context.Context, key string, getLock
 
 // Delete is used to permanently delete an entry
 func (b *AESGCMBarrier) Delete(ctx context.Context, key string) error {
+	return b.deleteWithBackend(ctx, b.backend, key)
+}
+
+func (b *AESGCMBarrier) deleteWithBackend(ctx context.Context, backend physical.Backend, key string) error {
 	defer metrics.MeasureSince([]string{"barrier", "delete"}, time.Now())
 	b.l.RLock()
 	sealed := b.sealed
@@ -919,7 +955,7 @@ func (b *AESGCMBarrier) Delete(ctx context.Context, key string) error {
 		return ErrBarrierSealed
 	}
 
-	return b.backend.Delete(ctx, key)
+	return backend.Delete(ctx, key)
 }
 
 // List is used to list all the keys under a given
@@ -939,6 +975,10 @@ func (b *AESGCMBarrier) List(ctx context.Context, prefix string) ([]string, erro
 // ListPage is used to list a subset of the keys under a given
 // prefix, up to the next prefix.
 func (b *AESGCMBarrier) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return b.listPageWithBackend(ctx, b.backend, prefix, after, limit)
+}
+
+func (b *AESGCMBarrier) listPageWithBackend(ctx context.Context, backend physical.Backend, prefix string, after string, limit int) ([]string, error) {
 	defer metrics.MeasureSince([]string{"barrier", "list-page"}, time.Now())
 	b.l.RLock()
 	sealed := b.sealed
@@ -947,7 +987,7 @@ func (b *AESGCMBarrier) ListPage(ctx context.Context, prefix string, after strin
 		return nil, ErrBarrierSealed
 	}
 
-	return b.backend.ListPage(ctx, prefix, after, limit)
+	return backend.ListPage(ctx, prefix, after, limit)
 }
 
 // aeadForTerm returns the AES-GCM AEAD for the given term
@@ -1279,4 +1319,56 @@ func (b *AESGCMBarrier) encryptions() int64 {
 		}
 	}
 	return 0
+}
+
+func (b *TransactionalAESGCMBarrier) BeginReadOnlyTx(ctx context.Context) (logical.Transaction, error) {
+	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginReadOnlyTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AESGCMBarrierTransaction{
+		aes: b,
+		txn: txn,
+	}, nil
+}
+
+func (b *TransactionalAESGCMBarrier) BeginTx(ctx context.Context) (logical.Transaction, error) {
+	txn, err := b.AESGCMBarrier.backend.(physical.TransactionalBackend).BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AESGCMBarrierTransaction{
+		aes: b,
+		txn: txn,
+	}, nil
+}
+
+func (t *AESGCMBarrierTransaction) List(ctx context.Context, prefix string) ([]string, error) {
+	return t.ListPage(ctx, prefix, "", -1)
+}
+
+func (t *AESGCMBarrierTransaction) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return t.aes.listPageWithBackend(ctx, t.txn, prefix, after, limit)
+}
+
+func (t *AESGCMBarrierTransaction) Put(ctx context.Context, entry *logical.StorageEntry) error {
+	return t.aes.putWithBackend(ctx, t.txn, entry)
+}
+
+func (t *AESGCMBarrierTransaction) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
+	return t.aes.lockSwitchedGet(ctx, t.txn, key, true)
+}
+
+func (t *AESGCMBarrierTransaction) Delete(ctx context.Context, key string) error {
+	return t.aes.deleteWithBackend(ctx, t.txn, key)
+}
+
+func (t *AESGCMBarrierTransaction) Commit(ctx context.Context) error {
+	return t.txn.Commit(ctx)
+}
+
+func (t *AESGCMBarrierTransaction) Rollback(ctx context.Context) error {
+	return t.txn.Rollback(ctx)
 }

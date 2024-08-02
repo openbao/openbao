@@ -1,0 +1,3 @@
+```release-note:bug
+docker: fix collision between the cluster address and local JSON configuration sharing the same variable within the docker-entrypoint script
+```

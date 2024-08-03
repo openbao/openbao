@@ -37,13 +37,13 @@ fi
 
 # BAO_CONFIG_DIR isn't exposed as a volume but you can compose additional
 # config files in there if you use this image as a base, or use
-# BAO_CLUSTER_ADDR below.
+# BAO_LOCAL_CONFIG below.
 BAO_CONFIG_DIR=/openbao/config
 
-# You can also set the BAO_CLUSTER_ADDR environment variable to pass some
+# You can also set the BAO_LOCAL_CONFIG environment variable to pass some
 # OpenBao configuration JSON without having to bind any volumes.
-if [ -n "$BAO_CLUSTER_ADDR" ]; then
-    echo "$BAO_CLUSTER_ADDR" > "$BAO_CONFIG_DIR/local.json"
+if [ -n "$BAO_LOCAL_CONFIG" ]; then
+    echo "$BAO_LOCAL_CONFIG" > "$BAO_CONFIG_DIR/local.json"
 fi
 
 # If the user is trying to run OpenBao directly with some arguments, then

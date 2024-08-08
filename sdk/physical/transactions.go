@@ -42,10 +42,12 @@ type Transaction interface {
 	Backend
 
 	// Commit a transaction; this is equivalent to Rollback on a read-only
-	// transaction.
+	// transaction. Either Commit or Rollback must be called to release
+	// resources.
 	Commit(context.Context) error
 
 	// Rollback a transaction, preventing any changes from being persisted.
+	// Either Commit or Rollback must be called to release resources.
 	Rollback(context.Context) error
 }
 

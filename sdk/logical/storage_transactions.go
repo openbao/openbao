@@ -15,7 +15,7 @@ import (
 type Transactional interface {
 	// This function allows the creation of a new interactive transaction
 	// handle, only supporting read operations. Attempts to perform write
-	// operations (
+	// operations (Put(...) or Delete(...)) will err.
 	BeginReadOnlyTx(context.Context) (Transaction, error)
 
 	// This function allows the creation of a new interactive transaction
@@ -33,10 +33,12 @@ type Transaction interface {
 	Storage
 
 	// Commit a transaction; this is equivalent to Rollback on a read-only
-	// transaction.
+	// transaction. Either Commit or Rollback must be called to release
+	// resources.
 	Commit(context.Context) error
 
 	// Rollback a transaction, preventing any changes from being persisted.
+	// Either Commit or Rollback must be called to release resources.
 	Rollback(context.Context) error
 }
 

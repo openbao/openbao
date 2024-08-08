@@ -343,7 +343,7 @@ func (c *LoginCommand) Run(args []string) int {
 		c.UI.Output(wrapAtLength(
 			"Success! You are now authenticated. The token information displayed "+
 				"below is already stored in the token helper. You do NOT need to run "+
-				"\"bao login\" again. Future Vault requests will automatically use "+
+				"\"bao login\" again. Future OpenBao requests will automatically use "+
 				"this token.") + "\n")
 	}
 

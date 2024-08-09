@@ -278,12 +278,7 @@ func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *fr
 type UserEntry struct {
 	tokenutil.TokenParams
 
-	// Password is deprecated in Vault 0.2 in favor of
-	// PasswordHash, but is retained for backwards compatibility.
-	Password string
-
-	// PasswordHash is a bcrypt hash of the password. This is
-	// used instead of the actual password in Vault 0.2+.
+	// PasswordHash is a bcrypt hash of the password.
 	PasswordHash []byte
 
 	Policies []string

@@ -294,23 +294,10 @@ func (c *SSHCommand) Run(args []string) int {
 	//
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagRole == "" {
-		c.UI.Warn(wrapAtLength(
-			"WARNING: No -role specified. Use -role to tell OpenBao which ssh role " +
-				"to use for authentication. In the future, you will need to tell " +
-				"OpenBao which role to use. For now, OpenBao will attempt to guess based " +
-				"on the API response. This will be removed in the Vault 1.1."))
-
-		role, err := c.defaultRole(c.flagMountPoint, ip)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("Error choosing role: %v", err))
-			return 1
-		}
-		// Print the default role chosen so that user knows the role name
-		// if something doesn't work. If the role chosen is not allowed to
-		// be used by the user (ACL enforcement), then user should see an
-		// error message accordingly.
-		c.UI.Output(fmt.Sprintf("OpenBao SSH: Role: %q", role))
-		c.flagRole = role
+		c.UI.Error(wrapAtLength(
+			"No -role specified. Use -role to tell OpenBao which " +
+				"ssh role to use for authentcation."))
+		return 1
 	}
 
 	// If no mode was given, perform the old-school lookup. Keep this now for
@@ -318,36 +305,10 @@ func (c *SSHCommand) Run(args []string) int {
 	//
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagMode == "" {
-		c.UI.Warn(wrapAtLength(
+		c.UI.Error(wrapAtLength(
 			"WARNING: No -mode specified. Use -mode to tell OpenBao which ssh " +
-				"authentication mode to use. In the future, you will need to tell " +
-				"OpenBao which mode to use. For now, OpenBao will attempt to guess based " +
-				"on the API response. This guess involves creating a temporary " +
-				"credential, reading its type, and then revoking it. To reduce the " +
-				"number of API calls and surface area, specify -mode directly. This " +
-				"will be removed in Vault 1.1."))
-		secret, cred, err := c.generateCredential(username, ip)
-		if err != nil {
-			// This is _very_ hacky, but is the only sane backwards-compatible way
-			// to do this. If the error is "key type unknown", we just assume the
-			// type is "ca". In the future, mode will be required as an option.
-			if strings.Contains(err.Error(), "key type unknown") {
-				c.flagMode = ssh.KeyTypeCA
-			} else {
-				c.UI.Error(fmt.Sprintf("Error getting credential: %s", err))
-				return 1
-			}
-		} else {
-			c.flagMode = cred.KeyType
-		}
-
-		// Revoke the secret, since the child functions will generate their own
-		// credential. Users wishing to avoid this should specify -mode.
-		if secret != nil {
-			if err := c.client.Sys().Revoke(secret.LeaseID); err != nil {
-				c.UI.Warn(fmt.Sprintf("Failed to revoke temporary key: %s", err))
-			}
-		}
+				"authentication mode to use."))
+		return 1
 	}
 
 	switch strings.ToLower(c.flagMode) {
@@ -751,40 +712,6 @@ func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileM
 // The caller should defer the closer to cleanup the key.
 func (c *SSHCommand) writeTemporaryKey(name string, data []byte) (string, error, func() error) {
 	return c.writeTemporaryFile(name, data, 0o600)
-}
-
-// If user did not provide the role with which SSH connection has
-// to be established and if there is only one role associated with
-// the IP, it is used by default.
-func (c *SSHCommand) defaultRole(mountPoint, ip string) (string, error) {
-	data := map[string]interface{}{
-		"ip": ip,
-	}
-	secret, err := c.client.Logical().Write(mountPoint+"/lookup", data)
-	if err != nil {
-		return "", fmt.Errorf("error finding roles for IP %q: %w", ip, err)
-	}
-	if secret == nil || secret.Data == nil {
-		return "", fmt.Errorf("error finding roles for IP %q: %w", ip, err)
-	}
-
-	if secret.Data["roles"] == nil {
-		return "", fmt.Errorf("no matching roles found for IP %q", ip)
-	}
-
-	if len(secret.Data["roles"].([]interface{})) == 1 {
-		return secret.Data["roles"].([]interface{})[0].(string), nil
-	} else {
-		var roleNames string
-		for _, item := range secret.Data["roles"].([]interface{}) {
-			roleNames += item.(string) + ", "
-		}
-		roleNames = strings.TrimRight(roleNames, ", ")
-		return "", fmt.Errorf("Roles: %q. "+`
-			Multiple roles are registered for this IP.
-			Select a role using '-role' option.
-			Note that all roles may not be permitted, based on ACLs.`, roleNames)
-	}
 }
 
 func (c *SSHCommand) isSingleSSHArg(arg string) bool {

@@ -2153,15 +2153,6 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 		if tokenNS != nil {
 			saltCtx = namespace.ContextWithNamespace(ctx, tokenNS)
 		}
-
-		// Downgrade logic for old-style (V0) namespace leases that had its
-		// secondary index live in the root namespace. This reverts to the old
-		// behavior of looking for the secondary index on these leases in the
-		// root namespace to be cleaned up properly. We set it here because the
-		// old behavior used the namespace's token store salt for its saltCtx.
-		if le.Version < 1 {
-			tokenNS = namespace.RootNamespace
-		}
 	}
 
 	saltedID, err := m.tokenStore.SaltID(saltCtx, token)

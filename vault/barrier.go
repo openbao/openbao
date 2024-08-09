@@ -70,13 +70,7 @@ const (
 	shamirKekPath = "core/shamir-kek"
 )
 
-// SecurityBarrier is a critical component of Vault. It is used to wrap
-// an untrusted physical backend and provide a single point of encryption,
-// decryption and checksum verification. The goal is to ensure that any
-// data written to the barrier is confidential and that integrity is preserved.
-// As a real-world analogy, this is the steel and concrete wrapper around
-// a Vault. The barrier should only be Unlockable given its key.
-type SecurityBarrier interface {
+type SecurityBarrierCore interface {
 	// Initialized checks if the barrier has been initialized
 	// and has a root key set.
 	Initialized(ctx context.Context) (bool, error)
@@ -161,27 +155,41 @@ type SecurityBarrier interface {
 	// Check whether an automatic rotation is due
 	CheckBarrierAutoRotate(ctx context.Context) (string, error)
 
-	// SecurityBarrier must provide the storage APIs
-	logical.Storage
-
 	// SecurityBarrier must provide the encryption APIs
 	BarrierEncryptor
 }
 
-// BarrierStorage is the storage only interface required for a Barrier.
-type BarrierStorage interface {
-	// Put is used to insert or update an entry
-	Put(ctx context.Context, entry *logical.StorageEntry) error
+// SecurityBarrier is a critical component of Vault. It is used to wrap
+// an untrusted physical backend and provide a single point of encryption,
+// decryption and checksum verification. The goal is to ensure that any
+// data written to the barrier is confidential and that integrity is preserved.
+// As a real-world analogy, this is the steel and concrete wrapper around
+// a Vault. The barrier should only be Unlockable given its key.
+type SecurityBarrier interface {
+	SecurityBarrierCore
 
-	// Get is used to fetch an entry
-	Get(ctx context.Context, key string) (*logical.StorageEntry, error)
+	// SecurityBarrier must provide the storage APIs
+	logical.Storage
+}
 
-	// Delete is used to permanently delete an entry
-	Delete(ctx context.Context, key string) error
+// TransactionalSecurityBarrier is an implementation of SecureBarrier that
+// additionally allows for the use of transactions. Note that these
+// transactions are purely storage-level transactions and cannot be used to
+// update the security barrier itself in a transaction-aware manner (i.e., to
+// do key rotations or the such inside a transaction without affecting other
+// consumers until committed).
+type TransactionalSecurityBarrier interface {
+	SecurityBarrierCore
 
-	// List is used ot list all the keys under a given
-	// prefix, up to the next prefix.
-	List(ctx context.Context, prefix string) ([]string, error)
+	// SecurityBarrier must provide the transactional storage APIs
+	logical.TransactionalStorage
+}
+
+// SecurityBarrierTransaction doesn't provide the same SecurityBarrierCore
+// functions as they are not transaction-aware.
+type SecurityBarrierTransaction interface {
+	// SecurityBarrier must provide the transactional storage APIs
+	logical.Transaction
 }
 
 // BarrierEncryptor is the in memory only interface that does not actually

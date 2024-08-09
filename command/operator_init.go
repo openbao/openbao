@@ -31,7 +31,6 @@ type OperatorInitCommand struct {
 	flagRecoveryShares    int
 	flagRecoveryThreshold int
 	flagRecoveryPGPKeys   []string
-	flagStoredShares      int
 }
 
 const (
@@ -122,8 +121,7 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 			"public PGP keys OR a comma-separated list of Keybase usernames using " +
 			"the format \"keybase:<username>\". When supplied, the generated " +
 			"unseal keys will be encrypted and base64-encoded in the order " +
-			"specified in this list. The number of entries must match -key-shares, " +
-			"unless -stored-shares are used.",
+			"specified in this list. The number of entries must match -key-shares.",
 	})
 
 	f.VarFlag(&VarFlag{
@@ -135,13 +133,6 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 			"using the format \"keybase:<username>\". When supplied, the generated " +
 			"root token will be encrypted and base64-encoded with the given public " +
 			"key.",
-	})
-
-	f.IntVar(&IntVar{
-		Name:    "stored-shares",
-		Target:  &c.flagStoredShares,
-		Default: -1,
-		Usage:   "DEPRECATED: This flag does nothing. It will be removed in Vault 1.3.",
 	})
 
 	// Auto Unseal Options
@@ -196,9 +187,6 @@ func (c *OperatorInitCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagStoredShares != -1 {
-		c.UI.Warn("-stored-shares has no effect and will be removed in Vault 1.3.\n")
-	}
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())

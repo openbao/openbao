@@ -130,6 +130,17 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
+	// If we have a transactional storage backend, let's use it.
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		txn, err := txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		defer txn.Rollback(ctx)
+		req.Storage = txn
+	}
+
 	var err error
 
 	if b.useLegacyBundleCaStorage() {
@@ -320,6 +331,13 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 	}
 
 	resp = addWarnings(resp, warnings)
+
+	// Finally, commit our transaction if we have one!
+	if txn, ok := req.Storage.(logical.Transaction); ok {
+		if err := txn.Commit(ctx); err != nil {
+			return nil, err
+		}
+	}
 
 	return resp, nil
 }

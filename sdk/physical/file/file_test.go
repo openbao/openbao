@@ -218,6 +218,7 @@ func TestFileBackend(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	// File backend is not transactional
 	physical.ExerciseBackend(t, b)
 
 	// Underscores should not trip things up; ref GH-3476

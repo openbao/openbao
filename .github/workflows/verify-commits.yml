@@ -1,0 +1,22 @@
+name: Ensure Verified Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  verify_commits:
+    name: Verify Commit Signatures
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check commit signatures
+        run: |
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/openbao/openbao/pulls/${{ github.event.pull_request.number }}/commits | \
+          jq -f .github/scripts/verify-commits.jq
+        env:
+          GH_TOKEN: ${{ github.token }}

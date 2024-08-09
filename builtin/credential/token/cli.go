@@ -159,13 +159,13 @@ Usage: bao login TOKEN [CONFIG K=V...]
       $ bao login token=96ddf4bc-d217-f3ba-f9bd-017055595017 lookup=false
 
   This token usually comes from a different source such as the API or via the
-  built-in "vault token create" command.
+  built-in "bao token create" command.
 
 Configuration:
 
   token=<string>
       The token to use for authentication. This is usually provided directly
-      via the "vault login" command.
+      via the "bao login" command.
 
   lookup=<bool>
       Perform a lookup of the token's metadata and policies.

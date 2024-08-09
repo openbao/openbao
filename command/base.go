@@ -335,7 +335,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Target:     &c.flagAddress,
 				EnvVar:     api.EnvVaultAddress,
 				Completion: complete.PredictAnything,
-				Usage:      "Address of the Vault server.",
+				Usage:      "Address of the OpenBao server.",
 			}
 			if c.flagAddress != "" {
 				addrStringVar.Default = c.flagAddress
@@ -360,7 +360,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:     api.EnvVaultCACert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
-					"certificate to verify the Vault server's SSL certificate. This " +
+					"certificate to verify the OpenBao server's SSL certificate. This " +
 					"takes precedence over -ca-path.",
 			})
 
@@ -371,7 +371,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:     api.EnvVaultCAPath,
 				Completion: complete.PredictDirs("*"),
 				Usage: "Path on the local disk to a directory of PEM-encoded CA " +
-					"certificates to verify the Vault server's SSL certificate.",
+					"certificates to verify the OpenBao server's SSL certificate.",
 			})
 
 			f.StringVar(&StringVar{
@@ -381,7 +381,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:     api.EnvVaultClientCert,
 				Completion: complete.PredictFiles("*"),
 				Usage: "Path on the local disk to a single PEM-encoded CA " +
-					"certificate to use for TLS authentication to the Vault server. If " +
+					"certificate to use for TLS authentication to the OpenBao server. If " +
 					"this flag is specified, -client-key is also required.",
 			})
 
@@ -421,7 +421,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				Default:    "",
 				EnvVar:     api.EnvVaultTLSServerName,
 				Completion: complete.PredictAnything,
-				Usage: "Name to use as the SNI host when connecting to the Vault " +
+				Usage: "Name to use as the SNI host when connecting to the OpenBao " +
 					"server via TLS.",
 			})
 
@@ -432,7 +432,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:  api.EnvVaultSkipVerify,
 				Usage: "Disable verification of TLS certificates. Using this option " +
 					"is highly discouraged as it decreases the security of data " +
-					"transmissions to and from the Vault server.",
+					"transmissions to and from the OpenBao server.",
 			})
 
 			f.BoolVar(&BoolVar{
@@ -459,7 +459,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 				EnvVar:     api.EnvVaultWrapTTL,
 				Completion: complete.PredictAnything,
 				Usage: "Wraps the response in a cubbyhole token with the requested " +
-					"TTL. The response is available via the \"vault unwrap\" command. " +
+					"TTL. The response is available via the \"bao unwrap\" command. " +
 					"The TTL is specified as a numeric string with suffix like \"30s\" " +
 					"or \"5m\".",
 			})
@@ -540,7 +540,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 					Completion: complete.PredictSet("table", "json", "yaml", "pretty", "raw"),
 					Usage: `Print the output in the given format. Valid formats
 						are "table", "json", "yaml", or "pretty". "raw" is allowed
-						for 'vault read' operations only.`,
+						for 'bao read' operations only.`,
 				})
 			}
 

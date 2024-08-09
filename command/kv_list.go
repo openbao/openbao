@@ -31,7 +31,7 @@ func (c *KVListCommand) Help() string {
 
 Usage: bao kv list [options] PATH
 
-  Lists data from Vault's key-value store at the given path.
+  Lists data from OpenBao's key-value store at the given path.
 
   List values under the "my-app" folder of the key-value store:
 

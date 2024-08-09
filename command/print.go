@@ -27,7 +27,7 @@ func (c *PrintCommand) Help() string {
 	helpText := `
 Usage: bao print <subcommand>
 
-	This command groups subcommands for interacting with Vault's runtime values.
+	This command groups subcommands for interacting with OpenBao's runtime values.
 
 Subcommands:
 	token    Token currently in use

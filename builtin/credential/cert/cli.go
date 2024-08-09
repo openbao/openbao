@@ -47,7 +47,7 @@ Usage: bao login -method=cert [CONFIG K=V...]
 
   The certificate auth method allows users to authenticate with a
   client certificate passed with the request. The -client-cert and -client-key
-  flags are included with the "vault login" command, NOT as configuration to the
+  flags are included with the "bao login" command, NOT as configuration to the
   auth method.
 
   Authenticate using a local client certificate:

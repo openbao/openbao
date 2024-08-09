@@ -34,7 +34,7 @@ func (c *PluginRegisterCommand) Help() string {
 	helpText := `
 Usage: bao plugin register [options] TYPE NAME
 
-  Registers a new plugin in the catalog. The plugin binary must exist in Vault's
+  Registers a new plugin in the catalog. The plugin binary must exist in OpenBao's
   configured plugin directory. The argument of type takes "auth", "database",
   or "secret".
 

@@ -16,14 +16,14 @@ type PKICommand struct {
 }
 
 func (c *PKICommand) Synopsis() string {
-	return "Interact with Vault's PKI Secrets Engine"
+	return "Interact with OpenBao's PKI Secrets Engine"
 }
 
 func (c *PKICommand) Help() string {
 	helpText := `
 Usage: bao pki <subcommand> [options] [args]
 
-  This command has subcommands for interacting with Vault's PKI Secrets
+  This command has subcommands for interacting with OpenBao's PKI Secrets
   Engine. Here are some simple examples, and more detailed examples are
   available in the subcommands or the documentation.
 

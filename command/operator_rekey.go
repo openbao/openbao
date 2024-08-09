@@ -60,7 +60,8 @@ Usage: bao operator rekey [options] [KEY]
   Generates a new set of unseal keys. This can optionally change the total
   number of key shares or the required threshold of those key shares to
   reconstruct the root key. This operation is zero downtime, but it requires
-  the Vault is unsealed and a quorum of existing unseal keys are provided.
+  that the OpenBao instance is unsealed and a quorum of existing unseal keys
+  are provided.
 
   An unseal key may be provided directly on the command line as an argument to
   the command. If key is specified as "-", the command will read from stdin. If
@@ -84,7 +85,7 @@ Usage: bao operator rekey [options] [KEY]
           -key-threshold=2 \
           -pgp-keys="keybase:hashicorp,keybase:jefferai,keybase:sethvargo"
 
-  Store encrypted PGP keys in Vault's core:
+  Store encrypted PGP keys in OpenBao's core:
 
       $ bao operator rekey \
           -init \
@@ -201,7 +202,7 @@ func (c *OperatorRekeyCommand) Flags() *FlagSets {
 		Target:  &c.flagBackup,
 		Default: false,
 		Usage: "Store a backup of the current PGP encrypted unseal or recovery keys in " +
-			"Vault's core. The encrypted values can be recovered in the event of " +
+			"OpenBao's core. The encrypted values can be recovered in the event of " +
 			"failure or discarded after success. See the -backup-delete and " +
 			"-backup-retrieve options for more information. This option only " +
 			"applies when the existing unseal or recovery keys were PGP encrypted.",
@@ -322,7 +323,7 @@ func (c *OperatorRekeyCommand) init(client *api.Client) int {
 			c.UI.Warn(wrapAtLength(
 				fmt.Sprintf("WARNING! You are using PGP keys for encrypted the resulting %s "+
 					"keys, but you did not enable the option to backup the keys to "+
-					"Vault's core. If you lose the encrypted keys after they are "+
+					"OpenBao's core. If you lose the encrypted keys after they are "+
 					"returned, you will not be able to recover them. Consider canceling "+
 					"this operation and re-running with -backup to allow recovery of the "+
 					"encrypted unseal keys in case of emergency. You can delete the "+
@@ -437,7 +438,7 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 	if !started {
 		c.UI.Error(wrapAtLength(
 			"No rekey is in progress. Start a rekey process by running " +
-				"\"vault operator rekey -init\"."))
+				"\"bao operator rekey -init\"."))
 		return 1
 	}
 
@@ -714,14 +715,14 @@ func (c *OperatorRekeyCommand) printUnsealKeys(client *api.Client, status *api.R
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
 				"The encrypted unseal keys are backed up to \"core/unseal-keys-backup\" " +
 					"in the storage backend. Remove these keys at any time using " +
-					"\"vault operator rekey -backup-delete\". Vault does not automatically " +
+					"\"bao operator rekey -backup-delete\". OpenBao does not automatically " +
 					"remove these keys.",
 			)))
 		case "recovery", "hsm":
 			c.UI.Output(wrapAtLength(fmt.Sprintf(
 				"The encrypted recovery keys are backed up to \"core/recovery-keys-backup\" " +
 					"in the storage backend. Remove these keys at any time using " +
-					"\"vault operator rekey -backup-delete -target=recovery\". Vault does not automatically " +
+					"\"bao operator rekey -backup-delete -target=recovery\". OpenBao does not automatically " +
 					"remove these keys.",
 			)))
 		}

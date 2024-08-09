@@ -16,14 +16,14 @@ type TransitCommand struct {
 }
 
 func (c *TransitCommand) Synopsis() string {
-	return "Interact with Vault's Transit Secrets Engine"
+	return "Interact with OpenBao's Transit Secrets Engine"
 }
 
 func (c *TransitCommand) Help() string {
 	helpText := `
 Usage: bao transit <subcommand> [options] [args]
 
-  This command has subcommands for interacting with Vault's Transit Secrets
+  This command has subcommands for interacting with OpenBao's Transit Secrets
   Engine. Here are some simple examples, and more detailed examples are
   available in the subcommands or the documentation.
 

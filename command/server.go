@@ -72,11 +72,6 @@ var (
 
 var memProfilerEnabled = false
 
-var enableFourClusterDev = func(c *ServerCommand, base *vault.CoreConfig, info map[string]string, infoKeys []string, devListenAddress, tempDir string) int {
-	c.logger.Error("-dev-four-cluster only supported in enterprise Vault")
-	return 1
-}
-
 const (
 	storageMigrationLock = "core/migration"
 
@@ -132,7 +127,6 @@ type ServerCommand struct {
 	flagDevKVV1            bool
 	flagDevSkipInit        bool
 	flagDevThreeNode       bool
-	flagDevFourCluster     bool
 	flagDevAutoSeal        bool
 	flagDevClusterJson     string
 	flagTestVerifyOnly     bool
@@ -141,22 +135,22 @@ type ServerCommand struct {
 }
 
 func (c *ServerCommand) Synopsis() string {
-	return "Start a Vault server"
+	return "Start an OpenBao server"
 }
 
 func (c *ServerCommand) Help() string {
 	helpText := `
 Usage: bao server [options]
 
-  This command starts a Vault server that responds to API requests. By default,
-  Vault will start in a "sealed" state. The Vault cluster must be initialized
-  before use, usually by the "vault operator init" command. Each Vault server must
-  also be unsealed using the "vault operator unseal" command or the API before the
+  This command starts an OpenBao server that responds to API requests. By default,
+  OpenBao will start in a "sealed" state. The OpenBao cluster must be initialized
+  before use, usually by the "bao operator init" command. Each OpenBao server must
+  also be unsealed using the "bao operator unseal" command or the API before the
   server can respond to requests.
 
   Start a server with a configuration file:
 
-      $ bao server -config=/etc/vault/config.hcl
+      $ bao server -config=/etc/openbao/config.hcl
 
   Run in "dev" mode:
 
@@ -194,13 +188,13 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:    "exit-on-core-shutdown",
 		Target:  &c.flagExitOnCoreShutdown,
 		Default: false,
-		Usage:   "Exit the vault server if the vault core is shutdown.",
+		Usage:   "Exit the OpenBao server if the OpenBao core is shutdown.",
 	})
 
 	f.BoolVar(&BoolVar{
 		Name:   "recovery",
 		Target: &c.flagRecovery,
-		Usage: "Enable recovery mode. In this mode, Vault is used to perform recovery actions." +
+		Usage: "Enable recovery mode. In this mode, OpenBao is used to perform recovery actions." +
 			"Using a recovery operation token, \"sys/raw\" API can be used to manipulate the storage.",
 	})
 
@@ -209,7 +203,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:   "dev",
 		Target: &c.flagDev,
-		Usage: "Enable development mode. In this mode, Vault runs in-memory and " +
+		Usage: "Enable development mode. In this mode, OpenBao runs in-memory and " +
 			"starts unsealed. As the name implies, do not run \"dev\" mode in " +
 			"production.",
 	})
@@ -217,7 +211,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:   "dev-tls",
 		Target: &c.flagDevTLS,
-		Usage: "Enable TLS development mode. In this mode, Vault runs in-memory and " +
+		Usage: "Enable TLS development mode. In this mode, OpenBao runs in-memory and " +
 			"starts unsealed, with a generated TLS CA, certificate and key. " +
 			"As the name implies, do not run \"dev-tls\" mode in " +
 			"production.",
@@ -258,11 +252,11 @@ func (c *ServerCommand) Flags() *FlagSets {
 
 	// Internal-only flags to follow.
 	//
-	// Why hello there little source code reader! Welcome to the Vault source
+	// Why hello there little source code reader! Welcome to the OpenBao source
 	// code. The remaining options are intentionally undocumented and come with
 	// no warranty or backwards-compatibility promise. Do not use these flags
 	// in production. Do not build automation using these flags. Unless you are
-	// developing against Vault, you should not need any of these flags.
+	// developing against OpenBao, you should not need any of these flags.
 
 	f.StringVar(&StringVar{
 		Name:       "dev-plugin-dir",
@@ -329,13 +323,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:    "dev-three-node",
 		Target:  &c.flagDevThreeNode,
-		Default: false,
-		Hidden:  true,
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    "dev-four-cluster",
-		Target:  &c.flagDevFourCluster,
 		Default: false,
 		Hidden:  true,
 	})
@@ -771,8 +758,8 @@ func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.Servi
 	namedSDLogger := c.logger.Named("service_registration." + config.ServiceRegistration.Type)
 	c.allLoggers = append(c.allLoggers, namedSDLogger)
 
-	// Since we haven't even begun starting Vault's core yet,
-	// we know that Vault is in its pre-running state.
+	// Since we haven't even begun starting OpenBao's core yet,
+	// we know that OpenBao is in its pre-running state.
 	state := sr.State{
 		VaultVersion:         version.GetVersion().VersionNumber(),
 		IsInitialized:        false,
@@ -955,7 +942,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Automatically enable dev mode if other dev flags are provided.
-	if c.flagDevHA || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevFourCluster || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
+	if c.flagDevHA || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
 		c.flagDev = true
 	}
 
@@ -1020,7 +1007,7 @@ func (c *ServerCommand) Run(args []string) int {
 	f.applyLogConfigOverrides(config.SharedConfig)
 
 	// Set 'trace' log level for the following 'dev' clusters
-	if c.flagDevThreeNode || c.flagDevFourCluster {
+	if c.flagDevThreeNode {
 		config.LogLevel = "trace"
 	}
 
@@ -1159,10 +1146,6 @@ func (c *ServerCommand) Run(args []string) int {
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
 	if c.flagDevThreeNode {
 		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
-	}
-
-	if c.flagDevFourCluster {
-		return enableFourClusterDev(c, &coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
 	if allowPendingRemoval := api.ReadBaoVariable(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
@@ -1336,7 +1319,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}))
 
 	// Attempt unsealing in a background goroutine. This is needed for when a
-	// Vault cluster with multiple servers is configured with auto-unseal but is
+	// OpenBao cluster with multiple servers is configured with auto-unseal but is
 	// uninitialized. Once one server initializes the storage backend, this
 	// goroutine will pick up the unseal keys and unseal this instance.
 	if !core.IsInSealMigrationMode(true) {
@@ -1575,7 +1558,7 @@ func (c *ServerCommand) Run(args []string) int {
 				f.Close()
 			}
 
-			// We can only get pprof outputs via the API but sometimes Vault can get
+			// We can only get pprof outputs via the API but sometimes OpenBao can get
 			// into a state where it cannot process requests so we can get pprof outputs
 			// via SIGUSR2.
 			if api.ReadBaoVariable("BAO_PPROF_WRITE_TO_FILE") != "" {
@@ -1622,7 +1605,7 @@ func (c *ServerCommand) Run(args []string) int {
 	// Stop the listeners so that we don't process further client requests.
 	c.cleanupGuard.Do(listenerCloseFunc)
 
-	// Finalize will wait until after Vault is sealed, which means the
+	// Finalize will wait until after OpenBao is sealed, which means the
 	// request forwarding listeners will also be closed (and also
 	// waited for).
 	if err := core.Shutdown(); err != nil {
@@ -2026,7 +2009,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 			// Stop the listeners so that we don't process further client requests.
 			c.cleanupGuard.Do(testCluster.Cleanup)
 
-			// Finalize will wait until after Vault is sealed, which means the
+			// Finalize will wait until after OpenBao is sealed, which means the
 			// request forwarding listeners will also be closed (and also
 			// waited for).
 			for _, core := range testCluster.Cores {
@@ -2241,7 +2224,7 @@ func (c *ServerCommand) storageMigrationActive(backend physical.Backend) bool {
 			if migrationStatus != nil {
 				startTime := migrationStatus.Start.Format(time.RFC3339)
 				c.UI.Error(wrapAtLength(fmt.Sprintf("ERROR! Storage migration in progress (started: %s). "+
-					"Server startup is prevented until the migration completes. Use 'vault operator migrate -reset' "+
+					"Server startup is prevented until the migration completes. Use 'bao operator migrate -reset' "+
 					"to force clear the migration lock.", startTime)))
 				return true
 			}
@@ -2683,10 +2666,10 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 
 					// Print the big dev mode warning!
 					c.UI.Warn(wrapAtLength(
-						"WARNING! dev mode is enabled! In this mode, Vault runs entirely " +
+						"WARNING! dev mode is enabled! In this mode, OpenBao runs entirely " +
 							"in-memory and starts unsealed with a single unseal key. The root " +
 							"token is already authenticated to the CLI, so you can immediately " +
-							"begin using Vault."))
+							"begin using OpenBao."))
 					c.UI.Warn("")
 					c.UI.Warn("You may need to set the following environment variables:")
 					c.UI.Warn("")

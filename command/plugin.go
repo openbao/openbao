@@ -16,14 +16,14 @@ type PluginCommand struct {
 }
 
 func (c *PluginCommand) Synopsis() string {
-	return "Interact with Vault plugins and catalog"
+	return "Interact with OpenBao plugins and catalog"
 }
 
 func (c *PluginCommand) Help() string {
 	helpText := `
 Usage: bao plugin <subcommand> [options] [args]
 
-  This command groups subcommands for interacting with Vault's plugins and the
+  This command groups subcommands for interacting with OpenBao's plugins and the
   plugin catalog. The plugin catalog is divided into three types: "auth", 
   "database", and "secret" plugins. A type must be specified on each call. Here 
   are a few examples of the plugin commands.

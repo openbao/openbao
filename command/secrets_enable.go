@@ -55,7 +55,7 @@ Usage: bao secrets enable [options] TYPE
   corresponding to their TYPE, but users can customize the path using the
   -path option.
 
-  Once enabled, Vault will route all requests which begin with the path to the
+  Once enabled, OpenBao will route all requests which begin with the path to the
   secrets engine.
 
   Enable the AWS secrets engine at aws/:
@@ -112,7 +112,7 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagDefaultLeaseTTL,
 		Completion: complete.PredictAnything,
 		Usage: "The default lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured default lease " +
+			"this defaults to the OpenBao server's globally configured default lease " +
 			"TTL.",
 	})
 
@@ -121,7 +121,7 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagMaxLeaseTTL,
 		Completion: complete.PredictAnything,
 		Usage: "The maximum lease TTL for this secrets engine. If unspecified, " +
-			"this defaults to the Vault server's globally configured maximum lease " +
+			"this defaults to the OpenBao server's globally configured maximum lease " +
 			"TTL.",
 	})
 
@@ -164,7 +164,7 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Target:  &c.flagForceNoCache,
 		Default: false,
 		Usage: "Force the secrets engine to disable caching. If unspecified, this " +
-			"defaults to the Vault server's globally configured cache settings. " +
+			"defaults to the OpenBao server's globally configured cache settings. " +
 			"This does not affect caching of the underlying encrypted data storage.",
 	})
 
@@ -173,7 +173,7 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagPluginName,
 		Completion: c.PredictVaultPlugins(api.PluginTypeSecrets, api.PluginTypeDatabase),
 		Usage: "Name of the secrets engine plugin. This plugin name must already " +
-			"exist in Vault's plugin catalog.",
+			"exist in OpenBao's plugin catalog.",
 	})
 
 	f.StringVar(&StringVar{
@@ -210,7 +210,7 @@ func (c *SecretsEnableCommand) Flags() *FlagSets {
 		Name:    "external-entropy-access",
 		Target:  &c.flagExternalEntropyAccess,
 		Default: false,
-		Usage:   "Enable secrets engine to access Vault's external entropy source.",
+		Usage:   "Enable secrets engine to access OpenBao's external entropy source.",
 	})
 
 	f.IntVar(&IntVar{

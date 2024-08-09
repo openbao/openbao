@@ -8,7 +8,7 @@ disclose by contacting us at openbao-security@lists.lfedge.org.
 issue or pull request anyways. You won't be yelled at for giving it your best
 effort. The worst that can happen is that you'll be politely asked to change
 something. We appreciate any sort of contributions, and don't want a wall of
-rules to get in the way of that. 
+rules to get in the way of that.
 
 That said, if you want to ensure that a pull request is likely to be merged,
 talk to us! You can find out our thoughts and ensure that your contribution
@@ -17,21 +17,21 @@ is via the [GitHub Discussions][2].
 
 ## Source-Available License Policy
 
-This policy prohibits the utilization or copy from any source that is protected 
-by a source-available license agreement including Business Source License 1.1. 
-This specifically includes all source repository members under the Hashicorp GitHub 
-organization. It is the intention of this policy that when developing for feature 
-parity, bug fixes, CVEs, etc. in comparison to Hashicorp Vault that a clean room 
+This policy prohibits the utilization or copy from any source that is protected
+by a source-available license agreement including Business Source License 1.1.
+This specifically includes all source repository members under the Hashicorp GitHub
+organization. It is the intention of this policy that when developing for feature
+parity, bug fixes, CVEs, etc. in comparison to Hashicorp Vault that a clean room
 methodology be used and all deliverables made original.
 
 ## Developer Certificate of Origin (DCO) Sign Off Policy
 
 OpenBao adheres to the Linux Foundation's [DCO](https://developercertificate.org/).
-All contributors are required to confirm their legal rights to the source they 
-contribute. This is done through a "DCO Sign Off". Note that this is different from 
+All contributors are required to confirm their legal rights to the source they
+contribute. This is done through a "DCO Sign Off". Note that this is different from
 commit signing, such as using `PGP` or `gitsign`.
 
-To add your sign-off, include the --signoff option in your `git commit` or `git rebase` 
+To add your sign-off, include the --signoff option in your `git commit` or `git rebase`
 commands:
 
 ```
@@ -51,15 +51,14 @@ This will add a line similar to the following at the end of your commit:
 Signed-off-by: Alex Smith <alex@example.com>
 ```
 
-Signing off a commit signifies your agreement to the terms outlined at 
-https://developercertificate.org/ for that specific contribution. Any contribution 
+Signing off a commit signifies your agreement to the terms outlined at
+https://developercertificate.org/ for that specific contribution. Any contribution
 that lacks a sign-off to this agreement will not be accepted by the OpenBao project.
 
 ## Technical Steering Committee (TSC) Members
 
 | Member            | Email                               | GitHub                                     | Alternate                               | Company/Organization      | TSC Position |
 |-------------------|-------------------------------------|--------------------------------------------|-----------------------------------------|---------------------------|--------------|
-| Alex Scheel       | alexander.m.scheel@gmail.com        | [@cipherboy](https://github.com/cipherboy) |                                         | Development Working Group | Member       |
 | Nathan Phelps     | naphelps@us.ibm.com                 | [@naphelps](https://github.com/naphelps)   |                                         | IBM                       | Chair        |
 | James Butcher     | james@iotechsys.com                 |                                            |                                         | IOtech Systems            | Member       |
 | Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |                                            | Dan Ghita (dan.ghita@viaccess-orca.com) | Viaccess-Orca             | Member       |
@@ -69,9 +68,9 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 
 ### OpenBao Working Groups
 
-| Working Group             | Chair       |
-|---------------------------|-------------|
-| Development Working Group | Alex Scheel |
+| Working Group             | Chair       | Members                               |
+|---------------------------|-------------| ------------------------------------- |
+| Development Working Group | Alex Scheel | Dan Ghita, Nathan Phelps, Jan Martens |
 
 
 ## Issues
@@ -88,7 +87,7 @@ quickly merge or address your contributions.
   against the `development` branch, as the bugs are regularly fixed but new versions
   are only released every few months.
 
-* Provide steps to reproduce the issue, and if possible include the expected 
+* Provide steps to reproduce the issue, and if possible include the expected
   results as well as the actual results. Please provide text, not screen shots!
 
 * If you are seeing an internal OpenBao error (a status code of 5xx), please be
@@ -128,11 +127,11 @@ quickly merge or address your contributions.
 
 ## Pull requests
 
-When submitting a PR you should reference an existing issue. If no issue already exists, 
+When submitting a PR you should reference an existing issue. If no issue already exists,
 please create one. This can be skipped for trivial PRs like fixing typos.
 
-Creating an issue in advance of working on the PR can help to avoid duplication of effort, 
-e.g. maybe we know of existing related work. Or it may be that we can provide guidance 
+Creating an issue in advance of working on the PR can help to avoid duplication of effort,
+e.g. maybe we know of existing related work. Or it may be that we can provide guidance
 that will help with your approach.
 
 Your pull request should have a description of what it accomplishes, how it does so,
@@ -140,7 +139,7 @@ and why you chose the approach you did.  PRs should include unit tests that vali
 correctness and the existing tests must pass. Follow-up work to fix tests
 does not need a fresh issue filed.
 
-Someone will do a first pass review on your PR making sure it follows the guidelines 
+Someone will do a first pass review on your PR making sure it follows the guidelines
 in this document. If it doesn't we'll mark the PR incomplete and ask you to follow
 up on the missing requirements.
 
@@ -157,36 +156,36 @@ COMPONENT: summary of change
 
 CATEGORY is one of `security`, `change`, `feature`, `improvement`, or `bug`.
 Your PR is almost certain to be one of `bug` or `improvement`, but don't
-worry too much about getting it exactly right, we'll tell you if a change is 
+worry too much about getting it exactly right, we'll tell you if a change is
 needed.
 
 To determine the relevant component, consult [CHANGELOG](CHANGELOG.md) and pick
 whichever one you see that seems the closest match.
 
 You do not need to include the link at the end of the summary that appears in
-CHANGELOG.md, those are generated automatically by the changelog-building 
+CHANGELOG.md, those are generated automatically by the changelog-building
 process.
 
 ### OpenBao UI
 
-How you contribute to the UI depends on what you want to contribute. If that is 
-a new feature, please submit an informational issue first.  That issue 
+How you contribute to the UI depends on what you want to contribute. If that is
+a new feature, please submit an informational issue first.  That issue
 should include a short description of the proposed feature, the use case,
 the approach you're taking, and the tests that would be written.  A mockup
-is optional but encouraged.  
+is optional but encouraged.
 
-Bug fixes are welcome in PRs but existing tests must pass and updated logic 
+Bug fixes are welcome in PRs but existing tests must pass and updated logic
 should be handled in new tests.  You needn't submit an issue first to fix bugs.
 
-Keep in mind that the UI should be consistent with other areas of OpenBao. 
-The UI should be user-centered, informative, and include edge cases and errors— 
-including accommodations for users who may not have permissions to view or 
+Keep in mind that the UI should be consistent with other areas of OpenBao.
+The UI should be user-centered, informative, and include edge cases and errors—
+including accommodations for users who may not have permissions to view or
 interact with your feature. If you are not comfortable with UI design, an OpenBao
-designer can take a look at your work— just be aware that this might mean 
+designer can take a look at your work— just be aware that this might mean
 it will add some time to the PR process.
 
-Finally, in your code, try to avoid logic-heavy templates (when possible, 
-calculate values in the .js file instead of .hbs) and Ember anti-patterns. 
+Finally, in your code, try to avoid logic-heavy templates (when possible,
+calculate values in the .js file instead of .hbs) and Ember anti-patterns.
 And most of all, if you have any questions, please ask!
 
 ## Setting up Go to work on OpenBao

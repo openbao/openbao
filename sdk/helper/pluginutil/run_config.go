@@ -109,7 +109,6 @@ func (rc runConfig) makeConfig(ctx context.Context) (*plugin.ClientConfig, error
 		TLSConfig:        clientTLSConfig,
 		Logger:           rc.Logger,
 		AllowedProtocols: []plugin.Protocol{
-			plugin.ProtocolNetRPC,
 			plugin.ProtocolGRPC,
 		},
 		AutoMTLS: rc.AutoMTLS,

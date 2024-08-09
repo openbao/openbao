@@ -91,7 +91,6 @@ func TestMakeConfig(t *testing.T) {
 					// Hash is generated
 				},
 				AllowedProtocols: []plugin.Protocol{
-					plugin.ProtocolNetRPC,
 					plugin.ProtocolGRPC,
 				},
 				Logger:   hclog.NewNullLogger(),
@@ -163,7 +162,6 @@ func TestMakeConfig(t *testing.T) {
 					// Hash is generated
 				},
 				AllowedProtocols: []plugin.Protocol{
-					plugin.ProtocolNetRPC,
 					plugin.ProtocolGRPC,
 				},
 				Logger:   hclog.NewNullLogger(),
@@ -228,7 +226,6 @@ func TestMakeConfig(t *testing.T) {
 					// Hash is generated
 				},
 				AllowedProtocols: []plugin.Protocol{
-					plugin.ProtocolNetRPC,
 					plugin.ProtocolGRPC,
 				},
 				Logger:   hclog.NewNullLogger(),
@@ -293,7 +290,6 @@ func TestMakeConfig(t *testing.T) {
 					// Hash is generated
 				},
 				AllowedProtocols: []plugin.Protocol{
-					plugin.ProtocolNetRPC,
 					plugin.ProtocolGRPC,
 				},
 				Logger:   hclog.NewNullLogger(),

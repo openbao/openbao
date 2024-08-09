@@ -12,16 +12,16 @@ const (
 	DefaultConfigPath = "~/.bao"
 
 	// ConfigPathEnv is the environment variable that can be used to
-	// override where the Vault configuration is.
+	// override where the OpenBao configuration is.
 	ConfigPathEnv = "BAO_CONFIG_PATH"
 )
 
-// Config is the CLI configuration for Vault that can be specified via
-// a `$HOME/.vault` file which is HCL-formatted (therefore HCL or JSON).
+// Config is the CLI configuration for OpenBao that can be specified via
+// a `$HOME/.bao` file which is HCL-formatted (therefore HCL or JSON).
 type DefaultConfig struct {
 	// TokenHelper is the executable/command that is executed for storing
-	// and retrieving the authentication token for the Vault CLI. If this
-	// is not specified, then vault's internal token store will be used, which
+	// and retrieving the authentication token for the OpenBao CLI. If this
+	// is not specified, then OpenBao's internal token store will be used, which
 	// stores the token on disk unencrypted.
 	TokenHelper string `hcl:"token_helper"`
 }

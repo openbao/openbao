@@ -61,25 +61,25 @@ type OperatorDiagnoseCommand struct {
 }
 
 func (c *OperatorDiagnoseCommand) Synopsis() string {
-	return "Troubleshoot problems starting Vault"
+	return "Troubleshoot problems starting OpenBao"
 }
 
 func (c *OperatorDiagnoseCommand) Help() string {
 	helpText := `
 Usage: bao operator diagnose
 
-  This command troubleshoots Vault startup issues, such as TLS configuration or
+  This command troubleshoots OpenBao startup issues, such as TLS configuration or
   auto-unseal. It should be run using the same environment variables and configuration
-  files as the "vault server" command, so that startup problems can be accurately
+  files as the "bao server" command, so that startup problems can be accurately
   reproduced.
 
   Start diagnose with a configuration file:
     
-     $ bao operator diagnose -config=/etc/vault/config.hcl
+     $ bao operator diagnose -config=/etc/openbao/config.hcl
 
-  Perform a diagnostic check while Vault is still running:
+  Perform a diagnostic check while OpenBao is still running:
 
-     $ bao operator diagnose -config=/etc/vault/config.hcl -skip=listener
+     $ bao operator diagnose -config=/etc/openbao/config.hcl -skip=listener
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
@@ -97,7 +97,7 @@ func (c *OperatorDiagnoseCommand) Flags() *FlagSets {
 			complete.PredictFiles("*.json"),
 			complete.PredictDirs("*"),
 		),
-		Usage: "Path to a Vault configuration file or directory of configuration " +
+		Usage: "Path to an OpenBao configuration file or directory of configuration " +
 			"files. This flag can be specified multiple times to load multiple " +
 			"configurations. If the path is a directory, all files which end in " +
 			".hcl or .json are loaded.",

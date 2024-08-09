@@ -29,14 +29,14 @@ type MonitorCommand struct {
 }
 
 func (c *MonitorCommand) Synopsis() string {
-	return "Stream log messages from a Vault server"
+	return "Stream log messages from an OpenBao server"
 }
 
 func (c *MonitorCommand) Help() string {
 	helpText := `
 Usage: bao monitor [options]
 
-	Stream log messages of a Vault server. The monitor command lets you listen
+	Stream log messages of a OpenBao server. The monitor command lets you listen
 	for log levels that may be filtered out of the server logs. For example,
 	the server may be logging at the INFO level, but with the monitor command
 	you can set -log-level=DEBUG.

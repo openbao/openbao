@@ -49,18 +49,18 @@ func (c *OperatorInitCommand) Help() string {
 	helpText := `
 Usage: bao operator init [options]
 
-  Initializes a Vault server. Initialization is the process by which Vault's
-  storage backend is prepared to receive data. Since Vault servers share the
-  same storage backend in HA mode, you only need to initialize one Vault to
-  initialize the storage backend.
+  Initializes an OpenBao server. Initialization is the process by which
+  OpenBao's storage backend is prepared to receive data. Since OpenBao servers
+  share the same storage backend in HA mode, you only need to initialize one
+  OpenBao instance to initialize the storage backend.
 
-  During initialization, Vault generates an in-memory root key and applies
+  During initialization, OpenBao generates an in-memory root key and applies
   Shamir's secret sharing algorithm to disassemble that root key into a
   configuration number of key shares such that a configurable subset of those
   key shares must come together to regenerate the root key. These keys are
-  often called "unseal keys" in Vault's documentation.
+  often called "unseal keys" in OpenBao's documentation.
 
-  This command cannot be run against an already-initialized Vault cluster.
+  This command cannot be run against an already-initialized OpenBao cluster.
 
   Start initialization with the default options:
 
@@ -92,8 +92,8 @@ func (c *OperatorInitCommand) Flags() *FlagSets {
 		Target:  &c.flagStatus,
 		Default: false,
 		Usage: "Print the current initialization status. An exit code of 0 means " +
-			"the Vault is already initialized. An exit code of 1 means an error " +
-			"occurred. An exit code of 2 means the Vault is not initialized.",
+			"the OpenBao is already initialized. An exit code of 1 means an error " +
+			"occurred. An exit code of 2 means the OpenBao is not initialized.",
 	})
 
 	f.IntVar(&IntVar{
@@ -314,7 +314,7 @@ func (c *OperatorInitCommand) init(client *api.Client, req *api.InitRequest) int
 		c.UI.Output("")
 		c.UI.Output(wrapAtLength(
 			"It is possible to generate new unseal keys, provided you have a quorum " +
-				"of existing unseal keys shares. See \"vault operator rekey\" for " +
+				"of existing unseal keys shares. See \"bao operator rekey\" for " +
 				"more information."))
 	} else {
 		c.UI.Output("")

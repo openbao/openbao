@@ -28,7 +28,7 @@ const (
 type DefaultConfig struct {
 	// TokenHelper is the executable/command that is executed for storing
 	// and retrieving the authentication token for the Vault CLI. If this
-	// is not specified, then vault's internal token store will be used, which
+	// is not specified, then OpenBao's internal token store will be used, which
 	// stores the token on disk unencrypted.
 	TokenHelper string `hcl:"token_helper"`
 }

@@ -23,12 +23,12 @@ func (c *AuthCommand) Help() string {
 	return strings.TrimSpace(`
 Usage: bao auth <subcommand> [options] [args]
 
-  This command groups subcommands for interacting with Vault's auth methods.
+  This command groups subcommands for interacting with OpenBao's auth methods.
   Users can list, enable, disable, and get help for different auth methods.
 
-  To authenticate to Vault as a user or machine, use the "vault login" command
+  To authenticate to OpenBao as a user or machine, use the "bao login" command
   instead. This command is for interacting with the auth methods themselves, not
-  authenticating to Vault.
+  authenticating to OpenBao.
 
   List all enabled auth methods:
 

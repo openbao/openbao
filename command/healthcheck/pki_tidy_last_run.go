@@ -108,7 +108,7 @@ func (h *TidyLastRun) Evaluate(e *Executor) (results []*Result, err error) {
 		results = append(results, &ret)
 	}
 
-	baseMsg := "Tidy hasn't run in the last %v; this can point to problems with the mount's auto-tidy configuration or an external tidy executor; this can impact PKI's and Vault's performance if not run regularly."
+	baseMsg := "Tidy hasn't run in the last %v; this can point to problems with the mount's auto-tidy configuration or an external tidy executor; this can impact PKI's and OpenBao's performance if not run regularly."
 
 	if h.TidyStatus.Secret != nil && h.TidyStatus.Secret.Data != nil {
 		ret := Result{
@@ -120,7 +120,7 @@ func (h *TidyLastRun) Evaluate(e *Executor) (results []*Result, err error) {
 		when := h.TidyStatus.Secret.Data["time_finished"]
 		if when == nil {
 			ret.Status = ResultCritical
-			ret.Message = "Tidy hasn't run since this mount was created; this can point to problems with the mount's auto-tidy configuration or an external tidy executor; this can impact PKI's and Vault's performance if not run regularly. It is suggested to enable auto-tidy on this mount."
+			ret.Message = "Tidy hasn't run since this mount was created; this can point to problems with the mount's auto-tidy configuration or an external tidy executor; this can impact PKI's and OpenBao's performance if not run regularly. It is suggested to enable auto-tidy on this mount."
 		} else {
 			now := time.Now()
 			lastRunCritical := now.Add(-1 * h.LastRunCritical)

@@ -16,7 +16,7 @@ type KVMetadataCommand struct {
 }
 
 func (c *KVMetadataCommand) Synopsis() string {
-	return "Interact with Vault's Key-Value storage"
+	return "Interact with OpenBao's Key-Value storage"
 }
 
 func (c *KVMetadataCommand) Help() string {
@@ -24,7 +24,7 @@ func (c *KVMetadataCommand) Help() string {
 Usage: bao kv metadata <subcommand> [options] [args]
 
   This command has subcommands for interacting with the metadata endpoint in
-  Vault's key-value store. Here are some simple examples, and more detailed
+  OpenBao's key-value store. Here are some simple examples, and more detailed
   examples are available in the subcommands or the documentation.
 
   Create or update a metadata entry for a key:

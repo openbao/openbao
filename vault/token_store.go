@@ -27,7 +27,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/hashicorp/go-version"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -1180,26 +1179,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		}
 
 		bEntry := base64.RawURLEncoding.EncodeToString(eEntry)
-		ver, _, err := ts.core.FindNewestVersionTimestamp()
-		if err != nil {
-			return err
-		}
-
-		var newestVersion *version.Version
-		var oneTen *version.Version
-
-		if ver != "" {
-			newestVersion, err = version.NewVersion(ver)
-			if err != nil {
-				return err
-			}
-			oneTen, err = version.NewVersion("1.10.0")
-			if err != nil {
-				return err
-			}
-		}
-
-		if ts.core.DisableSSCTokens() || (newestVersion != nil && newestVersion.LessThan(oneTen)) {
+		if ts.core.DisableSSCTokens() {
 			entry.ID = consts.LegacyBatchTokenPrefix + bEntry
 		} else {
 			entry.ID = consts.BatchTokenPrefix + bEntry

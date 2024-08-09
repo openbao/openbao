@@ -258,7 +258,7 @@ func (c *AgentCommand) Run(args []string) int {
 	}
 
 	// Ignore any setting of Agent's address. This client is used by the Agent
-	// to reach out to Vault. This should never loop back to agent.
+	// to reach out to OpenBao. This should never loop back to agent.
 	c.flagAgentProxyAddress = ""
 	client, err := c.Client()
 	if err != nil {
@@ -1112,11 +1112,11 @@ func (c *AgentCommand) loadConfig(paths []string) (*agentConfig.Config, error) {
 }
 
 // reloadConfig will attempt to reload the config from file(s) and adjust certain
-// config values without requiring a restart of the Vault Agent.
+// config values without requiring a restart of the OpenBao Agent.
 // If config is retrieved without error it is stored in the config field of the AgentCommand.
 // This operation is not atomic and could result in updated config but partially applied config settings.
 // The error returned from this func may be a multierror.
-// This function will most likely be called due to Vault Agent receiving a SIGHUP signal.
+// This function will most likely be called due to OpenBao Agent receiving a SIGHUP signal.
 // Currently only reloading the following are supported:
 // * log level
 // * TLS certs for listeners

@@ -738,7 +738,7 @@ func parseMethod(result *Config, list *ast.ObjectList) error {
 		}
 	}
 
-	// Default to Vault's default
+	// Default to OpenBao's default
 	if m.MountPath == "" {
 		m.MountPath = fmt.Sprintf("auth/%s", m.Type)
 	}

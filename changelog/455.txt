@@ -1,0 +1,3 @@
+```release-note:change
+cli: Remove 'bao transform ...' CLIs as the Transform plugin is not present in OpenBao.
+```

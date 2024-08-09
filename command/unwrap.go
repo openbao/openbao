@@ -30,8 +30,8 @@ func (c *UnwrapCommand) Help() string {
 	helpText := `
 Usage: bao unwrap [options] [TOKEN]
 
-  Unwraps a wrapped secret from Vault by the given token. The result is the
-  same as the "vault read" operation on the non-wrapped secret. If no token
+  Unwraps a wrapped secret from OpenBao by the given token. The result is the
+  same as the "bao read" operation on the non-wrapped secret. If no token
   is given, the data in the currently authenticated token is unwrapped.
 
   Unwrap the data in the cubbyhole secrets engine for a token:

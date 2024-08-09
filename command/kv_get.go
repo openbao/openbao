@@ -32,7 +32,7 @@ func (c *KVGetCommand) Help() string {
 	helpText := `
 Usage: bao kv get [options] KEY
 
-  Retrieves the value from Vault's key-value store at the given key name. If no
+  Retrieves the value from OpenBao's key-value store at the given key name. If no
   key exists with that name, an error is returned. If a key exists with that
   name but has no data, nothing is returned.
 

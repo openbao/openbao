@@ -3,6 +3,7 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GO_CMD?=go
+DOCKER_CMD?=docker
 
 TEST?=$$($(GO_CMD) list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep -v /vendor/ | grep -v /integ)
 TEST_TIMEOUT?=45m
@@ -52,11 +53,11 @@ dev-dynamic-mem: dev-dynamic
 # The resulting image is tagged "openbao:dev".
 docker-dev: BUILD_TAGS+=testonly
 docker-dev: prep
-	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t openbao:dev .
+	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile -t openbao:dev .
 
 docker-dev-ui: BUILD_TAGS+=testonly
 docker-dev-ui: prep
-	docker build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
+	$(DOCKER_CMD) build --build-arg VERSION=$(GO_VERSION_MIN) --build-arg BUILD_TAGS="$(BUILD_TAGS)" -f scripts/docker/Dockerfile.ui -t openbao:dev-ui .
 
 # test runs the unit tests and vets the code
 test: BUILD_TAGS+=testonly
@@ -269,6 +270,12 @@ semgrep:
 
 semgrep-ci:
 	semgrep --error --include '*.go' --exclude 'vendor' -f tools/semgrep/ci .
+
+docker-semgrep:
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+
+docker-semgrep-ci:
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' --exclude 'vendor' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."

@@ -114,7 +114,6 @@ func RunZLintRootTest(t *testing.T, keyType string, keyBits int, usePSS bool, ig
 		"common_name":  "Root X1",
 		"country":      "US",
 		"organization": "Dadgarcorp",
-		"ou":           "QA",
 		"key_type":     keyType,
 		"key_bits":     keyBits,
 		"use_pss":      usePSS,

@@ -156,6 +156,14 @@ entities attempting to login. At least one of the bound values must be set.
 - `claim_mappings` `(map: <optional>)` - If set, a map of claims (keys) to be copied to
   specified metadata fields (values). Keys support [JSON pointer](/docs/auth/jwt#claim-specifications-and-json-pointer)
   syntax for referencing claims.
+- `oauth2_metadata` `(list: <optional>` - If set, a list of token types
+  that come from the OIDC provider to return in metadata.
+  The types can be any of `access_token`, `id_token`, or `refresh_token`,
+  and when present the values are returned in corresponding metadata fields
+  with `oauth2_` prefixes as names.
+  Note that these tokens can potentially include sensitive security
+  information so use caution before enabling them and make sure the client
+  treats the information in a safe manner.
 - `oidc_scopes` `(list: <optional>)` - If set, a list of OIDC scopes to be used with an OIDC role.
   The standard scope "openid" is automatically included and need not be specified.
 - `allowed_redirect_uris` `(list: <required>)` - The list of allowed values for redirect_uri

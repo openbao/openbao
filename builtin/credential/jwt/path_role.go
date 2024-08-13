@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -148,6 +149,10 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Type:        framework.TypeKVPairs,
 				Description: `Mappings of claims (key) that will be copied to a metadata field (value)`,
 			},
+			"oauth2_metadata": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: `Comma-separated list of one or more of access_token, id_token, refresh_token to return in metadata`,
+			},
 			"user_claim": {
 				Type:        framework.TypeString,
 				Description: `The claim to use for the Identity entity alias name`,
@@ -238,6 +243,7 @@ type jwtRole struct {
 	BoundClaimsType      string                 `json:"bound_claims_type"`
 	BoundClaims          map[string]interface{} `json:"bound_claims"`
 	ClaimMappings        map[string]string      `json:"claim_mappings"`
+	Oauth2Metadata       []string               `json:"oauth2_metadata"`
 	UserClaim            string                 `json:"user_claim"`
 	GroupsClaim          string                 `json:"groups_claim"`
 	OIDCScopes           []string               `json:"oidc_scopes"`
@@ -354,6 +360,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		"bound_claims_type":       role.BoundClaimsType,
 		"bound_claims":            role.BoundClaims,
 		"claim_mappings":          role.ClaimMappings,
+		"oauth2_metadata":         role.Oauth2Metadata,
 		"user_claim":              role.UserClaim,
 		"user_claim_json_pointer": role.UserClaimJSONPointer,
 		"groups_claim":            role.GroupsClaim,
@@ -559,6 +566,19 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		}
 
 		role.ClaimMappings = claimMappings
+	}
+
+	if oauth2Metadata, ok := data.GetOk("oauth2_metadata"); ok {
+		role.Oauth2Metadata = oauth2Metadata.([]string)
+		for _, mdname := range role.Oauth2Metadata {
+			if !slices.Contains([]string{
+				"id_token",
+				"refresh_token",
+				"access_token",
+			}, mdname) {
+				return logical.ErrorResponse("Unrecognized oauth2 metadata name " + mdname), nil
+			}
+		}
 	}
 
 	if userClaim, ok := data.GetOk("user_claim"); ok {

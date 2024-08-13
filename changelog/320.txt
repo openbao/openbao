@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/oidc: Add a new `oauth2_metadata` configuration option to enable sending any of the tokens from the token issuer to the client.
+```

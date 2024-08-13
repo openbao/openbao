@@ -769,6 +769,7 @@ func TestPath_Read(t *testing.T) {
 		"bound_claims_type":       "string",
 		"bound_claims":            map[string]interface{}(nil),
 		"claim_mappings":          map[string]string(nil),
+		"oauth2_metadata":         []string(nil),
 		"bound_subject":           "testsub",
 		"bound_audiences":         []string{"vault"},
 		"allowed_redirect_uris":   []string{"http://127.0.0.1"},

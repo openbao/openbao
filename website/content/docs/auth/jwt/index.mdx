@@ -45,7 +45,8 @@ using a `bao login`.
 
 ### Redirect URIs
 
-An important part of OIDC role configuration is properly setting redirect URIs. This must be
+Unless you are using `callbackmode=device`,
+an important part of OIDC role configuration is properly setting redirect URIs. This must be
 done both in OpenBao and with the OIDC provider, and these configurations must align. The
 redirect URIs are specified for a role with the `allowed_redirect_uris` parameter. There are
 different redirect URIs to configure the OpenBao UI and CLI flows, so one or both will need to
@@ -53,10 +54,11 @@ be set up depending on the installation.
 
 **CLI**
 
-If you plan to support authentication via `bao login -method=oidc`, a redirect URI with a path ending
-in `oidc/callback` must be set. With the default `callbackmode` of `client`
+If you plan to support authentication via `bao login -method=oidc` and
+are not using `callbackmode=device`, a redirect URI with a path ending
+in `oidc/callback` must be set. With the default `callbackmode=client`
 this can usually be `http://localhost:8250/oidc/callback`.
-With a `callbackmode` of `direct` this should be a URI of the form:
+With `callbackmode=direct` this should be a URI of the form:
 
 `https://{host:port}/v1/auth/{path}/oidc/callback`
 
@@ -109,8 +111,10 @@ The callback listener may be customized with the following optional parameters. 
 not required to be set:
 
 - `mount` (default: "oidc")
-- `callbackmode` (default: "client").  When set to `direct`, the callback is to the OpenBao server instead
-   of to a port on the cli client.
+- `callbackmode` (default: "client").  Mode of callback:
+   "client" for connection to a port on the cli client,
+   `direct` for direct connection to the OpenBao server,
+   or "device" for device flow which has no callback.
 - `listenaddress` (default: "localhost").  Only for `client` callback mode.
 - `port` (default: 8250).  Only for `client` callback mode.
 - `callbackhost` (default: the OpenBao's server and port in direct callback mode, else "localhost")

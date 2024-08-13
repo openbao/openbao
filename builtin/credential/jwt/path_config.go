@@ -8,8 +8,12 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/cap/jwt"
@@ -161,6 +165,91 @@ func (b *jwtAuthBackend) config(ctx context.Context, s logical.Storage) (*jwtCon
 	b.cachedConfig = config
 
 	return config, nil
+}
+
+func contactIssuer(ctx context.Context, uri string, data *url.Values, ignoreBad bool) ([]byte, error) {
+	var req *http.Request
+	var err error
+	if data == nil {
+		req, err = http.NewRequest("GET", uri, nil)
+	} else {
+		req, err = http.NewRequest("POST", uri, strings.NewReader(data.Encode()))
+	}
+	if err != nil {
+		return nil, err
+	}
+	if data != nil {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	}
+
+	client, ok := ctx.Value(oauth2.HTTPClient).(*http.Client)
+	if !ok {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, nil
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil
+	}
+
+	if resp.StatusCode != http.StatusOK && (!ignoreBad || resp.StatusCode != http.StatusBadRequest) {
+		return nil, fmt.Errorf("%s: %s", resp.Status, body)
+	}
+
+	return body, nil
+}
+
+// Discover the device_authorization_endpoint URL and store it in the config
+// This should be in coreos/go-oidc but they don't yet support device flow
+// At the same time, look up token_endpoint and store it as well
+// Returns nil on success, otherwise returns an error
+func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Storage) error {
+	config, err := b.config(ctx, s)
+	if err != nil {
+		return err
+	}
+
+	b.l.Lock()
+	defer b.l.Unlock()
+
+	if config.OIDCDeviceAuthURL != "" {
+		if config.OIDCDeviceAuthURL == "N/A" {
+			return fmt.Errorf("no device auth endpoint url discovered")
+		}
+		return nil
+	}
+
+	caCtx, err := b.createCAContext(b.providerCtx, config.OIDCDiscoveryCAPEM)
+	if err != nil {
+		return errwrap.Wrapf("error creating context for device auth: {{err}}", err)
+	}
+
+	issuer := config.OIDCDiscoveryURL
+
+	wellKnown := strings.TrimSuffix(issuer, "/") + "/.well-known/openid-configuration"
+	body, err := contactIssuer(caCtx, wellKnown, nil, false)
+	if err != nil {
+		return errwrap.Wrapf("error reading issuer config: {{err}}", err)
+	}
+
+	var daj struct {
+		DeviceAuthURL string `json:"device_authorization_endpoint"`
+		TokenURL      string `json:"token_endpoint"`
+	}
+	err = json.Unmarshal(body, &daj)
+	if err != nil || daj.DeviceAuthURL == "" {
+		b.cachedConfig.OIDCDeviceAuthURL = "N/A"
+		return fmt.Errorf("no device auth endpoint url discovered")
+	}
+
+	b.cachedConfig.OIDCDeviceAuthURL = daj.DeviceAuthURL
+	b.cachedConfig.OIDCTokenURL = daj.TokenURL
+	return nil
 }
 
 func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -420,6 +509,9 @@ type jwtConfig struct {
 	NamespaceInState     bool                   `json:"namespace_in_state"`
 
 	ParsedJWTPubKeys []crypto.PublicKey `json:"-"`
+	// These are looked up from OIDCDiscoveryURL when needed
+	OIDCDeviceAuthURL string `json:"-"`
+	OIDCTokenURL      string `json:"-"`
 }
 
 const (

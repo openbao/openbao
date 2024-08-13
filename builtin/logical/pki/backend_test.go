@@ -5136,6 +5136,28 @@ func TestRootWithExistingKey(t *testing.T) {
 	require.Contains(t, resp.Data["keys"], string(myIssuerId3.(issuerID)))
 }
 
+func TestRootWithExistingEd25519Key(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+	var err error
+
+	// Create an Ed25519 issuer.
+	resp, err := CBWrite(b, s, "issuers/generate/root/internal", map[string]interface{}{
+		"common_name": "Root R1",
+		"key_type":    "ed25519",
+	})
+	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("issuers/generate/root/internal"), logical.UpdateOperation), resp, true)
+	require.NoError(t, err)
+
+	// Then, reusing the key should succeed.
+	resp, err = CBWrite(b, s, "root/generate/existing", map[string]interface{}{
+		"common_name": "Root R2",
+		"key_ref":     "default",
+	})
+	schema.ValidateResponse(t, schema.GetResponseSchema(t, b.Route("issuers/generate/root/existing"), logical.UpdateOperation), resp, true)
+	require.NoError(t, err)
+}
+
 func TestIntermediateWithExistingKey(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)

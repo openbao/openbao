@@ -1,0 +1,14 @@
+# Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: use-non-pointer-ed25519-public-key
+    patterns:
+        - pattern: |
+            *ed25519.PublicKey
+    message: "Using a pointer reference to an Ed25519 Public Key"
+    paths:
+      include:
+        - "*.go"
+    languages: [generic]
+    severity: ERROR

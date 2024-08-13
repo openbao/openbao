@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Fix handling of reusing existing Ed25519 keys
+```

@@ -36,6 +36,10 @@ const (
 	putOp
 	restoreCallbackOp
 	getOp
+	verifyReadOp
+	verifyListOp
+	beginTxOp
+	commitTxOp
 
 	chunkingPrefix   = "raftchunking/"
 	databaseFilename = "vault.db"
@@ -59,6 +63,12 @@ var (
 
 type restoreCallback func(context.Context) error
 
+// fsmEntryTxErrorKey is the value for a FSMEntry to signal that it is
+// not the result of a regular Get operation (which cannot occur in a
+// transaction) but is instead contains the response value from failing to
+// apply this transaction.
+const fsmEntryTxErrorKey = "[\ttransaction-commit-failure\t]"
+
 type FSMEntry struct {
 	Key   string
 	Value []byte
@@ -66,6 +76,22 @@ type FSMEntry struct {
 
 func (f *FSMEntry) String() string {
 	return fmt.Sprintf("Key: %s. Value: %s", f.Key, hex.EncodeToString(f.Value))
+}
+
+func (f *FSMEntry) IsTxError() bool {
+	return f.Key == fsmEntryTxErrorKey
+}
+
+func (f *FSMEntry) AsTxError() error {
+	str := string(f.Value)
+	commitErr := physical.ErrTransactionCommitFailure.Error()
+
+	split := strings.SplitN(str, commitErr, 1)
+	if len(split) != 2 {
+		return errors.New(str)
+	}
+
+	return fmt.Errorf("%v%w%v", split[0], physical.ErrTransactionCommitFailure, split[1])
 }
 
 // FSMApplyResponse is returned from an FSM apply. It indicates if the apply was
@@ -538,6 +564,23 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 	f.l.RLock()
 	defer f.l.RUnlock()
 
+	var err error
+	var keys []string
+	err = f.db.View(func(tx *bolt.Tx) error {
+		keys, err = listPageInner(ctx, tx, prefix, after, limit)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return keys, err
+}
+
+func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string, limit int) ([]string, error) {
+	var keys []string
+
 	prefixBytes := []byte(prefix)
 	seekPrefix := []byte(filepath.Join(prefix, after))
 	if after == "" {
@@ -550,49 +593,44 @@ func (f *FSM) ListPage(ctx context.Context, prefix string, after string, limit i
 		seekPrefix = prefixBytes
 	}
 
-	var keys []string
-	err := f.db.View(func(tx *bolt.Tx) error {
-		// Assume bucket exists and has keys
-		c := tx.Bucket(dataBucketName).Cursor()
+	// Assume bucket exists and has keys
+	c := tx.Bucket(dataBucketName).Cursor()
 
-		// By seeking relative to the after location, we can save looking
-		// at unnecessary entries before our expected entry.
-		for k, _ := c.Seek(seekPrefix); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
-			if limit > 0 && len(keys) >= limit {
-				// We've seen enough entries; exit early.
-				return nil
+	// By seeking relative to the after location, we can save looking
+	// at unnecessary entries before our expected entry.
+	for k, _ := c.Seek(seekPrefix); k != nil && bytes.HasPrefix(k, prefixBytes); k, _ = c.Next() {
+		if limit > 0 && len(keys) >= limit {
+			// We've seen enough entries; exit early.
+			return keys, nil
+		}
+
+		// Note that we push the comparison of 'key' with 'after'
+		// until we add in the directory suffix, if necessary.
+		key := string(k)
+		key = strings.TrimPrefix(key, prefix)
+		if i := strings.Index(key, "/"); i == -1 {
+			if after != "" && key <= after {
+				// Still prior to our cut-off point, so retry.
+				continue
 			}
 
-			// Note that we push the comparison of 'key' with 'after'
-			// until we add in the directory suffix, if necessary.
-			key := string(k)
-			key = strings.TrimPrefix(key, prefix)
-			if i := strings.Index(key, "/"); i == -1 {
-				if after != "" && key <= after {
+			// Add objects only from the current 'folder'
+			keys = append(keys, key)
+		} else {
+			// Add truncated 'folder' paths
+			if len(keys) == 0 || keys[len(keys)-1] != key[:i+1] {
+				folder := string(key[:i+1])
+				if after != "" && folder <= after {
 					// Still prior to our cut-off point, so retry.
 					continue
 				}
 
-				// Add objects only from the current 'folder'
-				keys = append(keys, key)
-			} else {
-				// Add truncated 'folder' paths
-				if len(keys) == 0 || keys[len(keys)-1] != key[:i+1] {
-					folder := string(key[:i+1])
-					if after != "" && folder <= after {
-						// Still prior to our cut-off point, so retry.
-						continue
-					}
-
-					keys = append(keys, folder)
-				}
+				keys = append(keys, folder)
 			}
 		}
+	}
 
-		return nil
-	})
-
-	return keys, err
+	return keys, nil
 }
 
 // ApplyBatch will apply a set of logs to the FSM. This is called from the raft
@@ -659,15 +697,28 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		f.applyCallback()
 	}
 
-	err = f.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(dataBucketName)
-		for _, commandRaw := range commands {
-			entrySlice := make([]*FSMEntry, 0)
+	// This loop and subsequent f.db.Update call were reordered from upstream,
+	// to enable one transaction per command. Raft chunking will already be
+	// applied, so if logs are split across multiple operations, we'll see
+	// only a single call here. This ensures that our transaction really will
+	// apply at the bolt level, independent of the other operations occurring,
+	// and lets us back out just the changes in the transaction if they fail
+	// to apply.
+	for _, commandRaw := range commands {
+		inTx := false
+		entrySlice := make([]*FSMEntry, 0)
+		err = f.db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket(dataBucketName)
 			switch command := commandRaw.(type) {
 			case *LogData:
-				for _, op := range command.Operations {
+				for index, op := range command.Operations {
 					var err error
 					switch op.OpType {
+					case beginTxOp, commitTxOp:
+						inTx = true
+						if command.Operations[0].OpType != beginTxOp || command.Operations[len(command.Operations)-1].OpType != commitTxOp || (index != 0 && index != len(command.Operations)-1) {
+							return fmt.Errorf("unsupported transaction: saw beginTxOp/commitTxOp mixed inside other operations: %w", physical.ErrTransactionCommitFailure)
+						}
 					case putOp:
 						err = b.Put([]byte(op.Key), op.Value)
 					case deleteOp:
@@ -688,6 +739,20 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 							// Kick off the restore callback function in a go routine
 							go f.restoreCb(context.Background())
 						}
+					case verifyReadOp:
+						val := b.Get([]byte(op.Key))
+						err = doVerifyEntry(op.Key, val, op.Value)
+					case verifyListOp:
+						var params *verifyListOpParams
+						params, err = parseListVerifyParams(op.Key)
+
+						if err == nil {
+							var keys []string
+							keys, err = listPageInner(context.Background(), tx, params.Prefix, params.After, params.Limit)
+							if err == nil {
+								err = doVerifyList(op.Key, keys, op.Value)
+							}
+						}
 					default:
 						if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
 							f.logger.Error("unsupported transaction operation", "op", op.OpType)
@@ -695,6 +760,22 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 						}
 					}
 					if err != nil {
+						// If we're in a transaction, we want to err out of
+						// this f.db.Update call, but we also need a way of
+						// informing the applyLog(...) caller that the
+						// transaction failed (instead of panic(...)ing below
+						// like we do for non-transaction operations).
+						//
+						// Create a special FSMEntry to send back the error
+						// message, that applyLog(...) will look for if it
+						// sent a transaction.
+						if inTx && errors.Is(err, physical.ErrTransactionCommitFailure) {
+							entrySlice = append(entrySlice, &FSMEntry{
+								Key:   fsmEntryTxErrorKey,
+								Value: []byte(err.Error()),
+							})
+						}
+
 						return err
 					}
 				}
@@ -710,19 +791,38 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 				}
 			}
 
-			entrySlices = append(entrySlices, entrySlice)
+			return nil
+		})
+
+		entrySlices = append(entrySlices, entrySlice)
+
+		if err != nil && inTx && errors.Is(err, physical.ErrTransactionCommitFailure) {
+			// Process other events; this transaction failure was handled
+			// appropriately.
+			err = nil
+			continue
 		}
 
-		if len(logIndex) > 0 {
-			b := tx.Bucket(configBucketName)
-			err = b.Put(latestIndexKey, logIndex)
-			if err != nil {
-				return err
+		if err != nil {
+			// Unknown error type or non-transactional error; exit and panic.
+			break
+		}
+	}
+
+	if err == nil {
+		err = f.db.Update(func(tx *bolt.Tx) error {
+			if len(logIndex) > 0 {
+				b := tx.Bucket(configBucketName)
+				err = b.Put(latestIndexKey, logIndex)
+				if err != nil {
+					return err
+				}
 			}
-		}
 
-		return nil
-	})
+			return nil
+		})
+	}
+
 	if err != nil {
 		f.logger.Error("failed to store data", "error", err)
 		panic("failed to store data")

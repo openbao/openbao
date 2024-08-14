@@ -1,0 +1,11 @@
+# Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: splitn-1
+    patterns:
+        - pattern: |
+            strings.SplitN(..., 1)
+    message: "Using SplitN with a value of 1 does not split the target string."
+    languages: [go]
+    severity: ERROR

@@ -86,7 +86,7 @@ func (f *FSMEntry) AsTxError() error {
 	str := string(f.Value)
 	commitErr := physical.ErrTransactionCommitFailure.Error()
 
-	split := strings.SplitN(str, commitErr, 1)
+	split := strings.SplitN(str, commitErr, 2)
 	if len(split) != 2 {
 		return errors.New(str)
 	}

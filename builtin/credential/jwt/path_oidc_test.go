@@ -846,8 +846,16 @@ func TestOIDC_Callback(t *testing.T) {
 
 			auth := resp.Auth
 
+			if auth != nil {
+				// Can't predict the content of oauth2_id_token
+				//  so instead copy it.  This does at least
+				//  verify that it is present because if not it
+				//  introduces an empty value into expected.
+				expected.Metadata["oauth2_id_token"] = auth.Metadata["oauth2_id_token"]
+			}
+
 			if !reflect.DeepEqual(auth, expected) {
-				t.Fatalf("expected: %v, auth: %v", expected, resp)
+				t.Fatalf("expected: %v, resp: %v", expected, resp)
 			}
 		}
 	})
@@ -1617,6 +1625,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool, callbackMode string) (lo
 			"/nested/secret_code": "bar",
 			"temperature":         "76",
 		},
+		"oauth2_metadata": []string{"id_token"},
 	}
 
 	if boundCIDRs {

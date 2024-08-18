@@ -42,8 +42,8 @@ const accordionData: AccordionItem[] = [
         prior to the BUSL. This corresponds to a few commits after 1.14.8,
         but prior to 1.14.9 being cut.
 
-        From here forward, we'll be adhering to our
-        <a href="/docs/policies/migration/#proposal">compatibility policy</a>
+        From here forward, we'll be adhering to our{" "}
+        <a href="/docs/policies/migration/#proposal">{" "}compatibility policy</a>
         to provide API-compatibility with upstream when possible.
       </>
     ),

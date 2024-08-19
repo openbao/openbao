@@ -43,7 +43,7 @@ const accordionData: AccordionItem[] = [
         but prior to 1.14.9 being cut.
 
         From here forward, we'll be adhering to our{" "}
-        <a href="/docs/policies/migration/#proposal">{" "}compatibility policy</a>
+        <a href="/docs/policies/migration/#proposal">compatibility policy</a>{" "}
         to provide API-compatibility with upstream when possible.
       </>
     ),

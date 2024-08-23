@@ -504,11 +504,11 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 		return nil, fmt.Errorf("failed to generate signed SSH key: error generating random nonce: %w", err)
 	}
 
-	var validAfter time.Time
+	var validAfter uint64
 	if !b.Role.NotBeforeAbsolute.IsZero() {
-		validAfter = b.Role.NotBeforeAbsolute
+		validAfter = uint64(b.Role.NotBeforeAbsolute.Unix())
 	} else {
-		validAfter = now.Add(-b.Role.NotBeforeDuration)
+		validAfter = uint64(now.Add(-b.Role.NotBeforeDuration).Unix())
 	}
 
 	certificate := &ssh.Certificate{
@@ -516,8 +516,8 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 		Key:             b.PublicKey,
 		KeyId:           b.KeyID,
 		ValidPrincipals: b.ValidPrincipals,
-		ValidAfter:      uint64(validAfter.In(time.UTC).Unix()),
-		ValidBefore:     uint64(now.Add(b.TTL).In(time.UTC).Unix()),
+		ValidAfter:      validAfter,
+		ValidBefore:     uint64(now.Add(b.TTL).Unix()),
 		CertType:        b.CertificateType,
 		Permissions: ssh.Permissions{
 			CriticalOptions: b.CriticalOptions,

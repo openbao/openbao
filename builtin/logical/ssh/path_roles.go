@@ -523,7 +523,22 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AlgorithmSigner:           signer,
 		Version:                   roleEntryVersion,
 		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
-		NotBeforeAbsolute:         data.Get("not_before_absolute").(time.Time),
+	}
+
+	// HACK: I don't like this check, refactor this later
+	if notBeforeAbsoluteRaw, ok := data.GetOk("not_before_absolute"); ok {
+		switch v := notBeforeAbsoluteRaw.(type) {
+		case string:
+			notBeforeAbsolute, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				return nil, logical.ErrorResponse(fmt.Sprintf("invalid not_before_absolute time: %v", err))
+			}
+			role.NotBeforeAbsolute = notBeforeAbsolute
+		case time.Time:
+			role.NotBeforeAbsolute = v
+		default:
+			return nil, logical.ErrorResponse("not_before_absolute must be a valid RFC3339 timestamp string or time.Time object")
+		}
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {

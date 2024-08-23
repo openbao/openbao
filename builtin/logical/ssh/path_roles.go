@@ -375,6 +375,18 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+
+			"not_before_absolute": {
+				Type: framework.TypeTime,
+				Description: `
+        [Not applicable for OTP type] [Optional for CA type]
+        This field specifies the absolute start time for the validity of the SSH certificate.
+        It should be provided in ISO8601 or RFC3339 format, e.g., "2024-09-01T00:00:00Z". If set, 
+        this will override not_before_duration. Certificates will not be valid before this timestamp.`,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name: "Not Before Absolute",
+				},
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{

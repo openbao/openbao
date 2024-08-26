@@ -21,18 +21,18 @@ This FAQ section contains frequently asked questions about the Login MFA feature
 
 ### Q: what is Single-Phase MFA vs. Two-Phase MFA?
 
-- **Single-Phase MFA:** This is a single request mechanism where the required MFA information, such as MFA method ID, is provided via the X-Vault-MFA header in a single MFA request that is used to authenticate into Openbao.
+- **Single-Phase MFA:** This is a single request mechanism where the required MFA information, such as MFA method ID, is provided via the X-Vault-MFA header in a single MFA request that is used to authenticate into OpenBao.
 
 :::warning
 
 **Note**: If the configured MFA methods need a passcode, it needs to be provided in the request, such as in the case of TOTP or Duo.
-If the configured MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have out of band mechanisms for verifying the extra factor, Openbao will send an inquiry to the other service's APIs to determine whether the MFA request has yet been verified.
+If the configured MFA methods, such as PingID, Okta, or Duo, do not require a passcode and have out of band mechanisms for verifying the extra factor, OpenBao will send an inquiry to the other service's APIs to determine whether the MFA request has yet been verified.
 
 :::
 
 - **Two-Phase MFA:** This is a two-request MFA method that is more conventionally used.
   - The MFA passcode required for the configured MFA method is not provided in a header of the login request that is MFA-restricted. Instead, the user first authenticates to the auth method, and on successful authentication to the auth method, an MFA requirement is returned to the user. The MFA requirement contains the MFA RequestID and constraints applicable to the MFA as configured by the operator.
-  - The user then must make a second request to the new endpoint `sys/mfa/validate`, providing the MFA RequestID in the request, and an MFA payload which includes the MFA methodIDs passcode (if applicable). If MFA validation passes, the new Openbao token will be persisted and returned to the user in the response, just like a regular Openbao token created using a non-MFA-restricted auth method.
+  - The user then must make a second request to the new endpoint `sys/mfa/validate`, providing the MFA RequestID in the request, and an MFA payload which includes the MFA methodIDs passcode (if applicable). If MFA validation passes, the new OpenBao token will be persisted and returned to the user in the response, just like a regular OpenBao token created using a non-MFA-restricted auth method.
 
 ### Q: what are the ways to configure the various MFA workflows?
 

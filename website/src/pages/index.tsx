@@ -37,7 +37,7 @@ function HomepageHeader() {
                 className="button button--secondary button--lg margin-bottom--md"
                 to="/docs/what-is-openbao/"
               >
-                What is Openbao?
+                What is OpenBao?
               </Link>
               &emsp;
               <Link

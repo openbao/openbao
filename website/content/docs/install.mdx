@@ -7,7 +7,9 @@ description: |-
 
 There are several options to install OpenBao:
 
-1. Install from a [Package Manager](#package-manager).
+1. Install from a [package manager](#package-manager).
+
+1. Deploy using a [container registry](#container-registries).
 
 1. Use a [precompiled binary](#precompiled-binaries).
 
@@ -28,6 +30,23 @@ install packages manually.
 OpenBao manages packages for Ubuntu, Debian, Fedora, RHEL, Amazon Linux, and
 other distributions. [Download](/downloads) the appropriate package for your
 operating system and architecture.
+
+## Container registries
+
+OpenBao deploys pre-built container images based on [Alpine Linux](https://alpinelinux.org/)
+to the following registries:
+
+ 1. [`ghcr.io/openbao/openbao`](https://github.com/openbao/openbao/pkgs/container/openbao)
+ 1. [`quay.io/openbao/openbao`](https://quay.io/repository/openbao/openbao)
+ 1. [`docker.io/openbao/openbao`](https://hub.docker.com/r/openbao/openbao)
+
+For container images based on [RHEL UBI](https://www.redhat.com/en/blog/introducing-red-hat-universal-base-image),
+we push to the following registries:
+
+
+ 1. [`ghcr.io/openbao/openbao-ubi`](https://github.com/openbao/openbao/pkgs/container/openbao-ubi)
+ 1. [`quay.io/openbao/openbao-ubi`](https://quay.io/repository/openbao/openbao-ubi)
+ 1. [`docker.io/openbao/openbao-ubi`](https://hub.docker.com/r/openbao/openbao-ubi)
 
 ## Precompiled binaries
 

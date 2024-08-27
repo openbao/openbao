@@ -492,6 +492,15 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 	}
 
 	now := time.Now()
+	var validAfter uint64
+
+	if !b.Role.NotBefore.IsZero() {
+		validAfter = uint64(b.Role.NotBefore.In(time.UTC).Unix())
+	} else if b.Role.NotBeforeDuration > 0 {
+		validAfter = uint64(now.Add(-b.Role.NotBeforeDuration).In(time.UTC).Unix())
+	} else {
+		validAfter = uint64(now.In(time.UTC).Unix())
+	}
 
 	sshAlgorithmSigner, ok := b.Signer.(ssh.AlgorithmSigner)
 	if !ok {
@@ -508,7 +517,7 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 		Key:             b.PublicKey,
 		KeyId:           b.KeyID,
 		ValidPrincipals: b.ValidPrincipals,
-		ValidAfter:      uint64(now.Add(-b.Role.NotBeforeDuration).In(time.UTC).Unix()),
+		ValidAfter:      validAfter,
 		ValidBefore:     uint64(now.Add(b.TTL).In(time.UTC).Unix()),
 		CertType:        b.CertificateType,
 		Permissions: ssh.Permissions{

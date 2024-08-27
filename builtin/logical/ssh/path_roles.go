@@ -66,6 +66,7 @@ type sshRole struct {
 	AlgorithmSigner            string            `mapstructure:"algorithm_signer" json:"algorithm_signer"`
 	Version                    int               `mapstructure:"role_version" json:"role_version"`
 	NotBeforeDuration          time.Duration     `mapstructure:"not_before_duration" json:"not_before_duration"`
+	NotBefore                  time.Time         `mapstructure:"not_before" json:"not_before"`
 }
 
 func pathListRoles(b *backend) *framework.Path {

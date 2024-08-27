@@ -521,6 +521,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AlgorithmSigner:           signer,
 		Version:                   roleEntryVersion,
 		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+		NotBefore:                 data.Get("not_before").(time.Time),
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {

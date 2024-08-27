@@ -375,6 +375,16 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+			"not_before": {
+				Type: framework.TypeTime,
+				Description: `
+				[Not applicable for OTP type] [Optional for CA type]
+      	The time before which the certificate is not valid. This is specified as a RFC3339 formatted string.
+        If specified, takes precedence over 'not_before_duration'.`,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name: "Not Before",
+				},
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{

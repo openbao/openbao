@@ -19,7 +19,7 @@ import (
 // BarrierView implements logical.Storage so it can be passed in as the
 // durable storage mechanism for logical views.
 type BarrierView struct {
-	storage         *logical.StorageView
+	storage         logical.StorageView
 	readOnlyErr     error
 	readOnlyErrLock sync.RWMutex
 	iCheck          interface{}

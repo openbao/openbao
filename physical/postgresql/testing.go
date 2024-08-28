@@ -35,7 +35,7 @@ func SetupDatabaseObjects(t *testing.T, logger log.Logger, pg *PostgreSQLBackend
 		t.Fatalf("Failed to create index: %v", err)
 	}
 
-	createHaTableSQL := " CREATE TABLE IF NOT EXISTS vault_ha_locks ( " +
+	createHaTableSQL := " CREATE TABLE IF NOT EXISTS openbao_ha_locks ( " +
 		" ha_key                                      TEXT COLLATE \"C\" NOT NULL, " +
 		" ha_identity                                 TEXT COLLATE \"C\" NOT NULL, " +
 		" ha_value                                    TEXT COLLATE \"C\", " +

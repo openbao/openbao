@@ -64,6 +64,8 @@ type PostgreSQLBackend struct {
 	haUpsertLockIdentityExec string
 	haDeleteLockExec         string
 
+	upsert_function string
+
 	haEnabled  bool
 	logger     log.Logger
 	permitPool *physical.PermitPool
@@ -99,9 +101,15 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 
 	unquoted_table, ok := conf["table"]
 	if !ok {
-		unquoted_table = "vault_kv_store"
+		unquoted_table = "openbao_kv_store"
 	}
 	quoted_table := dbutil.QuoteIdentifier(unquoted_table)
+
+	quoted_upsert_function, ok := conf["upsert_function"]
+	if !ok {
+		quoted_upsert_function = "openbao_kv_put"
+	}
+	quoted_upsert_function := dbutil.QuoteIdentifier(quoted_upsert_function)
 
 	maxParStr, ok := conf["max_parallel"]
 	var maxParInt int
@@ -156,7 +164,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	// upsert.
 	var put_query string
 	if !upsertAvailable {
-		put_query = "SELECT vault_kv_put($1, $2, $3, $4)"
+		put_query = "SELECT " + quoted_upsert_function + "($1, $2, $3, $4)"
 	} else {
 		put_query = "INSERT INTO " + quoted_table + " VALUES($1, $2, $3, $4)" +
 			" ON CONFLICT (path, key) DO " +
@@ -165,7 +173,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 
 	unquoted_ha_table, ok := conf["ha_table"]
 	if !ok {
-		unquoted_ha_table = "vault_ha_locks"
+		unquoted_ha_table = "openbao_ha_locks"
 	}
 	quoted_ha_table := dbutil.QuoteIdentifier(unquoted_ha_table)
 
@@ -202,9 +210,10 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		haDeleteLockExec:
 		// $1=ha_identity $2=ha_key
 		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
-		logger:     logger,
-		permitPool: physical.NewPermitPool(maxParInt),
-		haEnabled:  conf["ha_enabled"] == "true",
+		logger:          logger,
+		permitPool:      physical.NewPermitPool(maxParInt),
+		haEnabled:       conf["ha_enabled"] == "true",
+		upsert_function: quoted_upsert_function,
 	}
 
 	return m, nil

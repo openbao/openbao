@@ -123,6 +123,10 @@ LANGUAGE plpgsql;
   for storing high availability information. This table must already exist (OpenBao
   will not attempt to create it).
 
+- `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
+  function to execute for upsert capabilities on PostgreSQL versions earlier
+  than 9.5. This function must already exist. See above documentation.
+
 ## `postgresql` examples
 
 ### Custom SSL verification

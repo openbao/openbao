@@ -28,7 +28,7 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	table := os.Getenv("PGTABLE")
 	if table == "" {
-		table = "vault_kv_store"
+		table = "openbao_kv_store"
 	}
 
 	hae := os.Getenv("PGHAENABLED")

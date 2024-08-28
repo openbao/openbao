@@ -105,11 +105,11 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	}
 	quoted_table := dbutil.QuoteIdentifier(unquoted_table)
 
-	quoted_upsert_function, ok := conf["upsert_function"]
+	unquoted_upsert_function, ok := conf["upsert_function"]
 	if !ok {
-		quoted_upsert_function = "openbao_kv_put"
+		unquoted_upsert_function = "openbao_kv_put"
 	}
-	quoted_upsert_function := dbutil.QuoteIdentifier(quoted_upsert_function)
+	quoted_upsert_function := dbutil.QuoteIdentifier(unquoted_upsert_function)
 
 	maxParStr, ok := conf["max_parallel"]
 	var maxParInt int
@@ -196,6 +196,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
 			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
 			" ORDER BY key LIMIT $3",
+		ha_table: quoted_ha_table,
 		haGetLockValueQuery:
 		// only read non expired data
 		" SELECT ha_value FROM " + quoted_ha_table + " WHERE NOW() <= valid_until AND ha_key = $1 ",

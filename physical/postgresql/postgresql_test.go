@@ -65,7 +65,7 @@ func TestPostgreSQLBackend(t *testing.T) {
 	}
 	logger.Info(fmt.Sprintf("Postgres Version: %v", pgversion))
 
-	SetupDatabaseObjects(t, logger, pg)
+	SetupDatabaseObjects(t, pg)
 
 	defer func() {
 		pg := b1.(*PostgreSQLBackend)

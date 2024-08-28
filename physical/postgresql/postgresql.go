@@ -50,12 +50,14 @@ var (
 // PostgreSQL Backend is a physical backend that stores data
 // within a PostgreSQL database.
 type PostgreSQLBackend struct {
-	table        string
-	client       *sql.DB
-	put_query    string
-	get_query    string
-	delete_query string
-	list_query   string
+	table                   string
+	client                  *sql.DB
+	put_query               string
+	get_query               string
+	delete_query            string
+	list_query              string
+	list_page_query         string
+	list_page_limited_query string
 
 	ha_table                 string
 	haGetLockValueQuery      string
@@ -176,7 +178,16 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		delete_query: "DELETE FROM " + quoted_table + " WHERE path = $1 AND key = $2",
 		list_query: "SELECT key FROM " + quoted_table + " WHERE path = $1" +
 			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
-			" WHERE parent_path LIKE $1 || '%'",
+			" WHERE parent_path LIKE $1 || '%'" +
+			" ORDER BY key",
+		list_page_query: "SELECT key FROM " + quoted_table + " WHERE path = $1 AND key > $2" +
+			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
+			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
+			" ORDER BY key",
+		list_page_limited_query: "SELECT key FROM " + quoted_table + " WHERE path = $1 AND key > $2" +
+			" UNION ALL SELECT DISTINCT substring(substr(path, length($1)+1) from '^.*?/') FROM " + quoted_table +
+			" WHERE parent_path LIKE $1 || '%' AND substring(substr(path, length($1)+1) from '^.*?/') > $2" +
+			" ORDER BY key LIMIT $3",
 		haGetLockValueQuery:
 		// only read non expired data
 		" SELECT ha_value FROM " + quoted_ha_table + " WHERE NOW() <= valid_until AND ha_key = $1 ",
@@ -302,6 +313,40 @@ func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, 
 	defer m.permitPool.Release()
 
 	rows, err := m.client.QueryContext(ctx, m.list_query, "/"+prefix)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		err = rows.Scan(&key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan rows: %w", err)
+		}
+
+		keys = append(keys, key)
+	}
+
+	return keys, nil
+}
+
+// ListPage is used to list all the keys under a given
+// prefix, after the given key, up to the given key.
+func (m *PostgreSQLBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	defer metrics.MeasureSince([]string{"postgres", "list-page"}, time.Now())
+
+	m.permitPool.Acquire()
+	defer m.permitPool.Release()
+
+	var rows *sql.Rows
+	var err error
+	if limit <= 0 {
+		rows, err = m.client.QueryContext(ctx, m.list_page_query, "/"+prefix, after)
+	} else {
+		rows, err = m.client.QueryContext(ctx, m.list_page_limited_query, "/"+prefix, after, limit)
+	}
 	if err != nil {
 		return nil, err
 	}

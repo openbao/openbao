@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 )
@@ -216,7 +216,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 // URL for the Postgres backend, because it is a required field, an error is returned.
 func connectionURL(conf map[string]string) string {
 	connURL := conf["connection_url"]
-	if envURL := os.Getenv("VAULT_PG_CONNECTION_URL"); envURL != "" {
+	if envURL := api.ReadBaoVariable("BAO_PG_CONNECTION_URL"); envURL != "" {
 		connURL = envURL
 	}
 

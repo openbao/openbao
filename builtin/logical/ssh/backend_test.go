@@ -1816,6 +1816,14 @@ func TestSSHBackend_ValidateNotBeforeDuration(t *testing.T) {
 	logicaltest.Test(t, testCase)
 }
 
+func TestSSHBackend_ValidadeNotBefore(t *testing.T) {
+	config := logical.TestBackendConfig()
+
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+}
 func TestSSHBackend_IssueSign(t *testing.T) {
 	config := logical.TestBackendConfig()
 

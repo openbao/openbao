@@ -280,6 +280,20 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 		return logical.ErrorResponse("Can not import issuers until migration has completed"), nil
 	}
 
+	// If we have a transactional storage backend, let's use it. However,
+	// due to the limitation on transaction commit sizes, make sure not
+	// to use it for CRL rebuild.
+	originalStorage := req.Storage
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		txn, err := txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		defer txn.Rollback(ctx)
+		req.Storage = txn
+	}
+
 	var pemBundle string
 	var certificate string
 	rawPemBundle, bundleOk := data.GetOk("pem_bundle")
@@ -367,6 +381,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	}
 
 	sc := b.makeStorageContext(ctx, req.Storage)
+	crlSc := b.makeStorageContext(ctx, originalStorage)
 
 	for keyIndex, keyPem := range keys {
 		// Handle import of private key.
@@ -407,7 +422,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	}
 
 	if len(createdIssuers) > 0 {
-		warnings, err := b.crlBuilder.rebuild(sc, true)
+		warnings, err := b.crlBuilder.rebuild(crlSc, true)
 		if err != nil {
 			// Before returning, check if the error message includes the
 			// string "PSS". If so, it indicates we might've wanted to modify
@@ -491,6 +506,14 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	// tell the user that's probably next.
 	if entries, err := getGlobalAIAURLs(ctx, req.Storage); err == nil && len(entries.IssuingCertificates) == 0 && len(entries.CRLDistributionPoints) == 0 && len(entries.OCSPServers) == 0 {
 		response.AddWarning("This mount hasn't configured any authority information access (AIA) fields; this may make it harder for systems to find missing certificates in the chain or to validate revocation status of certificates. Consider updating /config/urls or the newly generated issuer with this information.")
+	}
+
+	// Finally, commit our transaction if we created one!
+	if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+		if err := txn.Commit(ctx); err != nil {
+			return nil, err
+		}
+		req.Storage = originalStorage
 	}
 
 	return response, nil

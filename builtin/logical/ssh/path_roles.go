@@ -366,7 +366,6 @@ func pathRoles(b *backend) *framework.Path {
 			},
 			"not_before_duration": {
 				Type:    framework.TypeDurationSecond,
-				Default: 30,
 				Description: `
 				[Not applicable for OTP type] [Optional for CA type]
    				The duration that the SSH certificate should be backdated by at issuance.`,

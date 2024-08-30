@@ -540,6 +540,12 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 			`"ttl" value must be less than "max_ttl" when both are specified`)
 	}
 
+	if !role.NotBefore.IsZero() {
+		if role.NotBefore.After(time.Now()) {
+			return nil, logical.ErrorResponse("'not_before' value can not be in the future")
+		}
+	}
+
 	// Persist TTLs
 	role.TTL = ttl.String()
 	role.MaxTTL = maxTTL.String()

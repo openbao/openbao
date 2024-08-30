@@ -27,7 +27,7 @@ func coreInit(c *Core, conf *CoreConfig) error {
 	return nil
 }
 
-func (c *Core) barrierViewForNamespace(namespaceId string) (*BarrierView, error) {
+func (c *Core) barrierViewForNamespace(namespaceId string) (BarrierView, error) {
 	if namespaceId != namespace.RootNamespaceID {
 		return nil, fmt.Errorf("failed to find barrier view for non-root namespace")
 	}

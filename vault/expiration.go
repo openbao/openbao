@@ -99,8 +99,8 @@ type pendingInfo struct {
 type ExpirationManager struct {
 	core       *Core
 	router     *Router
-	idView     *BarrierView
-	tokenView  *BarrierView
+	idView     BarrierView
+	tokenView  BarrierView
 	tokenStore *TokenStore
 	logger     log.Logger
 
@@ -326,7 +326,7 @@ func getNumExpirationWorkers(c *Core, l log.Logger) int {
 
 // NewExpirationManager creates a new ExpirationManager that is backed
 // using a given view, and uses the provided router for revocation.
-func NewExpirationManager(c *Core, view *BarrierView, e ExpireLeaseStrategy, logger log.Logger, detectDeadlocks bool) *ExpirationManager {
+func NewExpirationManager(c *Core, view BarrierView, e ExpireLeaseStrategy, logger log.Logger, detectDeadlocks bool) *ExpirationManager {
 	managerLogger := logger.Named("job-manager")
 	jobManager := fairshare.NewJobManager("expire", getNumExpirationWorkers(c, logger), managerLogger, c.metricSink)
 	jobManager.Start()

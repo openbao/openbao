@@ -166,7 +166,7 @@ func (re *routeEntry) SaltID(id string) string {
 
 // Mount is used to expose a logical backend at a given prefix, using a unique salt,
 // and the barrier view for that path.
-func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView *BarrierView) error {
+func (r *Router) Mount(backend logical.Backend, prefix string, mountEntry *MountEntry, storageView BarrierView) error {
 	r.l.Lock()
 	defer r.l.Unlock()
 

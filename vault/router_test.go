@@ -56,7 +56,7 @@ func TestRouter_Mount(t *testing.T) {
 		t.Fatalf("bad: %s", path)
 	}
 
-	if v := r.MatchingStorageByAPIPath(namespace.RootContext(nil), "prod/aws/foo"); v.(*BarrierView) != view {
+	if v := r.MatchingStorageByAPIPath(namespace.RootContext(nil), "prod/aws/foo"); v.(BarrierView) != view {
 		t.Fatalf("bad: %v", v)
 	}
 
@@ -163,7 +163,7 @@ func TestRouter_MountCredential(t *testing.T) {
 		t.Fatalf("bad: %s", path)
 	}
 
-	if v := r.MatchingStorageByAPIPath(namespace.RootContext(nil), "auth/aws/foo"); v.(*BarrierView) != view {
+	if v := r.MatchingStorageByAPIPath(namespace.RootContext(nil), "auth/aws/foo"); v.(BarrierView) != view {
 		t.Fatalf("bad: %v", v)
 	}
 

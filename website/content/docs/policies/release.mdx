@@ -13,6 +13,7 @@ a better release process going forward.
 
 ## Pre-release checklist
 
+ - [ ] Designate a release manager and assign them this issue.
  - [ ] Clone this template into a GitHub release issue.
  - [ ] Identify target release version (major, minor, or patch) and milestones
        (alpha, beta, ...).
@@ -46,8 +47,9 @@ a better release process going forward.
        be done earlier in the release cycle to give the community time to find
        any breaking issues.
  - [ ] Update container image base layer versions.
- - [ ] Update Go version pinning in testing; go-releaser always uses the
-       latest toolchain version.
+ - [ ] Update Go version pinning in `/.go-release` and in the the `toolchain`
+       directive in `go.mod`; go-releaser uses this version via a custom
+       (in-repo) `set-up-go` action.
 
 ## Release checklist
 
@@ -56,6 +58,8 @@ a better release process going forward.
  - [ ] Start [release workflow](https://github.com/openbao/openbao/actions/workflows/release.yml):
        select target tag, and set applicable pre-release/latest set
        (pre-releases should not be marked latest on GitHub).
+ - [ ] Manually upload [GPG signing key](https://openbao.org/assets/openbao-gpg-pub-20240618.asc)
+       to the release artifacts.
  - [ ] Spot-check release artifacts:
       - [ ] Container images work.
       - [ ] Linux binaries work.
@@ -68,4 +72,5 @@ a better release process going forward.
       - [ ] GitHub Discussions
       - [ ] Link from Matrix
       - [ ] Mention in next community meeting & TSC meetings.
+ - [ ] Close the release milestone on GitHub.
  - [ ] For large releases, work with LF Edge for a release blog post.

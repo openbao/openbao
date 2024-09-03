@@ -11,6 +11,7 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCache(t *testing.T) {
@@ -25,6 +26,33 @@ func TestCache(t *testing.T) {
 	cache.SetEnabled(true)
 	physical.ExerciseBackend(t, cache)
 	physical.ExerciseBackend_ListPrefix(t, cache)
+}
+
+func TestCache_ModifyEntry(t *testing.T) {
+	logger := logging.NewVaultLogger(log.Debug)
+
+	inm, err := NewInmem(nil, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
+	cache.SetEnabled(true)
+
+	entry := &physical.Entry{
+		Key:   "my-key",
+		Value: []byte("my-initial-value"),
+	}
+	err = cache.Put(context.Background(), entry)
+	require.NoError(t, err)
+
+	entry.Value = []byte("my-modified-value")
+
+	entryFromCache, err := cache.Get(context.Background(), entry.Key)
+	require.NoError(t, err)
+
+	require.NotEqual(t, string(entryFromCache.Value), string(entry.Value), "post-put modification to entry shouldn't affect cache")
+	require.Equal(t, string(entryFromCache.Value), "my-initial-value", "cache should match the put value")
 }
 
 func TestCache_Purge(t *testing.T) {

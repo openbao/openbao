@@ -106,6 +106,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/storage/filesystem",
                         "configuration/storage/in-memory",
                         "configuration/storage/raft",
+                        "configuration/storage/postgresql",
                     ],
                 },
                 "configuration/telemetry",

@@ -40,7 +40,7 @@ $ openssl req \
    -sha256 \
    -days 1825 \
    -out injector-ca.crt \
-   -subj "/C=US/ST=CA/L=San Francisco/O=Openbao/CN=openbao-agent-injector-svc"
+   -subj "/C=US/ST=CA/L=San Francisco/O=OpenBao/CN=openbao-agent-injector-svc"
 ```
 
 ## Create OpenBao agent injector certificate
@@ -62,7 +62,7 @@ $ openssl req \
    -new \
    -key tls.key \
    -out tls.csr \
-   -subj "/C=US/ST=CA/L=San Francisco/O=Openbao/CN=openbao-agent-injector-svc"
+   -subj "/C=US/ST=CA/L=San Francisco/O=OpenBao/CN=openbao-agent-injector-svc"
 ```
 
 After creating the CSR, create an extension file to configure additional parameters for signing

@@ -36,6 +36,7 @@ import (
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
 	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
+	physPostgresql "github.com/openbao/openbao/physical/postgresql"
 	physRaft "github.com/openbao/openbao/physical/raft"
 	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -145,10 +146,11 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"file":     physFile.NewFileBackend,
-		"inmem_ha": physInmem.NewInmemHA,
-		"inmem":    physInmem.NewInmem,
-		"raft":     physRaft.NewRaftBackend,
+		"file":       physFile.NewFileBackend,
+		"inmem_ha":   physInmem.NewInmemHA,
+		"inmem":      physInmem.NewInmem,
+		"raft":       physRaft.NewRaftBackend,
+		"postgresql": physPostgresql.NewPostgreSQLBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{

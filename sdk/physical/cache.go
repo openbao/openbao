@@ -142,7 +142,21 @@ func (c *Cache) Put(ctx context.Context, entry *Entry) error {
 
 	err := c.backend.Put(ctx, entry)
 	if err == nil {
-		c.lru.Add(entry.Key, entry)
+		// While lower layers could modify entry, we want to ensure we don't
+		// open ourselves up to cache modification so clone the entry.
+		cacheEntry := &Entry{
+			Key:      entry.Key,
+			SealWrap: entry.SealWrap,
+		}
+		if entry.Value != nil {
+			cacheEntry.Value = make([]byte, len(entry.Value))
+			copy(cacheEntry.Value, entry.Value)
+		}
+		if entry.ValueHash != nil {
+			cacheEntry.ValueHash = make([]byte, len(entry.ValueHash))
+			copy(cacheEntry.ValueHash, entry.ValueHash)
+		}
+		c.lru.Add(entry.Key, cacheEntry)
 		c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
 	}
 	return err

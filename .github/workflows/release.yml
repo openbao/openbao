@@ -50,10 +50,7 @@ jobs:
           fetch-depth: 0 # Required by GoRelease
 
       - name: Golang Setup
-        uses: actions/setup-go@v5
-        with:
-          go-version: stable
-          check-latest: true
+        uses: ./.github/actions/set-up-go
 
       - name: go-check
         run: go version

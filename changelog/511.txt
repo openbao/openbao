@@ -1,0 +1,3 @@
+```release-note:bug
+api/output_string: Change vault reference to bao.
+```

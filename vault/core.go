@@ -3643,7 +3643,7 @@ func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, match
 		Data:       data,
 		Storage:    c.router.MatchingStorageByAPIPath(ctx, mountPoint+"login"),
 	})
-	if err != nil || resp.Data["role"] == nil {
+	if err != nil || resp == nil || resp.Data == nil || resp.Data["role"] == nil {
 		return ""
 	}
 
@@ -3686,9 +3686,20 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 		Data:       req.Data,
 		Storage:    c.router.MatchingStorageByAPIPath(ctx, req.Path),
 	})
-	if err != nil || resp.Auth.Alias == nil {
+
+	// Certain errors (like field validation errors) are returned as
+	// logical.ErrorResponse(...)s, which means Auth will not be set,
+	// only resp.Data["error"]. Surface the errors appropriately.
+	if err != nil || resp == nil {
+		return "", err
+	}
+	if resp.Data != nil && len(resp.Data["error"].(string)) > 0 {
+		return "", errors.New(resp.Data["error"].(string))
+	}
+	if resp.Auth == nil || resp.Auth.Alias == nil {
 		return "", nil
 	}
+
 	return resp.Auth.Alias.Name, nil
 }
 

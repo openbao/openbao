@@ -77,6 +77,11 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 								Description: `Serial Number`,
 								Required:    true,
 							},
+							"not_before": {
+								Type:        framework.TypeInt64,
+								Description: `Starting time of validity`,
+								Required:    true,
+							},
 							"expiration": {
 								Type:        framework.TypeInt64,
 								Description: `Time of expiration`,
@@ -187,6 +192,11 @@ func buildPathSign(b *backend, pattern string, displayAttrs *framework.DisplayAt
 								Description: `Serial Number`,
 								Required:    true,
 							},
+							"not_before": {
+								Type:        framework.TypeInt64,
+								Description: `Starting time of validity`,
+								Required:    true,
+							},
 							"expiration": {
 								Type:        framework.TypeInt64,
 								Description: `Time of expiration`,
@@ -278,6 +288,11 @@ func buildPathIssuerSignVerbatim(b *backend, pattern string, displayAttrs *frame
 							"serial_number": {
 								Type:        framework.TypeString,
 								Description: `Serial Number`,
+								Required:    true,
+							},
+							"not_before": {
+								Type:        framework.TypeInt64,
+								Description: `Starting time of validity`,
 								Required:    true,
 							},
 							"expiration": {
@@ -470,6 +485,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	caChainGen := newCaChainOutput(parsedBundle, data)
 
 	respData := map[string]interface{}{
+		"not_before":    int64(parsedBundle.Certificate.NotBefore.Unix()),
 		"expiration":    int64(parsedBundle.Certificate.NotAfter.Unix()),
 		"serial_number": cb.SerialNumber,
 	}

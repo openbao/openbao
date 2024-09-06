@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/pki: add `not_before` parameter to precisely define a certificate's "not before" field.
+```

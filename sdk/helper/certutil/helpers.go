@@ -887,9 +887,17 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error getting subject key ID: %s", err)}
 	}
 
+	notBefore := time.Now().Add(-30 * time.Second)
+
+	if data.Params.NotBeforeDuration > 0 && data.Params.NotBefore.IsZero() {
+		notBefore = time.Now().Add(-1 * data.Params.NotBeforeDuration)
+	} else if !data.Params.NotBefore.IsZero() {
+		notBefore = data.Params.NotBefore
+	}
+
 	certTemplate := &x509.Certificate{
 		SerialNumber:   serialNumber,
-		NotBefore:      time.Now().Add(-30 * time.Second),
+		NotBefore:      notBefore,
 		NotAfter:       data.Params.NotAfter,
 		IsCA:           false,
 		SubjectKeyId:   subjKeyID,
@@ -898,9 +906,6 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 		EmailAddresses: data.Params.EmailAddresses,
 		IPAddresses:    data.Params.IPAddresses,
 		URIs:           data.Params.URIs,
-	}
-	if data.Params.NotBeforeDuration > 0 {
-		certTemplate.NotBefore = time.Now().Add(-1 * data.Params.NotBeforeDuration)
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {

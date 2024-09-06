@@ -774,6 +774,7 @@ type CreationParameters struct {
 	IsCA                          bool
 	KeyType                       string
 	KeyBits                       int
+	NotBefore                     time.Time
 	NotAfter                      time.Time
 	KeyUsage                      x509.KeyUsage
 	ExtKeyUsage                   CertExtKeyUsage

@@ -4145,6 +4145,48 @@ func (b *SystemBackend) pathInternalInspectRouter(ctx context.Context, req *logi
 	return logical.ErrorResponse(ErrIntrospectionNotEnabled.Error()), nil
 }
 
+func (b *SystemBackend) pathInternalInspectRequest(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	b.Core.introspectionEnabledLock.Lock()
+	defer b.Core.introspectionEnabledLock.Unlock()
+	if !b.Core.introspectionEnabled {
+		return logical.ErrorResponse(ErrIntrospectionNotEnabled.Error()), nil
+	}
+
+	entity, entityErr := b.System().EntityInfo(req.EntityID)
+	groups, groupsErr := b.System().GroupsForEntity(req.EntityID)
+	pluginEnv, pluginEnvErr := b.System().PluginEnv(ctx)
+	vaultVersion, vaultVersionErr := b.System().VaultVersion(ctx)
+	clusterId, clusterIdErr := b.System().ClusterID(ctx)
+
+	reqMarshaled, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize request: %w", err)
+	}
+
+	var reqAuditable map[string]interface{}
+	if err := json.Unmarshal(reqMarshaled, &reqAuditable); err != nil {
+		return nil, fmt.Errorf("failed to unserialize request: %w", err)
+	}
+
+	resp := &logical.Response{
+		Data: map[string]interface{}{
+			"data":                d.Raw,
+			"req":                 reqAuditable,
+			"entity":              entity,
+			"entity_error":        entityErr,
+			"groups":              groups,
+			"groups_error":        groupsErr,
+			"plugin_env":          pluginEnv,
+			"plugin_env_error":    pluginEnvErr,
+			"vault_version":       vaultVersion,
+			"vault_version_error": vaultVersionErr,
+			"cluster_id":          clusterId,
+			"cluster_id_error":    clusterIdErr,
+		},
+	}
+	return resp, nil
+}
+
 func (b *SystemBackend) pathInternalUIResultantACL(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	if req.ClientToken == "" {
 		// 204 -- no ACL
@@ -5157,7 +5199,7 @@ This path responds to the following HTTP methods.
 	},
 
 	"alias_identifier": {
-		`It is the name of the alias (user). For example, if the alias belongs to userpass backend, 
+		`It is the name of the alias (user). For example, if the alias belongs to userpass backend,
 	   the name should be a valid username within userpass auth method. If the alias belongs
 	    to an approle auth method, the name should be a valid RoleID`,
 		"",
@@ -5680,6 +5722,15 @@ This path responds to the following HTTP methods.
 			Returns a list of entries in specified table
 		`,
 	},
+	"internal-inspect-request": {
+		"Outputs information contained within a request to a plugin.",
+		`
+This path responds to the following HTTP methods.
+		GET /
+			Returns all request data available to a plugin.
+		`,
+	},
+
 	"host-info": {
 		"Information about the host instance that this OpenBao server is running on.",
 		`Information about the host instance that this OpenBao server is running on.

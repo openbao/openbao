@@ -2542,6 +2542,22 @@ func (b *SystemBackend) introspectionPaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-inspect-router"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["internal-inspect-router"][1]),
 		},
+		{
+			Pattern: "internal/inspect/request",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "internal",
+				OperationVerb:   "inspect",
+				OperationSuffix: "request",
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathInternalInspectRequest,
+					Summary:  "Expose all request information to the caller",
+				},
+			},
+			HelpSynopsis:    strings.TrimSpace(sysHelp["internal-inspect-request"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["internal-inspect-request"][1]),
+		},
 	}
 }
 

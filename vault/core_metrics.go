@@ -6,16 +6,16 @@ package vault
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/armon/go-metrics"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (c *Core) metricsLoop(stopCh chan struct{}) {
@@ -32,18 +32,14 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 	}
 
 	identityCountTimer := time.Tick(time.Minute * 10)
-	// Only emit on active node of cluster that is not a DR secondary.
+	// Only emit on active node of cluster.
 	if stopped, haState := stopOrHAState(); stopped {
 		return
-	} else if haState == consts.Standby || c.IsDRSecondary() {
+	} else if haState == consts.Standby {
 		identityCountTimer = nil
 	}
 
 	writeTimer := time.Tick(time.Second * 30)
-	// Do not process the writeTimer on DR Secondary nodes
-	if c.IsDRSecondary() {
-		writeTimer = nil
-	}
 
 	// This loop covers
 	// vault.expire.num_leases
@@ -73,47 +69,11 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "unsealed"}, 1, nil)
 			}
 
-			if c.UndoLogsEnabled() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "write_undo_logs"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "write_undo_logs"}, 0, nil)
-			}
-
 			// Refresh the standby gauge, on all nodes
 			if haState != consts.Active {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 0, nil)
 			} else {
 				c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
-			}
-
-			if haState == consts.PerfStandby {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "performance_standby"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "performance_standby"}, 0, nil)
-			}
-
-			if c.ReplicationState().HasState(consts.ReplicationPerformancePrimary) {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "primary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "primary"}, 0, nil)
-			}
-
-			if c.IsPerfSecondary() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "secondary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "performance", "secondary"}, 0, nil)
-			}
-
-			if c.ReplicationState().HasState(consts.ReplicationDRPrimary) {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "primary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "primary"}, 0, nil)
-			}
-
-			if c.IsDRSecondary() {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "secondary"}, 1, nil)
-			} else {
-				c.metricSink.SetGaugeWithLabels([]string{"core", "replication", "dr", "secondary"}, 0, nil)
 			}
 
 			// If we're using a raft backend, emit raft metrics
@@ -131,14 +91,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 			go l.grab()
 			if stopped := l.lockOrStop(); stopped {
 				return
-			}
-			// Ship barrier encryption counts if a perf standby or the active node
-			// on a performance secondary cluster
-			if c.perfStandby || c.IsPerfSecondary() { // already have lock here, do not re-acquire
-				err := syncBarrierEncryptionCounter(c)
-				if err != nil {
-					c.logger.Error("writing syncing encryption counters", "err", err)
-				}
 			}
 			c.stateLock.RUnlock()
 		case <-identityCountTimer:
@@ -164,11 +116,6 @@ func (c *Core) metricsLoop(stopCh chan struct{}) {
 // TokenStore; there is one per method because an additional level of abstraction
 // seems confusing.
 func (c *Core) tokenGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	// stateLock or authLock protects the tokenStore pointer
 	c.stateLock.RLock()
 	ts := c.tokenStore
@@ -180,11 +127,6 @@ func (c *Core) tokenGaugeCollector(ctx context.Context) ([]metricsutil.GaugeLabe
 }
 
 func (c *Core) tokenGaugePolicyCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -206,11 +148,6 @@ func (c *Core) leaseExpiryGaugeCollector(ctx context.Context) ([]metricsutil.Gau
 }
 
 func (c *Core) tokenGaugeMethodCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -221,11 +158,6 @@ func (c *Core) tokenGaugeMethodCollector(ctx context.Context) ([]metricsutil.Gau
 }
 
 func (c *Core) tokenGaugeTtlCollector(ctx context.Context) ([]metricsutil.GaugeLabelValues, error) {
-	if c.IsDRSecondary() {
-		// there is no expiration manager on DR Secondaries
-		return []metricsutil.GaugeLabelValues{}, nil
-	}
-
 	c.stateLock.RLock()
 	ts := c.tokenStore
 	c.stateLock.RUnlock()
@@ -281,7 +213,7 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 			[]string{"secret", "kv", "count"},
 			[]metrics.Label{{"gauge", "kv_secrets_by_mountpoint"}},
 			c.kvSecretGaugeCollector,
-			"VAULT_DISABLE_KV_GAUGE",
+			"BAO_DISABLE_KV_GAUGE",
 		},
 		{
 			[]string{"identity", "entity", "count"},
@@ -295,22 +227,15 @@ func (c *Core) emitMetricsActiveNode(stopCh chan struct{}) {
 			c.entityGaugeCollectorByMount,
 			"",
 		},
-		{
-			[]string{"identity", "entity", "active", "partial_month"},
-			[]metrics.Label{{"gauge", "identity_active_month"}},
-			c.activeEntityGaugeCollector,
-			"",
-		},
 	}
 
-	// Disable collection if configured, or if we're a performance standby
-	// node or DR secondary cluster.
+	// Disable collection if configured.
 	if c.MetricSink().GaugeInterval == time.Duration(0) {
 		c.logger.Info("usage gauge collection is disabled")
-	} else if standby, _ := c.Standby(); !standby && !c.IsDRSecondary() {
+	} else if standby, _ := c.Standby(); !standby {
 		for _, init := range metricsInit {
 			if init.DisableEnvVar != "" {
-				if os.Getenv(init.DisableEnvVar) != "" {
+				if api.ReadBaoVariable(init.DisableEnvVar) != "" {
 					c.logger.Info("usage gauge collection is disabled for",
 						"metric", init.MetricName)
 					continue

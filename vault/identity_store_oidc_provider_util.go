@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-jose/go-jose/v3"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // validRedirect checks whether uri is in allowed using special handling for loopback uris.

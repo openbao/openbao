@@ -19,7 +19,7 @@ export const fakeWindow = EmberObject.extend(Evented, {
       width: 500,
     };
   }),
-  origin: 'https://my-vault.com',
+  origin: 'https://my-openbao.com',
   closed: false,
   open() {},
   close() {},
@@ -27,7 +27,7 @@ export const fakeWindow = EmberObject.extend(Evented, {
 
 export const buildMessage = (opts) => ({
   isTrusted: true,
-  origin: 'https://my-vault.com',
+  origin: 'https://my-openbao.com',
   data: {
     source: 'oidc-callback',
     path: 'foo',

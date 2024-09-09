@@ -6,11 +6,14 @@ package plugin
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sort"
+	"strings"
 
 	"google.golang.org/grpc"
 
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 var errMissingStorage = errors.New("missing storage implementation: this method should not be called during plugin Setup, but only during and after Initialize")
@@ -32,6 +35,47 @@ func (s *GRPCStorageClient) List(ctx context.Context, prefix string) ([]string, 
 		Prefix: prefix,
 	}, largeMsgGRPCCallOpts...)
 	if err != nil {
+		return []string{}, err
+	}
+	if reply.Err != "" {
+		return reply.Keys, errors.New(reply.Err)
+	}
+	return reply.Keys, nil
+}
+
+func (s *GRPCStorageClient) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	reply, err := s.client.ListPage(ctx, &pb.StorageListPageArgs{
+		Prefix: prefix,
+		After:  after,
+		Limit:  int32(limit),
+	}, largeMsgGRPCCallOpts...)
+	if err != nil {
+		if strings.Contains(err.Error(), "Unimplemented") {
+			// Implement ListPage(...) manually. Assume the results are
+			// already sorted from the storage backend.
+			results, listErr := s.List(ctx, prefix)
+			if listErr != nil {
+				return nil, fmt.Errorf("failed to re-call List(...) from ListPage(...): %w\n\toriginal: %v", listErr, err)
+			}
+
+			if after != "" {
+				idx := sort.SearchStrings(results, after)
+				if idx < len(results) && results[idx] == after {
+					idx += 1
+				}
+				results = results[idx:]
+			}
+
+			if limit > 0 {
+				if limit > len(results) {
+					limit = len(results)
+				}
+				results = results[0:limit]
+			}
+
+			return results, nil
+		}
+
 		return []string{}, err
 	}
 	if reply.Err != "" {
@@ -96,6 +140,17 @@ func (s *GRPCStorageServer) List(ctx context.Context, args *pb.StorageListArgs) 
 	}, nil
 }
 
+func (s *GRPCStorageServer) ListPage(ctx context.Context, args *pb.StorageListPageArgs) (*pb.StorageListReply, error) {
+	if s.impl == nil {
+		return nil, errMissingStorage
+	}
+	keys, err := s.impl.ListPage(ctx, args.Prefix, args.After, int(args.Limit))
+	return &pb.StorageListReply{
+		Keys: keys,
+		Err:  pb.ErrToString(err),
+	}, nil
+}
+
 func (s *GRPCStorageServer) Get(ctx context.Context, args *pb.StorageGetArgs) (*pb.StorageGetReply, error) {
 	if s.impl == nil {
 		return nil, errMissingStorage
@@ -138,6 +193,10 @@ func (s *GRPCStorageServer) Delete(ctx context.Context, args *pb.StorageDeleteAr
 type NOOPStorage struct{}
 
 func (s *NOOPStorage) List(_ context.Context, prefix string) ([]string, error) {
+	return []string{}, nil
+}
+
+func (s *NOOPStorage) ListPage(_ context.Context, prefix string, after string, limit int) ([]string, error) {
 	return []string{}, nil
 }
 

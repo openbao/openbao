@@ -1,6 +1,6 @@
 ---
-layout: docs
-page_title: Vault Secrets Operator on OpenShift
+draft: true
+sidebar_label: OpenShift
 description: >-
   The Vault Secrets Operator may be installed on OpenShift clusters via the embedded OperatorHub or the Helm chart.
 ---
@@ -17,7 +17,7 @@ Navigate to the OperatorHub page of your OpenShift cluster and search for `Vault
 
 ## Helm chart
 
-The Vault Secrets Operator may also be installed in OpenShift using the Helm chart. (See [Installation](/vault/docs/platform/k8s/vso/installation) for an overview of installation using the [Helm chart](/vault/docs/platform/k8s/vso/helm).) The examples below show example [values.yaml files](https://helm.sh/docs/chart_template_guide/values_files/) for each configuration, which would be used with `helm install` as below:
+The Vault Secrets Operator may also be installed in OpenShift using the Helm chart. (See [Installation](/docs/platform/k8s/vso/installation) for an overview of installation using the [Helm chart](/docs/platform/k8s/vso/helm).) The examples below show example [values.yaml files](https://helm.sh/docs/chart_template_guide/values_files/) for each configuration, which would be used with `helm install` as below:
 
 ```shell-session
 helm install vault-secrets-operator hashicorp/vault-secrets-operator \
@@ -31,7 +31,7 @@ For OpenShift, increasing the memory [requests and limits](https://kubernetes.io
 
 ### Default images
 
-These values would use the [default operator image](/vault/docs/platform/k8s/vso/helm#v-controller-manager-image) from HashiCorp's [Docker Hub repository][dockerhub].
+These values would use the [default operator image](/docs/platform/k8s/vso/helm#v-controller-manager-image) from HashiCorp's [Docker Hub repository][dockerhub].
 
 ```yaml
 controller:
@@ -64,10 +64,10 @@ controller:
         memory: 128Mi
 ```
 
-<Tip>
+:::tip
 
 UBI-based Vault Secrets Operator images are also published to HashiCorp's [DockerHub][dockerhub] and [Amazon ECR](https://gallery.ecr.aws/hashicorp/vault-secrets-operator) repositories.
 
-</Tip>
+:::
 
 [dockerhub]: https://hub.docker.com/r/hashicorp/vault-secrets-operator

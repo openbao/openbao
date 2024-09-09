@@ -1,0 +1,13 @@
+# DCO bot does not currently support GitHub Merge Queues. https://github.com/dcoapp/app/issues/199
+# This is a dummy workflow to automatically force the check to pass. Pull Requests are checked by the DCO bot prior
+# to being added to the Merge Queue. Pull Requests that fail the check are never added for merge.
+name: DCO
+on:
+  merge_group:
+
+jobs:
+  DCO:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    steps:
+      - run: echo "dummy DCO workflow (it won't run any check actually) to trigger by merge_group in order to enable merge queue"

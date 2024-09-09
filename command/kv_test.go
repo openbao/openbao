@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func testKVPutCommand(tb testing.TB) (*cli.MockUi, *KVPutCommand) {

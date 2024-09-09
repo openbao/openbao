@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -31,7 +31,7 @@ func (c *AuthListCommand) Synopsis() string {
 
 func (c *AuthListCommand) Help() string {
 	helpText := `
-Usage: vault auth list [options]
+Usage: bao auth list [options]
 
   Lists the enabled auth methods on the Vault server. This command also outputs
   information about the method including configuration and human-friendly
@@ -39,11 +39,11 @@ Usage: vault auth list [options]
 
   List all enabled auth methods:
 
-      $ vault auth list
+      $ bao auth list
 
   List all enabled auth methods with detailed output:
 
-      $ vault auth list -detailed
+      $ bao auth list -detailed
 
 ` + c.Flags().Help()
 

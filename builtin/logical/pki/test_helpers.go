@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ocsp"
 )
@@ -248,6 +248,13 @@ func CBList(b *backend, s logical.Storage, path string) (*logical.Response, erro
 	return CBReq(b, s, logical.ListOperation, path, make(map[string]interface{}))
 }
 
+func CBPaginatedList(b *backend, s logical.Storage, path string, after string, limit int) (*logical.Response, error) {
+	return CBReq(b, s, logical.ListOperation, path, map[string]interface{}{
+		"after": after,
+		"limit": limit,
+	})
+}
+
 func CBDelete(b *backend, s logical.Storage, path string) (*logical.Response, error) {
 	return CBReq(b, s, logical.DeleteOperation, path, make(map[string]interface{}))
 }
@@ -423,7 +430,7 @@ func performOcspPost(t *testing.T, cert *x509.Certificate, issuerCert *x509.Cert
 	ocspPostReq.Headers.Set("Content-Type", "application/ocsp-request")
 	ocspPostReq.BodyBytes = ocspReq
 	rawResp, err := baseClient.RawRequest(ocspPostReq)
-	require.NoError(t, err, "failed sending unified-ocsp post request")
+	require.NoError(t, err, "failed sending ocsp post request")
 
 	require.Equal(t, 200, rawResp.StatusCode)
 	require.Equal(t, ocspResponseContentType, rawResp.Header.Get("Content-Type"))

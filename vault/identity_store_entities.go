@@ -18,9 +18,8 @@ import (
 	"github.com/openbao/openbao/helper/identity/mfa"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func entityPathFields() map[string]*framework.FieldSchema {
@@ -38,7 +37,7 @@ func entityPathFields() map[string]*framework.FieldSchema {
 			Description: `Metadata to be associated with the entity.
 In CLI, this parameter can be repeated multiple times, and it all gets merged together.
 For example:
-vault <command> <path> metadata=key1=value1 metadata=key2=value2
+bao <command> <path> metadata=key1=value1 metadata=key2=value2
 					`,
 		},
 		"policies": {
@@ -977,8 +976,6 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		return aliasClashError, nil, aliasesInvolvedInClashes
 	}
 
-	isPerfSecondaryOrStandby := i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) ||
-		i.localNode.HAState() == consts.PerfStandby
 	var fromEntityGroups []*identity.Group
 
 	toEntityAccessors := make(map[string][]string)
@@ -1084,7 +1081,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 		}
 		for _, group := range groups {
 			group.MemberEntityIDs = strutil.StrListDelete(group.MemberEntityIDs, fromEntity.ID)
-			err = i.UpsertGroupInTxn(ctx, txn, group, persist && !isPerfSecondaryOrStandby)
+			err = i.UpsertGroupInTxn(ctx, txn, group, persist)
 			if err != nil {
 				return nil, err, nil
 			}
@@ -1098,7 +1095,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			return nil, err, nil
 		}
 
-		if persist && !isPerfSecondaryOrStandby {
+		if persist {
 			// Delete the entity which we are merging from in storage
 			err = i.entityPacker.DeleteItem(ctx, fromEntity.ID)
 			if err != nil {
@@ -1115,13 +1112,13 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	for _, group := range fromEntityGroups {
 		group.MemberEntityIDs = append(group.MemberEntityIDs, toEntity.ID)
-		err = i.UpsertGroupInTxn(ctx, txn, group, persist && !isPerfSecondaryOrStandby)
+		err = i.UpsertGroupInTxn(ctx, txn, group, persist)
 		if err != nil {
 			return nil, err, nil
 		}
 	}
 
-	if persist && !isPerfSecondaryOrStandby {
+	if persist {
 		// Persist the entity which we are merging to
 		toEntityAsAny, err := ptypes.MarshalAny(toEntity)
 		if err != nil {

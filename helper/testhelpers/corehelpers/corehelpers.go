@@ -17,13 +17,14 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/go-testing-interface"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/plugins/database/mysql"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var externalPlugins = []string{"transform", "kmip", "keymgmt"}
@@ -87,8 +88,8 @@ func NewMockBuiltinRegistry() *mockBuiltinRegistry {
 				PluginType:        consts.PluginTypeCredential,
 				DeprecationStatus: consts.PendingRemoval,
 			},
-			"aws":    {PluginType: consts.PluginTypeCredential},
-			"consul": {PluginType: consts.PluginTypeSecrets},
+			"cert": {PluginType: consts.PluginTypeCredential},
+			"kv":   {PluginType: consts.PluginTypeSecrets},
 		},
 	}
 }
@@ -121,7 +122,7 @@ func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (fu
 	switch name {
 	case "approle", "pending-removal-test-plugin":
 		return toFunc(approle.Factory), true
-	case "aws":
+	case "cert":
 		return toFunc(func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			b := new(framework.Backend)
 			b.Setup(ctx, config)
@@ -137,7 +138,7 @@ func (m *mockBuiltinRegistry) Get(name string, pluginType consts.PluginType) (fu
 		}), true
 	case "mysql-database-plugin":
 		return mysql.New(mysql.DefaultUserNameTemplate), true
-	case "consul":
+	case "kv":
 		return toFunc(func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			b := new(framework.Backend)
 			b.Setup(ctx, config)
@@ -166,7 +167,6 @@ func (m *mockBuiltinRegistry) Keys(pluginType consts.PluginType) []string {
 			"cassandra-database-plugin",
 			"influxdb-database-plugin",
 			"postgresql-database-plugin",
-			"redis-database-plugin",
 		}
 	case consts.PluginTypeCredential:
 		return []string{
@@ -179,15 +179,6 @@ func (m *mockBuiltinRegistry) Keys(pluginType consts.PluginType) []string {
 	}
 
 	return []string{}
-}
-
-func (r *mockBuiltinRegistry) IsBuiltinEntPlugin(name string, pluginType consts.PluginType) bool {
-	for _, i := range externalPlugins {
-		if i == name {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *mockBuiltinRegistry) Contains(name string, pluginType consts.PluginType) bool {
@@ -388,7 +379,7 @@ func NewTestLogger(t testing.T) *TestLogger {
 	var logPath string
 	output := os.Stderr
 
-	logDir := os.Getenv("VAULT_TEST_LOG_DIR")
+	logDir := api.ReadBaoVariable("BAO_TEST_LOG_DIR")
 	if logDir != "" {
 		logPath = filepath.Join(logDir, t.Name()+".log")
 		// t.Name may include slashes.

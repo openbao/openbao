@@ -15,11 +15,11 @@ import (
 	"github.com/hashicorp/go-version"
 
 	"github.com/openbao/openbao/helper/versions"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (
@@ -127,7 +127,7 @@ func pathConfigurePluginConnection(b *databaseBackend) *framework.Path {
 			"plugin_name": {
 				Type: framework.TypeString,
 				Description: `The name of a builtin or previously registered
-				plugin known to vault. This endpoint will create an instance of
+				plugin known to OpenBao. This endpoint will create an instance of
 				that plugin type.`,
 			},
 
@@ -497,7 +497,7 @@ func (b *databaseBackend) connectionWriteHandler() framework.OperationFunc {
 		// the `password_policy` will not be used
 		if dbw.isV4() && config.PasswordPolicy != "" {
 			resp.AddWarning(fmt.Sprintf("%s does not support password policies - upgrade to the latest version of "+
-				"Vault (or the sdk if using a custom plugin) to gain password policy support", config.PluginName))
+				"OpenBao (or the sdk if using a custom plugin) to gain password policy support", config.PluginName))
 		}
 
 		if len(resp.Warnings) == 0 {
@@ -534,7 +534,7 @@ In addition to the database specific connection details, this endpoint also
 accepts:
 
 	* "plugin_name" (required) - The name of a builtin or previously registered
-	   plugin known to vault. This endpoint will create an instance of that
+	   plugin known to OpenBao. This endpoint will create an instance of that
 	   plugin type.
 
 	* "verify_connection" (default: true) - A boolean value denoting if the plugin should verify

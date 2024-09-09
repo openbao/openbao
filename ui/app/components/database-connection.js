@@ -12,10 +12,11 @@ const LIST_ROOT_ROUTE = 'vault.cluster.secrets.backend.list-root';
 const SHOW_ROUTE = 'vault.cluster.secrets.backend.show';
 
 const getErrorMessage = (errors) => {
-  let errorMessage = errors?.join('. ') || 'Something went wrong. Check the Vault logs for more information.';
+  let errorMessage =
+    errors?.join('. ') || 'Something went wrong. Check the OpenBao logs for more information.';
   if (errorMessage.indexOf('failed to verify') >= 0) {
     errorMessage =
-      'There was a verification error for this connection. Check the Vault logs for more information.';
+      'There was a verification error for this connection. Check the OpenBao logs for more information.';
   }
   return errorMessage;
 };

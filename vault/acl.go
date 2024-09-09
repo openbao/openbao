@@ -16,7 +16,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // ACL is used to wrap a set of policies to provide
@@ -56,7 +56,6 @@ type ACLResults struct {
 	RootPrivs          bool
 	IsRoot             bool
 	MFAMethods         []string
-	ControlGroup       *ControlGroup
 	CapabilitiesBitmap uint32
 	GrantingPolicies   []logical.PolicyInfo
 }
@@ -92,9 +91,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 
 		switch policy.Type {
 		case PolicyTypeACL:
-		case PolicyTypeRGP:
-			a.rgpPolicies = append(a.rgpPolicies, policy)
-			continue
 		default:
 			return nil, fmt.Errorf("unable to parse policy (wrong type)")
 		}
@@ -258,22 +254,6 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 				existingPerms.MFAMethods = strutil.RemoveDuplicates(existingPerms.MFAMethods, false)
 			}
 
-			// No need to dedupe this list since any authorization can satisfy any factor, so long as
-			// the factor matches the specified permission requested.
-			if pc.Permissions.ControlGroup != nil {
-				if len(pc.Permissions.ControlGroup.Factors) > 0 {
-					if existingPerms.ControlGroup == nil {
-						cg, err := pc.Permissions.ControlGroup.Clone()
-						if err != nil {
-							return nil, err
-						}
-						existingPerms.ControlGroup = cg
-					} else {
-						existingPerms.ControlGroup.Factors = append(existingPerms.ControlGroup.Factors, pc.Permissions.ControlGroup.Factors...)
-					}
-				}
-			}
-
 		INSERT:
 			switch {
 			case pc.HasSegmentWildcards:
@@ -425,7 +405,6 @@ CHECK:
 	}
 
 	ret.MFAMethods = permissions.MFAMethods
-	ret.ControlGroup = permissions.ControlGroup
 
 	var grantingPolicies []logical.PolicyInfo
 	operationAllowed := false
@@ -740,7 +719,7 @@ func (c *Core) performPolicyChecks(ctx context.Context, acl *ACL, te *logical.To
 		}
 	}
 
-	c.performEntPolicyChecks(ctx, acl, te, req, inEntity, opts, ret)
+	ret.Allowed = true
 
 	return ret
 }

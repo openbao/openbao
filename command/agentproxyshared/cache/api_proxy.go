@@ -10,24 +10,7 @@ import (
 	"sync"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-retryablehttp"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/http"
-)
-
-type EnforceConsistency int
-
-const (
-	EnforceConsistencyNever EnforceConsistency = iota
-	EnforceConsistencyAlways
-)
-
-type WhenInconsistentAction int
-
-const (
-	WhenInconsistentFail WhenInconsistentAction = iota
-	WhenInconsistentRetry
-	WhenInconsistentForward
+	"github.com/openbao/openbao/api/v2"
 )
 
 // APIProxy is an implementation of the proxier interface that is used to
@@ -35,8 +18,6 @@ const (
 type APIProxy struct {
 	client                  *api.Client
 	logger                  hclog.Logger
-	enforceConsistency      EnforceConsistency
-	whenInconsistentAction  WhenInconsistentAction
 	l                       sync.RWMutex
 	lastIndexStates         []string
 	userAgentString         string
@@ -46,10 +27,8 @@ type APIProxy struct {
 var _ Proxier = &APIProxy{}
 
 type APIProxyConfig struct {
-	Client                 *api.Client
-	Logger                 hclog.Logger
-	EnforceConsistency     EnforceConsistency
-	WhenInconsistentAction WhenInconsistentAction
+	Client *api.Client
+	Logger hclog.Logger
 	// UserAgentString is used as the User Agent when the proxied client
 	// does not have a user agent of its own.
 	UserAgentString string
@@ -65,8 +44,6 @@ func NewAPIProxy(config *APIProxyConfig) (Proxier, error) {
 	return &APIProxy{
 		client:                  config.Client,
 		logger:                  config.Logger,
-		enforceConsistency:      config.EnforceConsistency,
-		whenInconsistentAction:  config.WhenInconsistentAction,
 		userAgentString:         config.UserAgentString,
 		userAgentStringFunction: config.UserAgentStringFunction,
 	}, nil
@@ -111,55 +88,13 @@ func (ap *APIProxy) Send(ctx context.Context, req *SendRequest) (*SendResponse, 
 		fwReq.Params = query
 	}
 
-	var newState string
-	manageState := ap.enforceConsistency == EnforceConsistencyAlways &&
-		req.Request.Header.Get(http.VaultIndexHeaderName) == "" &&
-		req.Request.Header.Get(http.VaultForwardHeaderName) == "" &&
-		req.Request.Header.Get(http.VaultInconsistentHeaderName) == ""
-
-	if manageState {
-		client = client.WithResponseCallbacks(api.RecordState(&newState))
-		ap.l.RLock()
-		lastStates := ap.lastIndexStates
-		ap.l.RUnlock()
-		if len(lastStates) != 0 {
-			client = client.WithRequestCallbacks(api.RequireState(lastStates...))
-			switch ap.whenInconsistentAction {
-			case WhenInconsistentFail:
-				// In this mode we want to delegate handling of inconsistency
-				// failures to the external client talking to Agent.
-				client.SetCheckRetry(retryablehttp.DefaultRetryPolicy)
-			case WhenInconsistentRetry:
-				// In this mode we want to handle retries due to inconsistency
-				// internally.  This is the default api.Client behaviour so
-				// we needn't do anything.
-			case WhenInconsistentForward:
-				fwReq.Headers.Set(http.VaultInconsistentHeaderName, http.VaultInconsistentForward)
-			}
-		}
-	}
-
 	// Make the request to Vault and get the response
-	ap.logger.Info("forwarding request to Vault", "method", req.Request.Method, "path", req.Request.URL.Path)
+	ap.logger.Info("forwarding request to OpenBao", "method", req.Request.Method, "path", req.Request.URL.Path)
 
 	resp, err := client.RawRequestWithContext(ctx, fwReq)
 	if resp == nil && err != nil {
 		// We don't want to cache nil responses, so we simply return the error
 		return nil, err
-	}
-
-	if newState != "" {
-		ap.l.Lock()
-		// We want to be using the "newest" states seen, but newer isn't well
-		// defined here.  There can be two states S1 and S2 which aren't strictly ordered:
-		// S1 could have a newer localindex and S2 could have a newer replicatedindex.  So
-		// we need to merge them.  But we can't merge them because we wouldn't be able to
-		// "sign" the resulting header because we don't have access to the HMAC key that
-		// Vault uses to do so.  So instead we compare any of the 0-2 saved states
-		// we have to the new header, keeping the newest 1-2 of these, and sending
-		// them to Vault to evaluate.
-		ap.lastIndexStates = api.MergeReplicationStates(ap.lastIndexStates, newState)
-		ap.l.Unlock()
 	}
 
 	// Before error checking from the request call, we'd want to initialize a SendResponse to

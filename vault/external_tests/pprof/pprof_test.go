@@ -5,7 +5,7 @@ package pprof
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
 )
@@ -65,7 +65,7 @@ func TestSysPprof_MaxRequestDuration(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	httpRespBody, err := ioutil.ReadAll(resp.Body)
+	httpRespBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

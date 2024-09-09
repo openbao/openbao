@@ -5,7 +5,7 @@ package command
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/hcl/hcl/printer"
@@ -31,7 +31,7 @@ func (c *PolicyFmtCommand) Synopsis() string {
 
 func (c *PolicyFmtCommand) Help() string {
 	helpText := `
-Usage: vault policy fmt [options] PATH
+Usage: bao policy fmt [options] PATH
 
   Formats a local policy file to the policy specification. This command will
   overwrite the file at the given PATH with the properly-formatted policy
@@ -39,7 +39,7 @@ Usage: vault policy fmt [options] PATH
 
   Format the local file "my-policy.hcl" as a policy file:
 
-      $ vault policy fmt my-policy.hcl
+      $ bao policy fmt my-policy.hcl
 
 ` + c.Flags().Help()
 
@@ -85,7 +85,7 @@ func (c *PolicyFmtCommand) Run(args []string) int {
 
 	// Read the entire contents into memory - it would be nice if we could use
 	// a buffer, but hcl wants the full contents.
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error reading source file: %s", err))
 		return 1
@@ -106,7 +106,7 @@ func (c *PolicyFmtCommand) Run(args []string) int {
 	}
 
 	// Write them back out
-	if err := ioutil.WriteFile(path, result, 0o644); err != nil {
+	if err := os.WriteFile(path, result, 0o644); err != nil {
 		c.UI.Error(fmt.Sprintf("Error writing result: %s", err))
 		return 1
 	}

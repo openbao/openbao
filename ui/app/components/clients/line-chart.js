@@ -190,7 +190,7 @@ export default class LineChart extends Component {
       const upgradeInfo = findUpgradeData(data);
       if (upgradeInfo) {
         const { version, previousVersion } = upgradeInfo;
-        this.tooltipUpgradeText = `Vault was upgraded 
+        this.tooltipUpgradeText = `OpenBao was upgraded
         ${previousVersion ? 'from ' + previousVersion : ''} to ${version}`;
       }
 

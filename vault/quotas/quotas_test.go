@@ -11,12 +11,12 @@ import (
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/require"
 )
 
 func TestQuotas_MountPathOverwrite(t *testing.T) {
-	qm, err := NewManager(logging.NewVaultLogger(log.Trace), nil, metricsutil.BlackholeSink(), true)
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
 	quota := NewRateLimitQuota("tq", "", "kv1/", "", "", 10, time.Second, 0)
@@ -43,7 +43,7 @@ func TestQuotas_MountPathOverwrite(t *testing.T) {
 }
 
 func TestQuotas_Precedence(t *testing.T) {
-	qm, err := NewManager(logging.NewVaultLogger(log.Trace), nil, metricsutil.BlackholeSink(), true)
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
 	setQuotaFunc := func(t *testing.T, name, nsPath, mountPath, pathSuffix, role string) Quota {
@@ -121,10 +121,7 @@ func TestQuotas_Precedence(t *testing.T) {
 // TestQuotas_QueryRoleQuotas checks to see if quota creation on a mount
 // requires a call to ResolveRoleOperation.
 func TestQuotas_QueryResolveRole_RateLimitQuotas(t *testing.T) {
-	leaseWalkFunc := func(context.Context, func(request *Request) bool) error {
-		return nil
-	}
-	qm, err := NewManager(logging.NewVaultLogger(log.Trace), leaseWalkFunc, metricsutil.BlackholeSink(), true)
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
 	rlqReq := &Request{

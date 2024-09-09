@@ -6,8 +6,8 @@ package pki
 import (
 	"net/http"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathIssuerSignIntermediate(b *backend) *framework.Path {
@@ -83,6 +83,7 @@ func buildPathIssuerSignIntermediateRaw(b *backend, pattern string, displayAttrs
 	}
 
 	path.Fields = addCACommonFields(path.Fields)
+	path.Fields = addKeyUsageRoleFields(path.Fields)
 	path.Fields = addCAIssueFields(path.Fields)
 
 	path.Fields["csr"] = &framework.FieldSchema{
@@ -130,7 +131,7 @@ which use SKID/AKID matches in chain building to restrict possible
 valid chains.
 
 Specified as a string in hex format. Default is empty, allowing
-Vault to automatically calculate the SKID according to method one
+OpenBao to automatically calculate the SKID according to method one
 in the above RFC section.`,
 		DisplayAttrs: &framework.DisplayAttributes{
 			Value: "",
@@ -155,7 +156,7 @@ constraint for IsCA=True. This allows the issued certificate to issue its own
 leaf certificates.
 
 Note that the resulting certificate is not imported as an issuer in this PKI
-mount. This means that you can use the resulting certificate in another Vault
+mount. This means that you can use the resulting certificate in another OpenBao
 PKI mount point or to issue an external intermediate (e.g., for use with
 another X.509 CA).
 

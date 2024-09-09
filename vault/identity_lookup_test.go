@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestIdentityStore_Lookup_Entity(t *testing.T) {
@@ -15,7 +15,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	entityReq := &logical.Request{
 		Path:      "entity",
@@ -181,7 +181,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
 		Path:      "group",

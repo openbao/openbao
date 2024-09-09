@@ -101,7 +101,7 @@ export default class PkiTidyModel extends Model {
   @attr('boolean', {
     label: 'Tidy legacy CA bundle',
     subText:
-      'Backup any legacy CA/issuers bundle (from Vault versions earlier than 1.11) to config/ca_bundle.bak. Migration will only occur after issuer safety buffer has passed.',
+      'Backup any legacy CA/issuers bundle (from Vault versions earlier than 1.11, before the OpenBao fork) to config/ca_bundle.bak. Migration will only occur after issuer safety buffer has passed.',
   })
   tidyMoveLegacyCaBundle;
 

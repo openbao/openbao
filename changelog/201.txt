@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Add support for basicConstraints x509 extension when issuing certificates with sign-verbatim.
+```

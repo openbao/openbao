@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestTransit_BYOKExportImport(t *testing.T) {
@@ -15,6 +15,7 @@ func TestTransit_BYOKExportImport(t *testing.T) {
 	testBYOKExportImport(t, "aes128-gcm96", "encrypt-decrypt")
 	testBYOKExportImport(t, "aes256-gcm96", "encrypt-decrypt")
 	testBYOKExportImport(t, "chacha20-poly1305", "encrypt-decrypt")
+	testBYOKExportImport(t, "xchacha20-poly1305", "encrypt-decrypt")
 	testBYOKExportImport(t, "rsa-2048", "encrypt-decrypt")
 	testBYOKExportImport(t, "rsa-3072", "encrypt-decrypt")
 	testBYOKExportImport(t, "rsa-4096", "encrypt-decrypt")

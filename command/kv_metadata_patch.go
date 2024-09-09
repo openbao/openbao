@@ -38,40 +38,40 @@ func (c *KVMetadataPatchCommand) Synopsis() string {
 
 func (c *KVMetadataPatchCommand) Help() string {
 	helpText := `
-Usage: vault kv metadata patch [options] KEY
+Usage: bao kv metadata patch [options] KEY
 
   This command can be used to create a blank key in the key-value store or to
   update key configuration for a specified key.
 
   Create a key in the key-value store with no data:
 
-      $ vault kv metadata patch -mount=secret foo
+      $ bao kv metadata patch -mount=secret foo
 
   The deprecated path-like syntax can also be used, but this should be avoided 
   for KV v2, as the fact that it is not actually the full API path to 
   the secret (secret/metadata/foo) can cause confusion: 
   
-      $ vault kv metadata patch secret/foo
+      $ bao kv metadata patch secret/foo
 
   Set a max versions setting on the key:
 
-      $ vault kv metadata patch -mount=secret -max-versions=5 foo
+      $ bao kv metadata patch -mount=secret -max-versions=5 foo
 
   Set delete-version-after on the key:
 
-      $ vault kv metadata patch -mount=secret -delete-version-after=3h25m19s foo
+      $ bao kv metadata patch -mount=secret -delete-version-after=3h25m19s foo
 
   Require Check-and-Set for this key:
 
-      $ vault kv metadata patch -mount=secret -cas-required foo
+      $ bao kv metadata patch -mount=secret -cas-required foo
 
   Set custom metadata on the key:
 
-      $ vault kv metadata patch -mount=secret -custom-metadata=foo=abc -custom-metadata=bar=123 foo
+      $ bao kv metadata patch -mount=secret -custom-metadata=foo=abc -custom-metadata=bar=123 foo
 
   To remove custom meta data from the corresponding path in the key-value store, kv metadata patch can be used.
 
-      $ vault kv metadata patch -mount=secret -remove-custom-metadata=bar foo
+      $ bao kv metadata patch -mount=secret -remove-custom-metadata=bar foo
 
   Additional flags and more advanced use cases are detailed below.
 

@@ -1,13 +1,8 @@
 ---
-layout: docs
-page_title: Response Wrapping
 description: Wrapping responses in cubbyholes for secure distribution.
 ---
 
 # Response wrapping
-
-_Note_: Some of this information relies on features of response-wrapping tokens
-introduced in Vault 0.8 and may not be available in earlier releases.
 
 ## Overview
 
@@ -25,7 +20,7 @@ in persistent storage, you cannot encrypt this key in transit.
 To help address this problem, OpenBao includes a feature called _response
 wrapping_. When requested, OpenBao can take the response it would have sent to an
 HTTP client and instead insert it into the
-[`cubbyhole`](/vault/docs/secrets/cubbyhole) of a single-use token,
+[`cubbyhole`](/docs/secrets/cubbyhole) of a single-use token,
 returning that single-use token instead.
 
 Logically speaking, the response is
@@ -64,7 +59,7 @@ response-wrapping token:
 - Creation Time: The time that the response-wrapping token was created
 - Creation Path: The API path that was called in the original request
 - Wrapped Accessor: If the wrapped response is an authentication response
-  containing a OpenBao token, this is the value of the wrapped token's accessor.
+  containing an OpenBao token, this is the value of the wrapped token's accessor.
   This is useful for orchestration systems (such as Nomad) to be able to control
   the lifetime of secrets based on their knowledge of the lifetime of jobs,
   without having to actually unwrap the response-wrapping token or gain
@@ -119,7 +114,7 @@ client using the `X-Vault-Wrap-TTL` header and can be either an integer number
 of seconds or a string duration of seconds (`15s`), minutes (`20m`), or hours
 (`25h`). When using the OpenBao CLI, you can set this via the `-wrap-ttl`
 parameter. When using the Go API, wrapping is triggered by [setting a helper
-function](https://godoc.org/github.com/lf-edge/openbao/api#Client.SetWrappingLookupFunc)
+function](https://godoc.org/github.com/openbao/openbao/api#Client.SetWrappingLookupFunc)
 that tells the API the conditions under which to request wrapping, by mapping
 an operation and path to a desired TTL.
 
@@ -134,7 +129,7 @@ If a client requests wrapping:
 5. The new response is returned to the caller
 
 Note that policies can control minimum/maximum wrapping TTLs; see the [policies
-concepts page](/vault/docs/concepts/policies) for
+concepts page](/docs/concepts/policies) for
 more information.
 
 ## Response-Wrapping token validation

@@ -11,9 +11,9 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

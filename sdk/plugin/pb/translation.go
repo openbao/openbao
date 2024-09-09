@@ -12,9 +12,9 @@ import (
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -325,6 +325,7 @@ func LogicalConnectionToProtoConnection(c *logical.Connection) *Connection {
 
 	return &Connection{
 		RemoteAddr:      c.RemoteAddr,
+		RemotePort:      int32(c.RemotePort),
 		ConnectionState: TLSConnectionStateToProtoConnectionState(c.ConnState),
 	}
 }
@@ -341,6 +342,7 @@ func ProtoConnectionToLogicalConnection(c *Connection) (*logical.Connection, err
 
 	return &logical.Connection{
 		RemoteAddr: c.RemoteAddr,
+		RemotePort: int(c.RemotePort),
 		ConnState:  cs,
 	}, nil
 }

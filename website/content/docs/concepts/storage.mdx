@@ -1,26 +1,28 @@
 ---
-layout: docs
-page_title: Storage
-sidebar_title: Storage
+sidebar_label: Storage
 description: >-
   OpenBao relies on external storage to save its durable information.
 ---
 
 # Storage
 
-As described on our [Architecture](/vault/docs/internals/architecture) page, OpenBao's
+As described on our [Architecture](/docs/internals/architecture) page, OpenBao's
 storage backend is untrusted storage used purely to keep encrypted information.
 
 ## Supported storage backends
 
 Many other options for storage are available for OpenBao - see our
-[Storage Configuration](/vault/docs/configuration/storage) section for more
+[Storage Configuration](/docs/configuration/storage) section for more
 information.
 
--> **Choosing a storage backend:** Refer to the [integrated storage vs. external
-storage](/vault/docs/configuration/storage#integrated-storage-vs-external-storage)
+:::info
+
+**Choosing a storage backend:** Refer to the [integrated storage vs. external
+storage](/docs/configuration/storage#integrated-storage-vs-external-storage)
 section of the storage configuration page to help make a decision about which
 storage backend to use.
+
+:::
 
 ## Backups
 
@@ -60,10 +62,10 @@ study](https://www.hashicorp.com/resources/oh-no-i-deleted-my-vault-secret).
 We do not recommend backups as protection against the failure of an individual
 machine. OpenBao servers can run in clusters, so to protect against server
 failure, we recommend running OpenBao in [HA
-mode](/vault/docs/internals/high-availability). An  OpenBao cluster can extend
+mode](/docs/internals/high-availability). An  OpenBao cluster can extend
 across multiple availability zones within a region.
 
-When using OpenBao in [HA Mode](/vault/docs/internals/high-availability), a
+When using OpenBao in [HA Mode](/docs/internals/high-availability), a
 backup can help guard against the failure of a data center.
 
 Ultimately, backups are not a replacement for running in HA. As you develop a
@@ -74,20 +76,22 @@ backups and HA as critical components of that plan.
 
 Backups and restores are ideally performed while OpenBao is offline. If offline
 backups are not feasible, we recommend using a storage backend that supports
-atomic snapshots (such as
-[Consul](/consul/commands/snapshot) or [Integrated
-Storage](/vault/docs/commands/operator/raft#snapshot)).
+atomic snapshots (such as [Integrated
+Storage](/docs/commands/operator/raft#snapshot)).
 
-~> If your storage backend does not support atomic snapshots, we recommend only
+:::warning
+
+If your storage backend does not support atomic snapshots, we recommend only
 taking offline backups.
 
-To perform a backup or restore of OpenBao's encrypted data when using a
-HashiCorp-supported storage backend, see the instructions linked below. For
+:::
+
+To perform a backup or restore of OpenBao's encrypted data when using an
+officially supported storage backend, see the instructions linked below. For
 other storage backends, follow the documentation of that backend for taking and
 restoring backups.
 
-- Integrated Storage [snapshots](/vault/docs/commands/operator/raft#snapshot)
-- Consul [snapshots](/consul/commands/snapshot)
+- Integrated Storage [snapshots](/docs/commands/operator/raft#snapshot)
 
 ### Configuration
 
@@ -96,8 +100,8 @@ may also wish to save the server configuration files, any scripts for managing
 the OpenBao service, and ensure you can reinstall any user-installed plugins. The
 location of these files will be specific to your installation of OpenBao.
 
-~> **NOTE**: Although a backup or snapshot of OpenBao's data from the storage
-backend is encrypted, some of your configuration may be sensitive (a OpenBao token
+**NOTE**: Although a backup or snapshot of OpenBao's data from the storage
+backend is encrypted, some of your configuration may be sensitive (an OpenBao token
 for Transit Autounseal or a TLS private key in your configuration, for example).
 The presence of this information in your backups will mean that they may need
 to be carefully protected.

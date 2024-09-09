@@ -8,7 +8,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // BarrierView wraps a SecurityBarrier and ensures all access is automatically
@@ -19,7 +19,7 @@ import (
 // BarrierView implements logical.Storage so it can be passed in as the
 // durable storage mechanism for logical views.
 type BarrierView struct {
-	storage         *logical.StorageView
+	storage         logical.StorageView
 	readOnlyErr     error
 	readOnlyErrLock sync.RWMutex
 	iCheck          interface{}
@@ -57,6 +57,10 @@ func (v *BarrierView) List(ctx context.Context, prefix string) ([]string, error)
 	return v.storage.List(ctx, prefix)
 }
 
+func (v *BarrierView) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return v.storage.ListPage(ctx, prefix, after, limit)
+}
+
 func (v *BarrierView) Get(ctx context.Context, key string) (*logical.StorageEntry, error) {
 	return v.storage.Get(ctx, key)
 }
@@ -67,13 +71,9 @@ func (v *BarrierView) Put(ctx context.Context, entry *logical.StorageEntry) erro
 		return errors.New("cannot write nil entry")
 	}
 
-	expandedKey := v.storage.ExpandKey(entry.Key)
-
 	roErr := v.getReadOnlyErr()
 	if roErr != nil {
-		if runICheck(v, expandedKey, roErr) {
-			return roErr
-		}
+		return roErr
 	}
 
 	return v.storage.Put(ctx, entry)
@@ -81,13 +81,9 @@ func (v *BarrierView) Put(ctx context.Context, entry *logical.StorageEntry) erro
 
 // logical.Storage impl.
 func (v *BarrierView) Delete(ctx context.Context, key string) error {
-	expandedKey := v.storage.ExpandKey(key)
-
 	roErr := v.getReadOnlyErr()
 	if roErr != nil {
-		if runICheck(v, expandedKey, roErr) {
-			return roErr
-		}
+		return roErr
 	}
 
 	return v.storage.Delete(ctx, key)

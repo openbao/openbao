@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -28,7 +28,7 @@ func (c *OperatorRaftAutopilotGetConfigCommand) Synopsis() string {
 
 func (c *OperatorRaftAutopilotGetConfigCommand) Help() string {
 	helpText := `
-Usage: vault operator raft autopilot get-config
+Usage: bao operator raft autopilot get-config
 
  Returns the configuration of the autopilot subsystem under integrated storage.
 ` + c.Flags().Help()
@@ -106,7 +106,6 @@ func (c *OperatorRaftAutopilotGetConfigCommand) Run(args []string) int {
 	entries = append(entries, fmt.Sprintf("%s | %s", "Server Stabilization Time", config.ServerStabilizationTime.String()))
 	entries = append(entries, fmt.Sprintf("%s | %d", "Min Quorum", config.MinQuorum))
 	entries = append(entries, fmt.Sprintf("%s | %d", "Max Trailing Logs", config.MaxTrailingLogs))
-	entries = append(entries, fmt.Sprintf("%s | %t", "Disable Upgrade Migration", config.DisableUpgradeMigration))
 
 	return OutputData(c.UI, entries)
 }

@@ -13,18 +13,18 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 
@@ -126,7 +126,6 @@ func testVaultServerAllBackends(tb testing.TB) (*api.Client, func()) {
 	tb.Helper()
 
 	client, _, closer := testVaultServerCoreConfig(tb, &vault.CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             defaultVaultLogger,
 		CredentialBackends: credentialBackends,
@@ -163,7 +162,6 @@ func testVaultServerUnsealWithKVVersionWithSeal(tb testing.TB, kvVersion string,
 	})
 
 	return testVaultServerCoreConfigWithOpts(tb, &vault.CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             logger,
 		CredentialBackends: defaultVaultCredentialBackends,
@@ -185,7 +183,6 @@ func testVaultServerPluginDir(tb testing.TB, pluginDir string) (*api.Client, []s
 	tb.Helper()
 
 	return testVaultServerCoreConfig(tb, &vault.CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             defaultVaultLogger,
 		CredentialBackends: defaultVaultCredentialBackends,
@@ -250,7 +247,6 @@ func testVaultServerUninit(tb testing.TB) (*api.Client, func()) {
 	}
 
 	core, err := vault.NewCore(&vault.CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             defaultVaultLogger,
 		Physical:           inm,

@@ -5,84 +5,16 @@
 
 import { helper as buildHelper } from '@ember/component/helper';
 
-const ENTERPRISE_SECRET_ENGINES = [
-  {
-    displayName: 'KMIP',
-    type: 'kmip',
-    engineRoute: 'kmip.scopes',
-    category: 'generic',
-    requiredFeature: 'KMIP',
-  },
-  {
-    displayName: 'Transform',
-    type: 'transform',
-    category: 'generic',
-    requiredFeature: 'Transform Secrets Engine',
-  },
-  {
-    displayName: 'Key Management',
-    type: 'keymgmt',
-    glyph: 'key',
-    category: 'cloud',
-    requiredFeature: 'Key Management Secrets Engine',
-    routeQueryParams: { tab: 'provider' },
-  },
-];
-
 const MOUNTABLE_SECRET_ENGINES = [
-  {
-    displayName: 'Active Directory',
-    type: 'ad',
-    category: 'cloud',
-  },
-  {
-    displayName: 'AliCloud',
-    type: 'alicloud',
-    category: 'cloud',
-  },
-  {
-    displayName: 'AWS',
-    type: 'aws',
-    category: 'cloud',
-    glyph: 'aws-color',
-  },
-  {
-    displayName: 'Azure',
-    type: 'azure',
-    category: 'cloud',
-    glyph: 'azure-color',
-  },
-  {
-    displayName: 'Consul',
-    type: 'consul',
-    category: 'infra',
-  },
   {
     displayName: 'Databases',
     type: 'database',
     category: 'infra',
   },
   {
-    displayName: 'Google Cloud',
-    type: 'gcp',
-    category: 'cloud',
-    glyph: 'gcp-color',
-  },
-  {
-    displayName: 'Google Cloud KMS',
-    type: 'gcpkms',
-    category: 'cloud',
-    glyph: 'gcp-color',
-  },
-  {
     displayName: 'KV',
     type: 'kv',
     category: 'generic',
-  },
-  {
-    displayName: 'Nomad',
-    type: 'nomad',
-    category: 'infra',
   },
   {
     displayName: 'PKI Certificates',
@@ -125,7 +57,7 @@ export function mountableEngines() {
 }
 
 export function allEngines() {
-  return [...MOUNTABLE_SECRET_ENGINES, ...ENTERPRISE_SECRET_ENGINES];
+  return [...MOUNTABLE_SECRET_ENGINES];
 }
 
 export default buildHelper(mountableEngines);

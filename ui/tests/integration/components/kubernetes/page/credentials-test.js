@@ -71,7 +71,7 @@ module('Integration | Component | kubernetes | Page::Credentials', function (hoo
     assert
       .dom('[data-test-toggle-label] .description')
       .hasText(
-        'Generate a ClusterRoleBinding to grant permissions across the whole cluster instead of within a namespace. This requires the Vault role to have kubernetes_role_type set to ClusterRole.'
+        'Generate a ClusterRoleBinding to grant permissions across the whole cluster instead of within a namespace. This requires the OpenBao role to have kubernetes_role_type set to ClusterRole.'
       );
   });
 

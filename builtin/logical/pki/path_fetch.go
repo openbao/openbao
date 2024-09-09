@@ -11,11 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/helper/constants"
-
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var pathFetchReadSchema = map[int][]framework.Response{
@@ -117,27 +115,6 @@ func pathFetchCRL(b *backend) *framework.Path {
 	}
 }
 
-// Returns the CRL in raw format
-func pathFetchUnifiedCRL(b *backend) *framework.Path {
-	return &framework.Path{
-		Pattern: `unified-crl(/pem|/delta(/pem)?)?`,
-
-		DisplayAttrs: &framework.DisplayAttributes{
-			OperationPrefix: operationPrefixPKI,
-			OperationSuffix: "unified-crl-der|unified-crl-pem|unified-crl-delta|unified-crl-delta-pem",
-		},
-
-		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathFetchRead,
-			},
-		},
-
-		HelpSynopsis:    pathFetchHelpSyn,
-		HelpDescription: pathFetchHelpDesc,
-	}
-}
-
 // Returns any valid (non-revoked) cert in raw format.
 func pathFetchValidRaw(b *backend) *framework.Path {
 	return &framework.Path{
@@ -202,16 +179,13 @@ hyphen-separated octal`,
 // This returns the CRL in a non-raw format
 func pathFetchCRLViaCertPath(b *backend) *framework.Path {
 	pattern := `cert/(crl|delta-crl)`
-	if constants.IsEnterprise {
-		pattern = `cert/(crl|delta-crl|unified-crl|unified-delta-crl)`
-	}
 
 	return &framework.Path{
 		Pattern: pattern,
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
-			OperationSuffix: "cert-crl|cert-delta-crl|cert-unified-crl|cert-unified-delta-crl",
+			OperationSuffix: "cert-crl|cert-delta-crl",
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -234,6 +208,17 @@ func pathFetchListCerts(b *backend) *framework.Path {
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
 			OperationSuffix: "certs",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -259,8 +244,14 @@ func pathFetchListCerts(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathFetchCertList(ctx context.Context, req *logical.Request, _ *framework.FieldData) (response *logical.Response, retErr error) {
-	entries, err := req.Storage.List(ctx, "certs/")
+func (b *backend) pathFetchCertList(ctx context.Context, req *logical.Request, data *framework.FieldData) (response *logical.Response, retErr error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "certs/", after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -317,28 +308,15 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 		if req.Path == "ca_chain" {
 			contentType = "application/pkix-cert"
 		}
-	case req.Path == "crl" || req.Path == "crl/pem" || req.Path == "crl/delta" || req.Path == "crl/delta/pem" || req.Path == "cert/crl" || req.Path == "cert/crl/raw" || req.Path == "cert/crl/raw/pem" || req.Path == "cert/delta-crl" || req.Path == "cert/delta-crl/raw" || req.Path == "cert/delta-crl/raw/pem" || req.Path == "unified-crl" || req.Path == "unified-crl/pem" || req.Path == "unified-crl/delta" || req.Path == "unified-crl/delta/pem" || req.Path == "cert/unified-crl" || req.Path == "cert/unified-crl/raw" || req.Path == "cert/unified-crl/raw/pem" || req.Path == "cert/unified-delta-crl" || req.Path == "cert/unified-delta-crl/raw" || req.Path == "cert/unified-delta-crl/raw/pem":
-		config, err := b.crlBuilder.getConfigWithUpdate(sc)
-		if err != nil {
-			retErr = err
-			goto reply
-		}
+	case req.Path == "crl" || req.Path == "crl/pem" || req.Path == "crl/delta" || req.Path == "crl/delta/pem" || req.Path == "cert/crl" || req.Path == "cert/crl/raw" || req.Path == "cert/crl/raw/pem" || req.Path == "cert/delta-crl" || req.Path == "cert/delta-crl/raw" || req.Path == "cert/delta-crl/raw/pem":
 		var isDelta bool
-		var isUnified bool
 		if strings.Contains(req.Path, "delta") {
 			isDelta = true
 		}
-		if strings.Contains(req.Path, "unified") || shouldLocalPathsUseUnified(config) {
-			isUnified = true
-		}
 
 		modifiedCtx.reqType = ifModifiedCRL
-		if !isUnified && isDelta {
+		if isDelta {
 			modifiedCtx.reqType = ifModifiedDeltaCRL
-		} else if isUnified && !isDelta {
-			modifiedCtx.reqType = ifModifiedUnifiedCRL
-		} else if isUnified && isDelta {
-			modifiedCtx.reqType = ifModifiedUnifiedDeltaCRL
 		}
 
 		ret, err := sendNotModifiedResponseIfNecessary(modifiedCtx, sc, response)
@@ -348,19 +326,15 @@ func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data 
 		}
 
 		serial = legacyCRLPath
-		if !isUnified && isDelta {
+		if isDelta {
 			serial = deltaCRLPath
-		} else if isUnified && !isDelta {
-			serial = unifiedCRLPath
-		} else if isUnified && isDelta {
-			serial = unifiedDeltaCRLPath
 		}
 
 		contentType = "application/pkix-crl"
 		if strings.Contains(req.Path, "pem") {
 			pemType = "X509 CRL"
 			contentType = "application/x-pem-file"
-		} else if req.Path == "cert/crl" || req.Path == "cert/delta-crl" || req.Path == "cert/unified-crl" || req.Path == "cert/unified-delta-crl" {
+		} else if req.Path == "cert/crl" || req.Path == "cert/delta-crl" {
 			pemType = "X509 CRL"
 			contentType = ""
 		}

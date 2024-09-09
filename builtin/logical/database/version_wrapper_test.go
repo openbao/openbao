@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/logical"
+	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -783,6 +783,10 @@ func (f fakeStorage) Put(ctx context.Context, entry *logical.StorageEntry) error
 
 func (f fakeStorage) List(ctx context.Context, s string) ([]string, error) {
 	panic("list not implemented")
+}
+
+func (f fakeStorage) ListPage(ctx context.Context, s string, a string, l int) ([]string, error) {
+	panic("list page not implemented")
 }
 
 func (f fakeStorage) Get(ctx context.Context, s string) (*logical.StorageEntry, error) {

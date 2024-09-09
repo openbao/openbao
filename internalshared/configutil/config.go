@@ -13,22 +13,25 @@ import (
 	"github.com/hashicorp/hcl/hcl/token"
 )
 
+const mlockMsg = "OpenBao has dropped support for mlock. Please remove\n" +
+	"the line \"disable_mlock\" = false from your config and disable\n" +
+	"or encrypt swap instead. For more information, see:\n" +
+	"https://openbao.org/docs/install/#post-installation-hardening"
+
 // SharedConfig contains some shared values
 type SharedConfig struct {
 	FoundKeys  []string     `hcl:",decodedFields"`
 	UnusedKeys UnusedKeyMap `hcl:",unusedKeyPositions"`
 	Sections   map[string][]token.Pos
 
-	EntSharedConfig
-
 	Listeners []*Listener `hcl:"-"`
 
 	UserLockouts []*UserLockout `hcl:"-"`
 
-	Seals   []*KMS   `hcl:"-"`
-	Entropy *Entropy `hcl:"-"`
+	Seals []*KMS `hcl:"-"`
 
-	DisableMlock    bool        `hcl:"-"`
+	// mlock is no longer used by OpenBao, but this is kept as a config option for
+	// compatibility's sake and to give a warning for those expecting it.
 	DisableMlockRaw interface{} `hcl:"disable_mlock"`
 
 	Telemetry *Telemetry `hcl:"telemetry"`
@@ -78,10 +81,12 @@ func ParseConfig(d string) (*SharedConfig, error) {
 	}
 
 	if result.DisableMlockRaw != nil {
-		if result.DisableMlock, err = parseutil.ParseBool(result.DisableMlockRaw); err != nil {
-			return nil, err
+		isDisabled, err := parseutil.ParseBool(result.DisableMlockRaw)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing 'disable_mlock': %w", err)
+		} else if !isDisabled {
+			return nil, fmt.Errorf(mlockMsg)
 		}
-		result.FoundKeys = append(result.FoundKeys, "DisableMlock")
 		result.DisableMlockRaw = nil
 	}
 
@@ -111,13 +116,6 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		}
 	}
 
-	if o := list.Filter("entropy"); len(o.Items) > 0 {
-		result.found("entropy", "Entropy")
-		if err := ParseEntropy(&result, o, "entropy"); err != nil {
-			return nil, fmt.Errorf("error parsing 'entropy': %w", err)
-		}
-	}
-
 	if o := list.Filter("listener"); len(o.Items) > 0 {
 		result.found("listener", "Listener")
 		if err := ParseListeners(&result, o); err != nil {
@@ -139,11 +137,6 @@ func ParseConfig(d string) (*SharedConfig, error) {
 		}
 	}
 
-	entConfig := &(result.EntSharedConfig)
-	if err := entConfig.ParseConfig(list); err != nil {
-		return nil, fmt.Errorf("error parsing enterprise config: %w", err)
-	}
-
 	return &result, nil
 }
 
@@ -161,7 +154,6 @@ func (c *SharedConfig) Sanitized() map[string]interface{} {
 
 	result := map[string]interface{}{
 		"default_max_request_duration":  c.DefaultMaxRequestDuration,
-		"disable_mlock":                 c.DisableMlock,
 		"log_level":                     c.LogLevel,
 		"log_format":                    c.LogFormat,
 		"pid_file":                      c.PidFile,

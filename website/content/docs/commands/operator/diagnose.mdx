@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: operator diagnose - Command
+sidebar_label: diagnose
 description: |-
   "bao operator diagnose" is a new operator-centric command, focused on providing a clear description 
   of what is working in OpenBao, and what is not working. The command focuses on why OpenBao cannot serve requests,
@@ -23,13 +22,13 @@ messages or warnings.
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 #### Output layout
 
@@ -95,17 +94,6 @@ Currently, the `storage` stanza is not checked.
 `Create Storage Backend` ensures that the storage stanza configured in the OpenBao server config
 has enough information to create a storage object internally. Common errors will have to do
 with misconfigured fields in the storage stanza. 
-
-#### Check storage / check consul TLS
-
-`Check Consul TLS` verifies TLS information included in the storage stanza if the storage type 
-is consul. If a certificate chain is provided, Diagnose parses the root, intermediate, and leaf
-certificates, and checks each one for correctness. 
-
-#### Check storage / check consul direct storage access
-
-`Check Consul Direct Storage Access` is a consul-specific check that ensures OpenBao is not accessing
-the consul server directly, but rather through a local agent. 
 
 #### Check storage / check raft folder permissions
 

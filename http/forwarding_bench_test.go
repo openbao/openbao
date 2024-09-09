@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
@@ -16,9 +15,9 @@ import (
 	"github.com/openbao/openbao/builtin/logical/transit"
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/forwarding"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
 )
@@ -34,7 +33,7 @@ func BenchmarkHTTP_Forwarding_Stress(b *testing.B) {
 
 	cluster := vault.NewTestCluster(benchhelpers.TBtoT(b), coreConfig, &vault.TestClusterOptions{
 		HandlerFunc: Handler,
-		Logger:      logging.NewVaultLoggerWithWriter(ioutil.Discard, log.Error),
+		Logger:      logging.NewVaultLoggerWithWriter(io.Discard, log.Error),
 	})
 	cluster.Start()
 	defer cluster.Cleanup()

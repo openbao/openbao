@@ -1,15 +1,22 @@
 ---
-layout: docs
-page_title: Kerberos - Auth Methods
+sidebar_label: Kerberos
 description: The Kerberos auth method allows automated authentication of Kerberos entities.
 ---
 
 # Kerberos auth method
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 The `kerberos` auth method provides an automated mechanism to retrieve
-a OpenBao token for Kerberos entities.
+an OpenBao token for Kerberos entities.
 
 [Kerberos](https://web.mit.edu/kerberos/) is a network authentication
 protocol invented by MIT in the 1980s. Its name is inspired by Cerberus,
@@ -27,8 +34,7 @@ it into HashiCorp's maintenance.
 ## Prerequisites
 
 Kerberos is a very hands-on auth method. Other auth methods like
-[LDAP](/vault/docs/auth/ldap) and
-[Azure](/vault/docs/auth/azure) only require
+[LDAP](/docs/auth/ldap) only require
 a cursory amount of knowledge for configuration and use.
 Kerberos, on the other hand, is best used by people already familiar
 with it. We recommend that you use simpler authentication methods if
@@ -114,14 +120,14 @@ $ bao write auth/kerberos/config/ldap \
 ```
 
 The LDAP above relies upon the same code as the LDAP auth method.
-See [its documentation](/vault/docs/auth/ldap)
+See [its documentation](/docs/auth/ldap)
 for further discussion of available parameters.
 
 - Configure the OpenBao policies that should be granted to those
   who successfully authenticate based on their LDAP group membership.
   Since this is identical to the LDAP auth method, see
-  [Group Membership Resolution](/vault/docs/auth/ldap#group-membership-resolution)
-  and [LDAP Group -> Policy Mapping](/vault/docs/auth/ldap#ldap-group-policy-mapping)
+  [Group Membership Resolution](/docs/auth/ldap#group-membership-resolution)
+  and [LDAP Group -> Policy Mapping](/docs/auth/ldap#ldap-group-policy-mapping)
   for further discussion.
 
 ```shell-session
@@ -203,15 +209,8 @@ Then make sure you're ready to share the error output of that command, the
 contents of the `krb5.conf` file, and [the entries listed](https://docs.oracle.com/cd/E19683-01/806-4078/6jd6cjs1q/index.html)
 in the `keytab` file.
 
-After you've stripped the issue down to its simplest form, if you still
-encounter difficulty resolving it, it will be much easier to gain assistance
-by posting your reproduction to the [Vault Forum](https://discuss.hashicorp.com/c/vault)
-or by providing it to [HashiCorp Support](https://www.hashicorp.com/support)
-(if applicable.)
-
 ### Additional troubleshooting resources
 
-- [Troubleshooting OpenBao](/vault/tutorials/monitoring/troubleshooting-vault)
 - [The plugin's code](https://github.com/hashicorp/vault-plugin-auth-kerberos)
 
 The OpenBao Kerberos library has a working integration test environment that
@@ -231,5 +230,5 @@ client.
 ## API
 
 The Kerberos auth method has a full HTTP API. Please see the
-[Kerberos auth method API](/vault/api-docs/auth/kerberos) for more
+[Kerberos auth method API](/api-docs/auth/kerberos) for more
 details.

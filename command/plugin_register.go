@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -32,7 +32,7 @@ func (c *PluginRegisterCommand) Synopsis() string {
 
 func (c *PluginRegisterCommand) Help() string {
 	helpText := `
-Usage: vault plugin register [options] TYPE NAME
+Usage: bao plugin register [options] TYPE NAME
 
   Registers a new plugin in the catalog. The plugin binary must exist in Vault's
   configured plugin directory. The argument of type takes "auth", "database",
@@ -40,11 +40,11 @@ Usage: vault plugin register [options] TYPE NAME
 
   Register the plugin named my-custom-plugin:
 
-      $ vault plugin register -sha256=d3f0a8b... -version=v1.0.0 auth my-custom-plugin
+      $ bao plugin register -sha256=d3f0a8b... -version=v1.0.0 auth my-custom-plugin
 
   Register a plugin with custom arguments:
 
-      $ vault plugin register \
+      $ bao plugin register \
           -sha256=d3f0a8b... \
           -version=v1.0.0 \
           -args=--with-glibc,--with-cgo \

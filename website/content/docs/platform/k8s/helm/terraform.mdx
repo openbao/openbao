@@ -1,29 +1,29 @@
 ---
-layout: 'docs'
-page_title: 'Configure Vault Helm using Terraform'
-sidebar_current: 'docs-platform-k8s-terraform'
+sidebar_label: OpenTofu
 description: |-
-  Describes how to configure the Vault Helm chart using Terraform
+  Describes how to configure the OpenBao Helm chart using OpenTofu
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-# Configuring Vault helm with terraform
+# Configuring OpenBao HELM with OpenTofu
 
-Terraform may also be used to configure and deploy the Vault Helm chart, by using the [Helm provider](https://registry.terraform.io/providers/hashicorp/helm/latest/docs).
+OpenTofu may also be used to configure and deploy the OpenBao Helm chart, by using the [Helm provider](https://github.com/hashicorp/terraform-provider-helm).
 
-For example, to configure the chart to deploy [HA Vault with integrated storage (raft)](/vault/docs/platform/k8s/helm/examples/ha-with-raft), the values overrides can be set on the command-line, in a values yaml file, or with a Terraform configuration:
+For example, to configure the chart to deploy [HA OpenBao with integrated storage (raft)](/docs/platform/k8s/helm/examples/ha-with-raft), the values overrides can be set on the command-line, in a values yaml file, or with a OpenTofu configuration:
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs groupId="iac">
+<TabItem value="CLI">
 
 ```shell-session
-$ helm install vault hashicorp/vault \
+$ helm install openbao openbao/openbao \
   --set='server.ha.enabled=true' \
   --set='server.ha.raft.enabled=true'
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -33,9 +33,9 @@ server:
       enabled: true
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
 provider "helm" {
@@ -44,10 +44,10 @@ provider "helm" {
   }
 }
 
-resource "helm_release" "vault" {
-  name       = "vault"
-  repository = "https://helm.releases.hashicorp.com"
-  chart      = "vault"
+resource "helm_release" "openbao" {
+  name       = "openbao"
+  repository = "https://openbao.github.io/openbao-helm"
+  chart      = "openbao"
 
   set {
     name  = "server.ha.enabled"
@@ -60,17 +60,17 @@ resource "helm_release" "vault" {
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
-The values file can also be used directly in the Terraform configuration with the [`values` directive](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release#values#values).
+The values file can also be used directly in the OpenTofu configuration with the [`values` directive](https://registry.terraform.io/providers/hashicorp/helm/latest/docs/resources/release#values#values).
 
 ## Further examples
 
-### Vault config as a multi-line string
+### OpenBao config as a multi-line string
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs groupId="iac">
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -89,7 +89,7 @@ server:
         }
 
         storage "raft" {
-          path    = "/vault/data"
+          path    = "/openbao/data"
         }
 
         service_registration "kubernetes" {}
@@ -100,14 +100,14 @@ server:
         }
 ```
 
-</CodeBlockConfig>
-<CodeBlockConfig>
+</TabItem>
+<TabItem value="OpenTofu">
 
 ```hcl
-resource "helm_release" "vault" {
-  name       = "vault"
-  repository = "https://helm.releases.hashicorp.com"
-  chart      = "vault"
+resource "helm_release" "openbao" {
+  name       = "openbao"
+  repository = "https://openbao.github.io/openbao-helm"
+  chart      = "openbao"
 
   set {
     name  = "server.ha.enabled"
@@ -133,7 +133,7 @@ listener "tcp" {
 }
 
 storage "raft" {
-  path    = "/vault/data"
+  path    = "/openbao/data"
 }
 
 service_registration "kubernetes" {}
@@ -147,13 +147,13 @@ EOT
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 ### Lists of volumes and volumeMounts
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs groupId="iac">
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -164,20 +164,20 @@ server:
         secretName: my-gcp-iam
 
   volumeMounts:
-    - mountPath: /vault/userconfig/my-gcp-iam
+    - mountPath: /openbao/userconfig/my-gcp-iam
       name: userconfig-my-gcp-iam
       readOnly: true
 ```
 
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
-resource "helm_release" "vault" {
-  name       = "vault"
-  repository = "https://helm.releases.hashicorp.com"
-  chart      = "vault"
+resource "helm_release" "openbao" {
+  name       = "openbao"
+  repository = "https://openbao.github.io/openbao-helm"
+  chart      = "openbao"
 
   set {
     name  = "server.volumes[0].name"
@@ -194,7 +194,7 @@ resource "helm_release" "vault" {
 
   set {
     name  = "server.volumeMounts[0].mountPath"
-    value = "/vault/userconfig/my-gcp-iam"
+    value = "/openbao/userconfig/my-gcp-iam"
   }
   set {
     name  = "server.volumeMounts[0].name"
@@ -207,16 +207,16 @@ resource "helm_release" "vault" {
 }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 ### Annotations
 
 Annotations can be set as a YAML map:
 
-<CodeTabs>
+<Tabs groupId="iac">
 
-<CodeBlockConfig>
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -225,9 +225,9 @@ server:
       service.beta.kubernetes.io/azure-load-balancer-internal: true
       service.beta.kubernetes.io/azure-load-balancer-internal-subnet: apps-subnet
 ```
-</CodeBlockConfig>
+</TabItem>
 
-<CodeBlockConfig>
+<TabItem value="OpenTofu">
 
 ```hcl
   set {
@@ -241,13 +241,13 @@ server:
   }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>
 
 or as a multi-line string:
 
-<CodeTabs>
-<CodeBlockConfig>
+<Tabs groupId="iac">
+<TabItem value="Yaml">
 
 ```yaml
 server:
@@ -257,8 +257,8 @@ server:
       service.beta.kubernetes.io/azure-load-balancer-internal-subnet: apps-subnet
 ```
 
-</CodeBlockConfig>
-<CodeBlockConfig>
+</TabItem>
+<TabItem value="OpenTofu">
 
 ```hcl
   set {
@@ -271,5 +271,5 @@ server:
   }
 ```
 
-</CodeBlockConfig>
-</CodeTabs>
+</TabItem>
+</Tabs>

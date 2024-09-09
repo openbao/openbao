@@ -21,13 +21,14 @@ import (
 
 	"github.com/google/tink/go/kwp/subtle"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var keyTypes = []string{
 	"aes256-gcm96",
 	"aes128-gcm96",
 	"chacha20-poly1305",
+	"xchacha20-poly1305",
 	"ed25519",
 	"ecdsa-p256",
 	"ecdsa-p384",
@@ -956,7 +957,7 @@ func wrapTargetKeyForImport(t *testing.T, wrappingKey *rsa.PublicKey, targetKey 
 	var ok bool
 	var err error
 	switch targetKeyType {
-	case "aes128-gcm96", "aes256-gcm96", "chacha20-poly1305", "hmac":
+	case "aes128-gcm96", "aes256-gcm96", "chacha20-poly1305", "xchacha20-poly1305", "hmac":
 		preppedTargetKey, ok = targetKey.([]byte)
 		if !ok {
 			t.Fatal("failed to wrap target key for import: symmetric key not provided in byte format")
@@ -1015,7 +1016,7 @@ func generateKey(keyType string) (interface{}, error) {
 		return uuid.GenerateRandomBytes(16)
 	case "aes256-gcm96", "hmac":
 		return uuid.GenerateRandomBytes(32)
-	case "chacha20-poly1305":
+	case "chacha20-poly1305", "xchacha20-poly1305":
 		return uuid.GenerateRandomBytes(32)
 	case "ed25519":
 		_, priv, err := ed25519.GenerateKey(rand.Reader)

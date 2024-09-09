@@ -8,13 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 )
 
@@ -123,7 +122,7 @@ func (k *kubernetesMethod) readJWT() (string, error) {
 	}
 	defer data.Close()
 
-	contentBytes, err := ioutil.ReadAll(data)
+	contentBytes, err := io.ReadAll(data)
 	if err != nil {
 		return "", err
 	}

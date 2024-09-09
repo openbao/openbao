@@ -17,7 +17,7 @@ import (
 
 	proto "github.com/golang/protobuf/proto"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -60,6 +60,11 @@ func (p *phy) Delete(_ context.Context, key string) error {
 
 func (p *phy) List(_ context.Context, prefix string) ([]string, error) {
 	p.t.Errorf("List called on phy: prefix: %v", prefix)
+	return []string{}, nil
+}
+
+func (p *phy) ListPage(_ context.Context, prefix string, after string, limit int) ([]string, error) {
+	p.t.Errorf("ListPage called on phy: prefix: %v", prefix)
 	return []string{}, nil
 }
 

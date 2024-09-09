@@ -25,7 +25,7 @@ func (c *TransformImportVersionCommand) Synopsis() string {
 
 func (c *TransformImportVersionCommand) Help() string {
 	helpText := `
-Usage: vault transform import-version PATH KEY [...]
+Usage: bao transform import-version PATH KEY [...]
 
   Using the Transform key wrapping system, imports new key material from
   the base64 encoded KEY (either directly on the CLI or via @path notation),
@@ -35,7 +35,7 @@ Usage: vault transform import-version PATH KEY [...]
   Create/Update Tokenization Transformation API endpoint.
 
   For example:
-  $ vault transform import-version transform/transformations/tokenization/application-form @path/to/new_version \        
+  $ bao transform import-version transform/transformations/tokenization/application-form @path/to/new_version \        
        allowed_roles=legacy-system
 ` + c.Flags().Help()
 

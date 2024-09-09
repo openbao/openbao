@@ -1,0 +1,16 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+# This patch adds a hostPort to Vault so that kind can forward traffic all
+# the way from the host machine to the Vault container. The helm chart doesn't
+# support this directly, and doesn't have a compelling reason to either.
+# See Makefile and the setup-integration-test target for usage.
+spec:
+  template:
+    spec:
+      containers:
+        - name: vault
+          ports:
+            - name: http
+              hostPort: 8200
+              containerPort: 8200

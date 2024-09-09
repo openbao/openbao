@@ -9,7 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sync"
 
 	"github.com/hashicorp/errwrap"
@@ -40,11 +40,11 @@ func NewCertificateGetter(certFile, keyFile, passphrase string) *CertificateGett
 }
 
 func (cg *CertificateGetter) Reload() error {
-	certPEMBlock, err := ioutil.ReadFile(cg.certFile)
+	certPEMBlock, err := os.ReadFile(cg.certFile)
 	if err != nil {
 		return err
 	}
-	keyPEMBlock, err := ioutil.ReadFile(cg.keyFile)
+	keyPEMBlock, err := os.ReadFile(cg.keyFile)
 	if err != nil {
 		return err
 	}

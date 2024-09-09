@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathConfigURLs(b *backend) *framework.Path {
@@ -33,6 +33,13 @@ for the issuing certificate attribute. See also RFC 5280 Section 4.2.2.1.`,
 				Type: framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of URLs to be used
 for the CRL distribution points attribute. See also RFC 5280 Section 4.2.1.13.`,
+			},
+
+			"delta_crl_distribution_points": {
+				Type: framework.TypeCommaStringSlice,
+				Description: `Comma-separated list of URLs to be used
+for the Delta CRL distribution points attribute. See also RFC 5280 Section 4.2.1.15
+and Section 5.2.6.`,
 			},
 
 			"ocsp_servers": {
@@ -75,6 +82,12 @@ for the issuing certificate attribute. See also RFC 5280 Section 4.2.2.1.`,
 								Description: `Comma-separated list of URLs to be used
 for the CRL distribution points attribute. See also RFC 5280 Section 4.2.1.13.`,
 							},
+							"delta_crl_distribution_points": {
+								Type: framework.TypeCommaStringSlice,
+								Description: `Comma-separated list of URLs to be used
+for the Delta CRL distribution points attribute. See also RFC 5280 Section 4.2.1.15
+and Section 5.2.6.`,
+							},
 							"ocsp_servers": {
 								Type: framework.TypeCommaStringSlice,
 								Description: `Comma-separated list of URLs to be used
@@ -112,6 +125,13 @@ for the issuing certificate attribute. See also RFC 5280 Section 4.2.2.1.`,
 								Type: framework.TypeCommaStringSlice,
 								Description: `Comma-separated list of URLs to be used
 for the CRL distribution points attribute. See also RFC 5280 Section 4.2.1.13.`,
+								Required: true,
+							},
+							"delta_crl_distribution_points": {
+								Type: framework.TypeCommaStringSlice,
+								Description: `Comma-separated list of URLs to be used
+for the Delta CRL distribution points attribute. See also RFC 5280 Section 4.2.1.15
+and Section 5.2.6.`,
 								Required: true,
 							},
 							"ocsp_servers": {
@@ -157,10 +177,11 @@ func getGlobalAIAURLs(ctx context.Context, storage logical.Storage) (*aiaConfigE
 	}
 
 	entries := &aiaConfigEntry{
-		IssuingCertificates:   []string{},
-		CRLDistributionPoints: []string{},
-		OCSPServers:           []string{},
-		EnableTemplating:      false,
+		IssuingCertificates:        []string{},
+		CRLDistributionPoints:      []string{},
+		DeltaCRLDistributionPoints: []string{},
+		OCSPServers:                []string{},
+		EnableTemplating:           false,
 	}
 
 	if entry == nil {
@@ -199,10 +220,11 @@ func (b *backend) pathReadURL(ctx context.Context, req *logical.Request, _ *fram
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"issuing_certificates":    entries.IssuingCertificates,
-			"crl_distribution_points": entries.CRLDistributionPoints,
-			"ocsp_servers":            entries.OCSPServers,
-			"enable_templating":       entries.EnableTemplating,
+			"issuing_certificates":          entries.IssuingCertificates,
+			"crl_distribution_points":       entries.CRLDistributionPoints,
+			"delta_crl_distribution_points": entries.DeltaCRLDistributionPoints,
+			"ocsp_servers":                  entries.OCSPServers,
+			"enable_templating":             entries.EnableTemplating,
 		},
 	}
 
@@ -224,16 +246,20 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 	if urlsInt, ok := data.GetOk("crl_distribution_points"); ok {
 		entries.CRLDistributionPoints = urlsInt.([]string)
 	}
+	if urlsInt, ok := data.GetOk("delta_crl_distribution_points"); ok {
+		entries.DeltaCRLDistributionPoints = urlsInt.([]string)
+	}
 	if urlsInt, ok := data.GetOk("ocsp_servers"); ok {
 		entries.OCSPServers = urlsInt.([]string)
 	}
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"issuing_certificates":    entries.IssuingCertificates,
-			"crl_distribution_points": entries.CRLDistributionPoints,
-			"ocsp_servers":            entries.OCSPServers,
-			"enable_templating":       entries.EnableTemplating,
+			"issuing_certificates":          entries.IssuingCertificates,
+			"crl_distribution_points":       entries.CRLDistributionPoints,
+			"delta_crl_distribution_points": entries.DeltaCRLDistributionPoints,
+			"ocsp_servers":                  entries.OCSPServers,
+			"enable_templating":             entries.EnableTemplating,
 		},
 	}
 
@@ -266,6 +292,11 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 				"invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
 		}
 
+		if badURL := validateURLs(entries.DeltaCRLDistributionPoints); badURL != "" {
+			return logical.ErrorResponse(fmt.Sprintf(
+				"invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
+		}
+
 		if badURL := validateURLs(entries.OCSPServers); badURL != "" {
 			return logical.ErrorResponse(fmt.Sprintf(
 				"invalid URL found in Authority Information Access (AIA) parameter ocsp_servers: %s", badURL)), nil
@@ -280,7 +311,7 @@ func (b *backend) pathWriteURL(ctx context.Context, req *logical.Request, data *
 }
 
 const pathConfigURLsHelpSyn = `
-Set the URLs for the issuing CA, CRL distribution points, and OCSP servers.
+Set the URLs for the issuing CA, CRL and Delta CRL distribution points, and OCSP servers.
 `
 
 const pathConfigURLsHelpDesc = `
@@ -291,4 +322,7 @@ certificates. To delete URLs, simply re-set the appropriate value with an
 empty string.
 
 Multiple URLs can be specified for each type; use commas to separate them.
+
+When Delta CRL distribution points are set, they will appear both on
+certificates and on the complete CRL.
 `

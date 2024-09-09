@@ -9,12 +9,12 @@ import (
 	"strings"
 
 	pwd "github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type CLIHandler struct{}
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	mount, ok := m["mount"]
 	if !ok {
 		mount = "ldap"
@@ -31,6 +31,10 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	if !ok {
 		password = passwordFromEnv()
 		if password == "" {
+			if nonInteractive {
+				return nil, fmt.Errorf("'password' not supplied and refusing to pull from stdin")
+			}
+
 			fmt.Fprintf(os.Stderr, "Password (will be hidden): ")
 			var err error
 			password, err = pwd.Read(os.Stdin)
@@ -59,19 +63,19 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login -method=ldap [CONFIG K=V...]
+Usage: bao login -method=ldap [CONFIG K=V...]
 
   The LDAP auth method allows users to authenticate using LDAP or
   Active Directory.
 
   Authenticate as "sally":
 
-      $ vault login -method=ldap username=sally
+      $ bao login -method=ldap username=sally
       Password (will be hidden):
 
   Authenticate as "bob":
 
-      $ vault login -method=ldap username=bob password=password
+      $ bao login -method=ldap username=bob password=password
 
 Configuration:
 
@@ -98,5 +102,5 @@ func usernameFromEnv() string {
 }
 
 func passwordFromEnv() string {
-	return os.Getenv("VAULT_LDAP_PASSWORD")
+	return api.ReadBaoVariable("BAO_LDAP_PASSWORD")
 }

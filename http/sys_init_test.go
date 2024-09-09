@@ -12,8 +12,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/builtin/logical/transit"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/seal"
 )

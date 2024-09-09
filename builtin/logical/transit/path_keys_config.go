@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathKeysConfig() *framework.Path {
@@ -127,7 +127,7 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 
 		if minDecryptionVersion == 0 {
 			minDecryptionVersion = 1
-			warning = "since Vault 0.3, transit key numbering starts at 1; forcing minimum to 1"
+			warning = "since Vault 0.3 (prior to the OpenBao fork), transit key numbering starts at 1; forcing minimum to 1"
 		}
 
 		if minDecryptionVersion != p.MinDecryptionVersion {
@@ -217,10 +217,6 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 		if autoRotatePeriod != p.AutoRotatePeriod {
 			p.AutoRotatePeriod = autoRotatePeriod
 			persistNeeded = true
-		}
-
-		if p.Type == keysutil.KeyType_MANAGED_KEY && autoRotatePeriod != 0 {
-			return logical.ErrorResponse("Auto rotation can not be set for managed keys"), nil
 		}
 	}
 

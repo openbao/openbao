@@ -18,16 +18,14 @@ import (
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 // Verify FileBackend satisfies the correct interfaces
 var (
-	_ physical.Backend             = (*FileBackend)(nil)
-	_ physical.Transactional       = (*TransactionalFileBackend)(nil)
-	_ physical.PseudoTransactional = (*FileBackend)(nil)
+	_ physical.Backend = (*FileBackend)(nil)
 )
 
 // FileBackend is a physical backend that stores data on disk
@@ -42,10 +40,6 @@ type FileBackend struct {
 	path       string
 	logger     log.Logger
 	permitPool *physical.PermitPool
-}
-
-type TransactionalFileBackend struct {
-	FileBackend
 }
 
 type fileEntry struct {
@@ -63,22 +57,6 @@ func NewFileBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		path:       path,
 		logger:     logger,
 		permitPool: physical.NewPermitPool(physical.DefaultParallelOperations),
-	}, nil
-}
-
-func NewTransactionalFileBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	path, ok := conf["path"]
-	if !ok {
-		return nil, fmt.Errorf("'path' must be set")
-	}
-
-	// Create a pool of size 1 so only one operation runs at a time
-	return &TransactionalFileBackend{
-		FileBackend: FileBackend{
-			path:       path,
-			logger:     logger,
-			permitPool: physical.NewPermitPool(1),
-		},
 	}, nil
 }
 
@@ -301,7 +279,21 @@ func (b *FileBackend) List(ctx context.Context, prefix string) ([]string, error)
 	return b.ListInternal(ctx, prefix)
 }
 
+func (b *FileBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	b.permitPool.Acquire()
+	defer b.permitPool.Release()
+
+	b.RLock()
+	defer b.RUnlock()
+
+	return b.ListPageInternal(ctx, prefix, after, limit)
+}
+
 func (b *FileBackend) ListInternal(ctx context.Context, prefix string) ([]string, error) {
+	return b.ListPageInternal(ctx, prefix, "", -1)
+}
+
+func (b *FileBackend) ListPageInternal(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if err := b.validatePath(prefix); err != nil {
 		return nil, err
 	}
@@ -353,6 +345,21 @@ func (b *FileBackend) ListInternal(ctx context.Context, prefix string) ([]string
 		sort.Strings(names)
 	}
 
+	if after != "" {
+		idx := sort.SearchStrings(names, after)
+		if idx < len(names) && names[idx] == after {
+			idx += 1
+		}
+		names = names[idx:]
+	}
+
+	if limit > 0 {
+		if limit > len(names) {
+			limit = len(names)
+		}
+		names = names[0:limit]
+	}
+
 	return names, nil
 }
 
@@ -370,14 +377,4 @@ func (b *FileBackend) validatePath(path string) error {
 	}
 
 	return nil
-}
-
-func (b *TransactionalFileBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	b.permitPool.Acquire()
-	defer b.permitPool.Release()
-
-	b.Lock()
-	defer b.Unlock()
-
-	return physical.GenericTransactionHandler(ctx, b, txns)
 }

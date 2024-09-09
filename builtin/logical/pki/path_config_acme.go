@@ -7,20 +7,20 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
 	storageAcmeConfig      = "config/acme"
 	pathConfigAcmeHelpSyn  = "Configuration of ACME Endpoints"
 	pathConfigAcmeHelpDesc = "Here we configure:\n\nenabled=false, whether ACME is enabled, defaults to false meaning that clusters will by default not get ACME support,\nallowed_issuers=\"default\", which issuers are allowed for use with ACME; by default, this will only be the primary (default) issuer,\nallowed_roles=\"*\", which roles are allowed for use with ACME; by default these will be all roles matching our selection criteria,\ndefault_directory_policy=\"\", either \"forbid\", preventing the default directory from being used at all, \"role:<role_name>\" which is the role to be used for non-role-qualified ACME requests; or \"sign-verbatim\", the default meaning ACME issuance will be equivalent to sign-verbatim.,\ndns_resolver=\"\", which specifies a custom DNS resolver to use for all ACME-related DNS lookups"
-	disableAcmeEnvVar      = "VAULT_DISABLE_PUBLIC_ACME"
+	disableAcmeEnvVar      = "BAO_DISABLE_PUBLIC_ACME"
 )
 
 type acmeConfigEntry struct {
@@ -336,7 +336,7 @@ func (b *backend) pathAcmeWrite(ctx context.Context, req *logical.Request, d *fr
 }
 
 func isPublicACMEDisabledByEnv() (bool, error) {
-	disableAcmeRaw, ok := os.LookupEnv(disableAcmeEnvVar)
+	disableAcmeRaw, ok := api.LookupBaoVariable(disableAcmeEnvVar)
 	if !ok {
 		return false, nil
 	}

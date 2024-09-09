@@ -28,19 +28,19 @@ func (c *NamespaceCreateCommand) Synopsis() string {
 
 func (c *NamespaceCreateCommand) Help() string {
 	helpText := `
-Usage: vault namespace create [options] PATH
+Usage: bao namespace create [options] PATH
 
   Create a child namespace. The namespace created will be relative to the
-  namespace provided in either the VAULT_NAMESPACE environment variable or
+  namespace provided in either the BAO_NAMESPACE environment variable or
   -namespace CLI flag.
 
   Create a child namespace (e.g. ns1/):
 
-      $ vault namespace create ns1
+      $ bao namespace create ns1
 
   Create a child namespace from a parent namespace (e.g. ns1/ns2/):
 
-      $ vault namespace create -namespace=ns1 ns2
+      $ bao namespace create -namespace=ns1 ns2
 
 ` + c.Flags().Help()
 

@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -105,7 +105,7 @@ base64 encoded. Defaults to "pem".`,
 
 		HelpSynopsis: `Combine and sign with the provided issuer different CRLs`,
 		HelpDescription: `Provide two or more PEM encoded CRLs signed by the issuer,
- normally from separate Vault clusters to be combined and signed.`,
+ normally from separate OpenBao clusters to be combined and signed.`,
 	}
 }
 

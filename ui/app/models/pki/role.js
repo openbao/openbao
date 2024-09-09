@@ -112,7 +112,7 @@ export default class PkiRoleModel extends Model {
   @attr({
     label: 'Backdate validity',
     detailsLabel: 'Issued certificate backdating',
-    helperTextDisabled: 'Vault will use the default value, 30s',
+    helperTextDisabled: 'OpenBao will use the default value, 30s',
     helperTextEnabled:
       'Also called the not_before_duration property. Allows certificates to be valid for a certain time period before now. This is useful to correct clock misalignment on various systems when setting up your CA.',
     editType: 'ttl',
@@ -132,7 +132,7 @@ export default class PkiRoleModel extends Model {
   @attr('boolean', {
     label: 'Generate lease with certificate',
     subText:
-      'Specifies if certificates issued/signed against this role will have Vault leases attached to them.',
+      'Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.',
     editType: 'boolean',
     docLink: '/vault/api-docs/secret/pki#create-update-role',
   })
@@ -347,12 +347,12 @@ export default class PkiRoleModel extends Model {
       },
       'Subject Alternative Name (SAN) Options': {
         header: {
-          text: `Subject Alternative Names (SANs) are identities (domains, IP addresses, and URIs) Vault attaches to the requested certificates.`,
+          text: `Subject Alternative Names (SANs) are identities (domains, IP addresses, and URIs) OpenBao attaches to the requested certificates.`,
         },
       },
       'Additional subject fields': {
         header: {
-          text: `Additional identity metadata Vault can attach to the requested certificates.`,
+          text: `Additional identity metadata OpenBao can attach to the requested certificates.`,
         },
       },
     };

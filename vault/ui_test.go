@@ -7,16 +7,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
 
 func TestConfig_Enabled(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
-	phys, err := inmem.NewTransactionalInmem(nil, logger)
+	phys, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func TestConfig_Enabled(t *testing.T) {
 
 func TestConfig_Headers(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
-	phys, err := inmem.NewTransactionalInmem(nil, logger)
+	phys, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestConfig_Headers(t *testing.T) {
 
 func TestConfig_DefaultHeaders(t *testing.T) {
 	logger := logging.NewVaultLogger(log.Trace)
-	phys, err := inmem.NewTransactionalInmem(nil, logger)
+	phys, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

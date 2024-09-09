@@ -15,8 +15,8 @@ import (
 	"github.com/openbao/openbao/helper/locking"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/pathmanager"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Type represents the quota kind
@@ -27,6 +27,9 @@ const (
 	TypeRateLimit Type = "rate-limit"
 
 	// TypeLeaseCount represents the lease count limiting quota type
+	//
+	// This was a Vault Enterprise feature; the constant was left for
+	// historical reasons.
 	TypeLeaseCount Type = "lease-count"
 )
 
@@ -75,8 +78,6 @@ type leaseWalkFunc func(context.Context, func(request *Request) bool) error
 // String converts each quota type into its string equivalent value
 func (q Type) String() string {
 	switch q {
-	case TypeLeaseCount:
-		return "lease-count"
 	case TypeRateLimit:
 		return "rate-limit"
 	}
@@ -152,8 +153,6 @@ func (a *access) QuotaID() string {
 // Manager holds all the existing quota rules. For any given input. the manager
 // checks them against any applicable quota rules.
 type Manager struct {
-	entManager
-
 	// db holds the in memory instances of all active quota rules indexed by
 	// some of the quota properties.
 	db *memdb.MemDB
@@ -272,7 +271,7 @@ type Request struct {
 
 // NewManager creates and initializes a new quota manager to hold all the quota
 // rules and to process incoming requests.
-func NewManager(logger log.Logger, walkFunc leaseWalkFunc, ms *metricsutil.ClusterMetricSink, detectDeadlocks bool) (*Manager, error) {
+func NewManager(logger log.Logger, ms *metricsutil.ClusterMetricSink, detectDeadlocks bool) (*Manager, error) {
 	db, err := memdb.NewMemDB(dbSchema())
 	if err != nil {
 		return nil, err
@@ -295,8 +294,6 @@ func NewManager(logger log.Logger, walkFunc leaseWalkFunc, ms *metricsutil.Clust
 		manager.quotaConfigLock = &locking.DeadlockRWMutex{}
 		manager.dbAndCacheLock = &locking.DeadlockRWMutex{}
 	}
-
-	manager.init(walkFunc)
 
 	return manager, nil
 }
@@ -326,13 +323,6 @@ func (m *Manager) setQuotaLocked(ctx context.Context, qType string, quota Quota,
 		return nil
 	}
 
-	// For the lease count type, recompute the counters
-	if !loading && qType == TypeLeaseCount.String() {
-		if err := m.recomputeLeaseCounts(ctx, txn); err != nil {
-			return err
-		}
-	}
-
 	txn.Commit()
 	return nil
 }
@@ -341,10 +331,6 @@ func (m *Manager) setQuotaLocked(ctx context.Context, qType string, quota Quota,
 // any runtime elements such as goroutines, using the transaction passed in
 // It should be called with the write lock held.
 func (m *Manager) setQuotaLockedWithTxn(ctx context.Context, qType string, quota Quota, loading bool, txn *memdb.Txn) error {
-	if qType == TypeLeaseCount.String() {
-		m.setIsPerfStandby(quota)
-	}
-
 	raw, err := txn.First(qType, indexID, quota.quotaID())
 	if err != nil {
 		return err
@@ -666,13 +652,6 @@ func (m *Manager) DeleteQuota(ctx context.Context, qType string, name string) er
 		return err
 	}
 
-	// For the lease count type, recompute the counters
-	if qType == TypeLeaseCount.String() {
-		if err := m.recomputeLeaseCounts(ctx, txn); err != nil {
-			return err
-		}
-	}
-
 	txn.Commit()
 	return nil
 }
@@ -690,13 +669,6 @@ func (m *Manager) ApplyQuota(ctx context.Context, req *Request) (Response, error
 
 	// If there is no quota defined, allow the request.
 	if quota == nil {
-		resp.Allowed = true
-		return resp, nil
-	}
-
-	// If the quota type is lease count, and if the path is not known to
-	// generate leases, allow the request.
-	if req.Type == TypeLeaseCount && !m.inLeasePathCache(req.Path) {
 		resp.Allowed = true
 		return resp, nil
 	}
@@ -798,7 +770,7 @@ func (m *Manager) Reset() error {
 	m.storage = nil
 	m.ctx = nil
 
-	return m.entManager.Reset()
+	return nil
 }
 
 // Must be called with the lock held
@@ -991,11 +963,6 @@ func (m *Manager) Invalidate(key string) {
 		qType := splitKeys[0]
 		name := splitKeys[1]
 
-		if qType == TypeLeaseCount.String() && m.isDRSecondary {
-			// lease count invalidation not supported on DR Secondary
-			return
-		}
-
 		// Read quota rule from storage
 		quota, err := Load(m.ctx, m.storage, qType, name)
 		if err != nil {
@@ -1053,8 +1020,6 @@ func Load(ctx context.Context, storage logical.Storage, qType, name string) (Quo
 	switch qType {
 	case TypeRateLimit.String():
 		quota = &RateLimitQuota{}
-	case TypeLeaseCount.String():
-		quota = &LeaseCountQuota{}
 	default:
 		return nil, fmt.Errorf("unsupported type: %v", qType)
 	}
@@ -1069,7 +1034,7 @@ func Load(ctx context.Context, storage logical.Storage, qType, name string) (Quo
 
 // Setup loads the quota configuration and all the quota rules into the
 // quota manager.
-func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStandby, isDRSecondary bool) error {
+func (m *Manager) Setup(ctx context.Context, storage logical.Storage) error {
 	m.quotaLock.Lock()
 	m.quotaConfigLock.Lock()
 	m.dbAndCacheLock.Lock()
@@ -1079,8 +1044,6 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStan
 
 	m.storage = storage
 	m.ctx = ctx
-	m.isPerfStandby = isPerfStandby
-	m.isDRSecondary = isDRSecondary
 
 	// Load the quota configuration from storage and load it into the quota
 	// manager.
@@ -1125,11 +1088,6 @@ func (m *Manager) Setup(ctx context.Context, storage logical.Storage, isPerfStan
 }
 
 func (m *Manager) setupQuotaType(ctx context.Context, storage logical.Storage, quotaType string) error {
-	if quotaType == TypeLeaseCount.String() && m.isDRSecondary {
-		m.logger.Trace("lease count quotas are not processed on DR Secondaries")
-		return nil
-	}
-
 	names, err := logical.CollectKeys(ctx, logical.NewStorageView(storage, StoragePrefix+quotaType+"/"))
 	if err != nil {
 		return err
@@ -1184,8 +1142,6 @@ func (m *Manager) HandleRemount(ctx context.Context, from, to namespace.MountPat
 		toNs = namespace.RootNamespaceID
 	}
 
-	leaseQuotaUpdated := false
-
 	updateMounts := func(idx string, args ...interface{}) error {
 		for _, quotaType := range quotaTypes() {
 			iter, err := txn.Get(quotaType, idx, args...)
@@ -1209,9 +1165,6 @@ func (m *Manager) HandleRemount(ctx context.Context, from, to namespace.MountPat
 				if err := m.setQuotaLockedWithTxn(ctx, quotaType, clonedQuota, false, txn); err != nil {
 					return err
 				}
-				if quotaType == TypeLeaseCount.String() {
-					leaseQuotaUpdated = true
-				}
 			}
 		}
 		return nil
@@ -1233,12 +1186,6 @@ func (m *Manager) HandleRemount(ctx context.Context, from, to namespace.MountPat
 	err = updateMounts(indexNamespaceMount, fromNs, from.MountPath, false, true)
 	if err != nil {
 		return err
-	}
-
-	if leaseQuotaUpdated {
-		if err := m.recomputeLeaseCounts(ctx, txn); err != nil {
-			return err
-		}
 	}
 
 	txn.Commit()
@@ -1264,8 +1211,6 @@ func (m *Manager) HandleBackendDisabling(ctx context.Context, nsPath, mountPath 
 		nsPath = "root"
 	}
 
-	leaseQuotaDeleted := false
-
 	updateMounts := func(idx string, args ...interface{}) error {
 		for _, quotaType := range quotaTypes() {
 			iter, err := txn.Get(quotaType, idx, args...)
@@ -1279,9 +1224,6 @@ func (m *Manager) HandleBackendDisabling(ctx context.Context, nsPath, mountPath 
 				quota := raw.(Quota)
 				if err := m.storage.Delete(ctx, QuotaStoragePath(quotaType, quota.QuotaName())); err != nil {
 					return fmt.Errorf("failed to delete quota from storage after mount disabling; namespace %q, err %v", nsPath, err)
-				}
-				if quotaType == TypeLeaseCount.String() {
-					leaseQuotaDeleted = true
 				}
 			}
 		}
@@ -1304,12 +1246,6 @@ func (m *Manager) HandleBackendDisabling(ctx context.Context, nsPath, mountPath 
 	err = updateMounts(indexNamespaceMount, nsPath, mountPath, false, true)
 	if err != nil {
 		return err
-	}
-
-	if leaseQuotaDeleted {
-		if err := m.recomputeLeaseCounts(ctx, txn); err != nil {
-			return err
-		}
 	}
 
 	txn.Commit()

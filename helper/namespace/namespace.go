@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 type contextValues struct{}

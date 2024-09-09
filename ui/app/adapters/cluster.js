@@ -112,7 +112,7 @@ export default ApplicationAdapter.extend({
   },
 
   authenticate({ backend, data }) {
-    const { role, jwt, token, password, username, path, nonce } = data;
+    const { role, jwt, token, password, username, path } = data;
     const url = this.urlForAuth(backend, username, path);
     const verb = backend === 'token' ? 'GET' : 'POST';
     const options = {
@@ -124,8 +124,6 @@ export default ApplicationAdapter.extend({
       };
     } else if (backend === 'jwt' || backend === 'oidc') {
       options.data = { role, jwt };
-    } else if (backend === 'okta') {
-      options.data = { password, nonce };
     } else {
       options.data = token ? { token, password } : { password };
     }
@@ -168,12 +166,10 @@ export default ApplicationAdapter.extend({
   urlForAuth(type, username, path) {
     const authBackend = type.toLowerCase();
     const authURLs = {
-      github: 'login',
       jwt: 'login',
       oidc: 'login',
       userpass: `login/${encodeURIComponent(username)}`,
       ldap: `login/${encodeURIComponent(username)}`,
-      okta: `login/${encodeURIComponent(username)}`,
       radius: `login/${encodeURIComponent(username)}`,
       token: 'lookup-self',
     };

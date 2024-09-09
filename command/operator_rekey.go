@@ -13,7 +13,7 @@ import (
 	"github.com/fatih/structs"
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/posener/complete"
 )
@@ -55,7 +55,7 @@ func (c *OperatorRekeyCommand) Synopsis() string {
 
 func (c *OperatorRekeyCommand) Help() string {
 	helpText := `
-Usage: vault operator rekey [options] [KEY]
+Usage: bao operator rekey [options] [KEY]
 
   Generates a new set of unseal keys. This can optionally change the total
   number of key shares or the required threshold of those key shares to
@@ -71,14 +71,14 @@ Usage: vault operator rekey [options] [KEY]
 
   Initialize a rekey:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -key-shares=15 \
           -key-threshold=9
 
   Rekey and encrypt the resulting unseal keys with PGP:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -key-shares=3 \
           -key-threshold=2 \
@@ -86,18 +86,18 @@ Usage: vault operator rekey [options] [KEY]
 
   Store encrypted PGP keys in Vault's core:
 
-      $ vault operator rekey \
+      $ bao operator rekey \
           -init \
           -pgp-keys="..." \
           -backup
 
   Retrieve backed-up unseal keys:
 
-      $ vault operator rekey -backup-retrieve
+      $ bao operator rekey -backup-retrieve
 
   Delete backed-up unseal keys:
 
-      $ vault operator rekey -backup-delete
+      $ bao operator rekey -backup-delete
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
@@ -450,6 +450,9 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -460,6 +463,11 @@ func (c *OperatorRekeyCommand) provide(client *api.Client, key string) int {
 		key = buf.String()
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
+		if c.flagNonInteractive {
+			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			return 1
+		}
+
 		w := getWriterFromUI(c.UI)
 		fmt.Fprintf(w, "Rekey operation nonce: %s\n", nonce)
 		fmt.Fprintf(w, "%s Key (will be hidden): ", keyTypeRequired)

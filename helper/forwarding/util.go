@@ -10,11 +10,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 type bufCloser struct {
@@ -35,7 +35,7 @@ func GenerateForwardedHTTPRequest(req *http.Request, addr string) (*http.Request
 	}
 
 	var newBody []byte
-	switch os.Getenv("VAULT_MESSAGE_TYPE") {
+	switch api.ReadBaoVariable("BAO_MESSAGE_TYPE") {
 	case "json":
 		newBody, err = jsonutil.EncodeJSON(fq)
 	case "json_compress":
@@ -112,7 +112,7 @@ func ParseForwardedHTTPRequest(req *http.Request) (*http.Request, error) {
 	}
 
 	fq := new(Request)
-	switch os.Getenv("VAULT_MESSAGE_TYPE") {
+	switch api.ReadBaoVariable("BAO_MESSAGE_TYPE") {
 	case "json", "json_compress":
 		err = jsonutil.DecodeJSON(buf.Bytes(), fq)
 	default:

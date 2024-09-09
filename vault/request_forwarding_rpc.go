@@ -14,18 +14,15 @@ import (
 	"github.com/armon/go-metrics"
 	"github.com/openbao/openbao/helper/forwarding"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/vault/replication"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 type forwardedRequestRPCServer struct {
 	UnimplementedRequestForwardingServer
 
-	core                  *Core
-	handler               http.Handler
-	perfStandbySlots      chan struct{}
-	perfStandbyRepCluster *replication.Cluster
-	raftFollowerStates    *raft.FollowerStates
+	core               *Core
+	handler            http.Handler
+	raftFollowerStates *raft.FollowerStates
 }
 
 func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *forwarding.Request) (*forwarding.Response, error) {
@@ -64,10 +61,6 @@ func (s *forwardedRequestRPCServer) ForwardRequest(ctx context.Context, freq *fo
 		}
 	}
 
-	// Performance standby nodes will use this value to do wait for WALs to ship
-	// in order to do a best-effort read after write guarantee
-	resp.LastRemoteWal = LastWAL(s.core)
-
 	return resp, nil
 }
 
@@ -76,7 +69,6 @@ type nodeHAConnectionInfo struct {
 	lastHeartbeat  time.Time
 	version        string
 	upgradeVersion string
-	redundancyZone string
 }
 
 func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (*EchoReply, error) {
@@ -85,7 +77,6 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 		lastHeartbeat:  time.Now(),
 		version:        in.SdkVersion,
 		upgradeVersion: in.RaftUpgradeVersion,
-		redundancyZone: in.RaftRedundancyZone,
 	}
 	if in.ClusterAddr != "" {
 		s.core.clusterPeerClusterAddrsCache.Set(in.ClusterAddr, incomingNodeConnectionInfo, 0)
@@ -99,7 +90,6 @@ func (s *forwardedRequestRPCServer) Echo(ctx context.Context, in *EchoRequest) (
 			DesiredSuffrage: in.RaftDesiredSuffrage,
 			SDKVersion:      in.SdkVersion,
 			UpgradeVersion:  in.RaftUpgradeVersion,
-			RedundancyZone:  in.RaftRedundancyZone,
 		})
 	}
 
@@ -150,7 +140,6 @@ func (c *forwardingClient) startHeartbeat() {
 				req.RaftNodeID = raftBackend.NodeID()
 				req.RaftTerm = raftBackend.Term()
 				req.RaftDesiredSuffrage = raftBackend.DesiredSuffrage()
-				req.RaftRedundancyZone = raftBackend.RedundancyZone()
 				req.RaftUpgradeVersion = raftBackend.EffectiveVersion()
 				labels = append(labels, metrics.Label{Name: "peer_id", Value: raftBackend.NodeID()})
 			}

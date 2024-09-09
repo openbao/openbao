@@ -21,19 +21,19 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	vaultjwt "github.com/hashicorp/vault-plugin-auth-jwt"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
+	vaultjwt "github.com/openbao/openbao/builtin/credential/jwt"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/command/agent"
 	agentConfig "github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/helper/useragent"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/helper/pointerutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -834,7 +834,7 @@ auto_auth {
 				// the temp dir before Agent has had time to render and will
 				// likely fail the test
 				tick := time.Tick(1 * time.Second)
-				timeout := time.After(10 * time.Second)
+				timeout := time.After(20 * time.Second)
 				var err error
 				for {
 					select {
@@ -1016,13 +1016,13 @@ func TestAgent_Template_VaultClientFromEnv(t *testing.T) {
 	testCases := map[string]struct {
 		env map[string]string
 	}{
-		"VAULT_ADDR and VAULT_CACERT": {
+		"BAO_ADDR and BAO_CACERT": {
 			env: map[string]string{
 				api.EnvVaultAddress: vaultAddr,
 				api.EnvVaultCACert:  cluster.CACertPEMFile,
 			},
 		},
-		"VAULT_ADDR and VAULT_CACERT_BYTES": {
+		"BAO_ADDR and BAO_CACERT_BYTES": {
 			env: map[string]string{
 				api.EnvVaultAddress:     vaultAddr,
 				api.EnvVaultCACertBytes: string(cluster.CACertPEM),
@@ -3160,8 +3160,10 @@ auto_auth {
 
 	// Start Vault Agent
 	go func() {
-		code := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
-		require.Equalf(t, 0, code, "Vault Agent returned a non-zero exit code")
+		exitCode := cmd.Run([]string{"-config", configFileName, "-log-format", "json", "-log-file", logFilePath, "-log-level", "trace"})
+		if exitCode != 0 {
+			panic(fmt.Sprintf("expected zero exit code from agent invocation"))
+		}
 	}()
 
 	select {

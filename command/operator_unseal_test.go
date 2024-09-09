@@ -6,7 +6,7 @@ package command
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -36,7 +36,7 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 
 		ui, cmd := testOperatorUnsealCommand(t)
 		cmd.client = client
-		cmd.testOutput = ioutil.Discard
+		cmd.testOutput = io.Discard
 
 		code := cmd.Run(nil)
 		if exp := 1; code != exp {
@@ -44,6 +44,28 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		}
 
 		expected := "is not a terminal"
+		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
+		if !strings.Contains(combined, expected) {
+			t.Errorf("expected %q to contain %q", combined, expected)
+		}
+	})
+
+	t.Run("error_non_interactive", func(t *testing.T) {
+		t.Parallel()
+
+		client, closer := testVaultServer(t)
+		defer closer()
+
+		ui, cmd := testOperatorUnsealCommand(t)
+		cmd.client = client
+		cmd.testOutput = io.Discard
+
+		code := cmd.Run([]string{"-non-interactive"})
+		if exp := 1; code != exp {
+			t.Errorf("expected %d to be %d", code, exp)
+		}
+
+		expected := "Refusing to read from stdin"
 		combined := ui.OutputWriter.String() + ui.ErrorWriter.String()
 		if !strings.Contains(combined, expected) {
 			t.Errorf("expected %q to contain %q", combined, expected)
@@ -68,7 +90,7 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 
 		ui, cmd := testOperatorUnsealCommand(t)
 		cmd.client = client
-		cmd.testOutput = ioutil.Discard
+		cmd.testOutput = io.Discard
 
 		// Reset and check output
 		code := cmd.Run([]string{
@@ -98,7 +120,7 @@ func TestOperatorUnsealCommand_Run(t *testing.T) {
 		for _, key := range keys {
 			ui, cmd := testOperatorUnsealCommand(t)
 			cmd.client = client
-			cmd.testOutput = ioutil.Discard
+			cmd.testOutput = io.Discard
 
 			// Reset and check output
 			code := cmd.Run([]string{

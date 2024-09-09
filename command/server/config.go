@@ -20,12 +20,11 @@ import (
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/helper/experiments"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/strutil"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 )
 
 const (
@@ -34,20 +33,14 @@ const (
 	VaultDevKeyFilename  = "vault-key.pem"
 )
 
-var (
-	entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
-		return nil
-	}
-
-	// Modified internally for testing.
-	validExperiments = experiments.ValidExperiments()
-)
+var entConfigValidate = func(_ *Config, _ string) []configutil.ConfigError {
+	return nil
+}
 
 // Config is the configuration for the vault server.
 type Config struct {
 	UnusedKeys configutil.UnusedKeyMap `hcl:",unusedKeyPositions"`
 	FoundKeys  []string                `hcl:",decodedFields"`
-	entConfig
 
 	*configutil.SharedConfig `hcl:"-"`
 
@@ -55,8 +48,6 @@ type Config struct {
 	HAStorage *Storage `hcl:"-"`
 
 	ServiceRegistration *ServiceRegistration `hcl:"-"`
-
-	Experiments []string `hcl:"experiments"`
 
 	CacheSize                int         `hcl:"cache_size"`
 	DisableCache             bool        `hcl:"-"`
@@ -117,9 +108,7 @@ type Config struct {
 	EnableResponseHeaderRaftNodeID    bool        `hcl:"-"`
 	EnableResponseHeaderRaftNodeIDRaw interface{} `hcl:"enable_response_header_raft_node_id"`
 
-	License          string `hcl:"-"`
-	LicensePath      string `hcl:"license_path"`
-	DisableSSCTokens bool   `hcl:"-"`
+	DisableSSCTokens *bool `hcl:"-"`
 }
 
 const (
@@ -145,11 +134,9 @@ func (c *Config) validateEnt(sourceFilePath string) []configutil.ConfigError {
 	return entConfigValidate(c, sourceFilePath)
 }
 
-// DevConfig is a Config that is used for dev mode of Vault.
+// DevConfig is a Config that is used for dev mode of OpenBao.
 func DevConfig(storageType string) (*Config, error) {
 	hclStr := `
-disable_mlock = true
-
 listener "tcp" {
 	address = "127.0.0.1:8200"
 	tls_disable = true
@@ -205,8 +192,6 @@ func DevTLSConfig(storageType, certDir string) (*Config, error) {
 
 func parseDevTLSConfig(storageType, certDir string) (*Config, error) {
 	hclStr := `
-disable_mlock = true
-
 listener "tcp" {
 	address = "[::]:8200"
 	tls_cert_file = "%s/vault-cert.pem"
@@ -424,11 +409,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.EnableResponseHeaderRaftNodeID = c2.EnableResponseHeaderRaftNodeID
 	}
 
-	result.LicensePath = c.LicensePath
-	if c2.LicensePath != "" {
-		result.LicensePath = c2.LicensePath
-	}
-
 	// Use values from top-level configuration for storage if set
 	if storage := result.Storage; storage != nil {
 		if result.APIAddr != "" {
@@ -459,10 +439,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 		result.AdministrativeNamespacePath = c2.AdministrativeNamespacePath
 	}
 
-	result.entConfig = c.entConfig.Merge(c2.entConfig)
-
-	result.Experiments = mergeExperiments(c.Experiments, c2.Experiments)
-
 	return result
 }
 
@@ -477,11 +453,11 @@ func LoadConfig(path string) (*Config, error) {
 	if fi.IsDir() {
 		// check permissions on the config directory
 		var enableFilePermissionsCheck bool
-		if enableFilePermissionsCheckEnv := os.Getenv(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
+		if enableFilePermissionsCheckEnv := api.ReadBaoVariable(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
 			var err error
 			enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 			if err != nil {
-				return nil, errors.New("Error parsing the environment variable VAULT_ENABLE_FILE_PERMISSIONS_CHECK")
+				return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 			}
 		}
 		f, err := os.Open(path)
@@ -538,11 +514,11 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	var enableFilePermissionsCheck bool
-	if enableFilePermissionsCheckEnv := os.Getenv(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
+	if enableFilePermissionsCheckEnv := api.ReadBaoVariable(consts.VaultEnableFilePermissionsCheckEnv); enableFilePermissionsCheckEnv != "" {
 		var err error
 		enableFilePermissionsCheck, err = strconv.ParseBool(enableFilePermissionsCheckEnv)
 		if err != nil {
-			return nil, errors.New("Error parsing the environment variable VAULT_ENABLE_FILE_PERMISSIONS_CHECK")
+			return nil, errors.New("Error parsing the environment variable BAO_ENABLE_FILE_PERMISSIONS_CHECK")
 		}
 	}
 
@@ -697,6 +673,13 @@ func ParseConfig(d, source string) (*Config, error) {
 		}
 	}
 
+	// We default to disabling SSCTs if it is not enabled in the
+	// configuration explicitly.
+	if result.DisableSSCTokens == nil {
+		disableSSCTokens := true
+		result.DisableSSCTokens = &disableSSCTokens
+	}
+
 	list, ok := obj.Node.(*ast.ObjectList)
 	if !ok {
 		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
@@ -740,14 +723,6 @@ func ParseConfig(d, source string) (*Config, error) {
 		}
 	}
 
-	if err := validateExperiments(result.Experiments); err != nil {
-		return nil, fmt.Errorf("error validating experiment(s) from config: %w", err)
-	}
-
-	if err := result.parseConfig(list); err != nil {
-		return nil, fmt.Errorf("error parsing enterprise config: %w", err)
-	}
-
 	// Remove all unused keys from Config that were satisfied by SharedConfig.
 	result.UnusedKeys = configutil.UnusedFieldDifference(result.UnusedKeys, nil, append(result.FoundKeys, sharedConfig.FoundKeys...))
 	// Assign file info
@@ -758,69 +733,6 @@ func ParseConfig(d, source string) (*Config, error) {
 	}
 
 	return result, nil
-}
-
-func ExperimentsFromEnvAndCLI(config *Config, envKey string, flagExperiments []string) error {
-	if envExperimentsRaw := os.Getenv(envKey); envExperimentsRaw != "" {
-		envExperiments := strings.Split(envExperimentsRaw, ",")
-		err := validateExperiments(envExperiments)
-		if err != nil {
-			return fmt.Errorf("error validating experiment(s) from environment variable %q: %w", envKey, err)
-		}
-
-		config.Experiments = mergeExperiments(config.Experiments, envExperiments)
-	}
-
-	if len(flagExperiments) != 0 {
-		err := validateExperiments(flagExperiments)
-		if err != nil {
-			return fmt.Errorf("error validating experiment(s) from command line flag: %w", err)
-		}
-
-		config.Experiments = mergeExperiments(config.Experiments, flagExperiments)
-	}
-
-	return nil
-}
-
-// Validate checks each experiment is a known experiment.
-func validateExperiments(experiments []string) error {
-	var invalid []string
-
-	for _, experiment := range experiments {
-		if !strutil.StrListContains(validExperiments, experiment) {
-			invalid = append(invalid, experiment)
-		}
-	}
-
-	if len(invalid) != 0 {
-		return fmt.Errorf("valid experiment(s) are %s, but received the following invalid experiment(s): %s",
-			strings.Join(validExperiments, ", "),
-			strings.Join(invalid, ", "))
-	}
-
-	return nil
-}
-
-// mergeExperiments returns the logical OR of the two sets.
-func mergeExperiments(left, right []string) []string {
-	processed := map[string]struct{}{}
-	var result []string
-	for _, l := range left {
-		if _, seen := processed[l]; !seen {
-			result = append(result, l)
-		}
-		processed[l] = struct{}{}
-	}
-
-	for _, r := range right {
-		if _, seen := processed[r]; !seen {
-			result = append(result, r)
-			processed[r] = struct{}{}
-		}
-	}
-
-	return result
 }
 
 // LoadConfigDir loads all the configurations in the given directory
@@ -1140,7 +1052,6 @@ func (c *Config) Sanitized() map[string]interface{} {
 		"enable_response_header_raft_node_id": c.EnableResponseHeaderRaftNodeID,
 
 		"log_requests_level": c.LogRequestsLevel,
-		"experiments":        c.Experiments,
 
 		"detect_deadlocks": c.DetectDeadlocks,
 
@@ -1194,11 +1105,6 @@ func (c *Config) Sanitized() map[string]interface{} {
 			"type": c.ServiceRegistration.Type,
 		}
 		result["service_registration"] = sanitizedServiceRegistration
-	}
-
-	entConfigResult := c.entConfig.Sanitized()
-	for k, v := range entConfigResult {
-		result[k] = v
 	}
 
 	return result

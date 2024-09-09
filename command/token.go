@@ -21,22 +21,22 @@ func (c *TokenCommand) Synopsis() string {
 
 func (c *TokenCommand) Help() string {
 	helpText := `
-Usage: vault token <subcommand> [options] [args]
+Usage: bao token <subcommand> [options] [args]
 
   This command groups subcommands for interacting with tokens. Users can
   create, lookup, renew, and revoke tokens.
 
   Create a new token:
 
-      $ vault token create
+      $ bao token create
 
   Revoke a token:
 
-      $ vault token revoke 96ddf4bc-d217-f3ba-f9bd-017055595017
+      $ bao token revoke 96ddf4bc-d217-f3ba-f9bd-017055595017
 
   Renew a token:
 
-      $ vault token renew 96ddf4bc-d217-f3ba-f9bd-017055595017
+      $ bao token renew 96ddf4bc-d217-f3ba-f9bd-017055595017
 
   Please see the individual subcommand help for detailed usage information.
 `

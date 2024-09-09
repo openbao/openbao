@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // protectedPaths cannot be accessed via the raw APIs.
@@ -73,12 +73,6 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 			err := fmt.Sprintf("cannot read %q", path)
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
-	}
-
-	// Run additional checks if needed
-	if err := b.checkRaw(path); err != nil {
-		b.logger.Warn(err.Error(), "path", path)
-		return logical.ErrorResponse("cannot read %q", path), logical.ErrInvalidRequest
 	}
 
 	entry, err := b.barrier.Get(ctx, path)
@@ -253,6 +247,12 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 
 // handleRawList is used to list directly from the barrier
 func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
 	path := data.Get("path").(string)
 	if path != "" && !strings.HasSuffix(path, "/") {
 		path = path + "/"
@@ -270,13 +270,7 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	// Run additional checks if needed
-	if err := b.checkRaw(path); err != nil {
-		b.logger.Warn(err.Error(), "path", path)
-		return logical.ErrorResponse("cannot list %q", path), logical.ErrInvalidRequest
-	}
-
-	keys, err := b.barrier.List(ctx, path)
+	keys, err := b.barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -313,6 +307,14 @@ func rawPaths(prefix string, r *RawBackend) []*framework.Path {
 				},
 				"compression_type": {
 					Type: framework.TypeString,
+				},
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist. Only used in list operations.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries. Only used in list operations.`,
 				},
 			},
 

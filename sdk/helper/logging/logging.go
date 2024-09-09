@@ -6,10 +6,10 @@ package logging
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type LogFormat int
@@ -69,7 +69,7 @@ func ParseLogFormat(format string) (LogFormat, error) {
 
 // ParseEnvLogFormat parses the log format from an environment variable.
 func ParseEnvLogFormat() LogFormat {
-	logFormat := os.Getenv("VAULT_LOG_FORMAT")
+	logFormat := api.ReadBaoVariable("BAO_LOG_FORMAT")
 	switch strings.ToLower(logFormat) {
 	case "json", "vault_json", "vault-json", "vaultjson":
 		return JSONFormat

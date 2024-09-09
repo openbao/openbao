@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestTransit_BatchDecryption(t *testing.T) {

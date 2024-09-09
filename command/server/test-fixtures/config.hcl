@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 disable_cache = true
-disable_mlock = true
 
 ui = true
 
@@ -51,4 +50,3 @@ disable_sealwrap = true
 disable_printable_check = true
 enable_response_header_hostname = true
 enable_response_header_raft_node_id = true
-license_path = "/path/to/license"

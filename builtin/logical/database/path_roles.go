@@ -11,12 +11,12 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/queue"
+	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/queue"
 )
 
 func pathListRoles(b *databaseBackend) []*framework.Path {
@@ -28,6 +28,17 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				OperationPrefix: operationPrefixDatabase,
 				OperationVerb:   "list",
 				OperationSuffix: "roles",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
 			},
 
 			Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -44,6 +55,17 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				OperationPrefix: operationPrefixDatabase,
 				OperationVerb:   "list",
 				OperationSuffix: "static-roles",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
 			},
 
 			Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -189,7 +211,7 @@ func staticFields() map[string]*framework.FieldSchema {
 	fields := map[string]*framework.FieldSchema{
 		"username": {
 			Type: framework.TypeString,
-			Description: `Name of the static user account for Vault to manage.
+			Description: `Name of the static user account for OpenBao to manage.
 	Requires "rotation_period" to be specified`,
 		},
 		"rotation_period": {
@@ -352,11 +374,18 @@ func (b *databaseBackend) pathRoleRead(ctx context.Context, req *logical.Request
 }
 
 func (b *databaseBackend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
 	path := databaseRolePath
 	if strings.HasPrefix(req.Path, "static-roles") {
 		path = databaseStaticRolePath
 	}
-	entries, err := req.Storage.List(ctx, path)
+
+	entries, err := req.Storage.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return nil, err
 	}

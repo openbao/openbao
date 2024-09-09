@@ -36,9 +36,9 @@ const (
 	// resolving replicaiton addresses
 	ReplicationResolverALPN = "replication_resolver_v1"
 
-	VaultEnableFilePermissionsCheckEnv = "VAULT_ENABLE_FILE_PERMISSIONS_CHECK"
+	VaultEnableFilePermissionsCheckEnv = "BAO_ENABLE_FILE_PERMISSIONS_CHECK"
 
-	VaultDisableUserLockout = "VAULT_DISABLE_USER_LOCKOUT"
+	VaultDisableUserLockout = "BAO_DISABLE_USER_LOCKOUT"
 
 	PerformanceReplicationPathTarget = "performance"
 

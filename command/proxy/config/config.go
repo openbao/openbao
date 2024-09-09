@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
+	ctconfig "github.com/openbao/openbao-template/config"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -42,8 +43,8 @@ type Config struct {
 }
 
 const (
-	DisableIdleConnsEnv  = "VAULT_PROXY_DISABLE_IDLE_CONNECTIONS"
-	DisableKeepAlivesEnv = "VAULT_PROXY_DISABLE_KEEP_ALIVES"
+	DisableIdleConnsEnv  = "BAO_PROXY_DISABLE_IDLE_CONNECTIONS"
+	DisableKeepAlivesEnv = "BAO_PROXY_DISABLE_KEEP_ALIVES"
 )
 
 func (c *Config) Prune() {
@@ -95,8 +96,6 @@ type APIProxy struct {
 	UseAutoAuthTokenRaw interface{} `hcl:"use_auto_auth_token"`
 	UseAutoAuthToken    bool        `hcl:"-"`
 	ForceAutoAuthToken  bool        `hcl:"-"`
-	EnforceConsistency  string      `hcl:"enforce_consistency"`
-	WhenInconsistent    string      `hcl:"when_inconsistent"`
 }
 
 // Cache contains any configuration needed for Cache mode
@@ -175,11 +174,6 @@ func (c *Config) Merge(c2 *Config) *Config {
 	result.APIProxy = c.APIProxy
 	if c2.APIProxy != nil {
 		result.APIProxy = c2.APIProxy
-	}
-
-	result.DisableMlock = c.DisableMlock
-	if c2.DisableMlock {
-		result.DisableMlock = c2.DisableMlock
 	}
 
 	// For these, ignore the non-specific one and overwrite them all
@@ -431,7 +425,7 @@ func LoadConfigFile(path string) (*Config, error) {
 		}
 	}
 
-	if disableIdleConnsEnv := os.Getenv(DisableIdleConnsEnv); disableIdleConnsEnv != "" {
+	if disableIdleConnsEnv := api.ReadBaoVariable(DisableIdleConnsEnv); disableIdleConnsEnv != "" {
 		result.DisableIdleConns, err = parseutil.ParseCommaStringSlice(strings.ToLower(disableIdleConnsEnv))
 		if err != nil {
 			return nil, fmt.Errorf("error parsing environment variable %s: %v", DisableIdleConnsEnv, err)
@@ -451,7 +445,7 @@ func LoadConfigFile(path string) (*Config, error) {
 		}
 	}
 
-	if disableKeepAlivesEnv := os.Getenv(DisableKeepAlivesEnv); disableKeepAlivesEnv != "" {
+	if disableKeepAlivesEnv := api.ReadBaoVariable(DisableKeepAlivesEnv); disableKeepAlivesEnv != "" {
 		result.DisableKeepAlives, err = parseutil.ParseCommaStringSlice(strings.ToLower(disableKeepAlivesEnv))
 		if err != nil {
 			return nil, fmt.Errorf("error parsing environment variable %s: %v", DisableKeepAlivesEnv, err)

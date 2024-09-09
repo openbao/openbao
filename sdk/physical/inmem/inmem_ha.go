@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 type InmemHABackend struct {
@@ -17,11 +17,6 @@ type InmemHABackend struct {
 	l      *sync.Mutex
 	cond   *sync.Cond
 	logger log.Logger
-}
-
-type TransactionalInmemHABackend struct {
-	physical.Transactional
-	InmemHABackend
 }
 
 // NewInmemHA constructs a new in-memory HA backend. This is only for testing.
@@ -36,26 +31,6 @@ func NewInmemHA(_ map[string]string, logger log.Logger) (physical.Backend, error
 		locks:   make(map[string]string),
 		logger:  logger,
 		l:       new(sync.Mutex),
-	}
-	in.cond = sync.NewCond(in.l)
-	return in, nil
-}
-
-func NewTransactionalInmemHA(_ map[string]string, logger log.Logger) (physical.Backend, error) {
-	transInmem, err := NewTransactionalInmem(nil, logger)
-	if err != nil {
-		return nil, err
-	}
-	inmemHA := InmemHABackend{
-		Backend: transInmem,
-		locks:   make(map[string]string),
-		logger:  logger,
-		l:       new(sync.Mutex),
-	}
-
-	in := &TransactionalInmemHABackend{
-		InmemHABackend: inmemHA,
-		Transactional:  transInmem.(physical.Transactional),
 	}
 	in.cond = sync.NewCond(in.l)
 	return in, nil

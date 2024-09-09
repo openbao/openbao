@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/url"
 	"os"
@@ -20,11 +20,11 @@ import (
 	"github.com/armon/go-metrics"
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/xor"
+	"github.com/openbao/openbao/sdk/v2/helper/xor"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -65,8 +65,6 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 	switch kind {
 	case GenerateRootRegular:
 		status, err = client.Sys().GenerateRootInit("", "")
-	case GenerateRootDR:
-		status, err = client.Sys().GenerateDROperationTokenInit("", "")
 	case GenerateRecovery:
 		status, err = client.Sys().GenerateRecoveryOperationTokenInit("", "")
 	}
@@ -89,8 +87,6 @@ func GenerateRootWithError(t testing.T, cluster *vault.TestCluster, kind Generat
 		switch kind {
 		case GenerateRootRegular:
 			status, err = client.Sys().GenerateRootUpdate(strKey, status.Nonce)
-		case GenerateRootDR:
-			status, err = client.Sys().GenerateDROperationTokenUpdate(strKey, status.Nonce)
 		case GenerateRecovery:
 			status, err = client.Sys().GenerateRecoveryOperationTokenUpdate(strKey, status.Nonce)
 		}
@@ -704,7 +700,7 @@ func SysMetricsReq(client *api.Client, cluster *vault.TestCluster, unauth bool) 
 	if err != nil {
 		return nil, err
 	}
-	bodyBytes, err := ioutil.ReadAll(resp.Response.Body)
+	bodyBytes, err := io.ReadAll(resp.Response.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1049,7 +1045,7 @@ func WaitForNodesExcludingSelectedStandbys(t testing.T, cluster *vault.TestClust
 }
 
 // IsLocalOrRegressionTests returns true when the tests are running locally (not in CI), or when
-// the regression test env var (VAULT_REGRESSION_TESTS) is provided.
+// the regression test env var (BAO_REGRESSION_TESTS) is provided.
 func IsLocalOrRegressionTests() bool {
-	return os.Getenv("CI") == "" || os.Getenv("VAULT_REGRESSION_TESTS") == "true"
+	return os.Getenv("CI") == "" || api.ReadBaoVariable("BAO_REGRESSION_TESTS") == "true"
 }

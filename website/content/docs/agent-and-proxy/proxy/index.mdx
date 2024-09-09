@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: OpenBao Proxy
+sidebar_label: Overview
 description: |-
   OpenBao Proxy is a daemon that can be used to perform some OpenBao
   functionality automatically, and act as a proxy for OpenBao's APIs.
@@ -39,7 +38,7 @@ the Auto-Auth token for these requests. Please see the [API Proxy docs][apiproxy
 for more information.
 
 API Proxy functionality takes place within a defined `listener`, and its behaviour can be configured with an
-[`api_proxy` stanza](/vault/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
+[`api_proxy` stanza](/docs/agent-and-proxy/proxy/apiproxy#configuration-api_proxy).
 
 ## Caching
 
@@ -61,21 +60,21 @@ to only enable this on trusted interfaces, as it does not require any authorizat
 
 ### Cache
 
-See the [caching](/vault/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
+See the [caching](/docs/agent-and-proxy/proxy/caching#api) page for details on the cache API.
 
 ## Configuration
 
 ### Command options
 
-- `-log-level` ((#\_log_level)) `(string: "info")` - Log verbosity level. Supported values (in
+- `-log-level` `(string: "info")` - Log verbosity level. Supported values (in
 order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`. This can
-also be specified via the `VAULT_LOG_LEVEL` environment variable.
+also be specified via the `BAO_LOG_LEVEL` environment variable.
 
-- `-log-format` ((#\_log_format)) `(string: "standard")` - Log format. Supported values
+- `-log-format` `(string: "standard")` - Log format. Supported values
 are `standard` and `json`. This can also be specified via the
-`VAULT_LOG_FORMAT` environment variable.
+`BAO_LOG_FORMAT` environment variable.
 
-- `-log-file` ((#\_log_file)) - the absolute path where OpenBao Proxy should save
+- `-log-file` - the absolute path where OpenBao Proxy should save
   log messages. Paths that end with a path separator use the default file name,
   `proxy.log`. Paths that do not end with a file extension use the default
   `.log` extension. If the log file rotates, OpenBao Proxy appends the current
@@ -87,15 +86,15 @@ are `standard` and `json`. This can also be specified via the
   `/var/log/my-diary` | `/var/log/my-diary.log` | `/var/log/my-diary-{timestamp}.log`
   `/var/log/my-diary.txt` | `/var/log/my-diary.txt` | `/var/log/my-diary-{timestamp}.txt`
 
-- `-log-rotate-bytes` ((#\_log_rotate_bytes)) - to specify the number of
+- `-log-rotate-bytes` - to specify the number of
 bytes that should be written to a log before it needs to be rotated. Unless specified,
 there is no limit to the number of bytes that can be written to a log file.
 
-- `-log-rotate-duration` ((#\_log_rotate_duration)) - to specify the maximum
+- `-log-rotate-duration` - to specify the maximum
 duration a log should be written to before it needs to be rotated. Must be a duration
 value such as 30s. Defaults to 24h.
 
-- `-log-rotate-max-files` ((#\_log_rotate_max_files)) - to specify the maximum
+- `-log-rotate-max-files` - to specify the maximum
 number of older log file archives to keep. Defaults to `0` (no files are ever deleted).
 Set to `-1` to discard old log files when a new one is created.
 
@@ -103,18 +102,22 @@ Set to `-1` to discard old log files when a new one is created.
 
 These are the currently-available general configuration options:
 
-- `vault` <code>([vault][vault]: <optional\>)</code> - Specifies the remote OpenBao server the Proxy connects to.
+- `vault` <code>([vault][vault]: \<optional>)</code> - Specifies the remote OpenBao server the Proxy connects to.
 
-- `auto_auth` <code>([auto_auth][autoauth]: <optional\>)</code> - Specifies the method and other options used for Auto-Auth functionality.
+- `auto_auth` <code>([auto_auth][autoauth]: \<optional>)</code> - Specifies the method and other options used for Auto-Auth functionality.
 
-- `api_proxy` <code>([api_proxy][apiproxy]: <optional\>)</code> - Specifies options used for API Proxy functionality.
+- `api_proxy` <code>([api_proxy][apiproxy]: \<optional>)</code> - Specifies options used for API Proxy functionality.
 
-- `cache` <code>([cache][caching]: <optional\>)</code> - Specifies options used for Caching functionality.
+- `cache` <code>([cache][caching]: \<optional>)</code> - Specifies options used for Caching functionality.
 
-- `listener` <code>([listener][listener]: <optional\>)</code> - Specifies the addresses and ports on which the Proxy will respond to requests.
+- `listener` <code>([listener][listener]: \<optional>)</code> - Specifies the addresses and ports on which the Proxy will respond to requests.
 
-~> **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will attempt to reload listener TLS configuration.
+:::warning
+
+**Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will attempt to reload listener TLS configuration.
 This method can be used to refresh certificates used by OpenBao Proxy without having to restart its process.
+
+:::
 
 - `pid_file` `(string: "")` - Path to the file in which the Proxy's Process ID
 (PID) should be stored
@@ -131,18 +134,22 @@ environment variable as a comma separated string. This environment variable will
 Valid values include: `auto-auth`, and `proxying`. Can also be configured by setting the `VAULT_PROXY_DISABLE_KEEP_ALIVES`
 environment variable as a comma separated string. This environment variable will override any values found in a configuration file.
 
-- `template` <code>([template][template]: <optional\>)</code> - Specifies options used for templating OpenBao secrets to files.
+- `template` <code>(template: \<optional>)</code> - Specifies options used for templating OpenBao secrets to files.
 
-- `template_config` <code>([template_config][template-config]: <optional\>)</code> - Specifies templating engine behavior.
+- `template_config` <code>(template_config: \<optional>)</code> - Specifies templating engine behavior.
 
-- `telemetry` <code>([telemetry][telemetry]: <optional\>)</code> – Specifies the telemetry
-reporting system. See the [telemetry Stanza](/vault/docs/agent-and-proxy/proxy#telemetry-stanza) section below
+- `telemetry` <code>([telemetry][telemetry]: \<optional>)</code> – Specifies the telemetry
+reporting system. See the [telemetry Stanza](/docs/agent-and-proxy/proxy#telemetry-stanza) section below
 for a list of metrics specific to Proxy.
 
 - `log_level` - Equivalent to the [`-log-level` command-line flag](#_log_level).
 
-~> **Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will update the log level to the value
+:::warning
+
+**Note:** On `SIGHUP` (`kill -SIGHUP $(pidof bao)`), OpenBao Proxy will update the log level to the value
 specified by configuration file (including overriding values set using CLI or environment variable parameters).
+
+:::
 
 - `log_format` - Equivalent to the [`-log-format` command-line flag](#_log_format).
 
@@ -228,11 +235,11 @@ It can be configured to `metrics_only` to serve only metrics, or the default rol
 which serves everything (including metrics). The `require_request_header` does not apply
 to `metrics_only` listeners.
 
-- `proxy_api` <code>([proxy_api][proxy-api]: <optional\>)</code> - Manages optional Proxy API endpoints.
+- `proxy_api` <code>([proxy_api][proxy-api]: \<optional>)</code> - Manages optional Proxy API endpoints.
 
 #### proxy_api stanza
 
-- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/vault/docs/agent-and-proxy/proxy#quit) API.
+- `enable_quit` `(bool: false)` - If set to `true`, the Proxy will enable the [quit](/docs/agent-and-proxy/proxy#quit) API.
 
 ### telemetry stanza
 
@@ -253,13 +260,13 @@ runtime metrics about its performance, the auto-auth and the cache status:
 
 To run OpenBao Proxy:
 
-1. [Download](/vault/downloads) the OpenBao binary where the client application runs
+1. [Download](/downloads) the OpenBao binary where the client application runs
 (virtual machine, Kubernetes pod, etc.)
 
-1. Create a OpenBao Proxy configuration file. (See the [Example
+1. Create an OpenBao Proxy configuration file. (See the [Example
 Configuration](#example-configuration) section for an example configuration.)
 
-1. Start a OpenBao Proxy with the configuration file.
+1. Start an OpenBao Proxy with the configuration file.
 
 **Example:**
 
@@ -294,10 +301,8 @@ vault {
 }
 
 auto_auth {
-  method "aws" {
-    mount_path = "auth/aws-subaccount"
+  method "kubernetes" {
     config = {
-      type = "iam"
       role = "foobar"
     }
   }
@@ -342,14 +347,12 @@ listener "tcp" {
 }
 ```
 
-[vault]: /vault/docs/agent-and-proxy/proxy#vault-stanza
-[autoauth]: /vault/docs/agent-and-proxy/autoauth
-[caching]: /vault/docs/agent-and-proxy/proxy/caching
-[apiproxy]: /vault/docs/agent-and-proxy/proxy/apiproxy
-[persistent-cache]: /vault/docs/agent-and-proxy/proxy/caching/persistent-caches
-[template]: /vault/docs/agent-and-proxy/proxy/template
-[template-config]: /vault/docs/agent-and-proxy/proxy/template#template-configurations
-[proxy-api]: /vault/docs/agent-and-proxy/proxy/#proxy_api-stanza
-[listener]: /vault/docs/agent-and-proxy/proxy#listener-stanza
-[listener_main]: /vault/docs/configuration/listener/tcp
-[telemetry]: /vault/docs/configuration/telemetry
+[vault]: /docs/agent-and-proxy/proxy#vault-stanza
+[autoauth]: /docs/agent-and-proxy/autoauth
+[caching]: /docs/agent-and-proxy/proxy/caching
+[apiproxy]: /docs/agent-and-proxy/proxy/apiproxy
+[persistent-cache]: /docs/agent-and-proxy/proxy/caching/persistent-caches
+[proxy-api]: /docs/agent-and-proxy/proxy/#proxy_api-stanza
+[listener]: /docs/agent-and-proxy/proxy#listener-stanza
+[listener_main]: /docs/configuration/listener/tcp
+[telemetry]: /docs/configuration/telemetry

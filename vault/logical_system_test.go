@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,20 +23,19 @@ import (
 	"github.com/mitchellh/mapstructure"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/compressutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/compressutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 )
 
@@ -49,12 +47,6 @@ func TestSystemBackend_RootPaths(t *testing.T) {
 		"audit/*",
 		"raw",
 		"raw/*",
-		"replication/primary/secondary-token",
-		"replication/performance/primary/secondary-token",
-		"replication/dr/primary/secondary-token",
-		"replication/reindex",
-		"replication/dr/reindex",
-		"replication/performance/reindex",
 		"rotate",
 		"config/cors",
 		"config/auditing/*",
@@ -65,7 +57,6 @@ func TestSystemBackend_RootPaths(t *testing.T) {
 		"leases/revoke-prefix/*",
 		"leases/revoke-force/*",
 		"leases/lookup/*",
-		"storage/raft/snapshot-auto/config/*",
 		"leases",
 		"internal/inspect/*",
 	}
@@ -212,6 +203,7 @@ func TestSystemBackend_mounts(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"type":                    "system",
@@ -350,6 +342,7 @@ func TestSystemBackend_mount(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"type":                    "system",
@@ -426,6 +419,7 @@ func TestSystemBackend_mount(t *testing.T) {
 			"plugin_version":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 			"running_sha256":         "",
+			"deprecation_status":     "supported",
 		},
 	}
 	if diff := deep.Equal(resp.Data, exp); len(diff) > 0 {
@@ -3363,7 +3357,7 @@ func TestSystemBackend_PluginCatalog_CRUD(t *testing.T) {
 	}
 
 	// Set a plugin
-	file, err := ioutil.TempFile(os.TempDir(), "temp")
+	file, err := os.CreateTemp(os.TempDir(), "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3796,6 +3790,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 				"plugin_version":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
 				"running_sha256":         "",
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"type":                    "system",
@@ -4048,8 +4043,8 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		exp := map[string]interface{}{
 			"openapi": framework.OASVersion,
 			"info": map[string]interface{}{
-				"title":       "HashiCorp Vault API",
-				"description": "HTTP API that gives you full access to Vault. All API routes are prefixed with `/v1/`.",
+				"title":       "OpenBao API",
+				"description": "HTTP API that gives you full access to OpenBao. All API routes are prefixed with `/v1/`.",
 				"version":     version.GetVersion().Version,
 				"license": map[string]interface{}{
 					"name": "Mozilla Public License 2.0",
@@ -5522,13 +5517,6 @@ func TestSystemBackend_LoggersByName(t *testing.T) {
 			false,
 		},
 		{
-			"activity",
-			"warning",
-			"warn",
-			false,
-			false,
-		},
-		{
 			"identity",
 			"err",
 			"error",
@@ -5826,7 +5814,7 @@ func TestValidateVersion_HelpfulErrorWhenBuiltinOverridden(t *testing.T) {
 	b := core.systemBackend
 
 	// Shadow a builtin and test getting a helpful error back.
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5861,7 +5849,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		pluginType consts.PluginType
 		mountTable string
 	}{
-		{"consul", consts.PluginTypeSecrets, "mounts"},
+		{"kv", consts.PluginTypeSecrets, "mounts"},
 		{"approle", consts.PluginTypeCredential, "auth"},
 	}
 	readMountConfig := func(pluginName, mountTable string) map[string]interface{} {
@@ -5944,34 +5932,5 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		if !ok || pluginVersion != "" {
 			t.Errorf("expected empty plugin version in config: %#v", config)
 		}
-	}
-}
-
-func TestSystemBackend_ReadExperiments(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
-
-	for name, tc := range map[string][]string{
-		"no experiments enabled": {},
-		"one experiment enabled": {experiments.VaultExperimentEventsAlpha1},
-	} {
-		t.Run(name, func(t *testing.T) {
-			// Set the enabled experiments.
-			c.experiments = tc
-
-			req := logical.TestRequest(t, logical.ReadOperation, "experiments")
-			resp, err := c.systemBackend.HandleRequest(namespace.RootContext(nil), req)
-			if err != nil {
-				t.Fatalf("err: %v", err)
-			}
-			if resp == nil {
-				t.Fatal("Expected a response")
-			}
-			if !reflect.DeepEqual(experiments.ValidExperiments(), resp.Data["available"]) {
-				t.Fatalf("Expected %v but got %v", experiments.ValidExperiments(), resp.Data["available"])
-			}
-			if !reflect.DeepEqual(tc, resp.Data["enabled"]) {
-				t.Fatal("No experiments should be enabled by default")
-			}
-		})
 	}
 }

@@ -6,18 +6,14 @@ package transit
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/helper/constants"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
-
-var ErrNonceNotAllowed = errors.New("provided nonce not allowed for this key")
 
 func (b *backend) pathRewrap() *framework.Path {
 	return &framework.Path{
@@ -44,11 +40,6 @@ func (b *backend) pathRewrap() *framework.Path {
 				Description: "Base64 encoded context for key derivation. Required for derived keys.",
 			},
 
-			"nonce": {
-				Type:        framework.TypeString,
-				Description: "Nonce for when convergent encryption is used",
-			},
-
 			"key_version": {
 				Type: framework.TypeInt,
 				Description: `The version of the key to use for encryption.
@@ -60,7 +51,7 @@ to the min_encryption_version configured on the key.`,
 				Type: framework.TypeSlice,
 				Description: `
 Specifies a list of items to be re-encrypted in a single batch. When this parameter is set,
-if the parameters 'ciphertext', 'context' and 'nonce' are also set, they will be ignored.
+if the parameters 'ciphertext' and 'context' are also set, they will be ignored.
 Any batch output will preserve the order of the batch input.`,
 			},
 		},
@@ -97,7 +88,6 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 		batchInputItems[0] = BatchRequestItem{
 			Ciphertext: ciphertext,
 			Context:    d.Get("context").(string),
-			Nonce:      d.Get("nonce").(string),
 			KeyVersion: d.Get("key_version").(int),
 		}
 	}
@@ -123,15 +113,6 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 				continue
 			}
 		}
-
-		// Decode the nonce
-		if len(item.Nonce) != 0 {
-			batchInputItems[i].DecodedNonce, err = base64.StdEncoding.DecodeString(item.Nonce)
-			if err != nil {
-				batchResponseItems[i].Error = err.Error()
-				continue
-			}
-		}
 	}
 
 	// Get the policy
@@ -148,51 +129,38 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
 	}
+	defer p.Unlock()
 
-	warnAboutNonceUsage := false
 	for i, item := range batchInputItems {
 		if batchResponseItems[i].Error != "" {
 			continue
 		}
 
-		if item.Nonce != "" && !nonceAllowed(p) {
-			batchResponseItems[i].Error = ErrNonceNotAllowed.Error()
-			continue
-		}
-
-		plaintext, err := p.Decrypt(item.DecodedContext, item.DecodedNonce, item.Ciphertext)
+		plaintext, err := p.Decrypt(item.DecodedContext, nil, item.Ciphertext)
 		if err != nil {
 			switch err.(type) {
 			case errutil.UserError:
 				batchResponseItems[i].Error = err.Error()
 				continue
 			default:
-				p.Unlock()
 				return nil, err
 			}
 		}
 
-		if !warnAboutNonceUsage && shouldWarnAboutNonceUsage(p, item.DecodedNonce) {
-			warnAboutNonceUsage = true
-		}
-
-		ciphertext, err := p.Encrypt(item.KeyVersion, item.DecodedContext, item.DecodedNonce, plaintext)
+		ciphertext, err := p.Encrypt(item.KeyVersion, item.DecodedContext, nil, plaintext)
 		if err != nil {
 			switch err.(type) {
 			case errutil.UserError:
 				batchResponseItems[i].Error = err.Error()
 				continue
 			case errutil.InternalError:
-				p.Unlock()
 				return nil, err
 			default:
-				p.Unlock()
 				return nil, err
 			}
 		}
 
 		if ciphertext == "" {
-			p.Unlock()
 			return nil, fmt.Errorf("empty ciphertext returned for input item %d", i)
 		}
 
@@ -216,7 +184,6 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 		}
 	} else {
 		if batchResponseItems[0].Error != "" {
-			p.Unlock()
 			return logical.ErrorResponse(batchResponseItems[0].Error), logical.ErrInvalidRequest
 		}
 		resp.Data = map[string]interface{}{
@@ -225,11 +192,6 @@ func (b *backend) pathRewrapWrite(ctx context.Context, req *logical.Request, d *
 		}
 	}
 
-	if constants.IsFIPS() && warnAboutNonceUsage {
-		resp.AddWarning("A provided nonce value was used within FIPS mode, this violates FIPS 140 compliance.")
-	}
-
-	p.Unlock()
 	return resp, nil
 }
 

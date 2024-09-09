@@ -31,7 +31,6 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	semver "github.com/hashicorp/go-version"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/hostutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/locking"
@@ -41,13 +40,13 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/helper/roottoken"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 	"golang.org/x/crypto/sha3"
 )
@@ -62,31 +61,16 @@ func systemBackendMemDBSchema() *memdb.DBSchema {
 		Tables: make(map[string]*memdb.TableSchema),
 	}
 
-	schemas := getSystemSchemas()
-
-	for _, schemaFunc := range schemas {
-		schema := schemaFunc()
-		if _, ok := systemSchema.Tables[schema.Name]; ok {
-			panic(fmt.Sprintf("duplicate table name: %s", schema.Name))
-		}
-		systemSchema.Tables[schema.Name] = schema
-	}
-
 	return systemSchema
-}
-
-type PolicyMFABackend struct {
-	*MFABackend
 }
 
 func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	db, _ := memdb.NewMemDB(systemBackendMemDBSchema())
 
 	b := &SystemBackend{
-		Core:       core,
-		db:         db,
-		logger:     logger,
-		mfaBackend: NewPolicyMFABackend(core, logger),
+		Core:   core,
+		db:     db,
+		logger: logger,
 	}
 
 	b.Backend = &framework.Backend{
@@ -101,12 +85,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"audit/*",
 				"raw",
 				"raw/*",
-				"replication/primary/secondary-token",
-				"replication/performance/primary/secondary-token",
-				"replication/dr/primary/secondary-token",
-				"replication/reindex",
-				"replication/dr/reindex",
-				"replication/performance/reindex",
 				"rotate",
 				"config/cors",
 				"config/auditing/*",
@@ -117,7 +95,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"leases/revoke-prefix/*",
 				"leases/revoke-force/*",
 				"leases/lookup/*",
-				"storage/raft/snapshot-auto/config/*",
 				"leases",
 				"internal/inspect/*",
 			},
@@ -130,18 +107,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				"internal/ui/mounts",
 				"internal/ui/mounts/*",
 				"internal/ui/namespaces",
-				"replication/performance/status",
-				"replication/dr/status",
-				"replication/dr/secondary/promote",
-				"replication/dr/secondary/disable",
-				"replication/dr/secondary/recover",
-				"replication/dr/secondary/update-primary",
-				"replication/dr/secondary/operation-token/delete",
-				"replication/dr/secondary/license",
-				"replication/dr/secondary/license/signed",
-				"replication/dr/secondary/license/status",
-				"replication/dr/secondary/sys/config/reload/license",
-				"replication/dr/secondary/reindex",
 				"storage/raft/bootstrap/challenge",
 				"storage/raft/bootstrap/answer",
 				"init",
@@ -165,14 +130,9 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 				expirationSubPath,
 				countersSubPath,
 			},
-
-			SealWrapStorage: []string{
-				managedKeyRegistrySubPath,
-			},
 		},
 	}
 
-	b.Backend.Paths = append(b.Backend.Paths, entPaths(b)...)
 	b.Backend.Paths = append(b.Backend.Paths, b.configPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.rekeyPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.sealPaths()...)
@@ -197,9 +157,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.inFlightRequestPath())
 	b.Backend.Paths = append(b.Backend.Paths, b.hostInfoPath())
 	b.Backend.Paths = append(b.Backend.Paths, b.quotasPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.rootActivityPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.loginMFAPaths()...)
-	b.Backend.Paths = append(b.Backend.Paths, b.experimentPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.introspectionPaths()...)
 
 	if core.rawEnabled {
@@ -209,16 +167,6 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 		b.Backend.Paths = append(b.Backend.Paths, b.raftStoragePaths()...)
 	}
 
-	// If the node is in a DR secondary cluster, gate some raft operations by
-	// the DR operation token.
-	if core.IsDRSecondary() {
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/autopilot/configuration")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/autopilot/state")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/configuration")
-		b.Backend.PathsSpecial.Unauthenticated = append(b.Backend.PathsSpecial.Unauthenticated, "storage/raft/remove-peer")
-	}
-
-	b.Backend.Invalidate = sysInvalidate(b)
 	return b
 }
 
@@ -226,9 +174,6 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 	r := &RawBackend{
 		barrier: b.Core.barrier,
 		logger:  b.logger,
-		checkRaw: func(path string) error {
-			return checkRaw(b, path)
-		},
 	}
 	return rawPaths("", r)
 }
@@ -238,10 +183,9 @@ func (b *SystemBackend) rawPaths() []*framework.Path {
 // prefix. Conceptually it is similar to procfs on Linux.
 type SystemBackend struct {
 	*framework.Backend
-	Core       *Core
-	db         *memdb.MemDB
-	logger     log.Logger
-	mfaBackend *PolicyMFABackend
+	Core   *Core
+	db     *memdb.MemDB
+	logger log.Logger
 }
 
 // handleConfigStateSanitized returns the current configuration state. The configuration
@@ -257,13 +201,6 @@ func (b *SystemBackend) handleConfigStateSanitized(ctx context.Context, req *log
 
 // handleConfigReload handles reloading specific pieces of the configuration.
 func (b *SystemBackend) handleConfigReload(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	subsystem := data.Get("subsystem").(string)
-
-	switch subsystem {
-	case "license":
-		return handleLicenseReload(b)(ctx, req, data)
-	}
-
 	return nil, logical.ErrUnsupportedPath
 }
 
@@ -320,7 +257,7 @@ func (b *SystemBackend) handleTidyLeases(ctx context.Context, req *logical.Reque
 	}()
 
 	resp := &logical.Response{}
-	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs.")
+	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs.")
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
 }
 
@@ -676,11 +613,6 @@ func getVersion(d *framework.FieldData) (version string, builtin bool, err error
 func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	pluginName := d.Get("plugin").(string)
 	pluginMounts := d.Get("mounts").([]string)
-	scope := d.Get("scope").(string)
-
-	if scope != "" && scope != globalScope {
-		return logical.ErrorResponse("reload scope must be omitted or 'global'"), nil
-	}
 
 	if pluginName != "" && len(pluginMounts) > 0 {
 		return logical.ErrorResponse("plugin and mounts cannot be set at the same time"), nil
@@ -707,13 +639,6 @@ func (b *SystemBackend) handlePluginReloadUpdate(ctx context.Context, req *logic
 		},
 	}
 
-	if scope == globalScope {
-		err := handleGlobalPluginReload(ctx, b.Core, req.ID, pluginName, pluginMounts)
-		if err != nil {
-			return nil, err
-		}
-		return logical.RespondWithStatusCode(&r, req, http.StatusAccepted)
-	}
 	return &r, nil
 }
 
@@ -1025,14 +950,6 @@ func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Reque
 			continue
 		}
 
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, "")
-		if err != nil {
-			return nil, err
-		}
-		if cont {
-			continue
-		}
-
 		// Populate mount info
 		info := b.mountInfo(ctx, entry)
 
@@ -1044,15 +961,7 @@ func (b *SystemBackend) handleMountTable(ctx context.Context, req *logical.Reque
 
 // handleMount is used to mount a new path
 func (b *SystemBackend) handleMount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	local := data.Get("local").(bool)
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -1320,16 +1229,6 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 
-	repState := b.Core.ReplicationState()
-	entry := b.Core.router.MatchingMountEntry(ctx, path)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
-
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
 	match := b.Core.router.MatchingMount(ctx, path)
@@ -1346,18 +1245,6 @@ func (b *SystemBackend) handleUnmount(ctx context.Context, req *logical.Request,
 	// Attempt unmount
 	if err := b.Core.unmount(ctx, path); err != nil {
 		b.Backend.Logger().Error("unmount failed", "path", path, "error", err)
-		return handleError(err)
-	}
-
-	// Get the view path if available
-	var viewPath string
-	if entry != nil {
-		viewPath = entry.ViewPath()
-	}
-
-	// Remove from filtered mounts
-	if err := b.Core.removePathFromFilteredPaths(ctx, ns.Path+path, viewPath); err != nil {
-		b.Backend.Logger().Error("filtered path removal failed", path, "error", err)
 		return handleError(err)
 	}
 
@@ -1389,8 +1276,6 @@ func validateMountPath(p string) error {
 
 // handleRemount is used to remount a path
 func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -1459,13 +1344,6 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("path already in use at %q", match))
 	}
 
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
-
 	migrationID, err := b.Core.createMigrationStatus(fromPathDetails, toPathDetails)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating migration status %+v", err)
@@ -1491,7 +1369,7 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 			"migration_id": migrationID,
 		},
 	}
-	resp.AddWarning("Mount move has been queued. Progress will be reported in Vault's server log, tagged with the returned migration_id")
+	resp.AddWarning("Mount move has been queued. Progress will be reported in OpenBao's server log, tagged with the returned migration_id")
 	return resp, nil
 }
 
@@ -1506,24 +1384,14 @@ func (b *SystemBackend) moveMount(ns *namespace.Namespace, logger log.Logger, mi
 	// Attempt remount
 	switch entry.Table {
 	case credentialTableType:
-		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, !b.Core.perfStandby)
+		err = b.Core.remountCredential(revokeCtx, fromPathDetails, toPathDetails, true)
 	case mountTableType:
-		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, !b.Core.perfStandby)
+		err = b.Core.remountSecretsEngine(revokeCtx, fromPathDetails, toPathDetails, true)
 	default:
 		return fmt.Errorf("cannot remount mount of table %q", entry.Table)
 	}
 
 	if err != nil {
-		return err
-	}
-
-	if err := revokeCtx.Err(); err != nil {
-		return err
-	}
-
-	logger.Info("Removing the source mount from filtered paths on secondaries")
-	// Remove from filtered mounts and restart evaluation process
-	if err := b.Core.removePathFromFilteredPaths(revokeCtx, fromPathDetails.GetFullPath(), entry.ViewPath()); err != nil {
 		return err
 	}
 
@@ -1556,8 +1424,6 @@ func (b *SystemBackend) handleAuthTuneRead(ctx context.Context, req *logical.Req
 }
 
 func (b *SystemBackend) handleRemountStatusCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	migrationID := data.Get("migration_id").(string)
 	if migrationID == "" {
 		return logical.ErrorResponse(
@@ -1567,11 +1433,6 @@ func (b *SystemBackend) handleRemountStatusCheck(ctx context.Context, req *logic
 
 	migrationInfo := b.Core.readMigrationStatus(migrationID)
 	if migrationInfo == nil {
-		// If the migration info is not found and this is a perf secondary
-		// forward the request to the primary cluster
-		if repState.HasState(consts.ReplicationPerformanceSecondary) {
-			return nil, logical.ErrReadOnly
-		}
 		return nil, nil
 	}
 	resp := &logical.Response{
@@ -1699,8 +1560,6 @@ func (b *SystemBackend) handleMountTuneWrite(ctx context.Context, req *logical.R
 
 // handleTuneWriteCommon is used to set config settings on a path
 func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	path = sanitizePath(path)
 
 	// Prevent protected paths from being changed
@@ -1715,9 +1574,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	if mountEntry == nil {
 		b.Backend.Logger().Error("tune failed", "error", "no mount entry found", "path", path)
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
-	}
-	if mountEntry != nil && !mountEntry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	var lock *locking.DeadlockRWMutex
@@ -1736,9 +1592,6 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	if mountEntry == nil {
 		b.Backend.Logger().Error("tune failed", "error", "no mount entry found", "path", path)
 		return handleError(fmt.Errorf("tune of path %q failed: no mount entry found", path))
-	}
-	if mountEntry != nil && !mountEntry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	// Timing configuration parameters
@@ -2455,14 +2308,6 @@ func (b *SystemBackend) handleAuthTable(ctx context.Context, req *logical.Reques
 			continue
 		}
 
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, credentialRoutePrefix)
-		if err != nil {
-			return nil, err
-		}
-		if cont {
-			continue
-		}
-
 		info := b.mountInfo(ctx, entry)
 		resp.Data[entry.Path] = info
 	}
@@ -2485,14 +2330,6 @@ func (b *SystemBackend) handleReadAuth(ctx context.Context, req *logical.Request
 	for _, entry := range b.Core.auth.Entries {
 		// Only show entry for current namespace
 		if entry.Namespace().Path != ns.Path || entry.Path != path {
-			continue
-		}
-
-		cont, err := b.Core.checkReplicatedFiltering(ctx, entry, credentialRoutePrefix)
-		if err != nil {
-			return nil, err
-		}
-		if cont {
 			continue
 		}
 
@@ -2532,15 +2369,7 @@ func expandStringValsWithCommas(configMap map[string]interface{}) error {
 
 // handleEnableAuth is used to enable a new credential backend
 func (b *SystemBackend) handleEnableAuth(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
 	local := data.Get("local").(bool)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -2782,16 +2611,6 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	}
 	fullPath := credentialRoutePrefix + path
 
-	repState := b.Core.ReplicationState()
-	entry := b.Core.router.MatchingMountEntry(ctx, fullPath)
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if entry != nil && !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
-
 	// We return success when the mount does not exist to not expose if the
 	// mount existed or not
 	match := b.Core.router.MatchingMount(ctx, fullPath)
@@ -2808,18 +2627,6 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 	// Attempt disable
 	if err := b.Core.disableCredential(ctx, path); err != nil {
 		b.Backend.Logger().Error("disable auth mount failed", "path", path, "error", err)
-		return handleError(err)
-	}
-
-	// Get the view path if available
-	var viewPath string
-	if entry != nil {
-		viewPath = entry.ViewPath()
-	}
-
-	// Remove from filtered mounts
-	if err := b.Core.removePathFromFilteredPaths(ctx, fullPath, viewPath); err != nil {
-		b.Backend.Logger().Error("filtered path removal failed", path, "error", err)
 		return handleError(err)
 	}
 
@@ -2840,7 +2647,6 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 
 		switch policyType {
 		case PolicyTypeACL:
-			// Add the special "root" policy if not egp and we are at the root namespace
 			if ns.ID == namespace.RootNamespaceID {
 				policies = append(policies, "root")
 			}
@@ -2851,18 +2657,6 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 				resp.Data["policies"] = resp.Data["keys"]
 			}
 			return resp, nil
-
-		case PolicyTypeRGP:
-			return logical.ListResponse(policies), nil
-
-		case PolicyTypeEGP:
-			nsScopedKeyInfo := getEGPListResponseKeyInfo(b, ns)
-			return &logical.Response{
-				Data: map[string]interface{}{
-					"keys":     policies,
-					"key_info": nsScopedKeyInfo,
-				},
-			}, nil
 		}
 
 		return logical.ErrorResponse("unknown policy type"), nil
@@ -2896,11 +2690,6 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 				"name":             policy.Name,
 				respDataPolicyName: policy.Raw,
 			},
-		}
-
-		switch policy.Type {
-		case PolicyTypeRGP, PolicyTypeEGP:
-			addSentinelPolicyData(resp.Data, policy)
 		}
 
 		return resp, nil
@@ -2956,16 +2745,8 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			policy.Paths = p.Paths
 			policy.Templated = p.Templated
 
-		case PolicyTypeRGP, PolicyTypeEGP:
-
 		default:
 			return logical.ErrorResponse("unknown policy type"), nil
-		}
-
-		if policy.Type == PolicyTypeRGP || policy.Type == PolicyTypeEGP {
-			if errResp := inputSentinelPolicyData(data, policy); errResp != nil {
-				return errResp, nil
-			}
 		}
 
 		// Update the policy
@@ -3239,15 +3020,7 @@ func (b *SystemBackend) handleAuditHash(ctx context.Context, req *logical.Reques
 
 // handleEnableAudit is used to enable a new audit backend
 func (b *SystemBackend) handleEnableAudit(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-
 	local := data.Get("local").(bool)
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
-	}
 
 	// Get all the options
 	path := data.Get("path").(string)
@@ -3295,15 +3068,6 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 	}
 	if entry == nil {
 		return nil, nil
-	}
-
-	repState := b.Core.ReplicationState()
-
-	// If we are a performance secondary cluster we should forward the request
-	// to the primary. We fail early here since the view in use isn't marked as
-	// readonly
-	if !entry.Local && repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return nil, logical.ErrReadOnly
 	}
 
 	// Attempt disable
@@ -3486,11 +3250,6 @@ func (b *SystemBackend) handleKeyRotationConfigUpdate(ctx context.Context, req *
 
 // handleRotate is used to trigger a key rotation
 func (b *SystemBackend) handleRotate(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	repState := b.Core.ReplicationState()
-	if repState.HasState(consts.ReplicationPerformanceSecondary) {
-		return logical.ErrorResponse("cannot rotate on a replication secondary"), nil
-	}
-
 	if err := b.rotateBarrierKey(ctx); err != nil {
 		b.Backend.Logger().Error("error handling key rotation", "error", err)
 		return handleError(err)
@@ -3527,8 +3286,7 @@ func (b *SystemBackend) handleWrappingWrap(ctx context.Context, req *logical.Req
 	}, nil
 }
 
-// handleWrappingUnwrap will unwrap a response wrapping token or complete a
-// request that required a control group.
+// handleWrappingUnwrap will unwrap a response wrapping token.
 func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	// If a third party is unwrapping (rather than the calling token being the
 	// wrapping token) we detect this so that we can revoke the original
@@ -3543,7 +3301,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 	}
 
 	// Get the policies so we can determine if this is a normal response
-	// wrapping request or a control group token.
+	// wrapping request.
 	//
 	// We use lookupTainted here because the token might have already been used
 	// by handleRequest(), this happens when it's a normal response wrapping
@@ -3572,8 +3330,6 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 
 	var response string
 	switch te.Policies[0] {
-	case controlGroupPolicyName:
-		response, err = controlGroupUnwrap(unwrapCtx, b, token, thirdParty)
 	case responseWrappingPolicyName:
 		response, err = b.responseWrappingUnwrap(unwrapCtx, te, thirdParty)
 	}
@@ -3672,13 +3428,13 @@ func (b *SystemBackend) responseWrappingUnwrap(ctx context.Context, te *logical.
 		return "", fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return "no information found; wrapping token may be from a previous Vault version", ErrInternalError
+		return "no information found; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp.Error().Error(), nil
 	}
 	if cubbyResp.Data == nil {
-		return "wrapping information was nil; wrapping token may be from a previous Vault version", ErrInternalError
+		return "wrapping information was nil; wrapping token may be from a previous OpenBao version", ErrInternalError
 	}
 
 	responseRaw := cubbyResp.Data["response"]
@@ -3917,13 +3673,13 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	creationTTLRaw := cubbyResp.Data["creation_ttl"]
@@ -3998,13 +3754,13 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up wrapping information: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	// Set the creation TTL on the request
@@ -4036,13 +3792,13 @@ func (b *SystemBackend) handleWrappingRewrap(ctx context.Context, req *logical.R
 		return nil, fmt.Errorf("error looking up response: %w", err)
 	}
 	if cubbyResp == nil {
-		return logical.ErrorResponse("no information found; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("no information found; wrapping token may be from a previous OpenBao version"), nil
 	}
 	if cubbyResp != nil && cubbyResp.IsError() {
 		return cubbyResp, nil
 	}
 	if cubbyResp.Data == nil {
-		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous Vault version"), nil
+		return logical.ErrorResponse("wrapping information was nil; wrapping token may be from a previous OpenBao version"), nil
 	}
 
 	response := cubbyResp.Data["response"]
@@ -4238,16 +3994,6 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 
 	b.Core.mountsLock.RLock()
 	for _, entry := range b.Core.mounts.Entries {
-		ctxWithNamespace := namespace.ContextWithNamespace(ctx, entry.Namespace())
-		filtered, err := b.Core.checkReplicatedFiltering(ctxWithNamespace, entry, "")
-		if err != nil {
-			b.Core.mountsLock.RUnlock()
-			return nil, err
-		}
-		if filtered {
-			continue
-		}
-
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -4265,16 +4011,6 @@ func (b *SystemBackend) pathInternalUIMountsRead(ctx context.Context, req *logic
 
 	b.Core.authLock.RLock()
 	for _, entry := range b.Core.auth.Entries {
-		ctxWithNamespace := namespace.ContextWithNamespace(ctx, entry.Namespace())
-		filtered, err := b.Core.checkReplicatedFiltering(ctxWithNamespace, entry, credentialRoutePrefix)
-		if err != nil {
-			b.Core.authLock.RUnlock()
-			return nil, err
-		}
-		if filtered {
-			continue
-		}
-
 		if ns.ID == entry.NamespaceID && hasAccess(ctx, entry) {
 			if isAuthed {
 				// If this is an authed request return all the mount info
@@ -4328,18 +4064,6 @@ func (b *SystemBackend) pathInternalUIMountRead(ctx context.Context, req *logica
 		return errResp, logical.ErrPermissionDenied
 	}
 
-	var routerPrefix string
-	if strings.HasPrefix(me.APIPathNoNamespace(), credentialRoutePrefix) {
-		routerPrefix = credentialRoutePrefix
-	}
-
-	filtered, err := b.Core.checkReplicatedFiltering(ctx, me, routerPrefix)
-	if err != nil {
-		return nil, err
-	}
-	if filtered {
-		return errResp, logical.ErrPermissionDenied
-	}
 	resp := &logical.Response{
 		Data: b.mountInfo(ctx, me),
 	}
@@ -4782,14 +4506,11 @@ func (core *Core) GetSealStatus(ctx context.Context, lock bool) (*SealStatusResp
 }
 
 type LeaderResponse struct {
-	HAEnabled                bool      `json:"ha_enabled"`
-	IsSelf                   bool      `json:"is_self"`
-	ActiveTime               time.Time `json:"active_time,omitempty"`
-	LeaderAddress            string    `json:"leader_address"`
-	LeaderClusterAddress     string    `json:"leader_cluster_address"`
-	PerfStandby              bool      `json:"performance_standby"`
-	PerfStandbyLastRemoteWAL uint64    `json:"performance_standby_last_remote_wal"`
-	LastWAL                  uint64    `json:"last_wal,omitempty"`
+	HAEnabled            bool      `json:"ha_enabled"`
+	IsSelf               bool      `json:"is_self"`
+	ActiveTime           time.Time `json:"active_time,omitempty"`
+	LeaderAddress        string    `json:"leader_address"`
+	LeaderClusterAddress string    `json:"leader_cluster_address"`
 
 	// Raft Indexes for this node
 	RaftCommittedIndex uint64 `json:"raft_committed_index,omitempty"`
@@ -4819,15 +4540,9 @@ func (core *Core) GetLeaderStatusLocked() (*LeaderResponse, error) {
 		IsSelf:               isLeader,
 		LeaderAddress:        address,
 		LeaderClusterAddress: clusterAddr,
-		PerfStandby:          core.perfStandby,
 	}
 	if isLeader {
 		resp.ActiveTime = core.activeTime
-	}
-	if resp.PerfStandby {
-		resp.PerfStandbyLastRemoteWAL = LastRemoteWAL(core)
-	} else if isLeader || !haEnabled {
-		resp.LastWAL = LastWAL(core)
 	}
 
 	resp.RaftCommittedIndex, resp.RaftAppliedIndex = core.GetRaftIndexesLocked()
@@ -4870,13 +4585,6 @@ func (b *SystemBackend) handleLeaderStatus(ctx context.Context, req *logical.Req
 		},
 	}
 	return httpResp, nil
-}
-
-func (b *SystemBackend) verifyDROperationTokenOnSecondary(f framework.OperationFunc, lock bool) framework.OperationFunc {
-	if b.Core.IsDRSecondary() {
-		return b.verifyDROperationToken(f, lock)
-	}
-	return f
 }
 
 func (b *SystemBackend) rotateBarrierKey(ctx context.Context) error {
@@ -4938,7 +4646,6 @@ type HAStatusNode struct {
 	LastEcho       *time.Time `json:"last_echo"`
 	Version        string     `json:"version"`
 	UpgradeVersion string     `json:"upgrade_version,omitempty"`
-	RedundancyZone string     `json:"redundancy_zone,omitempty"`
 }
 
 func (b *SystemBackend) handleVersionHistoryList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -5143,24 +4850,6 @@ func (b *SystemBackend) handleLoggersByNameDelete(ctx context.Context, req *logi
 	return nil, nil
 }
 
-// handleReadExperiments returns the available and enabled experiments on this node.
-// Each node within a cluster could have different values for each, but it's not
-// recommended.
-func (b *SystemBackend) handleReadExperiments(ctx context.Context, _ *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
-	enabled := b.Core.experiments
-	if len(enabled) == 0 {
-		// Return empty slice instead of nil, so the JSON shows [] instead of null
-		enabled = []string{}
-	}
-
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"available": experiments.ValidExperiments(),
-			"enabled":   enabled,
-		},
-	}, nil
-}
-
 func sanitizePath(path string) string {
 	if !strings.HasSuffix(path, "/") {
 		path += "/"
@@ -5186,8 +4875,8 @@ func checkListingVisibility(visibility ListingVisibilityType) error {
 }
 
 const sysHelpRoot = `
-The system backend is built-in to Vault and cannot be remounted or
-unmounted. It contains the paths that are used to configure Vault itself
+The system backend is built-in to OpenBao and cannot be remounted or
+unmounted. It contains the paths that are used to configure OpenBao itself
 as well as perform core operations.
 `
 
@@ -5247,24 +4936,24 @@ This path responds to the following HTTP methods.
         `,
 	},
 	"init": {
-		"Initializes or returns the initialization status of the Vault.",
+		"Initializes or returns the initialization status of OpenBao.",
 		`
 This path responds to the following HTTP methods.
 
     GET /
-        Returns the initialization status of the Vault.
+        Returns the initialization status of OpenBao.
 
     POST /
-        Initializes a new vault.
+        Initializes a new OpenBao instance.
 		`,
 	},
 	"health": {
-		"Checks the health status of the Vault.",
+		"Checks the health status of OpenBao.",
 		`
 This path responds to the following HTTP methods.
 
 	GET /
-		Returns health information about the Vault.
+		Returns health information about OpenBao.
 		`,
 	},
 	"generate-root": {
@@ -5289,31 +4978,31 @@ HTTP methods are listed below.
 		`,
 	},
 	"seal-status": {
-		"Returns the seal status of the Vault.",
+		"Returns the seal status of the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     GET /
-        Returns the seal status of the Vault. This is an unauthenticated
+        Returns the seal status of the OpenBao instance. This is an unauthenticated
         endpoint.
 		`,
 	},
 	"seal": {
-		"Seals the Vault.",
+		"Seals the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     PUT /
-        Seals the Vault.
+        Seals the OpenBao instance.
 		`,
 	},
 	"unseal": {
-		"Unseals the Vault.",
+		"Unseals the OpenBao instance.",
 		`
 This path responds to the following HTTP methods.
 
     PUT /
-        Unseals the Vault.
+        Unseals the OpenBao instance.
 		`,
 	},
 	"mounts": {
@@ -5387,7 +5076,7 @@ in the plugin catalog.`,
 	},
 
 	"external_entropy_access": {
-		`Whether to give the mount access to Vault's external entropy.`,
+		`Whether to give the mount access to OpenBao's external entropy.`,
 	},
 
 	"tune_default_lease_ttl": {
@@ -5508,7 +5197,7 @@ used to revoke the secret with the given Lease ID.
 		"Whether or not to perform the revocation synchronously",
 		`
 If false, the call will return immediately and revocation will be queued; if it
-fails, Vault will keep trying. If true, if the revocation fails, Vault will not
+fails, OpenBao will keep trying. If true, if the revocation fails, OpenBao will not
 automatically try again and will return an error. For revoke-prefix, this
 setting will apply to all leases being revoked. For revoke-force, since errors
 are ignored, this setting is not supported.
@@ -5539,7 +5228,7 @@ See the path help for 'revoke-prefix'; this behaves the same, except that it
 ignores errors encountered during revocation. This can be used in certain
 recovery situations; for instance, when you want to unmount a backend, but it
 is impossible to fix revocation errors and these errors prevent the unmount
-from proceeding. This is a DANGEROUS operation as it removes Vault's oversight
+from proceeding. This is a DANGEROUS operation as it removes OpenBao's oversight
 of external secrets. Access to this prefix should be tightly controlled.
 		`,
 	},
@@ -5825,7 +5514,7 @@ This path responds to the following HTTP methods.
 		`Returns a list of headers that have been configured to be audited.`,
 	},
 	"plugin-catalog-list-all": {
-		"Lists all the plugins known to Vault",
+		"Lists all the plugins known to OpenBao",
 		`
 This path responds to the following HTTP methods.
 		LIST /
@@ -5833,7 +5522,7 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"plugin-catalog": {
-		"Configures the plugins known to Vault",
+		"Configures the plugins known to OpenBao",
 		`
 This path responds to the following HTTP methods.
 		LIST /
@@ -5864,7 +5553,7 @@ command field. This should be HEX encoded.`,
 	},
 	"plugin-catalog_command": {
 		`The command used to start the plugin. The
-executable defined in this command must exist in vault's
+executable defined in this command must exist in OpenBao's
 plugin directory.`,
 		"",
 	},
@@ -5972,16 +5661,16 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"internal-counters-requests": {
-		"Currently unsupported. Previously, count of requests seen by this Vault cluster over time.",
-		"Currently unsupported. Previously, count of requests seen by this Vault cluster over time. Not included in count: health checks, UI asset requests, requests forwarded from another cluster.",
+		"Currently unsupported. Previously, count of requests seen by this OpenBao cluster over time.",
+		"Currently unsupported. Previously, count of requests seen by this OpenBao cluster over time. Not included in count: health checks, UI asset requests, requests forwarded from another cluster.",
 	},
 	"internal-counters-tokens": {
-		"Count of active tokens in this Vault cluster.",
-		"Count of active tokens in this Vault cluster.",
+		"Count of active tokens in this OpenBao cluster.",
+		"Count of active tokens in this OpenBao cluster.",
 	},
 	"internal-counters-entities": {
-		"Count of active entities in this Vault cluster.",
-		"Count of active entities in this Vault cluster.",
+		"Count of active entities in this OpenBao cluster.",
+		"Count of active entities in this OpenBao cluster.",
 	},
 	"internal-inspect-router": {
 		"Information on the entries in each of the trees in the router. Inspectable trees are uuid, accessor, storage, and root.",
@@ -5992,34 +5681,18 @@ This path responds to the following HTTP methods.
 		`,
 	},
 	"host-info": {
-		"Information about the host instance that this Vault server is running on.",
-		`Information about the host instance that this Vault server is running on.
+		"Information about the host instance that this OpenBao server is running on.",
+		`Information about the host instance that this OpenBao server is running on.
 		The information that gets collected includes host hardware information, and CPU,
 		disk, and memory utilization`,
 	},
-	"activity-query": {
-		"Query the historical count of clients.",
-		"Query the historical count of clients.",
-	},
-	"activity-export": {
-		"Export the historical activity of clients.",
-		"Export the historical activity of clients.",
-	},
-	"activity-monthly": {
-		"Count of active clients so far this month.",
-		"Count of active clients so far this month.",
-	},
-	"activity-config": {
-		"Control the collection and reporting of client counts.",
-		"Control the collection and reporting of client counts.",
-	},
 	"count-leases": {
-		"Count of leases associated with this Vault cluster",
-		"Count of leases associated with this Vault cluster",
+		"Count of leases associated with this OpenBao cluster",
+		"Count of leases associated with this OpenBao cluster",
 	},
 	"list-leases": {
-		"List leases associated with this Vault cluster",
-		"Requires sudo capability. List leases associated with this Vault cluster",
+		"List leases associated with this OpenBao cluster",
+		"Requires sudo capability. List leases associated with this OpenBao cluster",
 	},
 	"version-history": {
 		"List historical version changes sorted by installation time in ascending order.",
@@ -6028,14 +5701,6 @@ This path responds to the following HTTP methods.
 
     LIST /
         Returns a list historical version changes sorted by installation time in ascending order.
-		`,
-	},
-	"experiments": {
-		"Returns information about Vault's experimental features. Should NOT be used in production.",
-		`
-This path responds to the following HTTP methods.
-		GET /
-			Returns the available and enabled experiments.
 		`,
 	},
 }

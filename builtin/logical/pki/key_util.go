@@ -4,18 +4,17 @@
 package pki
 
 import (
-	"context"
 	"crypto"
 	"encoding/pem"
 	"errors"
 	"fmt"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
 
-func comparePublicKey(sc *storageContext, key *keyEntry, publicKey crypto.PublicKey) (bool, error) {
-	publicKeyForKeyEntry, err := getPublicKey(sc.Context, sc.Backend, key)
+func comparePublicKey(key *keyEntry, publicKey crypto.PublicKey) (bool, error) {
+	publicKeyForKeyEntry, err := getPublicKey(key)
 	if err != nil {
 		return false, err
 	}
@@ -23,15 +22,7 @@ func comparePublicKey(sc *storageContext, key *keyEntry, publicKey crypto.Public
 	return certutil.ComparePublicKeysAndType(publicKeyForKeyEntry, publicKey)
 }
 
-func getPublicKey(ctx context.Context, b *backend, key *keyEntry) (crypto.PublicKey, error) {
-	if key.PrivateKeyType == certutil.ManagedPrivateKey {
-		keyId, err := extractManagedKeyId([]byte(key.PrivateKey))
-		if err != nil {
-			return nil, err
-		}
-		return getManagedKeyPublicKey(ctx, b, keyId)
-	}
-
+func getPublicKey(key *keyEntry) (crypto.PublicKey, error) {
 	signer, _, _, err := getSignerFromKeyEntryBytes(key)
 	if err != nil {
 		return nil, err
@@ -42,10 +33,6 @@ func getPublicKey(ctx context.Context, b *backend, key *keyEntry) (crypto.Public
 func getSignerFromKeyEntryBytes(key *keyEntry) (crypto.Signer, certutil.BlockType, *pem.Block, error) {
 	if key.PrivateKeyType == certutil.UnknownPrivateKey {
 		return nil, certutil.UnknownBlock, nil, errutil.InternalError{Err: fmt.Sprintf("unsupported unknown private key type for key: %s (%s)", key.ID, key.Name)}
-	}
-
-	if key.PrivateKeyType == certutil.ManagedPrivateKey {
-		return nil, certutil.UnknownBlock, nil, errutil.InternalError{Err: fmt.Sprintf("can not get a signer from a managed key: %s (%s)", key.ID, key.Name)}
 	}
 
 	bytes, blockType, blk, err := getSignerFromBytes([]byte(key.PrivateKey))

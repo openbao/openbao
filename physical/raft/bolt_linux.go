@@ -7,6 +7,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/openbao/openbao/api/v2"
 	"github.com/shirou/gopsutil/v3/mem"
 	"golang.org/x/sys/unix"
 )
@@ -16,7 +17,7 @@ func init() {
 }
 
 func getMmapFlagsLinux(dbPath string) int {
-	if os.Getenv("VAULT_RAFT_DISABLE_MAP_POPULATE") != "" {
+	if api.ReadBaoVariable("BAO_RAFT_DISABLE_MAP_POPULATE") != "" {
 		return 0
 	}
 	stat, err := os.Stat(dbPath)

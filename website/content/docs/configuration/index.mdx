@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Server Configuration
+sidebar_label: Overview
 description: OpenBao server configuration reference.
 ---
 
@@ -17,11 +16,10 @@ An example configuration is shown below:
 ui            = true
 cluster_addr  = "https://127.0.0.1:8201"
 api_addr      = "https://127.0.0.1:8200"
-disable_mlock = true
 
-storage "consul" {
-  address = "127.0.0.1:8500"
-  path    = "openbao/"
+storage "raft" {
+  path = "/path/to/raft/data"
+  node_id = "raft_node_1"
 }
 
 listener "tcp" {
@@ -56,17 +54,14 @@ to specify where the configuration is.
   an HA-supporting backend. If not set, HA will be attempted on the backend
   given in the `storage` parameter. This parameter is not required if the
   storage backend supports HA coordination and if HA specific options are
-  already specified with `storage` parameter. (Refer to [Use Integrated Storage
-  for HA
-  Coordination](/vault/tutorials/raft/raft-ha-storage)
-  for a usage example.)
+  already specified with `storage` parameter.
 
 - `listener` `([Listener][listener]: <required>)` – Configures how
   OpenBao is listening for API requests.
 
 - `user_lockout` `([UserLockout][user-lockout]: nil)` –
   Configures the user-lockout behaviour for failed logins. For more information, please see the
-  [user lockout configuration documentation](/vault/docs/configuration/user-lockout). 
+  [user lockout configuration documentation](/docs/configuration/user-lockout). 
 
 - `seal` `([Seal][seal]: nil)` – Configures the seal type to use for
   auto-unsealing, as well as for
@@ -82,48 +77,6 @@ to specify where the configuration is.
 - `disable_cache` `(bool: false)` – Disables all caches within OpenBao, including
   the read cache used by the physical storage subsystem. This will very
   significantly impact performance.
-
-- `disable_mlock` `(bool: false)` – Disables the server from executing the
-  `mlock` syscall. `mlock` prevents memory from being swapped to disk. Disabling
-  `mlock` is not recommended unless using [integrated storage](/vault/docs/internals/integrated-storage).
-  Follow the additional security precautions outlined below when disabling `mlock`.
-  This can also be provided via the environment variable `VAULT_DISABLE_MLOCK`.
-
-  Disabling `mlock` is not recommended unless the systems running OpenBao only
-  use encrypted swap or do not use swap at all. OpenBao only supports memory
-  locking on UNIX-like systems that support the mlock() syscall (Linux, FreeBSD, etc).
-  Non UNIX-like systems (e.g. Windows, NaCL, Android) lack the primitives to keep a
-  process's entire memory address space from spilling to disk and is therefore
-  automatically disabled on unsupported platforms.
-
-  Disabling `mlock` is strongly recommended if using [integrated
-  storage](/vault/docs/internals/integrated-storage) due to
-  the fact that `mlock` does not interact well with memory mapped files such as
-  those created by BoltDB, which is used by Raft to track state. When using
-  `mlock`, memory-mapped files get loaded into resident memory which causes
-  OpenBao's entire dataset to be loaded in-memory and cause out-of-memory
-  issues if OpenBao's data becomes larger than the available RAM. In this case,
-  even though the data within BoltDB remains encrypted at rest, swap should be
-  disabled to prevent OpenBao's other in-memory sensitive data from being dumped
-  into disk.
-
-  On Linux, to give the OpenBao executable the ability to use the `mlock`
-  syscall without running the process as root, run:
-
-  ```shell
-  sudo setcap cap_ipc_lock=+ep $(readlink -f $(which bao))
-  ```
-
-  ~> Note: Since each plugin runs as a separate process, you need to do the same
-  for each plugin in your [plugins
-  directory](/vault/docs/plugins/plugin-architecture#plugin-directory).
-
-  If you use a Linux distribution with a modern version of systemd, you can add
-  the following directive to the "[Service]" configuration section:
-
-  ```ini
-  LimitMEMLOCK=infinity
-  ```
 
 - `plugin_directory` `(string: "")` – A directory from which plugins are
   allowed to be loaded. OpenBao must have permission to read files in this
@@ -151,8 +104,8 @@ to specify where the configuration is.
   duration for tokens and secrets. This is specified using a label
   suffix like `"30s"` or `"1h"`. Individual mounts can override this value
   by tuning the mount with the `max-lease-ttl` flag of the
-  [auth](/vault/docs/commands/auth/tune#max-lease-ttl) or
-  [secret](/vault/docs/commands/secrets/tune#max-lease-ttl) commands.
+  [auth](/docs/commands/auth/tune#max-lease-ttl) or
+  [secret](/docs/commands/secrets/tune#max-lease-ttl) commands.
 
 - `default_max_request_duration` `(string: "90s")` – Specifies the default
   maximum request duration allowed before OpenBao cancels the request. This can
@@ -175,7 +128,7 @@ can have a negative effect on performance due to the tracking of each lock attem
   listeners (address + port) at the `/ui` path. Browsers accessing the standard
   OpenBao API address will automatically redirect there. This can also be provided
   via the environment variable `VAULT_UI`. For more information, please see the
-  [ui configuration documentation](/vault/docs/configuration/ui).
+  [ui configuration documentation](/docs/configuration/ui).
 
 - `pid_file` `(string: "")` - Path to the file in which the OpenBao server's
   Process ID (PID) should be stored.
@@ -197,29 +150,31 @@ can have a negative effect on performance due to the tracking of each lock attem
 
 - `log_level` `(string: "info")` - Log verbosity level.
   Supported values (in order of descending detail) are `trace`, `debug`, `info`, `warn`, and `error`.
-  This can also be specified via the `VAULT_LOG_LEVEL` environment variable.
+  This can also be specified via the `BAO_LOG_LEVEL` environment variable.
 
-  ~> Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
+:::warning
+
+ Note: On SIGHUP (`sudo kill -s HUP` _pid of bao_), if a valid value is specified, OpenBao will update the existing log level,
   overriding (even if specified) both the CLI flag and environment variable.
 
-  ~> Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,
+:::
+
+:::warning
+
+ Note: Not all parts of OpenBao's logging can have its log level be changed dynamically this way; in particular,
   secrets/auth plugins are currently not updated dynamically.
 
-- `log_format` - Equivalent to the [`-log-format` command-line flag](/vault/docs/commands/server#_log_format).
+:::
 
-- `log_file` - Equivalent to the [`-log-file` command-line flag](/vault/docs/commands/server#_log_file).
+- `log_format` - Equivalent to the [`-log-format` command-line flag](/docs/commands/server#_log_format).
 
-- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](/vault/docs/commands/server#_log_rotate_duration).
+- `log_file` - Equivalent to the [`-log-file` command-line flag](/docs/commands/server#_log_file).
 
-- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](/vault/docs/commands/server#_log_rotate_bytes).
+- `log_rotate_duration` - Equivalent to the [`-log-rotate-duration` command-line flag](/docs/commands/server#_log_rotate_duration).
 
-- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](/vault/docs/commands/server#_log_rotate_max_files).
+- `log_rotate_bytes` - Equivalent to the [`-log-rotate-bytes` command-line flag](/docs/commands/server#_log_rotate_bytes).
 
-- `experiments` `(string array: [])` - The list of experiments to enable for this node.
-  Experiments should NOT be used in production, and the associated APIs may have backwards
-  incompatible changes between releases. Additional experiments can also be specified via
-  the `VAULT_EXPERIMENTS` environment variable as a comma-separated list, or via the
-  [`-experiment`](/vault/docs/commands/server#experiment) flag.
+- `log_rotate_max_files` - Equivalent to the [`-log-rotate-max-files` command-line flag](/docs/commands/server#_log_rotate_max_files).
 
 - `imprecise_lease_role_tracking` `(bool: "false")` - Skip lease counting by role if there are no role based quotas enabled.
   When `imprecise_lease_role_tracking` is set to true and a new role-based quota is enabled, subsequent lease counts start from 0.
@@ -252,10 +207,10 @@ The following parameters are used on backends that support [high availability][h
   will disable these features _only when that node is the active node_. This
   parameter cannot be set to `true` if `raft` is the storage type.
 
-[storage-backend]: /vault/docs/configuration/storage
-[listener]: /vault/docs/configuration/listener
-[seal]: /vault/docs/configuration/seal
-[telemetry]: /vault/docs/configuration/telemetry
-[sentinel]: /vault/docs/configuration/sentinel
-[high-availability]: /vault/docs/concepts/ha
-[plugins]: /vault/docs/plugins
+[storage-backend]: /docs/configuration/storage
+[listener]: /docs/configuration/listener
+[seal]: /docs/configuration/seal
+[telemetry]: /docs/configuration/telemetry
+[sentinel]: /docs/configuration/sentinel
+[high-availability]: /docs/concepts/ha
+[plugins]: /docs/plugins

@@ -14,8 +14,6 @@ auto_auth {
 
 api_proxy {
 	use_auto_auth_token = "force"
-	enforce_consistency = "always"
-	when_inconsistent = "forward"
 }
 
 listener "tcp" {

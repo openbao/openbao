@@ -6,18 +6,18 @@ package kv
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -150,7 +150,7 @@ func TestKV_Patch_Audit(t *testing.T) {
 		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
 	}
 
-	auditLogFile, err := ioutil.TempFile("", "httppatch")
+	auditLogFile, err := os.CreateTemp("", "httppatch")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,6 @@ func TestKV_Patch_Audit(t *testing.T) {
 	resp, err = kvRequestWithRetry(t, func() (interface{}, error) {
 		return c.Logical().JSONMergePatch(context.Background(), "kv/data/foo", patchData)
 	})
-
 	if err != nil {
 		t.Fatalf("patch request failed, err: %#v, resp: %#v\n", err, resp)
 	}
@@ -258,7 +257,6 @@ func TestKV_Patch_RootToken(t *testing.T) {
 
 		return client.Logical().Write("kv/data/foo", data)
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +270,6 @@ func TestKV_Patch_RootToken(t *testing.T) {
 		}
 		return client.Logical().JSONMergePatch(context.Background(), "kv/data/foo", data)
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}

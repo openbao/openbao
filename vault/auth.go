@@ -13,12 +13,11 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/plugin"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -153,16 +152,6 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	viewPath := entry.ViewPath()
 	view := NewBarrierView(c.barrier, viewPath)
 
-	// Singleton mounts cannot be filtered on a per-secondary basis
-	// from replication
-	if strutil.StrListContains(singletonMounts, entry.Type) {
-		addFilterablePath(c, viewPath)
-	}
-
-	nilMount, err := preprocessMount(c, entry, view)
-	if err != nil {
-		return err
-	}
 	origViewReadOnlyErr := view.getReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
@@ -195,25 +184,13 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 			entry.RunningVersion = versions.GetBuiltinVersion(consts.PluginTypeCredential, entry.Type)
 		}
 	}
-	addPathCheckers(c, entry, backend, viewPath)
-
-	// If the mount is filtered or we are on a DR secondary we don't want to
-	// keep the actual backend running, so we clean it up and set it to nil
-	// so the router does not have a pointer to the object.
-	if nilMount {
-		backend.Cleanup(ctx)
-		backend = nil
-	}
 
 	// Update the auth table
 	newTable := c.auth.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -223,27 +200,13 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 		return err
 	}
 
-	// Re-evaluate filtered paths
-	if err := runFilteredPathsEvaluation(ctx, c, false); err != nil {
-		c.logger.Error("failed to evaluate filtered paths", "error", err)
-
-		unlock()
-		// We failed to evaluate filtered paths so we are undoing the mount operation
-		if disableCredentialErr := c.disableCredentialInternal(ctx, entry.Path, MountTableUpdateStorage); disableCredentialErr != nil {
-			c.logger.Error("failed to disable credential", "error", disableCredentialErr)
-		}
+	// restore the original readOnlyErr, so we can write to the view in
+	// Initialize() if necessary
+	view.setReadOnlyErr(origViewReadOnlyErr)
+	// initialize, using the core's active context.
+	err = backend.Initialize(c.activeContext, &logical.InitializationRequest{Storage: view})
+	if err != nil {
 		return err
-	}
-
-	if !nilMount {
-		// restore the original readOnlyErr, so we can write to the view in
-		// Initialize() if necessary
-		view.setReadOnlyErr(origViewReadOnlyErr)
-		// initialize, using the core's active context.
-		err := backend.Initialize(c.activeContext, &logical.InitializationRequest{Storage: view})
-		if err != nil {
-			return err
-		}
 	}
 
 	if c.logger.IsInfo() {
@@ -269,11 +232,6 @@ func (c *Core) disableCredential(ctx context.Context, path string) error {
 		return err
 	}
 
-	// Re-evaluate filtered paths
-	if err := runFilteredPathsEvaluation(ctx, c, true); err != nil {
-		// Even we failed to evaluate filtered paths, the unmount operation was still successful
-		c.logger.Error("failed to evaluate filtered paths", "error", err)
-	}
 	return nil
 }
 
@@ -300,7 +258,6 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 	// Get the backend/mount entry for this path, used to remove ignored
 	// replication prefixes
 	backend := c.router.MatchingBackend(ctx, path)
-	entry := c.router.MatchingMountEntry(ctx, path)
 
 	// Mark the entry as tainted
 	if err := c.taintCredEntry(ctx, ns.ID, path, updateStorage); err != nil {
@@ -329,29 +286,13 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		backend.Cleanup(ctx)
 	}
 
-	viewPath := entry.ViewPath()
 	switch {
 	case !updateStorage:
 		// Don't attempt to clear data, replication will handle this
-	case c.IsDRSecondary():
-		// If we are a dr secondary we want to clear the view, but the provided
-		// view is marked as read only. We use the barrier here to get around
-		// it.
-
-		if err := logical.ClearViewWithLogging(ctx, NewBarrierView(c.barrier, viewPath), c.logger.Named("auth.deletion").With("namespace", ns.ID, "path", path)); err != nil {
-			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case entry.Local, !c.IsPerfSecondary():
+	default:
 		// Have writable storage, remove the whole thing
 		if err := logical.ClearViewWithLogging(ctx, view, c.logger.Named("auth.deletion").With("namespace", ns.ID, "path", path)); err != nil {
 			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
-			return err
-		}
-
-	case !entry.Local && c.IsPerfSecondary():
-		if err := clearIgnoredPaths(ctx, c, backend, viewPath); err != nil {
 			return err
 		}
 	}
@@ -366,14 +307,10 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		return err
 	}
 
-	removePathCheckers(c, entry, viewPath)
-
-	if !c.IsPerfSecondary() {
-		if c.quotaManager != nil {
-			if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
-				c.logger.Error("failed to update quotas after disabling auth", "path", path, "error", err)
-				return err
-			}
+	if c.quotaManager != nil {
+		if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
+			c.logger.Error("failed to update quotas after disabling auth", "path", path, "error", err)
+			return err
 		}
 	}
 
@@ -403,11 +340,7 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 	if updateStorage {
 		// Update the auth table
 		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -490,11 +423,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		srcMatch.Path = srcPath
 		srcMatch.Tainted = true
 		c.authLock.Unlock()
-		if err == logical.ErrReadOnly && c.perfStandby {
-			return err
-		}
-
-		return fmt.Errorf("failed to update auth table with error %+v", err)
+		return fmt.Errorf("failed to update auth table with error %w", err)
 	}
 
 	// Remount the backend, setting the existing route entry
@@ -561,10 +490,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 	if updateStorage {
 		// Update the auth table
 		if err := c.persistAuth(ctx, c.auth, &entry.Local); err != nil {
-			if err == logical.ErrReadOnly && c.perfStandby {
-				return err
-			}
-			return errors.New("failed to update auth table")
+			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
 
@@ -771,25 +697,15 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
+	var err error
 	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
 		var backend logical.Backend
 
 		// Create a barrier view using the UUID
 		viewPath := entry.ViewPath()
 
-		// Singleton mounts cannot be filtered on a per-secondary basis
-		// from replication
-		if strutil.StrListContains(singletonMounts, entry.Type) {
-			addFilterablePath(c, viewPath)
-		}
-
 		view := NewBarrierView(c.barrier, viewPath)
 
-		// Determining the replicated state of the mount
-		nilMount, err := preprocessMount(c, entry, view)
-		if err != nil {
-			return err
-		}
 		origViewReadOnlyErr := view.getReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and
@@ -848,16 +764,6 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 			if backendType != logical.TypeCredential {
 				return fmt.Errorf("cannot mount %q of type %q as an auth backend", entry.Type, backendType)
 			}
-
-			addPathCheckers(c, entry, backend, viewPath)
-		}
-
-		// If the mount is filtered or we are on a DR secondary we don't want to
-		// keep the actual backend running, so we clean it up and set it to nil
-		// so the router does not have a pointer to the object.
-		if nilMount {
-			backend.Cleanup(ctx)
-			backend = nil
 		}
 
 	ROUTER_MOUNT:
@@ -892,34 +798,30 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 
 			// this is loaded *after* the normal mounts, including cubbyhole
 			c.router.tokenStoreSaltFunc = c.tokenStore.Salt
-			if !c.IsDRSecondary() {
-				c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, mountPathCubbyhole).(*CubbyholeBackend)
-			}
+			c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, mountPathCubbyhole).(*CubbyholeBackend)
 		}
 
 		// Populate cache
 		NamespaceByID(ctx, entry.NamespaceID, c)
 
 		// Initialize
-		if !nilMount {
-			// Bind locally
-			localEntry := entry
-			c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-				postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
-				if backend == nil {
-					postUnsealLogger.Error("skipping initialization for nil auth backend")
-					return
-				}
-				if !strutil.StrListContains(singletonMounts, localEntry.Type) {
-					view.setReadOnlyErr(origViewReadOnlyErr)
-				}
+		// Bind locally
+		localEntry := entry
+		c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
+			postUnsealLogger := c.logger.With("type", localEntry.Type, "version", localEntry.RunningVersion, "path", localEntry.Path)
+			if backend == nil {
+				postUnsealLogger.Error("skipping initialization for nil auth backend")
+				return
+			}
+			if !strutil.StrListContains(singletonMounts, localEntry.Type) {
+				view.setReadOnlyErr(origViewReadOnlyErr)
+			}
 
-				err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
-				if err != nil {
-					postUnsealLogger.Error("failed to initialize auth backend", "error", err)
-				}
-			})
-		}
+			err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
+			if err != nil {
+				postUnsealLogger.Error("failed to initialize auth backend", "error", err)
+			}
+		})
 	}
 
 	return nil
@@ -938,9 +840,6 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 			if backend != nil {
 				backend.Cleanup(ctx)
 			}
-
-			viewPath := e.ViewPath()
-			removePathCheckers(c, e, viewPath)
 		}
 	}
 
@@ -998,17 +897,6 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 
 	authLogger := c.baseLogger.Named(fmt.Sprintf("auth.%s.%s", t, entry.Accessor))
 	c.AddLogger(authLogger)
-	pluginEventSender, err := c.events.WithPlugin(entry.namespace, &logical.EventPluginInfo{
-		MountClass:    consts.PluginTypeCredential.String(),
-		MountAccessor: entry.Accessor,
-		MountPath:     entry.Path,
-		Plugin:        entry.Type,
-		PluginVersion: entry.RunningVersion,
-		Version:       entry.Version,
-	})
-	if err != nil {
-		return nil, "", err
-	}
 
 	config := &logical.BackendConfig{
 		StorageView: view,
@@ -1016,9 +904,6 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 		Config:      conf,
 		System:      sysView,
 		BackendUUID: entry.BackendAwareUUID,
-	}
-	if c.IsExperimentEnabled(experiments.VaultExperimentEventsAlpha1) {
-		config.EventsSender = pluginEventSender
 	}
 
 	b, err := f(ctx, config)

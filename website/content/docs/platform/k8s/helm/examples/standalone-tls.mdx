@@ -1,16 +1,18 @@
 ---
-layout: 'docs'
-page_title: 'Standalone Server with TLS'
-sidebar_current: 'docs-platform-k8s-examples-standalone-tls'
 description: |-
-  Describes how to set up a standalone Vault with TLS certificate
+  Describes how to set up a standalone OpenBao with TLS certificate
 ---
 
 # Standalone server with TLS
 
-@include 'helm/version.mdx'
+:::warning
 
-This example can be used to set up a single server Vault cluster using TLS.
+**Important Note:** This chart is not compatible with Helm 2. Please use Helm 3.6+ with this chart.
+
+:::
+
+
+This example can be used to set up a single server OpenBao cluster using TLS.
 
 1. Create key & certificate using Kubernetes CA
 2. Store key & cert into [Kubernetes secrets store](https://kubernetes.io/docs/concepts/configuration/secret/)
@@ -21,27 +23,27 @@ This example can be used to set up a single server Vault cluster using TLS.
 There are four variables that will be used in this example.
 
 ```bash
-# SERVICE is the name of the Vault service in kubernetes.
+# SERVICE is the name of the OpenBao service in kubernetes.
 # It does not have to match the actual running service, though it may help for consistency.
-export SERVICE=vault-server-tls
+export SERVICE=openbao-server-tls
 
-# NAMESPACE where the Vault service is running.
-export NAMESPACE=vault-namespace
+# NAMESPACE where the OpenBao service is running.
+export NAMESPACE=openbao-namespace
 
 # SECRET_NAME to create in the kubernetes secrets store.
-export SECRET_NAME=vault-server-tls
+export SECRET_NAME=openbao-server-tls
 
 # TMPDIR is a temporary working directory.
 export TMPDIR=/tmp
 
 # CSR_NAME will be the name of our certificate signing request as seen by kubernetes.
-export CSR_NAME=vault-csr
+export CSR_NAME=openbao-csr
 ```
 
 1. Create a key for Kubernetes to sign.
 
    ```shell-session
-   $ openssl genrsa -out ${TMPDIR}/vault.key 2048
+   $ openssl genrsa -out ${TMPDIR}/openbao.key 2048
    Generating RSA private key, 2048 bit long modulus
 ...................................................................................................+++
 ...............+++
@@ -76,7 +78,7 @@ e is 65537 (0x10001)
 
       ```bash
       openssl req -new \
-                  -key ${TMPDIR}/vault.key \
+                  -key ${TMPDIR}/openbao.key \
                   -subj "/CN=system:node:${SERVICE}.${NAMESPACE}.svc;/O=system:nodes" \
                   -out ${TMPDIR}/server.csr \
                   -config ${TMPDIR}/csr.conf
@@ -84,7 +86,11 @@ e is 65537 (0x10001)
 
 3. Create the certificate
 
-   ~> **Important Note:** If you are using EKS, certificate signing requirements have changed.  As per the AWS [certificate signing](https://docs.aws.amazon.com/eks/latest/userguide/cert-signing.html) documentation, EKS version `1.22` and later now requires the `signerName` to be `beta.eks.amazonaws.com/app-serving`, otherwise, the CSR will be approved but the certificate will not be issued.
+:::warning
+
+ **Important Note:** If you are using EKS, certificate signing requirements have changed.  As per the AWS [certificate signing](https://docs.aws.amazon.com/eks/latest/userguide/cert-signing.html) documentation, EKS version `1.22` and later now requires the `signerName` to be `beta.eks.amazonaws.com/app-serving`, otherwise, the CSR will be approved but the certificate will not be issued.
+
+:::
 
    1. Create a file `${TMPDIR}/csr.yaml` with the following contents:
 
@@ -111,24 +117,28 @@ e is 65537 (0x10001)
 
       ```shell-session
       $ kubectl create -f ${TMPDIR}/csr.yaml
-      certificatesigningrequest.certificates.k8s.io/vault-csr created
+      certificatesigningrequest.certificates.k8s.io/openbao-csr created
       ```
 
-      -> If this process is automated, you may need to wait to ensure the CSR has been received and stored:
+:::info
+
+If this process is automated, you may need to wait to ensure the CSR has been received and stored:
       `kubectl get csr ${CSR_NAME}`
+
+:::
 
    3. Approve the CSR in Kubernetes.
 
       ```shell-session
       $ kubectl certificate approve ${CSR_NAME}
-      certificatesigningrequest.certificates.k8s.io/vault-csr approved
+      certificatesigningrequest.certificates.k8s.io/openbao-csr approved
       ```
 
    4. Verify that the certificate was approved and issued.
       ```shell-session
       $ kubectl get csr ${CSR_NAME}
       NAME        AGE     SIGNERNAME                                    REQUESTOR                        CONDITION
-      vault-csr   1m13s   kubernetes.io/kubelet-serving                 kubernetes-admin                 Approved,Issued
+      openbao-csr   1m13s   kubernetes.io/kubelet-serving                 kubernetes-admin                 Approved,Issued
       ```
 
 ## 2. store key, cert, and kubernetes CA into kubernetes secrets store
@@ -139,13 +149,17 @@ e is 65537 (0x10001)
    $ serverCert=$(kubectl get csr ${CSR_NAME} -o jsonpath='{.status.certificate}')
    ```
 
-   -> If this process is automated, you may need to wait to ensure the certificate has been created.
+:::info
+
+If this process is automated, you may need to wait to ensure the certificate has been created.
    If it hasn't, this will return an empty string.
+
+:::
 
 2. Write the certificate out to a file.
 
    ```shell-session
-   $ echo "${serverCert}" | openssl base64 -d -A -out ${TMPDIR}/vault.crt
+   $ echo "${serverCert}" | openssl base64 -d -A -out ${TMPDIR}/openbao.crt
    ```
 
 3. Retrieve Kubernetes CA.
@@ -153,14 +167,14 @@ e is 65537 (0x10001)
    ```bash
    kubectl get secret \
      -o jsonpath="{.items[?(@.type==\"kubernetes.io/service-account-token\")].data['ca\.crt']}" \
-     | base64 --decode > ${TMPDIR}/vault.ca
+     | base64 --decode > ${TMPDIR}/openbao.ca
    ```
 
 4. Create the namespace.
 
     ```shell-session
     $ kubectl create namespace ${NAMESPACE}
-    namespace/vault-namespace created
+    namespace/openbao-namespace created
     ```
 
 5. Store the key, cert, and Kubernetes CA into Kubernetes secrets.
@@ -168,16 +182,16 @@ e is 65537 (0x10001)
    ```shell-session
    $ kubectl create secret generic ${SECRET_NAME} \
        --namespace ${NAMESPACE} \
-       --from-file=vault.key=${TMPDIR}/vault.key \
-       --from-file=vault.crt=${TMPDIR}/vault.crt \
-       --from-file=vault.ca=${TMPDIR}/vault.ca
+       --from-file=openbao.key=${TMPDIR}/openbao.key \
+       --from-file=openbao.crt=${TMPDIR}/openbao.crt \
+       --from-file=openbao.ca=${TMPDIR}/openbao.ca
 
-   # secret/vault-server-tls created
+   # secret/openbao-server-tls created
    ```
 
 ## 3. helm configuration
 
-The below `custom-values.yaml` can be used to set up a single server Vault cluster using TLS.
+The below `custom-values.yaml` can be used to set up a single server OpenBao cluster using TLS.
 This assumes that a Kubernetes `secret` exists with the server certificate, key and
 certificate authority:
 
@@ -188,17 +202,17 @@ global:
 
 server:
   extraEnvironmentVars:
-    VAULT_CACERT: /vault/userconfig/vault-server-tls/vault.ca
+    OPENBAO_CACERT: /openbao/userconfig/openbao-server-tls/openbao.ca
 
   volumes:
-    - name: userconfig-vault-server-tls
+    - name: userconfig-openbao-server-tls
       secret:
         defaultMode: 420
-        secretName: vault-server-tls # Matches the ${SECRET_NAME} from above
+        secretName: openbao-server-tls # Matches the ${SECRET_NAME} from above
 
   volumeMounts:
-    - mountPath: /vault/userconfig/vault-server-tls
-      name: userconfig-vault-server-tls
+    - mountPath: /openbao/userconfig/openbao-server-tls
+      name: userconfig-openbao-server-tls
       readOnly: true
 
   standalone:
@@ -207,12 +221,12 @@ server:
       listener "tcp" {
         address = "[::]:8200"
         cluster_address = "[::]:8201"
-        tls_cert_file = "/vault/userconfig/vault-server-tls/vault.crt"
-        tls_key_file  = "/vault/userconfig/vault-server-tls/vault.key"
-        tls_client_ca_file = "/vault/userconfig/vault-server-tls/vault.ca"
+        tls_cert_file = "/openbao/userconfig/openbao-server-tls/openbao.crt"
+        tls_key_file  = "/openbao/userconfig/openbao-server-tls/openbao.key"
+        tls_client_ca_file = "/openbao/userconfig/openbao-server-tls/openbao.ca"
       }
 
       storage "file" {
-        path = "/vault/data"
+        path = "/openbao/data"
       }
 ```

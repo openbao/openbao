@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 const (
@@ -79,6 +79,11 @@ func (m mockStorageBackend) Delete(ctx context.Context, key string) error {
 
 // List is not used in a mock.
 func (m mockStorageBackend) List(ctx context.Context, prefix string) ([]string, error) {
+	return nil, fmt.Errorf("method not implemented")
+}
+
+// ListPage is not used in a mock.
+func (m mockStorageBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	return nil, fmt.Errorf("method not implemented")
 }
 

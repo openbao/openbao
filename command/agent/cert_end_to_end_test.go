@@ -7,13 +7,12 @@ import (
 	"context"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaultcert "github.com/openbao/openbao/builtin/credential/cert"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
@@ -22,9 +21,9 @@ import (
 	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
 	"github.com/openbao/openbao/helper/dhutil"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -105,7 +104,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 		t.Fatal(err)
 	}
 
-	ouf, err := ioutil.TempFile("", "auth.tokensink.test.")
+	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +113,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 	os.Remove(out)
 	t.Logf("output: %s", out)
 
-	dhpathf, err := ioutil.TempFile("", "auth.dhpath.test.")
+	dhpathf, err := os.CreateTemp("", "auth.dhpath.test.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +128,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(dhpath, mPubKey, 0o600); err != nil {
+	if err := os.WriteFile(dhpath, mPubKey, 0o600); err != nil {
 		t.Fatal(err)
 	} else {
 		logger.Trace("wrote dh param file", "path", dhpath)
@@ -229,7 +228,7 @@ func testCertEndToEnd(t *testing.T, withCertRoleName, ahWrapping bool) {
 			if time.Now().After(timeout) {
 				t.Fatal("did not find a written token after timeout")
 			}
-			val, err := ioutil.ReadFile(out)
+			val, err := os.ReadFile(out)
 			if err == nil {
 				os.Remove(out)
 				if len(val) == 0 {
@@ -409,7 +408,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 
 	// Create temporary files for CA cert, client cert and client cert key.
 	// This is used to configure TLS in the api client.
-	caCertFile, err := ioutil.TempFile("", "caCert")
+	caCertFile, err := os.CreateTemp("", "caCert")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +420,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	leafCertFile, err := ioutil.TempFile("", "leafCert")
+	leafCertFile, err := os.CreateTemp("", "leafCert")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,7 +432,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	leafCertKeyFile, err := ioutil.TempFile("", "leafCertKey")
+	leafCertKeyFile, err := os.CreateTemp("", "leafCertKey")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -512,7 +511,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 	// /////////////
 
 	// Use TempFile to get us a generated file name to use for the sink.
-	ouf, err := ioutil.TempFile("", "auth.tokensink.test.")
+	ouf, err := os.CreateTemp("", "auth.tokensink.test.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,7 +565,7 @@ func TestCertEndToEnd_CertsInConfig(t *testing.T) {
 
 		// Attempt to read the sink file until we get a token or the timeout is
 		// reached.
-		val, err := ioutil.ReadFile(out)
+		val, err := os.ReadFile(out)
 		if err == nil {
 			os.Remove(out)
 			if len(val) == 0 {

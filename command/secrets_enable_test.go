@@ -5,7 +5,6 @@ package command
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -13,7 +12,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 // logicalBackendAdjustmentFactor is set to plus 1 for the database backend
@@ -210,7 +209,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		client, closer := testVaultServerAllBackends(t)
 		defer closer()
 
-		files, err := ioutil.ReadDir("../builtin/logical")
+		files, err := os.ReadDir("../builtin/logical")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -229,7 +228,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			}
 		}
 
-		modFile, err := ioutil.ReadFile("../go.mod")
+		modFile, err := os.ReadFile("../go.mod")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -239,7 +238,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 			if len(splitLine) == 0 {
 				continue
 			}
-			potPlug := strings.TrimPrefix(splitLine[0], "github.com/hashicorp/")
+			potPlug := strings.TrimPrefix(splitLine[0], "github.com/openbao/")
 			if strings.HasPrefix(potPlug, "vault-plugin-secrets-") {
 				backends = append(backends, strings.TrimPrefix(potPlug, "vault-plugin-secrets-"))
 			}
@@ -248,7 +247,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 		// backends are found by walking the directory, which includes the database backend,
 		// however, the plugins registry omits that one
 		if len(backends) != len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor {
-			t.Fatalf("expected %d logical backends, got %d", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor, len(backends))
+			t.Fatalf("expected %d logical backends, got %d\n\texpected: %#v\n\tbackends: %v", len(builtinplugins.Registry.Keys(consts.PluginTypeSecrets))+logicalBackendAdjustmentFactor, len(backends), builtinplugins.Registry.Keys(consts.PluginTypeSecrets), backends)
 		}
 
 		for _, b := range backends {

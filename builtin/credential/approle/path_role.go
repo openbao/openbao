@@ -15,13 +15,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/parseip"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/helper/tokenutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // roleStorageEntry stores all the options that are set on an role
@@ -285,6 +285,11 @@ can only be set during role creation and once set, it can't be reset later.`,
 								Description: tokenutil.DeprecationText("token_policies"),
 								Deprecated:  true,
 							},
+							"token_strictly_bind_ip": {
+								Type:        framework.TypeBool,
+								Required:    true,
+								Description: "If true, CIDRs for the token will be strictly bound to the source IP address of the login request",
+							},
 						},
 					}},
 				},
@@ -307,6 +312,16 @@ can only be set during role creation and once set, it can't be reset later.`,
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: operationPrefixAppRole,
 				OperationSuffix: "roles",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries.`,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
@@ -947,6 +962,14 @@ Overrides secret_id_num_uses role option when supplied. May not be higher than r
 					Description: `Duration in seconds after which this SecretID expires.
 Overrides secret_id_ttl role option when supplied. May not be longer than role's secret_id_ttl.`,
 				},
+				"after": {
+					Type:        framework.TypeString,
+					Description: `Optional entry to list begin listing after, not required to exist. Only used in list operations.`,
+				},
+				"limit": {
+					Type:        framework.TypeInt,
+					Description: `Optional number of entries to return; defaults to all entries. Only used in list operations.`,
+				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.UpdateOperation: &framework.PathOperation{
@@ -1318,10 +1341,17 @@ func (b *backend) pathRoleExistenceCheck(ctx context.Context, req *logical.Reque
 
 // pathRoleList is used to list all the Roles registered with the backend.
 func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, "role/")
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, "role/", after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(roles), nil
 }
 
@@ -1356,7 +1386,13 @@ func (b *backend) pathRoleSecretIDList(ctx context.Context, req *logical.Request
 
 	// Listing works one level at a time. Get the first level of data
 	// which could then be used to get the actual SecretID storage entries.
-	secretIDHMACs, err := req.Storage.List(ctx, fmt.Sprintf("%s%s/", role.SecretIDPrefix, roleNameHMAC))
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	secretIDHMACs, err := req.Storage.ListPage(ctx, fmt.Sprintf("%s%s/", role.SecretIDPrefix, roleNameHMAC), after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -3209,7 +3245,7 @@ var roleHelp = map[string][2]string{
 		"Register an role with the backend.",
 		`A role can represent a service, a machine or anything that can be IDed.
 The set of policies on the role defines access to the role, meaning, any
-Vault token with a policy set that is a superset of the policies on the
+OpenBao token with a policy set that is a superset of the policies on the
 role registered here will have access to the role. If a SecretID is desired
 to be generated against only this specific role, it can be done via
 'role/<role_name>/secret-id' and 'role/<role_name>/custom-secret-id' endpoints.
@@ -3245,8 +3281,8 @@ IP is not encompassed by it, token use fails`,
 	},
 	"role-policies": {
 		"Policies of the role.",
-		`A comma-delimited set of Vault policies that defines access to the role.
-All the Vault tokens with policies that encompass the policy set
+		`A comma-delimited set of OpenBao policies that defines access to the role.
+All the OpenBao tokens with policies that encompass the policy set
 defined on the role, can access the role.`,
 	},
 	"role-secret-id-num-uses": {

@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -31,14 +32,14 @@ func (c *ReadCommand) Synopsis() string {
 
 func (c *ReadCommand) Help() string {
 	helpText := `
-Usage: vault read [options] PATH
+Usage: bao read [options] PATH
 
   Reads data from Vault at the given path. This can be used to read secrets,
   generate dynamic credentials, get configuration details, and more.
 
   Read a secret from the static secrets engine:
 
-      $ vault read secret/my-secret
+      $ bao read secret/my-secret
 
   For a full list of examples and paths, please see the documentation that
   corresponds to the secrets engine in use.
@@ -89,6 +90,9 @@ func (c *ReadCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	path := sanitizePath(args[0])

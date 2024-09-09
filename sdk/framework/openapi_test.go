@@ -6,7 +6,7 @@ package framework
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -15,9 +15,9 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestOpenAPI_Regex(t *testing.T) {
@@ -906,7 +906,7 @@ func getPathOp(pi *OASPathItem, op string) *OASOperation {
 }
 
 func expected(name string) string {
-	data, err := ioutil.ReadFile(filepath.Join("testdata", name+".json"))
+	data, err := os.ReadFile(filepath.Join("testdata", name+".json"))
 	if err != nil {
 		panic(err)
 	}

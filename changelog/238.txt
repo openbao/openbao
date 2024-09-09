@@ -1,0 +1,6 @@
+```release-note:change
+core: OpenBao version 2.0.0-alpha20240329.
+core: Retracted all prior Vault versions.
+api: Retracted all prior Vault versions.
+sdk: Retracted all prior Vault versions.
+```

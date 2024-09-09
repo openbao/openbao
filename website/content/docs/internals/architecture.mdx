@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Architecture
 description: Learn about the internal architecture of OpenBao.
 ---
 
@@ -8,7 +6,11 @@ description: Learn about the internal architecture of OpenBao.
 
 OpenBao is an intricate system with numerous distinct components. This page details the system architecture and hopes to assist OpenBao users and developers to build a mental model while understanding the theory of operation.
 
-~> **Note:** This page covers the technical details of OpenBao. The descriptions and elements contained within are for users that wish to learn about OpenBao without having to reference the source code. Although not required, we encourage all users and operators to review the provided information before using OpenBao due to its significance in an environment.
+:::warning
+
+**Note:** This page covers the technical details of OpenBao. The descriptions and elements contained within are for users that wish to learn about OpenBao without having to reference the source code. Although not required, we encourage all users and operators to review the provided information before using OpenBao due to its significance in an environment.
+
+:::
 
 # High-Level overview
 
@@ -18,7 +20,7 @@ The diagram below illustrates the intricacies and distinct components of OpenBao
 
 OpenBao’s encryption layer, referred to as the _barrier_, is responsible for encrypting and decrypting OpenBao data. When the OpenBao server starts, it writes data to its storage backend. Since the storage backend resides outside the barrier, it’s considered untrusted so OpenBao will encrypt the data before it sends them to the storage backend. This mechanism ensures that if a malicious attacker attempts to gain access to the storage backend, the data cannot be compromised since it remains encrypted, until OpenBao decrypts the data. The storage backend provides a durable data persistent layer where data is secured and available across server restarts.
 
-When a OpenBao server is started, it begins in a _sealed_ state. Before any
+When an OpenBao server is started, it begins in a _sealed_ state. Before any
 operation can be performed on OpenBao, it must be _unsealed_. This is done by
 providing the unseal keys. During the OpenBao initialization, it generates an
 encryption key, which is used to protect all OpenBao data. This key is protected by
@@ -30,9 +32,9 @@ unseal key into a configured number of shards (key shares or unseal
 keys). A precise number of shards are required to reconstruct the unseal key,
 which is then used to decrypt the OpenBao's root key.
 
-![Unseal keys](/img/vault-shamir-seal.png)
+![Unseal keys](/img/openbao-shamir-seal.png)
 
-Refer to the [Seal/Unseal](/vault/docs/concepts/seal#seal-unseal) documentation for
+Refer to the [Seal/Unseal](/docs/concepts/seal#seal-unseal) documentation for
 further details.
 
 The number of shares and the minimum number of shards required can both be specified.
@@ -42,9 +44,13 @@ data in the storage backend, and enters the _unsealed_ state. Once unsealed,
 OpenBao loads the configured audit devices, auth methods, and secrets
 engines.
 
-~> **Note:** The default OpenBao configuration uses a Shamir seal; however, OpenBao can be [auto
-unsealed](/vault/docs/concepts/seal#auto-unseal) by a trusted cloud key management
+:::warning
+
+**Note:** The default OpenBao configuration uses a Shamir seal; however, OpenBao can be [auto
+unsealed](/docs/concepts/seal#auto-unseal) by a trusted cloud key management
 system (KMS) or hardware security module (HSM) to increase security.
+
+:::
 
 The configuration of the audit devices, auth methods, and secrets engines are security sensitive and are stored in OpenBao. Users with permissions can modify them and cannot be specified outside of the barrier. By storing them in OpenBao, changes are protected by the ACL system and tracked by audit logs.
 
@@ -84,4 +90,3 @@ flow, the core performs specific background activities. Lease management is crit
 
 - To learn more about each components and sub-systems within OpenBao, select a topic from the left-navigation menu.
 - For in depth details, consult the code.
-- To get started with OpenBao, try out our [Getting Started](/vault/tutorials/getting-started) tutorial.

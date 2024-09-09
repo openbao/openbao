@@ -7,11 +7,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -171,7 +171,7 @@ func (b *backend) periodicFunc(ctx context.Context, req *logical.Request) error 
 }
 
 const backendHelp = `
-Any registered Role can authenticate itself with Vault. The credentials
+Any registered Role can authenticate itself with OpenBao. The credentials
 depends on the constraints that are set on the Role. One common required
 credential is the 'role_id' which is a unique identifier of the Role.
 It can be retrieved from the 'role/<appname>/role-id' endpoint.

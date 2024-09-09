@@ -1,14 +1,17 @@
 ---
-layout: docs
-page_title: OpenBao Auto-Auth Token File Method
+sidebar_label: Token file
 description: Token File Method for OpenBao Auto-Auth
 ---
 
 # OpenBao Auto-Auth token file method
 
-~> Note: This authentication method is tailored for the development experience,
+:::warning
+
+Note: This authentication method is tailored for the development experience,
 and to facilitate getting started with OpenBao Agent and OpenBao Proxy. OpenBao Agent and
 OpenBao Proxy should never be configured to use this auto-auth method in a production environment.
+
+:::
 
 The `token_file` method reads in an existing, valid OpenBao token from a file, and uses that
 token in lieu of authenticating itself. While it's a first class auto-auth method for all intents
@@ -25,7 +28,7 @@ auto-auth method, such that Agent and Proxy are issuing their own own authentica
 
 ## Example configuration
 
-An example configuration for OpenBao Agent, using the `token_file` method to enable [auto-auth](/vault/docs/agent-and-proxy/autoauth), follows:
+An example configuration for OpenBao Agent, using the `token_file` method to enable [auto-auth](/docs/agent-and-proxy/autoauth), follows:
 
 ```hcl
 pid_file = "./pidfile"

@@ -19,18 +19,19 @@ import (
 	"github.com/hashicorp/go-hclog"
 	_ "github.com/jackc/pgx/v4"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/plugins/database/postgresql"
-	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
+	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -59,7 +60,7 @@ func getCluster(t *testing.T) (*vault.TestCluster, logical.SystemView) {
 }
 
 func TestBackend_PluginMain_Postgres(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -72,7 +73,7 @@ func TestBackend_PluginMain_Postgres(t *testing.T) {
 }
 
 func TestBackend_PluginMain_PostgresMultiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -1455,7 +1456,7 @@ func (h hangingPlugin) Close() error {
 var _ v5.Database = (*hangingPlugin)(nil)
 
 func TestBackend_PluginMain_Hanging(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 	v5.Serve(&hangingPlugin{})

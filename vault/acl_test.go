@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestACL_NewACL(t *testing.T) {

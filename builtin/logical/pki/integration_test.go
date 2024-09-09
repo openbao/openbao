@@ -14,11 +14,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
-	vaultocsp "github.com/openbao/openbao/sdk/helper/ocsp"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
-	"github.com/openbao/openbao/sdk/logical"
+	vaultocsp "github.com/openbao/openbao/sdk/v2/helper/ocsp"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
 	"github.com/hashicorp/go-hclog"
@@ -526,10 +526,11 @@ func TestIntegrationOCSPClientWithPKI(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = client.Logical().Write("pki/config/urls", map[string]interface{}{
-		"enable_templating":       true,
-		"crl_distribution_points": "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der",
-		"issuing_certificates":    "{{cluster_aia_path}}/issuer/{{issuer_id}}/der",
-		"ocsp_servers":            "{{cluster_aia_path}}/ocsp",
+		"enable_templating":             true,
+		"crl_distribution_points":       "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/der",
+		"issuing_certificates":          "{{cluster_aia_path}}/issuer/{{issuer_id}}/der",
+		"ocsp_servers":                  "{{cluster_aia_path}}/ocsp",
+		"delta_crl_distribution_points": "{{cluster_aia_path}}/issuer/{{issuer_id}}/crl/delta/der",
 	})
 	require.NoError(t, err)
 

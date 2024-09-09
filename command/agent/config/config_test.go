@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
-	ctconfig "github.com/hashicorp/consul-template/config"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"golang.org/x/exp/slices"
 
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )
 
 func TestLoadConfigFile_AgentCache(t *testing.T) {
@@ -886,8 +886,6 @@ func TestLoadConfigFile_Agent_AutoAuth_APIProxyAllConfig(t *testing.T) {
 			UseAutoAuthToken:    true,
 			UseAutoAuthTokenRaw: "force",
 			ForceAutoAuthToken:  true,
-			EnforceConsistency:  "always",
-			WhenInconsistent:    "forward",
 		},
 	}
 
@@ -1364,64 +1362,6 @@ func TestLoadConfigFile_Vault_Retry_Empty(t *testing.T) {
 			Retry: &Retry{
 				ctconfig.DefaultRetryAttempts,
 			},
-		},
-	}
-
-	config.Prune()
-	if diff := deep.Equal(config, expected); diff != nil {
-		t.Fatal(diff)
-	}
-}
-
-func TestLoadConfigFile_EnforceConsistency(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config-consistency.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := &Config{
-		SharedConfig: &configutil.SharedConfig{
-			Listeners: []*configutil.Listener{
-				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
-				},
-			},
-			PidFile: "",
-		},
-		Cache: &Cache{
-			EnforceConsistency: "always",
-			WhenInconsistent:   "retry",
-		},
-	}
-
-	config.Prune()
-	if diff := deep.Equal(config, expected); diff != nil {
-		t.Fatal(diff)
-	}
-}
-
-func TestLoadConfigFile_EnforceConsistency_APIProxy(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config-consistency-apiproxy.hcl")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	expected := &Config{
-		SharedConfig: &configutil.SharedConfig{
-			Listeners: []*configutil.Listener{
-				{
-					Type:       "tcp",
-					Address:    "127.0.0.1:8300",
-					TLSDisable: true,
-				},
-			},
-			PidFile: "",
-		},
-		APIProxy: &APIProxy{
-			EnforceConsistency: "always",
-			WhenInconsistent:   "retry",
 		},
 	}
 

@@ -16,9 +16,9 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/hclutil"
-	"github.com/openbao/openbao/sdk/helper/identitytpl"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -50,32 +50,19 @@ const (
 	PatchCapabilityInt
 )
 
-// Error constants for testing
-const (
-	// ControlledCapabilityPolicySubsetError is thrown when a control group's controlled capabilities
-	// are not a subset of the policy's capabilities.
-	ControlledCapabilityPolicySubsetError = "control group factor capabilities must be a subset of the policy's capabilities"
-)
-
 type PolicyType uint32
 
 const (
 	PolicyTypeACL PolicyType = iota
-	PolicyTypeRGP
-	PolicyTypeEGP
 
 	// Triggers a lookup in the map to figure out if ACL or RGP
-	PolicyTypeToken
+	PolicyTypeToken PolicyType = iota + 2
 )
 
 func (p PolicyType) String() string {
 	switch p {
 	case PolicyTypeACL:
 		return "acl"
-	case PolicyTypeRGP:
-		return "rgp"
-	case PolicyTypeEGP:
-		return "egp"
 	}
 
 	return ""
@@ -92,14 +79,8 @@ var cap2Int = map[string]uint32{
 	PatchCapability:  PatchCapabilityInt,
 }
 
-type egpPath struct {
-	Path string `json:"path"`
-	Glob bool   `json:"glob"`
-}
-
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	sentinelPolicy
 	Name      string       `hcl:"name"`
 	Paths     []*PathRules `hcl:"-"`
 	Raw       string
@@ -112,13 +93,12 @@ type Policy struct {
 // if any of the reference-typed fields are going to be modified
 func (p *Policy) ShallowClone() *Policy {
 	return &Policy{
-		sentinelPolicy: p.sentinelPolicy,
-		Name:           p.Name,
-		Paths:          p.Paths,
-		Raw:            p.Raw,
-		Type:           p.Type,
-		Templated:      p.Templated,
-		namespace:      p.namespace,
+		Name:      p.Name,
+		Paths:     p.Paths,
+		Raw:       p.Raw,
+		Type:      p.Type,
+		Templated: p.Templated,
+		namespace: p.namespace,
 	}
 }
 
@@ -139,34 +119,6 @@ type PathRules struct {
 	DeniedParametersHCL   map[string][]interface{} `hcl:"denied_parameters"`
 	RequiredParametersHCL []string                 `hcl:"required_parameters"`
 	MFAMethodsHCL         []string                 `hcl:"mfa_methods"`
-	ControlGroupHCL       *ControlGroupHCL         `hcl:"control_group"`
-}
-
-type ControlGroupHCL struct {
-	TTL     interface{}                    `hcl:"ttl"`
-	Factors map[string]*ControlGroupFactor `hcl:"factor"`
-}
-
-type ControlGroup struct {
-	TTL     time.Duration
-	Factors []*ControlGroupFactor
-}
-
-func (c *ControlGroup) Clone() (*ControlGroup, error) {
-	clonedControlGroup, err := copystructure.Copy(c)
-	if err != nil {
-		return nil, err
-	}
-
-	cg := clonedControlGroup.(*ControlGroup)
-
-	return cg, nil
-}
-
-type ControlGroupFactor struct {
-	Name                   string
-	Identity               *IdentityFactor `hcl:"identity"`
-	ControlledCapabilities []string        `hcl:"controlled_capabilities"`
 }
 
 type IdentityFactor struct {
@@ -183,7 +135,6 @@ type ACLPermissions struct {
 	DeniedParameters    map[string][]interface{}
 	RequiredParameters  []string
 	MFAMethods          []string
-	ControlGroup        *ControlGroup
 	GrantingPoliciesMap map[uint32][]logical.PolicyInfo
 }
 
@@ -229,16 +180,6 @@ func (p *ACLPermissions) Clone() (*ACLPermissions, error) {
 			return nil, err
 		}
 		ret.MFAMethods = clonedMFAMethods.([]string)
-	}
-
-	switch {
-	case p.ControlGroup == nil:
-	default:
-		clonedControlGroup, err := copystructure.Copy(p.ControlGroup)
-		if err != nil {
-			return nil, err
-		}
-		ret.ControlGroup = clonedControlGroup.(*ControlGroup)
 	}
 
 	switch {
@@ -376,7 +317,6 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			"min_wrapping_ttl",
 			"max_wrapping_ttl",
 			"mfa_methods",
-			"control_group",
 		}
 		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
@@ -481,58 +421,6 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 		if pc.MFAMethodsHCL != nil {
 			pc.Permissions.MFAMethods = make([]string, len(pc.MFAMethodsHCL))
 			copy(pc.Permissions.MFAMethods, pc.MFAMethodsHCL)
-		}
-		if pc.ControlGroupHCL != nil {
-			pc.Permissions.ControlGroup = new(ControlGroup)
-			if pc.ControlGroupHCL.TTL != nil {
-				dur, err := parseutil.ParseDurationSecond(pc.ControlGroupHCL.TTL)
-				if err != nil {
-					return fmt.Errorf("error parsing control group max ttl: %w", err)
-				}
-				pc.Permissions.ControlGroup.TTL = dur
-			}
-			var factors []*ControlGroupFactor
-			if pc.ControlGroupHCL.Factors != nil {
-				for key, factor := range pc.ControlGroupHCL.Factors {
-					// Although we only have one factor here, we need to check to make sure there is at least
-					// one factor defined in this factor block.
-					if factor.Identity == nil {
-						return errors.New("no control_group factor provided")
-					}
-
-					if factor.Identity.ApprovalsRequired <= 0 ||
-						(len(factor.Identity.GroupIDs) == 0 && len(factor.Identity.GroupNames) == 0) {
-						return errors.New("must provide more than one identity group and approvals > 0")
-					}
-
-					// Ensure that configured ControlledCapabilities for factor are a subset of the
-					// Capabilities of the policy.
-					if len(factor.ControlledCapabilities) > 0 {
-						var found bool
-						for _, controlledCapability := range factor.ControlledCapabilities {
-							found = false
-							for _, policyCap := range pc.Capabilities {
-								if controlledCapability == policyCap {
-									found = true
-								}
-							}
-							if !found {
-								return errors.New(ControlledCapabilityPolicySubsetError)
-							}
-						}
-					}
-
-					factors = append(factors, &ControlGroupFactor{
-						Name:                   key,
-						Identity:               factor.Identity,
-						ControlledCapabilities: factor.ControlledCapabilities,
-					})
-				}
-			}
-			if len(factors) == 0 {
-				return errors.New("no control group factors provided")
-			}
-			pc.Permissions.ControlGroup.Factors = factors
 		}
 		if pc.Permissions.MinWrappingTTL != 0 &&
 			pc.Permissions.MaxWrappingTTL != 0 &&

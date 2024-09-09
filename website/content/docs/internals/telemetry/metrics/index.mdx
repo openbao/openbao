@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Metrics reference overview
+sidebar_label: Overview
 description: |-
   Learn about how telemetry metrics are structured in OpenBao
 ---
@@ -35,17 +34,17 @@ The metric name in the table below is followed by a list of labels supported,
 in the order in which they appear, if flattened.
 
 
-| Label                  | Example                 | Description
-| ---------------------- | ----------------------- | ---------------------------
-| `auth_method`          | `userpass`              | Authorization engine type
-| `cluster`              | `openbao-cluster-d54ad07` | Name of the cluster where the metric originated
-| `creation_ttl`         | `7d`                    | Time-to-live assigned at creation, rounded up to the next-highest bucket: `1m`, `10m`, `20m`, `1h`, `2h`, `1d`, `2d`, `7d`, `30d`, or `+Inf`
-| `mount_point`          | `auth/userpass/`        | Path at which an authentication method or secret engine is mounted
-| `name`                 | `memoryLimit`           | Name of the object being aggregated (for example, a quota or quota rule)
-| `namespace`            | `ns1`                   | A namespace path or `root` for the root namespace
-| `policy`               | `default`               | Name of the associated policy
-| `secret_engine`        | `aws`                   | Secrets engine type
-| `token_type`           | `service`               | Type of the associated token: `batch` or `service`
-| `peer_id`              | `node-1`                | Unique identifier of a raft peer node
-| `node_id`              | `node-42`               | Unique identifier of a raft peer node (duplicates `peer_id`)
-| `snapshot_config_name` | `config1`               | Name of the configuration used for automated snapshots
+| Label                  | Example                   | Description                                                                                                                                  |
+|------------------------|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| `auth_method`          | `userpass`                | Authorization engine type                                                                                                                    |
+| `cluster`              | `openbao-cluster-d54ad07` | Name of the cluster where the metric originated                                                                                              |
+| `creation_ttl`         | `7d`                      | Time-to-live assigned at creation, rounded up to the next-highest bucket: `1m`, `10m`, `20m`, `1h`, `2h`, `1d`, `2d`, `7d`, `30d`, or `+Inf` |
+| `mount_point`          | `auth/userpass/`          | Path at which an authentication method or secret engine is mounted                                                                           |
+| `name`                 | `memoryLimit`             | Name of the object being aggregated (for example, a quota or quota rule)                                                                     |
+| `namespace`            | `ns1`                     | A namespace path or `root` for the root namespace                                                                                            |
+| `policy`               | `default`                 | Name of the associated policy                                                                                                                |
+| `secret_engine`        | `kv`                      | Secrets engine type                                                                                                                          |
+| `token_type`           | `service`                 | Type of the associated token: `batch` or `service`                                                                                           |
+| `peer_id`              | `node-1`                  | Unique identifier of a raft peer node                                                                                                        |
+| `node_id`              | `node-42`                 | Unique identifier of a raft peer node (duplicates `peer_id`)                                                                                 |
+| `snapshot_config_name` | `config1`                 | Name of the configuration used for automated snapshots                                                                                       |

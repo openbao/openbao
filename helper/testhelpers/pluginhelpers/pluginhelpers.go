@@ -15,7 +15,7 @@ import (
 	"sync"
 
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 var (
@@ -45,7 +45,7 @@ func GetPlugin(t testing.T, typ consts.PluginType) (string, string, string, stri
 		pluginMain = filepath.Join("builtin", "credential", pluginType, "cmd", pluginType, "main.go")
 		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/builtin/credential/%s.ReportedVersion", pluginType)
 	case consts.PluginTypeSecrets:
-		pluginType = "consul"
+		pluginType = "kv"
 		pluginName = "vault-plugin-secrets-" + pluginType
 		pluginMain = filepath.Join("builtin", "logical", pluginType, "cmd", pluginType, "main.go")
 		pluginVersionLocation = fmt.Sprintf("github.com/openbao/openbao/builtin/logical/%s.ReportedVersion", pluginType)

@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -12,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -37,25 +38,25 @@ func (c *KVPatchCommand) Synopsis() string {
 
 func (c *KVPatchCommand) Help() string {
 	helpText := `
-Usage: vault kv patch [options] KEY [DATA]
+Usage: bao kv patch [options] KEY [DATA]
 
   *NOTE*: This is only supported for KV v2 engine mounts.
 
   Writes the data to the corresponding path in the key-value store. The data can be of
   any type.
 
-      $ vault kv patch -mount=secret foo bar=baz
+      $ bao kv patch -mount=secret foo bar=baz
 
   The deprecated path-like syntax can also be used, but this should be avoided, 
   as the fact that it is not actually the full API path to 
   the secret (secret/data/foo) can cause confusion: 
   
-      $ vault kv patch secret/foo bar=baz
+      $ bao kv patch secret/foo bar=baz
 
   The data can also be consumed from a file on disk by prefixing with the "@"
   symbol. For example:
 
-      $ vault kv patch -mount=secret foo @data.json
+      $ bao kv patch -mount=secret foo @data.json
 
   Or it can be read from stdin using the "-" symbol:
 
@@ -65,7 +66,7 @@ Usage: vault kv patch [options] KEY [DATA]
   appropriate version number corresponding to the key you want to perform
   the CAS operation on:
 
-      $ vault kv patch -mount=secret -cas=1 foo bar=baz
+      $ bao kv patch -mount=secret -cas=1 foo bar=baz
 
   By default, this operation will attempt an HTTP PATCH operation. If your
   policy does not allow that, it will fall back to a read/local update/write approach.
@@ -73,16 +74,16 @@ Usage: vault kv patch [options] KEY [DATA]
   with the -method flag. When -method=patch is specified, only an HTTP PATCH
   operation will be tried. If it fails, the entire command will fail.
 
-      $ vault kv patch -mount=secret -method=patch foo bar=baz
+      $ bao kv patch -mount=secret -method=patch foo bar=baz
 
   When -method=rw is specified, only a read/local update/write approach will be tried.
   This was the default behavior previous to Vault 1.9.
 
-      $ vault kv patch -mount=secret -method=rw foo bar=baz
+      $ bao kv patch -mount=secret -method=rw foo bar=baz
 
   To remove data from the corresponding path in the key-value store, kv patch can be used.
 
-      $ vault kv patch -mount=secret -remove-data=bar foo
+      $ bao kv patch -mount=secret -remove-data=bar foo
 
   Additional flags and more advanced use cases are detailed below.
 
@@ -156,6 +157,9 @@ func (c *KVPatchCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	switch {

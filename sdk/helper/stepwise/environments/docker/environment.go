@@ -13,7 +13,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -33,8 +32,8 @@ import (
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-multierror"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/stepwise"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/stepwise"
 	"golang.org/x/net/http2"
 )
 
@@ -348,7 +347,7 @@ func (dc *DockerCluster) setupCA(opts *DockerClusterOptions) error {
 	dc.CACertPEM = pem.EncodeToMemory(CACertPEMBlock)
 
 	dc.CACertPEMFile = filepath.Join(dc.tmpDir, "ca", "ca.pem")
-	err = ioutil.WriteFile(dc.CACertPEMFile, dc.CACertPEM, 0o755)
+	err = os.WriteFile(dc.CACertPEMFile, dc.CACertPEM, 0o755)
 	if err != nil {
 		return err
 	}
@@ -414,13 +413,13 @@ func (n *dockerClusterNode) setupCert() error {
 	})
 
 	n.ServerCertPEMFile = filepath.Join(n.WorkDir, "cert.pem")
-	err = ioutil.WriteFile(n.ServerCertPEMFile, n.ServerCertPEM, 0o755)
+	err = os.WriteFile(n.ServerCertPEMFile, n.ServerCertPEM, 0o755)
 	if err != nil {
 		return err
 	}
 
 	n.ServerKeyPEMFile = filepath.Join(n.WorkDir, "key.pem")
-	err = ioutil.WriteFile(n.ServerKeyPEMFile, n.ServerKeyPEM, 0o755)
+	err = os.WriteFile(n.ServerKeyPEMFile, n.ServerKeyPEM, 0o755)
 	if err != nil {
 		return err
 	}
@@ -539,8 +538,8 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		"listener": map[string]interface{}{
 			"tcp": map[string]interface{}{
 				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
-				"tls_cert_file": "/vault/config/cert.pem",
-				"tls_key_file":  "/vault/config/key.pem",
+				"tls_cert_file": "/openbao/config/cert.pem",
+				"tls_key_file":  "/openbao/config/key.pem",
 				"telemetry": map[string]interface{}{
 					"unauthenticated_metrics_access": true,
 				},
@@ -551,14 +550,14 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		},
 		"storage": map[string]interface{}{
 			"raft": map[string]interface{}{
-				"path":    "/vault/file",
+				"path":    "/openbao/file",
 				"node_id": n.NodeID,
 			},
 		},
 		"cluster_name":         netName,
 		"log_level":            "TRACE",
 		"raw_storage_endpoint": true,
-		"plugin_directory":     "/vault/config",
+		"plugin_directory":     "/openbao/config",
 		// disable_mlock is required for working in the Docker environment with
 		// custom plugins
 		"disable_mlock": true,
@@ -572,30 +571,32 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 		return err
 	}
 
-	err = ioutil.WriteFile(filepath.Join(n.WorkDir, "local.json"), cfgJSON, 0o644)
+	err = os.WriteFile(filepath.Join(n.WorkDir, "local.json"), cfgJSON, 0o644)
 	if err != nil {
 		return err
 	}
 	// setup plugin bin copy if needed
 	copyFromTo := map[string]string{
-		n.WorkDir: "/vault/config",
+		n.WorkDir: "/openbao/config",
 		caDir:     "/usr/local/share/ca-certificates/",
 	}
 	if pluginBinPath != "" {
 		base := path.Base(pluginBinPath)
-		copyFromTo[pluginBinPath] = filepath.Join("/vault/config", base)
+		copyFromTo[pluginBinPath] = filepath.Join("/openbao/config", base)
 	}
 
 	r := &Runner{
 		dockerAPI: cli,
 		ContainerConfig: &container.Config{
-			Image: "hashicorp/vault:latest",
-			Entrypoint: []string{"/bin/sh", "-c", "update-ca-certificates && " +
-				"exec /usr/local/bin/docker-entrypoint.sh hashicorp/vault server -log-level=trace -dev-plugin-dir=./vault/config -config /vault/config/local.json"},
+			Image: "quay.io/openbao/openbao:latest",
+			Entrypoint: []string{
+				"/bin/sh", "-c",
+				"exec /usr/local/bin/docker-entrypoint.sh bao server -log-level=trace -dev-plugin-dir=/openbao/config -config /openbao/config/local.json",
+			},
 			Env: []string{
-				"VAULT_CLUSTER_INTERFACE=eth0",
-				"VAULT_API_ADDR=https://127.0.0.1:8200",
-				fmt.Sprintf("VAULT_REDIRECT_ADDR=https://%s:8200", n.Name()),
+				"BAO_CLUSTER_INTERFACE=eth0",
+				"BAO_API_ADDR=https://127.0.0.1:8200",
+				fmt.Sprintf("BAO_REDIRECT_ADDR=https://%s:8200", n.Name()),
 			},
 			Labels:       nil,
 			ExposedPorts: nat.PortSet{"8200/tcp": {}, "8201/tcp": {}},
@@ -698,7 +699,7 @@ func (cluster *DockerCluster) setupDockerCluster(opts *DockerClusterOptions) err
 		}
 		cluster.tmpDir = opts.tmpDir
 	} else {
-		tempDir, err := ioutil.TempDir("", "vault-test-cluster-")
+		tempDir, err := os.MkdirTemp("", "vault-test-cluster-")
 		if err != nil {
 			return err
 		}
@@ -814,7 +815,7 @@ func (dc *DockerCluster) Setup() error {
 	}
 
 	// tmpDir gets cleaned up when the cluster is cleaned up
-	tmpDir, err := ioutil.TempDir("", "bin")
+	tmpDir, err := os.MkdirTemp("", "bin")
 	if err != nil {
 		return err
 	}

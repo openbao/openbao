@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: High Availability
 description: Learn about the high availability design of OpenBao.
 ---
 
@@ -34,12 +32,3 @@ then one of the standby OpenBao server becomes the active instance.
 Please note that only _unsealed_ OpenBao servers may act as a standby.
 If a server is in a sealed state, it cannot act as a standby. Servers in a sealed state cannot
  serve any requests if the active server fails.
-
-# Tutorial 
-
-Refer to the following tutorials to learn more.
-
-- [OpenBao with Integrated Storage Reference Architecture](/vault/tutorials/day-one-raft/raft-reference-architecture)
-- [OpenBao HA Cluster with Integrated Storage](/vault/tutorials/raft/raft-storage)
-- [OpenBao High Availability with Consul](/vault/tutorials/day-one-consul/ha-with-consul)
-

@@ -6,12 +6,12 @@ package rabbitmq
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/template"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -113,7 +113,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 		}
 	}()
 	if !isIn200s(resp.StatusCode) {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("error creating user %s - %d: %s", username, resp.StatusCode, body)
 	}
 
@@ -128,7 +128,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 			b.Logger().Error(fmt.Sprintf("deleting %s due to permissions being in an unknown state, but failed: %s", username, err))
 		}
 		if !isIn200s(resp.StatusCode) {
-			body, _ := ioutil.ReadAll(resp.Body)
+			body, _ := io.ReadAll(resp.Body)
 			b.Logger().Error(fmt.Sprintf("deleting %s due to permissions being in an unknown state, but error deleting: %d: %s", username, resp.StatusCode, body))
 		}
 	}()
@@ -151,7 +151,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 				}
 			}()
 			if !isIn200s(resp.StatusCode) {
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				return fmt.Errorf("error updating vhost permissions for %s - %d: %s", vhost, resp.StatusCode, body)
 			}
 			return nil
@@ -180,7 +180,7 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 					}
 				}()
 				if !isIn200s(resp.StatusCode) {
-					body, _ := ioutil.ReadAll(resp.Body)
+					body, _ := io.ReadAll(resp.Body)
 					return fmt.Errorf("error updating vhost permissions for %s - %d: %s", vhost, resp.StatusCode, body)
 				}
 				return nil

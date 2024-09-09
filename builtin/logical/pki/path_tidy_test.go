@@ -19,17 +19,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"golang.org/x/crypto/acme"
 
 	"github.com/openbao/openbao/helper/testhelpers"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 
 	"github.com/armon/go-metrics"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
 	"github.com/stretchr/testify/require"
@@ -110,12 +110,6 @@ func TestTidyConfigs(t *testing.T) {
 			FirstValue:   1,
 			SecondValue:  2,
 			DefaultValue: int(defaultTidyConfig.AcmeAccountSafetyBuffer / time.Second),
-		},
-		{
-			Config:       "revocation_queue_safety_buffer",
-			FirstValue:   1,
-			SecondValue:  2,
-			DefaultValue: int(defaultTidyConfig.QueueSafetyBuffer / time.Second),
 		},
 	}
 
@@ -555,7 +549,6 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["issuer_safety_buffer"] = int(time.Duration(defaultConfigMap["issuer_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
-	defaultConfigMap["revocation_queue_safety_buffer"] = int(time.Duration(defaultConfigMap["revocation_queue_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 
 	require.Equal(t, defaultConfigMap, resp.Data)

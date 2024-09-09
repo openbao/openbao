@@ -4,10 +4,9 @@
 syntax = "proto3";
 package pb;
 
-option go_package = "github.com/lf-edge/openbao/sdk/plugin/pb";
+option go_package = "github.com/openbao/openbao/sdk/v2/plugin/pb";
 
 import "google/protobuf/timestamp.proto";
-import "sdk/logical/event.proto";
 import "sdk/logical/identity.proto";
 import "sdk/logical/plugin.proto";
 
@@ -477,6 +476,12 @@ message StorageListArgs {
 	string prefix = 1;
 }
 
+message StorageListPageArgs {
+	string prefix = 1;
+	string after = 2;
+	int32 limit = 3;
+}
+
 message StorageListReply {
 	repeated string keys = 1;
 	string err = 2;
@@ -511,6 +516,7 @@ message StorageDeleteReply {
 // implement the client for this service.
 service Storage {
 	rpc List(StorageListArgs) returns (StorageListReply);
+	rpc ListPage(StorageListPageArgs) returns (StorageListReply);
 	rpc Get(StorageGetArgs) returns (StorageGetReply);
 	rpc Put(StoragePutArgs) returns (StoragePutReply);
 	rpc Delete(StorageDeleteArgs) returns (StorageDeleteReply);
@@ -676,13 +682,4 @@ message Certificate {
 
 message CertificateChain {
 	repeated Certificate certificates = 1;
-}
-
-message SendEventRequest {
-	string event_type = 1;
-	logical.EventData event = 2;
-}
-
-service Events {
-	rpc SendEvent(SendEventRequest) returns (Empty);
 }

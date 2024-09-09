@@ -25,7 +25,6 @@ type OperatorRaftAutopilotSetConfigCommand struct {
 	flagMaxTrailingLogs                uint64
 	flagMinQuorum                      uint
 	flagServerStabilizationTime        time.Duration
-	flagDisableUpgradeMigration        BoolPtr
 	flagDRToken                        string
 }
 
@@ -35,7 +34,7 @@ func (c *OperatorRaftAutopilotSetConfigCommand) Synopsis() string {
 
 func (c *OperatorRaftAutopilotSetConfigCommand) Help() string {
 	helpText := `
-Usage: vault operator raft autopilot set-config [options]
+Usage: bao operator raft autopilot set-config [options]
 
   Modify the configuration of the autopilot subsystem under integrated storage.
 ` + c.Flags().Help()
@@ -82,12 +81,6 @@ func (c *OperatorRaftAutopilotSetConfigCommand) Flags() *FlagSets {
 		Name:   "server-stabilization-time",
 		Target: &c.flagServerStabilizationTime,
 		Usage:  "Minimum amount of time a server must be in a stable, healthy state before it can be added to the cluster.",
-	})
-
-	f.BoolPtrVar(&BoolPtrVar{
-		Name:   "disable-upgrade-migration",
-		Target: &c.flagDisableUpgradeMigration,
-		Usage:  "Whether or not to perform automated version upgrades.",
 	})
 
 	f.StringVar(&StringVar{
@@ -150,9 +143,6 @@ func (c *OperatorRaftAutopilotSetConfigCommand) Run(args []string) int {
 	}
 	if c.flagServerStabilizationTime > 0 {
 		data["server_stabilization_time"] = c.flagServerStabilizationTime.String()
-	}
-	if c.flagDisableUpgradeMigration.IsSet() {
-		data["disable_upgrade_migration"] = c.flagDisableUpgradeMigration.Get()
 	}
 	if c.flagDRToken != "" {
 		data["dr_operation_token"] = c.flagDRToken

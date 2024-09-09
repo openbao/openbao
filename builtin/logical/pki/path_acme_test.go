@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
@@ -32,13 +32,12 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -1275,24 +1274,6 @@ func setupAcmeBackendOnClusterAtPath(t *testing.T, cluster *vault.TestCluster, c
 	namespace := ""
 	mountName := mount
 	if mount != "pki" {
-		if strings.Contains(mount, "/") && constants.IsEnterprise {
-			ns_pieces := strings.Split(mount, "/")
-			c := len(ns_pieces)
-			// mount is c-1
-			ns_name := ns_pieces[c-2]
-			if len(ns_pieces) > 2 {
-				// Parent's namespaces
-				parent := strings.Join(ns_pieces[0:c-2], "/")
-				_, err := client.WithNamespace(parent).Logical().Write("/sys/namespaces/"+ns_name, nil)
-				require.NoError(t, err, "failed to create nested namespaces "+parent+" -> "+ns_name)
-			} else {
-				_, err := client.Logical().Write("/sys/namespaces/"+ns_name, nil)
-				require.NoError(t, err, "failed to create nested namespace "+ns_name)
-			}
-			namespace = strings.Join(ns_pieces[0:c-1], "/")
-			mountName = ns_pieces[c-1]
-		}
-
 		err := client.WithNamespace(namespace).Sys().Mount(mountName, &api.MountInput{
 			Type: "pki",
 			Config: api.MountConfigInput{

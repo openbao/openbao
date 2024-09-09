@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,17 +17,17 @@ import (
 	"testing"
 	"time"
 
-	kv "github.com/hashicorp/vault-plugin-secrets-kv"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
+	kv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
@@ -111,7 +110,6 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr1,
-		DisableMlock: true,
 	}
 	core1, err := vault.NewCore(conf)
 	if err != nil {
@@ -134,7 +132,6 @@ func TestLogical_StandbyRedirect(t *testing.T) {
 		Physical:     inmha,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: addr2,
-		DisableMlock: true,
 	}
 	core2, err := vault.NewCore(conf2)
 	if err != nil {
@@ -350,7 +347,7 @@ func TestLogical_ListSuffix(t *testing.T) {
 	req = req.WithContext(namespace.RootContext(nil))
 	req.Header.Add(consts.AuthHeaderName, rootToken)
 
-	_, _, status, err = buildLogicalRequestNoAuth(core.PerfStandby(), nil, req)
+	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
 	if err != nil || status != 0 {
 		t.Fatal(err)
 	}
@@ -465,7 +462,7 @@ func TestLogical_RespondWithStatusCode(t *testing.T) {
 		t.Fatalf("Bad Status code: %d", w.Code)
 	}
 
-	bodyRaw, err := ioutil.ReadAll(w.Body)
+	bodyRaw, err := io.ReadAll(w.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -615,7 +612,7 @@ func TestLogical_AuditPort(t *testing.T) {
 		t.Fatalf("kv-v2 mount attempt failed - err: %#v\n", err)
 	}
 
-	auditLogFile, err := ioutil.TempFile("", "auditport")
+	auditLogFile, err := os.CreateTemp("", "auditport")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -7,7 +7,6 @@ import (
 	"archive/tar"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,7 +17,7 @@ import (
 
 	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func testDebugCommand(tb testing.TB) (*cli.MockUi, *DebugCommand) {
@@ -35,7 +34,7 @@ func testDebugCommand(tb testing.TB) (*cli.MockUi, *DebugCommand) {
 func TestDebugCommand_Run(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := ioutil.TempDir("", "vault-debug")
+	testDir, err := os.MkdirTemp("", "vault-debug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +136,7 @@ func TestDebugCommand_Archive(t *testing.T) {
 
 			// Create temp dirs for each test case since os.Stat and tgz.Walk
 			// (called down below) exhibits raciness otherwise.
-			testDir, err := ioutil.TempDir("", "vault-debug")
+			testDir, err := os.MkdirTemp("", "vault-debug")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -258,7 +257,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testDir, err := ioutil.TempDir("", "vault-debug")
+			testDir, err := os.MkdirTemp("", "vault-debug")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -321,7 +320,7 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 }
 
 func TestDebugCommand_Pprof(t *testing.T) {
-	testDir, err := ioutil.TempDir("", "vault-debug")
+	testDir, err := os.MkdirTemp("", "vault-debug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +378,7 @@ func TestDebugCommand_Pprof(t *testing.T) {
 func TestDebugCommand_IndexFile(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := ioutil.TempDir("", "vault-debug")
+	testDir, err := os.MkdirTemp("", "vault-debug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +408,7 @@ func TestDebugCommand_IndexFile(t *testing.T) {
 		t.Fatalf("expected %d to be %d", code, exp)
 	}
 
-	content, err := ioutil.ReadFile(filepath.Join(outputPath, "index.json"))
+	content, err := os.ReadFile(filepath.Join(outputPath, "index.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +425,7 @@ func TestDebugCommand_IndexFile(t *testing.T) {
 func TestDebugCommand_TimingChecks(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := ioutil.TempDir("", "vault-debug")
+	testDir, err := os.MkdirTemp("", "vault-debug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +584,7 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testDir, err := ioutil.TempDir("", "vault-debug")
+			testDir, err := os.MkdirTemp("", "vault-debug")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -639,7 +638,7 @@ func TestDebugCommand_OutputExists(t *testing.T) {
 func TestDebugCommand_PartialPermissions(t *testing.T) {
 	t.Parallel()
 
-	testDir, err := ioutil.TempDir("", "vault-debug")
+	testDir, err := os.MkdirTemp("", "vault-debug")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -702,7 +701,7 @@ func TestDebugCommand_PartialPermissions(t *testing.T) {
 		case fh.Name == filepath.Join(basePath, "index.json"):
 		case fh.Name == filepath.Join(basePath, "replication_status.json"):
 		case fh.Name == filepath.Join(basePath, "server_status.json"):
-		case fh.Name == filepath.Join(basePath, "vault.log"):
+		case fh.Name == filepath.Join(basePath, "bao.log"):
 		default:
 			return fmt.Errorf("unexpected file: %s", fh.Name)
 		}
@@ -748,7 +747,7 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			// set insecure umask
 			defer syscall.Umask(syscall.Umask(0))
 
-			testDir, err := ioutil.TempDir("", "vault-debug")
+			testDir, err := os.MkdirTemp("", "vault-debug")
 			if err != nil {
 				t.Fatal(err)
 			}

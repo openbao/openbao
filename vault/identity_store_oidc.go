@@ -28,10 +28,9 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/identitytpl"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/identitytpl"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/crypto/ed25519"
 )
@@ -147,7 +146,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"issuer": {
 					Type:        framework.TypeString,
-					Description: "Issuer URL to be used in the iss claim of the token. If not set, Vault's app_addr will be used.",
+					Description: "Issuer URL to be used in the iss claim of the token. If not set, OpenBao's app_addr will be used.",
 				},
 			},
 
@@ -292,7 +291,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 				logical.ReadOperation: i.pathOIDCGenerateToken,
 			},
 			HelpSynopsis:    "Generate an OIDC token",
-			HelpDescription: "Generate an OIDC token against a configured role. The vault token used to call this path must have a corresponding entity.",
+			HelpDescription: "Generate an OIDC token against a configured role. The OpenBao token used to call this path must have a corresponding entity.",
 		},
 		{
 			Pattern: "oidc/role/" + framework.GenericNameRegex("name"),
@@ -388,7 +387,7 @@ func (i *IdentityStore) pathOIDCReadConfig(ctx context.Context, req *logical.Req
 	}
 
 	if i.redirectAddr == "" && c.Issuer == "" {
-		resp.AddWarning(`Both "issuer" and Vault's "api_addr" are empty. ` +
+		resp.AddWarning(`Both "issuer" and OpenBao's "api_addr" are empty. ` +
 			`The issuer claim in generated tokens will not be network reachable.`)
 	}
 
@@ -1954,12 +1953,6 @@ func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) 
 // oidcPeriodFunc is invoked by the backend's periodFunc and runs regular key
 // rotations and expiration actions.
 func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
-	// Key rotations write to storage, so only run this on the primary cluster.
-	// The periodic func does not run on perf standbys or DR secondaries.
-	if i.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary) {
-		return
-	}
-
 	var nextRun time.Time
 	now := time.Now()
 

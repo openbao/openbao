@@ -15,9 +15,9 @@ import (
 	"time"
 
 	influx "github.com/influxdata/influxdb1-client/v2"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	dbtesting "github.com/openbao/openbao/sdk/database/dbplugin/v5/testing"
-	"github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	dbtesting "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5/testing"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,16 +1,12 @@
 ```sh
 # List the available releases
-$ helm search repo hashicorp/vault -l
-NAME           	CHART VERSION	APP VERSION	DESCRIPTION
-hashicorp/vault	0.25.0       	1.14.0     	Official HashiCorp Vault Chart
-hashicorp/vault	0.24.0       	1.13.1     	Official HashiCorp Vault Chart
-hashicorp/vault	0.23.0       	1.12.1     	Official HashiCorp Vault Chart
-hashicorp/vault	0.22.1       	1.12.0     	Official HashiCorp Vault Chart
-hashicorp/vault	0.22.0       	1.11.3     	Official HashiCorp Vault Chart
-hashicorp/vault	0.21.0       	1.11.2     	Official HashiCorp Vault Chart
-hashicorp/vault	0.20.1       	1.10.3     	Official HashiCorp Vault Chart
+$ helm search repo openbao/openbao -l
+NAME            CHART VERSION   APP VERSION             DESCRIPTION
+openbao/openbao 0.4.0           v2.0.0-alpha20240329    Official OpenBao Chart
+openbao/openbao 0.3.0           v2.0.0-alpha20240329    Official OpenBao Chart
+openbao/openbao 0.2.0           v2.0.0-alpha20240329    Official OpenBao Chart
 ...
 
-# Install version 0.25.0
-$ helm install vault hashicorp/vault --version 0.25.0
+# Install version 0.4.0
+$ helm install openbao openbao/openbao --version 0.4.0
 ```

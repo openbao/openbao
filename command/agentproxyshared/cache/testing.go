@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"strings"
@@ -15,7 +15,7 @@ import (
 
 	"github.com/openbao/openbao/helper/useragent"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // mockProxier is a mock implementation of the Proxier interface, used for testing purposes.
@@ -62,7 +62,7 @@ func newTestSendResponse(status int, body string) *SendResponse {
 	resp.Response.Header.Set("Date", time.Now().Format(http.TimeFormat))
 
 	if body != "" {
-		resp.Response.Body = ioutil.NopCloser(strings.NewReader(body))
+		resp.Response.Body = io.NopCloser(strings.NewReader(body))
 		resp.ResponseBody = []byte(body)
 	}
 

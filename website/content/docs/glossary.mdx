@@ -1,7 +1,5 @@
 ---
-layout: docs
-page_title: Glossary of Terms
-sidebar_title: Glossary
+sidebar_label: Glossary
 description: |-
   OpenBao Glossary.
 ---
@@ -53,7 +51,7 @@ policies. This token is passed via HTTP headers.
 ### Plugin
 
 Plugins are a feature of OpenBao that can be enabled, disabled, and customized to
-some degree. All OpenBao [auth methods](/vault/docs/auth) and [secrets engines](/vault/docs/secrets)
+some degree. All OpenBao [auth methods](/docs/auth) and [secrets engines](/docs/secrets)
 are considered plugins.
 
 #### Built-in plugin
@@ -67,12 +65,12 @@ Built-in plugins are just like any other backend code inside OpenBao.
 External plugins are not shipped with OpenBao and require additional operator
 intervention to run. OpenBao's external plugins are completely separate,
 standalone applications that OpenBao executes and communicates with over RPC.
-Each time a OpenBao secret engine or auth method is mounted, a new process is
+Each time an OpenBao secret engine or auth method is mounted, a new process is
 spawned.
 
 #### External multiplexed plugin
 
-An external plugin may make use of [plugin multiplexing](/vault/docs/plugins/plugin-architecture#plugin-multiplexing).
+An external plugin may make use of [plugin multiplexing](/docs/plugins/plugin-architecture#plugin-multiplexing).
 A multiplexed plugin allows a single plugin process to be used for multiple
 mounts of the same type.
 

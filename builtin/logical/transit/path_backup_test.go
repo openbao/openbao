@@ -7,14 +7,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_BackupRestore(t *testing.T) {
+	t.Parallel()
+
 	// Test encryption/decryption after a restore for supported keys
 	testBackupRestore(t, "aes128-gcm96", "encrypt-decrypt")
 	testBackupRestore(t, "aes256-gcm96", "encrypt-decrypt")
 	testBackupRestore(t, "chacha20-poly1305", "encrypt-decrypt")
+	testBackupRestore(t, "xchacha20-poly1305", "encrypt-decrypt")
 	testBackupRestore(t, "rsa-2048", "encrypt-decrypt")
 	testBackupRestore(t, "rsa-3072", "encrypt-decrypt")
 	testBackupRestore(t, "rsa-4096", "encrypt-decrypt")
@@ -32,6 +36,7 @@ func TestTransit_BackupRestore(t *testing.T) {
 	testBackupRestore(t, "aes128-gcm96", "hmac-verify")
 	testBackupRestore(t, "aes256-gcm96", "hmac-verify")
 	testBackupRestore(t, "chacha20-poly1305", "hmac-verify")
+	testBackupRestore(t, "xchacha20-poly1305", "hmac-verify")
 	testBackupRestore(t, "ecdsa-p256", "hmac-verify")
 	testBackupRestore(t, "ecdsa-p384", "hmac-verify")
 	testBackupRestore(t, "ecdsa-p521", "hmac-verify")
@@ -81,12 +86,36 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
 
-	// Take a backup of the key
+	// Soft delete the key; ensure a backup can be done, and then soft
+	// restore the key.
+	softDeleteReq := &logical.Request{
+		Path:      "keys/test/soft-delete",
+		Operation: logical.DeleteOperation,
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(context.Background(), softDeleteReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
 	backupReq := &logical.Request{
 		Path:      "backup/test",
 		Operation: logical.ReadOperation,
 		Storage:   s,
 	}
+	resp, err = b.HandleRequest(context.Background(), softDeleteReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	softRestoreReq := &logical.Request{
+		Path:      "keys/test/soft-delete-restore",
+		Operation: logical.UpdateOperation,
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(context.Background(), softRestoreReq)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Take a (real) backup of the key
 	resp, err = b.HandleRequest(context.Background(), backupReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)

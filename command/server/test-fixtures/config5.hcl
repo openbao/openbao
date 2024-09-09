@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 disable_cache = true
- disable_mlock = true
 
  ui = true
 

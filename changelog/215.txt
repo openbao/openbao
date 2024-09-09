@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Add Delta CRL Distribution Point to AIA URLs, allowing AIA-aware clients to find Delta CRLs dynamically.
+```

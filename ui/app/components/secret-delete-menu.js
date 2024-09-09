@@ -14,7 +14,7 @@ import { maybeQueryRecord } from 'vault/macros/maybe-query-record';
 
 const getErrorMessage = (errors) => {
   const errorMessage =
-    errors?.join('. ') || 'Something went wrong. Check the Vault logs for more information.';
+    errors?.join('. ') || 'Something went wrong. Check the OpenBao logs for more information.';
   return errorMessage;
 };
 export default class SecretDeleteMenu extends Component {

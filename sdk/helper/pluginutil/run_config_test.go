@@ -12,7 +12,8 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -78,8 +79,11 @@ func TestMakeConfig(t *testing.T) {
 					[]string{
 						"initial=true",
 						fmt.Sprintf("%s=%s", PluginVaultVersionEnv, "dummyversion"),
+						fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), "dummyversion"),
 						fmt.Sprintf("%s=%t", PluginMetadataModeEnv, true),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMetadataModeEnv), true),
 						fmt.Sprintf("%s=%t", PluginAutoMTLSEnv, false),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginAutoMTLSEnv), false),
 					},
 				),
 				SecureConfig: &plugin.SecureConfig{
@@ -143,10 +147,15 @@ func TestMakeConfig(t *testing.T) {
 					[]string{
 						"initial=true",
 						fmt.Sprintf("%s=%t", PluginMlockEnabled, true),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMlockEnabled), true),
 						fmt.Sprintf("%s=%s", PluginVaultVersionEnv, "dummyversion"),
+						fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), "dummyversion"),
 						fmt.Sprintf("%s=%t", PluginMetadataModeEnv, false),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMetadataModeEnv), false),
 						fmt.Sprintf("%s=%t", PluginAutoMTLSEnv, false),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginAutoMTLSEnv), false),
 						fmt.Sprintf("%s=%s", PluginUnwrapTokenEnv, "testtoken"),
+						fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginUnwrapTokenEnv), "testtoken"),
 					},
 				),
 				SecureConfig: &plugin.SecureConfig{
@@ -207,8 +216,11 @@ func TestMakeConfig(t *testing.T) {
 					[]string{
 						"initial=true",
 						fmt.Sprintf("%s=%s", PluginVaultVersionEnv, "dummyversion"),
+						fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), "dummyversion"),
 						fmt.Sprintf("%s=%t", PluginMetadataModeEnv, true),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMetadataModeEnv), true),
 						fmt.Sprintf("%s=%t", PluginAutoMTLSEnv, true),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginAutoMTLSEnv), true),
 					},
 				),
 				SecureConfig: &plugin.SecureConfig{
@@ -269,8 +281,11 @@ func TestMakeConfig(t *testing.T) {
 					[]string{
 						"initial=true",
 						fmt.Sprintf("%s=%s", PluginVaultVersionEnv, "dummyversion"),
+						fmt.Sprintf("%s=%s", api.UpstreamVariableName(PluginVaultVersionEnv), "dummyversion"),
 						fmt.Sprintf("%s=%t", PluginMetadataModeEnv, false),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginMetadataModeEnv), false),
 						fmt.Sprintf("%s=%t", PluginAutoMTLSEnv, true),
+						fmt.Sprintf("%s=%t", api.UpstreamVariableName(PluginAutoMTLSEnv), true),
 					},
 				),
 				SecureConfig: &plugin.SecureConfig{

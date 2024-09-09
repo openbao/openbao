@@ -9,16 +9,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/consul-template/child"
-	ctconfig "github.com/hashicorp/consul-template/config"
-	"github.com/hashicorp/consul-template/manager"
 	"github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao-template/child"
+	ctconfig "github.com/openbao/openbao-template/config"
+	"github.com/openbao/openbao-template/manager"
 	"golang.org/x/exp/slices"
 
 	"github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/command/agent/internal/ctmanager"
 	"github.com/openbao/openbao/helper/useragent"
-	"github.com/openbao/openbao/sdk/helper/pointerutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 )
 
 type childProcessState uint8

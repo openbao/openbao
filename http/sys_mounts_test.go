@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/vault"
 )
 

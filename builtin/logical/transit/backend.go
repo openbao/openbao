@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -56,6 +56,8 @@ func Backend(ctx context.Context, conf *logical.BackendConfig) (*backend, error)
 			b.pathImport(),
 			b.pathImportVersion(),
 			b.pathKeys(),
+			b.pathKeysSoftDelete(),
+			b.pathKeysSoftDeleteRestore(),
 			b.pathListKeys(),
 			b.pathBYOKExportKeys(),
 			b.pathExportKeys(),
@@ -270,11 +272,6 @@ func (b *backend) rotateIfRequired(ctx context.Context, req *logical.Request, ke
 	// If the policy's automatic rotation period is 0, it should not
 	// automatically rotate.
 	if p.AutoRotatePeriod == 0 {
-		return nil
-	}
-
-	// We can't auto-rotate managed keys
-	if p.Type == keysutil.KeyType_MANAGED_KEY {
 		return nil
 	}
 

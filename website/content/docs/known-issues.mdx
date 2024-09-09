@@ -1,0 +1,60 @@
+---
+description: >-
+  This page lists known issues for OpenBao releases and any workarounds which
+  may address them.
+---
+
+# Known issues
+
+This page lists known issues for [OpenBao releases](/docs/release-notes) and any
+workarounds which may address them.
+
+## Failed to set process secure bits.
+
+### Description
+
+ * **Since**: OpenBao 2.0.0 GA
+ * **Host OS**: Ubuntu 20.04 with systemd unit file
+ * **Error message**:
+   ```
+   openbao.service: Failed to set process secure bits: Operation not permitted
+   openbao.service: Failed at step SECUREBITS spawning /usr/bin/bao: Operation not permitted
+   ```
+ * **Report**: [openbao#419](https://github.com/openbao/openbao/issues/419)
+
+When running OpenBao from our shipped systemd unit file on older OSes, the
+use of `SecureBits=keep-caps` in the unit file causes OpenBao to attempt to
+use mlock. In 2.0.0 prior to GA, [mlock was removed](https://openbao.org/docs/rfcs/mlock-removal/)
+in favor of cgroups and thus the mlock capability was also removed from the
+systemd unit file, causing this to fail.
+
+This does not occur on later host OS/systemd versions (such as on Ubuntu
+22.04).
+
+### Workaround
+
+Either grant OpenBao capabilities to set `mlock` (which can cause integrated
+raft storage to fail) via:
+
+```
+$ systemd edit openbao
+```
+
+and setting:
+
+```
+AmbientCapabilities=CAP_IPC_LOCK
+CapabilityBoundingSet=CAP_IPC_LOCK
+```
+
+Or disable `SecureBits` entirely via:
+
+```
+$ systemd edit openbao
+```
+
+and setting:
+
+```
+SecureBits=
+```

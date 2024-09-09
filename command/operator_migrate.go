@@ -6,7 +6,6 @@ package command
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/url"
 	"os"
@@ -21,8 +20,8 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -61,7 +60,7 @@ func (c *OperatorMigrateCommand) Synopsis() string {
 
 func (c *OperatorMigrateCommand) Help() string {
 	helpText := `
-Usage: vault operator migrate [options]
+Usage: bao operator migrate [options]
 
   This command starts a storage backend migration process to copy all data
   from one backend to another. This operates directly on encrypted data and
@@ -69,7 +68,7 @@ Usage: vault operator migrate [options]
 
   Start a migration with a configuration file:
 
-      $ vault operator migrate -config=migrate.hcl
+      $ bao operator migrate -config=migrate.hcl
 
   For more information, please see the documentation.
 
@@ -116,7 +115,7 @@ func (c *OperatorMigrateCommand) Flags() *FlagSets {
 		Name:       "log-level",
 		Target:     &c.flagLogLevel,
 		Default:    "info",
-		EnvVar:     "VAULT_LOG_LEVEL",
+		EnvVar:     "BAO_LOG_LEVEL",
 		Completion: complete.PredictSet("trace", "debug", "info", "warn", "error"),
 		Usage: "Log verbosity level. Supported values (in order of detail) are " +
 			"\"trace\", \"debug\", \"info\", \"warn\", and \"error\". These are not case sensitive.",
@@ -326,7 +325,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 		return nil, fmt.Errorf("location is a directory, not a file")
 	}
 
-	d, err := ioutil.ReadFile(path)
+	d, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

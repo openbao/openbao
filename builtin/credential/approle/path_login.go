@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathLogin(b *backend) *framework.Path {
@@ -375,7 +375,9 @@ func (b *backend) pathLoginUpdate(ctx context.Context, req *logical.Request, dat
 			Metadata: metadata,
 		},
 	}
-	role.PopulateTokenAuth(auth)
+	if err := role.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	// Allow for overridden token bound CIDRs
 	auth.BoundCIDRs = tokenBoundCIDRs

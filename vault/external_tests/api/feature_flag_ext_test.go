@@ -5,14 +5,14 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"testing"
 
 	"github.com/hashicorp/go-cleanhttp"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
 	"github.com/openbao/openbao/vault"
 	"golang.org/x/net/http2"
 )
@@ -54,7 +54,7 @@ func TestFeatureFlags(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		httpRespBody, err := ioutil.ReadAll(resp.Body)
+		httpRespBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -78,7 +78,7 @@ func TestFeatureFlags(t *testing.T) {
 	}
 
 	// Now try with the environment variable temporarily set
-	envVar := "VAULT_CLOUD_ADMIN_NAMESPACE"
+	envVar := "BAO_CLOUD_ADMIN_NAMESPACE"
 	os.Setenv(envVar, "1")
 	defer os.Unsetenv(envVar)
 

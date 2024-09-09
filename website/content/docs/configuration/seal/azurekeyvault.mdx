@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Azure Key Vault - Seals - Configuration
+sidebar_label: Azure Key Vault
 description: >-
   The Azure Key Vault seal configures OpenBao to use Azure Key Vault as the seal
   wrapping
@@ -63,7 +62,7 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
 
 - `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 
 ## Authentication
@@ -79,19 +78,24 @@ Azure authentication values:
 - `AZURE_ENVIRONMENT`
 - `AZURE_AD_RESOURCE`
 
-~> **Note:** If OpenBao is hosted on Azure, OpenBao can use Managed Service
+:::warning
+
+**Note:** If OpenBao is hosted on Azure, OpenBao can use Managed Service
 Identities (MSI) to access Azure instead of an environment and shared client id
 and secret. MSI must be
 [enabled](https://docs.microsoft.com/en-us/azure/active-directory/managed-service-identity/qs-configure-portal-windows-vm)
 on the VMs hosting OpenBao, and it is the preferred configuration since MSI
-prevents your Azure credentials from being stored as clear text. Refer to the
-[Production
-Hardening](/vault/tutorials/operations/production-hardening) tutorial
-for more best practices.
+prevents your Azure credentials from being stored as clear text.
 
--> **Note:** If you are using a Managed HSM KeyVault, `AZURE_AD_RESOURCE` or the `resource`
+:::
+
+:::info
+
+**Note:** If you are using a Managed HSM KeyVault, `AZURE_AD_RESOURCE` or the `resource`
 configuration parameter must be specified; usually this should point to `managedhsm.azure.net`,
 but could point to other suffixes depending on Azure environment.
+
+:::
 
 ## `azurekeyvault` environment variables
 
@@ -108,8 +112,3 @@ stored with the encrypted data to ensure the correct key is used during
 decryption operations. Simply [set up Azure Key Vault with key
 rotation](https://docs.microsoft.com/en-us/azure/key-vault/key-vault-key-rotation-log-monitoring)
 using Azure Automation Account and OpenBao will recognize newly rotated keys.
-
-## Tutorial
-
-Refer to the [Auto-unseal using Azure Key Vault](/vault/tutorials/auto-unseal/autounseal-azure-keyvault)
-tutorial to learn how to use the Azure Key Vault to auto-unseal a OpenBao server.

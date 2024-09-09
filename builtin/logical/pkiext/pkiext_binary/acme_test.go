@@ -29,8 +29,8 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/builtin/logical/pkiext"
 	"github.com/openbao/openbao/helper/testhelpers"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	hDocker "github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	hDocker "github.com/openbao/openbao/sdk/v2/helper/docker"
 	"github.com/stretchr/testify/require"
 )
 
@@ -177,17 +177,16 @@ func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *V
 		cpCtx["vault_ca_cert.crt"] = hDocker.PathContentsFromString(string(cluster.GetListenerCACertPEM()))
 		err = caddyRunner.CopyTo(caddyResult.Container.ID, "/tmp/", cpCtx)
 		require.NoError(t, err, "failed to copy Caddy config and Vault listener CA certificate to container")
-
 		// Start the Caddy server.
 		caddyCmd := []string{
 			"caddy",
-			"start",
+			"run",
 			"--config", "/tmp/caddy_config.json",
 		}
-		stdout, stderr, retcode, err := caddyRunner.RunCmdWithOutput(ctx, caddyResult.Container.ID, caddyCmd)
-		t.Logf("Caddy Start Command: %v\nstdout: %v\nstderr: %v\n", caddyCmd, string(stdout), string(stderr))
+
+		cmdId, err := caddyRunner.RunCmdInBackground(ctx, caddyResult.Container.ID, caddyCmd)
 		require.NoError(t, err, "got error running Caddy start command")
-		require.Equal(t, 0, retcode, "expected zero retcode Caddy start command result")
+		require.NotEmpty(t, cmdId, "expected non-empty docker background command")
 
 		// Start a cURL container.
 		curlRunner, err := hDocker.NewServiceRunner(hDocker.RunOptions{
@@ -216,15 +215,29 @@ func SubtestACMECaddy(configTemplate string, enableEAB bool) func(*testing.T, *V
 		require.NoError(t, err, "failed to copy PKI mount CA certificate to cURL container")
 
 		// Use cURL to hit the Caddy server and validate that a certificate was retrieved successfully.
-		curlCmd := []string{
-			"curl",
-			"-L",
-			"--cacert", "/tmp/ca_cert.crt",
-			"--resolve", hostname + ":443:" + ipAddr,
-			"https://" + hostname + "/",
+		//
+		// We do this with a backoff in case the caddy server isn't ready on the first attempt.
+		var stdout []byte
+		var stderr []byte
+		var retcode int
+		for i := 1; i <= 10; i++ {
+			curlCmd := []string{
+				"curl",
+				"-L",
+				"--cacert", "/tmp/ca_cert.crt",
+				"--resolve", hostname + ":443:" + ipAddr,
+				"https://" + hostname + "/",
+			}
+			stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
+			t.Logf("[attempt %d] cURL Command: %v\nstdout: %v\nstderr: %v\n", i, curlCmd, string(stdout), string(stderr))
+
+			if err == nil && retcode == 0 {
+				break
+			}
+
+			time.Sleep(time.Duration(i) * time.Second)
 		}
-		stdout, stderr, retcode, err = curlRunner.RunCmdWithOutput(ctx, curlResult.Container.ID, curlCmd)
-		t.Logf("cURL Command: %v\nstdout: %v\nstderr: %v\n", curlCmd, string(stdout), string(stderr))
+
 		require.NoError(t, err, "got error running cURL command")
 		require.Equal(t, 0, retcode, "expected zero retcode cURL command result")
 	}

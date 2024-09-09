@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	semver "github.com/hashicorp/go-version"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/version"
 )
 
@@ -21,7 +21,7 @@ const (
 var (
 	buildInfoOnce         sync.Once // once is used to ensure we only parse build info once.
 	buildInfo             *debug.BuildInfo
-	DefaultBuiltinVersion = fmt.Sprintf("v%s+%s.vault", version.GetVersion().Version, BuiltinMetadata)
+	DefaultBuiltinVersion = fmt.Sprintf("v%s+%s.bao", version.GetVersion().Version, BuiltinMetadata)
 )
 
 func GetBuiltinVersion(pluginType consts.PluginType, pluginName string) string {
@@ -37,7 +37,7 @@ func GetBuiltinVersion(pluginType consts.PluginType, pluginName string) string {
 
 	// Vault builtin plugins are all either:
 	// a) An external repo within the hashicorp org - return external repo version with +builtin
-	// b) Within the Vault repo itself - return Vault version with +builtin.vault
+	// b) Within the Vault repo itself - return Vault version with +builtin.bao
 	//
 	// The repo names are predictable, but follow slightly different patterns
 	// for each plugin type.

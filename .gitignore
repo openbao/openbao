@@ -32,9 +32,10 @@ _testmain.go
 /http/web_ui/*.*
 /http/web_ui/**/*.*
 
-# Vault-specific
+# OpenBao-specific
 example.hcl
 example.vault.d
+example.openbao.d
 
 # Without this, the *.[568vq] above ignores this folder.
 !**/graphrbac/1.6
@@ -131,3 +132,9 @@ tools/godoctests/.bin
 tools/gonilnilfunctions/.bin
 tools/codechecker/.bin
 .ci-bootstrap
+
+# OpenAPI
+scripts/openapi.json
+
+# auto-generated goreleaser configuration
+.goreleaser.yaml

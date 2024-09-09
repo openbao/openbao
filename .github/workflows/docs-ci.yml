@@ -1,0 +1,27 @@
+name: Docs CI
+on:
+  pull_request:
+    # The default types for pull_request are [ opened, synchronize, reopened ].
+    # This is insufficient for our needs, since we're skipping stuff on PRs in
+    # draft mode.  By adding the ready_for_review type, when a draft pr is marked
+    # ready, we run everything, including the stuff we'd have skipped up until now.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "website/**"
+
+jobs:
+  test-docs:
+    name: Test Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
+        with:
+          node-version-file: "./website/package.json"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - id: build-docs
+        name: build-docs
+        working-directory: ./website
+        run: |
+          make build

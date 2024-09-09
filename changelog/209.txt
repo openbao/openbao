@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Allow pki/issue/:role with key_type=any roles, via explicit key_type and key_bits request parameters.
+```

@@ -1,6 +1,7 @@
 name: Run linters
 
 on:
+  merge_group:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
@@ -18,26 +19,34 @@ jobs:
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
       - run: make ci-deprecations
         name: Check deprecations
+
+  vulnerabilities:
+    name: Vulnerable dependencies
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/set-up-go
+      - run: make vulncheck
+        name: Check dependencies for vulnerabilities
 
   codechecker:
     name: Code checks
     runs-on: ubuntu-latest
     if: github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
         # Note: if there is a function we want to ignore the nilnil check for,
         # You can add 'ignore-nil-nil-function-check' somewhere in the
         # godoc for the function.
@@ -48,10 +57,8 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - uses: ./.github/actions/set-up-go
-        with:
-          github-token: ${{ secrets.ELEVATED_GITHUB_TOKEN }}
       - name: Go format
         run: |
           make ci-bootstrap
@@ -67,8 +74,20 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: returntocorp/semgrep@sha256:ffc6f3567654f9431456d49fd059dfe548f007c494a7eb6cd5a1a3e50d813fb3
+    # Skip any PR created by dependabot and any check triggered by merge group
+    if: (github.actor != 'dependabot[bot]') && (github.event != 'merge_group')
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
       - name: Run Semgrep Rules
         id: semgrep
         run: semgrep ci --include '*.go' --config 'tools/semgrep/ci'
+
+  gomod:
+    name: Go mod checks
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: ./.github/actions/set-up-go
+      - run: make ci-tidy-all
+        name: Run go mod tidy to check for differences

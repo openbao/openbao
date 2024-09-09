@@ -20,9 +20,9 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
@@ -71,7 +71,6 @@ func TestCore_EnableAudit(t *testing.T) {
 	conf := &CoreConfig{
 		Physical:      c.physical,
 		AuditBackends: make(map[string]audit.Factory),
-		DisableMlock:  true,
 	}
 	conf.AuditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	c2, err := NewCore(conf)
@@ -265,8 +264,7 @@ func TestCore_DisableAudit(t *testing.T) {
 	}
 
 	conf := &CoreConfig{
-		Physical:     c.physical,
-		DisableMlock: true,
+		Physical: c.physical,
 	}
 	c2, err := NewCore(conf)
 	if err != nil {
@@ -300,8 +298,7 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 
 	// Start a second core with same physical
 	conf := &CoreConfig{
-		Physical:     c.physical,
-		DisableMlock: true,
+		Physical: c.physical,
 	}
 	c2, err := NewCore(conf)
 	if err != nil {

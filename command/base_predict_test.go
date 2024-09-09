@@ -6,9 +6,10 @@ package command
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -344,56 +345,27 @@ func TestPredict_Plugins(t *testing.T) {
 			"good_path",
 			client,
 			[]string{
-				"ad",
-				"alicloud",
 				"approle",
-				"aws",
-				"azure",
 				"cassandra-database-plugin",
-				"centrify",
 				"cert",
-				"cf",
-				"consul",
-				"couchbase-database-plugin",
-				"elasticsearch-database-plugin",
-				"gcp",
-				"gcpkms",
-				"github",
-				"hana-database-plugin",
 				"influxdb-database-plugin",
 				"jwt",
 				"kerberos",
-				"keymgmt",
-				"kmip",
 				"kubernetes",
 				"kv",
 				"ldap",
-				"mongodb-database-plugin",
-				"mongodbatlas",
-				"mongodbatlas-database-plugin",
-				"mssql-database-plugin",
 				"mysql-aurora-database-plugin",
 				"mysql-database-plugin",
 				"mysql-legacy-database-plugin",
 				"mysql-rds-database-plugin",
-				"nomad",
-				"oci",
 				"oidc",
-				"okta",
 				"openldap",
-				"pcf", // Deprecated.
 				"pki",
 				"postgresql-database-plugin",
 				"rabbitmq",
 				"radius",
-				"redis-database-plugin",
-				"redis-elasticache-database-plugin",
-				"redshift-database-plugin",
-				"snowflake-database-plugin",
 				"ssh",
-				"terraform",
 				"totp",
-				"transform",
 				"transit",
 				"userpass",
 			},
@@ -565,6 +537,8 @@ func TestPredict_PathsKVv2(t *testing.T) {
 
 	client, closer := testVaultServerWithKVVersion(t, "2")
 	defer closer()
+
+	time.Sleep(250 * time.Millisecond)
 
 	data := map[string]interface{}{"data": map[string]interface{}{"a": "b"}}
 	if _, err := client.Logical().Write("secret/data/bar", data); err != nil {

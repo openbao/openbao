@@ -1,6 +1,4 @@
 ---
-layout: api
-page_title: /sys/remount - HTTP API
 description: >-
   The '/sys/remount' endpoint is used remount a mounted backend to a new
   endpoint.
@@ -18,12 +16,20 @@ engines and auth methods.
 OpenBao returns a migration ID when the remount operation completes. You
 can use the migration ID to look up the status of the mount migration.
 More details about the remount operation are described in
-[Mount Migration](/vault/docs/concepts/mount-migration).
+[Mount Migration](/docs/concepts/mount-migration).
 
-~> Note: This endpoint requires a policy with both `sudo` and `update` capabilities to `sys/remount`
+:::warning
 
-~> Note: A mount migration will revoke all leases for the secrets of a secrets backend or tokens of an auth backend,
+Note: This endpoint requires a policy with both `sudo` and `update` capabilities to `sys/remount`
+
+:::
+
+:::warning
+
+Note: A mount migration will revoke all leases for the secrets of a secrets backend or tokens of an auth backend,
 depending on which type of backend is being moved.
+
+:::
 
 
 | Method | Path           |

@@ -11,16 +11,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/armon/go-metrics"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func ProxyHandler(ctx context.Context, logger hclog.Logger, proxier Proxier, inmemSink sink.Sink, proxyVaultToken bool) http.Handler {
@@ -200,7 +199,7 @@ func sanitizeAutoAuthTokenResponse(ctx context.Context, logger hclog.Logger, inm
 	if resp.Response.Body != nil {
 		resp.Response.Body.Close()
 	}
-	resp.Response.Body = ioutil.NopCloser(bytes.NewReader(bodyBytes))
+	resp.Response.Body = io.NopCloser(bytes.NewReader(bodyBytes))
 	resp.Response.ContentLength = int64(len(bodyBytes))
 
 	// Serialize and re-read the response

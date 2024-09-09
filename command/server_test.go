@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-//go:build !race && !hsm && !fips_140_3
+//go:build !race && !hsm
 
 // NOTE: we can't use this with HSM. We can't set testing mode on and it's not
 // safe to use env vars since that provides an attack vector in the real world.
@@ -14,7 +14,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -22,22 +21,15 @@ import (
 	"time"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/sdk/physical"
-	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	if signed := os.Getenv("VAULT_LICENSE_CI"); signed != "" {
-		os.Setenv(EnvVaultLicense, signed)
-	}
-}
 
 func testBaseHCL(tb testing.TB, listenerExtras string) string {
 	tb.Helper()
 
 	return strings.TrimSpace(fmt.Sprintf(`
-		disable_mlock = true
 		listener "tcp" {
 			address     = "127.0.0.1:%d"
 			tls_disable = "true"
@@ -74,7 +66,6 @@ ha_backend "inmem" {}
 
 	reloadHCL = `
 backend "inmem" {}
-disable_mlock = true
 listener "tcp" {
   address       = "127.0.0.1:8203"
   tls_cert_file = "TMPDIR/reload_cert.pem"
@@ -107,9 +98,8 @@ func testServerCommand(tb testing.TB) (*cli.MockUi, *ServerCommand) {
 		},
 
 		// These prevent us from random sleep guessing...
-		startedCh:         make(chan struct{}, 5),
-		reloadedCh:        make(chan struct{}, 5),
-		licenseReloadedCh: make(chan error),
+		startedCh:  make(chan struct{}, 5),
+		reloadedCh: make(chan struct{}, 5),
 	}
 }
 
@@ -119,7 +109,7 @@ func TestServer_ReloadListener(t *testing.T) {
 	wd, _ := os.Getwd()
 	wd += "/server/test-fixtures/reload/"
 
-	td, err := ioutil.TempDir("", "vault-test-")
+	td, err := os.MkdirTemp("", "vault-test-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,15 +117,15 @@ func TestServer_ReloadListener(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	// Setup initial certs
-	inBytes, _ := ioutil.ReadFile(wd + "reload_foo.pem")
-	ioutil.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
-	inBytes, _ = ioutil.ReadFile(wd + "reload_foo.key")
-	ioutil.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
+	inBytes, _ := os.ReadFile(wd + "reload_foo.pem")
+	os.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
+	inBytes, _ = os.ReadFile(wd + "reload_foo.key")
+	os.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
 
 	relhcl := strings.ReplaceAll(reloadHCL, "TMPDIR", td)
-	ioutil.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
+	os.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
 
-	inBytes, _ = ioutil.ReadFile(wd + "reload_ca.pem")
+	inBytes, _ = os.ReadFile(wd + "reload_ca.pem")
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(inBytes)
 	if !ok {
@@ -184,11 +174,11 @@ func TestServer_ReloadListener(t *testing.T) {
 	}
 
 	relhcl = strings.ReplaceAll(reloadHCL, "TMPDIR", td)
-	inBytes, _ = ioutil.ReadFile(wd + "reload_bar.pem")
-	ioutil.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
-	inBytes, _ = ioutil.ReadFile(wd + "reload_bar.key")
-	ioutil.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
-	ioutil.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
+	inBytes, _ = os.ReadFile(wd + "reload_bar.pem")
+	os.WriteFile(td+"/reload_cert.pem", inBytes, 0o777)
+	inBytes, _ = os.ReadFile(wd + "reload_bar.key")
+	os.WriteFile(td+"/reload_key.pem", inBytes, 0o777)
+	os.WriteFile(td+"/reload.hcl", []byte(relhcl), 0o777)
 
 	cmd.SighupCh <- struct{}{}
 	select {

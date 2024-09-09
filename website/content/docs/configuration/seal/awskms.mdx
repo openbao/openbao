@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: AWS KMS - Seals - Configuration
+sidebar_label: AWS KMS
 description: |-
   The AWS KMS seal configures OpenBao to use AWS KMS as the seal wrapping
   mechanism.
@@ -65,16 +64,20 @@ These parameters apply to the `seal` stanza in the OpenBao configuration file:
   Endpoint](https://docs.aws.amazon.com/kms/latest/developerguide/kms-vpc-endpoint.html).
   If not set, OpenBao will use the default API endpoint for your region.
 
-Refer to the [Seal Migration](/vault/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
 
 ## Authentication
 
 Authentication-related values must be provided, either as environment
 variables or as configuration parameters.
 
-~> **Note:** Although the configuration file allows you to pass in
+:::warning
+
+**Note:** Although the configuration file allows you to pass in
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` as part of the seal's parameters, it
 is _strongly_ recommended to set these values via environment variables.
+
+:::
 
 AWS authentication values:
 
@@ -114,12 +117,3 @@ rotation and manual rotation is supported for KMS since the key information is s
 encrypted data. Old keys must not be disabled or deleted and are used to decrypt older data.
 Any new or updated data will be encrypted with the current key defined in the seal configuration
 or set to current under a key alias.
-
-## AWS instance metadata timeout
-
-@include 'aws-imds-timeout.mdx'
-
-## Tutorial
-
-Refer to the [Auto-unseal using AWS KMS](/vault/tutorials/auto-unseal/autounseal-aws-kms)
-tutorial to learn how to auto-unseal OpenBao using AWS KMS.

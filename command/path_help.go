@@ -34,7 +34,7 @@ func (c *PathHelpCommand) Synopsis() string {
 
 func (c *PathHelpCommand) Help() string {
 	helpText := `
-Usage: vault path-help [options] PATH
+Usage: bao path-help [options] PATH
 
   Retrieves API help for paths. All endpoints in Vault provide built-in help
   in markdown format. This includes system paths, secret engines, and auth
@@ -42,11 +42,11 @@ Usage: vault path-help [options] PATH
 
   Get help for the thing mounted at database/:
 
-      $ vault path-help database/
+      $ bao path-help database/
 
   The response object will return additional paths to retrieve help:
 
-      $ vault path-help database/roles/
+      $ bao path-help database/roles/
 
   Each secret engine produces different help output.
 

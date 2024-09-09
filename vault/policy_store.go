@@ -17,17 +17,13 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
 	// policySubPath is the sub-path used for the policy store view. This is
-	// nested under the system view. policyRGPSubPath/policyEGPSubPath are
-	// similar but for RGPs/EGPs.
+	// nested under the system view.
 	policyACLSubPath = "policy/"
-	policyRGPSubPath = "policy-rgp/"
-	policyEGPSubPath = "policy-egp/"
 
 	// policyCacheSize is the number of policies that are kept cached
 	policyCacheSize = 1024
@@ -38,26 +34,11 @@ const (
 	// responseWrappingPolicyName is the name of the fixed policy
 	responseWrappingPolicyName = "response-wrapping"
 
-	// controlGroupPolicyName is the name of the fixed policy for control group
-	// tokens
-	controlGroupPolicyName = "control-group"
-
 	// responseWrappingPolicy is the policy that ensures cubbyhole response
 	// wrapping can always succeed.
 	responseWrappingPolicy = `
 path "cubbyhole/response" {
     capabilities = ["create", "read"]
-}
-
-path "sys/wrapping/unwrap" {
-    capabilities = ["update"]
-}
-`
-	// controlGroupPolicy is the policy that ensures control group requests can
-	// commit themselves
-	controlGroupPolicy = `
-path "cubbyhole/control-group" {
-    capabilities = ["update", "create", "read"]
 }
 
 path "sys/wrapping/unwrap" {
@@ -148,12 +129,6 @@ path "sys/tools/hash/*" {
     capabilities = ["update"]
 }
 
-# Allow checking the status of a Control Group request if the user has the
-# accessor
-path "sys/control-group/request" {
-    capabilities = ["update"]
-}
-
 # Allow a token to make requests to the Authorization Endpoint for OIDC providers.
 path "identity/oidc/provider/+/authorize" {
     capabilities = ["read", "update"]
@@ -165,33 +140,27 @@ var (
 	immutablePolicies = []string{
 		"root",
 		responseWrappingPolicyName,
-		controlGroupPolicyName,
 	}
 	nonAssignablePolicies = []string{
 		responseWrappingPolicyName,
-		controlGroupPolicyName,
 	}
 )
 
 // PolicyStore is used to provide durable storage of policy, and to
 // manage ACLs associated with them.
 type PolicyStore struct {
-	entPolicyStore
-
 	core    *Core
 	aclView *BarrierView
-	rgpView *BarrierView
-	egpView *BarrierView
 
 	tokenPoliciesLRU *lru.TwoQueueCache
 	egpLRU           *lru.TwoQueueCache
 
-	// This is used to ensure that writes to the store (acl/rgp) or to the egp
+	// This is used to ensure that writes to the store (acl) or to the egp
 	// path tree don't happen concurrently. We are okay reading stale data so
 	// long as there aren't concurrent writes.
 	modifyLock *sync.RWMutex
 
-	// Stores whether a token policy is ACL or RGP
+	// Stores whether a token policy is ACL
 	policyTypeMap sync.Map
 
 	// logger is the server logger copied over from core
@@ -200,8 +169,6 @@ type PolicyStore struct {
 
 // PolicyEntry is used to store a policy by name
 type PolicyEntry struct {
-	sentinelPolicy
-
 	Version   int
 	Raw       string
 	Templated bool
@@ -213,14 +180,10 @@ type PolicyEntry struct {
 func NewPolicyStore(ctx context.Context, core *Core, baseView *BarrierView, system logical.SystemView, logger log.Logger) (*PolicyStore, error) {
 	ps := &PolicyStore{
 		aclView:    baseView.SubView(policyACLSubPath),
-		rgpView:    baseView.SubView(policyRGPSubPath),
-		egpView:    baseView.SubView(policyEGPSubPath),
 		modifyLock: new(sync.RWMutex),
 		logger:     logger,
 		core:       core,
 	}
-
-	ps.extraInit()
 
 	if !system.CachingDisabled() {
 		cache, _ := lru.New2Q(policyCacheSize)
@@ -240,10 +203,6 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView *BarrierView, syst
 		ps.policyTypeMap.Store(index, PolicyTypeACL)
 	}
 
-	if err := ps.loadNamespacePolicies(ctx, core); err != nil {
-		return nil, err
-	}
-
 	// Special-case root; doesn't exist on disk but does need to be found
 	ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
 	return ps, nil
@@ -254,22 +213,12 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView *BarrierView, syst
 func (c *Core) setupPolicyStore(ctx context.Context) error {
 	// Create the policy store
 	var err error
-	sysView := &dynamicSystemView{core: c, perfStandby: c.perfStandby}
+	sysView := &dynamicSystemView{core: c}
 	psLogger := c.baseLogger.Named("policy")
 	c.AddLogger(psLogger)
 	c.policyStore, err = NewPolicyStore(ctx, c, c.systemBarrierView, sysView, psLogger)
 	if err != nil {
 		return err
-	}
-
-	if c.ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationDRSecondary) {
-		// Policies will sync from the primary
-		return nil
-	}
-
-	if c.perfStandby {
-		// Policies will sync from the active
-		return nil
 	}
 
 	// Ensure that the default policy exists, and if not, create it
@@ -278,10 +227,6 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	}
 	// Ensure that the response wrapping policy exists
 	if err := c.policyStore.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
-		return err
-	}
-	// Ensure that the control group policy exists
-	if err := c.policyStore.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
 		return err
 	}
 
@@ -312,14 +257,9 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 	// We don't lock before removing from the LRU here because the worst that
 	// can happen is we load again if something since added it
 	switch policyType {
-	case PolicyTypeACL, PolicyTypeRGP:
+	case PolicyTypeACL:
 		if ps.tokenPoliciesLRU != nil {
 			ps.tokenPoliciesLRU.Remove(index)
-		}
-
-	case PolicyTypeEGP:
-		if ps.egpLRU != nil {
-			ps.egpLRU.Remove(index)
 		}
 
 	default:
@@ -372,17 +312,12 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 		return fmt.Errorf("unable to get the barrier subview for policy type %q", p.Type)
 	}
 
-	if err := ps.parseEGPPaths(p); err != nil {
-		return err
-	}
-
 	// Create the entry
 	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
-		Version:        2,
-		Raw:            p.Raw,
-		Type:           p.Type,
-		Templated:      p.Templated,
-		sentinelPolicy: p.sentinelPolicy,
+		Version:   2,
+		Raw:       p.Raw,
+		Type:      p.Type,
+		Templated: p.Templated,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create entry: %w", err)
@@ -393,15 +328,6 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 
 	switch p.Type {
 	case PolicyTypeACL:
-		rgpView := ps.getRGPView(p.namespace)
-		rgp, err := rgpView.Get(ctx, entry.Key)
-		if err != nil {
-			return fmt.Errorf("failed looking up conflicting policy: %w", err)
-		}
-		if rgp != nil {
-			return fmt.Errorf("cannot reuse policy names between ACLs and RGPs")
-		}
-
 		if err := view.Put(ctx, entry); err != nil {
 			return fmt.Errorf("failed to persist policy: %w", err)
 		}
@@ -411,40 +337,6 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 		if ps.tokenPoliciesLRU != nil {
 			ps.tokenPoliciesLRU.Add(index, p)
 		}
-
-	case PolicyTypeRGP:
-		aclView := ps.getACLView(p.namespace)
-		acl, err := aclView.Get(ctx, entry.Key)
-		if err != nil {
-			return fmt.Errorf("failed looking up conflicting policy: %w", err)
-		}
-		if acl != nil {
-			return fmt.Errorf("cannot reuse policy names between ACLs and RGPs")
-		}
-
-		if err := ps.handleSentinelPolicy(ctx, p, view, entry); err != nil {
-			return err
-		}
-
-		ps.policyTypeMap.Store(index, PolicyTypeRGP)
-
-		// We load here after successfully loading into Sentinel so that on
-		// error we will try loading again on the next get
-		if ps.tokenPoliciesLRU != nil {
-			ps.tokenPoliciesLRU.Add(index, p)
-		}
-
-	case PolicyTypeEGP:
-		if err := ps.handleSentinelPolicy(ctx, p, view, entry); err != nil {
-			return err
-		}
-
-		// We load here after successfully loading into Sentinel so that on
-		// error we will try loading again on the next get
-		if ps.egpLRU != nil {
-			ps.egpLRU.Add(index, p)
-		}
-
 	default:
 		return fmt.Errorf("unknown policy type, cannot set")
 	}
@@ -454,12 +346,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 
 // GetNonEGPPolicyType returns a policy's type.
 // It will return an error if the policy doesn't exist in the store or isn't
-// an ACL or a Sentinel Role Governing Policy (RGP).
-//
-// Note: Sentinel Endpoint Governing Policies (EGPs) are not stored within the
-// policyTypeMap. We sometimes need to distinguish between ACLs and RGPs due to
-// them both being token policies, but the logic related to EGPs is separate
-// enough that it is never necessary to look up their type.
+// an ACL.
 func (ps *PolicyStore) GetNonEGPPolicyType(nsID string, name string) (*PolicyType, error) {
 	sanitizedName := ps.sanitizeName(name)
 	index := path.Join(nsID, sanitizedName)
@@ -501,12 +388,6 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	case PolicyTypeACL:
 		cache = ps.tokenPoliciesLRU
 		view = ps.getACLView(ns)
-	case PolicyTypeRGP:
-		cache = ps.tokenPoliciesLRU
-		view = ps.getRGPView(ns)
-	case PolicyTypeEGP:
-		cache = ps.egpLRU
-		view = ps.getEGPView(ns)
 	case PolicyTypeToken:
 		cache = ps.tokenPoliciesLRU
 		val, ok := ps.policyTypeMap.Load(index)
@@ -518,8 +399,6 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		switch policyType {
 		case PolicyTypeACL:
 			view = ps.getACLView(ns)
-		case PolicyTypeRGP:
-			view = ps.getRGPView(ns)
 		default:
 			return nil, fmt.Errorf("invalid type of policy in type map: %q", policyType)
 		}
@@ -583,7 +462,6 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	policy.Raw = policyEntry.Raw
 	policy.Type = policyEntry.Type
 	policy.Templated = policyEntry.Templated
-	policy.sentinelPolicy = policyEntry.sentinelPolicy
 	policy.namespace = ns
 	switch policyEntry.Type {
 	case PolicyTypeACL:
@@ -598,18 +476,6 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		policy.Name = name
 
 		ps.policyTypeMap.Store(index, PolicyTypeACL)
-
-	case PolicyTypeRGP:
-		if err := ps.handleSentinelPolicy(ctx, policy, nil, nil); err != nil {
-			return nil, err
-		}
-
-		ps.policyTypeMap.Store(index, PolicyTypeRGP)
-
-	case PolicyTypeEGP:
-		if err := ps.handleSentinelPolicy(ctx, policy, nil, nil); err != nil {
-			return nil, err
-		}
 
 	default:
 		return nil, fmt.Errorf("unknown policy type %q", policyEntry.Type.String())
@@ -647,10 +513,6 @@ func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType) 
 	switch policyType {
 	case PolicyTypeACL:
 		keys, err = logical.CollectKeys(ctx, view)
-	case PolicyTypeRGP:
-		return logical.CollectKeys(ctx, view)
-	case PolicyTypeEGP:
-		return logical.CollectKeys(ctx, view)
 	default:
 		return nil, fmt.Errorf("unknown policy type %q", policyType)
 	}
@@ -735,40 +597,6 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 		}
 
 		ps.policyTypeMap.Delete(index)
-
-	case PolicyTypeRGP:
-		if physicalDeletion {
-			err := view.Delete(ctx, name)
-			if err != nil {
-				return fmt.Errorf("failed to delete policy: %w", err)
-			}
-		}
-
-		if ps.tokenPoliciesLRU != nil {
-			// Clear the cache
-			ps.tokenPoliciesLRU.Remove(index)
-		}
-
-		ps.policyTypeMap.Delete(index)
-
-		defer ps.core.invalidateSentinelPolicy(policyType, index)
-
-	case PolicyTypeEGP:
-		if physicalDeletion {
-			err := view.Delete(ctx, name)
-			if err != nil {
-				return fmt.Errorf("failed to delete policy: %w", err)
-			}
-		}
-
-		if ps.egpLRU != nil {
-			// Clear the cache
-			ps.egpLRU.Remove(index)
-		}
-
-		defer ps.core.invalidateSentinelPolicy(policyType, index)
-
-		ps.invalidateEGPTreePath(index)
 	}
 
 	return nil

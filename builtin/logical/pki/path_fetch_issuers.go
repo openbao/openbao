@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListIssuers(b *backend) *framework.Path {
@@ -24,6 +24,17 @@ func pathListIssuers(b *backend) *framework.Path {
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
 			OperationSuffix: "issuers",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -54,7 +65,7 @@ func pathListIssuers(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if b.useLegacyBundleCaStorage() {
 		return logical.ErrorResponse("Can not list issuers until migration has completed"), nil
 	}
@@ -62,8 +73,11 @@ func (b *backend) pathListIssuersHandler(ctx context.Context, req *logical.Reque
 	var responseKeys []string
 	responseInfo := make(map[string]interface{})
 
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
 	sc := b.makeStorageContext(ctx, req.Storage)
-	entries, err := sc.listIssuers()
+	entries, err := sc.listIssuersPage(after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +206,12 @@ for the issuing certificate attribute. See also RFC 5280 Section 4.2.2.1.`,
 		Description: `Comma-separated list of URLs to be used
 for the CRL distribution points attribute. See also RFC 5280 Section 4.2.1.13.`,
 	}
+	fields["delta_crl_distribution_points"] = &framework.FieldSchema{
+		Type: framework.TypeCommaStringSlice,
+		Description: `Comma-separated list of URLs to be used
+for the Delta CRL distribution points attribute. See also RFC 5280 Section 4.2.1.15
+and Section 5.2.6.`,
+	}
 	fields["ocsp_servers"] = &framework.FieldSchema{
 		Type: framework.TypeCommaStringSlice,
 		Description: `Comma-separated list of URLs to be used
@@ -279,6 +299,11 @@ to be set on all PR secondary clusters.`,
 				"crl_distribution_points": {
 					Type:        framework.TypeStringSlice,
 					Description: `CRL Distribution Points`,
+					Required:    false,
+				},
+				"delta_crl_distribution_points": {
+					Type:        framework.TypeStringSlice,
+					Description: `Delta CRL Distribution Points`,
 					Required:    false,
 				},
 				"ocsp_servers": {
@@ -451,6 +476,7 @@ func respondReadIssuer(issuer *issuerEntry) (*logical.Response, error) {
 		"revoked":                        issuer.Revoked,
 		"issuing_certificates":           []string{},
 		"crl_distribution_points":        []string{},
+		"delta_crl_distribution_points":  []string{},
 		"ocsp_servers":                   []string{},
 	}
 
@@ -462,6 +488,7 @@ func respondReadIssuer(issuer *issuerEntry) (*logical.Response, error) {
 	if issuer.AIAURIs != nil {
 		data["issuing_certificates"] = issuer.AIAURIs.IssuingCertificates
 		data["crl_distribution_points"] = issuer.AIAURIs.CRLDistributionPoints
+		data["delta_crl_distribution_points"] = issuer.AIAURIs.DeltaCRLDistributionPoints
 		data["ocsp_servers"] = issuer.AIAURIs.OCSPServers
 		data["enable_aia_url_templating"] = issuer.AIAURIs.EnableTemplating
 	}
@@ -568,6 +595,10 @@ func (b *backend) pathUpdateIssuer(ctx context.Context, req *logical.Request, da
 	crlDistributionPoints := data.Get("crl_distribution_points").([]string)
 	if badURL := validateURLs(crlDistributionPoints); !enableTemplating && badURL != "" {
 		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter crl_distribution_points: %s", badURL)), nil
+	}
+	deltaCRLDistributionPoints := data.Get("delta_crl_distribution_points").([]string)
+	if badURL := validateURLs(deltaCRLDistributionPoints); !enableTemplating && badURL != "" {
+		return logical.ErrorResponse(fmt.Sprintf("invalid URL found in Authority Information Access (AIA) parameter delta_crl_distribution_points: %s", badURL)), nil
 	}
 	ocspServers := data.Get("ocsp_servers").([]string)
 	if badURL := validateURLs(ocspServers); !enableTemplating && badURL != "" {
@@ -885,6 +916,10 @@ func (b *backend) pathPatchIssuer(ctx context.Context, req *logical.Request, dat
 			Dest:   &issuer.AIAURIs.CRLDistributionPoints,
 		},
 		{
+			Source: "delta_crl_distribution_points",
+			Dest:   &issuer.AIAURIs.DeltaCRLDistributionPoints,
+		},
+		{
 			Source: "ocsp_servers",
 			Dest:   &issuer.AIAURIs.OCSPServers,
 		},
@@ -1117,9 +1152,9 @@ func (b *backend) pathDeleteIssuer(ctx context.Context, req *logical.Request, da
 		response.AddWarning(msg)
 	}
 
-	// Finally, we need to rebuild both the local and the unified CRLs. This
-	// will free up any now unnecessary space used in both the CRL config
-	// and for the underlying CRL.
+	// Finally, we need to rebuild the local CRLs. This will free up any now
+	// unnecessary space used in both the CRL config and for the underlying
+	// CRL.
 	warnings, err := b.crlBuilder.rebuild(sc, true)
 	if err != nil {
 		return nil, err
@@ -1171,17 +1206,6 @@ func pathGetIssuerCRL(b *backend) *framework.Path {
 	displayAttrs := &framework.DisplayAttributes{
 		OperationPrefix: operationPrefixPKIIssuer,
 		OperationSuffix: "crl|crl-pem|crl-der|crl-delta|crl-delta-pem|crl-delta-der",
-	}
-
-	return buildPathGetIssuerCRL(b, pattern, displayAttrs)
-}
-
-func pathGetIssuerUnifiedCRL(b *backend) *framework.Path {
-	pattern := "issuer/" + framework.GenericNameRegex(issuerRefParam) + "/unified-crl(/pem|/der|/delta(/pem|/der)?)?"
-
-	displayAttrs := &framework.DisplayAttributes{
-		OperationPrefix: operationPrefixPKIIssuer,
-		OperationSuffix: "unified-crl|unified-crl-pem|unified-crl-der|unified-crl-delta|unified-crl-delta-pem|unified-crl-delta-der",
 	}
 
 	return buildPathGetIssuerCRL(b, pattern, displayAttrs)
@@ -1248,18 +1272,13 @@ func (b *backend) pathGetIssuerCRL(ctx context.Context, req *logical.Request, da
 	var certificate []byte
 	var contentType string
 
-	isUnified := strings.Contains(req.Path, "unified")
 	isDelta := strings.Contains(req.Path, "delta")
 
 	response := &logical.Response{}
 	var crlType ifModifiedReqType = ifModifiedCRL
 
-	if !isUnified && isDelta {
+	if isDelta {
 		crlType = ifModifiedDeltaCRL
-	} else if isUnified && !isDelta {
-		crlType = ifModifiedUnifiedCRL
-	} else if isUnified && isDelta {
-		crlType = ifModifiedUnifiedDeltaCRL
 	}
 
 	ret, err := sendNotModifiedResponseIfNecessary(&IfModifiedSinceHelper{req: req, reqType: crlType}, sc, response)
@@ -1270,7 +1289,7 @@ func (b *backend) pathGetIssuerCRL(ctx context.Context, req *logical.Request, da
 		return response, nil
 	}
 
-	crlPath, err := sc.resolveIssuerCRLPath(issuerName, isUnified)
+	crlPath, err := sc.resolveIssuerCRLPath(issuerName)
 	if err != nil {
 		return nil, err
 	}

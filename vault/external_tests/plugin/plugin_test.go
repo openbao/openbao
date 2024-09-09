@@ -6,21 +6,20 @@ package plugin_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/namespace"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	lplugin "github.com/openbao/openbao/sdk/plugin"
-	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	lplugin "github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin/mock"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -598,7 +597,7 @@ func testSystemBackendMock(t *testing.T, numCores, numMounts int, backendType lo
 	}
 
 	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := ioutil.TempDir("", "vault-test-cluster")
+	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -672,7 +671,7 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 		},
 	}
 	// Create a tempdir, cluster.Cleanup will clean up this directory
-	tempDir, err := ioutil.TempDir("", "vault-test-cluster")
+	tempDir, err := os.MkdirTemp("", "vault-test-cluster")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -709,16 +708,16 @@ func testSystemBackend_SingleCluster_Env(t *testing.T, env []string) *vault.Test
 func TestBackend_PluginMain_V4_Logical(t *testing.T) {
 	args := []string{}
 	// don't run as a standalone unit test
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
 	// don't run as a V5 plugin
-	if os.Getenv(pluginutil.PluginAutoMTLSEnv) == "true" {
+	if api.ReadBaoVariable(pluginutil.PluginAutoMTLSEnv) == "true" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -745,11 +744,11 @@ func TestBackend_PluginMain_V4_Logical(t *testing.T) {
 
 func TestBackend_PluginMain_Multiplexed_Logical(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -771,11 +770,11 @@ func TestBackend_PluginMain_Multiplexed_Logical(t *testing.T) {
 
 func TestBackend_PluginMainLogical(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -798,16 +797,16 @@ func TestBackend_PluginMainLogical(t *testing.T) {
 func TestBackend_PluginMain_V4_Credentials(t *testing.T) {
 	args := []string{}
 	// don't run as a standalone unit test
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
 	// don't run as a V5 plugin
-	if os.Getenv(pluginutil.PluginAutoMTLSEnv) == "true" {
+	if api.ReadBaoVariable(pluginutil.PluginAutoMTLSEnv) == "true" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -834,11 +833,11 @@ func TestBackend_PluginMain_V4_Credentials(t *testing.T) {
 
 func TestBackend_PluginMain_Multiplexed_Credentials(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -860,11 +859,11 @@ func TestBackend_PluginMain_Multiplexed_Credentials(t *testing.T) {
 
 func TestBackend_PluginMainCredentials(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -887,7 +886,7 @@ func TestBackend_PluginMainCredentials(t *testing.T) {
 // TestBackend_PluginMainEnv is a mock plugin that simply checks for the existence of FOO env var.
 func TestBackend_PluginMainEnv(t *testing.T) {
 	args := []string{}
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" && os.Getenv(pluginutil.PluginMetadataModeEnv) != "true" {
+	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" && api.ReadBaoVariable(pluginutil.PluginMetadataModeEnv) != "true" {
 		return
 	}
 
@@ -897,7 +896,7 @@ func TestBackend_PluginMainEnv(t *testing.T) {
 		t.Fatalf("expected: %q, got: %q", expectedEnvValue, actual)
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}

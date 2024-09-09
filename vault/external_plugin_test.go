@@ -15,19 +15,20 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin"
-	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin/mock"
 	"github.com/openbao/openbao/version"
 )
 
-const vaultTestingMockPluginEnv = "VAULT_TESTING_MOCK_PLUGIN"
+const vaultTestingMockPluginEnv = "BAO_TESTING_MOCK_PLUGIN"
 
 // version is used to override the plugin's self-reported version
 func testCoreWithPlugins(t *testing.T, typ consts.PluginType, versions ...string) (*Core, []pluginhelpers.TestPlugin) {
@@ -67,7 +68,6 @@ func TestCore_EnableExternalPlugin(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			coreConfig := &CoreConfig{
-				DisableMlock:       true,
 				DisableCache:       true,
 				Logger:             log.NewNullLogger(),
 				CredentialBackends: map[string]logical.Factory{},
@@ -851,7 +851,7 @@ func TestExternalPlugin_DifferentEnv_AreNotMultiplexed(t *testing.T) {
 
 // Used to run a mock multiplexed secrets plugin
 func TestBackend_PluginMain_Multiplexed_Logical_v123(t *testing.T) {
-	if os.Getenv(vaultTestingMockPluginEnv) == "" {
+	if api.ReadBaoVariable(vaultTestingMockPluginEnv) == "" {
 		return
 	}
 
@@ -867,7 +867,7 @@ func TestBackend_PluginMain_Multiplexed_Logical_v123(t *testing.T) {
 
 // Used to run a mock multiplexed secrets plugin
 func TestBackend_PluginMain_Multiplexed_Logical_v124(t *testing.T) {
-	if os.Getenv(vaultTestingMockPluginEnv) == "" {
+	if api.ReadBaoVariable(vaultTestingMockPluginEnv) == "" {
 		return
 	}
 
@@ -883,7 +883,7 @@ func TestBackend_PluginMain_Multiplexed_Logical_v124(t *testing.T) {
 
 // Used to run a mock multiplexed auth plugin
 func TestBackend_PluginMain_Multiplexed_Credential_v123(t *testing.T) {
-	if os.Getenv(vaultTestingMockPluginEnv) == "" {
+	if api.ReadBaoVariable(vaultTestingMockPluginEnv) == "" {
 		return
 	}
 

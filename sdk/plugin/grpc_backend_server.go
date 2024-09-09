@@ -11,9 +11,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"google.golang.org/grpc"
 )
 
@@ -95,15 +95,13 @@ func (b *backendGRPCPluginServer) Setup(ctx context.Context, args *pb.SetupArgs)
 
 	storage := newGRPCStorageClient(brokeredClient)
 	sysView := newGRPCSystemView(brokeredClient)
-	events := newGRPCEventsClient(brokeredClient)
 
 	config := &logical.BackendConfig{
-		StorageView:  storage,
-		Logger:       b.logger,
-		System:       sysView,
-		Config:       args.Config,
-		BackendUUID:  args.BackendUUID,
-		EventsSender: events,
+		StorageView: storage,
+		Logger:      b.logger,
+		System:      sysView,
+		Config:      args.Config,
+		BackendUUID: args.BackendUUID,
 	}
 
 	// Call the underlying backend factory after shims have been created

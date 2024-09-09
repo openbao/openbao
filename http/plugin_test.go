@@ -5,28 +5,28 @@ package http
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	bplugin "github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/benchhelpers"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
-	"github.com/openbao/openbao/sdk/plugin"
-	"github.com/openbao/openbao/sdk/plugin/mock"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/plugin"
+	"github.com/openbao/openbao/sdk/v2/plugin/mock"
 	"github.com/openbao/openbao/vault"
 )
 
 func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluster, *vault.TestClusterCore) {
-	inm, err := inmem.NewTransactionalInmem(nil, logger)
+	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,11 +69,11 @@ func getPluginClusterAndCore(t testing.TB, logger log.Logger) (*vault.TestCluste
 }
 
 func TestPlugin_PluginMain(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -145,7 +145,7 @@ func TestPlugin_MockRawResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

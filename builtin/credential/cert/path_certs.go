@@ -12,9 +12,9 @@ import (
 
 	"github.com/hashicorp/go-sockaddr"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/tokenutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListCerts(b *backend) *framework.Path {
@@ -26,6 +26,17 @@ func pathListCerts(b *backend) *framework.Path {
 			OperationSuffix: "certificates",
 			Navigation:      true,
 			ItemType:        "Certificate",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -275,11 +286,18 @@ func (b *backend) pathCertDelete(ctx context.Context, req *logical.Request, d *f
 	return nil, nil
 }
 
-func (b *backend) pathCertList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	certs, err := req.Storage.List(ctx, "cert/")
+func (b *backend) pathCertList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	certs, err := req.Storage.ListPage(ctx, "cert/", after, limit)
 	if err != nil {
 		return nil, err
 	}
+
 	return logical.ListResponse(certs), nil
 }
 

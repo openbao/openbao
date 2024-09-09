@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
 )
 
 func mockAuditedHeadersConfig(t *testing.T) *AuditedHeadersConfig {

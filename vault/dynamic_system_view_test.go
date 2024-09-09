@@ -15,8 +15,8 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	ldapcred "github.com/openbao/openbao/builtin/credential/ldap"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (
@@ -40,7 +40,6 @@ rule "charset" {
 func TestIdentity_BackendTemplating(t *testing.T) {
 	var err error
 	coreConfig := &CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -180,7 +179,6 @@ func TestIdentity_BackendTemplating(t *testing.T) {
 func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 	var err error
 	coreConfig := &CoreConfig{
-		DisableMlock:       true,
 		DisableCache:       true,
 		Logger:             log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{},
@@ -311,6 +309,10 @@ func (b fakeBarrier) Get(context.Context, string) (*logical.StorageEntry, error)
 }
 
 func (b fakeBarrier) List(context.Context, string) ([]string, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+
+func (b fakeBarrier) ListPage(context.Context, string, string, int) ([]string, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 

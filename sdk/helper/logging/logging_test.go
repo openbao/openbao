@@ -8,6 +8,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/openbao/openbao/api/v2"
 )
 
 func Test_ParseLogFormat(t *testing.T) {
@@ -38,11 +40,11 @@ func Test_ParseLogFormat(t *testing.T) {
 	}
 }
 
-func Test_ParseEnv_VAULT_LOG_FORMAT(t *testing.T) {
-	oldVLF := os.Getenv("VAULT_LOG_FORMAT")
-	defer os.Setenv("VAULT_LOG_FORMAT", oldVLF)
+func Test_ParseEnv_BAO_LOG_FORMAT(t *testing.T) {
+	oldVLF := api.ReadBaoVariable("BAO_LOG_FORMAT")
+	defer os.Setenv("BAO_LOG_FORMAT", oldVLF)
 
-	testParseEnvLogFormat(t, "VAULT_LOG_FORMAT")
+	testParseEnvLogFormat(t, "BAO_LOG_FORMAT")
 }
 
 func testParseEnvLogFormat(t *testing.T, name string) {

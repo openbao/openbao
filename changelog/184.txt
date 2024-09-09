@@ -1,0 +1,3 @@
+```release-note:improvement
+ui: The latest versions of Chrome do not automatically redirect back to an Android app after multiple redirects during an OIDC authentication flow. A link was added to allow the user to manually redirect back to the app.
+```

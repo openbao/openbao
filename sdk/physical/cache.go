@@ -10,8 +10,8 @@ import (
 	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 )
 
 const (
@@ -37,11 +37,6 @@ var cacheExceptionsPaths = []string{
 	// exceptions to avoid unseal errors. See VAULT-17227
 	"core/seal-config",
 	"core/recovery-config",
-
-	// we need to make sure the persisted license is read from the storage
-	// to ensure the changes to the autoloaded license on the active node
-	// is observed on the perfStandby nodes
-	"core/autoloaded-license",
 }
 
 // CacheRefreshContext returns a context with an added value denoting if the
@@ -74,18 +69,10 @@ type Cache struct {
 	metricSink      metrics.MetricSink
 }
 
-// TransactionalCache is a Cache that wraps the physical that is transactional
-type TransactionalCache struct {
-	*Cache
-	Transactional
-}
-
 // Verify Cache satisfies the correct interfaces
 var (
 	_ ToggleablePurgemonster = (*Cache)(nil)
-	_ ToggleablePurgemonster = (*TransactionalCache)(nil)
 	_ Backend                = (*Cache)(nil)
-	_ Transactional          = (*TransactionalCache)(nil)
 )
 
 // NewCache returns a physical cache of the given size.
@@ -111,14 +98,6 @@ func NewCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 		enabled:         new(uint32),
 		cacheExceptions: pm,
 		metricSink:      metricSink,
-	}
-	return c
-}
-
-func NewTransactionalCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricSink) *TransactionalCache {
-	c := &TransactionalCache{
-		Cache:         NewCache(b, size, logger, metricSink),
-		Transactional: b.(Transactional),
 	}
 	return c
 }
@@ -163,7 +142,21 @@ func (c *Cache) Put(ctx context.Context, entry *Entry) error {
 
 	err := c.backend.Put(ctx, entry)
 	if err == nil {
-		c.lru.Add(entry.Key, entry)
+		// While lower layers could modify entry, we want to ensure we don't
+		// open ourselves up to cache modification so clone the entry.
+		cacheEntry := &Entry{
+			Key:      entry.Key,
+			SealWrap: entry.SealWrap,
+		}
+		if entry.Value != nil {
+			cacheEntry.Value = make([]byte, len(entry.Value))
+			copy(cacheEntry.Value, entry.Value)
+		}
+		if entry.ValueHash != nil {
+			cacheEntry.ValueHash = make([]byte, len(entry.ValueHash))
+			copy(cacheEntry.ValueHash, entry.ValueHash)
+		}
+		c.lru.Add(entry.Key, cacheEntry)
 		c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
 	}
 	return err
@@ -225,49 +218,7 @@ func (c *Cache) List(ctx context.Context, prefix string) ([]string, error) {
 	return c.backend.List(ctx, prefix)
 }
 
-func (c *TransactionalCache) Locks() []*locksutil.LockEntry {
-	return c.locks
-}
-
-func (c *TransactionalCache) LRU() *lru.TwoQueueCache {
-	return c.lru
-}
-
-func (c *TransactionalCache) Transaction(ctx context.Context, txns []*TxnEntry) error {
-	// Bypass the locking below
-	if atomic.LoadUint32(c.enabled) == 0 {
-		return c.Transactional.Transaction(ctx, txns)
-	}
-
-	// Collect keys that need to be locked
-	var keys []string
-	for _, curr := range txns {
-		keys = append(keys, curr.Entry.Key)
-	}
-	// Lock the keys
-	for _, l := range locksutil.LocksForKeys(c.locks, keys) {
-		l.Lock()
-		defer l.Unlock()
-	}
-
-	if err := c.Transactional.Transaction(ctx, txns); err != nil {
-		return err
-	}
-
-	for _, txn := range txns {
-		if !c.ShouldCache(txn.Entry.Key) {
-			continue
-		}
-
-		switch txn.Operation {
-		case PutOperation:
-			c.lru.Add(txn.Entry.Key, txn.Entry)
-			c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
-		case DeleteOperation:
-			c.lru.Remove(txn.Entry.Key)
-			c.metricSink.IncrCounter([]string{"cache", "delete"}, 1)
-		}
-	}
-
-	return nil
+func (c *Cache) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	// See note above about List(...).
+	return c.backend.ListPage(ctx, prefix, after, limit)
 }

@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Service Registration - Configuration
+sidebar_label: Overview
 description: |-
   The optional `service_registration` stanza configures OpenBao's mechanism for
   service registration.
@@ -10,21 +9,17 @@ description: |-
 
 The optional `service_registration` stanza configures OpenBao's mechanism for
 service registration. The `service_registration` stanza is designed for use cases
-where you would like to use a system like [Consul][consul] for [service
-discovery][consul-discovery], but use a different system for the [storage
-backend][storage-backend].
-
-When Consul is configured as the [storage backend][consul-backend], OpenBao
-implicitly uses Consul for service registration, so the `service_registration` stanza
-is not needed.
+where you would like to use a system like Kubernetes for service discovery, but use
+a different system for the [storage backend][storage-backend].
 
 For times when you would like to use a different storage backend, like
 [Raft][raft-backend], but still have service registration available, the
 `service_registration` stanza can be used:
 
 ```hcl
-service_registration "consul" {
-  address = "127.0.0.1:8500"
+service_registration "kubernetes" {
+  namespace      = "my-namespace"
+  pod_name       = "my-pod-name"
 }
 storage "raft" {
   path = "/path/to/raft/data"
@@ -32,8 +27,8 @@ storage "raft" {
 }
 ```
 
-For information about a specific service registration provider, visit the [Consul Service Registration][consul-service-registration] or [Kubernetes Service Registration
-][kubernetes-service-registration] pages.
+For information about a specific service registration provider, visit the [Kubernetes Service Registration
+][kubernetes-service-registration] page.
 
 ## Configuration
 
@@ -49,8 +44,9 @@ service_registration [NAME] {
 For example:
 
 ```hcl
-service_registration "consul" {
-  address = "127.0.0.1:8500"
+service_registration "kubernetes" {
+  namespace      = "my-namespace"
+  pod_name       = "my-pod-name"
 }
 ```
 
@@ -58,10 +54,6 @@ For configuration options which also read an environment variable, the
 environment variable will take precedence over values in the configuration
 file.
 
-[consul]: https://www.consul.io/
-[consul-discovery]: https://www.consul.io/
-[storage-backend]: /vault/docs/configuration/storage
-[consul-backend]: /vault/docs/configuration/storage/consul
-[raft-backend]: /vault/docs/configuration/storage/raft
-[consul-service-registration]: /vault/docs/configuration/service-registration/consul
-[kubernetes-service-registration]: /vault/docs/configuration/service-registration/kubernetes
+[storage-backend]: /docs/configuration/storage
+[raft-backend]: /docs/configuration/storage/raft
+[kubernetes-service-registration]: /docs/configuration/service-registration/kubernetes

@@ -4,13 +4,13 @@
 package http
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -47,7 +47,6 @@ func TestSysHealth_get(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -81,7 +80,6 @@ func TestSysHealth_get(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -119,7 +117,6 @@ func TestSysHealth_get(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -163,7 +160,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -198,7 +194,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -236,7 +231,6 @@ func TestSysHealth_customcodes(t *testing.T) {
 	} else {
 		expected["cluster_id"] = actual["cluster_id"]
 	}
-	delete(actual, "license")
 	if !reflect.DeepEqual(actual, expected) {
 		t.Fatalf("bad: expected:%#v\nactual:%#v", expected, actual)
 	}
@@ -270,7 +264,7 @@ func TestSysHealth_head(t *testing.T) {
 			t.Fatalf("HEAD %v expected code %d, got %d.", queryurl, tt.code, resp.StatusCode)
 		}
 
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatalf("err on %v: %s", queryurl, err)
 		}

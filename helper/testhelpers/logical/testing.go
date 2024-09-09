@@ -7,25 +7,24 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 )
 
 // TestEnvVar must be set to a non-empty value for acceptance tests to run.
-const TestEnvVar = "VAULT_ACC"
+const TestEnvVar = "BAO_ACC"
 
 // TestCase is a single set of tests to run for a backend. A TestCase
 // should generally map 1:1 to each test method for your acceptance
@@ -121,7 +120,7 @@ type TestTeardownFunc func() error
 func Test(tt TestT, c TestCase) {
 	// We only run acceptance tests if an env var is set because they're
 	// slow and generally require some outside configuration.
-	if c.AcceptanceTest && os.Getenv(TestEnvVar) == "" {
+	if c.AcceptanceTest && api.ReadBaoVariable(TestEnvVar) == "" {
 		tt.Skip(fmt.Sprintf(
 			"Acceptance tests skipped unless env %q set",
 			TestEnvVar))
@@ -168,7 +167,6 @@ func Test(tt TestT, c TestCase) {
 
 	config := &vault.CoreConfig{
 		Physical:        phys,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	}
 

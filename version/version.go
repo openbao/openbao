@@ -58,10 +58,10 @@ func (c *VersionInfo) FullVersionNumber(rev bool) string {
 	var versionString bytes.Buffer
 
 	if Version == "unknown" && VersionPrerelease == "unknown" {
-		return "Vault (version unknown)"
+		return "OpenBao (version unknown)"
 	}
 
-	fmt.Fprintf(&versionString, "Vault v%s", c.Version)
+	fmt.Fprintf(&versionString, "OpenBao v%s", c.Version)
 	if c.VersionPrerelease != "" {
 		fmt.Fprintf(&versionString, "-%s", c.VersionPrerelease)
 	}

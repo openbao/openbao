@@ -5,14 +5,13 @@ package teststorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -160,7 +159,7 @@ func MakeReusableRaftHAStorage(t testing.T, logger hclog.Logger, numCores int, b
 }
 
 func makeRaftDir(t testing.T) string {
-	raftDir, err := ioutil.TempDir("", "vault-raft-")
+	raftDir, err := os.MkdirTemp("", "vault-raft-")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,9 +12,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -412,7 +412,6 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 		DisableCache: true,
 	})
 	if err != nil {
@@ -435,7 +434,6 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 		DisableCache: true,
 	})
 	if err != nil {

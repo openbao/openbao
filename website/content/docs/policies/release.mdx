@@ -1,0 +1,76 @@
+---
+layout: docs
+page_title: OpenBao Release Checklist
+sidebar_label: Release Checklist
+description: |-
+  The OpenBao checklist for releases
+---
+
+# Release checklist
+
+This checklist was created after the v2.0.0 release in order to facilitate
+a better release process going forward.
+
+## Pre-release checklist
+
+ - [ ] Designate a release manager and assign them this issue.
+ - [ ] Clone this template into a GitHub release issue.
+ - [ ] Identify target release version (major, minor, or patch) and milestones
+       (alpha, beta, ...).
+ - [ ] Identify and communicate the release timeline.
+      - [ ] Community meeting
+      - [ ] OpenBao Core Mailing list
+      - [ ] TSC Mailing List
+      - [ ] Matrix
+      - [ ] GitHub milestones
+ - [ ] Ensure relevant features and bug fixes are present in the release.
+ - [ ] Check generated changelog via `make release-changelog` and make any
+       necessary updates to entries.
+ - [ ] Draft release notification announcement.
+ - [ ] Tag new API versions (including in auth plugins), if necessary.
+      - [ ] When bumping API major version, ensure `api/go.mod` is updated to
+            the new version.
+ - [ ] Update SDK to use the new API version, if necessary.
+      - [ ] When bumping SDK major version, ensure `sdk/go.mod` is updated to
+            the new version.
+ - [ ] Tag new SDK version, if necessary.
+ - [ ] Update first-party external dependencies to use new API & SDK
+       modules, if necessary.
+      - [ ] [`go-kms-wrapping`](https://github.com/openbao/go-kms-wrapping)
+      - [ ] [`go-secure-stdlib`](https://github.com/openbao/go-secure-stdlib)
+      - [ ] [`openbao-template`](https://github.com/openbao/openbao-template)
+ - [ ] Update API, SDK, and first-party external dependencies in main
+       `go.mod`. While API and SDK always use the built-in version, the
+       first-party external modules still use the external version and thus
+       must be updated.
+ - [ ] Update external dependencies with vulnerabilities. Major changes should
+       be done earlier in the release cycle to give the community time to find
+       any breaking issues.
+ - [ ] Update container image base layer versions.
+ - [ ] Update Go version pinning in `/.go-release` and in the the `toolchain`
+       directive in `go.mod`; go-releaser uses this version via a custom
+       (in-repo) `set-up-go` action.
+
+## Release checklist
+
+ - [ ] Open PR to update `CHANGELOG.md` and release notes on website.
+ - [ ] Tag release commit (`CHANGELOG.md` change).
+ - [ ] Start [release workflow](https://github.com/openbao/openbao/actions/workflows/release.yml):
+       select target tag, and set applicable pre-release/latest set
+       (pre-releases should not be marked latest on GitHub).
+ - [ ] Manually upload [GPG signing key](https://openbao.org/assets/openbao-gpg-pub-20240618.asc)
+       to the release artifacts.
+ - [ ] Spot-check release artifacts:
+      - [ ] Container images work.
+      - [ ] Linux binaries work.
+      - [ ] Website download page.
+      - [ ] CoSign and GPG Signatures on binaries.
+ - [ ] In the event of issues during the release that require new tags to be
+       pushed, write a postmortem indicating why.
+ - [ ] Share release notification announcement:
+      - [ ] OpenBao Core mailing list (cc TSC mailing list)
+      - [ ] GitHub Discussions
+      - [ ] Link from Matrix
+      - [ ] Mention in next community meeting & TSC meetings.
+ - [ ] Close the release milestone on GitHub.
+ - [ ] For large releases, work with LF Edge for a release blog post.

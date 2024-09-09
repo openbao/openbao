@@ -11,8 +11,8 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/plugin"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/version"
 
 	/*
@@ -26,47 +26,37 @@ import (
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 
-	credOIDC "github.com/hashicorp/vault-plugin-auth-jwt"
 	credCert "github.com/openbao/openbao/builtin/credential/cert"
+	credOIDC "github.com/openbao/openbao/builtin/credential/jwt"
+	credKerb "github.com/openbao/openbao/builtin/credential/kerberos"
 	credLdap "github.com/openbao/openbao/builtin/credential/ldap"
 	credToken "github.com/openbao/openbao/builtin/credential/token"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
+	physPostgresql "github.com/openbao/openbao/physical/postgresql"
 	physRaft "github.com/openbao/openbao/physical/raft"
-	physFile "github.com/openbao/openbao/sdk/physical/file"
-	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
+	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 
 	sr "github.com/openbao/openbao/serviceregistration"
-	csr "github.com/openbao/openbao/serviceregistration/consul"
 	ksr "github.com/openbao/openbao/serviceregistration/kubernetes"
 )
 
 const (
 	// EnvVaultCLINoColor is an env var that toggles colored UI output.
-	EnvVaultCLINoColor = `VAULT_CLI_NO_COLOR`
+	EnvVaultCLINoColor = `BAO_CLI_NO_COLOR`
 	// EnvVaultFormat is the output format
-	EnvVaultFormat = `VAULT_FORMAT`
-	// EnvVaultLicense is an env var used in Vault Enterprise to provide a license blob
-	EnvVaultLicense = "VAULT_LICENSE"
-	// EnvVaultLicensePath is an env var used in Vault Enterprise to provide a
-	// path to a license file on disk
-	EnvVaultLicensePath = "VAULT_LICENSE_PATH"
+	EnvVaultFormat = `BAO_FORMAT`
 	// EnvVaultDetailed is to output detailed information (e.g., ListResponseWithInfo).
-	EnvVaultDetailed = `VAULT_DETAILED`
+	EnvVaultDetailed = `BAO_DETAILED`
 	// EnvVaultLogFormat is used to specify the log format. Supported values are "standard" and "json"
-	EnvVaultLogFormat = "VAULT_LOG_FORMAT"
+	EnvVaultLogFormat = "BAO_LOG_FORMAT"
 	// EnvVaultLogLevel is used to specify the log level applied to logging
 	// Supported log levels: Trace, Debug, Error, Warn, Info
-	EnvVaultLogLevel = "VAULT_LOG_LEVEL"
-	// EnvVaultExperiments defines the experiments to enable for a server as a
-	// comma separated list. See experiments.ValidExperiments() for the list of
-	// valid experiments. Not mutable or persisted in storage, only read and
-	// logged at startup _per node_. This was initially introduced for the events
-	// system being developed over multiple release cycles.
-	EnvVaultExperiments = "VAULT_EXPERIMENTS"
+	EnvVaultLogLevel = "BAO_LOG_LEVEL"
 
 	// flagNameAddress is the flag used in the base command to read in the
 	// address of the Vault server.
@@ -156,17 +146,14 @@ var (
 	}
 
 	physicalBackends = map[string]physical.Factory{
-		"file_transactional":     physFile.NewTransactionalFileBackend,
-		"file":                   physFile.NewFileBackend,
-		"inmem_ha":               physInmem.NewInmemHA,
-		"inmem_transactional_ha": physInmem.NewTransactionalInmemHA,
-		"inmem_transactional":    physInmem.NewTransactionalInmem,
-		"inmem":                  physInmem.NewInmem,
-		"raft":                   physRaft.NewRaftBackend,
+		"file":       physFile.NewFileBackend,
+		"inmem_ha":   physInmem.NewInmemHA,
+		"inmem":      physInmem.NewInmem,
+		"raft":       physRaft.NewRaftBackend,
+		"postgresql": physPostgresql.NewPostgreSQLBackend,
 	}
 
 	serviceRegistrations = map[string]sr.Factory{
-		"consul":     csr.NewServiceRegistration,
 		"kubernetes": ksr.NewServiceRegistration,
 	}
 
@@ -175,9 +162,10 @@ var (
 
 func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.CommandFactory {
 	loginHandlers := map[string]LoginHandler{
-		"cert": &credCert.CLIHandler{},
-		"ldap": &credLdap.CLIHandler{},
-		"oidc": &credOIDC.CLIHandler{},
+		"cert":     &credCert.CLIHandler{},
+		"kerberos": &credKerb.CLIHandler{},
+		"ldap":     &credLdap.CLIHandler{},
+		"oidc":     &credOIDC.CLIHandler{},
 		"radius": &credUserpass.CLIHandler{
 			DefaultMount: "radius",
 		},
@@ -275,11 +263,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"delete": func() (cli.Command, error) {
 			return &DeleteCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
-		"events subscribe": func() (cli.Command, error) {
-			return &EventsSubscribeCommands{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
@@ -426,11 +409,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
-		"operator raft snapshot inspect": func() (cli.Command, error) {
-			return &OperatorRaftSnapshotInspectCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
 		"operator raft snapshot restore": func() (cli.Command, error) {
 			return &OperatorRaftSnapshotRestoreCommand{
 				BaseCommand: getBaseCommand(),
@@ -458,11 +436,6 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"operator step-down": func() (cli.Command, error) {
 			return &OperatorStepDownCommand{
-				BaseCommand: getBaseCommand(),
-			}, nil
-		},
-		"operator usage": func() (cli.Command, error) {
-			return &OperatorUsageCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

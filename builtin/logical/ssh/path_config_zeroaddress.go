@@ -9,8 +9,8 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Structure to hold roles that are allowed to accept any IP address.
@@ -166,7 +166,7 @@ Administrator can choose to make a select few registered roles to accept any IP
 address, overriding the CIDR blocks registered during creation of roles. This
 doesn't mean that the credentials are created for any IP address. Clients who
 have access to these roles are trusted to make valid requests. Access to these
-roles should be controlled using Vault policies. It is recommended that all the
+roles should be controlled using OpenBao policies. It is recommended that all the
 roles that are allowed to accept any IP address should have an explicit policy
 of deny for unintended clients.
 

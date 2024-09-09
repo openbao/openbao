@@ -7,11 +7,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // testPluginCreate creates a sample plugin in a tempdir and returns the shasum
@@ -20,7 +19,7 @@ func testPluginCreate(tb testing.TB, dir, name string) (string, string) {
 	tb.Helper()
 
 	pth := dir + "/" + name
-	if err := ioutil.WriteFile(pth, nil, 0o755); err != nil {
+	if err := os.WriteFile(pth, nil, 0o755); err != nil {
 		tb.Fatal(err)
 	}
 

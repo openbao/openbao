@@ -7,18 +7,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 
-	"github.com/openbao/openbao/helper/constants"
-
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // BatchRequestItem represents a request item for batch processing
@@ -35,14 +32,8 @@ type BatchRequestItem struct {
 	// Ciphertext for decryption
 	Ciphertext string `json:"ciphertext" structs:"ciphertext" mapstructure:"ciphertext"`
 
-	// Nonce to be used when v1 convergent encryption is used
-	Nonce string `json:"nonce" structs:"nonce" mapstructure:"nonce"`
-
 	// The key version to be used for encryption
 	KeyVersion int `json:"key_version" structs:"key_version" mapstructure:"key_version"`
-
-	// DecodedNonce is the base64 decoded version of Nonce
-	DecodedNonce []byte
 
 	// Associated Data for AEAD ciphers
 	AssociatedData string `json:"associated_data" struct:"associated_data" mapstructure:"associated_data"`
@@ -78,14 +69,6 @@ func (a AssocDataFactory) GetAssociatedData() ([]byte, error) {
 	return base64.StdEncoding.DecodeString(a.Encoded)
 }
 
-type ManagedKeyFactory struct {
-	managedKeyParams keysutil.ManagedKeyParameters
-}
-
-func (m ManagedKeyFactory) GetManagedKeyParameters() keysutil.ManagedKeyParameters {
-	return m.managedKeyParams
-}
-
 func (b *backend) pathEncrypt() *framework.Path {
 	return &framework.Path{
 		Pattern: "encrypt/" + framework.GenericNameRegex("name"),
@@ -109,17 +92,6 @@ func (b *backend) pathEncrypt() *framework.Path {
 			"context": {
 				Type:        framework.TypeString,
 				Description: "Base64 encoded context for key derivation. Required if key derivation is enabled",
-			},
-
-			"nonce": {
-				Type: framework.TypeString,
-				Description: `
-Base64 encoded nonce value. Must be provided if convergent encryption is
-enabled for this key and the key was generated with Vault 0.6.1. Not required
-for keys created in 0.6.2+. The value must be exactly 96 bits (12 bytes) long
-and the user must ensure that for any given context (and thus, any given
-encryption key) this nonce value is **never reused**.
-`,
 			},
 
 			"type": {
@@ -175,7 +147,7 @@ data are attested not to have been tampered with.
 				Type: framework.TypeSlice,
 				Description: `
 Specifies a list of items to be encrypted in a single batch. When this parameter
-is set, if the parameters 'plaintext', 'context' and 'nonce' are also set, they
+is set, if the parameters 'plaintext' and 'context' are also set, they
 will be ignored. Any batch output will preserve the order of the batch input.`,
 			},
 		},
@@ -259,15 +231,6 @@ func decodeBatchRequestItems(src interface{}, requirePlaintext bool, requireCiph
 			}
 		} else if requirePlaintext {
 			errs.Errors = append(errs.Errors, fmt.Sprintf("'[%d].plaintext' missing plaintext to encrypt", i))
-		}
-
-		if v, has := item["nonce"]; has {
-			if !reflect.ValueOf(v).IsValid() {
-			} else if casted, ok := v.(string); ok {
-				(*dst)[i].Nonce = casted
-			} else {
-				errs.Errors = append(errs.Errors, fmt.Sprintf("'[%d].nonce' expected type 'string', got unconvertible type '%T'", i, item["nonce"]))
-			}
 		}
 
 		if v, has := item["key_version"]; has {
@@ -355,7 +318,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		batchInputItems[0] = BatchRequestItem{
 			Plaintext:      valueRaw.(string),
 			Context:        d.Get("context").(string),
-			Nonce:          d.Get("nonce").(string),
 			KeyVersion:     d.Get("key_version").(int),
 			AssociatedData: d.Get("associated_data").(string),
 		}
@@ -386,16 +348,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		// Decode the context
 		if len(item.Context) != 0 {
 			batchInputItems[i].DecodedContext, err = base64.StdEncoding.DecodeString(item.Context)
-			if err != nil {
-				userErrorInBatch = true
-				batchResponseItems[i].Error = err.Error()
-				continue
-			}
-		}
-
-		// Decode the nonce
-		if len(item.Nonce) != 0 {
-			batchInputItems[i].DecodedNonce, err = base64.StdEncoding.DecodeString(item.Nonce)
 			if err != nil {
 				userErrorInBatch = true
 				batchResponseItems[i].Error = err.Error()
@@ -436,10 +388,10 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			polReq.KeyType = keysutil.KeyType_AES256_GCM96
 		case "chacha20-poly1305":
 			polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+		case "xchacha20-poly1305":
+			polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 		case "ecdsa-p256", "ecdsa-p384", "ecdsa-p521":
 			return logical.ErrorResponse(fmt.Sprintf("key type %v not supported for this operation", keyType)), logical.ErrInvalidRequest
-		case "managed_key":
-			polReq.KeyType = keysutil.KeyType_MANAGED_KEY
 		default:
 			return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
 		}
@@ -460,26 +412,16 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
 	}
+	defer p.Unlock()
 
 	// Process batch request items. If encryption of any request
 	// item fails, respectively mark the error in the response
 	// collection and continue to process other items.
-	warnAboutNonceUsage := false
 	successesInBatch := false
 	for i, item := range batchInputItems {
 		if batchResponseItems[i].Error != "" {
 			userErrorInBatch = true
 			continue
-		}
-
-		if item.Nonce != "" && !nonceAllowed(p) {
-			userErrorInBatch = true
-			batchResponseItems[i].Error = ErrNonceNotAllowed.Error()
-			continue
-		}
-
-		if !warnAboutNonceUsage && shouldWarnAboutNonceUsage(p, item.DecodedNonce) {
-			warnAboutNonceUsage = true
 		}
 
 		var factory interface{}
@@ -492,23 +434,7 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 			factory = AssocDataFactory{item.AssociatedData}
 		}
 
-		var managedKeyFactory ManagedKeyFactory
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				batchResponseItems[i].Error = errors.New("unsupported system view").Error()
-			}
-
-			managedKeyFactory = ManagedKeyFactory{
-				managedKeyParams: keysutil.ManagedKeyParameters{
-					ManagedKeySystemView: managedKeySystemView,
-					BackendUUID:          b.backendUUID,
-					Context:              ctx,
-				},
-			}
-		}
-
-		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, item.DecodedNonce, item.Plaintext, factory, managedKeyFactory)
+		ciphertext, err := p.EncryptWithFactory(item.KeyVersion, item.DecodedContext, nil, item.Plaintext, factory)
 		if err != nil {
 			switch err.(type) {
 			case errutil.InternalError:
@@ -547,8 +473,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		}
 	} else {
 		if batchResponseItems[0].Error != "" {
-			p.Unlock()
-
 			if internalErrorInBatch {
 				return nil, errutil.InternalError{Err: batchResponseItems[0].Error}
 			}
@@ -562,36 +486,11 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		}
 	}
 
-	if constants.IsFIPS() && warnAboutNonceUsage {
-		resp.AddWarning("A provided nonce value was used within FIPS mode, this violates FIPS 140 compliance.")
-	}
-
 	if req.Operation == logical.CreateOperation && !upserted {
 		resp.AddWarning("Attempted creation of the key during the encrypt operation, but it was created beforehand")
 	}
 
-	p.Unlock()
-
 	return batchRequestResponse(d, resp, req, successesInBatch, userErrorInBatch, internalErrorInBatch)
-}
-
-func nonceAllowed(p *keysutil.Policy) bool {
-	var supportedKeyType bool
-	switch p.Type {
-	case keysutil.KeyType_MANAGED_KEY:
-		return true
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
-		supportedKeyType = true
-	default:
-		supportedKeyType = false
-	}
-
-	if supportedKeyType && p.ConvergentEncryption && p.ConvergentVersion == 1 {
-		// We only use the user supplied nonce for v1 convergent encryption keys
-		return true
-	}
-
-	return false
 }
 
 // Depending on the errors in the batch, different status codes should be returned. User errors
@@ -619,34 +518,6 @@ func batchRequestResponse(d *framework.FieldData, resp *logical.Response, req *l
 	}
 
 	return resp, nil
-}
-
-// shouldWarnAboutNonceUsage attempts to determine if we will use a provided nonce or not. Ideally this
-// would be information returned through p.Encrypt but that would require an SDK api change and this is
-// transit specific
-func shouldWarnAboutNonceUsage(p *keysutil.Policy, userSuppliedNonce []byte) bool {
-	if len(userSuppliedNonce) == 0 {
-		return false
-	}
-
-	var supportedKeyType bool
-	switch p.Type {
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
-		supportedKeyType = true
-	default:
-		supportedKeyType = false
-	}
-
-	if supportedKeyType && p.ConvergentEncryption && p.ConvergentVersion == 1 {
-		// We only use the user supplied nonce for v1 convergent encryption keys
-		return true
-	}
-
-	if supportedKeyType && !p.ConvergentEncryption {
-		return true
-	}
-
-	return false
 }
 
 const pathEncryptHelpSyn = `Encrypt a plaintext value or a batch of plaintext

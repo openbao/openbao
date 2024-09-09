@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: kv - Command
+sidebar_label: Overview
 description: |-
   The "kv" command groups subcommands for interacting with OpenBao's key/value
   secret engine.
@@ -9,8 +8,8 @@ description: |-
 # kv
 
 The `kv` command groups subcommands for interacting with OpenBao's key/value
-secrets engine (both [K/V Version 1](/vault/docs/secrets/kv/kv-v1) and [K/V
-Version 2](/vault/docs/secrets/kv/kv-v2).
+secrets engine (both [K/V Version 1](/docs/secrets/kv/kv-v1) and [K/V
+Version 2](/docs/secrets/kv/kv-v2).
 
 ## Syntax
 
@@ -21,10 +20,6 @@ The path to where the secrets engine is mounted can be indicated with the `-moun
 The deprecated path-like syntax can also be used (e.g. `bao kv get secret/creds`), but this should be avoided
 for KV v2, because it is not actually the full API path to the secret 
 (secret/data/foo) and may cause confusion.
-
-~> A `flag provided but not defined: -mount` error means you are using an older version of OpenBao before the 
-mount flag syntax was introduced. Upgrade to at least Vault 1.11, or refer to previous versions of the docs 
-which only use the old syntax to refer to the mount path.
 
 ## Examples
 
@@ -130,7 +125,7 @@ Subcommands:
     enable-versioning    Turns on versioning for a KV store
     get                  Retrieves data from the KV store
     list                 List data or secrets
-    metadata             Interact with Vault's Key-Value storage
+    metadata             Interact with OpenBao's Key-Value storage
     patch                Sets or updates data in the KV store without overwriting
     put                  Sets or updates data in the KV store
     rollback             Rolls back to a previous version of data

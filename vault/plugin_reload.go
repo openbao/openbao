@@ -13,9 +13,9 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 // reloadMatchingPluginMounts reloads provided mounts, regardless of
@@ -169,16 +169,10 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 		viewPath = credentialBarrierPrefix + viewPath
 	}
 
-	removePathCheckers(c, entry, viewPath)
-
 	sysView := c.mountEntrySysView(entry)
 
-	nilMount, err := preprocessMount(c, entry, view.(*BarrierView))
-	if err != nil {
-		return err
-	}
-
 	var backend logical.Backend
+	var err error
 	oldSha := entry.RunningSha256
 	if !isAuth {
 		// Dispense a new backend
@@ -220,12 +214,6 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 			}
 		}
 	}
-	addPathCheckers(c, entry, backend, viewPath)
-
-	if nilMount {
-		backend.Cleanup(ctx)
-		backend = nil
-	}
 
 	// Set the backend back
 	re.backend = backend
@@ -253,8 +241,4 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	}
 
 	return nil
-}
-
-func (c *Core) setupPluginReload() error {
-	return handleSetupPluginReload(c)
 }

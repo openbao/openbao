@@ -6,7 +6,6 @@ package pki
 import (
 	"bytes"
 	"context"
-	"crypto"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -15,21 +14,19 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/helper/constants"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var ErrStorageItemNotFound = errors.New("storage item not found")
 
 const (
-	storageKeyConfig        = "config/keys"
-	storageIssuerConfig     = "config/issuers"
-	keyPrefix               = "config/key/"
-	issuerPrefix            = "config/issuer/"
-	storageLocalCRLConfig   = "crls/config"
-	storageUnifiedCRLConfig = "unified-crls/config"
+	storageKeyConfig      = "config/keys"
+	storageIssuerConfig   = "config/issuers"
+	keyPrefix             = "config/key/"
+	issuerPrefix          = "config/issuer/"
+	storageLocalCRLConfig = "crls/config"
 
 	legacyMigrationBundleLogKey = "config/legacyMigrationBundleLog"
 	legacyCertBundlePath        = "config/ca_bundle"
@@ -37,9 +34,6 @@ const (
 	legacyCRLPath               = "crl"
 	deltaCRLPath                = "delta-crl"
 	deltaCRLPathSuffix          = "-delta"
-	unifiedCRLPath              = "unified-crl"
-	unifiedDeltaCRLPath         = "unified-delta-crl"
-	unifiedCRLPathPrefix        = "unified-"
 
 	autoTidyConfigPath = "config/auto-tidy"
 	clusterConfigPath  = "config/cluster"
@@ -81,17 +75,6 @@ type keyEntry struct {
 	Name           string                  `json:"name"`
 	PrivateKeyType certutil.PrivateKeyType `json:"private_key_type"`
 	PrivateKey     string                  `json:"private_key"`
-}
-
-func (e keyEntry) getManagedKeyUUID() (UUIDKey, error) {
-	if !e.isManagedPrivateKey() {
-		return "", errutil.InternalError{Err: "getManagedKeyId called on a key id %s (%s) "}
-	}
-	return extractManagedKeyId([]byte(e.PrivateKey))
-}
-
-func (e keyEntry) isManagedPrivateKey() bool {
-	return e.PrivateKeyType == certutil.ManagedPrivateKey
 }
 
 type issuerUsage uint
@@ -193,7 +176,6 @@ type internalCRLConfigEntry struct {
 	CRLExpirationMap      map[crlID]time.Time `json:"crl_expiration_map"`
 	LastModified          time.Time           `json:"last_modified"`
 	DeltaLastModified     time.Time           `json:"delta_last_modified"`
-	UseGlobalQueue        bool                `json:"cross_cluster_revocation"`
 }
 
 type keyConfigEntry struct {
@@ -215,10 +197,11 @@ type clusterConfigEntry struct {
 }
 
 type aiaConfigEntry struct {
-	IssuingCertificates   []string `json:"issuing_certificates"`
-	CRLDistributionPoints []string `json:"crl_distribution_points"`
-	OCSPServers           []string `json:"ocsp_servers"`
-	EnableTemplating      bool     `json:"enable_templating"`
+	IssuingCertificates        []string `json:"issuing_certificates"`
+	CRLDistributionPoints      []string `json:"crl_distribution_points"`
+	DeltaCRLDistributionPoints []string `json:"delta_crl_distribution_points"`
+	OCSPServers                []string `json:"ocsp_servers"`
+	EnableTemplating           bool     `json:"enable_templating"`
 }
 
 func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*certutil.URLEntries, error) {
@@ -227,9 +210,10 @@ func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*cer
 	}
 
 	result := certutil.URLEntries{
-		IssuingCertificates:   c.IssuingCertificates[:],
-		CRLDistributionPoints: c.CRLDistributionPoints[:],
-		OCSPServers:           c.OCSPServers[:],
+		IssuingCertificates:        c.IssuingCertificates[:],
+		CRLDistributionPoints:      c.CRLDistributionPoints[:],
+		DeltaCRLDistributionPoints: c.DeltaCRLDistributionPoints[:],
+		OCSPServers:                c.OCSPServers[:],
 	}
 
 	if c.EnableTemplating {
@@ -239,9 +223,10 @@ func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*cer
 		}
 
 		for name, source := range map[string]*[]string{
-			"issuing_certificates":    &result.IssuingCertificates,
-			"crl_distribution_points": &result.CRLDistributionPoints,
-			"ocsp_servers":            &result.OCSPServers,
+			"issuing_certificates":          &result.IssuingCertificates,
+			"crl_distribution_points":       &result.CRLDistributionPoints,
+			"delta_crl_distribution_points": &result.DeltaCRLDistributionPoints,
+			"ocsp_servers":                  &result.OCSPServers,
 		} {
 			templated := make([]string, len(*source))
 			for index, uri := range *source {
@@ -297,7 +282,11 @@ func (sc *storageContext) WithFreshTimeout(timeout time.Duration) (*storageConte
 }
 
 func (sc *storageContext) listKeys() ([]keyID, error) {
-	strList, err := sc.Storage.List(sc.Context, keyPrefix)
+	return sc.listKeysPage("", -1)
+}
+
+func (sc *storageContext) listKeysPage(after string, limit int) ([]keyID, error) {
+	strList, err := sc.Storage.ListPage(sc.Context, keyPrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -381,21 +370,9 @@ func (sc *storageContext) importKey(keyValue string, keyName string, keyType cer
 	}
 
 	// Get our public key from the current inbound key, to compare against all the other keys.
-	var pkForImportingKey crypto.PublicKey
-	if keyType == certutil.ManagedPrivateKey {
-		managedKeyUUID, err := extractManagedKeyId([]byte(keyValue))
-		if err != nil {
-			return nil, false, errutil.InternalError{Err: fmt.Sprintf("failed extracting managed key uuid from key: %v", err)}
-		}
-		pkForImportingKey, err = getManagedKeyPublicKey(sc.Context, sc.Backend, managedKeyUUID)
-		if err != nil {
-			return nil, false, err
-		}
-	} else {
-		pkForImportingKey, err = getPublicKeyFromBytes([]byte(keyValue))
-		if err != nil {
-			return nil, false, err
-		}
+	pkForImportingKey, err := getPublicKeyFromBytes([]byte(keyValue))
+	if err != nil {
+		return nil, false, err
 	}
 
 	foundExistingKeyWithName := false
@@ -404,7 +381,7 @@ func (sc *storageContext) importKey(keyValue string, keyName string, keyType cer
 		if err != nil {
 			return nil, false, err
 		}
-		areEqual, err := comparePublicKey(sc, existingKey, pkForImportingKey)
+		areEqual, err := comparePublicKey(existingKey, pkForImportingKey)
 		if err != nil {
 			return nil, false, err
 		}
@@ -616,7 +593,11 @@ func (i issuerEntry) GetAIAURLs(sc *storageContext) (*certutil.URLEntries, error
 }
 
 func (sc *storageContext) listIssuers() ([]issuerID, error) {
-	strList, err := sc.Storage.List(sc.Context, issuerPrefix)
+	return sc.listIssuersPage("", -1)
+}
+
+func (sc *storageContext) listIssuersPage(after string, limit int) ([]issuerID, error) {
+	strList, err := sc.Storage.ListPage(sc.Context, issuerPrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -889,7 +870,7 @@ func (sc *storageContext) importIssuer(certValue string, issuerName string) (*is
 			return nil, false, err
 		}
 
-		equal, err := comparePublicKey(sc, existingKey, issuerCert.PublicKey)
+		equal, err := comparePublicKey(existingKey, issuerCert.PublicKey)
 		if err != nil {
 			return nil, false, err
 		}
@@ -963,11 +944,7 @@ func (sc *storageContext) _cleanupInternalCRLMapping(mapping *internalCRLConfigE
 
 	// Depending on which path we're writing this config to, we need to
 	// remove CRLs from the relevant folder too.
-	isLocal := path == storageLocalCRLConfig
 	baseCRLPath := "crls/"
-	if !isLocal {
-		baseCRLPath = "unified-crls/"
-	}
 
 	for id := range toRemove {
 		// Clean up space in this mapping...
@@ -1027,10 +1004,6 @@ func (sc *storageContext) setLocalCRLConfig(mapping *internalCRLConfigEntry) err
 	return sc._setInternalCRLConfig(mapping, storageLocalCRLConfig)
 }
 
-func (sc *storageContext) setUnifiedCRLConfig(mapping *internalCRLConfigEntry) error {
-	return sc._setInternalCRLConfig(mapping, storageUnifiedCRLConfig)
-}
-
 func (sc *storageContext) _getInternalCRLConfig(path string) (*internalCRLConfigEntry, error) {
 	entry, err := sc.Storage.Get(sc.Context, path)
 	if err != nil {
@@ -1079,10 +1052,6 @@ func (sc *storageContext) _getInternalCRLConfig(path string) (*internalCRLConfig
 
 func (sc *storageContext) getLocalCRLConfig() (*internalCRLConfigEntry, error) {
 	return sc._getInternalCRLConfig(storageLocalCRLConfig)
-}
-
-func (sc *storageContext) getUnifiedCRLConfig() (*internalCRLConfigEntry, error) {
-	return sc._getInternalCRLConfig(storageUnifiedCRLConfig)
 }
 
 func (sc *storageContext) setKeysConfig(config *keyConfigEntry) error {
@@ -1194,7 +1163,7 @@ func (sc *storageContext) resolveIssuerReference(reference string) (issuerID, er
 	return IssuerRefNotFound, errutil.UserError{Err: fmt.Sprintf("unable to find PKI issuer for reference: %v", reference)}
 }
 
-func (sc *storageContext) resolveIssuerCRLPath(reference string, unified bool) (string, error) {
+func (sc *storageContext) resolveIssuerCRLPath(reference string) (string, error) {
 	if sc.Backend.useLegacyBundleCaStorage() {
 		return legacyCRLPath, nil
 	}
@@ -1205,9 +1174,6 @@ func (sc *storageContext) resolveIssuerCRLPath(reference string, unified bool) (
 	}
 
 	configPath := storageLocalCRLConfig
-	if unified {
-		configPath = storageUnifiedCRLConfig
-	}
 
 	crlConfig, err := sc._getInternalCRLConfig(configPath)
 	if err != nil {
@@ -1216,10 +1182,6 @@ func (sc *storageContext) resolveIssuerCRLPath(reference string, unified bool) (
 
 	if crlId, ok := crlConfig.IssuerIDCRLMap[issuer]; ok && len(crlId) > 0 {
 		path := fmt.Sprintf("crls/%v", crlId)
-		if unified {
-			path = unifiedCRLPathPrefix + path
-		}
-
 		return path, nil
 	}
 
@@ -1409,16 +1371,6 @@ func (sc *storageContext) getRevocationConfig() (*crlConfig, error) {
 		result.Expiry = defaultCrlConfig.Expiry
 	}
 
-	isLocalMount := sc.Backend.System().LocalMount()
-	if (!constants.IsEnterprise || isLocalMount) && (result.UnifiedCRLOnExistingPaths || result.UnifiedCRL || result.UseGlobalQueue) {
-		// An end user must have had Enterprise, enabled the unified config args and then downgraded to OSS.
-		sc.Backend.Logger().Warn("Not running Vault Enterprise or using a local mount, " +
-			"disabling unified_crl, unified_crl_on_existing_paths and cross_cluster_revocation config flags.")
-		result.UnifiedCRLOnExistingPaths = false
-		result.UnifiedCRL = false
-		result.UseGlobalQueue = false
-	}
-
 	return &result, nil
 }
 
@@ -1481,7 +1433,11 @@ func (sc *storageContext) writeAutoTidyConfig(config *tidyConfig) error {
 }
 
 func (sc *storageContext) listRevokedCerts() ([]string, error) {
-	list, err := sc.Storage.List(sc.Context, revokedPath)
+	return sc.listRevokedCertsPage("", -1)
+}
+
+func (sc *storageContext) listRevokedCertsPage(after string, limit int) ([]string, error) {
+	list, err := sc.Storage.ListPage(sc.Context, revokedPath, after, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed listing revoked certs: %w", err)
 	}

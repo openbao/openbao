@@ -32,7 +32,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 )
 
 const (
@@ -64,7 +64,6 @@ const (
 	RSAPrivateKey     PrivateKeyType = "rsa"
 	ECPrivateKey      PrivateKeyType = "ec"
 	Ed25519PrivateKey PrivateKeyType = "ed25519"
-	ManagedPrivateKey PrivateKeyType = "ManagedPrivateKey"
 )
 
 // TLSUsage controls whether the intended usage of a *tls.Config
@@ -291,8 +290,6 @@ func extractAndSetPrivateKey(c *CertBundle, parsedBundle *ParsedCertBundle) erro
 			c.PrivateKeyType = RSAPrivateKey
 		case Ed25519PrivateKey:
 			c.PrivateKeyType = Ed25519PrivateKey
-		case ManagedPrivateKey:
-			c.PrivateKeyType = ManagedPrivateKey
 		}
 	default:
 		return errutil.UserError{Err: fmt.Sprintf("Unsupported key block type: %s", pemBlock.Type)}
@@ -553,9 +550,6 @@ func (p *ParsedCSRBundle) ToCSRBundle() (*CSRBundle, error) {
 		case Ed25519PrivateKey:
 			result.PrivateKeyType = "ed25519"
 			block.Type = "PRIVATE KEY"
-		case ManagedPrivateKey:
-			result.PrivateKeyType = ManagedPrivateKey
-			block.Type = "PRIVATE KEY"
 		default:
 			return nil, errutil.InternalError{Err: "Could not determine private key type when creating block"}
 		}
@@ -682,9 +676,10 @@ type IssueData struct {
 }
 
 type URLEntries struct {
-	IssuingCertificates   []string `json:"issuing_certificates" structs:"issuing_certificates" mapstructure:"issuing_certificates"`
-	CRLDistributionPoints []string `json:"crl_distribution_points" structs:"crl_distribution_points" mapstructure:"crl_distribution_points"`
-	OCSPServers           []string `json:"ocsp_servers" structs:"ocsp_servers" mapstructure:"ocsp_servers"`
+	IssuingCertificates        []string `json:"issuing_certificates" structs:"issuing_certificates" mapstructure:"issuing_certificates"`
+	CRLDistributionPoints      []string `json:"crl_distribution_points" structs:"crl_distribution_points" mapstructure:"crl_distribution_points"`
+	DeltaCRLDistributionPoints []string `json:"delta_crl_distribution_points" structs:"delta_crl_distribution_points" mapstructure:"delta_crl_distribution_points"`
+	OCSPServers                []string `json:"ocsp_servers" structs:"ocsp_servers" mapstructure:"ocsp_servers"`
 }
 
 type NotAfterBehavior int
@@ -782,6 +777,7 @@ type CreationParameters struct {
 	NotAfter                      time.Time
 	KeyUsage                      x509.KeyUsage
 	ExtKeyUsage                   CertExtKeyUsage
+	CADigitalSignature            bool
 	ExtKeyUsageOIDs               []string
 	PolicyIdentifiers             []string
 	BasicConstraintsValidForNonCA bool
@@ -815,12 +811,19 @@ type CreationBundle struct {
 // addKeyUsages adds appropriate key usages to the template given the creation
 // information
 func AddKeyUsages(data *CreationBundle, certTemplate *x509.Certificate) {
+	// Many KeyUsage field do not belong on CA certificates; restrict to a
+	// useful, required subset and conditionally add more. However, more
+	// ExtKeyUsage values apply to both CA and non-CA, so open those up
+	// more broadly.
 	if data.Params.IsCA {
 		certTemplate.KeyUsage = x509.KeyUsage(x509.KeyUsageCertSign | x509.KeyUsageCRLSign)
-		return
-	}
 
-	certTemplate.KeyUsage = data.Params.KeyUsage
+		if data.Params.KeyUsage&x509.KeyUsageDigitalSignature != 0 {
+			certTemplate.KeyUsage |= x509.KeyUsageDigitalSignature
+		}
+	} else {
+		certTemplate.KeyUsage = data.Params.KeyUsage
+	}
 
 	if data.Params.ExtKeyUsage&AnyExtKeyUsage != 0 {
 		certTemplate.ExtKeyUsage = append(certTemplate.ExtKeyUsage, x509.ExtKeyUsageAny)

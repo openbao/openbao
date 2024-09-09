@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/lf-edge/openbao/physical/raft";
+option go_package = "github.com/openbao/openbao/physical/raft";
 
 package raft;
 

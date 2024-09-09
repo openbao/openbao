@@ -13,7 +13,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
@@ -218,7 +218,7 @@ func TestRateLimitQuota_Allow_WithBlock(t *testing.T) {
 
 func TestRateLimitQuota_Update(t *testing.T) {
 	defer goleak.VerifyNone(t)
-	qm, err := NewManager(logging.NewVaultLogger(log.Trace), nil, metricsutil.BlackholeSink(), true)
+	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
 	quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0)

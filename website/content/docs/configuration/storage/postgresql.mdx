@@ -1,12 +1,18 @@
 ---
-layout: docs
-page_title: PostgreSQL - Storage Backends - Configuration
+sidebar_label: PostgreSQL Storage
 description: |-
   The PostgreSQL storage backend is used to persist OpenBao's data in a PostgreSQL
   server or cluster.
 ---
 
 # PostgreSQL storage backend
+
+:::warning
+
+**Note**: The PostgreSQL Storage Backend is in early preview. Use at your own
+risk. Some breaking changes may occur prior to GA.
+
+:::
 
 The PostgreSQL storage backend is used to persist OpenBao's data in a
 [PostgreSQL][postgresql] server or cluster.
@@ -25,10 +31,14 @@ storage "postgresql" {
 }
 ```
 
-~> **Note:** The PostgreSQL storage backend plugin will attempt to use SSL
+:::warning
+
+**Note**: The PostgreSQL storage backend plugin will attempt to use SSL
 when connecting to the database. If SSL is not enabled the `connection_url`
 will need to be configured to disable SSL. See the documentation below
 to disable SSL.
+
+:::
 
 The PostgreSQL storage backend does not automatically create the table. Here is
 some sample SQL to create the schema and indexes.
@@ -91,7 +101,7 @@ LANGUAGE plpgsql;
 
 - `connection_url` `(string: <required>)` – Specifies the connection string to
   use to authenticate and connect to PostgreSQL. The connection URL can also be
-  set using the `VAULT_PG_CONNECTION_URL` environment variable. A full list of supported
+  set using the `BAO_PG_CONNECTION_URL` environment variable. A full list of supported
   parameters can be found in the [pgx library][pgxlib] and [PostgreSQL connection string][pg_conn_docs]
   documentation. For example connection string URLs, see the examples section below.
 
@@ -112,6 +122,10 @@ LANGUAGE plpgsql;
 - `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
   for storing high availability information. This table must already exist (OpenBao
   will not attempt to create it).
+
+- `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
+  function to execute for upsert capabilities on PostgreSQL versions earlier
+  than 9.5. This function must already exist. See above documentation.
 
 ## `postgresql` examples
 

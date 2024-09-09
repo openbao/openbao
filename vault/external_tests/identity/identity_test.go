@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/ldaputil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/ldaputil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/stretchr/testify/require"
 
@@ -149,7 +149,6 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -448,7 +447,6 @@ func TestIdentityStore_Integ_RemoveFromExternalGroup(t *testing.T) {
 	t.Parallel()
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

@@ -6,8 +6,8 @@ package audit
 import (
 	"context"
 
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Backend interface must be implemented for an audit

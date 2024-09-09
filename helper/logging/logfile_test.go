@@ -16,7 +16,7 @@ import (
 
 func TestLogFile_openNew(t *testing.T) {
 	logFile := &LogFile{
-		fileName: "vault.log",
+		fileName: "bao.log",
 		logPath:  t.TempDir(),
 		duration: defaultRotateDuration,
 	}
@@ -40,7 +40,7 @@ func TestLogFile_Rotation_MaxDuration(t *testing.T) {
 
 	tempDir := t.TempDir()
 	logFile := LogFile{
-		fileName: "vault.log",
+		fileName: "bao.log",
 		logPath:  tempDir,
 		duration: 50 * time.Millisecond,
 	}
@@ -76,7 +76,7 @@ func TestLogFile_Rotation_MaxBytes(t *testing.T) {
 func TestLogFile_PruneFiles(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile := LogFile{
-		fileName:         "vault.log",
+		fileName:         "bao.log",
 		logPath:          tempDir,
 		maxBytes:         10,
 		duration:         defaultRotateDuration,
@@ -129,7 +129,7 @@ func TestLogFile_PruneFiles_Disabled(t *testing.T) {
 func TestLogFile_FileRotation_Disabled(t *testing.T) {
 	tempDir := t.TempDir()
 	logFile := LogFile{
-		fileName:         "vault.log",
+		fileName:         "bao.log",
 		logPath:          tempDir,
 		maxBytes:         10,
 		maxArchivedFiles: -1,

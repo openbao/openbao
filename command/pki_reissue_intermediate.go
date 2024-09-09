@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -37,7 +38,7 @@ func (c *PKIReIssueCACommand) Synopsis() string {
 
 func (c *PKIReIssueCACommand) Help() string {
 	helpText := `
-Usage: vault pki reissue PARENT TEMPLATE CHILD_MOUNT options
+Usage: bao pki reissue PARENT TEMPLATE CHILD_MOUNT options
 `
 	return strings.TrimSpace(helpText)
 }
@@ -81,6 +82,10 @@ func (c *PKIReIssueCACommand) Run(args []string) int {
 	}
 
 	stdin := (io.Reader)(os.Stdin)
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
+
 	userData, err := parseArgsData(stdin, args[3:])
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Failed to parse K=V data: %s", err))

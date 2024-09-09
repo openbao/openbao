@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	paths "path"
 	"strings"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -33,7 +34,7 @@ func (c *PKIIssueCACommand) Synopsis() string {
 
 func (c *PKIIssueCACommand) Help() string {
 	helpText := `
-Usage: vault pki issue PARENT CHILD_MOUNT options
+Usage: bao pki issue PARENT CHILD_MOUNT options
 
 PARENT is the fully qualified path of the Certificate Authority in vault which will issue the new intermediate certificate.
 
@@ -86,6 +87,10 @@ func (c *PKIIssueCACommand) Run(args []string) int {
 	}
 
 	stdin := (io.Reader)(os.Stdin)
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
+
 	data, err := parseArgsData(stdin, args[2:])
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Failed to parse K=V data: %s", err))

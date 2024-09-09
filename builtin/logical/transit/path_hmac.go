@@ -7,15 +7,14 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // BatchRequestHMACItem represents a request item for batch processing.
@@ -136,6 +135,7 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
 	}
+	defer p.Unlock()
 
 	switch {
 	case ver == 0:
@@ -145,23 +145,16 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 	case ver == p.LatestVersion:
 		// Allowed
 	case p.MinEncryptionVersion > 0 && ver < p.MinEncryptionVersion:
-		p.Unlock()
 		return logical.ErrorResponse("cannot generate HMAC: version is too old (disallowed by policy)"), logical.ErrInvalidRequest
 	}
 
 	key, err := p.HMACKey(ver)
 	if err != nil {
-		p.Unlock()
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-	}
-	if key == nil && p.Type != keysutil.KeyType_MANAGED_KEY {
-		p.Unlock()
-		return nil, fmt.Errorf("HMAC key value could not be computed")
 	}
 
 	hashAlgorithm, ok := keysutil.HashTypeMap[algorithm]
 	if !ok {
-		p.Unlock()
 		return logical.ErrorResponse("unsupported algorithm %q", hashAlgorithm), nil
 	}
 
@@ -172,18 +165,15 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 	if batchInputRaw != nil {
 		err = mapstructure.Decode(batchInputRaw, &batchInputItems)
 		if err != nil {
-			p.Unlock()
 			return nil, fmt.Errorf("failed to parse batch input: %w", err)
 		}
 
 		if len(batchInputItems) == 0 {
-			p.Unlock()
 			return logical.ErrorResponse("missing batch input to process"), logical.ErrInvalidRequest
 		}
 	} else {
 		valueRaw, ok := d.GetOk("input")
 		if !ok {
-			p.Unlock()
 			return logical.ErrorResponse("missing input for HMAC"), logical.ErrInvalidRequest
 		}
 
@@ -210,30 +200,14 @@ func (b *backend) pathHMACWrite(ctx context.Context, req *logical.Request, d *fr
 			continue
 		}
 
-		var retBytes []byte
-
-		if p.Type == keysutil.KeyType_MANAGED_KEY {
-			managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-			if !ok {
-				response[i].err = errors.New("unsupported system view")
-			}
-
-			retBytes, err = p.HMACWithManagedKey(ctx, ver, managedKeySystemView, b.backendUUID, algorithm, input)
-			if err != nil {
-				response[i].err = err
-			}
-		} else {
-			hf := hmac.New(hashAlg, key)
-			hf.Write(input)
-			retBytes = hf.Sum(nil)
-		}
+		hf := hmac.New(hashAlg, key)
+		hf.Write(input)
+		retBytes := hf.Sum(nil)
 
 		retStr := base64.StdEncoding.EncodeToString(retBytes)
 		retStr = fmt.Sprintf("vault:v%s:%s", strconv.Itoa(ver), retStr)
 		response[i].HMAC = retStr
 	}
-
-	p.Unlock()
 
 	// Generate the response
 	resp := &logical.Response{}
@@ -282,10 +256,10 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 	if !b.System().CachingDisabled() {
 		p.Lock(false)
 	}
+	defer p.Unlock()
 
 	hashAlgorithm, ok := keysutil.HashTypeMap[algorithm]
 	if !ok {
-		p.Unlock()
 		return logical.ErrorResponse("unsupported algorithm %q", hashAlgorithm), nil
 	}
 
@@ -296,12 +270,10 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 	if batchInputRaw != nil {
 		err := mapstructure.Decode(batchInputRaw, &batchInputItems)
 		if err != nil {
-			p.Unlock()
 			return nil, fmt.Errorf("failed to parse batch input: %w", err)
 		}
 
 		if len(batchInputItems) == 0 {
-			p.Unlock()
 			return logical.ErrorResponse("missing batch input to process"), logical.ErrInvalidRequest
 		}
 	} else {
@@ -397,8 +369,6 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 		retBytes := hf.Sum(nil)
 		response[i].Valid = hmac.Equal(retBytes, verBytes)
 	}
-
-	p.Unlock()
 
 	// Generate the response
 	resp := &logical.Response{}

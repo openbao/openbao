@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin"
-	bplugin "github.com/openbao/openbao/sdk/plugin"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin"
+	bplugin "github.com/openbao/openbao/sdk/v2/plugin"
 )
 
 // Backend returns an instance of the backend, either as a plugin if external
@@ -80,7 +80,6 @@ func (b *backend) reloadBackend(ctx context.Context, storage logical.Storage) er
 	err = b.Backend.Initialize(ctx, &logical.InitializationRequest{
 		Storage: storage,
 	})
-
 	if err != nil {
 		return err
 	}

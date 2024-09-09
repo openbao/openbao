@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestCapabilities_DerivedPolicies(t *testing.T) {
@@ -19,7 +19,7 @@ func TestCapabilities_DerivedPolicies(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	i, _, c := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	policy1 := `
 name = "policy1"
@@ -123,7 +123,7 @@ path "secret/sample" {
 func TestCapabilities_TemplatedPolicies(t *testing.T) {
 	var resp *logical.Response
 	var err error
-	i, _, c := testIdentityStoreWithGithubAuth(namespace.RootContext(nil), t)
+	i, _, c := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
 	// Create an entity and assign policy1 to it
 	entityReq := &logical.Request{
 		Path:      "entity",

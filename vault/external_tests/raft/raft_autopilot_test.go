@@ -18,7 +18,7 @@ import (
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/kr/pretty"
 	testingintf "github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/helper/testhelpers/teststorage"

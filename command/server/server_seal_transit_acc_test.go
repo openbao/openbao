@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/docker"
 )
 
 func TestTransitWrapper_Lifecycle(t *testing.T) {
@@ -135,7 +135,7 @@ func prepareTestContainer(t *testing.T) (func(), *DockerVaultConfig) {
 
 	runner, err := docker.NewServiceRunner(docker.RunOptions{
 		ContainerName: "vault",
-		ImageRepo:     "docker.mirror.hashicorp.services/hashicorp/vault",
+		ImageRepo:     "quay.io/openbao/openbao",
 		ImageTag:      "latest",
 		Cmd: []string{
 			"server", "-log-level=trace", "-dev", fmt.Sprintf("-dev-root-token-id=%s", rootToken),

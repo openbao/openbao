@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 // ErrReadOnly is returned when a backend does not support
@@ -31,6 +31,7 @@ const PBPWFClusterSentinel = "{{clusterId}}"
 // Storage is the way that logical backends are able read/write data.
 type Storage interface {
 	List(context.Context, string) ([]string, error)
+	ListPage(context.Context, string, string, int) ([]string, error)
 	Get(context.Context, string) (*StorageEntry, error)
 	Put(context.Context, *StorageEntry) error
 	Delete(context.Context, string) error

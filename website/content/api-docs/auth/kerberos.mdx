@@ -1,16 +1,23 @@
 ---
-layout: api
-page_title: Kerberos - Auth Methods - HTTP API
+sidebar_label: Kerberos
 description: This is the API documentation for the OpenBao Kerberos auth method plugin.
 ---
 
 # Kerberos auth method (API)
 
-@include 'x509-sha1-deprecation.mdx'
+:::warning
+
+**Note**: This engine can use external X.509 certificates as part of TLS or signature validation.
+   Verifying signatures against X.509 certificates that use SHA-1 is deprecated and is no longer
+   usable without a workaround. See the
+   [deprecation FAQ](/docs/deprecation/faq#q-what-is-the-impact-of-removing-support-for-x-509-certificates-with-signatures-that-use-sha-1)
+   for more information.
+
+:::
 
 This is the API documentation for the OpenBao Kerberos auth method plugin. To
 learn more about the usage and operation, see the
-[OpenBao Kerberos auth method](/vault/docs/auth/kerberos).
+[OpenBao Kerberos auth method](/docs/auth/kerberos).
 
 This documentation assumes the Kerberos auth method is mounted at the
 `auth/kerberos` path in OpenBao. Since it is possible to enable auth methods at
@@ -244,6 +251,14 @@ This endpoint returns a list of existing LDAP groups in the Kerberos auth method
 | Method | Path                    |
 | :----- | :---------------------- |
 | `LIST` | `/auth/kerberos/groups` |
+
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
 
 ### Sample request
 

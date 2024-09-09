@@ -31,7 +31,7 @@ func (c *KVRollbackCommand) Synopsis() string {
 
 func (c *KVRollbackCommand) Help() string {
 	helpText := `
-Usage: vault kv rollback [options] KEY
+Usage: bao kv rollback [options] KEY
 
   *NOTE*: This is only supported for KV v2 engine mounts.
 
@@ -40,13 +40,13 @@ Usage: vault kv rollback [options] KEY
   is 5 and the rollback version is 2, the data from version 2 will become
   version 6.
 
-      $ vault kv rollback -mount=secret -version=2 foo
+      $ bao kv rollback -mount=secret -version=2 foo
 
   The deprecated path-like syntax can also be used, but this should be avoided, 
   as the fact that it is not actually the full API path to 
   the secret (secret/data/foo) can cause confusion: 
   
-      $ vault kv rollback -version=2 secret/foo
+      $ bao kv rollback -version=2 secret/foo
 
   Additional flags and more advanced use cases are detailed below.
 

@@ -50,15 +50,15 @@ func TestListPlugins(t *testing.T) {
 		"no type specified": {
 			input: ListPluginsInput{},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeCredential: {"alicloud"},
+				PluginTypeCredential: {"jwt"},
 				PluginTypeDatabase:   {"cassandra-database-plugin"},
-				PluginTypeSecrets:    {"ad", "alicloud"},
+				PluginTypeSecrets:    {"kv", "pki"},
 			},
 		},
 		"only auth plugins": {
 			input: ListPluginsInput{Type: PluginTypeCredential},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeCredential: {"alicloud"},
+				PluginTypeCredential: {"jwt"},
 			},
 		},
 		"only database plugins": {
@@ -70,7 +70,7 @@ func TestListPlugins(t *testing.T) {
 		"only secret plugins": {
 			input: ListPluginsInput{Type: PluginTypeSecrets},
 			expectedPlugins: map[PluginType][]string{
-				PluginTypeSecrets: {"ad", "alicloud"},
+				PluginTypeSecrets: {"kv", "pki"},
 			},
 		},
 	} {
@@ -87,7 +87,7 @@ func TestListPlugins(t *testing.T) {
 				}
 				for i := range actualPlugins {
 					if expected[i] != actualPlugins[i] {
-						t.Fatalf("Expected %q but got %q", expected[i], actualPlugins[i])
+						t.Fatalf("Expected %q but got %q\n\texpected: %v\n\tactual: %v", expected[i], actualPlugins[i], expected, actualPlugins)
 					}
 				}
 
@@ -130,7 +130,7 @@ func TestGetPlugin(t *testing.T) {
 				Args:              nil,
 				Builtin:           true,
 				Command:           "",
-				Name:              "azure",
+				Name:              "approle",
 				SHA256:            "",
 				DeprecationStatus: "supported",
 				Version:           "v0.14.0+builtin",
@@ -142,8 +142,8 @@ func TestGetPlugin(t *testing.T) {
 			expected: GetPluginResponse{
 				Args:              []string{},
 				Builtin:           false,
-				Command:           "azure-plugin",
-				Name:              "azure",
+				Command:           "approle-plugin",
+				Name:              "approle",
 				SHA256:            "8ba442dba253803685b05e35ad29dcdebc48dec16774614aa7a4ebe53c1e90e1",
 				DeprecationStatus: "",
 				Version:           "v1.0.0",
@@ -155,7 +155,7 @@ func TestGetPlugin(t *testing.T) {
 				Args:              nil,
 				Builtin:           true,
 				Command:           "",
-				Name:              "azure",
+				Name:              "approle",
 				SHA256:            "",
 				DeprecationStatus: "",
 				Version:           "",
@@ -174,7 +174,7 @@ func TestGetPlugin(t *testing.T) {
 			}
 
 			input := GetPluginInput{
-				Name: "azure",
+				Name: "approle",
 				Type: PluginTypeSecrets,
 			}
 			if tc.version != "" {
@@ -209,7 +209,7 @@ const getResponse = `{
         "builtin": true,
         "command": "",
         "deprecation_status": "supported",
-        "name": "azure",
+        "name": "approle",
         "sha256": "",
         "version": "v0.14.0+builtin"
     },
@@ -226,8 +226,8 @@ const getResponseExternal = `{
     "data": {
         "args": [],
         "builtin": false,
-        "command": "azure-plugin",
-        "name": "azure",
+        "command": "approle-plugin",
+        "name": "approle",
         "sha256": "8ba442dba253803685b05e35ad29dcdebc48dec16774614aa7a4ebe53c1e90e1",
         "version": "v1.0.0"
     },
@@ -245,7 +245,7 @@ const getResponseOldServerVersion = `{
         "args": null,
         "builtin": true,
         "command": "",
-        "name": "azure",
+        "name": "approle",
         "sha256": ""
     },
     "wrap_info": null,
@@ -264,14 +264,14 @@ const listUntypedResponse = `{
   "lease_duration": 0,
   "data": {
     "auth": [
-      "alicloud"
+      "jwt"
     ],
     "database": [
       "cassandra-database-plugin"
     ],
     "secret": [
-      "ad",
-      "alicloud"
+      "kv",
+      "pki"
     ],
     "some_other_unexpected_key": [
       {
@@ -284,7 +284,7 @@ const listUntypedResponse = `{
     "detailed": [
       {
         "type": "auth",
-        "name": "alicloud",
+        "name": "jwt",
         "version": "v0.13.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"
@@ -292,20 +292,20 @@ const listUntypedResponse = `{
       {
         "type": "database",
         "name": "cassandra-database-plugin",
-        "version": "v1.13.0+builtin.vault",
+        "version": "v1.13.0+builtin.bao",
         "builtin": true,
         "deprecation_status": "supported"
       },
       {
         "type": "secret",
-        "name": "ad",
+        "name": "kv",
         "version": "v0.14.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"
       },
       {
         "type": "secret",
-        "name": "alicloud",
+        "name": "pki",
         "version": "v0.13.0+builtin",
         "builtin": true,
         "deprecation_status": "supported"

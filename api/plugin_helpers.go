@@ -11,7 +11,6 @@ import (
 	"errors"
 	"flag"
 	"net/url"
-	"os"
 	"regexp"
 
 	"github.com/go-jose/go-jose/v3/jwt"
@@ -22,15 +21,15 @@ import (
 const (
 	// PluginAutoMTLSEnv is used to ensure AutoMTLS is used. This will override
 	// setting a TLSProviderFunc for a plugin.
-	PluginAutoMTLSEnv = "VAULT_PLUGIN_AUTOMTLS_ENABLED"
+	PluginAutoMTLSEnv = "BAO_PLUGIN_AUTOMTLS_ENABLED"
 
 	// PluginMetadataModeEnv is an ENV name used to disable TLS communication
 	// to bootstrap mounting plugins.
-	PluginMetadataModeEnv = "VAULT_PLUGIN_METADATA_MODE"
+	PluginMetadataModeEnv = "BAO_PLUGIN_METADATA_MODE"
 
 	// PluginUnwrapTokenEnv is the ENV name used to pass unwrap tokens to the
 	// plugin.
-	PluginUnwrapTokenEnv = "VAULT_UNWRAP_TOKEN"
+	PluginUnwrapTokenEnv = "BAO_UNWRAP_TOKEN"
 )
 
 // sudoPaths is a map containing the paths that require a token's policy
@@ -67,14 +66,6 @@ var sudoPaths = map[string]*regexp.Regexp{
 	"/sys/revoke-prefix/{prefix}":                   regexp.MustCompile(`^/sys/revoke-prefix/.+$`),
 	"/sys/rotate":                                   regexp.MustCompile(`^/sys/rotate$`),
 	"/sys/internal/inspect/router/{tag}":            regexp.MustCompile(`^/sys/internal/inspect/router/.+$`),
-
-	// enterprise-only paths
-	"/sys/replication/dr/primary/secondary-token":          regexp.MustCompile(`^/sys/replication/dr/primary/secondary-token$`),
-	"/sys/replication/performance/primary/secondary-token": regexp.MustCompile(`^/sys/replication/performance/primary/secondary-token$`),
-	"/sys/replication/primary/secondary-token":             regexp.MustCompile(`^/sys/replication/primary/secondary-token$`),
-	"/sys/replication/reindex":                             regexp.MustCompile(`^/sys/replication/reindex$`),
-	"/sys/storage/raft/snapshot-auto/config/":              regexp.MustCompile(`^/sys/storage/raft/snapshot-auto/config/?$`),
-	"/sys/storage/raft/snapshot-auto/config/{name}":        regexp.MustCompile(`^/sys/storage/raft/snapshot-auto/config/[^/]+$`),
 }
 
 // PluginAPIClientMeta is a helper that plugins can use to configure TLS connections
@@ -130,12 +121,12 @@ func VaultPluginTLSProvider(apiTLSConfig *TLSConfig) func() (*tls.Config, error)
 // VaultPluginTLSProviderContext is run inside a plugin and retrieves the response
 // wrapped TLS certificate from vault. It returns a configured TLS Config.
 func VaultPluginTLSProviderContext(ctx context.Context, apiTLSConfig *TLSConfig) func() (*tls.Config, error) {
-	if os.Getenv(PluginAutoMTLSEnv) == "true" || os.Getenv(PluginMetadataModeEnv) == "true" {
+	if ReadBaoVariable(PluginAutoMTLSEnv) == "true" || ReadBaoVariable(PluginMetadataModeEnv) == "true" {
 		return nil
 	}
 
 	return func() (*tls.Config, error) {
-		unwrapToken := os.Getenv(PluginUnwrapTokenEnv)
+		unwrapToken := ReadBaoVariable(PluginUnwrapTokenEnv)
 
 		parsedJWT, err := jwt.ParseSigned(unwrapToken)
 		if err != nil {

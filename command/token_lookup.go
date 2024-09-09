@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -29,7 +29,7 @@ func (c *TokenLookupCommand) Synopsis() string {
 
 func (c *TokenLookupCommand) Help() string {
 	helpText := `
-Usage: vault token lookup [options] [TOKEN | ACCESSOR]
+Usage: bao token lookup [options] [TOKEN | ACCESSOR]
 
   Displays information about a token or accessor. If a TOKEN is not provided,
   the locally authenticated token is used.
@@ -37,16 +37,16 @@ Usage: vault token lookup [options] [TOKEN | ACCESSOR]
   Get information about the locally authenticated token (this uses the
   /auth/token/lookup-self endpoint and permission):
 
-      $ vault token lookup
+      $ bao token lookup
 
   Get information about a particular token (this uses the /auth/token/lookup
   endpoint and permission):
 
-      $ vault token lookup 96ddf4bc-d217-f3ba-f9bd-017055595017
+      $ bao token lookup 96ddf4bc-d217-f3ba-f9bd-017055595017
 
   Get information about a token via its accessor:
 
-      $ vault token lookup -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
+      $ bao token lookup -accessor 9793c9b3-e04a-46f3-e7b8-748d7da248da
 
   For a full list of examples, please see the documentation.
 

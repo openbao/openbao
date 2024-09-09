@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
@@ -18,7 +18,7 @@ import (
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -37,7 +37,6 @@ func testVaultServerUnseal(t testing.TB) (*api.Client, []string, func()) {
 	t.Helper()
 
 	return testVaultServerCoreConfig(t, &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

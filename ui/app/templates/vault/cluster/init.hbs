@@ -12,7 +12,7 @@
     <Page.header>
       {{#let (or this.keyData.recovery_keys this.keyData.keys) as |keyArray|}}
         <h1 class="title is-4">
-          Vault has been initialized!
+          OpenBao has been initialized!
           {{#if (eq keyArray.length 1)}}
             Here is your key.
           {{else}}
@@ -27,17 +27,17 @@
         <div class="content">
           <p>
             {{#if this.keyData.recovery_keys}}
-              Please securely distribute the keys below. Certain privileged operations in Vault such as rekeying the barrier
-              or generating a new root token will require you to provide at least
+              Please securely distribute the keys below. Certain privileged operations in OpenBao such as rekeying the
+              barrier or generating a new root token will require you to provide at least
               <strong class="has-text-danger">{{this.secret_threshold}}</strong>
               of these keys to perform the operation.
             {{else}}
-              Please securely distribute the keys below. When the Vault is re-sealed, restarted, or stopped, you must provide
-              at least
+              Please securely distribute the keys below. When the OpenBao is re-sealed, restarted, or stopped, you must
+              provide at least
               <strong class="has-text-danger">{{this.secret_threshold}}</strong>
-              of these keys to unseal it again. Vault does not store the root key. Without at least
+              of these keys to unseal it again. OpenBao does not store the root key. Without at least
               <strong class="has-text-danger">{{this.secret_threshold}}</strong>
-              keys, your Vault will remain permanently sealed.
+              keys, your OpenBao will remain permanently sealed.
             {{/if}}
           </p>
         </div>

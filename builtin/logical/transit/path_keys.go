@@ -14,9 +14,9 @@ import (
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/fatih/structs"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathListKeys() *framework.Path {
@@ -26,6 +26,17 @@ func (b *backend) pathListKeys() *framework.Path {
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixTransit,
 			OperationSuffix: "keys",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -120,14 +131,6 @@ key.`,
 				Default:     0,
 				Description: fmt.Sprintf("The key size in bytes for the algorithm.  Only applies to HMAC and must be no fewer than %d bytes and no more than %d", keysutil.HmacMinKeySize, keysutil.HmacMaxKeySize),
 			},
-			"managed_key_name": {
-				Type:        framework.TypeString,
-				Description: "The name of the managed key to use for this transit key",
-			},
-			"managed_key_id": {
-				Type:        framework.TypeString,
-				Description: "The UUID of the managed key to use for this transit key",
-			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -156,8 +159,74 @@ key.`,
 	}
 }
 
-func (b *backend) pathKeysList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	entries, err := req.Storage.List(ctx, "policy/")
+func (b *backend) pathKeysSoftDelete() *framework.Path {
+	return &framework.Path{
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/soft-delete",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixTransit,
+			OperationSuffix: "key",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "Name of the key",
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathPolicySoftDelete,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "soft-delete",
+				},
+			},
+		},
+
+		HelpSynopsis:    pathPolicyHelpSyn,
+		HelpDescription: pathPolicyHelpDesc,
+	}
+}
+
+func (b *backend) pathKeysSoftDeleteRestore() *framework.Path {
+	return &framework.Path{
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/soft-delete-restore",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixTransit,
+			OperationSuffix: "key",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "Name of the key",
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathPolicySoftDeleteRestore,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "soft-delete-restore",
+				},
+			},
+		},
+
+		HelpSynopsis:    pathPolicyHelpSyn,
+		HelpDescription: pathPolicyHelpDesc,
+	}
+}
+
+func (b *backend) pathKeysList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "policy/", after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +243,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	exportable := d.Get("exportable").(bool)
 	allowPlaintextBackup := d.Get("allow_plaintext_backup").(bool)
 	autoRotatePeriod := time.Second * time.Duration(d.Get("auto_rotate_period").(int))
-	managedKeyName := d.Get("managed_key_name").(string)
-	managedKeyId := d.Get("managed_key_id").(string)
 
 	if autoRotatePeriod != 0 && autoRotatePeriod < time.Hour {
 		return logical.ErrorResponse("auto rotate period must be 0 to disable or at least an hour"), nil
@@ -203,6 +270,8 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_AES256_GCM96
 	case "chacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+	case "xchacha20-poly1305":
+		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 	case "ecdsa-p256":
 		polReq.KeyType = keysutil.KeyType_ECDSA_P256
 	case "ecdsa-p384":
@@ -219,8 +288,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_RSA4096
 	case "hmac":
 		polReq.KeyType = keysutil.KeyType_HMAC
-	case "managed_key":
-		polReq.KeyType = keysutil.KeyType_MANAGED_KEY
 	default:
 		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", keyType)), logical.ErrInvalidRequest
 	}
@@ -234,15 +301,6 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeySize = keySize
 	}
 
-	if polReq.KeyType == keysutil.KeyType_MANAGED_KEY {
-		keyId, err := GetManagedKeyUUID(ctx, b, managedKeyName, managedKeyId)
-		if err != nil {
-			return nil, err
-		}
-
-		polReq.ManagedKeyUUID = keyId
-	}
-
 	p, upserted, err := b.GetPolicy(ctx, polReq, b.GetRandomReader())
 	if err != nil {
 		return nil, err
@@ -250,9 +308,10 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 	if p == nil {
 		return nil, fmt.Errorf("error generating key: returned policy was nil")
 	}
-	if b.System().CachingDisabled() {
-		p.Unlock()
+	if !b.System().CachingDisabled() {
+		p.Lock(false)
 	}
+	defer p.Unlock()
 
 	resp, err := b.formatKeyPolicy(p, nil)
 	if err != nil {
@@ -321,6 +380,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 			"supports_derivation":    p.Type.DerivationSupported(),
 			"auto_rotate_period":     int64(p.AutoRotatePeriod.Seconds()),
 			"imported_key":           p.Imported,
+			"soft_deleted":           p.SoftDeleted,
 		},
 	}
 	if p.KeySize != 0 {
@@ -359,7 +419,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 	}
 
 	switch p.Type {
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305:
+	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305:
 		retKeys := map[string]int64{}
 		for k, v := range p.Keys {
 			retKeys[k] = v.DeprecatedCreationTime
@@ -412,7 +472,7 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 					key.Name = "rsa-4096"
 				}
 
-				pubKey, err := encodeRSAPublicKey(&v)
+				pubKey, err := encodeRSAPublicKey(&v, "")
 				if err != nil {
 					return nil, err
 				}
@@ -439,10 +499,90 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 	return nil, nil
 }
 
+func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := d.Get("name").(string)
+
+	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		Storage: req.Storage,
+		Name:    name,
+	}, b.GetRandomReader())
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	if !b.System().CachingDisabled() {
+		p.Lock(true)
+	}
+	defer p.Unlock()
+
+	wasDeleted := !p.SoftDeleted
+	p.SoftDeleted = true
+
+	if err := p.Persist(ctx, req.Storage); err != nil {
+		return nil, err
+	}
+
+	resp, err := b.formatKeyPolicy(p, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if !wasDeleted {
+		resp.AddWarning("key was already marked as soft deleted")
+	}
+
+	return resp, nil
+}
+
+func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	name := d.Get("name").(string)
+
+	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
+		Storage: req.Storage,
+		Name:    name,
+	}, b.GetRandomReader())
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, nil
+	}
+	if !b.System().CachingDisabled() {
+		p.Lock(true)
+	}
+	defer p.Unlock()
+
+	wasRestored := p.SoftDeleted
+	p.SoftDeleted = false
+
+	if err := p.Persist(ctx, req.Storage); err != nil {
+		return nil, err
+	}
+
+	resp, err := b.formatKeyPolicy(p, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if !wasRestored {
+		resp.AddWarning("key was already restored")
+	}
+
+	return resp, nil
+}
+
 const pathPolicyHelpSyn = `Managed named encryption keys`
 
 const pathPolicyHelpDesc = `
 This path is used to manage the named keys that are available.
 Doing a write with no value against a new named key will create
 it using a randomly generated key.
+
+Keys can be soft deleted, preserving the current configuration, by
+calling DELETE /transit/keys/:name/soft-delete; this can be undone
+by calling UPDATE /transit/keys/:name/soft-delete-restore. While the
+key is in the soft deleted state, it cannot be used for any operations
+and update or rotate will not work.
 `

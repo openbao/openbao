@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func testKVMetadataPutCommand(tb testing.TB) (*cli.MockUi, *KVMetadataPutCommand) {
@@ -145,7 +145,6 @@ func TestKvMetadataPutCommand_CustomMetadata(t *testing.T) {
 	}
 
 	metadata, err = client.Logical().Read(metaFullPath)
-
 	if err != nil {
 		t.Fatalf("Metadata read error: %#v", err)
 	}

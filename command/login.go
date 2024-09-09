@@ -4,19 +4,20 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
 // LoginHandler is the interface that any auth handlers must implement to enable
 // auth via the CLI.
 type LoginHandler interface {
-	Auth(*api.Client, map[string]string) (*api.Secret, error)
+	Auth(*api.Client, map[string]string, bool) (*api.Secret, error)
 	Help() string
 }
 
@@ -40,7 +41,7 @@ func (c *LoginCommand) Synopsis() string {
 
 func (c *LoginCommand) Help() string {
 	helpText := `
-Usage: vault login [options] [AUTH K=V...]
+Usage: bao login [options] [AUTH K=V...]
 
   Authenticates users or machines to Vault using the provided arguments. A
   successful authentication results in a Vault token - conceptually similar to
@@ -55,7 +56,7 @@ Usage: vault login [options] [AUTH K=V...]
   cert. For these, additional "K=V" pairs may be required. For example, to
   authenticate to the userpass auth method:
 
-      $ vault login -method=userpass username=my-username
+      $ bao login -method=userpass username=my-username
 
   For more information about the list of configuration parameters available for
   a given auth method, use the "vault auth help TYPE" command. You can also use
@@ -65,7 +66,7 @@ Usage: vault login [options] [AUTH K=V...]
   refers to the canonical type, but the -path flag refers to the enabled path.
   If a github auth method was enabled at "github-prod", authenticate like this:
 
-      $ vault login -method=github -path=github-prod
+      $ bao login -method=github -path=github-prod
 
   If the authentication is requested with response wrapping (via -wrap-ttl),
   the returned token is automatically unwrapped unless:
@@ -194,6 +195,9 @@ func (c *LoginCommand) Run(args []string) int {
 	if c.testStdin != nil {
 		stdin = c.testStdin
 	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
 
 	// If the user provided a token, pass it along to the auth provider.
 	if authMethod == "token" && len(args) > 0 && !strings.Contains(args[0], "=") {
@@ -212,7 +216,7 @@ func (c *LoginCommand) Run(args []string) int {
 	}
 
 	// Create the client
-	client, err := c.Client()
+	client, err := c.ClientWithoutToken()
 	if err != nil {
 		c.UI.Error(err.Error())
 		return 2
@@ -225,7 +229,7 @@ func (c *LoginCommand) Run(args []string) int {
 	}
 
 	// Authenticate delegation to the auth handler
-	secret, err := authHandler.Auth(client, config)
+	secret, err := authHandler.Auth(client, config, c.flagNonInteractive)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error authenticating: %s", err))
 		return 2
@@ -296,7 +300,7 @@ func (c *LoginCommand) Run(args []string) int {
 
 	if !c.flagNoStore {
 		// Grab the token helper so we can store
-		tokenHelper, err := c.TokenHelper()
+		tokenHelper, err := c.TokenHelper(client.Address())
 		if err != nil {
 			c.UI.Error(wrapAtLength(fmt.Sprintf(
 				"Error initializing token helper. Please verify that the token "+
@@ -319,7 +323,7 @@ func (c *LoginCommand) Run(args []string) int {
 	} else if !c.flagTokenOnly {
 		// If token-only the user knows it won't be stored, so don't warn
 		c.UI.Warn(wrapAtLength(
-			"The token was not stored in token helper. Set the VAULT_TOKEN "+
+			"The token was not stored in token helper. Set the BAO_TOKEN "+
 				"environment variable or pass the token below with each request to "+
 				"Vault.") + "\n")
 	}
@@ -339,7 +343,7 @@ func (c *LoginCommand) Run(args []string) int {
 		c.UI.Output(wrapAtLength(
 			"Success! You are now authenticated. The token information displayed "+
 				"below is already stored in the token helper. You do NOT need to run "+
-				"\"vault login\" again. Future Vault requests will automatically use "+
+				"\"bao login\" again. Future OpenBao requests will automatically use "+
 				"this token.") + "\n")
 	}
 
@@ -378,13 +382,13 @@ func (c *LoginCommand) extractToken(client *api.Client, secret *api.Secret, unwr
 	}
 }
 
-// Warn if the VAULT_TOKEN environment variable is set, as that will take
+// Warn if the BAO_TOKEN environment variable is set, as that will take
 // precedence. We output as a warning, so piping should still work since it
 // will be on a different stream.
 func (c *LoginCommand) checkForAndWarnAboutLoginToken() {
-	if os.Getenv("VAULT_TOKEN") != "" {
-		c.UI.Warn(wrapAtLength("WARNING! The VAULT_TOKEN environment variable "+
+	if api.ReadBaoVariable("BAO_TOKEN") != "" {
+		c.UI.Warn(wrapAtLength("WARNING! The BAO_TOKEN environment variable "+
 			"is set! The value of this variable will take precedence; if this is unwanted "+
-			"please unset VAULT_TOKEN or update its value accordingly.") + "\n")
+			"please unset BAO_TOKEN or update its value accordingly.") + "\n")
 	}
 }

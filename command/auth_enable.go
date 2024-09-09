@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -48,27 +48,27 @@ func (c *AuthEnableCommand) Synopsis() string {
 
 func (c *AuthEnableCommand) Help() string {
 	helpText := `
-Usage: vault auth enable [options] TYPE
+Usage: bao auth enable [options] TYPE
 
   Enables a new auth method. An auth method is responsible for authenticating
   users or machines and assigning them policies with which they can access
-  Vault.
+  OpenBao.
 
   Enable the userpass auth method at userpass/:
 
-      $ vault auth enable userpass
+      $ bao auth enable userpass
 
   Enable the LDAP auth method at auth-prod/:
 
-      $ vault auth enable -path=auth-prod ldap
+      $ bao auth enable -path=auth-prod ldap
 
   Enable a custom auth plugin (after it's registered in the plugin registry):
 
-      $ vault auth enable -path=my-auth -plugin-name=my-auth-plugin plugin
+      $ bao auth enable -path=my-auth -plugin-name=my-auth-plugin plugin
 
       OR (preferred way):
 
-      $ vault auth enable -path=my-auth my-auth-plugin
+      $ bao auth enable -path=my-auth my-auth-plugin
 
 ` + c.Flags().Help()
 
@@ -104,7 +104,7 @@ func (c *AuthEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagDefaultLeaseTTL,
 		Completion: complete.PredictAnything,
 		Usage: "The default lease TTL for this auth method. If unspecified, " +
-			"this defaults to the Vault server's globally configured default lease " +
+			"this defaults to the OpenBao server's globally configured default lease " +
 			"TTL.",
 	})
 
@@ -113,7 +113,7 @@ func (c *AuthEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagMaxLeaseTTL,
 		Completion: complete.PredictAnything,
 		Usage: "The maximum lease TTL for this auth method. If unspecified, " +
-			"this defaults to the Vault server's globally configured maximum lease " +
+			"this defaults to the OpenBao server's globally configured maximum lease " +
 			"TTL.",
 	})
 
@@ -156,7 +156,7 @@ func (c *AuthEnableCommand) Flags() *FlagSets {
 		Target:     &c.flagPluginName,
 		Completion: c.PredictVaultPlugins(api.PluginTypeCredential),
 		Usage: "Name of the auth method plugin. This plugin name must already " +
-			"exist in the Vault server's plugin catalog.",
+			"exist in the OpenBao server's plugin catalog.",
 	})
 
 	f.StringMapVar(&StringMapVar{
@@ -186,7 +186,7 @@ func (c *AuthEnableCommand) Flags() *FlagSets {
 		Name:    "external-entropy-access",
 		Target:  &c.flagExternalEntropyAccess,
 		Default: false,
-		Usage:   "Enable auth method to access Vault's external entropy source.",
+		Usage:   "Enable auth method to access OpenBao's external entropy source.",
 	})
 
 	f.StringVar(&StringVar{

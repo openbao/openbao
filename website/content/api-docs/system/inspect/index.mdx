@@ -1,6 +1,5 @@
 ---
-layout: api
-page_title: /sys/internal/inspect - HTTP API
+sidebar_label: Overview
 description: >-
   This endpoint is intended to inspect a specific internal subsystem for debugging purposes, and turned off by default.
   Once turned on, it can be accessed with a root token or sudo privileges
@@ -10,12 +9,16 @@ description: >-
 
 The `/sys/internal/inspect` family of endpoints is intended to inspect a specific internal subsystem for debugging purposes.
 This endpoint is off by default. See the
-[OpenBao configuration documentation](/vault/docs/configuration) to
+[OpenBao configuration documentation](/docs/configuration) to
 enable. Once the endpoint is turned on, it can be accessed with a root token or sudo privileges.
 
-~> **NOTE**: These endpoints are only available in Vault version 1.13+. Backwards compatibility is not guaranteed. These endpoints are subject to change or may disappear without notice.
+:::warning
+
+**NOTE**: These endpoints are subject to change or may disappear without notice.
+
+:::
 
 
 ## Supported inspection paths
 
-- [Router](/vault/api-docs/system/inspect/router)
+- [Router](/api-docs/system/inspect/router)

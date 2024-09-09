@@ -411,6 +411,7 @@ var Backend_ServiceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StorageClient interface {
 	List(ctx context.Context, in *StorageListArgs, opts ...grpc.CallOption) (*StorageListReply, error)
+	ListPage(ctx context.Context, in *StorageListPageArgs, opts ...grpc.CallOption) (*StorageListReply, error)
 	Get(ctx context.Context, in *StorageGetArgs, opts ...grpc.CallOption) (*StorageGetReply, error)
 	Put(ctx context.Context, in *StoragePutArgs, opts ...grpc.CallOption) (*StoragePutReply, error)
 	Delete(ctx context.Context, in *StorageDeleteArgs, opts ...grpc.CallOption) (*StorageDeleteReply, error)
@@ -427,6 +428,15 @@ func NewStorageClient(cc grpc.ClientConnInterface) StorageClient {
 func (c *storageClient) List(ctx context.Context, in *StorageListArgs, opts ...grpc.CallOption) (*StorageListReply, error) {
 	out := new(StorageListReply)
 	err := c.cc.Invoke(ctx, "/pb.Storage/List", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) ListPage(ctx context.Context, in *StorageListPageArgs, opts ...grpc.CallOption) (*StorageListReply, error) {
+	out := new(StorageListReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/ListPage", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -465,6 +475,7 @@ func (c *storageClient) Delete(ctx context.Context, in *StorageDeleteArgs, opts 
 // for forward compatibility
 type StorageServer interface {
 	List(context.Context, *StorageListArgs) (*StorageListReply, error)
+	ListPage(context.Context, *StorageListPageArgs) (*StorageListReply, error)
 	Get(context.Context, *StorageGetArgs) (*StorageGetReply, error)
 	Put(context.Context, *StoragePutArgs) (*StoragePutReply, error)
 	Delete(context.Context, *StorageDeleteArgs) (*StorageDeleteReply, error)
@@ -477,6 +488,9 @@ type UnimplementedStorageServer struct {
 
 func (UnimplementedStorageServer) List(context.Context, *StorageListArgs) (*StorageListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedStorageServer) ListPage(context.Context, *StorageListPageArgs) (*StorageListReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPage not implemented")
 }
 func (UnimplementedStorageServer) Get(context.Context, *StorageGetArgs) (*StorageGetReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
@@ -514,6 +528,24 @@ func _Storage_List_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StorageServer).List(ctx, req.(*StorageListArgs))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_ListPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StorageListPageArgs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).ListPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/ListPage",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).ListPage(ctx, req.(*StorageListPageArgs))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -582,6 +614,10 @@ var Storage_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _Storage_List_Handler,
+		},
+		{
+			MethodName: "ListPage",
+			Handler:    _Storage_ListPage_Handler,
 		},
 		{
 			MethodName: "Get",
@@ -1166,92 +1202,6 @@ var SystemView_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClusterInfo",
 			Handler:    _SystemView_ClusterInfo_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "sdk/plugin/pb/backend.proto",
-}
-
-// EventsClient is the client API for Events service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type EventsClient interface {
-	SendEvent(ctx context.Context, in *SendEventRequest, opts ...grpc.CallOption) (*Empty, error)
-}
-
-type eventsClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewEventsClient(cc grpc.ClientConnInterface) EventsClient {
-	return &eventsClient{cc}
-}
-
-func (c *eventsClient) SendEvent(ctx context.Context, in *SendEventRequest, opts ...grpc.CallOption) (*Empty, error) {
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/pb.Events/SendEvent", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// EventsServer is the server API for Events service.
-// All implementations must embed UnimplementedEventsServer
-// for forward compatibility
-type EventsServer interface {
-	SendEvent(context.Context, *SendEventRequest) (*Empty, error)
-	mustEmbedUnimplementedEventsServer()
-}
-
-// UnimplementedEventsServer must be embedded to have forward compatible implementations.
-type UnimplementedEventsServer struct {
-}
-
-func (UnimplementedEventsServer) SendEvent(context.Context, *SendEventRequest) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendEvent not implemented")
-}
-func (UnimplementedEventsServer) mustEmbedUnimplementedEventsServer() {}
-
-// UnsafeEventsServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to EventsServer will
-// result in compilation errors.
-type UnsafeEventsServer interface {
-	mustEmbedUnimplementedEventsServer()
-}
-
-func RegisterEventsServer(s grpc.ServiceRegistrar, srv EventsServer) {
-	s.RegisterService(&Events_ServiceDesc, srv)
-}
-
-func _Events_SendEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendEventRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EventsServer).SendEvent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.Events/SendEvent",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventsServer).SendEvent(ctx, req.(*SendEventRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// Events_ServiceDesc is the grpc.ServiceDesc for Events service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var Events_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.Events",
-	HandlerType: (*EventsServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SendEvent",
-			Handler:    _Events_SendEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

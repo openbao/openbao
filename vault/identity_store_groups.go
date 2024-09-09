@@ -12,8 +12,8 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -40,7 +40,7 @@ func groupPathFields() map[string]*framework.FieldSchema {
 			Description: `Metadata to be associated with the group.
 In CLI, this parameter can be repeated multiple times, and it all gets merged together.
 For example:
-vault <command> <path> metadata=key1=value1 metadata=key2=value2
+bao <command> <path> metadata=key1=value1 metadata=key2=value2
 					`,
 		},
 		"policies": {

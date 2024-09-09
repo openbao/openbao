@@ -36,8 +36,6 @@ exec {
 # Error: api_proxy is incompatible with env_template
 api_proxy {
 	use_auto_auth_token = "force"
-	enforce_consistency = "always"
-	when_inconsistent   = "forward"
 }
 
 # Error: listener is incompatible with env_template

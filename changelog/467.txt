@@ -1,0 +1,3 @@
+```release-note:feature
+physical/postgres: Reintroduce Postgres database for OpenBao storage, implementing paginated list support. This feature is currently in **preview** and breaking changes may occur.
+```

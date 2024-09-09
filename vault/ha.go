@@ -22,11 +22,11 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/oklog/run"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
 
@@ -47,15 +47,9 @@ const (
 	leaderPrefixCleanDelay = 200 * time.Millisecond
 )
 
-var (
-	addEnterpriseHaActors func(*Core, *run.Group) chan func()            = addEnterpriseHaActorsNoop
-	interruptPerfStandby  func(chan func(), chan struct{}) chan struct{} = interruptPerfStandbyNoop
-)
+var addEnterpriseHaActors func(*Core, *run.Group) chan func() = addEnterpriseHaActorsNoop
 
 func addEnterpriseHaActorsNoop(*Core, *run.Group) chan func() { return nil }
-func interruptPerfStandbyNoop(chan func(), chan struct{}) chan struct{} {
-	return make(chan struct{})
-}
 
 // Standby checks if the Vault is in standby mode
 func (c *Core) Standby() (bool, error) {
@@ -63,16 +57,6 @@ func (c *Core) Standby() (bool, error) {
 	standby := c.standby
 	c.stateLock.RUnlock()
 	return standby, nil
-}
-
-// PerfStandby checks if the vault is a performance standby
-// This function cannot be used during request handling
-// because this causes a deadlock with the statelock.
-func (c *Core) PerfStandby() bool {
-	c.stateLock.RLock()
-	perfStandby := c.perfStandby
-	c.stateLock.RUnlock()
-	return perfStandby
 }
 
 func (c *Core) ActiveTime() time.Time {
@@ -84,10 +68,9 @@ func (c *Core) ActiveTime() time.Time {
 
 // StandbyStates is meant as a way to avoid some extra locking on the very
 // common sys/health check.
-func (c *Core) StandbyStates() (standby, perfStandby bool) {
+func (c *Core) StandbyStates() (standby bool) {
 	c.stateLock.RLock()
 	standby = c.standby
-	perfStandby = c.perfStandby
 	c.stateLock.RUnlock()
 	return
 }
@@ -110,7 +93,6 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 
 	if rb := c.getRaftBackend(); rb != nil {
 		leader.UpgradeVersion = rb.EffectiveVersion()
-		leader.RedundancyZone = rb.RedundancyZone()
 	}
 
 	nodes := []HAStatusNode{leader}
@@ -124,7 +106,6 @@ func (c *Core) getHAMembers() ([]HAStatusNode, error) {
 			LastEcho:       &lastEcho,
 			Version:        peerNode.Version,
 			UpgradeVersion: peerNode.UpgradeVersion,
-			RedundancyZone: peerNode.RedundancyZone,
 		})
 	}
 
@@ -549,14 +530,11 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// detect flapping
 		activeTime := time.Now()
 
-		continueCh := interruptPerfStandby(newLeaderCh, stopCh)
-
 		// Grab the statelock or stop
 		l := newLockGrabber(c.stateLock.Lock, c.stateLock.Unlock, stopCh)
 		go l.grab()
 		if stopped := l.lockOrStop(); stopped {
 			lock.Unlock()
-			close(continueCh)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 			return
 		}
@@ -564,7 +542,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		if c.Sealed() {
 			c.logger.Warn("grabbed HA lock but already sealed, exiting")
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 			return
@@ -585,7 +562,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			c.logger.Warn("vault is sealed")
 			c.heldHALock = nil
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			return
 		}
@@ -614,7 +590,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 
 				c.heldHALock = nil
 				lock.Unlock()
-				close(continueCh)
 				c.stateLock.Unlock()
 				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
 
@@ -638,7 +613,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			if err := c.setupCluster(activeCtx); err != nil {
 				c.heldHALock = nil
 				lock.Unlock()
-				close(continueCh)
 				c.stateLock.Unlock()
 				c.logger.Error("cluster setup failed", "error", err)
 				metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -650,7 +624,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		if err := c.advertiseLeader(activeCtx, uuid, leaderLostCh); err != nil {
 			c.heldHALock = nil
 			lock.Unlock()
-			close(continueCh)
 			c.stateLock.Unlock()
 			c.logger.Error("leader advertisement setup failed", "error", err)
 			metrics.MeasureSince([]string{"core", "leadership_setup_failed"}, activeTime)
@@ -665,7 +638,6 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 			c.metricSink.SetGaugeWithLabels([]string{"core", "active"}, 1, nil)
 		}
 
-		close(continueCh)
 		c.stateLock.Unlock()
 
 		// Handle a failure to unseal
@@ -918,8 +890,7 @@ func (c *Core) periodicCheckKeyUpgrades(ctx context.Context, stopCh chan struct{
 				// keys (e.g. from replication being activated) and we need to seal to
 				// be unsealed again.
 				entry, _ := c.barrier.Get(ctx, poisonPillPath)
-				entryDR, _ := c.barrier.Get(ctx, poisonPillDRPath)
-				if (entry != nil && len(entry.Value) > 0) || (entryDR != nil && len(entryDR.Value) > 0) {
+				if entry != nil && len(entry.Value) > 0 {
 					c.logger.Warn("encryption keys have changed out from underneath us (possibly due to replication enabling), must be unsealed again")
 					// If we are using raft storage we do not want to shut down
 					// raft during replication secondary enablement. This will

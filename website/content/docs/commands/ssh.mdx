@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: ssh - Command
 description: |-
   The "ssh" command establishes an SSH connection with the target machine using
   credentials obtained from an SSH secrets engine.
@@ -45,12 +43,12 @@ $ bao ssh \
 
 For step-by-step guides and instructions for each of the available SSH
 auth methods, please see the corresponding [SSH secrets
-engine](/vault/docs/secrets/ssh).
+engine](/docs/secrets/ssh).
 
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
@@ -60,7 +58,7 @@ flags](/vault/docs/commands) included on all commands.
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 ### SSH options
 

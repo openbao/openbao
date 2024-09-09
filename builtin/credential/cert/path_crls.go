@@ -14,30 +14,50 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListCRLs(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "crls/?$",
+
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixCert,
 			OperationSuffix: "crls",
 		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ListOperation: &framework.PathOperation{
 				Callback: b.pathCRLsList,
 			},
 		},
+
 		HelpSynopsis:    pathCRLsHelpSyn,
 		HelpDescription: pathCRLsHelpDesc,
 	}
 }
 
-func (b *backend) pathCRLsList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	entries, err := req.Storage.List(ctx, "crls/")
+func (b *backend) pathCRLsList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "crls/", after, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list CRLs: %w", err)
 	}

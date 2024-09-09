@@ -5,15 +5,13 @@ package pki
 
 import (
 	"context"
-	"crypto"
 	"fmt"
 	"net/http"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListKeys(b *backend) *framework.Path {
@@ -23,6 +21,17 @@ func pathListKeys(b *backend) *framework.Path {
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
 			OperationSuffix: "keys",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -61,7 +70,7 @@ const (
 their identifier and their name (if set).`
 )
 
-func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	if b.useLegacyBundleCaStorage() {
 		return logical.ErrorResponse("Can not list keys until migration has completed"), nil
 	}
@@ -69,8 +78,11 @@ func (b *backend) pathListKeysHandler(ctx context.Context, req *logical.Request,
 	var responseKeys []string
 	responseInfo := make(map[string]interface{})
 
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+
 	sc := b.makeStorageContext(ctx, req.Storage)
-	entries, err := sc.listKeys()
+	entries, err := sc.listKeysPage(after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -149,16 +161,6 @@ func buildPathKey(b *backend, pattern string, displayAttrs *framework.DisplayAtt
 							"subject_key_id": {
 								Type:        framework.TypeString,
 								Description: `RFC 5280 Subject Key Identifier of the public counterpart`,
-								Required:    false,
-							},
-							"managed_key_id": {
-								Type:        framework.TypeString,
-								Description: `Managed Key Id`,
-								Required:    false,
-							},
-							"managed_key_name": {
-								Type:        framework.TypeString,
-								Description: `Managed Key Name`,
 								Required:    false,
 							},
 						},
@@ -254,33 +256,9 @@ func (b *backend) pathGetKeyHandler(ctx context.Context, req *logical.Request, d
 		keyTypeParam: string(key.PrivateKeyType),
 	}
 
-	var pkForSkid crypto.PublicKey
-	if key.isManagedPrivateKey() {
-		managedKeyUUID, err := key.getManagedKeyUUID()
-		if err != nil {
-			return nil, errutil.InternalError{Err: fmt.Sprintf("failed extracting managed key uuid from key id %s (%s): %v", key.ID, key.Name, err)}
-		}
-
-		keyInfo, err := getManagedKeyInfo(ctx, b, managedKeyUUID)
-		if err != nil {
-			return nil, errutil.InternalError{Err: fmt.Sprintf("failed fetching managed key info from key id %s (%s): %v", key.ID, key.Name, err)}
-		}
-
-		pkForSkid, err = getManagedKeyPublicKey(sc.Context, sc.Backend, managedKeyUUID)
-		if err != nil {
-			return nil, err
-		}
-
-		// To remain consistent across the api responses (mainly generate root/intermediate calls), return the actual
-		// type of key, not that it is a managed key.
-		respData[keyTypeParam] = string(keyInfo.keyType)
-		respData[managedKeyIdArg] = string(keyInfo.uuid)
-		respData[managedKeyNameArg] = string(keyInfo.name)
-	} else {
-		pkForSkid, err = getPublicKeyFromBytes([]byte(key.PrivateKey))
-		if err != nil {
-			return nil, err
-		}
+	pkForSkid, err := getPublicKeyFromBytes([]byte(key.PrivateKey))
+	if err != nil {
+		return nil, err
 	}
 
 	skid, err := certutil.GetSubjectKeyID(pkForSkid)

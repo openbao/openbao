@@ -21,7 +21,7 @@ func (c *AuthCommand) Synopsis() string {
 
 func (c *AuthCommand) Help() string {
 	return strings.TrimSpace(`
-Usage: vault auth <subcommand> [options] [args]
+Usage: bao auth <subcommand> [options] [args]
 
   This command groups subcommands for interacting with Vault's auth methods.
   Users can list, enable, disable, and get help for different auth methods.
@@ -32,16 +32,16 @@ Usage: vault auth <subcommand> [options] [args]
 
   List all enabled auth methods:
 
-      $ vault auth list
+      $ bao auth list
 
   Enable a new auth method "userpass";
 
-      $ vault auth enable userpass
+      $ bao auth enable userpass
 
   Get detailed help information about how to authenticate to a particular auth
   method:
 
-      $ vault auth help github
+      $ bao auth help github
 
   Please see the individual subcommand help for detailed usage information.
 `)

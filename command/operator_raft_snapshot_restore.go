@@ -28,11 +28,11 @@ func (c *OperatorRaftSnapshotRestoreCommand) Synopsis() string {
 
 func (c *OperatorRaftSnapshotRestoreCommand) Help() string {
 	helpText := `
-Usage: vault operator raft snapshot restore <snapshot_file>
+Usage: bao operator raft snapshot restore <snapshot_file>
 
   Installs the provided snapshot, returning the cluster to the state defined in it.
 
-	  $ vault operator raft snapshot restore raft.snap
+	  $ bao operator raft snapshot restore raft.snap
 
 ` + c.Flags().Help()
 

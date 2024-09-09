@@ -20,13 +20,13 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	semver "github.com/hashicorp/go-version"
 	"github.com/openbao/openbao/helper/versions"
-	v4 "github.com/openbao/openbao/sdk/database/dbplugin"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
-	backendplugin "github.com/openbao/openbao/sdk/plugin"
+	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/version"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -172,8 +172,9 @@ func (c *Core) setupPluginCatalog(ctx context.Context) error {
 		catalogView:     NewBarrierView(c.barrier, pluginCatalogPath),
 		directory:       c.pluginDirectory,
 		logger:          c.logger,
-		mlockPlugins:    c.enableMlock,
-		wrapper:         logical.StaticSystemView{VersionString: version.GetVersion().Version},
+		// mlock is not currently used in OpenBao, but this setting is retained for Vault compat
+		mlockPlugins: false,
+		wrapper:      logical.StaticSystemView{VersionString: version.GetVersion().Version},
 	}
 
 	// Run upgrade if untyped plugins exist

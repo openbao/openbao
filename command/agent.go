@@ -19,7 +19,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -28,12 +27,13 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
+	ctconfig "github.com/openbao/openbao-template/config"
 	"github.com/posener/complete"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"google.golang.org/grpc/test/bufconn"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	agentConfig "github.com/openbao/openbao/command/agent/config"
 	"github.com/openbao/openbao/command/agent/exec"
 	"github.com/openbao/openbao/command/agent/template"
@@ -49,8 +49,8 @@ import (
 	"github.com/openbao/openbao/helper/useragent"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 )
 
@@ -96,19 +96,19 @@ type AgentCommand struct {
 }
 
 func (c *AgentCommand) Synopsis() string {
-	return "Start a Vault agent"
+	return "Start an OpenBao agent"
 }
 
 func (c *AgentCommand) Help() string {
 	helpText := `
-Usage: vault agent [options]
+Usage: bao agent [options]
 
-  This command starts a Vault Agent that can perform automatic authentication
+  This command starts an OpenBao Agent that can perform automatic authentication
   in certain environments.
 
   Start an agent with a configuration file:
 
-      $ vault agent -config=/etc/vault/config.hcl
+      $ bao agent -config=/etc/openbao/config.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -146,11 +146,11 @@ func (c *AgentCommand) Flags() *FlagSets {
 
 	// Internal-only flags to follow.
 	//
-	// Why hello there little source code reader! Welcome to the Vault source
+	// Why hello there little source code reader! Welcome to the OpenBao source
 	// code. The remaining options are intentionally undocumented and come with
 	// no warranty or backwards-compatibility promise. Do not use these flags
 	// in production. Do not build automation using these flags. Unless you are
-	// developing against Vault, you should not need any of these flags.
+	// developing against OpenBao, you should not need any of these flags.
 	f.BoolVar(&BoolVar{
 		Name:    "test-verify-only",
 		Target:  &c.flagTestVerifyOnly,
@@ -249,7 +249,7 @@ func (c *AgentCommand) Run(args []string) int {
 	// Tests might not want to start a vault server and just want to verify
 	// the configuration.
 	if c.flagTestVerifyOnly {
-		if os.Getenv("VAULT_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
+		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
 				pretty.Sprint(*c.config)))
@@ -274,8 +274,8 @@ func (c *AgentCommand) Run(args []string) int {
 		serverVersion := serverHealth.Version
 		agentVersion := version.GetVersion().VersionNumber()
 		if serverVersion != agentVersion {
-			c.UI.Info("==> Note: Vault Agent version does not match Vault server version. " +
-				fmt.Sprintf("Vault Agent version: %s, Vault server version: %s", agentVersion, serverVersion))
+			c.UI.Info("==> Note: OpenBao Agent version does not match OpenBao server version. " +
+				fmt.Sprintf("OpenBao Agent version: %s, OpenBao server version: %s", agentVersion, serverVersion))
 		}
 	}
 
@@ -284,9 +284,9 @@ func (c *AgentCommand) Run(args []string) int {
 		// we log on each API proxy call, which would be too noisy.
 		// A customer could have a listener defined but only be using e.g. the cache-clear API,
 		// even though the API proxy is something they have available.
-		c.UI.Warn("==> Note: Vault Agent will be deprecating API proxy functionality in a future " +
-			"release, and this functionality has moved to a new subcommand, vault proxy. If you rely on this " +
-			"functionality, plan to move to Vault Proxy instead.")
+		c.UI.Warn("==> Note: OpenBao Agent will be deprecating API proxy functionality in a future " +
+			"release, and this functionality has moved to a new subcommand, OpenBao proxy. If you rely on this " +
+			"functionality, plan to move to OpenBao Proxy instead.")
 	}
 
 	// ctx and cancelFunc are passed to the AuthHandler, SinkServer, ExecServer and
@@ -299,8 +299,8 @@ func (c *AgentCommand) Run(args []string) int {
 	inmemMetrics, _, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
 		Ui:          c.UI,
-		ServiceName: "vault",
-		DisplayName: "Vault",
+		ServiceName: "bao",
+		DisplayName: "OpenBao",
 		UserAgent:   useragent.AgentString(),
 		ClusterName: config.ClusterName,
 	})
@@ -374,73 +374,12 @@ func (c *AgentCommand) Run(args []string) int {
 	// We do this after auto-auth has been configured, because we don't want to
 	// confuse the issue of retries for auth failures which have their own
 	// config and are handled a bit differently.
-	if os.Getenv(api.EnvVaultMaxRetries) == "" {
+	if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 		client.SetMaxRetries(ctconfig.DefaultRetryAttempts)
 		if config.Vault != nil {
 			if config.Vault.Retry != nil {
 				client.SetMaxRetries(config.Vault.Retry.NumRetries)
 			}
-		}
-	}
-
-	enforceConsistency := cache.EnforceConsistencyNever
-	whenInconsistent := cache.WhenInconsistentFail
-	if config.APIProxy != nil {
-		switch config.APIProxy.EnforceConsistency {
-		case "always":
-			enforceConsistency = cache.EnforceConsistencyAlways
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for enforce_consistency: %q", config.APIProxy.EnforceConsistency))
-			return 1
-		}
-
-		switch config.APIProxy.WhenInconsistent {
-		case "retry":
-			whenInconsistent = cache.WhenInconsistentRetry
-		case "forward":
-			whenInconsistent = cache.WhenInconsistentForward
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for when_inconsistent: %q", config.APIProxy.WhenInconsistent))
-			return 1
-		}
-	}
-	// Keep Cache configuration for legacy reasons, but error if defined alongside API Proxy
-	if config.Cache != nil {
-		switch config.Cache.EnforceConsistency {
-		case "always":
-			if enforceConsistency != cache.EnforceConsistencyNever {
-				c.UI.Error("enforce_consistency configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				enforceConsistency = cache.EnforceConsistencyAlways
-			}
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown cache setting for enforce_consistency: %q", config.Cache.EnforceConsistency))
-			return 1
-		}
-
-		switch config.Cache.WhenInconsistent {
-		case "retry":
-			if whenInconsistent != cache.WhenInconsistentFail {
-				c.UI.Error("when_inconsistent configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				whenInconsistent = cache.WhenInconsistentRetry
-			}
-		case "forward":
-			if whenInconsistent != cache.WhenInconsistentFail {
-				c.UI.Error("when_inconsistent configured in both api_proxy and cache blocks. Please remove this configuration from the cache block.")
-				return 1
-			} else {
-				whenInconsistent = cache.WhenInconsistentForward
-			}
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown cache setting for when_inconsistent: %q", config.Cache.WhenInconsistent))
-			return 1
 		}
 	}
 
@@ -462,7 +401,7 @@ func (c *AgentCommand) Run(args []string) int {
 
 	// Output the header that the agent has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault Agent started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Agent started! Log data will stream in below:\n")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -488,8 +427,6 @@ func (c *AgentCommand) Run(args []string) int {
 	apiProxy, err := cache.NewAPIProxy(&cache.APIProxyConfig{
 		Client:                  proxyClient,
 		Logger:                  apiProxyLogger,
-		EnforceConsistency:      enforceConsistency,
-		WhenInconsistentAction:  whenInconsistent,
 		UserAgentStringFunction: useragent.AgentProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.AgentProxyString(),
 	})
@@ -655,7 +592,7 @@ func (c *AgentCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.SighupCh:
-				c.UI.Output("==> Vault Agent config reload triggered")
+				c.UI.Output("==> OpenBao Agent config reload triggered")
 				err := c.reloadConfig(c.flagConfigs)
 				if err != nil {
 					c.outputErrors(err)
@@ -678,7 +615,7 @@ func (c *AgentCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.ShutdownCh:
-				c.UI.Output("==> Vault Agent shutdown triggered")
+				c.UI.Output("==> OpenBao Agent shutdown triggered")
 				// Notify systemd that the server is shutting down
 				// Let the lease cache know this is a shutdown; no need to evict everything
 				if leaseCache != nil {
@@ -823,7 +760,7 @@ func (c *AgentCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English)
-	c.UI.Output("==> Vault Agent configuration:\n")
+	c.UI.Output("==> OpenBao Agent configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -975,7 +912,7 @@ func (c *AgentCommand) setStringFlag(f *FlagSets, configVal string, fVar *String
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line
@@ -999,7 +936,7 @@ func (c *AgentCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line

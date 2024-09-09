@@ -7,44 +7,10 @@ import { helper as buildHelper } from '@ember/component/helper';
 
 const MOUNTABLE_AUTH_METHODS = [
   {
-    displayName: 'AliCloud',
-    value: 'alicloud',
-    type: 'alicloud',
-    category: 'cloud',
-  },
-  {
     displayName: 'AppRole',
     value: 'approle',
     type: 'approle',
     category: 'generic',
-  },
-  {
-    displayName: 'AWS',
-    value: 'aws',
-    type: 'aws',
-    category: 'cloud',
-    glyph: 'aws-color',
-  },
-  {
-    displayName: 'Azure',
-    value: 'azure',
-    type: 'azure',
-    category: 'cloud',
-    glyph: 'azure-color',
-  },
-  {
-    displayName: 'Google Cloud',
-    value: 'gcp',
-    type: 'gcp',
-    category: 'cloud',
-    glyph: 'gcp-color',
-  },
-  {
-    displayName: 'GitHub',
-    value: 'github',
-    type: 'github',
-    category: 'cloud',
-    glyph: 'github-color',
   },
   {
     displayName: 'JWT',
@@ -73,13 +39,6 @@ const MOUNTABLE_AUTH_METHODS = [
     type: 'ldap',
     glyph: 'auth',
     category: 'infra',
-  },
-  {
-    displayName: 'Okta',
-    value: 'okta',
-    type: 'okta',
-    category: 'infra',
-    glyph: 'okta-color',
   },
   {
     displayName: 'RADIUS',

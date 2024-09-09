@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const operationPrefixSSH = "ssh"
@@ -122,7 +122,7 @@ is role-specific and chosen at role creation time with the 'key_type'
 parameter.
 
 Please see the backend documentation for a thorough description of both
-types. The Vault team strongly recommends the OTP type.
+types. The OpenBao team strongly recommends the OTP type.
 
 After mounting this backend, before generating credentials, configure the
 backend's lease behavior using the 'config/lease' endpoint and create roles

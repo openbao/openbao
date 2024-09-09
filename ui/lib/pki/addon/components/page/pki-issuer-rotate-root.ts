@@ -45,7 +45,7 @@ export default class PagePkiIssuerRotateRootComponent extends Component<Args> {
         key: RADIO_BUTTON_KEY.oldSettings,
         icon: 'certificate',
         label: 'Use old root settings',
-        description: `Provide only a new common name and issuer name, using the old root’s settings. Selecting this option generates a root with Vault-internal key material.`,
+        description: `Provide only a new common name and issuer name, using the old root’s settings. Selecting this option generates a root with OpenBao-internal key material.`,
       },
       {
         key: RADIO_BUTTON_KEY.customizeNew,

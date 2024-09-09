@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +18,6 @@ import (
 func TestApproleSecretId_Wrapped(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{
@@ -78,7 +77,6 @@ func TestApproleSecretId_Wrapped(t *testing.T) {
 func TestApproleSecretId_NotWrapped(t *testing.T) {
 	var err error
 	coreConfig := &vault.CoreConfig{
-		DisableMlock: true,
 		DisableCache: true,
 		Logger:       log.NewNullLogger(),
 		CredentialBackends: map[string]logical.Factory{

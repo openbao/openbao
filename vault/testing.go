@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	mathrand "math/rand"
 	"net"
@@ -37,27 +36,25 @@ import (
 	raftlib "github.com/hashicorp/raft"
 	"github.com/mitchellh/copystructure"
 	"github.com/mitchellh/go-testing-interface"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	"github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	physInmem "github.com/openbao/openbao/sdk/physical/inmem"
-	backendplugin "github.com/openbao/openbao/sdk/plugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
+	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/crypto/ed25519"
@@ -165,7 +162,6 @@ func TestCoreWithCustomResponseHeaderAndUI(t testing.T, CustomResponseHeaders ma
 					CustomResponseHeaders: CustomResponseHeaders,
 				},
 			},
-			DisableMlock: true,
 		},
 	}
 	conf := &CoreConfig{
@@ -221,7 +217,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.EnableRaw = opts.EnableRaw
 	conf.EnableIntrospection = opts.EnableIntrospection
 	conf.Seal = opts.Seal
-	conf.LicensingConfig = opts.LicensingConfig
 	conf.DisableKeyEncodingChecks = opts.DisableKeyEncodingChecks
 	conf.MetricsHelper = opts.MetricsHelper
 	conf.MetricSink = opts.MetricSink
@@ -231,8 +226,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 	conf.DisableSSCTokens = opts.DisableSSCTokens
 	conf.PluginDirectory = opts.PluginDirectory
 	conf.DetectDeadlocks = opts.DetectDeadlocks
-	conf.Experiments = []string{experiments.VaultExperimentEventsAlpha1}
-	conf.CensusAgent = opts.CensusAgent
 	conf.AdministrativeNamespacePath = opts.AdministrativeNamespacePath
 	conf.ImpreciseLeaseRoleTracking = opts.ImpreciseLeaseRoleTracking
 
@@ -261,7 +254,6 @@ func TestCoreWithSealAndUINoCleanup(t testing.T, opts *CoreConfig) *Core {
 		conf.NumRollbackWorkers = opts.NumRollbackWorkers
 	}
 
-	conf.ActivityLogConfig = opts.ActivityLogConfig
 	testApplyEntBaseConfig(conf, opts)
 
 	c, err := NewCore(conf)
@@ -312,7 +304,6 @@ func testCoreConfig(t testing.T, physicalBackend physical.Backend, logger log.Lo
 		AuditBackends:      noopAudits,
 		LogicalBackends:    logicalBackends,
 		CredentialBackends: credentialBackends,
-		DisableMlock:       true,
 		Logger:             logger,
 		NumRollbackWorkers: 10,
 		BuiltinRegistry:    corehelpers.NewMockBuiltinRegistry(),
@@ -527,7 +518,7 @@ func TestDynamicSystemView(c *Core, ns *namespace.Namespace) *dynamicSystemView 
 		me.namespace = ns
 	}
 
-	return &dynamicSystemView{c, me, c.perfStandby}
+	return &dynamicSystemView{c, me}
 }
 
 // TestAddTestPlugin registers the testFunc as part of the plugin command to the
@@ -670,6 +661,10 @@ func AddTestCredentialBackend(name string, factory logical.Factory) error {
 	}
 	testCredentialBackends[name] = factory
 	return nil
+}
+
+func ClearTestCredentialBackends() {
+	testCredentialBackends = map[string]logical.Factory{}
 }
 
 // This adds a logical backend for the test core. This needs to be
@@ -882,14 +877,6 @@ WAITACTIVE:
 		})
 		if err != nil {
 			t.Fatalf("error setting up global rate limit quota: %v", err)
-		}
-		if constants.IsEnterprise {
-			_, err = cli.Logical().Write("sys/quotas/lease-count/lc-NewTestCluster", map[string]interface{}{
-				"max_leases": 1000000,
-			})
-			if err != nil {
-				t.Fatalf("error setting up global lease count quota: %v", err)
-			}
 		}
 	}
 }
@@ -1205,8 +1192,7 @@ type TestClusterOptions struct {
 	FirstCoreNumber   int
 	RequireClientAuth bool
 	// SetupFunc is called after the cluster is started.
-	SetupFunc      func(t testing.T, c *TestCluster)
-	PR1103Disabled bool
+	SetupFunc func(t testing.T, c *TestCluster)
 
 	// ClusterLayers are used to override the default cluster connection layer
 	ClusterLayers cluster.NetworkLayerSet
@@ -1230,7 +1216,6 @@ type TestClusterOptions struct {
 
 	// this stores the vault version that should be used for each core config
 	VersionMap             map[int]string
-	RedundancyZoneMap      map[int]string
 	KVVersion              string
 	EffectiveSDKVersionMap map[int]string
 
@@ -1307,7 +1292,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		}
 		testCluster.TempDir = opts.TempDir
 	} else {
-		tempDir, err := ioutil.TempDir("", "vault-test-cluster-")
+		tempDir, err := os.MkdirTemp("", "vault-test-cluster-")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1360,7 +1345,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	}
 	testCluster.CACertPEM = pem.EncodeToMemory(caCertPEMBlock)
 	testCluster.CACertPEMFile = filepath.Join(testCluster.TempDir, "ca_cert.pem")
-	err = ioutil.WriteFile(testCluster.CACertPEMFile, testCluster.CACertPEM, 0o755)
+	err = os.WriteFile(testCluster.CACertPEMFile, testCluster.CACertPEM, 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1373,7 +1358,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		Bytes: marshaledCAKey,
 	}
 	testCluster.CAKeyPEM = pem.EncodeToMemory(caKeyPEMBlock)
-	err = ioutil.WriteFile(filepath.Join(testCluster.TempDir, "ca_key.pem"), testCluster.CAKeyPEM, 0o755)
+	err = os.WriteFile(filepath.Join(testCluster.TempDir, "ca_key.pem"), testCluster.CAKeyPEM, 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1463,11 +1448,11 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 		certFile := filepath.Join(testCluster.TempDir, fmt.Sprintf("node%d_port_%d_cert.pem", i+1, ln.Addr().(*net.TCPAddr).Port))
 		keyFile := filepath.Join(testCluster.TempDir, fmt.Sprintf("node%d_port_%d_key.pem", i+1, ln.Addr().(*net.TCPAddr).Port))
-		err = ioutil.WriteFile(certFile, certInfoSlice[i].certPEM, 0o755)
+		err = os.WriteFile(certFile, certInfoSlice[i].certPEM, 0o755)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = ioutil.WriteFile(keyFile, certInfoSlice[i].keyPEM, 0o755)
+		err = os.WriteFile(keyFile, certInfoSlice[i].keyPEM, 0o755)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1522,7 +1507,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		AuditBackends:      make(map[string]audit.Factory),
 		RedirectAddr:       fmt.Sprintf("https://127.0.0.1:%d", listeners[0][0].Address.Port),
 		ClusterAddr:        "https://127.0.0.1:0",
-		DisableMlock:       true,
 		EnableUI:           true,
 		EnableRaw:          true,
 		BuiltinRegistry:    corehelpers.NewMockBuiltinRegistry(),
@@ -1543,9 +1527,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.EnableRaw = base.EnableRaw
 		coreConfig.DisableSealWrap = base.DisableSealWrap
 		coreConfig.DisableCache = base.DisableCache
-		coreConfig.LicensingConfig = base.LicensingConfig
-		coreConfig.License = base.License
-		coreConfig.LicensePath = base.LicensePath
 		coreConfig.DisablePerformanceStandby = base.DisablePerformanceStandby
 		coreConfig.MetricsHelper = base.MetricsHelper
 		coreConfig.MetricSink = base.MetricSink
@@ -1559,10 +1540,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 		if base.BuiltinRegistry != nil {
 			coreConfig.BuiltinRegistry = base.BuiltinRegistry
-		}
-
-		if !coreConfig.DisableMlock {
-			base.DisableMlock = false
 		}
 
 		if base.Physical != nil {
@@ -1605,7 +1582,6 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 		coreConfig.DisableCache = base.DisableCache
 		coreConfig.DevToken = base.DevToken
 		coreConfig.RecoveryMode = base.RecoveryMode
-		coreConfig.ActivityLogConfig = base.ActivityLogConfig
 		coreConfig.EnableResponseHeaderHostname = base.EnableResponseHeaderHostname
 		coreConfig.EnableResponseHeaderRaftNodeID = base.EnableResponseHeaderRaftNodeID
 		coreConfig.RollbackPeriod = base.RollbackPeriod
@@ -1890,11 +1866,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 	cleanupFunc := func() {}
 	var handler http.Handler
 
-	var disablePR1103 bool
-	if opts != nil && opts.PR1103Disabled {
-		disablePR1103 = true
-	}
-
 	var firstCoreNumber int
 	if opts != nil {
 		firstCoreNumber = opts.FirstCoreNumber
@@ -1925,9 +1896,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		}
 		if len(opts.VersionMap) > 0 {
 			pfc["autopilot_upgrade_version"] = opts.VersionMap[idx]
-		}
-		if len(opts.RedundancyZoneMap) > 0 {
-			pfc["autopilot_redundancy_zone"] = opts.RedundancyZoneMap[idx]
 		}
 		physBundle := opts.PhysicalFactory(t, idx, localConfig.Logger, pfc)
 		switch {
@@ -1964,15 +1932,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		localConfig.ClusterAddr = "https://" + localConfig.ClusterNetworkLayer.Listeners()[0].Addr().String()
 	}
 
-	switch {
-	case localConfig.LicensingConfig != nil:
-		if pubKey != nil {
-			localConfig.LicensingConfig.AdditionalPublicKeys = append(localConfig.LicensingConfig.AdditionalPublicKeys, pubKey)
-		}
-	default:
-		localConfig.LicensingConfig = testGetLicensingConfig(pubKey)
-	}
-
 	if localConfig.MetricsHelper == nil {
 		inm := metrics.NewInmemSink(10*time.Second, time.Minute)
 		metrics.DefaultInmemSignal(inm)
@@ -1993,7 +1952,6 @@ func (testCluster *TestCluster) newCore(t testing.T, idx int, coreConfig *CoreCo
 		t.Fatalf("err: %v", err)
 	}
 	c.coreNumber = firstCoreNumber + idx
-	c.PR1103disabled = disablePR1103
 	if opts != nil && opts.HandlerFunc != nil {
 		props := opts.DefaultHandlerProperties
 		props.Core = c
@@ -2067,7 +2025,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 	tc.RootToken = root
 
 	// Write root token and barrier keys
-	err := ioutil.WriteFile(filepath.Join(tc.TempDir, "root_token"), []byte(root), 0o755)
+	err := os.WriteFile(filepath.Join(tc.TempDir, "root_token"), []byte(root), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2078,7 +2036,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 			buf.WriteRune('\n')
 		}
 	}
-	err = ioutil.WriteFile(filepath.Join(tc.TempDir, "barrier_keys"), buf.Bytes(), 0o755)
+	err = os.WriteFile(filepath.Join(tc.TempDir, "barrier_keys"), buf.Bytes(), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2088,7 +2046,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 			buf.WriteRune('\n')
 		}
 	}
-	err = ioutil.WriteFile(filepath.Join(tc.TempDir, "recovery_keys"), buf.Bytes(), 0o755)
+	err = os.WriteFile(filepath.Join(tc.TempDir, "recovery_keys"), buf.Bytes(), 0o755)
 	if err != nil {
 		t.Fatal(err)
 	}

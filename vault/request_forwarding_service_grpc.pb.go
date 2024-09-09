@@ -21,7 +21,6 @@ const _ = grpc.SupportPackageIsVersion7
 type RequestForwardingClient interface {
 	ForwardRequest(ctx context.Context, in *forwarding.Request, opts ...grpc.CallOption) (*forwarding.Response, error)
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoReply, error)
-	PerformanceStandbyElectionRequest(ctx context.Context, in *PerfStandbyElectionInput, opts ...grpc.CallOption) (RequestForwarding_PerformanceStandbyElectionRequestClient, error)
 }
 
 type requestForwardingClient struct {
@@ -50,45 +49,12 @@ func (c *requestForwardingClient) Echo(ctx context.Context, in *EchoRequest, opt
 	return out, nil
 }
 
-func (c *requestForwardingClient) PerformanceStandbyElectionRequest(ctx context.Context, in *PerfStandbyElectionInput, opts ...grpc.CallOption) (RequestForwarding_PerformanceStandbyElectionRequestClient, error) {
-	stream, err := c.cc.NewStream(ctx, &RequestForwarding_ServiceDesc.Streams[0], "/vault.RequestForwarding/PerformanceStandbyElectionRequest", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &requestForwardingPerformanceStandbyElectionRequestClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type RequestForwarding_PerformanceStandbyElectionRequestClient interface {
-	Recv() (*PerfStandbyElectionResponse, error)
-	grpc.ClientStream
-}
-
-type requestForwardingPerformanceStandbyElectionRequestClient struct {
-	grpc.ClientStream
-}
-
-func (x *requestForwardingPerformanceStandbyElectionRequestClient) Recv() (*PerfStandbyElectionResponse, error) {
-	m := new(PerfStandbyElectionResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 // RequestForwardingServer is the server API for RequestForwarding service.
 // All implementations must embed UnimplementedRequestForwardingServer
 // for forward compatibility
 type RequestForwardingServer interface {
 	ForwardRequest(context.Context, *forwarding.Request) (*forwarding.Response, error)
 	Echo(context.Context, *EchoRequest) (*EchoReply, error)
-	PerformanceStandbyElectionRequest(*PerfStandbyElectionInput, RequestForwarding_PerformanceStandbyElectionRequestServer) error
 	mustEmbedUnimplementedRequestForwardingServer()
 }
 
@@ -101,9 +67,6 @@ func (UnimplementedRequestForwardingServer) ForwardRequest(context.Context, *for
 }
 func (UnimplementedRequestForwardingServer) Echo(context.Context, *EchoRequest) (*EchoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
-}
-func (UnimplementedRequestForwardingServer) PerformanceStandbyElectionRequest(*PerfStandbyElectionInput, RequestForwarding_PerformanceStandbyElectionRequestServer) error {
-	return status.Errorf(codes.Unimplemented, "method PerformanceStandbyElectionRequest not implemented")
 }
 func (UnimplementedRequestForwardingServer) mustEmbedUnimplementedRequestForwardingServer() {}
 
@@ -154,27 +117,6 @@ func _RequestForwarding_Echo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _RequestForwarding_PerformanceStandbyElectionRequest_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(PerfStandbyElectionInput)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RequestForwardingServer).PerformanceStandbyElectionRequest(m, &requestForwardingPerformanceStandbyElectionRequestServer{stream})
-}
-
-type RequestForwarding_PerformanceStandbyElectionRequestServer interface {
-	Send(*PerfStandbyElectionResponse) error
-	grpc.ServerStream
-}
-
-type requestForwardingPerformanceStandbyElectionRequestServer struct {
-	grpc.ServerStream
-}
-
-func (x *requestForwardingPerformanceStandbyElectionRequestServer) Send(m *PerfStandbyElectionResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 // RequestForwarding_ServiceDesc is the grpc.ServiceDesc for RequestForwarding service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -191,12 +133,6 @@ var RequestForwarding_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _RequestForwarding_Echo_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "PerformanceStandbyElectionRequest",
-			Handler:       _RequestForwarding_PerformanceStandbyElectionRequest_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "vault/request_forwarding_service.proto",
 }

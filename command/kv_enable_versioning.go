@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -27,11 +27,11 @@ func (c *KVEnableVersioningCommand) Synopsis() string {
 
 func (c *KVEnableVersioningCommand) Help() string {
 	helpText := `
-Usage: vault kv enable-versioning [options] KEY
+Usage: bao kv enable-versioning [options] KEY
 
   This command turns on versioning for the backend at the provided path.
 
-      $ vault kv enable-versioning secret
+      $ bao kv enable-versioning secret
 
   Additional flags and more advanced use cases are detailed below.
 

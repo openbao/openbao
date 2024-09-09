@@ -7,22 +7,35 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/fatih/structs"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathListRoles(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "roles/?$",
+
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixRabbitMQ,
 			OperationSuffix: "roles",
 		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.ListOperation: b.pathRoleList,
 		},
+
 		HelpSynopsis:    pathRoleHelpSyn,
 		HelpDescription: pathRoleHelpDesc,
 	}
@@ -106,14 +119,45 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 		return nil, nil
 	}
 
+	resp := map[string]interface{}{}
+	resp["tags"] = role.Tags
+	respVHost := map[string]interface{}{}
+	for key, value := range role.VHosts {
+		respVHost[key] = map[string]interface{}{
+			"configure": value.Configure,
+			"write":     value.Write,
+			"read":      value.Read,
+		}
+	}
+	resp["vhosts"] = respVHost
+
+	respVHostTopics := map[string]interface{}{}
+	for key, topic := range role.VHostTopics {
+		respVHostTopic := map[string]interface{}{}
+		for topicKey, value := range topic {
+			respVHostTopic[topicKey] = map[string]interface{}{
+				"write": value.Write,
+				"read":  value.Read,
+			}
+		}
+		respVHostTopics[key] = respVHostTopic
+	}
+	resp["vhost_topics"] = respVHostTopics
+
 	return &logical.Response{
-		Data: structs.New(role).Map(),
+		Data: resp,
 	}, nil
 }
 
 // Lists all the roles registered with the backend
-func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	roles, err := req.Storage.List(ctx, "role/")
+func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	roles, err := req.Storage.ListPage(ctx, "role/", after, limit)
 	if err != nil {
 		return nil, err
 	}

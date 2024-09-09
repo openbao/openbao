@@ -19,9 +19,8 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/storagepacker"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/patrickmn/go-cache"
 )
 
@@ -637,11 +636,6 @@ func mfaPaths(i *IdentityStore) []*framework.Path {
 }
 
 func (i *IdentityStore) initialize(ctx context.Context, req *logical.InitializationRequest) error {
-	// Only primary should write the status
-	if i.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary | consts.ReplicationPerformanceStandby | consts.ReplicationDRSecondary) {
-		return nil
-	}
-
 	if err := i.storeOIDCDefaultResources(ctx, req.Storage); err != nil {
 		i.logger.Error("failed to write OIDC default resources to storage", "error", err)
 		return err
@@ -760,35 +754,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 					return
 				}
 
-				// If we are a secondary, the entity created by the secondary
-				// via the CreateEntity RPC would have been cached. Now that the
-				// invalidation of the same has hit, there is no need of the
-				// cache. Clearing the cache. Writing to storage can't be
-				// performed by perf standbys. So only doing this in the active
-				// node of the secondary.
-				if i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) && i.localNode.HAState() != consts.PerfStandby {
-					if err := i.localAliasPacker.DeleteItem(ctx, entity.ID+tmpSuffix); err != nil {
-						i.logger.Error("failed to clear local alias entity cache", "error", err, "entity_id", entity.ID)
-						return
-					}
-				}
-
 				entityIDs = append(entityIDs, entity.ID)
-			}
-		}
-
-		// entitiesFetched are the entities before invalidation. entityIDs
-		// represent entities that are valid after invalidation. Clear the
-		// storage entries of local aliases for those entities that are
-		// indicated deleted by this invalidation.
-		if i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) && i.localNode.HAState() != consts.PerfStandby {
-			for _, entity := range entitiesFetched {
-				if !strutil.StrListContains(entityIDs, entity.ID) {
-					if err := i.localAliasPacker.DeleteItem(ctx, entity.ID); err != nil {
-						i.logger.Error("failed to clear local alias for entity", "error", err, "entity_id", entity.ID)
-						return
-					}
-				}
 			}
 		}
 
@@ -1075,7 +1041,7 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 		persistNeeded = true
 	}
 
-	if persistNeeded && !i.localNode.ReplicationState().HasState(consts.ReplicationPerformanceSecondary) {
+	if persistNeeded {
 		entityAsAny, err := ptypes.MarshalAny(&entity)
 		if err != nil {
 			return nil, err

@@ -7,10 +7,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"sort"
@@ -25,11 +23,11 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/license"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/license"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Backend is an implementation of logical.Backend that allows
@@ -101,7 +99,6 @@ type Backend struct {
 
 	logger  log.Logger
 	system  logical.SystemView
-	events  logical.EventSender
 	once    sync.Once
 	pathsRe []*regexp.Regexp
 }
@@ -132,10 +129,6 @@ type InitializeFunc func(context.Context, *logical.InitializationRequest) error
 // PatchPreprocessorFunc is used by HandlePatchOperation in order to shape
 // the input as defined by request handler prior to JSON marshaling
 type PatchPreprocessorFunc func(map[string]interface{}) (map[string]interface{}, error)
-
-// ErrNoEvents is returned when attempting to send an event, but when the event
-// sender was not passed in during `backend.Setup()`.
-var ErrNoEvents = errors.New("no event sender configured")
 
 // Initialize is the logical.Backend implementation.
 func (b *Backend) Initialize(ctx context.Context, req *logical.InitializationRequest) error {
@@ -407,7 +400,6 @@ func (b *Backend) InvalidateKey(ctx context.Context, key string) {
 func (b *Backend) Setup(ctx context.Context, config *logical.BackendConfig) error {
 	b.logger = config.Logger
 	b.system = config.System
-	b.events = config.EventsSender
 	return nil
 }
 
@@ -429,7 +421,7 @@ func (b *Backend) Logger() log.Logger {
 		return b.logger
 	}
 
-	return logging.NewVaultLoggerWithWriter(ioutil.Discard, log.NoLevel)
+	return logging.NewVaultLoggerWithWriter(io.Discard, log.NoLevel)
 }
 
 // System returns the backend's system view.
@@ -690,13 +682,6 @@ func (b *Backend) handleWALRollback(ctx context.Context, req *logical.Request) (
 	}
 
 	return logical.ErrorResponse(merr.Error()), nil
-}
-
-func (b *Backend) SendEvent(ctx context.Context, eventType logical.EventType, event *logical.EventData) error {
-	if b.events == nil {
-		return ErrNoEvents
-	}
-	return b.events.Send(ctx, eventType, event)
 }
 
 // FieldSchema is a basic schema to describe the format of a path field.

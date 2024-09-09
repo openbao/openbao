@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathAcmeRevoke(b *backend) []*framework.Path {
@@ -71,7 +71,7 @@ func (b *backend) acmeRevocationHandler(acmeCtx *acmeContext, _ *logical.Request
 		}
 
 		if int(reason) != 0 {
-			return nil, fmt.Errorf("Vault does not support revocation reasons (got %v; expected omitted or 0/unspecified): %w", int(reason), ErrBadRevocationReason)
+			return nil, fmt.Errorf("OpenBao does not support revocation reasons (got %v; expected omitted or 0/unspecified): %w", int(reason), ErrBadRevocationReason)
 		}
 	}
 

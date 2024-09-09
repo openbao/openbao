@@ -4,8 +4,8 @@
 package cert
 
 import (
-	"bytes"
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
@@ -15,12 +15,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/ocsp"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/ocsp"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-multierror"
@@ -170,7 +170,9 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, data *fra
 		auth.Alias.Metadata = metadata
 	}
 
-	matched.Entry.PopulateTokenAuth(auth)
+	if err := matched.Entry.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	return &logical.Response{
 		Auth: auth,
@@ -277,8 +279,7 @@ func (b *backend) verifyCredentials(ctx context.Context, req *logical.Request, d
 		for _, trustedNonCA := range trustedNonCAs {
 			tCert := trustedNonCA.Certificates[0]
 			// Check for client cert being explicitly listed in the config (and matching other constraints)
-			if tCert.SerialNumber.Cmp(clientCert.SerialNumber) == 0 &&
-				bytes.Equal(tCert.AuthorityKeyId, clientCert.AuthorityKeyId) {
+			if subtle.ConstantTimeCompare(tCert.Raw, clientCert.Raw) == 1 {
 				matches, err := b.matchesConstraints(ctx, clientCert, trustedNonCA.Certificates, trustedNonCA, verifyConf)
 
 				// matchesConstraints returns an error when OCSP verification fails,

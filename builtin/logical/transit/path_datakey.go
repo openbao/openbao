@@ -7,14 +7,12 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
-	"github.com/openbao/openbao/helper/constants"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathDatakey() *framework.Path {
@@ -44,11 +42,6 @@ ciphertext; "wrapped" will return the ciphertext only.`,
 				Description: "Context for key derivation. Required for derived keys.",
 			},
 
-			"nonce": {
-				Type:        framework.TypeString,
-				Description: "Nonce for when convergent encryption v1 is used (only in Vault 0.6.1)",
-			},
-
 			"bits": {
 				Type: framework.TypeInt,
 				Description: `Number of bits for the key; currently 128, 256,
@@ -58,7 +51,7 @@ and 512 bits are supported. Defaults to 256.`,
 
 			"key_version": {
 				Type: framework.TypeInt,
-				Description: `The version of the Vault key to use for
+				Description: `The version of the OpenBao key to use for
 encryption of the data key. Must be 0 (for latest)
 or a value greater than or equal to the
 min_encryption_version configured on the key.`,
@@ -100,16 +93,6 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		}
 	}
 
-	// Decode the nonce if any
-	nonceRaw := d.Get("nonce").(string)
-	var nonce []byte
-	if len(nonceRaw) != 0 {
-		nonce, err = base64.StdEncoding.DecodeString(nonceRaw)
-		if err != nil {
-			return logical.ErrorResponse("failed to base64-decode nonce"), logical.ErrInvalidRequest
-		}
-	}
-
 	// Get the policy
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
@@ -142,23 +125,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	var managedKeyFactory ManagedKeyFactory
-	if p.Type == keysutil.KeyType_MANAGED_KEY {
-		managedKeySystemView, ok := b.System().(logical.ManagedKeySystemView)
-		if !ok {
-			return nil, errors.New("unsupported system view")
-		}
-
-		managedKeyFactory = ManagedKeyFactory{
-			managedKeyParams: keysutil.ManagedKeyParameters{
-				ManagedKeySystemView: managedKeySystemView,
-				BackendUUID:          b.backendUUID,
-				Context:              ctx,
-			},
-		}
-	}
-
-	ciphertext, err := p.EncryptWithFactory(ver, context, nonce, base64.StdEncoding.EncodeToString(newKey), nil, managedKeyFactory)
+	ciphertext, err := p.EncryptWithFactory(ver, context, nil, base64.StdEncoding.EncodeToString(newKey), nil)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:
@@ -185,14 +152,6 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 			"ciphertext":  ciphertext,
 			"key_version": keyVersion,
 		},
-	}
-
-	if len(nonce) > 0 && !nonceAllowed(p) {
-		return nil, ErrNonceNotAllowed
-	}
-
-	if constants.IsFIPS() && shouldWarnAboutNonceUsage(p, nonce) {
-		resp.AddWarning("A provided nonce value was used within FIPS mode, this violates FIPS 140 compliance.")
 	}
 
 	if plaintextAllowed {

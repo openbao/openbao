@@ -5,33 +5,32 @@ package teststorage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 	auditSocket "github.com/openbao/openbao/builtin/audit/socket"
 	auditSyslog "github.com/openbao/openbao/builtin/audit/syslog"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	physFile "github.com/openbao/openbao/sdk/physical/file"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	physFile "github.com/openbao/openbao/sdk/v2/physical/file"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 )
 
 func MakeInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
-	inm, err := inmem.NewTransactionalInmem(nil, logger)
+	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,36 +51,20 @@ func MakeLatentInmemBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBac
 	latency := time.Duration(r.Intn(15)) * time.Millisecond
 
 	pbb := MakeInmemBackend(t, logger)
-	latencyInjector := physical.NewTransactionalLatencyInjector(pbb.Backend, latency, jitter, logger)
+	latencyInjector := physical.NewLatencyInjector(pbb.Backend, latency, jitter, logger)
 	pbb.Backend = latencyInjector
 	return pbb
 }
 
-func MakeInmemNonTransactionalBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
-	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
-	inmha, err := inmem.NewInmemHA(nil, logger)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return &vault.PhysicalBackendBundle{
-		Backend:   inm,
-		HABackend: inmha.(physical.HABackend),
-	}
-}
-
 func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBundle {
-	path, err := ioutil.TempDir("", "vault-integ-file-")
+	path, err := os.MkdirTemp("", "vault-integ-file-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	fileConf := map[string]string{
 		"path": path,
 	}
-	fileBackend, err := physFile.NewTransactionalFileBackend(fileConf, logger)
+	fileBackend, err := physFile.NewFileBackend(fileConf, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +88,7 @@ func MakeFileBackend(t testing.T, logger hclog.Logger) *vault.PhysicalBackendBun
 
 func MakeRaftBackend(t testing.T, coreIdx int, logger hclog.Logger, extraConf map[string]interface{}) *vault.PhysicalBackendBundle {
 	nodeID := fmt.Sprintf("core-%d", coreIdx)
-	raftDir, err := ioutil.TempDir("", "vault-raft-")
+	raftDir, err := os.MkdirTemp("", "vault-raft-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,10 +191,6 @@ func InmemBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
 
 func InmemLatentBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
 	opts.PhysicalFactory = SharedPhysicalFactory(MakeLatentInmemBackend)
-}
-
-func InmemNonTransactionalBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {
-	opts.PhysicalFactory = SharedPhysicalFactory(MakeInmemNonTransactionalBackend)
 }
 
 func FileBackendSetup(conf *vault.CoreConfig, opts *vault.TestClusterOptions) {

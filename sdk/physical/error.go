@@ -26,17 +26,9 @@ type ErrorInjector struct {
 	random       *rand.Rand
 }
 
-// TransactionalErrorInjector is the transactional version of the error
-// injector
-type TransactionalErrorInjector struct {
-	*ErrorInjector
-	Transactional
-}
-
 // Verify ErrorInjector satisfies the correct interfaces
 var (
-	_ Backend       = (*ErrorInjector)(nil)
-	_ Transactional = (*TransactionalErrorInjector)(nil)
+	_ Backend = (*ErrorInjector)(nil)
 )
 
 // NewErrorInjector returns a wrapped physical backend to inject error
@@ -51,14 +43,6 @@ func NewErrorInjector(b Backend, errorPercent int, logger log.Logger) *ErrorInje
 		errorPercent: errorPercent,
 		randomLock:   new(sync.Mutex),
 		random:       rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
-	}
-}
-
-// NewTransactionalErrorInjector creates a new transactional ErrorInjector
-func NewTransactionalErrorInjector(b Backend, errorPercent int, logger log.Logger) *TransactionalErrorInjector {
-	return &TransactionalErrorInjector{
-		ErrorInjector: NewErrorInjector(b, errorPercent, logger),
-		Transactional: b.(Transactional),
 	}
 }
 
@@ -105,9 +89,9 @@ func (e *ErrorInjector) List(ctx context.Context, prefix string) ([]string, erro
 	return e.backend.List(ctx, prefix)
 }
 
-func (e *TransactionalErrorInjector) Transaction(ctx context.Context, txns []*TxnEntry) error {
+func (e *ErrorInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if err := e.addError(); err != nil {
-		return err
+		return nil, err
 	}
-	return e.Transactional.Transaction(ctx, txns)
+	return e.backend.ListPage(ctx, prefix, after, limit)
 }

@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: Dev Server Mode
+sidebar_label: "'Dev' Server"
 description: >-
   The dev server in OpenBao can be used for development or to experiment with
   OpenBao.
@@ -11,13 +10,17 @@ description: >-
 You can start OpenBao as a server in "dev" mode like so: `bao server -dev`.
 This dev-mode server requires no further setup, and your local `bao` CLI will
 be authenticated to talk to it. This makes it easy to experiment with OpenBao or
-start a OpenBao instance for development. Every feature of OpenBao is available in
+start an OpenBao instance for development. Every feature of OpenBao is available in
 "dev" mode. The `-dev` flag just short-circuits a lot of setup to insecure
 defaults.
 
-~> **Warning:** Never, ever, ever run a "dev" mode server in production.
+:::warning
+
+**Warning:** Never, ever, ever run a "dev" mode server in production.
 It is insecure and will lose data on every restart (since it stores data
 in-memory). It is only made for development or experimentation.
+
+:::
 
 ## Properties
 
@@ -50,7 +53,6 @@ flags or by specifying a configuration file):
 
 The dev server should be used for experimentation with OpenBao features, such
 as different auth methods, secrets engines, audit devices, etc.
-If you're new to OpenBao, you may want to pick up with [Your First Secret](/vault/tutorials/getting-started/getting-started-first-secret) in our getting started guide.
 
 In addition to experimentation, the dev server is very easy to automate
 for development environments.

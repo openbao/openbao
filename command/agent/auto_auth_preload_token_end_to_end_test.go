@@ -5,21 +5,20 @@ package agent
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	credAppRole "github.com/openbao/openbao/builtin/credential/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	agentAppRole "github.com/openbao/openbao/command/agentproxyshared/auth/approle"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"
 	"github.com/openbao/openbao/command/agentproxyshared/sink/file"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -73,7 +72,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	}
 	roleID1 := resp.Data["role_id"].(string)
 
-	rolef, err := ioutil.TempFile("", "auth.role-id.test.")
+	rolef, err := os.CreateTemp("", "auth.role-id.test.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +81,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 	defer os.Remove(role)
 	t.Logf("input role_id_file_path: %s", role)
 
-	secretf, err := ioutil.TempFile("", "auth.secret-id.test.")
+	secretf, err := os.CreateTemp("", "auth.secret-id.test.")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,13 +97,13 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 		"secret_id_file_path": secret,
 	}
 
-	if err := ioutil.WriteFile(role, []byte(roleID1), 0o600); err != nil {
+	if err := os.WriteFile(role, []byte(roleID1), 0o600); err != nil {
 		t.Fatal(err)
 	} else {
 		logger.Trace("wrote test role 1", "path", role)
 	}
 
-	if err := ioutil.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
+	if err := os.WriteFile(secret, []byte(secretID1), 0o600); err != nil {
 		t.Fatal(err)
 	} else {
 		logger.Trace("wrote test secret 1", "path", secret)
@@ -142,7 +141,7 @@ func TestTokenPreload_UsingAutoAuth(t *testing.T) {
 
 	ah := auth.NewAuthHandler(ahConfig)
 
-	tmpFile, err := ioutil.TempFile("", "auth.tokensink.test.")
+	tmpFile, err := os.CreateTemp("", "auth.tokensink.test.")
 	if err != nil {
 		t.Fatal(err)
 	}

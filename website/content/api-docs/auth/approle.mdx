@@ -1,6 +1,5 @@
 ---
-layout: api
-page_title: AppRole - Auth Methods - HTTP API
+sidebar_label: AppRole
 description: This is the API documentation for the OpenBao AppRole auth method.
 ---
 
@@ -8,7 +7,7 @@ description: This is the API documentation for the OpenBao AppRole auth method.
 
 This is the API documentation for the OpenBao AppRole auth method. For
 general information about the usage and operation of the AppRole method, please
-see the [OpenBao AppRole method documentation](/vault/docs/auth/approle).
+see the [OpenBao AppRole method documentation](/docs/auth/approle).
 
 This documentation assumes the AppRole method is mounted at the `/auth/approle`
 path in OpenBao. Since it is possible to enable auth methods at any location,
@@ -21,6 +20,14 @@ This endpoint returns a list the existing AppRoles in the method.
 | Method | Path                 |
 | :----- | :------------------- |
 | `LIST` | `/auth/approle/role` |
+
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
 
 ### Sample request
 
@@ -334,6 +341,14 @@ This includes the accessors for "custom" SecretIDs as well.
 
 ### Parameters
 
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
+
+### Parameters
+
 - `role_name` `(string: <required>)` - Name of the AppRole. Must be less than 4096 bytes.
 
 ### Sample request
@@ -619,7 +634,7 @@ $ curl \
 
 ## Login with AppRole
 
-Issues a OpenBao token based on the presented credentials. `role_id` is always
+Issues an OpenBao token based on the presented credentials. `role_id` is always
 required; if `bind_secret_id` is enabled (the default) on the AppRole,
 `secret_id` is required too. Any other bound authentication values on the
 AppRole (such as client IP CIDR) are also evaluated.

@@ -7,7 +7,7 @@
         @subTitle="Vault license has terminated"
         @icon="skip"
         @bottomBorder={{true}}
-        @message="Your Vault license has terminated and Vault is sealed. To unseal, add a current license to your configuration and restart Vault."
+        @message="Your Vault license has terminated and OpenBao is sealed. To unseal, add a current license to your configuration and restart OpenBao."
       >
         <p class="align-right">
           <DocLink @path="/vault/tutorials/enterprise/hashicorp-enterprise-license">
@@ -21,7 +21,7 @@
   <SplashPage as |Page|>
     <Page.header>
       <h1 class="title is-3">
-        Unseal Vault
+        Unseal OpenBao
       </h1>
     </Page.header>
     <Page.content>
@@ -32,8 +32,8 @@
           {{if this.model.unsealed "unsealed" "sealed"}}
         </p>
         <p>
-          Unseal Vault by entering portions of the unseal key. This can be done via multiple mechanisms on multiple
-          computers. Once all portions are entered, the root key will be decrypted and Vault will unseal.
+          Unseal OpenBao by entering portions of the unseal key. This can be done via multiple mechanisms on multiple
+          computers. Once all portions are entered, the root key will be decrypted and OpenBao will unseal.
         </p>
       </div>
       <ShamirFlow

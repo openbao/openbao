@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -144,7 +144,9 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 			Name: username,
 		},
 	}
-	user.PopulateTokenAuth(auth)
+	if err := user.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	return &logical.Response{
 		Auth: auth,

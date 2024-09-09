@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: plugin list - Command
+sidebar_label: list
 description: The "plugin list" command lists all available plugins in the plugin catalog.
 ---
 
@@ -23,13 +22,13 @@ List all available plugins in the catalog.
 $ bao plugin list
 Name                                 Type        Version
 ----                                 ----        -------
-alicloud                             auth        v0.13.0+builtin
+approle                              auth        v1.14.8+builtin.bao
 # ...
 
 $ bao plugin list database
 Name                                 Version
 ----                                 -------
-cassandra-database-plugin            v1.13.0+builtin.vault
+cassandra-database-plugin            v1.13.0+builtin.bao
 # ...
 ```
 
@@ -39,21 +38,20 @@ List detailed plugin information:
 $ bao plugin list -detailed
 Name                             Type        Version                                          Deprecation Status
 ----                             ----        -------                                          ------------------
-alicloud                         auth        v0.12.0+builtin                                  supported
-app-id                           auth        v1.12.0+builtin.vault                            pending removal
+approle                          auth        v1.14.8+builtin.bao                              supported
 # ...
 ```
 
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 ### Command options
 

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"hash/crc64"
 	"io"
-	"io/ioutil"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -20,9 +19,9 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 type idAddr struct {
@@ -192,7 +191,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	io.Copy(ioutil.Discard, reader)
+	io.Copy(io.Discard, reader)
 
 	if meta.Index != index.Index {
 		t.Fatalf("indexes did not match, got %d expected %d", meta.Index, index.Index)
@@ -217,7 +216,7 @@ func TestRaft_Snapshot_Index(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	io.Copy(ioutil.Discard, reader)
+	io.Copy(io.Discard, reader)
 
 	// Make sure the meta data has updated to the new values
 	if meta.Index != 203 {
@@ -495,7 +494,7 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 		}
 	}
 
-	snapFile, cleanup, metadata, err := raft1.WriteSnapshotToTemp(ioutil.NopCloser(recorder.Body), nil)
+	snapFile, cleanup, metadata, err := raft1.WriteSnapshotToTemp(io.NopCloser(recorder.Body), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,13 +532,13 @@ func TestRaft_Snapshot_Take_Restore(t *testing.T) {
 }
 
 func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
-	parent, err := ioutil.TempDir("", "raft")
+	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
 	defer os.RemoveAll(parent)
 
-	dir, err := ioutil.TempDir(parent, "raft")
+	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
@@ -576,13 +575,13 @@ func TestBoltSnapshotStore_CreateSnapshotMissingParentDir(t *testing.T) {
 
 func TestBoltSnapshotStore_Listing(t *testing.T) {
 	// Create a test dir
-	parent, err := ioutil.TempDir("", "raft")
+	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
 	defer os.RemoveAll(parent)
 
-	dir, err := ioutil.TempDir(parent, "raft")
+	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
@@ -641,13 +640,13 @@ func TestBoltSnapshotStore_Listing(t *testing.T) {
 
 func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 	// Create a test dir
-	parent, err := ioutil.TempDir("", "raft")
+	parent, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
 	defer os.RemoveAll(parent)
 
-	dir, err := ioutil.TempDir(parent, "raft")
+	dir, err := os.MkdirTemp(parent, "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
@@ -823,7 +822,7 @@ func TestBoltSnapshotStore_CreateInstallSnapshot(t *testing.T) {
 
 func TestBoltSnapshotStore_CancelSnapshot(t *testing.T) {
 	// Create a test dir
-	dir, err := ioutil.TempDir("", "raft")
+	dir, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
@@ -882,7 +881,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 
 	// Create a temp dir
 	var dir1 string
-	dir1, err = ioutil.TempDir("", "raft")
+	dir1, err = os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -890,7 +889,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 
 	// Create a sub dir and remove all permissions
 	var dir2 string
-	dir2, err = ioutil.TempDir(dir1, "badperm")
+	dir2, err = os.MkdirTemp(dir1, "badperm")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -912,7 +911,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 
 func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 	// Create a test dir
-	dir, err := ioutil.TempDir("", "raft")
+	dir, err := os.MkdirTemp("", "raft")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}

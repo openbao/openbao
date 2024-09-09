@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -75,6 +75,17 @@ func pathListRoles(b *backend) *framework.Path {
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixSSH,
 			OperationSuffix: "roles",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -150,7 +161,7 @@ func pathRoles(b *backend) *framework.Path {
 				Port number for SSH connection. Default is '22'. Port number does not
 				play any role in creation of OTP. For 'otp' type, this is just a way
 				to inform client about the port number to use. Port number will be
-				returned to client by Vault server along with OTP.`,
+				returned to client by OpenBao server along with OTP.`,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Value: 22,
 				},
@@ -701,8 +712,14 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	entries, err := req.Storage.List(ctx, "roles/")
+func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "roles/", after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +805,7 @@ const pathRoleHelpDesc = `
 This path allows you to manage the roles that are used to generate credentials.
 
 Role takes a 'key_type' parameter that decides what type of credential this role
-can generate. If remote hosts have Vault SSH Agent installed, an 'otp' type can
+can generate. If remote hosts have OpenBao SSH Agent installed, an 'otp' type can
 be used, otherwise 'dynamic' type can be used.
 
 If the backend is mounted at "ssh" and the role is created at "ssh/roles/web",

@@ -1,153 +1,59 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
+// This file was completely removed in a prior commit and entirely
+// new contents added to it.
 
 package physical
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/hashicorp/go-multierror"
+	"errors"
 )
 
-// TxnEntry is an operation that takes atomically as part of
-// a transactional update. Only supported by Transactional backends.
-type TxnEntry struct {
-	Operation Operation
-	Entry     *Entry
-}
+var (
+	ErrTransactionReadOnly         error = errors.New("transaction is read-only")
+	ErrTransactionCommitFailure    error = errors.New("transaction commit failed")
+	ErrTransactionAlreadyCommitted error = errors.New("transaction has been committed or rolled back")
+)
 
-func (t *TxnEntry) String() string {
-	return fmt.Sprintf("Operation: %s. Entry: %s", t.Operation, t.Entry)
-}
-
-// Transactional is an optional interface for backends that
-// support doing transactional updates of multiple keys. This is
-// required for some features such as replication.
+// Transactional is an optional interface for backends that support
+// interactive (mixed code & statement) transactions in a similar style
+// as Go's Database paradigm. This differs from the earlier Transactional:
+// that one is a one-shot (list of transactions to execute) transaction
+// interface.
 type Transactional interface {
-	// The function to run a transaction
-	Transaction(context.Context, []*TxnEntry) error
+	// This function allows the creation of a new interactive transaction
+	// handle, only supporting read operations. Attempts to perform write
+	// operations (PUT or DELETE) will result in immediate errors.
+	BeginReadOnlyTx(context.Context) (Transaction, error)
+
+	// This function allows the creation of a new interactive transaction
+	// handle, supporting read/write transactions. In some cases, the
+	// underlying physical storage backend cannot handle parallel read/write
+	// transactions.
+	BeginTx(context.Context) (Transaction, error)
 }
 
+// Transaction is an interactive transactional interface: backend storage
+// operations can be performed, and when finished, Commit or Rollback can
+// be called. When a read-only transaction is created, write calls (Put(...)
+// and Delete(...)) will err out.
+type Transaction interface {
+	Backend
+
+	// Commit a transaction; this is equivalent to Rollback on a read-only
+	// transaction. Either Commit or Rollback must be called to release
+	// resources.
+	Commit(context.Context) error
+
+	// Rollback a transaction, preventing any changes from being persisted.
+	// Either Commit or Rollback must be called to release resources.
+	Rollback(context.Context) error
+}
+
+// TransactionalBackend is implemented if a storage backend implements
+// interactive transactions as well as normal backend operations.
 type TransactionalBackend interface {
 	Backend
 	Transactional
-}
-
-type PseudoTransactional interface {
-	// An internal function should do no locking or permit pool acquisition.
-	// Depending on the backend and if it natively supports transactions, these
-	// may simply chain to the normal backend functions.
-	GetInternal(context.Context, string) (*Entry, error)
-	PutInternal(context.Context, *Entry) error
-	DeleteInternal(context.Context, string) error
-}
-
-// Implements the transaction interface
-func GenericTransactionHandler(ctx context.Context, t PseudoTransactional, txns []*TxnEntry) (retErr error) {
-	rollbackStack := make([]*TxnEntry, 0, len(txns))
-	var dirty bool
-
-	// Update all of our GET transaction entries, so we can populate existing values back at the wal layer.
-	for _, txn := range txns {
-		if txn.Operation == GetOperation {
-			entry, err := t.GetInternal(ctx, txn.Entry.Key)
-			if err != nil {
-				return err
-			}
-			if entry != nil {
-				txn.Entry.Value = entry.Value
-			}
-		}
-	}
-
-	// We walk the transactions in order; each successful operation goes into a
-	// LIFO for rollback if we hit an error along the way
-TxnWalk:
-	for _, txn := range txns {
-		switch txn.Operation {
-		case DeleteOperation:
-			entry, err := t.GetInternal(ctx, txn.Entry.Key)
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-				dirty = true
-				break TxnWalk
-			}
-			if entry == nil {
-				// Nothing to delete or roll back
-				continue
-			}
-			rollbackEntry := &TxnEntry{
-				Operation: PutOperation,
-				Entry: &Entry{
-					Key:   entry.Key,
-					Value: entry.Value,
-				},
-			}
-			err = t.DeleteInternal(ctx, txn.Entry.Key)
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-				dirty = true
-				break TxnWalk
-			}
-			rollbackStack = append([]*TxnEntry{rollbackEntry}, rollbackStack...)
-
-		case PutOperation:
-			entry, err := t.GetInternal(ctx, txn.Entry.Key)
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-				dirty = true
-				break TxnWalk
-			}
-
-			// Nothing existed so in fact rolling back requires a delete
-			var rollbackEntry *TxnEntry
-			if entry == nil {
-				rollbackEntry = &TxnEntry{
-					Operation: DeleteOperation,
-					Entry: &Entry{
-						Key: txn.Entry.Key,
-					},
-				}
-			} else {
-				rollbackEntry = &TxnEntry{
-					Operation: PutOperation,
-					Entry: &Entry{
-						Key:   entry.Key,
-						Value: entry.Value,
-					},
-				}
-			}
-
-			err = t.PutInternal(ctx, txn.Entry)
-			if err != nil {
-				retErr = multierror.Append(retErr, err)
-				dirty = true
-				break TxnWalk
-			}
-			rollbackStack = append([]*TxnEntry{rollbackEntry}, rollbackStack...)
-		}
-	}
-
-	// Need to roll back because we hit an error along the way
-	if dirty {
-		// While traversing this, if we get an error, we continue anyways in
-		// best-effort fashion
-		for _, txn := range rollbackStack {
-			switch txn.Operation {
-			case DeleteOperation:
-				err := t.DeleteInternal(ctx, txn.Entry.Key)
-				if err != nil {
-					retErr = multierror.Append(retErr, err)
-				}
-			case PutOperation:
-				err := t.PutInternal(ctx, txn.Entry)
-				if err != nil {
-					retErr = multierror.Append(retErr, err)
-				}
-			}
-		}
-	}
-
-	return
 }

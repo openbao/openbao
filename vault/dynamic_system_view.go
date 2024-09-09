@@ -11,11 +11,11 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/random"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/license"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/helper/wrapping"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/license"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 )
 
@@ -26,9 +26,8 @@ func (c ctxKeyForwardedRequestMountAccessor) String() string {
 }
 
 type dynamicSystemView struct {
-	core        *Core
-	mountEntry  *MountEntry
-	perfStandby bool
+	core       *Core
+	mountEntry *MountEntry
 }
 
 type extendedSystemView interface {
@@ -52,14 +51,6 @@ func (e extendedSystemViewImpl) Auditor() logical.Auditor {
 }
 
 func (e extendedSystemViewImpl) ForwardGenericRequest(ctx context.Context, req *logical.Request) (*logical.Response, error) {
-	// Forward the request if allowed
-	if couldForward(e.core) {
-		ctx = namespace.ContextWithNamespace(ctx, e.mountEntry.Namespace())
-		ctx = logical.IndexStateContext(ctx, &logical.WALState{})
-		ctx = context.WithValue(ctx, ctxKeyForwardedRequestMountAccessor{}, e.mountEntry.Accessor)
-		return forward(ctx, e.core, req)
-	}
-
 	return nil, logical.ErrReadOnly
 }
 
@@ -141,11 +132,6 @@ func (e extendedSystemViewImpl) APILockShouldBlockRequest() (bool, error) {
 	if mountEntry == nil {
 		return false, fmt.Errorf("no mount entry")
 	}
-	ns := mountEntry.Namespace()
-
-	if err := enterpriseBlockRequestIfError(e.core, ns.Path, mountEntry.Path); err != nil {
-		return true, nil
-	}
 
 	return false, nil
 }
@@ -196,14 +182,11 @@ func (d dynamicSystemView) LocalMount() bool {
 // in read mode.
 func (d dynamicSystemView) ReplicationState() consts.ReplicationState {
 	state := d.core.ReplicationState()
-	if d.perfStandby {
-		state |= consts.ReplicationPerformanceStandby
-	}
 	return state
 }
 
 func (d dynamicSystemView) HasFeature(feature license.Features) bool {
-	return d.core.HasFeature(feature)
+	return false
 }
 
 // ResponseWrapData wraps the given data in a cubbyhole and returns the
@@ -291,9 +274,9 @@ func (d dynamicSystemView) ListVersionedPlugins(ctx context.Context, pluginType 
 	return d.core.pluginCatalog.ListVersionedPlugins(ctx, pluginType)
 }
 
-// MlockEnabled returns the configuration setting for enabling mlock on plugins.
+// OpenBao no longer uses mlock but MlockEnabled is retained for plugin compatibility.
 func (d dynamicSystemView) MlockEnabled() bool {
-	return d.core.enableMlock
+	return false
 }
 
 func (d dynamicSystemView) EntityInfo(entityID string) (*logical.Entity, error) {

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -31,10 +30,10 @@ import (
 	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/pathmanager"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -63,12 +62,6 @@ const (
 	// soft-mandatory Sentinel policies.
 	PolicyOverrideHeaderName = "X-Vault-Policy-Override"
 
-	VaultIndexHeaderName        = "X-Vault-Index"
-	VaultInconsistentHeaderName = "X-Vault-Inconsistent"
-	VaultForwardHeaderName      = "X-Vault-Forward"
-	VaultInconsistentForward    = "forward-active-node"
-	VaultInconsistentFail       = "fail"
-
 	// DefaultMaxRequestSize is the default maximum accepted request size. This
 	// is to prevent a denial of service attack where no Content-Length is
 	// provided and the server is fed ever more data until it exhausts memory.
@@ -80,10 +73,7 @@ var (
 	// Set to false by stub_asset if the ui build tag isn't enabled
 	uiBuiltIn = true
 
-	// perfStandbyAlwaysForwardPaths is used to check a requested path against
-	// the always forward list
-	perfStandbyAlwaysForwardPaths = pathmanager.New()
-	alwaysRedirectPaths           = pathmanager.New()
+	alwaysRedirectPaths = pathmanager.New()
 
 	injectDataIntoTopRoutes = []string{
 		"/v1/sys/audit",
@@ -117,7 +107,6 @@ func init() {
 	alwaysRedirectPaths.AddPaths([]string{
 		"sys/storage/raft/snapshot",
 		"sys/storage/raft/snapshot-force",
-		"!sys/storage/raft/snapshot-auto/config",
 	})
 }
 
@@ -274,15 +263,15 @@ func (w *copyResponseWriter) WriteHeader(code int) {
 func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origBody := new(bytes.Buffer)
-		reader := ioutil.NopCloser(io.TeeReader(r.Body, origBody))
+		reader := io.NopCloser(io.TeeReader(r.Body, origBody))
 		r.Body = reader
-		req, _, status, err := buildLogicalRequestNoAuth(core.PerfStandby(), w, r)
+		req, _, status, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || status != 0 {
 			respondError(w, status, err)
 			return
 		}
 		if origBody != nil {
-			r.Body = ioutil.NopCloser(origBody)
+			r.Body = io.NopCloser(origBody)
 		}
 		input := &logical.LogInput{
 			Request: req,
@@ -487,9 +476,16 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 			// If we didn't find it and aren't configured to reject, simply
 			// don't trust it
 			if !rejectNotAuthz {
+				// We need to delete the X-Forwarded-For header before
+				// passing it along, otherwise downstream systems will not
+				// know whether or not to trust it.
+				r.Header.Del(textproto.CanonicalMIMEHeaderKey("X-Forwarded-For"))
+
+				// Now serve the request, having rejected the header.
 				h.ServeHTTP(w, r)
 				return
 			}
+
 			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
 			return
 		}
@@ -628,14 +624,13 @@ func handleUIStub() http.Handler {
 	<svg width="36px" height="36px" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
 	<path class="alert" d="M476.7 422.2L270.1 72.7c-2.9-5-8.3-8.7-14.1-8.7-5.9 0-11.3 3.7-14.1 8.7L35.3 422.2c-2.8 5-4.8 13-1.9 17.9 2.9 4.9 8.2 7.9 14 7.9h417.1c5.8 0 11.1-3 14-7.9 3-4.9 1-13-1.8-17.9zM288 400h-64v-48h64v48zm0-80h-64V176h64v144z"/>
 	</svg>
-	<h1>Vault UI is not available in this binary.</h1>
+	<h1>OpenBao UI is not available in this binary.</h1>
 	</div>
-	<p>To get Vault UI do one of the following:</p>
+	<p>To get the beta OpenBao UI do the following:</p>
 	<ul>
-	<li><a href="https://www.vaultproject.io/downloads.html">Download an official release</a></li>
-	<li>Run <code>make bin</code> to create your own release binaries.
 	<li>Run <code>make dev-ui</code> to create a development binary with the UI.
 	</ul>
+	<p>Contributions to help improve the <a href="https://openbao.org/">OpenBao</a> UI are welcome!</p>
 	</div>
 	</div>
 	</html>
@@ -692,23 +687,17 @@ func parseQuery(values url.Values) map[string]interface{} {
 	return nil
 }
 
-func parseJSONRequest(perfStandby bool, r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
+func parseJSONRequest(r *http.Request, w http.ResponseWriter, out interface{}) (io.ReadCloser, error) {
 	// Limit the maximum number of bytes to MaxRequestSize to protect
 	// against an indefinite amount of data being read.
 	reader := r.Body
 	var origBody io.ReadWriter
-	if perfStandby {
-		// Since we're checking PerfStandby here we key on origBody being nil
-		// or not later, so we need to always allocate so it's non-nil
-		origBody = new(bytes.Buffer)
-		reader = ioutil.NopCloser(io.TeeReader(reader, origBody))
-	}
 	err := jsonutil.DecodeJSONFromReader(reader, out)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to parse JSON input: %w", err)
 	}
 	if origBody != nil {
-		return ioutil.NopCloser(origBody), err
+		return io.NopCloser(origBody), err
 	}
 	return nil, err
 }
@@ -741,64 +730,10 @@ func parseFormRequest(r *http.Request) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// forwardBasedOnHeaders returns true if the request headers specify that
-// we should forward to the active node - either unconditionally or because
-// a specified state isn't present locally.
-func forwardBasedOnHeaders(core *vault.Core, r *http.Request) (bool, error) {
-	rawForward := r.Header.Get(VaultForwardHeaderName)
-	if rawForward != "" {
-		if !core.AllowForwardingViaHeader() {
-			return false, fmt.Errorf("forwarding via header %s disabled in configuration", VaultForwardHeaderName)
-		}
-		if rawForward == "active-node" {
-			return true, nil
-		}
-		return false, nil
-	}
-
-	rawInconsistent := r.Header.Get(VaultInconsistentHeaderName)
-	if rawInconsistent == "" {
-		return false, nil
-	}
-
-	switch rawInconsistent {
-	case VaultInconsistentForward:
-		if !core.AllowForwardingViaHeader() {
-			return false, fmt.Errorf("forwarding via header %s=%s disabled in configuration",
-				VaultInconsistentHeaderName, VaultInconsistentForward)
-		}
-	default:
-		return false, nil
-	}
-
-	return core.MissingRequiredState(r.Header.Values(VaultIndexHeaderName), core.PerfStandby()), nil
-}
-
 // handleRequestForwarding determines whether to forward a request or not,
 // falling back on the older behavior of redirecting the client
 func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Note if the client requested forwarding
-		shouldForward, err := forwardBasedOnHeaders(core, r)
-		if err != nil {
-			respondError(w, http.StatusBadRequest, err)
-			return
-		}
-
-		// If we are a performance standby we can maybe handle the request.
-		if core.PerfStandby() && !shouldForward {
-			ns, err := namespace.FromContext(r.Context())
-			if err != nil {
-				respondError(w, http.StatusBadRequest, err)
-				return
-			}
-			path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
-			if !perfStandbyAlwaysForwardPaths.HasPath(path) && !alwaysRedirectPaths.HasPath(path) {
-				handler.ServeHTTP(w, r)
-				return
-			}
-		}
-
 		// Note: in an HA setup, this call will also ensure that connections to
 		// the leader are set up, as that happens once the advertised cluster
 		// values are read during this function
@@ -882,12 +817,6 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 // case of an error.
 func request(core *vault.Core, w http.ResponseWriter, rawReq *http.Request, r *logical.Request) (*logical.Response, bool, bool) {
 	resp, err := core.HandleRequest(rawReq.Context(), r)
-	if r.LastRemoteWAL() > 0 && !vault.WaitUntilWALShipped(rawReq.Context(), core, r.LastRemoteWAL()) {
-		if resp == nil {
-			resp = &logical.Response{}
-		}
-		resp.AddWarning("Timeout hit while waiting for local replicated cluster to apply primary's write; this client may encounter stale reads of values written during this operation.")
-	}
 	if errwrap.Contains(err, consts.ErrStandby.Error()) {
 		respondStandby(core, w, rawReq.URL)
 		return resp, false, false

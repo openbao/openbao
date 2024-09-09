@@ -15,7 +15,6 @@ import sinon from 'sinon';
 import Pretender from 'pretender';
 import { create } from 'ember-cli-page-object';
 import authForm from '../../pages/components/auth-form';
-import { validate } from 'uuid';
 
 const component = create(authForm);
 
@@ -45,7 +44,7 @@ module('Integration | Component | auth form', function (hooks) {
     this.router = this.owner.lookup('service:router');
   });
 
-  const CSP_ERR_TEXT = `Error This is a standby Vault node but can't communicate with the active node via request forwarding. Sign in at the active node to use the Vault UI.`;
+  const CSP_ERR_TEXT = `Error This is a standby OpenBao node but can't communicate with the active node via request forwarding. Sign in at the active node to use the OpenBao UI.`;
   test('it renders error on CSP violation', async function (assert) {
     assert.expect(2);
     this.set('cluster', EmberObject.create({ standby: true }));
@@ -57,7 +56,7 @@ module('Integration | Component | auth form', function (hooks) {
     assert.strictEqual(component.errorText, CSP_ERR_TEXT);
   });
 
-  test('it renders with vault style errors', async function (assert) {
+  test('it renders with OpenBao style errors', async function (assert) {
     assert.expect(1);
     const server = new Pretender(function () {
       this.get('/v1/auth/**', () => {
@@ -316,37 +315,6 @@ module('Integration | Component | auth form', function (hooks) {
     await component.oidcRole('foo');
     await component.oidcMoreOptions();
     await component.oidcMountPath('foo-oidc');
-    await component.login();
-
-    server.shutdown();
-  });
-
-  test('it should set nonce value as uuid for okta method type', async function (assert) {
-    assert.expect(1);
-
-    const server = new Pretender(function () {
-      this.post('/v1/auth/okta/login/foo', (req) => {
-        const { nonce } = JSON.parse(req.requestBody);
-        assert.true(validate(nonce), 'Nonce value passed as uuid for okta login');
-        return [
-          200,
-          { 'content-type': 'application/json' },
-          JSON.stringify({
-            auth: {
-              client_token: '12345',
-            },
-          }),
-        ];
-      });
-      this.get('/v1/sys/internal/ui/mounts', this.passthrough);
-    });
-
-    this.set('cluster', EmberObject.create({}));
-    await render(hbs`<AuthForm @cluster={{this.cluster}} />`);
-
-    await component.selectMethod('okta');
-    await component.username('foo');
-    await component.password('bar');
     await component.login();
 
     server.shutdown();

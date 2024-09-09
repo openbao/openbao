@@ -34,6 +34,7 @@ export default Component.extend({
       const display = this.display;
       const mode = this.mode;
       if (mode === 'performance' && display === 'menu' && this.version.hasPerfReplication === false) {
+        // TODO: update when OpenBao has a website
         return 'https://www.hashicorp.com/products/vault';
       }
       if (this.replicationEnabled || display === 'menu') {

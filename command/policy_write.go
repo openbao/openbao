@@ -31,7 +31,7 @@ func (c *PolicyWriteCommand) Synopsis() string {
 
 func (c *PolicyWriteCommand) Help() string {
 	helpText := `
-Usage: vault policy write [options] NAME PATH
+Usage: bao policy write [options] NAME PATH
 
   Uploads a policy with name NAME from the contents of a local file PATH or
   stdin. If PATH is "-", the policy is read from stdin. Otherwise, it is
@@ -39,7 +39,7 @@ Usage: vault policy write [options] NAME PATH
 
   Upload a policy named "my-policy" from "/tmp/policy.hcl" on the local disk:
 
-      $ vault policy write my-policy /tmp/policy.hcl
+      $ bao policy write my-policy /tmp/policy.hcl
 
   Upload a policy from stdin:
 

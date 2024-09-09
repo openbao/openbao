@@ -6,7 +6,7 @@ package pki
 import (
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
 const (
@@ -306,20 +306,6 @@ the private key!`,
 		AllowedValues: []interface{}{"internal", "external", "kms"},
 	}
 
-	fields["managed_key_name"] = &framework.FieldSchema{
-		Type: framework.TypeString,
-		Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_id
-is required. Ignored for other types.`,
-	}
-
-	fields["managed_key_id"] = &framework.FieldSchema{
-		Type: framework.TypeString,
-		Description: `The name of the managed key to use when the exported
-type is kms. When kms type is the key type, this field or managed_key_name
-is required. Ignored for other types.`,
-	}
-
 	fields["key_bits"] = &framework.FieldSchema{
 		Type:    framework.TypeInt,
 		Default: 0,
@@ -479,11 +465,11 @@ operation.`,
 		Type: framework.TypeBool,
 		Description: `Set to true to move the legacy ca_bundle from
 /config/ca_bundle to /config/ca_bundle.bak. This prevents downgrades
-to pre-Vault 1.11 versions (as older PKI engines do not know about
-the new multi-issuer storage layout), but improves the performance
-on seal wrapped PKI mounts. This will only occur if at least
-issuer_safety_buffer time has occurred after the initial storage
-migration.
+to pre-Vault 1.11 versions (before the OpenBao fork -- as older PKI
+engines do not know about the new multi-issuer storage layout), but
+improves the performance on seal wrapped PKI mounts. This will only
+occur if at least issuer_safety_buffer time has occurred after the
+initial storage migration.
 
 This backup is saved in case of an issue in future migrations.
 Operators may consider removing it via sys/raw if they desire.
@@ -547,31 +533,6 @@ greater period of time. By default this is zero seconds.`,
 		Default: "0s",
 	}
 
-	fields["tidy_revocation_queue"] = &framework.FieldSchema{
-		Type: framework.TypeBool,
-		Description: `Set to true to remove stale revocation queue entries
-that haven't been confirmed by any active cluster. Only runs on the
-active primary node`,
-		Default: defaultTidyConfig.RevocationQueue,
-	}
-
-	fields["revocation_queue_safety_buffer"] = &framework.FieldSchema{
-		Type: framework.TypeDurationSecond,
-		Description: `The amount of time that must pass from the
-cross-cluster revocation request being initiated to when it will be
-slated for removal. Setting this too low may remove valid revocation
-requests before the owning cluster has a chance to process them,
-especially if the cluster is offline.`,
-		Default: int(defaultTidyConfig.QueueSafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
-	}
-
-	fields["tidy_cross_cluster_revoked_certs"] = &framework.FieldSchema{
-		Type: framework.TypeBool,
-		Description: `Set to true to enable tidying up
-the cross-cluster revoked certificate store. Only runs on the active
-primary node.`,
-	}
-
 	return fields
 }
 
@@ -593,9 +554,7 @@ basic constraints.`,
 	return fields
 }
 
-// addSignVerbatimRoleFields provides the fields and defaults to be used by anything that is building up the fields
-// and their corresponding default values when generating/using a sign-verbatim type role such as buildSignVerbatimRole.
-func addSignVerbatimRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+func addKeyUsageRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
 	fields["key_usage"] = &framework.FieldSchema{
 		Type:    framework.TypeCommaStringSlice,
 		Default: []string{"DigitalSignature", "KeyAgreement", "KeyEncipherment"},
@@ -622,6 +581,14 @@ this value to an empty list.`,
 		Description: `A comma-separated string or list of extended key usage oids.`,
 	}
 
+	return fields
+}
+
+// addSignVerbatimRoleFields provides the fields and defaults to be used by anything that is building up the fields
+// and their corresponding default values when generating/using a sign-verbatim type role such as buildSignVerbatimRole.
+func addSignVerbatimRoleFields(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fields = addKeyUsageRoleFields(fields)
+
 	fields["signature_bits"] = &framework.FieldSchema{
 		Type:    framework.TypeInt,
 		Default: 0,
@@ -639,6 +606,12 @@ SHA-2-512. Defaults to 0 to automatically detect based on key length
 		Default: false,
 		Description: `Whether or not to use PSS signatures when using a
 RSA key-type issuer. Defaults to false.`,
+	}
+
+	fields["basic_constraints_valid_for_non_ca"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Default:     false,
+		Description: `Mark Basic Constraints valid when issuing non-CA certificates.`,
 	}
 
 	return fields

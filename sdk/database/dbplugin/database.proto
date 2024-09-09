@@ -3,7 +3,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/lf-edge/openbao/sdk/database/dbplugin";
+option go_package = "github.com/openbao/openbao/sdk/v2/database/dbplugin";
 
 package dbplugin;
 
@@ -112,7 +112,7 @@ service Database {
 	rpc Close(Empty) returns (Empty);
 	rpc SetCredentials(SetCredentialsRequest) returns (SetCredentialsResponse);
 	rpc GenerateCredentials(Empty) returns (GenerateCredentialsResponse);
-	
+
 	rpc Initialize(InitializeRequest) returns (Empty) {
 		option deprecated = true;
 	};

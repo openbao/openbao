@@ -28,17 +28,9 @@ type LatencyInjector struct {
 	random        *rand.Rand
 }
 
-// TransactionalLatencyInjector is the transactional version of the latency
-// injector
-type TransactionalLatencyInjector struct {
-	*LatencyInjector
-	Transactional
-}
-
 // Verify LatencyInjector satisfies the correct interfaces
 var (
-	_ Backend       = (*LatencyInjector)(nil)
-	_ Transactional = (*TransactionalLatencyInjector)(nil)
+	_ Backend = (*LatencyInjector)(nil)
 )
 
 // NewLatencyInjector returns a wrapped physical backend to simulate latency
@@ -55,17 +47,6 @@ func NewLatencyInjector(b Backend, latency time.Duration, jitter int, logger log
 		jitterPercent: jitter,
 		randomLock:    new(sync.Mutex),
 		random:        rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
-	}
-}
-
-// NewTransactionalLatencyInjector creates a new transactional LatencyInjector
-// jitter is the random percent that latency will vary between.
-// For example, if you specify latency = 50ms and jitter = 20, then for any
-// given operation, the latency will be 50ms +- 10ms (20% of 50), or between 40 and 60ms.
-func NewTransactionalLatencyInjector(b Backend, latency time.Duration, jitter int, logger log.Logger) *TransactionalLatencyInjector {
-	return &TransactionalLatencyInjector{
-		LatencyInjector: NewLatencyInjector(b, latency, jitter, logger),
-		Transactional:   b.(Transactional),
 	}
 }
 
@@ -112,8 +93,8 @@ func (l *LatencyInjector) List(ctx context.Context, prefix string) ([]string, er
 	return l.backend.List(ctx, prefix)
 }
 
-// Transaction is a latent transaction request
-func (l *TransactionalLatencyInjector) Transaction(ctx context.Context, txns []*TxnEntry) error {
+// ListPage is a latent paginated list request
+func (l *LatencyInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	l.addLatency()
-	return l.Transactional.Transaction(ctx, txns)
+	return l.backend.ListPage(ctx, prefix, after, limit)
 }

@@ -29,13 +29,14 @@ export default class KubernetesRoleModel extends Model {
   @attr('string') backend; // dynamic path of secret -- set on response from value passed to queryRecord
   @attr('string', {
     label: 'Role name',
-    subText: 'The role’s name in Vault.',
+    subText: 'The role’s name in OpenBao.',
   })
   name;
 
   @attr('string', {
     label: 'Service account name',
-    subText: 'Vault will use the default template when generating service accounts, roles and role bindings.',
+    subText:
+      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
   })
   serviceAccountName;
 
@@ -48,13 +49,15 @@ export default class KubernetesRoleModel extends Model {
 
   @attr('string', {
     label: 'Kubernetes role name',
-    subText: 'Vault will use the default template when generating service accounts, roles and role bindings.',
+    subText:
+      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
   })
   kubernetesRoleName;
 
   @attr('string', {
     label: 'Service account name',
-    subText: 'Vault will use the default template when generating service accounts, roles and role bindings.',
+    subText:
+      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
   })
   serviceAccountName;
 
@@ -81,8 +84,9 @@ export default class KubernetesRoleModel extends Model {
     label: 'Name template',
     editType: 'optionalText',
     defaultSubText:
-      'Vault will use the default template when generating service accounts, roles and role bindings.',
-    subText: 'Vault will use the default template when generating service accounts, roles and role bindings.',
+      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
+    subText:
+      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
   })
   nameTemplate;
 

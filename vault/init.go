@@ -18,7 +18,7 @@ import (
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/shamir"
+	"github.com/openbao/openbao/sdk/v2/helper/shamir"
 )
 
 // InitParams keeps the init function from being littered with too many
@@ -40,11 +40,7 @@ type InitResult struct {
 	RootToken      string
 }
 
-var (
-	initPTFunc                = func(c *Core) func() { return nil }
-	initInProgress            uint32
-	ErrInitWithoutAutoloading = errors.New("cannot initialize storage without an autoloaded license")
-)
+var initInProgress uint32
 
 func (c *Core) InitializeRecovery(ctx context.Context) error {
 	if !c.recoveryMode {
@@ -162,10 +158,6 @@ func (c *Core) generateShares(sc *SealConfig) ([]byte, [][]byte, error) {
 // Initialize is used to initialize the Vault with the given
 // configurations.
 func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitResult, error) {
-	if err := LicenseInitCheck(c); err != nil {
-		return nil, err
-	}
-
 	atomic.StoreUint32(&initInProgress, 1)
 	defer atomic.StoreUint32(&initInProgress, 0)
 	barrierConfig := initParams.BarrierConfig
@@ -265,11 +257,6 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	initPTCleanup := initPTFunc(c)
-	if initPTCleanup != nil {
-		defer initPTCleanup()
-	}
-
 	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)
@@ -356,11 +343,6 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 	if err := c.setupCluster(ctx); err != nil {
 		c.logger.Error("cluster setup failed during init", "error", err)
 		return nil, err
-	}
-
-	// Start tracking
-	if initPTCleanup != nil {
-		initPTCleanup()
 	}
 
 	activeCtx, ctxCancel := context.WithCancel(namespace.RootContext(nil))

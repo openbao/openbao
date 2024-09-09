@@ -1,14 +1,16 @@
 ---
-layout: docs
-page_title: OIDC Provider Setup - Auth Methods - Azure Active Directory
 description: OIDC provider configuration for Azure Active Directory
 ---
 
 ## Azure active directory (AAD)
 
-~> **Note:** Azure Active Directory Applications that have custom signing keys as a result of using
+:::warning
+
+**Note:** Azure Active Directory Applications that have custom signing keys as a result of using
 the [claims-mapping](https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-claims-mapping)
 feature are currently not supported for OIDC authentication.
+
+:::
 
 Reference: [Azure Active Directory v2.0 and the OpenID Connect protocol](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc)
 
@@ -36,12 +38,10 @@ Reference: [Azure Active Directory v2.0 and the OpenID Connect protocol](https:/
 
 ### Connect AD group with OpenBao external group
 
-Reference: [Azure Active Directory with OIDC Auth Method and External Groups](/vault/tutorials/auth-methods/oidc-auth-azure)
-
-To connect the AD group with a [OpenBao external groups](/vault/docs/secrets/identity#external-vs-internal-groups),
+To connect the AD group with a [OpenBao external groups](/docs/secrets/identity#external-vs-internal-groups),
 you will need
 [Azure AD v2.0 endpoints](https://docs.microsoft.com/en-gb/azure/active-directory/develop/azure-ad-endpoint-comparison).
-You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the Azure AD group to use.
+You should set up a [OpenBao policy](/docs/concepts/policies) for the Azure AD group to use.
 
 1. Go to **Azure Active Directory** and choose your OpenBao application.
 
@@ -61,7 +61,7 @@ You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the
       oidc_discovery_url="https://login.microsoftonline.com/tenant_id/v2.0"
    ```
 
-1. Configure the [OIDC Role](/vault/api-docs/auth/jwt#create-role) with the following:
+1. Configure the [OIDC Role](/api-docs/auth/jwt#create-role) with the following:
 
    - `user_claim` should be `"sub"` or `"oid"` following the
    [recommendation](https://docs.microsoft.com/en-us/azure/active-directory/develop/id-tokens#using-claims-to-reliably-identify-a-user-subject-and-object-id)
@@ -79,16 +79,16 @@ You should set up a [OpenBao policy](/vault/tutorials/policies/policies) for the
       policies=default
    ```
 
-1. In OpenBao, create the [external group](/vault/api-docs/secret/identity/group).
+1. In OpenBao, create the [external group](/api-docs/secret/identity/group).
    Record the group ID as you will need it for the group alias.
 
-1. From OpenBao, retrieve the [OIDC accessor ID](/vault/api-docs/system/auth#list-auth-methods)
+1. From OpenBao, retrieve the [OIDC accessor ID](/api-docs/system/auth#list-auth-methods)
    from the OIDC auth method as you will need it for the group alias's `mount_accessor`.
 
 1. Go to the Azure AD Group you want to attach to OpenBao's external group. Record the `objectId`
    as you will need it as the group alias name in OpenBao.
 
-1. In OpenBao, create a [group alias](/vault/api-docs/secret/identity/group-alias)
+1. In OpenBao, create a [group alias](/api-docs/secret/identity/group-alias)
    for the external group and set the `objectId` as the group alias name.
    ```shell
    bao write identity/group-alias \

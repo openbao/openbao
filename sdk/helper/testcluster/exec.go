@@ -16,9 +16,9 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 type ExecDevCluster struct {
@@ -62,9 +62,6 @@ func NewTestExecDevCluster(t *testing.T, opts *ExecDevClusterOptions) *ExecDevCl
 	}
 	if opts.Logger == nil {
 		opts.Logger = logging.NewVaultLogger(log.Trace).Named(t.Name()) // .Named("container")
-	}
-	if opts.VaultLicense == "" {
-		opts.VaultLicense = os.Getenv(EnvVaultLicenseCI)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -153,8 +150,7 @@ func (dc *ExecDevCluster) setupExecDevCluster(ctx context.Context, opts *ExecDev
 	}
 	cmd := exec.CommandContext(execCtx, bin, args...)
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "VAULT_LICENSE="+opts.VaultLicense)
-	cmd.Env = append(cmd.Env, "VAULT_LOG_FORMAT=json")
+	cmd.Env = append(cmd.Env, "BAO_LOG_FORMAT=json")
 	cmd.Env = append(cmd.Env, "VAULT_DEV_TEMP_DIR="+dc.tmpDir)
 	if opts.Logger != nil {
 		stdout, err := cmd.StdoutPipe()

@@ -426,9 +426,9 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
   test('version 1: key named keys', async function (assert) {
     assert.expect(2);
     await consoleComponent.runCommands([
-      'vault write sys/mounts/test type=kv',
+      'bao write sys/mounts/test type=kv',
       'refresh',
-      'vault write test/a keys=a keys=b',
+      'bao write test/a keys=a keys=b',
     ]);
     await showPage.visit({ backend: 'test', id: 'a' });
     assert.ok(showPage.editIsPresent, 'renders the page properly');
@@ -438,7 +438,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
   test('it redirects to the path ending in / for list pages', async function (assert) {
     assert.expect(3);
     const secretPath = `foo/bar/kv-list-${this.uid}`;
-    await consoleComponent.runCommands(['vault write sys/mounts/secret type=kv']);
+    await consoleComponent.runCommands(['bao write sys/mounts/secret type=kv']);
     await listPage.visitRoot({ backend: 'secret' });
     await listPage.create();
     await editPage.createSecret(secretPath, 'foo', 'bar');
@@ -454,7 +454,7 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     assert.expect(4);
     const content = JSON.stringify({ foo: 'fa', bar: 'boo' });
     const secretPath = `kv-json-${this.uid}`;
-    await consoleComponent.runCommands(['vault write sys/mounts/secret type=kv']);
+    await consoleComponent.runCommands(['bao write sys/mounts/secret type=kv']);
     await listPage.visitRoot({ backend: 'secret' });
     await listPage.create();
     await editPage.path(secretPath).toggleJSON();
@@ -610,11 +610,11 @@ module('Acceptance | secrets/secret/create, read, delete', function (hooks) {
     assert.expect(5);
     const backend = 'test';
     await consoleComponent.runCommands([
-      'vault write sys/mounts/test type=kv',
+      'bao write sys/mounts/test type=kv',
       'refresh',
-      'vault write test/filter/foo keys=a keys=b',
-      'vault write test/filter/foo1 keys=a keys=b',
-      'vault write test/filter/foo2 keys=a keys=b',
+      'bao write test/filter/foo keys=a keys=b',
+      'bao write test/filter/foo1 keys=a keys=b',
+      'bao write test/filter/foo2 keys=a keys=b',
     ]);
     await listPage.visit({ backend, id: 'filter' });
     assert.strictEqual(listPage.secrets.length, 3, 'renders three secrets');

@@ -7,8 +7,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
 
 // InmemStorage implements Storage and stores all data in memory. It is
@@ -59,8 +59,19 @@ func (s *InmemStorage) List(ctx context.Context, prefix string) ([]string, error
 	return s.underlying.List(ctx, prefix)
 }
 
+func (s *InmemStorage) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	s.once.Do(s.init)
+
+	return s.underlying.ListPage(ctx, prefix, after, limit)
+}
+
 func (s *InmemStorage) Underlying() *inmem.InmemBackend {
 	s.once.Do(s.init)
+
+	ts, ok := s.underlying.(*inmem.TransactionalInmemBackend)
+	if ok {
+		return &ts.InmemBackend
+	}
 
 	return s.underlying.(*inmem.InmemBackend)
 }

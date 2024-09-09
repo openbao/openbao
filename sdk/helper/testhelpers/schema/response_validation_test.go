@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
+	"github.com/openbao/openbao/sdk/v2/framework"
 )
 
 func TestValidateResponse(t *testing.T) {

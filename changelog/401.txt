@@ -1,0 +1,3 @@
+```release-note:bug
+version: Set Bao binary version info using Goreleaser
+```

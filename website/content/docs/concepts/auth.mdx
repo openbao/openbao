@@ -1,23 +1,23 @@
 ---
-layout: docs
-page_title: Authentication
 description: >-
   Before performing any operation with OpenBao, the connecting client must be
   authenticated.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Authentication
 
 Authentication in OpenBao is the process by which user or machine supplied
 information is verified against an internal or external system. OpenBao supports
-multiple [auth methods](/vault/docs/auth) including GitHub,
+multiple [auth methods](/docs/auth) including GitHub,
 LDAP, AppRole, and more. Each auth method has a specific use case.
 
 Before a client can interact with OpenBao, it must _authenticate_ against an
 auth method. Upon authentication, a token is generated. This token is
 conceptually similar to a session ID on a website. The token may have attached
 policy, which is mapped at authentication time. This process is described in
-detail in the [policies concepts](/vault/docs/concepts/policies) documentation.
+detail in the [policies concepts](/docs/concepts/policies) documentation.
 
 ## auth methods
 
@@ -48,7 +48,7 @@ access, although some backends do support MFA.
 
 ## Tokens
 
-There is an [entire page dedicated to tokens](/vault/docs/concepts/tokens),
+There is an [entire page dedicated to tokens](/docs/concepts/tokens),
 but it is important to understand that authentication works by verifying
 your identity and then generating a token to associate with that identity.
 
@@ -60,7 +60,7 @@ the API you'll have to do this manually.
 This token given for authentication with any backend can also be used
 with the full set of token commands, such as creating new sub-tokens,
 revoking tokens, and renewing tokens. This is all covered on the
-[token concepts page](/vault/docs/concepts/tokens).
+[token concepts page](/docs/concepts/tokens).
 
 ## Authenticating
 
@@ -99,7 +99,7 @@ be used.
 ## Auth leases
 
 Just like secrets, identities have
-[leases](/vault/docs/concepts/lease) associated with them. This means that
+[leases](/docs/concepts/lease) associated with them. This means that
 you must reauthenticate after the given lease period to continue accessing
 OpenBao.
 
@@ -115,11 +115,10 @@ leased token associated with your identity to renew it.
 
 The following code snippet demonstrates how to renew auth tokens.
 
-<CodeTabs heading="token renewal example">
+<Tabs>
+<TabItem value="Go" heading="Go">
 
-<CodeBlockConfig lineNumbers>
-
-```go
+```go showLineNumbers
 package main
 
 import (
@@ -127,8 +126,8 @@ import (
 	"fmt"
 	"log"
 
-	openbao "github.com/lf-edge/openbao/api"
-	auth "github.com/lf-edge/openbao/api/auth/userpass"
+	openbao "github.com/openbao/openbao/api"
+	auth "github.com/openbao/openbao/api/auth/userpass"
 )
 
 // Once you've set the token for your OpenBao client, you will need to
@@ -216,6 +215,6 @@ func login(client *openbao.Client) (*openbao.Secret, error) {
 }
 ```
 
-</CodeBlockConfig>
 
-</CodeTabs>
+</TabItem>
+</Tabs>

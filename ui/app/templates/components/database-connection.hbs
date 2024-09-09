@@ -221,7 +221,7 @@
                               {{if
                                 this.showPasswordField
                                 "The new password that will be used when connecting to the database"
-                                "Vault will use the existing password"
+                                "OpenBao will use the existing password"
                               }}
                             </span>
                           </div>
@@ -337,7 +337,7 @@
           @alwaysRender={{not (is-empty-value (get @model attr.name) hasDefault=defaultDisplay)}}
           @defaultShown={{defaultDisplay}}
           @label={{capitalize (or attr.options.label (humanize (dasherize attr.name)))}}
-          @value={{if (eq attr.name "connection_url") (decode-uri (get @model attr.name)) (get @model attr.name)}}
+          @value={{get @model attr.name}}
         />
       {{/if}}
     {{/let}}
@@ -355,7 +355,7 @@
     <p class="has-bottom-margin-s">
       It’s best practice to rotate the root credential immediately after the initial configuration of each database. Once
       rotated,
-      <strong>only Vault knows the new root password</strong>.
+      <strong>only OpenBao knows the new root password</strong>.
     </p>
     <p>Would you like to rotate your new credentials? You can also do this later.</p>
   </section>

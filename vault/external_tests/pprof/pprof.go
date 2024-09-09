@@ -6,13 +6,13 @@ package pprof
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/http2"
 )
@@ -87,7 +87,7 @@ func SysPprof_Test(t *testing.T, cluster testcluster.VaultCluster) {
 		}
 		defer resp.Body.Close()
 
-		httpRespBody, err := ioutil.ReadAll(resp.Body)
+		httpRespBody, err := io.ReadAll(resp.Body)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -124,7 +124,7 @@ func SysPprof_Standby_Test(t *testing.T, cluster testcluster.VaultCluster) {
 		}
 		defer resp.Body.Close()
 
-		data, err := ioutil.ReadAll(resp.Body)
+		data, err := io.ReadAll(resp.Body)
 		return string(data), err
 	}
 

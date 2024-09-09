@@ -4,14 +4,14 @@
 package command
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 func testAuthEnableCommand(tb testing.TB) (*cli.MockUi, *AuthEnableCommand) {
@@ -173,7 +173,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 		client, closer := testVaultServerAllBackends(t)
 		defer closer()
 
-		files, err := ioutil.ReadDir("../builtin/credential")
+		files, err := os.ReadDir("../builtin/credential")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -185,7 +185,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 			}
 		}
 
-		modFile, err := ioutil.ReadFile("../go.mod")
+		modFile, err := os.ReadFile("../go.mod")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,22 +195,17 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 			if len(splitLine) == 0 {
 				continue
 			}
-			potPlug := strings.TrimPrefix(splitLine[0], "github.com/hashicorp/")
+			potPlug := strings.TrimPrefix(splitLine[0], "github.com/openbao/")
 			if strings.HasPrefix(potPlug, "vault-plugin-auth-") {
 				backends = append(backends, strings.TrimPrefix(potPlug, "vault-plugin-auth-"))
 			}
 		}
-		// Since "pcf" plugin in the Vault registry is also pointed at the "vault-plugin-auth-cf"
-		// repository, we need to manually append it here so it'll tie out with our expected number
-		// of credential backends.
-		backends = append(backends, "pcf")
-
 		// Add 1 to account for the "token" backend, which is visible when you walk the filesystem but
 		// is treated as special and excluded from the registry.
 		// Subtract 1 to account for "oidc" which is an alias of "jwt" and not a separate plugin.
-		expected := len(builtinplugins.Registry.Keys(consts.PluginTypeCredential))
-		if len(backends) != expected {
-			t.Fatalf("expected %d credential backends, got %d", expected, len(backends))
+		expected := builtinplugins.Registry.Keys(consts.PluginTypeCredential)
+		if len(backends) != len(expected) {
+			t.Fatalf("expected %d credential backends, got %d\n\texpected: %#v\n\tbackends: %#v", len(expected), len(backends), expected, backends)
 		}
 
 		for _, b := range backends {

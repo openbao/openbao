@@ -7,13 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/vault"
@@ -140,7 +140,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err := ioutil.ReadAll(respo.Response.Body)
+	bodyBytes, err := io.ReadAll(respo.Response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +184,7 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	bodyBytes, err = ioutil.ReadAll(respo.Response.Body)
+	bodyBytes, err = io.ReadAll(respo.Response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}

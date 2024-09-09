@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -22,18 +21,17 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cacheboltdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/helper/namespace"
 	nshelper "github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/useragent"
-	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/cryptoutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/cryptoutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	gocache "github.com/patrickmn/go-cache"
 	"go.uber.org/atomic"
 )
@@ -420,7 +418,7 @@ func (c *LeaseCache) Send(ctx context.Context, req *SendRequest) (*SendResponse,
 	if resp.Response.Body != nil {
 		resp.Response.Body.Close()
 	}
-	resp.Response.Body = ioutil.NopCloser(bytes.NewReader(resp.ResponseBody))
+	resp.Response.Body = io.NopCloser(bytes.NewReader(resp.ResponseBody))
 
 	// Set the index's Response
 	index.Response = respBytes.Bytes()
@@ -566,16 +564,14 @@ func computeIndexID(req *SendRequest) (string, error) {
 	var b bytes.Buffer
 
 	cloned := req.Request.Clone(context.Background())
-	cloned.Header.Del(vaulthttp.VaultIndexHeaderName)
-	cloned.Header.Del(vaulthttp.VaultForwardHeaderName)
-	cloned.Header.Del(vaulthttp.VaultInconsistentHeaderName)
+
 	// Serialize the request
 	if err := cloned.Write(&b); err != nil {
 		return "", fmt.Errorf("failed to serialize request: %v", err)
 	}
 
 	// Reset the request body after it has been closed by Write
-	req.Request.Body = ioutil.NopCloser(bytes.NewReader(req.RequestBody))
+	req.Request.Body = io.NopCloser(bytes.NewReader(req.RequestBody))
 
 	// Append req.Token into the byte slice. This is needed since auto-auth'ed
 	// requests sets the token directly into SendRequest.Token

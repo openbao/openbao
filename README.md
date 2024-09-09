@@ -7,12 +7,12 @@
 ----
 
 <!-- -	Website: https://www.openbao.org -->
--	Announcement list: [Mailing List](https://lists.lfedge.org/g/openbao)
--	Discussion forum: [GitHub Discussions](https://github.com/openbao/openbao/discussions)
-<!-- - Documentation: [https://www.vaultproject.io/docs/](https://www.vaultproject.io/docs/) -->
+- [Mailing List](https://lists.lfedge.org/g/openbao)
+- [GitHub Discussions](https://github.com/openbao/openbao/discussions)
+- [Chat Server](https://chat.lfx.linuxfoundation.org/) -- look for `openbao-` prefixed rooms.
 
 <p align="center">
-  <img width="300" alt="OpenBao Mascot" src="bao.svg">
+  <img width="300" alt="OpenBao Mascot" src="https://raw.githubusercontent.com/openbao/artwork/main/color/openbao-color.svg">
 </p>
 
 **OpenBao exists to provide a software solution to manage, store, and distribute sensitive data including secrets, certificates, and keys. The OpenBao community intends to provide this software under an OSI-approved open-source license, led by a community run under open governance principles.**
@@ -109,19 +109,19 @@ $ make test TEST=./vault
 ...
 ```
 
-### Importing Vault
+### Importing OpenBao
 
 This repository publishes two libraries that may be imported by other projects:
 `github.com/openbao/openbao/api` and `github.com/openbao/openbao/sdk`.
 
-Note that this repository also contains Vault (the product), and as with most Go
-projects, Vault uses Go modules to manage its dependencies. The mechanism to do
+Note that this repository also contains OpenBao (the product), and as with most Go
+projects, OpenBao uses Go modules to manage its dependencies. The mechanism to do
 that is the [go.mod](./go.mod) file. As it happens, the presence of that file
-also makes it theoretically possible to import Vault as a dependency into other
+also makes it theoretically possible to import OpenBao as a dependency into other
 projects. Some other projects have made a practice of doing so in order to take
-advantage of testing tooling that was developed for testing Vault itself. This
-is not, and has never been, a supported way to use the Vault project. We aren't 
-likely to fix bugs relating to failure to import `github.com/hashicorp/vault` 
+advantage of testing tooling that was developed for testing OpenBao itself. This
+is not, and has never been, a supported way to use the OpenBao project. We aren't
+likely to fix bugs relating to failure to import `github.com/openbao/openbao`
 into your project.
 
 See also the section "Docker-based tests" below.
@@ -158,9 +158,6 @@ Acceptance tests typically require other environment variables to be set for
 things such as access keys. The test itself should error early and tell
 you what to set, so it is not documented here.
 
-<!--
-TODO: verify this works in OpenBao
-
 ### Docker-based Tests
 
 We have created an experimental new testing mechanism inspired by NewTestCluster.
@@ -179,7 +176,7 @@ func Test_Something_With_Docker(t *testing.T) {
   }
   cluster := docker.NewTestDockerCluster(t, opts)
   defer cluster.Cleanup()
-  
+
   client := cluster.Nodes()[0].APIClient()
   _, err := client.Logical().Read("sys/storage/raft/configuration")
   if err != nil {
@@ -188,31 +185,12 @@ func Test_Something_With_Docker(t *testing.T) {
 }
 ```
 
-Or for Enterprise:
+Here is a more realistic example of how we use it in practice.  `DefaultOptions` uses
+`hashicorp/vault:latest` as the repo and tag, but it also looks at the environment
+variable `BAO_BINARY`. If populated, it will copy the local file referenced by
+`BAO_BINARY` into the container. This is useful when testing local changes.
 
-```go
-import (
-  "testing"
-  "github.com/openbao/openbao/sdk/helper/testcluster/docker"
-)
-
-func Test_Something_With_Docker(t *testing.T) {
-  opts := &docker.DockerClusterOptions{
-    ImageRepo: "hashicorp/vault-enterprise",
-    ImageTag:  "latest",
-	VaultLicense: licenseString, // not a path, the actual license bytes
-  }
-  cluster := docker.NewTestDockerCluster(t, opts)
-  defer cluster.Cleanup()
-}
-```
-
-Here is a more realistic example of how we use it in practice.  DefaultOptions uses 
-`openbao/openbao`:`latest` as the repo and tag, but it also looks at the environment
-variable OPENBAO_BINARY. If populated, it will copy the local file referenced by
-OPENBAO_BINARY into the container. This is useful when testing local changes.
-
-Optionally you can set COMMIT_SHA, which will be appended to the image name we
+Optionally you can set `COMMIT_SHA`, which will be appended to the image name we
 build as a debugging convenience.
 
 ```go
@@ -223,53 +201,10 @@ func Test_Custom_Build_With_Docker(t *testing.T) {
 }
 ```
 
-There are a variety of helpers in the `github.com/openbao/openbao/sdk/helper/testcluster`
-package, e.g. these tests below will create a pair of 3-node clusters and link them using
-PR or DR replication respectively, and fail if the replication state doesn't become healthy
-before the passed context expires.
-
-Again, as written, these depend on having a Vault Enterprise binary locally and the env
-var VAULT_BINARY set to point to it, as well as having VAULT_LICENSE_CI set.
-
-```go
-func TestStandardPerfReplication_Docker(t *testing.T) {
-  opts := docker.DefaultOptions(t)
-  r, err := docker.NewReplicationSetDocker(t, opts)
-  if err != nil {
-      t.Fatal(err)
-  }
-  defer r.Cleanup()
-
-  ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-  defer cancel()
-  err = r.StandardPerfReplication(ctx)
-  if err != nil {
-    t.Fatal(err)
-  }
-}
-
-func TestStandardDRReplication_Docker(t *testing.T) {
-  opts := docker.DefaultOptions(t)
-  r, err := docker.NewReplicationSetDocker(t, opts)
-  if err != nil {
-    t.Fatal(err)
-  }
-  defer r.Cleanup()
-
-  ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-  defer cancel()
-  err = r.StandardDRReplication(ctx)
-  if err != nil {
-    t.Fatal(err)
-  }
-}
-```
-
 Finally, here's an example of running an existing OSS docker test with a custom binary:
 
 ```bash
 $ GOOS=linux make dev
-$ VAULT_BINARY=$(pwd)/bin/vault go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
+$ VAULT_BINARY=$(pwd)/bin/bao go test -run 'TestRaft_Configuration_Docker' ./vault/external_tests/raft/raft_binary
 ok      github.com/openbao/openbao/vault/external_tests/raft/raft_binary        20.960s
 ```
--->

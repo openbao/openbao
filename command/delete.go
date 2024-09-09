@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -30,22 +31,22 @@ func (c *DeleteCommand) Synopsis() string {
 
 func (c *DeleteCommand) Help() string {
 	helpText := `
-Usage: vault delete [options] PATH
+Usage: bao delete [options] PATH
 
   Deletes secrets and configuration from Vault at the given path. The behavior
   of "delete" is delegated to the backend corresponding to the given path.
 
   Remove data in the status secret backend:
 
-      $ vault delete secret/my-secret
+      $ bao delete secret/my-secret
 
   Uninstall an encryption key in the transit backend:
 
-      $ vault delete transit/keys/my-key
+      $ bao delete transit/keys/my-key
 
   Delete an IAM role:
 
-      $ vault delete aws/roles/ops
+      $ bao delete aws/roles/ops
 
   For a full list of examples and paths, please see the documentation that
   corresponds to the secret backend in use.
@@ -92,6 +93,9 @@ func (c *DeleteCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	path := sanitizePath(args[0])

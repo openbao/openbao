@@ -12,11 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/testhelpers/schema"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/testhelpers/schema"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -1446,17 +1445,6 @@ func TestCRLIssuerRemoval(t *testing.T) {
 	ctx := context.Background()
 	b, s := CreateBackendWithStorage(t)
 
-	if constants.IsEnterprise {
-		// We don't really care about the whole cross cluster replication
-		// stuff, but we do want to enable unified CRLs if we can, so that
-		// unified CRLs get built.
-		_, err := CBWrite(b, s, "config/crl", map[string]interface{}{
-			"cross_cluster_revocation": true,
-			"auto_rebuild":             true,
-		})
-		require.NoError(t, err, "failed enabling unified CRLs on enterprise")
-	}
-
 	// Create a single root, configure delta CRLs, and rotate CRLs to prep a
 	// starting state.
 	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
@@ -1478,11 +1466,6 @@ func TestCRLIssuerRemoval(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, crlList, "config")
 	require.Greater(t, len(crlList), 1)
-
-	unifiedCRLList, err := s.List(ctx, "unified-crls/")
-	require.NoError(t, err)
-	require.Contains(t, unifiedCRLList, "config")
-	require.Greater(t, len(unifiedCRLList), 1)
 
 	// Now, create a bunch of issuers, generate CRLs, and remove them.
 	var keyIDs []string
@@ -1518,11 +1501,4 @@ func TestCRLIssuerRemoval(t *testing.T) {
 		require.Contains(t, afterCRLList, entry)
 	}
 	require.Equal(t, len(afterCRLList), len(crlList))
-
-	afterUnifiedCRLList, err := s.List(ctx, "unified-crls/")
-	require.NoError(t, err)
-	for _, entry := range unifiedCRLList {
-		require.Contains(t, afterUnifiedCRLList, entry)
-	}
-	require.Equal(t, len(afterUnifiedCRLList), len(unifiedCRLList))
 }

@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: audit list - Command
+sidebar_label: list
 description: |-
   The "audit list" command lists the audit devices enabled. The output lists the
   enabled audit devices and options for those devices.
@@ -34,13 +33,13 @@ file/    file    n/a            replicated     file_path=/var/log/audit.log
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 ### Command options
 

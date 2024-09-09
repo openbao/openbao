@@ -10,14 +10,18 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/openbao/openbao/helper/constants"
+	"github.com/openbao/openbao/api/v2"
+	vaulthttp "github.com/openbao/openbao/http"
+	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 
 	"golang.org/x/crypto/ed25519"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // The outcome of processing a request includes
@@ -32,13 +36,17 @@ type signOutcome struct {
 }
 
 func TestTransit_SignVerify_ECDSA(t *testing.T) {
+	t.Parallel()
 	t.Run("256", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_ECDSA(t, 256)
 	})
 	t.Run("384", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_ECDSA(t, 384)
 	})
 	t.Run("521", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_ECDSA(t, 521)
 	})
 }
@@ -371,6 +379,7 @@ func validatePublicKey(t *testing.T, in string, sig string, pubKeyRaw []byte, ex
 }
 
 func TestTransit_SignVerify_ED25519(t *testing.T) {
+	t.Parallel()
 	b, storage := createBackendWithSysView(t)
 
 	// First create a key
@@ -715,13 +724,17 @@ func TestTransit_SignVerify_ED25519(t *testing.T) {
 }
 
 func TestTransit_SignVerify_RSA_PSS(t *testing.T) {
+	t.Parallel()
 	t.Run("2048", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_RSA_PSS(t, 2048)
 	})
 	t.Run("3072", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_RSA_PSS(t, 3072)
 	})
 	t.Run("4096", func(t *testing.T) {
+		t.Parallel()
 		testTransit_SignVerify_RSA_PSS(t, 4096)
 	})
 }
@@ -969,13 +982,98 @@ func testTransit_SignVerify_RSA_PSS(t *testing.T, bits int) {
 			t.Log("\t", "Marshaling type:", marshalingName)
 			testName := fmt.Sprintf("%s-%s", hashAlgorithm, marshalingName)
 			t.Run(testName, func(t *testing.T) {
-				if constants.IsFIPS() && strings.HasPrefix(hashAlgorithm, "sha3-") {
-					t.Skip("\t", "Skipping hashing algo on fips:", hashAlgorithm)
-				}
-
 				testCombinatorics(t, hashAlgorithm, marshalingName)
 				testAutoSignAndVerify(t, hashAlgorithm, marshalingName)
 			})
 		}
 	}
+}
+
+func TestTransit_NoDeadlock_SignVerify(t *testing.T) {
+	t.Parallel()
+
+	t.Run("rsa-2048/cached", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-2048", false)
+	})
+	t.Run("rsa-3072/cached", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-3072", false)
+	})
+	t.Run("rsa-4096/cached", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-4096", false)
+	})
+
+	t.Run("rsa-2048/direct", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-2048", true)
+	})
+	t.Run("rsa-3072/direct", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-3072", true)
+	})
+	t.Run("rsa-4096/direct", func(t *testing.T) {
+		t.Parallel()
+		testTransit_NoDeadlock_SignVerify(t, "rsa-4096", true)
+	})
+}
+
+func testTransit_NoDeadlock_SignVerify(t *testing.T, keyType string, cachingDisabled bool) {
+	// This test detects a deadlock caused by certain code paths not releasing
+	// the implicit read lock that is fetched; when a subsequent write lock
+	// is attempted, it will stall indefinitely, causing future reads and writes
+	// to also fail.
+	coreConfig := &vault.CoreConfig{
+		DisableCache: cachingDisabled,
+		LogicalBackends: map[string]logical.Factory{
+			"transit": Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+	core := cores[0]
+
+	core.StopAutomaticRollbacks()
+
+	vault.TestWaitActive(t, core.Core)
+	client := core.Client
+	err := client.Sys().Mount("transit", &api.MountInput{
+		Type: "transit",
+	})
+	require.NoError(t, err)
+
+	_, err = client.Logical().Write("transit/keys/broken_transit_key", map[string]interface{}{
+		"type": keyType,
+	})
+	require.NoError(t, err)
+
+	// This error case triggered a leaked read lock.
+	_, err = client.Logical().Write("transit/sign/broken_transit_key", map[string]interface{}{
+		"input":          "aGVsbG8gd29ybGQuCg==",
+		"prehashed":      "false",
+		"hash_algorithm": "none",
+	})
+	require.Error(t, err, "hash_algorithm=none requires both prehashed=true and signature_algorithm=pkcs1v15")
+
+	// The tidy operation aggressively grabs a write lock over the keys
+	// to see if auto-rotation needs to occur. By triggering this manually,
+	// we avoid needing to wait for it to occur to detect if it causes a
+	// deadlock due to leaking read locks.
+	core.TriggerRollbacks()
+	time.Sleep(2 * time.Second)
+
+	// If we've leaked a read lock, the above write lock grab will not block,
+	// causing future read locks calls to also block until the write lock is
+	// able to succeed. Setting a timeout should let us return and fail the
+	// test (as the context should be cancelled).
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
+	_, err = client.Logical().ReadWithContext(ctx, "transit/keys/broken_transit_key")
+	require.NoError(t, err)
 }

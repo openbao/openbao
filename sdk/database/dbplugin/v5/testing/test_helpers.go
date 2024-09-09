@@ -5,16 +5,16 @@ package dbtesting
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/database/dbplugin/v5"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 )
 
 func getRequestTimeout(t *testing.T) time.Duration {
-	rawDur := os.Getenv("VAULT_TEST_DATABASE_REQUEST_TIMEOUT")
+	rawDur := api.ReadBaoVariable("BAO_TEST_DATABASE_REQUEST_TIMEOUT")
 	if rawDur == "" {
 		// Note: we incremented the default timeout from 5 to 10 seconds in a bid
 		// to fix sporadic failures of mssql_test.go tests TestInitialize() and

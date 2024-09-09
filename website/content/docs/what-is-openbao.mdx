@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Introduction
 description: >-
   Welcome to the intro guide to OpenBao! This guide is the best place to start
   with OpenBao. We cover what OpenBao is, what problems it can solve, how it
@@ -9,7 +7,7 @@ description: >-
 
 # What is OpenBao?
 
-HashiCorp OpenBao is an identity-based secrets and encryption management system. A _secret_ is anything that you want to tightly control access to, such as API encryption keys, passwords, and certificates. OpenBao provides encryption services that are gated by authentication and authorization methods. Using OpenBao’s UI, CLI, or HTTP API, access to secrets and other sensitive data can be securely stored and managed, tightly controlled (restricted), and auditable.
+OpenBao is an identity-based secrets and encryption management system. A _secret_ is anything that you want to tightly control access to, such as API encryption keys, passwords, and certificates. OpenBao provides encryption services that are gated by authentication and authorization methods. Using OpenBao’s UI, CLI, or HTTP API, access to secrets and other sensitive data can be securely stored and managed, tightly controlled (restricted), and auditable.
 
 A modern system requires access to a multitude of secrets, including database credentials,
 API keys for external services, credentials for service-oriented architecture
@@ -19,15 +17,13 @@ where OpenBao steps in.
 
 OpenBao validates and authorizes clients (users, machines, apps) before providing them access to secrets or stored sensitive data.
 
-![How OpenBao Works](/img/how-vault-works.png)
+![How OpenBao Works](/img/how-openbao-works.png)
 
 ### How does OpenBao work?
 
-OpenBao works primarily with tokens and a token is associated to the client's policy. Each policy is path-based and policy rules constrains the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token. The illustration below displays OpenBao's core workflow.
+OpenBao works primarily with tokens and a token is associated to the client's policy. Each policy is path-based and policy rules constrains the actions and accessibility to the paths for each client. With OpenBao, you can create tokens manually and assign them to your clients, or the clients can log in and obtain a token.
 
-![OpenBao Workflow](/img/vault-workflow-diagram1.png)
-
- The core OpenBao workflow consists of four stages:
+The core OpenBao workflow consists of four stages:
 
 * **Authenticate:** Authentication in OpenBao is the process by which a client supplies information that OpenBao uses to determine if they are who they say they are. Once the client is authenticated against an auth method, a token is generated and associated to a policy.
 * **Validation:** OpenBao validates the client against third-party trusted sources, such as Github, LDAP, AppRole, and more.
@@ -45,15 +41,14 @@ The key features of OpenBao are:
 - **Secure Secret Storage**: Arbitrary key/value secrets can be stored
   in OpenBao. OpenBao encrypts these secrets prior to writing them to persistent
   storage, so gaining access to the raw storage isn't enough to access
-  your secrets. OpenBao can write to disk, [Consul](https://www.consul.io/),
-  and more.
+  your secrets. 
 
-- **Dynamic Secrets**: OpenBao can generate secrets on-demand for some
-  systems, such as AWS or SQL databases. For example, when an application
-  needs to access an S3 bucket, it asks OpenBao for credentials, and OpenBao
-  will generate an AWS keypair with valid permissions on demand. After
-  creating these dynamic secrets, OpenBao will also automatically revoke them
-  after the lease is up.
+- **Dynamic Secrets**: OpenBao can generate secrets on-demand for some systems,
+  such as Kubernetes or SQL databases. For example, when an application needs to
+  access a Kubernetes cluster, it asks OpenBao for credentials, and OpenBao will
+  generate an Kubernetes service account token with valid permissions on demand.
+  After creating these dynamic secrets, OpenBao will also automatically revoke
+  them after the lease is up.
 
 - **Data Encryption**: OpenBao can encrypt and decrypt data without storing
   it. This allows security teams to define encryption parameters and
@@ -70,12 +65,16 @@ The key features of OpenBao are:
   Revocation assists in key rolling as well as locking down systems in the
   case of an intrusion.
 
--> **Tip**: Learn more about OpenBao [use cases](/vault/docs/use-cases).
+:::info
+
+**Tip**: Learn more about OpenBao [use cases](/docs/use-cases).
+
+:::
 
 ### Community
 
 We welcome questions, suggestions, and contributions from the community.
 
 * Ask questions in [GitHub Discussions](https://github.com/orgs/openbao/discussions).
-* Read our [contributing guide](https://github.com/lf-edge/openbao/blob/main/CONTRIBUTING.md).
-* [Submit an issue](https://github.com/lf-edge/openbao/issues/new/choose) for bugs and feature requests.
+* Read our [contributing guide](https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md).
+* [Submit an issue](https://github.com/openbao/openbao/issues/new/choose) for bugs and feature requests.

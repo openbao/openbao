@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -30,7 +30,7 @@ func (c *PluginReloadCommand) Synopsis() string {
 
 func (c *PluginReloadCommand) Help() string {
 	helpText := `
-Usage: vault plugin reload [options]
+Usage: bao plugin reload [options]
 
   Reloads mounted plugins. Either the plugin name or the desired plugin 
   mount(s) must be provided, but not both. In case the plugin name is provided,
@@ -38,7 +38,7 @@ Usage: vault plugin reload [options]
 
   Reload the plugin named "my-custom-plugin":
 
-	  $ vault plugin reload -plugin=my-custom-plugin
+	  $ bao plugin reload -plugin=my-custom-plugin
 
 ` + c.Flags().Help()
 

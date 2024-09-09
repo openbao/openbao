@@ -11,8 +11,8 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/errwrap"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -87,7 +87,7 @@ func handleSysUnseal(core *vault.Core) http.Handler {
 
 		// Parse the request
 		var req UnsealRequest
-		if _, err := parseJSONRequest(core.PerfStandby(), r, w, &req); err != nil {
+		if _, err := parseJSONRequest(r, w, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}

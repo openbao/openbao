@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
@@ -24,8 +24,8 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"github.com/stretchr/testify/require"
 )
@@ -424,6 +424,7 @@ func TestSysMounts_headerAuth(t *testing.T) {
 				"plugin_version":         "",
 				"running_sha256":         "",
 				"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+				"deprecation_status":     "supported",
 			},
 			"sys/": map[string]interface{}{
 				"description":             "system endpoints used for control, policy and debugging",
@@ -491,6 +492,7 @@ func TestSysMounts_headerAuth(t *testing.T) {
 			"plugin_version":         "",
 			"running_sha256":         "",
 			"running_plugin_version": versions.GetBuiltinVersion(consts.PluginTypeSecrets, "kv"),
+			"deprecation_status":     "supported",
 		},
 		"sys/": map[string]interface{}{
 			"description":             "system endpoints used for control, policy and debugging",
@@ -860,7 +862,7 @@ func TestHandler_Parse_Form(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req.Body = ioutil.NopCloser(strings.NewReader(values.Encode()))
+	req.Body = io.NopCloser(strings.NewReader(values.Encode()))
 	req.Header.Set("x-vault-token", cluster.RootToken)
 	req.Header.Set("content-type", "application/x-www-form-urlencoded")
 	resp, err := c.Do(req)

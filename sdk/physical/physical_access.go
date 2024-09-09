@@ -36,6 +36,10 @@ func (p *PhysicalAccess) List(ctx context.Context, prefix string) ([]string, err
 	return p.physical.List(ctx, prefix)
 }
 
+func (p *PhysicalAccess) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return p.physical.ListPage(ctx, prefix, after, limit)
+}
+
 func (p *PhysicalAccess) Purge(ctx context.Context) {
 	if purgeable, ok := p.physical.(ToggleablePurgemonster); ok {
 		purgeable.Purge(ctx)

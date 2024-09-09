@@ -7,16 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"sync/atomic"
 	"time"
 
 	hclog "github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/dhutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 type Sink interface {
@@ -186,7 +185,7 @@ func (s *SinkConfig) encryptToken(token string) (string, error) {
 				}
 				return "", errors.New("no dh parameters file found, and no cached pub key")
 			}
-			fileBytes, err := ioutil.ReadFile(s.DHPath)
+			fileBytes, err := os.ReadFile(s.DHPath)
 			if err != nil {
 				return "", fmt.Errorf("error reading file for dh parameters: %w", err)
 			}

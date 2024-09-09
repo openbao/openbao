@@ -13,7 +13,7 @@ import (
 	"github.com/hashicorp/errwrap"
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 func TestKubernetesAuth_basic(t *testing.T) {

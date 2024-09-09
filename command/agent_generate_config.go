@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-homedir"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -40,7 +40,7 @@ func (c *AgentGenerateConfigCommand) Synopsis() string {
 
 func (c *AgentGenerateConfigCommand) Help() string {
 	helpText := `
-Usage: vault agent generate-config [options] [path/to/config.hcl]
+Usage: bao agent generate-config [options] [path/to/config.hcl]
 
   Generates a simple Vault Agent configuration file from the given parameters.
 
@@ -69,13 +69,13 @@ Usage: vault agent generate-config [options] [path/to/config.hcl]
 
   Generate a simple environment variable template configuration:
 
-      $ vault agent generate-config -type="env-template" \
+      $ bao agent generate-config -type="env-template" \
                     -exec="./my-app arg1 arg2" \
                     -path="secret/foo"
 
   Generate an environment variable template configuration for multiple secrets:
 
-      $ vault agent generate-config -type="env-template" \
+      $ bao agent generate-config -type="env-template" \
                     -exec="./my-app arg1 arg2" \
                     -path="secret/foo" \
                     -path="secret/bar" \

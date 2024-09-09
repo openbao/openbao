@@ -4,9 +4,9 @@
 package command
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -16,7 +16,7 @@ import (
 
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/mapstructure"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/ssh"
 	"github.com/pkg/errors"
 	"github.com/posener/complete"
@@ -53,7 +53,7 @@ func (c *SSHCommand) Synopsis() string {
 
 func (c *SSHCommand) Help() string {
 	helpText := `
-Usage: vault ssh [options] username@ip [ssh options]
+Usage: bao ssh [options] username@ip [ssh options]
 
   Establishes an SSH connection with the target machine.
 
@@ -63,15 +63,15 @@ Usage: vault ssh [options] username@ip [ssh options]
 
   SSH using the OTP mode (requires sshpass for full automation):
 
-      $ vault ssh -mode=otp -role=my-role user@1.2.3.4
+      $ bao ssh -mode=otp -role=my-role user@1.2.3.4
 
   SSH using the CA mode:
 
-      $ vault ssh -mode=ca -role=my-role user@1.2.3.4
+      $ bao ssh -mode=ca -role=my-role user@1.2.3.4
 
   SSH using CA mode with host key verification:
 
-      $ vault ssh \
+      $ bao ssh \
           -mode=ca \
           -role=my-role \
           -host-key-mount-point=host-signer \
@@ -134,7 +134,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "strict-host-key-checking",
 		Target:     &c.flagStrictHostKeyChecking,
 		Default:    "ask",
-		EnvVar:     "VAULT_SSH_STRICT_HOST_KEY_CHECKING",
+		EnvVar:     "BAO_SSH_STRICT_HOST_KEY_CHECKING",
 		Completion: complete.PredictSet("ask", "no", "yes"),
 		Usage: "Value to use for the SSH configuration option " +
 			"\"StrictHostKeyChecking\".",
@@ -144,7 +144,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "user-known-hosts-file",
 		Target:     &c.flagUserKnownHostsFile,
 		Default:    "",
-		EnvVar:     "VAULT_SSH_USER_KNOWN_HOSTS_FILE",
+		EnvVar:     "BAO_SSH_USER_KNOWN_HOSTS_FILE",
 		Completion: complete.PredictFiles("*"),
 		Usage: "Value to use for the SSH configuration option " +
 			"\"UserKnownHostsFile\".",
@@ -159,7 +159,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Default:    "~/.ssh/id_rsa.pub",
 		EnvVar:     "",
 		Completion: complete.PredictFiles("*"),
-		Usage:      "Path to the SSH public key to send to Vault for signing.",
+		Usage:      "Path to the SSH public key to send to OpenBao for signing.",
 	})
 
 	f.StringVar(&StringVar{
@@ -176,10 +176,10 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "host-key-mount-point",
 		Target:     &c.flagHostKeyMountPoint,
 		Default:    "",
-		EnvVar:     "VAULT_SSH_HOST_KEY_MOUNT_POINT",
+		EnvVar:     "BAO_SSH_HOST_KEY_MOUNT_POINT",
 		Completion: complete.PredictAnything,
 		Usage: "Mount point to the SSH secrets engine where host keys are signed. " +
-			"When given a value, Vault will generate a custom \"known_hosts\" file " +
+			"When given a value, OpenBao will generate a custom \"known_hosts\" file " +
 			"with delegation to the CA at the provided mount point to verify the " +
 			"SSH connection's host keys against the provided CA. By default, host " +
 			"keys are validated against the user's local \"known_hosts\" file. " +
@@ -191,7 +191,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "host-key-hostnames",
 		Target:     &c.flagHostKeyHostnames,
 		Default:    "*",
-		EnvVar:     "VAULT_SSH_HOST_KEY_HOSTNAMES",
+		EnvVar:     "BAO_SSH_HOST_KEY_HOSTNAMES",
 		Completion: complete.PredictAnything,
 		Usage: "List of hostnames to delegate for the CA. The default value " +
 			"allows all domains and IPs. This is specified as a comma-separated " +
@@ -212,7 +212,7 @@ func (c *SSHCommand) Flags() *FlagSets {
 		Name:       "ssh-executable",
 		Target:     &c.flagSSHExecutable,
 		Default:    "ssh",
-		EnvVar:     "VAULT_SSH_EXECUTABLE",
+		EnvVar:     "BAO_SSH_EXECUTABLE",
 		Completion: complete.PredictAnything,
 		Usage:      "Path to the SSH executable to use when connecting to the host",
 	})
@@ -295,9 +295,9 @@ func (c *SSHCommand) Run(args []string) int {
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagRole == "" {
 		c.UI.Warn(wrapAtLength(
-			"WARNING: No -role specified. Use -role to tell Vault which ssh role " +
+			"WARNING: No -role specified. Use -role to tell OpenBao which ssh role " +
 				"to use for authentication. In the future, you will need to tell " +
-				"Vault which role to use. For now, Vault will attempt to guess based " +
+				"OpenBao which role to use. For now, OpenBao will attempt to guess based " +
 				"on the API response. This will be removed in the Vault 1.1."))
 
 		role, err := c.defaultRole(c.flagMountPoint, ip)
@@ -309,7 +309,7 @@ func (c *SSHCommand) Run(args []string) int {
 		// if something doesn't work. If the role chosen is not allowed to
 		// be used by the user (ACL enforcement), then user should see an
 		// error message accordingly.
-		c.UI.Output(fmt.Sprintf("Vault SSH: Role: %q", role))
+		c.UI.Output(fmt.Sprintf("OpenBao SSH: Role: %q", role))
 		c.flagRole = role
 	}
 
@@ -319,9 +319,9 @@ func (c *SSHCommand) Run(args []string) int {
 	// TODO: remove in 0.9.0, convert to validation error
 	if c.flagMode == "" {
 		c.UI.Warn(wrapAtLength(
-			"WARNING: No -mode specified. Use -mode to tell Vault which ssh " +
+			"WARNING: No -mode specified. Use -mode to tell OpenBao which ssh " +
 				"authentication mode to use. In the future, you will need to tell " +
-				"Vault which mode to use. For now, Vault will attempt to guess based " +
+				"OpenBao which mode to use. For now, OpenBao will attempt to guess based " +
 				"on the API response. This guess involves creating a temporary " +
 				"credential, reading its type, and then revoking it. To reduce the " +
 				"number of API calls and surface area, specify -mode directly. This " +
@@ -366,7 +366,7 @@ func (c *SSHCommand) Run(args []string) int {
 // handleTypeCA is used to handle SSH logins using the "CA" key type.
 func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) int {
 	// Read the key from disk
-	publicKey, err := ioutil.ReadFile(c.flagPublicKeyPath)
+	publicKey, err := os.ReadFile(c.flagPublicKeyPath)
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("failed to read public key %s: %s",
 			c.flagPublicKeyPath, err))
@@ -488,6 +488,9 @@ func (c *SSHCommand) handleTypeCA(username, ip, port string, sshArgs []string) i
 
 	cmd := exec.Command(c.flagSSHExecutable, args...)
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -541,9 +544,9 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 	if err != nil {
 		// No sshpass available so using normal ssh client
 		c.UI.Warn(wrapAtLength(
-			"Vault could not locate \"sshpass\". The OTP code for the session is " +
+			"OpenBao could not locate \"sshpass\". The OTP code for the session is " +
 				"displayed below. Enter this code in the SSH password prompt. If you " +
-				"install sshpass, Vault can automatically perform this step for you."))
+				"install sshpass, OpenBao can automatically perform this step for you."))
 		c.UI.Output("OTP for the session is: " + cred.Key)
 	} else {
 		// sshpass is available so lets use it instead
@@ -578,6 +581,9 @@ func (c *SSHCommand) handleTypeOTP(username, ip, port string, sshArgs []string) 
 	cmd.Env = env
 
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -649,6 +655,9 @@ func (c *SSHCommand) handleTypeDynamic(username, ip, port string, sshArgs []stri
 
 	cmd := exec.Command(c.flagSSHExecutable, args...)
 	cmd.Stdin = os.Stdin
+	if c.flagNonInteractive {
+		cmd.Stdin = bytes.NewReader(nil)
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
@@ -720,14 +729,14 @@ func (c *SSHCommand) writeTemporaryFile(name string, data []byte, perms os.FileM
 	// default closer to prevent panic
 	closer := func() error { return nil }
 
-	f, err := ioutil.TempFile("", name)
+	f, err := os.CreateTemp("", name)
 	if err != nil {
 		return "", errors.Wrap(err, "creating temporary file"), closer
 	}
 
 	closer = func() error { return os.Remove(f.Name()) }
 
-	if err := ioutil.WriteFile(f.Name(), data, perms); err != nil {
+	if err := os.WriteFile(f.Name(), data, perms); err != nil {
 		return "", errors.Wrap(err, "writing temporary key"), closer
 	}
 

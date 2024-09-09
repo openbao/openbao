@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 // SendRequest is the input for Proxier.Send.
@@ -57,7 +57,7 @@ func NewSendResponse(apiResponse *api.Response, responseBody []byte) (*SendRespo
 	}
 
 	// If a response body is separately provided we set that as the SendResponse.ResponseBody,
-	// otherwise we will do an ioutil.ReadAll to extract the response body from apiResponse.
+	// otherwise we will do an io.ReadAll to extract the response body from apiResponse.
 	switch {
 	case len(responseBody) > 0:
 		resp.ResponseBody = responseBody

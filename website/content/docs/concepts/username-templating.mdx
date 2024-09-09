@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Username Templating
 description: >-
   Username templating are used in some secret engines to allow operators to define
   how dynamic usernames are generated.
@@ -15,8 +13,12 @@ for username generation but does not go into great depth of using the templating
 See the API documentation for the given secret engine to determine if it supports username templating and for more
 details on using it with that engine.
 
-~> When customizing how usernames are generated, take care to ensure you have enough randomness to ensure uniqueness
+:::warning
+
+When customizing how usernames are generated, take care to ensure you have enough randomness to ensure uniqueness
 otherwise multiple calls to create the credentials may interfere with each other.
+
+:::
 
 In addition to the functionality built into the Go template language, a number of additional functions are available:
 
@@ -73,12 +75,16 @@ number indicating how many characters to generate.<br/>
 
 Each secret engine provides a different set of data to the template. Please see the associated secret engine's
 documentation for details on what values are provided to the template. The examples below are modeled after the
-[Database engine's](/vault/docs/secrets/databases) data, however the specific fields that are provided from a given engine
+[Database engine's](/docs/secrets/databases) data, however the specific fields that are provided from a given engine
 may differ from these examples. Additionally, the time is assumed to be 2009-02-13 11:31:30PM GMT
 (unix timestamp: 1234567890) and random characters are the ordered english alphabet: `abcdefghijklmnopqrstuvwxyz`.
 
--> Note: The space between `{{`/`}}` and the values/functions are optional.
+:::info
+
+Note: The space between `{{`/`}}` and the values/functions are optional.
 For instance: `{{.DisplayName}}` is equivalent to `{{ .DisplayName }}`
+
+:::
 
 | Field name    | Value                     |
 | ------------- | ------------------------- |
@@ -105,8 +111,12 @@ token-with-display-name_my_custom_database_role
 This is a basic example that references the two fields that are provided to the template. In simplest terms, this is
 a simple string substitution.
 
-~> This example does not have any randomness and should not be used when generating dynamic usernames. The purpose is to
+:::warning
+
+This example does not have any randomness and should not be used when generating dynamic usernames. The purpose is to
 demonstrate referencing data within the Go template language.
+
+:::
 
 ### Custom functions
 
@@ -149,10 +159,3 @@ v_token-wi_my_custo_abcdefghijklmnopqrst_1234
 Each of these values are passed to `printf "v_%s_%s_%s_%s"` which prepends them with `v_` and puts an underscore between
 each field. This results in `v_token-wi_my_custo_abcdefghijklmnopqrst_1234567890`. This value is then passed to
 `truncate 45` where the last 6 characters are removed which results in `v_token-wi_my_custo_abcdefghijklmnopqrst_1234`.
-
-## Tutorial
-
-Refer to the following tutorials for step-by-step instructions.
-
-- [Database Secrets Engine with MongoDB](/vault/tutorials/db-credentials/database-mongodb#customize-the-generated-username-schema)
-- [Dynamic Secrets: Database Secrets Engine](/vault/tutorials/db-credentials/database-secrets#define-a-username-template)

@@ -18,7 +18,6 @@ import (
 	"time"
 
 	systemd "github.com/coreos/go-systemd/daemon"
-	ctconfig "github.com/hashicorp/consul-template/config"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
@@ -27,7 +26,8 @@ import (
 	"github.com/kr/pretty"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
-	"github.com/openbao/openbao/api"
+	ctconfig "github.com/openbao/openbao-template/config"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared"
 	"github.com/openbao/openbao/command/agentproxyshared/auth"
 	"github.com/openbao/openbao/command/agentproxyshared/cache"
@@ -41,8 +41,8 @@ import (
 	"github.com/openbao/openbao/helper/useragent"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 	"golang.org/x/text/cases"
@@ -97,14 +97,14 @@ func (c *ProxyCommand) Synopsis() string {
 
 func (c *ProxyCommand) Help() string {
 	helpText := `
-Usage: vault proxy [options]
+Usage: bao proxy [options]
 
   This command starts a Vault Proxy that can perform automatic authentication
   in certain environments.
 
   Start a proxy with a configuration file:
 
-      $ vault proxy -config=/etc/vault/config.hcl
+      $ bao proxy -config=/etc/vault/config.hcl
 
   For a full list of examples, please see the documentation.
 
@@ -236,7 +236,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	// Tests might not want to start a vault server and just want to verify
 	// the configuration.
 	if c.flagTestVerifyOnly {
-		if os.Getenv("VAULT_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
+		if api.ReadBaoVariable("BAO_TEST_VERIFY_ONLY_DUMP_CONFIG") != "" {
 			c.UI.Output(fmt.Sprintf(
 				"\nConfiguration:\n%s\n",
 				pretty.Sprint(*c.config)))
@@ -346,36 +346,12 @@ func (c *ProxyCommand) Run(args []string) int {
 	// We do this after auto-auth has been configured, because we don't want to
 	// confuse the issue of retries for auth failures which have their own
 	// config and are handled a bit differently.
-	if os.Getenv(api.EnvVaultMaxRetries) == "" {
+	if api.ReadBaoVariable(api.EnvVaultMaxRetries) == "" {
 		client.SetMaxRetries(ctconfig.DefaultRetryAttempts)
 		if config.Vault != nil {
 			if config.Vault.Retry != nil {
 				client.SetMaxRetries(config.Vault.Retry.NumRetries)
 			}
-		}
-	}
-
-	enforceConsistency := cache.EnforceConsistencyNever
-	whenInconsistent := cache.WhenInconsistentFail
-	if config.APIProxy != nil {
-		switch config.APIProxy.EnforceConsistency {
-		case "always":
-			enforceConsistency = cache.EnforceConsistencyAlways
-		case "never", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for enforce_consistency: %q", config.APIProxy.EnforceConsistency))
-			return 1
-		}
-
-		switch config.APIProxy.WhenInconsistent {
-		case "retry":
-			whenInconsistent = cache.WhenInconsistentRetry
-		case "forward":
-			whenInconsistent = cache.WhenInconsistentForward
-		case "fail", "":
-		default:
-			c.UI.Error(fmt.Sprintf("Unknown api_proxy setting for when_inconsistent: %q", config.APIProxy.WhenInconsistent))
-			return 1
 		}
 	}
 
@@ -397,7 +373,7 @@ func (c *ProxyCommand) Run(args []string) int {
 
 	// Output the header that the proxy has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault Proxy started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao Proxy started! Log data will stream in below:\n")
 	}
 
 	var leaseCache *cache.LeaseCache
@@ -423,8 +399,6 @@ func (c *ProxyCommand) Run(args []string) int {
 	apiProxy, err := cache.NewAPIProxy(&cache.APIProxyConfig{
 		Client:                  proxyClient,
 		Logger:                  apiProxyLogger,
-		EnforceConsistency:      enforceConsistency,
-		WhenInconsistentAction:  whenInconsistent,
 		UserAgentStringFunction: useragent.ProxyStringWithProxiedUserAgent,
 		UserAgentString:         useragent.ProxyAPIProxyString(),
 	})
@@ -591,7 +565,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.SighupCh:
-				c.UI.Output("==> Vault Proxy config reload triggered")
+				c.UI.Output("==> OpenBao Proxy config reload triggered")
 				err := c.reloadConfig(c.flagConfigs)
 				if err != nil {
 					c.outputErrors(err)
@@ -614,7 +588,7 @@ func (c *ProxyCommand) Run(args []string) int {
 		for {
 			select {
 			case <-c.ShutdownCh:
-				c.UI.Output("==> Vault Proxy shutdown triggered")
+				c.UI.Output("==> OpenBao Proxy shutdown triggered")
 				// Notify systemd that the server is shutting down
 				// Let the lease cache know this is a shutdown; no need to evict everything
 				if leaseCache != nil {
@@ -708,7 +682,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	padding := 24
 	sort.Strings(infoKeys)
 	caser := cases.Title(language.English)
-	c.UI.Output("==> Vault Proxy configuration:\n")
+	c.UI.Output("==> OpenBao Proxy configuration:\n")
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
 			"%s%s: %s",
@@ -835,7 +809,7 @@ func (c *ProxyCommand) setStringFlag(f *FlagSets, configVal string, fVar *String
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line
@@ -859,7 +833,7 @@ func (c *ProxyCommand) setBoolFlag(f *FlagSets, configVal bool, fVar *BoolVar) {
 		}
 	})
 
-	flagEnvValue, flagEnvSet := os.LookupEnv(fVar.EnvVar)
+	flagEnvValue, flagEnvSet := api.LookupBaoVariable(fVar.EnvVar)
 	switch {
 	case isFlagSet:
 		// Don't do anything as the flag is already set from the command line

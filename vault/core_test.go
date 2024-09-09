@@ -15,8 +15,8 @@ import (
 
 	"github.com/openbao/openbao/command/server"
 
-	logicalKv "github.com/hashicorp/vault-plugin-secrets-kv"
 	logicalDb "github.com/openbao/openbao/builtin/logical/database"
+	logicalKv "github.com/openbao/openbao/builtin/logical/kv"
 
 	"github.com/openbao/openbao/builtin/plugin"
 
@@ -35,12 +35,12 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/version"
 	"github.com/sasha-s/go-deadlock"
 )
@@ -145,7 +145,6 @@ func TestNewCore_configureLogicalBackends(t *testing.T) {
 	// identity
 	// kv
 	// system
-	// In addition Enterprise versions of Vault may add additional engines.
 
 	tests := map[string]struct {
 		backends               map[string]logical.Factory
@@ -350,7 +349,6 @@ func TestNewCore_badRedirectAddr(t *testing.T) {
 	conf := &CoreConfig{
 		RedirectAddr: "127.0.0.1:8200",
 		Physical:     inm,
-		DisableMlock: true,
 	}
 	_, err = NewCore(conf)
 	if err == nil {
@@ -1845,7 +1843,6 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1884,7 +1881,6 @@ func TestCore_Standby_Seal(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1957,7 +1953,6 @@ func TestCore_StepDown(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 		Logger:       logger.Named("core1"),
 	})
 	if err != nil {
@@ -1997,7 +1992,6 @@ func TestCore_StepDown(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 		Logger:       logger.Named("core2"),
 	})
 	defer core2.Shutdown()
@@ -2151,7 +2145,6 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2217,7 +2210,6 @@ func TestCore_CleanLeaderPrefix(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2330,7 +2322,6 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Physical:        inm,
 		HAPhysical:      inmha,
 		RedirectAddr:    redirectOriginal,
-		DisableMlock:    true,
 		BuiltinRegistry: corehelpers.NewMockBuiltinRegistry(),
 	})
 	if err != nil {
@@ -2386,7 +2377,6 @@ func testCore_Standby_Common(t *testing.T, inm physical.Backend, inmha physical.
 		Physical:     inm,
 		HAPhysical:   inmha,
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2914,7 +2904,6 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -2936,7 +2925,6 @@ func TestCore_Standby_Rotate(t *testing.T) {
 		Physical:     inm,
 		HAPhysical:   inmha.(physical.HABackend),
 		RedirectAddr: redirectOriginal2,
-		DisableMlock: true,
 	})
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -3231,7 +3219,6 @@ func TestCore_ServiceRegistration(t *testing.T) {
 		Physical:            inm,
 		HAPhysical:          inmha.(physical.HABackend),
 		RedirectAddr:        redirectAddr,
-		DisableMlock:        true,
 	})
 	if err != nil {
 		t.Fatal(err)

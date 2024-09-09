@@ -1,15 +1,14 @@
 ---
-layout: docs
-page_title: operator unseal - Command
+sidebar_label: unseal
 description: |-
   The "operator unseal" allows the user to provide a portion of the root key
-  to unseal a OpenBao server.
+  to unseal an OpenBao server.
 ---
 
 # operator unseal
 
 The `operator unseal` allows the user to provide a portion of the root key to
-unseal a OpenBao server. OpenBao starts in a sealed state. It cannot perform
+unseal an OpenBao server. OpenBao starts in a sealed state. It cannot perform
 operations until it is unsealed. This command accepts a portion of the master
 key (an "unseal key").
 
@@ -28,7 +27,7 @@ Key (will be hidden): IXyR0OJnSFobekZMMCKCoVEpT7wI6l+USMzE3IcyDyo=
 ```
 
 For more information on sealing and unsealing, please the [seal concepts
-page](/vault/docs/concepts/seal).
+page](/docs/concepts/seal).
 
 ## Examples
 
@@ -46,13 +45,13 @@ Unseal Progress: 0
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 ### Command options
 

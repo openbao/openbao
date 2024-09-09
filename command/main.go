@@ -17,7 +17,7 @@ import (
 	"github.com/fatih/color"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/token"
 )
 
@@ -96,7 +96,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		}
 	}
 
-	envVaultFormat := os.Getenv(EnvVaultFormat)
+	envVaultFormat := api.ReadBaoVariable(EnvVaultFormat)
 	// If we did not parse a value, fetch the env var
 	if format == "" && envVaultFormat != "" {
 		format = envVaultFormat
@@ -107,7 +107,7 @@ func setupEnv(args []string) (retArgs []string, format string, detailed bool, ou
 		format = "table"
 	}
 
-	envVaultDetailed := os.Getenv(EnvVaultDetailed)
+	envVaultDetailed := api.ReadBaoVariable(EnvVaultDetailed)
 	// If we did not parse a value, fetch the env var
 	if !haveDetailed && envVaultDetailed != "" {
 		detailed, err = strconv.ParseBool(envVaultDetailed)
@@ -160,7 +160,7 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 
 	// Don't use color if disabled
 	useColor := true
-	if os.Getenv(EnvVaultCLINoColor) != "" || color.NoColor {
+	if api.ReadBaoVariable(EnvVaultCLINoColor) != "" || color.NoColor {
 		useColor = false
 	}
 
@@ -225,11 +225,11 @@ func RunCustom(args []string, runOpts *RunOptions) int {
 	hiddenCommands := []string{"version"}
 
 	cli := &cli.CLI{
-		Name:     "vault",
+		Name:     "bao",
 		Args:     args,
 		Commands: commands,
 		HelpFunc: groupedHelpFunc(
-			cli.BasicHelpFunc("vault"),
+			cli.BasicHelpFunc("bao"),
 		),
 		HelpWriter:                 runOpts.Stdout,
 		ErrorWriter:                runOpts.Stderr,
@@ -268,7 +268,7 @@ func groupedHelpFunc(f cli.HelpFunc) cli.HelpFunc {
 		var b bytes.Buffer
 		tw := tabwriter.NewWriter(&b, 0, 2, 6, ' ', 0)
 
-		fmt.Fprintf(tw, "Usage: vault <command> [args]\n\n")
+		fmt.Fprintf(tw, "Usage: bao <command> [args]\n\n")
 		fmt.Fprintf(tw, "Common commands:\n")
 		for _, v := range commonCommands {
 			printCommand(tw, v, commands[v])

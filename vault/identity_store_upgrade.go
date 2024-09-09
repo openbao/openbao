@@ -6,8 +6,8 @@ package vault
 import (
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func upgradePaths(i *IdentityStore) []*framework.Path {
@@ -42,7 +42,7 @@ func upgradePaths(i *IdentityStore) []*framework.Path {
 					Description: `Metadata to be associated with the persona.
 In CLI, this parameter can be repeated multiple times, and it all gets merged together.
 For example:
-vault <command> <path> metadata=key1=value1 metadata=key2=value2
+bao <command> <path> metadata=key1=value1 metadata=key2=value2
 `,
 				},
 			},
@@ -83,7 +83,7 @@ vault <command> <path> metadata=key1=value1 metadata=key2=value2
 					Description: `Metadata to be associated with the persona.
 In CLI, this parameter can be repeated multiple times, and it all gets merged together.
 For example:
-vault <command> <path> metadata=key1=value1 metadata=key2=value2
+bao <command> <path> metadata=key1=value1 metadata=key2=value2
 `,
 				},
 			},

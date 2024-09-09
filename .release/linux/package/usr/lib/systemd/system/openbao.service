@@ -1,0 +1,33 @@
+[Unit]
+Description="OpenBao - A tool for managing secrets"
+Documentation=https://github.com/openbao/openbao/tree/main/website/content/docs
+Requires=network-online.target
+After=network-online.target
+ConditionFileNotEmpty=/etc/openbao/openbao.hcl
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=notify
+EnvironmentFile=/etc/openbao/openbao.env
+User=openbao
+Group=openbao
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+SecureBits=keep-caps
+CapabilityBoundingSet=CAP_SYSLOG
+NoNewPrivileges=yes
+ExecStart=/usr/bin/bao server -config=/etc/openbao/openbao.hcl
+ExecReload=/bin/kill --signal HUP $MAINPID
+KillMode=process
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+LimitNOFILE=65536
+MemorySwapMax=0
+
+[Install]
+WantedBy=multi-user.target

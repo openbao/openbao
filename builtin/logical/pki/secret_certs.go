@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // SecretCertsType is the name used to identify this type

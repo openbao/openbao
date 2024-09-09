@@ -1,6 +1,5 @@
 ---
-layout: api
-page_title: RADIUS - Auth Methods - HTTP API
+sidebar_label: RADIUS
 description: This is the API documentation for the OpenBao RADIUS auth method.
 ---
 
@@ -8,7 +7,7 @@ description: This is the API documentation for the OpenBao RADIUS auth method.
 
 This is the API documentation for the OpenBao RADIUS auth method. For
 general information about the usage and operation of the RADIUS method, please
-see the [OpenBao RADIUS method documentation](/vault/docs/auth/radius).
+see the [OpenBao RADIUS method documentation](/docs/auth/radius).
 
 This documentation assumes the RADIUS method is mounted at the `/auth/radius`
 path in OpenBao. Since it is possible to enable auth methods at any location,
@@ -153,6 +152,14 @@ List the users registered with the method.
 | Method | Path                 |
 | :----- | :------------------- |
 | `LIST` | `/auth/radius/users` |
+
+### Parameters
+
+ - `after` `(string: "")` - Optional entry to begin listing after for
+   pagination; not required to exist.
+
+ - `limit` `(int: 0)` - Optional number of entries to return; defaults
+   to all entries.
 
 ### Sample request
 

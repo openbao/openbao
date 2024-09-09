@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -18,6 +19,9 @@ var (
 
 type ListCommand struct {
 	*BaseCommand
+
+	flagAfter string
+	flagLimit int
 }
 
 func (c *ListCommand) Synopsis() string {
@@ -27,14 +31,24 @@ func (c *ListCommand) Synopsis() string {
 func (c *ListCommand) Help() string {
 	helpText := `
 
-Usage: vault list [options] PATH
+Usage: bao list [options] PATH
 
-  Lists data from Vault at the given path. This can be used to list keys in a,
+  Lists data from Vault at the given path. This can be used to list keys in a
   given secret engine.
 
   List values under the "my-app" folder of the generic secret engine:
 
-      $ vault list secret/my-app/
+      $ bao list secret/my-app/
+
+  Some paths support paginated listing. Use the -after and -limit flags to
+  control the return of data:
+
+      $ bao list -after=last-serial -limit=50 pki/certs
+
+  Some paths may support returning additional information about items;
+  use the -detailed flag to see this info:
+
+      $ bao list -detailed pki/issuers
 
   For a full list of examples and paths, please see the documentation that
   corresponds to the secret engine in use. Not all engines support listing.
@@ -46,6 +60,24 @@ Usage: vault list [options] PATH
 
 func (c *ListCommand) Flags() *FlagSets {
 	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat | FlagSetOutputDetailed)
+
+	f := set.NewFlagSet("Command Options")
+
+	f.StringVar(&StringVar{
+		Name:    "after",
+		Target:  &c.flagAfter,
+		Default: "",
+		Usage: "Last seen key on applicable endpoints; the next key" +
+			"alphabetically will be the first returned.",
+	})
+
+	f.IntVar(&IntVar{
+		Name:    "limit",
+		Target:  &c.flagLimit,
+		Default: -1,
+		Usage:   "Limits the number of list responses on applicable endpoints.",
+	})
+
 	return set
 }
 
@@ -82,7 +114,16 @@ func (c *ListCommand) Run(args []string) int {
 	}
 
 	path := sanitizePath(args[0])
-	secret, err := client.Logical().List(path)
+
+	// Only dispatch a ListPage operation if flags were given; this avoids
+	// a warning from the server about unrecognized parameters if the list
+	// endpoint doesn't understand pagination.
+	var secret *api.Secret
+	if c.flagAfter == "" && c.flagLimit <= 0 {
+		secret, err = client.Logical().List(path)
+	} else {
+		secret, err = client.Logical().ListPage(path, c.flagAfter, c.flagLimit)
+	}
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error listing %s: %s", path, err))
 		return 2

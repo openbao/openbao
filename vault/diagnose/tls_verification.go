@@ -10,7 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
@@ -135,7 +135,7 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	leafCerts := []*x509.Certificate{}
 	interCerts := []*x509.Certificate{}
 	rootCerts := []*x509.Certificate{}
-	data, err := ioutil.ReadFile(certFilePath)
+	data, err := os.ReadFile(certFilePath)
 	if err != nil {
 		return leafCerts, interCerts, rootCerts, fmt.Errorf("Failed to read certificate file: %w.", err)
 	}
@@ -248,7 +248,7 @@ func TLSFileWarningChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) 
 	var warnings []string
 	// add a warning for when there are more than one leaf certs
 	if len(leafCerts) > 1 {
-		warnings = append(warnings, fmt.Sprintf("More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to Vault in the Vault server configuration file."))
+		warnings = append(warnings, fmt.Sprintf("More than one leaf certificate detected. Please ensure that there is one unique leaf certificate being supplied to OpenBao in the OpenBao server configuration file."))
 	}
 
 	for _, c := range leafCerts {
@@ -285,7 +285,7 @@ func NearExpiration(c *x509.Certificate) (bool, time.Duration) {
 func TLSMutualExclusionCertCheck(l *configutil.Listener) (int, string) {
 	if l.TLSDisableClientCerts {
 		if l.TLSRequireAndVerifyClientCert {
-			return 1, "The tls_disable_client_certs and tls_require_and_verify_client_cert fields in the listener stanza of the Vault server configuration are mutually exclusive fields. Please ensure they are not both set to true."
+			return 1, "The tls_disable_client_certs and tls_require_and_verify_client_cert fields in the listener stanza of the OpenBao server configuration are mutually exclusive fields. Please ensure they are not both set to true."
 		}
 	}
 	return 0, ""

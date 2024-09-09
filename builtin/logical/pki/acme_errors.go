@@ -10,12 +10,14 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // Error prefix; see RFC 8555 Section 6.7. Errors.
-const ErrorPrefix = "urn:ietf:params:acme:error:"
-const ErrorContentType = "application/problem+json"
+const (
+	ErrorPrefix      = "urn:ietf:params:acme:error:"
+	ErrorContentType = "application/problem+json"
+)
 
 // See RFC 8555 Section 6.7. Errors.
 var ErrAccountDoesNotExist = errors.New("The request specified an account that does not exist")

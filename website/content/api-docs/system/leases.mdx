@@ -1,6 +1,4 @@
 ---
-layout: api
-page_title: /sys/leases - HTTP API
 description: The `/sys/leases` endpoints are used to view and manage leases.
 ---
 
@@ -24,7 +22,7 @@ This endpoint retrieve lease metadata.
 
 ```json
 {
-  "lease_id": "aws/creds/deploy/abcd-1234..."
+  "lease_id": "auth/userpass/login/user/h5a2..."
 }
 ```
 
@@ -42,12 +40,14 @@ $ curl \
 
 ```json
 {
-  "id": "auth/token/create/25c75065466dfc5f920525feafe47502c4c9915c",
-  "issue_time": "2017-04-30T10:18:11.228946471-04:00",
-  "expire_time": "2017-04-30T11:18:11.228946708-04:00",
-  "last_renewal_time": null,
-  "renewable": true,
-  "ttl": 3558
+  "data": {
+    "expire_time": "2024-03-07T20:34:02.005655614+01:00",
+    "id": "auth/userpass/login/user/h5a2d7506918f459d022267a3351666b35bd8b5d6d39b0bcfe14927c0e4464225",
+    "issue_time": "2024-02-04T20:34:02.005663311+01:00",
+    "last_renewal": null,
+    "renewable": true,
+    "ttl": 2764397
+  }
 }
 ```
 
@@ -67,7 +67,7 @@ This endpoint returns a list of lease ids.
 $ curl \
     --header "X-Vault-Token: ..." \
     --request LIST \
-    http://127.0.0.1:8200/v1/sys/leases/lookup/aws/creds/deploy/
+    http://127.0.0.1:8200/v1/sys/leases/lookup/auth/userpass/login/user/
 ```
 
 ### Sample response
@@ -75,7 +75,9 @@ $ curl \
 ```json
 {
   "data": {
-    "keys": ["abcd-1234...", "efgh-1234...", "ijkl-1234..."]
+    "keys": [
+      "h5a2d7506918f459d022267a3351666b35bd8b5d6d39b0bcfe14927c0e4464225"
+    ]
   }
 }
 ```
@@ -103,7 +105,7 @@ cannot be renewed using this endpoint, use instead the auth/token/renew endpoint
 
 ```json
 {
-  "lease_id": "aws/creds/deploy/abcd-1234...",
+  "lease_id": "auth/userpass/login/user/h5a2...",
   "increment": 1800
 }
 ```
@@ -122,7 +124,7 @@ $ curl \
 
 ```json
 {
-  "lease_id": "aws/creds/deploy/abcd-1234...",
+  "lease_id": "auth/userpass/login/user/h5a2...",
   "renewable": true,
   "lease_duration": 2764790
 }
@@ -193,7 +195,7 @@ this endpoint should be tightly controlled.
 $ curl \
     --header "X-Vault-Token: ..." \
     --request POST \
-    http://127.0.0.1:8200/v1/sys/leases/revoke-force/aws/creds
+    http://127.0.0.1:8200/v1/sys/leases/revoke-force/auth/userpass
 ```
 
 ## Revoke prefix
@@ -223,7 +225,7 @@ used to revoke very large numbers of secrets/tokens at once.
 $ curl \
     --header "X-Vault-Token: ..." \
     --request POST \
-    http://127.0.0.1:8200/v1/sys/leases/revoke-prefix/aws/creds
+    http://127.0.0.1:8200/v1/sys/leases/revoke-prefix/auth/userpass
 ```
 
 ## Tidy leases
@@ -257,8 +259,6 @@ per mount point. Note that it currently only supports type "irrevocable".
 This can help determine if particular endpoints are disproportionately
 resulting in irrevocable leases.
 
-This endpoint was added in Vault 1.8.
-
 ### Parameters
 
 - `type` `(string: <required>)` - Specifies the type of lease.
@@ -287,8 +287,6 @@ of leases per mount point. Note that it currently only supports type
 
 This can help determine if particular endpoints or causes are disproportionately
 resulting in irrevocable leases.
-
-This endpoint was added in Vault 1.8.
 
 ### Parameters
 

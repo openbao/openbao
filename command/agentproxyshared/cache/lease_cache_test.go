@@ -6,12 +6,10 @@ package cache
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -20,14 +18,13 @@ import (
 	"github.com/go-test/deep"
 	hclog "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cacheboltdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/cachememdb"
 	"github.com/openbao/openbao/command/agentproxyshared/cache/keymanager"
 	"github.com/openbao/openbao/helper/useragent"
-	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -89,60 +86,6 @@ func testNewLeaseCacheWithPersistence(t *testing.T, responses []*SendResponse, s
 	require.NoError(t, err)
 
 	return lc
-}
-
-func TestCache_ComputeIndexID(t *testing.T) {
-	type args struct {
-		req *http.Request
-	}
-	tests := []struct {
-		name    string
-		req     *SendRequest
-		want    string
-		wantErr bool
-	}{
-		{
-			"basic",
-			&SendRequest{
-				Request: &http.Request{
-					URL: &url.URL{
-						Path: "test",
-					},
-				},
-			},
-			"7b5db388f211fd9edca8c6c254831fb01ad4e6fe624dbb62711f256b5e803717",
-			false,
-		},
-		{
-			"ignore consistency headers",
-			&SendRequest{
-				Request: &http.Request{
-					URL: &url.URL{
-						Path: "test",
-					},
-					Header: http.Header{
-						vaulthttp.VaultIndexHeaderName:        []string{"foo"},
-						vaulthttp.VaultInconsistentHeaderName: []string{"foo"},
-						vaulthttp.VaultForwardHeaderName:      []string{"foo"},
-					},
-				},
-			},
-			"7b5db388f211fd9edca8c6c254831fb01ad4e6fe624dbb62711f256b5e803717",
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := computeIndexID(tt.req)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("actual_error: %v, expected_error: %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, string(tt.want)) {
-				t.Errorf("bad: index id; actual: %q, expected: %q", got, string(tt.want))
-			}
-		})
-	}
 }
 
 func TestLeaseCache_EmptyToken(t *testing.T) {
@@ -706,7 +649,7 @@ func setupBoltStorage(t *testing.T) (tempCacheDir string, boltStorage *cachebolt
 	km, err := keymanager.NewPassthroughKeyManager(context.Background(), nil)
 	require.NoError(t, err)
 
-	tempCacheDir, err = ioutil.TempDir("", "agent-cache-test")
+	tempCacheDir, err = os.MkdirTemp("", "agent-cache-test")
 	require.NoError(t, err)
 	boltStorage, err = cacheboltdb.NewBoltStorage(&cacheboltdb.BoltStorageConfig{
 		Path:    tempCacheDir,

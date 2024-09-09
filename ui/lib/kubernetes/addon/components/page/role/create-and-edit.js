@@ -47,19 +47,19 @@ export default class CreateAndEditRolePageComponent extends Component {
       {
         title: 'Generate token only using existing service account',
         description:
-          'Enter a service account that already exists in Kubernetes and Vault will dynamically generate a token.',
+          'Enter a service account that already exists in Kubernetes and OpenBao will dynamically generate a token.',
         value: 'basic',
       },
       {
         title: 'Generate token, service account, and role binding objects',
         description:
-          'Enter a pre-existing role (or ClusterRole) to use. Vault will generate a token, a service account and role binding objects.',
+          'Enter a pre-existing role (or ClusterRole) to use. OpenBao will generate a token, a service account and role binding objects.',
         value: 'expanded',
       },
       {
         title: 'Generate entire Kubernetes object chain',
         description:
-          'Vault will generate the entire chain— a role, a token, a service account, and role binding objects— based on rules you supply.',
+          'OpenBao will generate the entire chain— a role, a token, a service account, and role binding objects— based on rules you supply.',
         value: 'full',
       },
     ];

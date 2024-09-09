@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Integrated Storage Autopilot
 description: Learn about the autopilot subsystem of integrated raft storage in OpenBao.
 ---
 
@@ -8,7 +6,7 @@ description: Learn about the autopilot subsystem of integrated raft storage in O
 
 Autopilot enables automated workflows for managing Raft clusters. The current
 feature set includes 3 main features: Server Stabilization, Dead Server Cleanup
-and State API. These three features were introduced in Vault 1.7.
+and State API.
 
 ## Server stabilization
 
@@ -43,14 +41,14 @@ Follower node health is determined by 2 factors.
 
 ### Default configuration
 
-By default, Autopilot will be enabled with clusters using Vault 1.7+,
-although dead server cleanup is not enabled by default. Upgrade of
-Raft clusters deployed with older versions of OpenBao will also transition to use
-Autopilot automatically.
+By default, Autopilot is enabled in OpenBao, although dead server cleanup is not
+enabled by default.
 
 Autopilot exposes a [configuration
-API](/vault/api-docs/system/storage/raftautopilot#set-configuration) to manage its
-behavior. Autopilot gets initialized with the following default values. If these default values do not meet your expected autopilot behavior, don't forget to set them to your desired values.
+API](/api-docs/system/storage/raftautopilot#set-configuration) to manage its
+behavior. Autopilot gets initialized with the following default values. If these
+default values do not meet your expected autopilot behavior, don't forget to set
+them to your desired values.
 
 - `cleanup_dead_servers` - `false`
   - This controls whether to remove dead servers from
@@ -78,16 +76,13 @@ behavior. Autopilot gets initialized with the following default values. If these
   - Minimum amount of time a server must be in a healthy state before it can become a voter. Until that happens,
     it will be visible as a peer in the cluster, but as a non-voter, meaning it won't contribute to quorum.
 
-~> **Note**: Autopilot in OpenBao does similar things to what autopilot does in
+:::warning
+
+**Note**: Autopilot in OpenBao does similar things to what autopilot does in
 [Consul](https://www.consul.io/). However, the configuration in these 2 systems
 differ in terms of default values and thresholds; some additional parameters
 might also show up in OpenBao in comparison to Consul as well. Autopilot in OpenBao
 and Consul use different technical underpinnings requiring these differences, to
 provide the autopilot functionality.
 
-## Tutorial
-
-Refer to the following tutorials to learn more.
-
-- [Integrated Storage Autopilot](/vault/tutorials/raft/raft-autopilot)
-- [Fault Tolerance with Redundancy Zones](/vault/tutorials/raft/raft-redundancy-zones)
+:::

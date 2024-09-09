@@ -1,22 +1,19 @@
 ---
-layout: 'docs'
-page_title: 'HA Cluster with Raft and TLS'
-sidebar_current: 'docs-platform-k8s-examples-ha-tls'
 description: |-
-  Describes how to set up a Raft HA Vault cluster with TLS certificate
+  Describes how to set up a Raft HA OpenBao cluster with TLS certificate
 ---
 
 # HA Cluster with Raft and TLS
 
 The overview for [Integrated Storage and
-TLS](/vault/docs/concepts/integrated-storage#integrated-storage-and-tls) covers
+TLS](/docs/concepts/integrated-storage#integrated-storage-and-tls) covers
 the various options for mitigating TLS verification warnings and bootstrapping
 your Raft cluster.
 
 Without proper configuration, you will see the following warning before cluster
 initialization:
 ```shell
-core: join attempt failed: error="error during raft bootstrap init call: Put "https://vault-${N}.${SERVICE}:8200/v1/sys/storage/raft/bootstrap/challenge": x509: certificate is valid for ${SERVICE}, ${SERVICE}.${NAMESPACE}, ${SERVICE}.${NAMESPACE}.svc, ${SERVICE}.${NAMESPACE}.svc.cluster.local, not vault-${N}.${SERVICE}"
+core: join attempt failed: error="error during raft bootstrap init call: Put "https://openbao-${N}.${SERVICE}:8200/v1/sys/storage/raft/bootstrap/challenge": x509: certificate is valid for ${SERVICE}, ${SERVICE}.${NAMESPACE}, ${SERVICE}.${NAMESPACE}.svc, ${SERVICE}.${NAMESPACE}.svc.cluster.local, not openbao-${N}.${SERVICE}"
 ```
 
 The examples below demonstrate two specific solutions. Both solutions ensure
@@ -25,76 +22,70 @@ matches the name(s) listed in the TLS certificate.
 
 ## Before you start
 
-1. Follow the steps from the example [HA Vault Cluster with Integrated
-Storage](/vault/docs/platform/k8s/helm/examples/ha-with-raft) to build the cluster.
+1. Follow the steps from the example [HA OpenBao Cluster with Integrated
+Storage](/docs/platform/k8s/helm/examples/ha-with-raft) to build the cluster.
 
 2. Follow the examples and instructions in [Standalone Server with
-TLS](/vault/docs/platform/k8s/helm/examples/standalone-tls) to create a TLS
+TLS](/docs/platform/k8s/helm/examples/standalone-tls) to create a TLS
 certificate.
 
 ## Solution 1: Use auto-join and set the TLS server in your Raft configuration
 
 The join warning disappears if you use auto-join and set the expected TLS
 server name (`${CN}`) with
-[`leader_tls_servername`](/vault/docs/configuration/storage/raft#leader_tls_servername)
-in the Raft stanza for your Vault configuration.
+[`leader_tls_servername`](/docs/configuration/storage/raft#leader_tls_servername)
+in the Raft stanza for your OpenBao configuration.
 
 For example:
-<CodeBlockConfig highlight="6,14,22">
 
-```hcl
+```hcl {6,14,22}
 storage "raft" {
-  path = "/vault/data"
+  path = "/openbao/data"
 
   retry_join {
-    leader_api_addr = "https://vault-0.${SERVICE}:8200"
+    leader_api_addr = "https://openbao-0.${SERVICE}:8200"
     leader_tls_servername = "${CN}"
-    leader_client_cert_file = "/vault/tls/vault.crt"
-    leader_client_key_file = "/vault/tls/vault.key"
-    leader_ca_cert_file = "/vault/tls/vault.ca"
+    leader_client_cert_file = "/openbao/tls/openbao.crt"
+    leader_client_key_file = "/openbao/tls/openbao.key"
+    leader_ca_cert_file = "/openbao/tls/openbao.ca"
   }
 
   retry_join {
-    leader_api_addr = "https://vault-1.${SERVICE}:8200"
+    leader_api_addr = "https://openbao-1.${SERVICE}:8200"
     leader_tls_servername = "${CN}"
-    leader_client_cert_file = "/vault/tls/vault.crt"
-    leader_client_key_file = "/vault/tls/vault.key"
-    leader_ca_cert_file = "/vault/tls/vault.ca"
+    leader_client_cert_file = "/openbao/tls/openbao.crt"
+    leader_client_key_file = "/openbao/tls/openbao.key"
+    leader_ca_cert_file = "/openbao/tls/openbao.ca"
   }
 
   retry_join {
-    leader_api_addr = "https://vault-2.${SERVICE}:8200"
+    leader_api_addr = "https://openbao-2.${SERVICE}:8200"
     leader_tls_servername = "${CN}"
-    leader_client_cert_file = "/vault/tls/vault.crt"
-    leader_client_key_file = "/vault/tls/vault.key"
-    leader_ca_cert_file = "/vault/tls/vault.ca"
+    leader_client_cert_file = "/openbao/tls/openbao.crt"
+    leader_client_key_file = "/openbao/tls/openbao.key"
+    leader_ca_cert_file = "/openbao/tls/openbao.ca"
   }
 }
 ```
 
-</CodeBlockConfig>
-
 ## Solution 2:  Add a load balancer to your Raft configuration
 
-If you have a load balancer for your Vault cluster, you can add a single
+If you have a load balancer for your OpenBao cluster, you can add a single
 `retry_join` stanza to your Raft configuration and use the load balancer
 address for `leader_api_addr`.
 
 For example:
-<CodeBlockConfig highlight="5">
 
-```hcl
+```hcl {5}
 storage "raft" {
-  path = "/vault/data"
+  path = "/openbao/data"
 
   retry_join {
-    leader_api_addr = "https://vault-active:8200"
-    leader_client_cert_file = "/vault/tls/vault.crt"
-    leader_client_key_file = "/vault/tls/vault.key"
-    leader_ca_cert_file = "/vault/tls/vault.ca"
+    leader_api_addr = "https://openbao-active:8200"
+    leader_client_cert_file = "/openbao/tls/openbao.crt"
+    leader_client_key_file = "/openbao/tls/openbao.key"
+    leader_ca_cert_file = "/openbao/tls/openbao.ca"
   }
 }
 ```
-
-</CodeBlockConfig>
 

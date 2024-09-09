@@ -11,9 +11,9 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	influx "github.com/influxdata/influxdb1-client/v2"
-	dbplugin "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
-	"github.com/openbao/openbao/sdk/helper/template"
+	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
 )
 
 const (

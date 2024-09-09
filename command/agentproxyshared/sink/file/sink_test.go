@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -16,7 +15,7 @@ import (
 	hclog "github.com/hashicorp/go-hclog"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/command/agentproxyshared/sink"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 )
 
 func TestSinkServer(t *testing.T) {
@@ -58,7 +57,7 @@ func TestSinkServer(t *testing.T) {
 	}
 
 	for _, path := range []string{path1, path2} {
-		fileBytes, err := ioutil.ReadFile(fmt.Sprintf("%s/token", path))
+		fileBytes, err := os.ReadFile(fmt.Sprintf("%s/token", path))
 		if err != nil {
 			t.Fatal(err)
 		}

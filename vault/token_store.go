@@ -31,15 +31,15 @@ import (
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/locksutil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/helper/tokenutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/plugin/pb"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/openbao/openbao/vault/tokens"
 )
 
@@ -680,7 +680,7 @@ func (c *Core) LookupToken(ctx context.Context, token string) (*logical.TokenEnt
 		return nil, consts.ErrSealed
 	}
 
-	if c.standby && !c.perfStandby {
+	if c.standby {
 		return nil, consts.ErrStandby
 	}
 
@@ -746,8 +746,7 @@ type TokenStore struct {
 
 	// sscTokensGenerationCounter is a per-cluster version that counts how many
 	// "sync points" the cluster has  encountered in its lifecycle. "Sync points" are the
-	// number of times all nodes in the cluster have stepped down. Currently the only sync
-	// point is a DR cluster promoting to the primary.
+	// number of times all nodes in the cluster have stepped down.
 	sscTokensGenerationCounter SSCTokenGenerationCounter
 }
 
@@ -1139,7 +1138,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		}
 		entry.ExternalID = entry.ID
 		if !userSelectedID && !ts.core.DisableSSCTokens() {
-			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, logical.IndexStateFromContext(ctx), entry)
+			entry.ExternalID = ts.GenerateSSCTokenID(entry.ID, entry)
 		}
 		return nil
 
@@ -1221,7 +1220,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 // minted service tokens. This function is meant to be robust so as to allow vault
 // to continue operating even in the case where IDs can't be generated. Thus it logs
 // errors as opposed to throwing them.
-func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WALState, te *logical.TokenEntry) string {
+func (ts *TokenStore) GenerateSSCTokenID(innerToken string, te *logical.TokenEntry) string {
 	// Set up the prefix prepending function. This should really only be used in
 	// the token ID generation code itself.
 	prependServicePrefix := func(externalToken string) string {
@@ -1240,14 +1239,6 @@ func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WA
 		return prependServicePrefix(innerToken)
 	}
 
-	// If there is no WAL state, do not throw an error as it may be a single
-	// node cluster, or an OSS core. Instead, log that this has happened and
-	// create a walState with nil values to signify that these values should
-	// be ignored
-	if walState == nil {
-		ts.logger.Debug("no wal state found when generating token")
-		walState = &logical.WALState{}
-	}
 	if te.IsRoot() {
 		return prependServicePrefix(innerToken)
 	}
@@ -1256,10 +1247,9 @@ func (ts *TokenStore) GenerateSSCTokenID(innerToken string, walState *logical.WA
 	// that root tokens are always fixed size. This is required because during root token
 	// generation, the size needs to be known to create the OTP.
 
-	localIndex := walState.LocalIndex
 	tokenGenerationCounter := uint32(ts.GetSSCTokensGenerationCounter())
 
-	t := tokens.Token{Random: innerToken, LocalIndex: localIndex, IndexEpoch: tokenGenerationCounter}
+	t := tokens.Token{Random: innerToken, LocalIndex: 0, IndexEpoch: tokenGenerationCounter}
 	marshalledToken, err := proto.Marshal(&t)
 	if err != nil {
 		ts.logger.Error("unable to marshal token", "error", err)
@@ -1394,12 +1384,6 @@ func (ts *TokenStore) UseToken(ctx context.Context, te *logical.TokenEntry) (*lo
 	// from 1 to -1. So it's a nice optimization to check this without a read
 	// lock.
 	if te.NumUses == 0 {
-		return te, nil
-	}
-
-	// If we are attempting to unwrap a control group request, don't use the token.
-	// It will be manually revoked by the handler.
-	if len(te.Policies) == 1 && te.Policies[0] == controlGroupPolicyName {
 		return te, nil
 	}
 
@@ -1691,12 +1675,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	// If we are still restoring the expiration manager, we want to ensure the
 	// token is not expired
 	if ts.expiration == nil {
-		switch ts.core.IsDRSecondary() {
-		case true: // Bail if on DR secondary as expiration manager is nil
-			return nil, nil
-		default:
-			return nil, errors.New("expiration manager is nil on tokenstore")
-		}
+		return nil, errors.New("expiration manager is nil on tokenstore")
 	}
 
 	le, err := ts.expiration.FetchLeaseTimesByToken(ctx, entry)
@@ -1709,10 +1688,6 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	switch {
 	// It's any kind of expiring token with no lease, immediately delete it
 	case le == nil:
-		if ts.core.perfStandby {
-			return nil, fmt.Errorf("no lease entry found for token that ought to have one, possible eventual consistency issue")
-		}
-
 		tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
 		if err != nil {
 			return nil, err
@@ -2436,7 +2411,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	}()
 
 	resp := &logical.Response{}
-	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to Vault's server logs.")
+	resp.AddWarning("Tidy operation successfully started. Any information from the operation will be printed to OpenBao's server logs.")
 	return logical.RespondWithStatusCode(resp, req, http.StatusAccepted)
 }
 
@@ -2753,13 +2728,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		// handle readonly ourselves.
 		entity, _, err := ts.core.identityStore.CreateOrFetchEntity(ctx, alias)
 		if err != nil {
-			auth := &logical.Auth{
-				Alias: alias,
-			}
-			entity, _, err = possiblyForwardAliasCreation(ctx, ts.core, err, auth, entity)
-			if err != nil {
-				return nil, err
-			}
+			return nil, err
 		}
 		if entity == nil {
 			return nil, errors.New("failed to create or fetch entity from given entity alias")
@@ -3161,22 +3130,8 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		resp.AddWarning("Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups.")
 	}
 
-	// check if we are perfStandby, and if so forward the service token
-	// creation to the active node
-	var roleName string
-	if role != nil {
-		roleName = role.Name
-	}
-	if te.Type == logical.TokenTypeService && ts.core.perfStandby {
-		forwardedTokenEntry, err := forwardCreateTokenRegisterAuth(ctx, ts.core, &te, roleName, renewable, periodToUse, explicitMaxTTLToUse)
-		if err != nil {
-			return logical.ErrorResponse(err.Error()), ErrInternalError
-		}
-		te = *forwardedTokenEntry
-	} else {
-		if err := ts.create(ctx, &te); err != nil {
-			return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
-		}
+	if err := ts.create(ctx, &te); err != nil {
+		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
 	// Count the successful token creation.
@@ -3212,12 +3167,6 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		CreationPath:   te.Path,
 		TokenType:      te.Type,
 		Orphan:         te.Parent == "",
-	}
-
-	// We have registered the auth at this point if the token is of service
-	// type and core is perfStandby.
-	if te.Type == logical.TokenTypeService && ts.core.perfStandby && te.ExternalID != "" {
-		resp.Auth.ClientToken = te.ExternalID
 	}
 
 	for _, p := range te.Policies {
@@ -4189,8 +4138,8 @@ lease entries after certain error conditions. Usually running this is not
 necessary, and is only required if upgrade notes or support personnel suggest
 it.
 `
-	tokenBackendHelp = `The token credential backend is always enabled and builtin to Vault.
-Client tokens are used to identify a client and to allow Vault to associate policies and ACLs
+	tokenBackendHelp = `The token credential backend is always enabled and builtin to OpenBao.
+Client tokens are used to identify a client and to allow OpenBao to associate policies and ACLs
 which are enforced on every request. This backend also allows for generating sub-tokens as well
 as revocation of tokens. The tokens are renewable if associated with a lease.`
 	tokenCreateHelp          = `The token create path is used to create new tokens.`

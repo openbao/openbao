@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 func testPatchCommand(tb testing.TB) (*cli.MockUi, *PatchCommand) {

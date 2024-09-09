@@ -17,10 +17,10 @@ import (
 	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -81,10 +81,6 @@ func (c *Core) ensureWrappingKey(ctx context.Context) error {
 // On success, return (nil, nil) and mutates resp.  On failure, returns
 // either a response describing the failure or an error.
 func (c *Core) wrapInCubbyhole(ctx context.Context, req *logical.Request, resp *logical.Response, auth *logical.Auth) (*logical.Response, error) {
-	if c.perfStandby {
-		return forwardWrapRequest(ctx, c, req, resp, auth)
-	}
-
 	// Before wrapping, obey special rules for listing: if no entries are
 	// found, 404. This prevents unwrapping only to find empty data.
 	if req.Operation == logical.ListOperation {
@@ -351,7 +347,7 @@ func (c *Core) validateWrappingToken(ctx context.Context, req *logical.Request) 
 		return false, consts.ErrSealed
 	}
 
-	if c.standby && !c.perfStandby {
+	if c.standby {
 		return false, consts.ErrStandby
 	}
 
@@ -467,7 +463,7 @@ func IsWrappingToken(te *logical.TokenEntry) bool {
 		return false
 	}
 
-	if te.Policies[0] != responseWrappingPolicyName && te.Policies[0] != controlGroupPolicyName {
+	if te.Policies[0] != responseWrappingPolicyName {
 		return false
 	}
 

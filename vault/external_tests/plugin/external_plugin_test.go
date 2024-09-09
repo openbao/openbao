@@ -15,17 +15,16 @@ import (
 	"github.com/openbao/openbao/audit"
 	auditFile "github.com/openbao/openbao/builtin/audit/file"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/api/auth/approle"
+	"github.com/openbao/openbao/api/auth/approle/v2"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/database"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/helper/testhelpers/consul"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
 	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
@@ -521,27 +520,15 @@ func TestExternalPlugin_SecretsEngine(t *testing.T) {
 				}
 
 				// Configure
-				cleanupConsul, consulConfig := consul.PrepareTestContainer(t, "", false, true)
-				defer cleanupConsul()
-
-				_, err := client.Logical().Write(pluginPath+"/config/access", map[string]interface{}{
-					"address": consulConfig.Address(),
-					"token":   consulConfig.Token,
+				_, err := client.Logical().Write(pluginPath+"/data/creds", map[string]interface{}{
+					"address": "localhost:8300",
+					"token":   "devcreds",
 				})
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				_, err = client.Logical().Write(pluginPath+"/roles/test", map[string]interface{}{
-					"consul_policies": []string{"test"},
-					"ttl":             "6h",
-					"local":           false,
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				resp, err := client.Logical().Read(pluginPath + "/creds/test")
+				resp, err := client.Logical().Read(pluginPath + "/data/creds")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -574,28 +561,15 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 
 	testRegisterAndEnable(t, client, plugin)
 
-	// Configure
-	cleanupConsul, consulConfig := consul.PrepareTestContainer(t, "", false, true)
-	defer cleanupConsul()
-
-	_, err := client.Logical().Write(plugin.Name+"/config/access", map[string]interface{}{
-		"address": consulConfig.Address(),
-		"token":   consulConfig.Token,
+	_, err := client.Logical().Write(plugin.Name+"/data/creds", map[string]interface{}{
+		"address": "localhost:8300",
+		"token":   "testtoken",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Logical().Write(plugin.Name+"/roles/test", map[string]interface{}{
-		"consul_policies": []string{"test"},
-		"ttl":             "6h",
-		"local":           false,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resp, err := client.Logical().Read(plugin.Name + "/creds/test")
+	resp, err := client.Logical().Read(plugin.Name + "/data/creds")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -610,7 +584,7 @@ func TestExternalPlugin_SecretsEngineReload(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	resp, err = client.Logical().Read(plugin.Name + "/creds/test")
+	resp, err = client.Logical().Read(plugin.Name + "/data/creds")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -978,11 +952,9 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 	}
 
 	// Configure
-	cleanupConsul, consulConfig := consul.PrepareTestContainer(t, "", false, true)
-	defer cleanupConsul()
-	_, err = client.Logical().Write(plugin.Name+"/config/access", map[string]interface{}{
-		"address": consulConfig.Address(),
-		"token":   consulConfig.Token,
+	_, err = client.Logical().Write(plugin.Name+"/data/creds", map[string]interface{}{
+		"address": "localhost:8300",
+		"token":   "devcreds",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -995,7 +967,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 		auditRequest := map[string]interface{}{}
 		if req, ok := auditRecord["request"]; ok {
 			auditRequest = req.(map[string]interface{})
-			if auditRequest["path"] != plugin.Name+"/config/access" {
+			if auditRequest["path"] != plugin.Name+"/data/creds" {
 				continue
 			}
 		}
@@ -1004,7 +976,7 @@ func TestExternalPlugin_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T
 		auditResponse := map[string]interface{}{}
 		if req, ok := auditRecord["response"]; ok {
 			auditRequest = req.(map[string]interface{})
-			if auditResponse["path"] != plugin.Name+"/config/access" {
+			if auditResponse["path"] != plugin.Name+"/data/creds" {
 				continue
 			}
 		}

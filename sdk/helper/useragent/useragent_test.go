@@ -6,7 +6,7 @@ package useragent
 import (
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestUserAgent(t *testing.T) {

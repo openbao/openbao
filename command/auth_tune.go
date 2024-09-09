@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -47,7 +47,7 @@ func (c *AuthTuneCommand) Synopsis() string {
 
 func (c *AuthTuneCommand) Help() string {
 	helpText := `
-Usage: vault auth tune [options] PATH
+Usage: bao auth tune [options] PATH
 
   Tunes the configuration options for the auth method at the given PATH. The
   argument corresponds to the PATH where the auth method is enabled, not the
@@ -55,7 +55,7 @@ Usage: vault auth tune [options] PATH
 
   Tune the default lease for the github auth method:
 
-      $ vault auth tune -default-lease-ttl=72h github/
+      $ bao auth tune -default-lease-ttl=72h github/
 
 ` + c.Flags().Help()
 

@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
 
 func testPluginInfoCommand(tb testing.TB) (*cli.MockUi, *PluginInfoCommand) {
@@ -116,7 +116,7 @@ func TestPluginInfoCommand_Run(t *testing.T) {
 		client, _, closer := testVaultServerPluginDir(t, pluginDir)
 		defer closer()
 
-		const pluginName = "azure"
+		const pluginName = "approle"
 		_, sha256Sum := testPluginCreateAndRegister(t, client, pluginDir, pluginName, api.PluginTypeCredential, "v1.0.0")
 
 		for name, tc := range map[string]struct {

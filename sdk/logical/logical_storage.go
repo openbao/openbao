@@ -6,12 +6,14 @@ package logical
 import (
 	"context"
 
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 )
 
 type LogicalStorage struct {
 	underlying physical.Backend
 }
+
+var _ Storage = &LogicalStorage{}
 
 func (s *LogicalStorage) Get(ctx context.Context, key string) (*StorageEntry, error) {
 	entry, err := s.underlying.Get(ctx, key)
@@ -44,12 +46,70 @@ func (s *LogicalStorage) List(ctx context.Context, prefix string) ([]string, err
 	return s.underlying.List(ctx, prefix)
 }
 
+func (s *LogicalStorage) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return s.underlying.ListPage(ctx, prefix, after, limit)
+}
+
 func (s *LogicalStorage) Underlying() physical.Backend {
 	return s.underlying
 }
 
-func NewLogicalStorage(underlying physical.Backend) *LogicalStorage {
-	return &LogicalStorage{
+type TransactionalLogicalStorage struct {
+	LogicalStorage
+}
+
+var _ TransactionalStorage = &TransactionalLogicalStorage{}
+
+type LogicalTransaction struct {
+	LogicalStorage
+}
+
+var _ Transaction = &LogicalTransaction{}
+
+func (s *TransactionalLogicalStorage) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
+	tx, err := s.Underlying().(physical.TransactionalBackend).BeginReadOnlyTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LogicalTransaction{
+		LogicalStorage{
+			underlying: tx,
+		},
+	}, nil
+}
+
+func (s *TransactionalLogicalStorage) BeginTx(ctx context.Context) (Transaction, error) {
+	tx, err := s.Underlying().(physical.TransactionalBackend).BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LogicalTransaction{
+		LogicalStorage{
+			underlying: tx,
+		},
+	}, nil
+}
+
+func (s *LogicalTransaction) Commit(ctx context.Context) error {
+	return s.Underlying().(physical.Transaction).Commit(ctx)
+}
+
+func (s *LogicalTransaction) Rollback(ctx context.Context) error {
+	return s.Underlying().(physical.Transaction).Rollback(ctx)
+}
+
+func NewLogicalStorage(underlying physical.Backend) Storage {
+	ls := &LogicalStorage{
 		underlying: underlying,
 	}
+
+	if _, ok := underlying.(physical.TransactionalBackend); ok {
+		return &TransactionalLogicalStorage{
+			*ls,
+		}
+	}
+
+	return ls
 }

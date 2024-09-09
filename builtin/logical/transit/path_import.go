@@ -18,9 +18,9 @@ import (
 	"time"
 
 	"github.com/google/tink/go/kwp/subtle"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const EncryptedKeyBytes = 512
@@ -65,7 +65,7 @@ with the wrapping key and then concatenated with the import key, wrapped by the 
 			},
 			"allow_rotation": {
 				Type:        framework.TypeBool,
-				Description: "True if the imported key may be rotated within Vault; false otherwise.",
+				Description: "True if the imported key may be rotated within OpenBao; false otherwise.",
 			},
 			"derived": {
 				Type: framework.TypeBool,
@@ -198,6 +198,8 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		polReq.KeyType = keysutil.KeyType_AES256_GCM96
 	case "chacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+	case "xchacha20-poly1305":
+		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
 	case "ecdsa-p256":
 		polReq.KeyType = keysutil.KeyType_ECDSA_P256
 	case "ecdsa-p384":
@@ -229,6 +231,8 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 		}
 		return nil, errors.New("the import path cannot be used with an existing key; use import-version to rotate an existing imported key")
 	}
+
+	// Otherwise, p was nil, so there is no lock that needs to be released.
 
 	key, resp, err := b.extractKeyFromFields(ctx, req, d, polReq.KeyType, isCiphertextSet)
 	if err != nil {
@@ -424,7 +428,7 @@ func isFieldSet(fieldName string, d *framework.FieldData) bool {
 const (
 	pathImportWriteSyn  = "Imports an externally-generated key into a new transit key"
 	pathImportWriteDesc = "This path is used to import an externally-generated " +
-		"key into Vault. The import operation creates a new key and cannot be used to " +
+		"key into OpenBao. The import operation creates a new key and cannot be used to " +
 		"replace an existing key."
 )
 

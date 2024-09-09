@@ -14,28 +14,26 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/term"
-
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
-	"github.com/hashicorp/consul/api"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/cli"
+
+	bApi "github.com/openbao/openbao/api/v2"
 	cserver "github.com/openbao/openbao/command/server"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/physical/raft"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
-	srconsul "github.com/openbao/openbao/serviceregistration/consul"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/diagnose"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
+	"golang.org/x/term"
 )
 
 const CoreConfigUninitializedErr = "Diagnose cannot attempt this step because core config could not be set."
@@ -68,7 +66,7 @@ func (c *OperatorDiagnoseCommand) Synopsis() string {
 
 func (c *OperatorDiagnoseCommand) Help() string {
 	helpText := `
-Usage: vault operator diagnose 
+Usage: bao operator diagnose
 
   This command troubleshoots Vault startup issues, such as TLS configuration or
   auto-unseal. It should be run using the same environment variables and configuration
@@ -77,11 +75,11 @@ Usage: vault operator diagnose
 
   Start diagnose with a configuration file:
     
-     $ vault operator diagnose -config=/etc/vault/config.hcl
+     $ bao operator diagnose -config=/etc/vault/config.hcl
 
   Perform a diagnostic check while Vault is still running:
 
-     $ vault operator diagnose -config=/etc/vault/config.hcl -skip=listener
+     $ bao operator diagnose -config=/etc/vault/config.hcl -skip=listener
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
@@ -317,7 +315,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 
 		// Check for raft quorum status
 		if config.Storage.Type == storageTypeRaft {
-			path := os.Getenv(raft.EnvVaultRaftPath)
+			path := bApi.ReadBaoVariable(raft.EnvVaultRaftPath)
 			if path == "" {
 				path, ok := config.Storage.Config["path"]
 				if !ok {
@@ -380,30 +378,7 @@ func (c *OperatorDiagnoseCommand) offlineDiagnostics(ctx context.Context) error 
 			diagnose.Skipped(ctx, "No service registration configured.")
 			return nil
 		}
-		srConfig := config.ServiceRegistration.Config
 
-		diagnose.Test(ctx, "Check Consul Service Discovery TLS", func(ctx context.Context) error {
-			// SetupSecureTLS for service discovery uses the same cert and key to set up physical
-			// storage. See the consul package in physical for details.
-			err := srconsul.SetupSecureTLS(ctx, api.DefaultConfig(), srConfig, server.logger, true)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
-		if config.ServiceRegistration != nil && config.ServiceRegistration.Type == "consul" {
-			diagnose.Test(ctx, "Check Consul Direct Service Discovery", func(ctx context.Context) error {
-				dirAccess := diagnose.ConsulDirectAccess(config.ServiceRegistration.Config)
-				if dirAccess != "" {
-					diagnose.Warn(ctx, dirAccess)
-				}
-				if dirAccess == diagnose.DirAccessErr {
-					diagnose.Advise(ctx, diagnose.DirAccessAdvice)
-				}
-				return nil
-			})
-		}
 		return nil
 	})
 
@@ -584,23 +559,6 @@ SEALFAIL:
 	if vaultCore == nil {
 		return fmt.Errorf("Diagnose could not initialize the Vault core from the Vault server configuration.")
 	}
-
-	licenseCtx, licenseSpan := diagnose.StartSpan(ctx, "Check For Autoloaded License")
-	// If we are not in enterprise, return from the check
-	if !constants.IsEnterprise {
-		diagnose.Skipped(licenseCtx, "License check will not run on OSS Vault.")
-	} else {
-		// Load License from environment variables. These take precedence over the
-		// configured license.
-		if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
-			coreConfig.LicensePath = envLicensePath
-		}
-		if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
-			coreConfig.License = envLicense
-		}
-		vault.DiagnoseCheckLicense(licenseCtx, vaultCore, coreConfig, false)
-	}
-	licenseSpan.End()
 
 	var lns []listenerutil.Listener
 	diagnose.Test(ctx, "Start Listeners", func(ctx context.Context) error {

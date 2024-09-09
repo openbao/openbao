@@ -11,15 +11,15 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/helper/testhelpers"
 	"github.com/openbao/openbao/http"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 	"github.com/openbao/openbao/vault"
 	"go.uber.org/atomic"
 )
 
 func TestRecovery(t *testing.T) {
 	logger := logging.NewVaultLogger(hclog.Debug).Named(t.Name())
-	inm, err := inmem.NewTransactionalInmemHA(nil, logger)
+	inm, err := inmem.NewInmemHA(nil, logger)
 	if err != nil {
 		t.Fatal(err)
 	}

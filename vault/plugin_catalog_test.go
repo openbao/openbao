@@ -8,21 +8,20 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"testing"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/plugins/database/postgresql"
-	v5 "github.com/openbao/openbao/sdk/database/dbplugin/v5"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	backendplugin "github.com/openbao/openbao/sdk/plugin"
+	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 
 	"github.com/openbao/openbao/helper/builtinplugins"
 )
@@ -72,7 +71,7 @@ func TestPluginCatalog_CRUD(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +153,7 @@ func TestPluginCatalog_VersionedCRUD(t *testing.T) {
 	core.pluginCatalog.directory = tempDir
 
 	// Set a versioned plugin.
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +262,7 @@ func TestPluginCatalog_List(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +333,7 @@ func TestPluginCatalog_ListVersionedPlugins(t *testing.T) {
 	}
 
 	// Set a plugin, test overwriting a builtin plugin
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +425,7 @@ func TestPluginCatalog_ListHandlesPluginNamesWithSlashes(t *testing.T) {
 	}
 	core.pluginCatalog.directory = tempDir
 
-	file, err := ioutil.TempFile(tempDir, "temp")
+	file, err := os.CreateTemp(tempDir, "temp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -611,7 +610,7 @@ func TestPluginCatalog_MakeExternalPluginsKey_Comparable(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -634,7 +633,7 @@ func TestPluginCatalog_PluginMain_Userpass(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -657,7 +656,7 @@ func TestPluginCatalog_PluginMain_UserpassMultiplexed(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -670,7 +669,7 @@ func TestPluginCatalog_PluginMain_Postgres(t *testing.T) {
 }
 
 func TestPluginCatalog_PluginMain_PostgresMultiplexed(_ *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 

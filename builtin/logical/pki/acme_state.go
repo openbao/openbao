@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/nonceutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -644,7 +644,11 @@ func (a *acmeState) DeleteEab(sc *storageContext, eabKid string) (bool, error) {
 }
 
 func (a *acmeState) ListEabIds(sc *storageContext) ([]string, error) {
-	entries, err := sc.Storage.List(sc.Context, acmeEabPrefix)
+	return a.ListEabIdsPage(sc, "", -1)
+}
+
+func (a *acmeState) ListEabIdsPage(sc *storageContext, after string, limit int) ([]string, error) {
+	entries, err := sc.Storage.ListPage(sc.Context, acmeEabPrefix, after, limit)
 	if err != nil {
 		return nil, err
 	}

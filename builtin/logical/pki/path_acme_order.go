@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/sdk/helper/strutil"
+	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 
-	"github.com/openbao/openbao/sdk/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/net/idna"
 )
 
@@ -284,11 +284,6 @@ func (b *backend) acmeFinalizeOrderHandler(ac *acmeContext, _ *logical.Request, 
 	if err != nil {
 		b.Logger().Warn("orphaned generated ACME certificate due to error saving order", "serial_number", hyphenSerialNumber, "error", err)
 		return nil, fmt.Errorf("failed saving updated order: %w", err)
-	}
-
-	if err := b.doTrackBilling(ac.sc.Context, order.Identifiers); err != nil {
-		b.Logger().Error("failed to track billing for order", "order", orderId, "error", err)
-		err = nil
 	}
 
 	return formatOrderResponse(ac, order), nil

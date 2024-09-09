@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/sdk/helper/consts"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -21,13 +20,6 @@ func handleSysRekeyInit(core *vault.Core, recovery bool) http.Handler {
 		standby, _ := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
-			return
-		}
-
-		repState := core.ReplicationState()
-		if repState.HasState(consts.ReplicationPerformanceSecondary) {
-			respondError(w, http.StatusBadRequest,
-				fmt.Errorf("rekeying can only be performed on the primary cluster when replication is activated"))
 			return
 		}
 
@@ -111,7 +103,7 @@ func handleSysRekeyInitGet(ctx context.Context, core *vault.Core, recovery bool,
 func handleSysRekeyInitPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyRequest
-	if _, err := parseJSONRequest(core.PerfStandby(), r, w, &req); err != nil {
+	if _, err := parseJSONRequest(r, w, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -161,7 +153,7 @@ func handleSysRekeyUpdate(core *vault.Core, recovery bool) http.Handler {
 
 		// Parse the request
 		var req RekeyUpdateRequest
-		if _, err := parseJSONRequest(core.PerfStandby(), r, w, &req); err != nil {
+		if _, err := parseJSONRequest(r, w, &req); err != nil {
 			respondError(w, http.StatusBadRequest, err)
 			return
 		}
@@ -229,13 +221,6 @@ func handleSysRekeyVerify(core *vault.Core, recovery bool) http.Handler {
 		standby, _ := core.Standby()
 		if standby {
 			respondStandby(core, w, r.URL)
-			return
-		}
-
-		repState := core.ReplicationState()
-		if repState.HasState(consts.ReplicationPerformanceSecondary) {
-			respondError(w, http.StatusBadRequest,
-				fmt.Errorf("rekeying can only be performed on the primary cluster when replication is activated"))
 			return
 		}
 
@@ -309,7 +294,7 @@ func handleSysRekeyVerifyDelete(ctx context.Context, core *vault.Core, recovery 
 func handleSysRekeyVerifyPut(ctx context.Context, core *vault.Core, recovery bool, w http.ResponseWriter, r *http.Request) {
 	// Parse the request
 	var req RekeyVerificationUpdateRequest
-	if _, err := parseJSONRequest(core.PerfStandby(), r, w, &req); err != nil {
+	if _, err := parseJSONRequest(r, w, &req); err != nil {
 		respondError(w, http.StatusBadRequest, err)
 		return
 	}

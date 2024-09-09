@@ -10,7 +10,7 @@ import (
 	"encoding/pem"
 	"testing"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (

@@ -12,12 +12,12 @@ import (
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestIdentityStore_CaseInsensitiveGroupAliasName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group
 	resp, err := i.HandleRequest(ctx, &logical.Request{
@@ -100,6 +100,8 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	defer ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
 
@@ -212,7 +214,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
@@ -264,7 +266,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	var resp *logical.Response
 	var err error
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -343,7 +345,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 func TestIdentityStore_GroupAliases_MemDBIndexes(t *testing.T) {
 	var err error
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	group := &identity.Group{
 		ID:   "testgroupid",
@@ -407,7 +409,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, accessor, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	groupReq := &logical.Request{
 		Path:      "group",
@@ -439,13 +441,13 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 
 func TestIdentityStore_GroupAliasesUpdate(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, accessor1, c := testIdentityStoreWithGithubAuth(ctx, t)
+	i, accessor1, c := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	ghme2 := &MountEntry{
 		Table:       credentialTableType,
-		Path:        "github2/",
-		Type:        "github",
-		Description: "github auth",
+		Path:        "approle2/",
+		Type:        "approle",
+		Description: "approle auth",
 	}
 
 	err := c.enableCredential(ctx, ghme2)

@@ -4,13 +4,14 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -41,7 +42,7 @@ func (c *WriteCommand) Synopsis() string {
 
 func (c *WriteCommand) Help() string {
 	helpText := `
-Usage: vault write [options] PATH [DATA K=V...]
+Usage: bao write [options] PATH [DATA K=V...]
 
   Writes data to Vault at the given path. The data can be credentials, secrets,
   configuration, or arbitrary data. The specific behavior of this command is
@@ -53,15 +54,15 @@ Usage: vault write [options] PATH [DATA K=V...]
 
   Persist data in the generic secrets engine:
 
-      $ vault write secret/my-secret foo=bar
+      $ bao write secret/my-secret foo=bar
 
   Create a new encryption key in the transit secrets engine:
 
-      $ vault write -f transit/keys/my-key
+      $ bao write -f transit/keys/my-key
 
   Upload an AWS IAM policy from a file on disk:
 
-      $ vault write aws/roles/ops policy=@policy.json
+      $ bao write aws/roles/ops policy=@policy.json
 
   Configure access to Consul by providing an access token:
 
@@ -125,6 +126,9 @@ func (c *WriteCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	path := sanitizePath(args[0])

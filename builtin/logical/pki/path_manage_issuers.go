@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathIssuerGenerateRoot(b *backend) *framework.Path {
@@ -113,6 +113,7 @@ func buildPathGenerateRoot(b *backend, pattern string, displayAttrs *framework.D
 	}
 
 	ret.Fields = addCACommonFields(map[string]*framework.FieldSchema{})
+	ret.Fields = addKeyUsageRoleFields(ret.Fields)
 	ret.Fields = addCAKeyGenerationFields(ret.Fields)
 	ret.Fields = addCAIssueFields(ret.Fields)
 	return ret
@@ -589,6 +590,11 @@ func pathRevokeIssuer(b *backend) *framework.Path {
 							"crl_distribution_points": {
 								Type:        framework.TypeStringSlice,
 								Description: `Specifies the URL values for the CRL Distribution Points field`,
+								Required:    true,
+							},
+							"delta_crl_distribution_points": {
+								Type:        framework.TypeStringSlice,
+								Description: `Specifies the URL values for the Delta CRL Distribution Points field`,
 								Required:    true,
 							},
 							"ocsp_servers": {

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type VaultClusterNode interface {
@@ -76,7 +76,6 @@ type VaultNodeConfig struct {
 	EnableResponseHeaderHostname   bool          `json:"enable_response_header_hostname"`
 	LogRequestsLevel               string        `json:"log_requests_level"`
 	EnableResponseHeaderRaftNodeID bool          `json:"enable_response_header_raft_node_id"`
-	LicensePath                    string        `json:"license_path"`
 }
 
 type ClusterNode struct {
@@ -98,7 +97,6 @@ type ClusterOptions struct {
 	TmpDir                      string
 	Logger                      hclog.Logger
 	VaultNodeConfig             *VaultNodeConfig
-	VaultLicense                string
 	AdministrativeNamespacePath string
 }
 

@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type CLIHandler struct {
@@ -20,7 +20,7 @@ type CLIHandler struct {
 	testStdout io.Writer
 }
 
-func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, error) {
+func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive bool) (*api.Secret, error) {
 	// Parse "lookup" first - we want to return an early error if the user
 	// supplied an invalid value here before we prompt them for a token. It would
 	// be annoying to type your token and then be told you supplied an invalid
@@ -41,6 +41,10 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		stdout := h.testStdout
 		if stdout == nil {
 			stdout = os.Stderr
+		}
+
+		if nonInteractive {
+			return nil, fmt.Errorf("'token' not supplied and refusing to pull from stdin")
 		}
 
 		// No arguments given, read the token from user input
@@ -140,7 +144,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 
 func (h *CLIHandler) Help() string {
 	help := `
-Usage: vault login TOKEN [CONFIG K=V...]
+Usage: bao login TOKEN [CONFIG K=V...]
 
   The token auth method allows logging in directly with a token. This
   can be a token from the "token-create" command or API. There are no
@@ -148,11 +152,11 @@ Usage: vault login TOKEN [CONFIG K=V...]
 
   Authenticate using a token:
 
-      $ vault login 96ddf4bc-d217-f3ba-f9bd-017055595017
+      $ bao login 96ddf4bc-d217-f3ba-f9bd-017055595017
 
   Authenticate but do not lookup information about the token:
 
-      $ vault login token=96ddf4bc-d217-f3ba-f9bd-017055595017 lookup=false
+      $ bao login token=96ddf4bc-d217-f3ba-f9bd-017055595017 lookup=false
 
   This token usually comes from a different source such as the API or via the
   built-in "vault token create" command.

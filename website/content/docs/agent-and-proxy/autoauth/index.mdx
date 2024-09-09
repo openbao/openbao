@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: OpenBao Agent and OpenBao Proxy Auto-Auth
+sidebar_label: Overview
 description: |-
   OpenBao Agent and OpenBao Proxy's Auto-Auth functionality allows easy and automatic
   authentication to OpenBao in a variety of environments.
@@ -31,7 +30,7 @@ configured Sinks, subject to their configuration.
 
 Sinks support some advanced features, including the ability for the written
 values to be encrypted or
-[response-wrapped](/vault/docs/concepts/response-wrapping).
+[response-wrapped](/docs/concepts/response-wrapping).
 
 Both mechanisms can be used concurrently; in this case, the value will be
 response-wrapped, then encrypted.
@@ -58,8 +57,12 @@ There are two ways that tokens can be response-wrapped:
 
 ### Encrypting tokens
 
-~> Support for encrypted tokens is experimental; if input/output formats
+:::warning
+
+Support for encrypted tokens is experimental; if input/output formats
 change, we will make every effort to provide backwards compatibility.
+
+:::
 
 Tokens can be encrypted, using a Diffie-Hellman exchange to generate an
 ephemeral key. In this mechanism, the client receiving the token writes a
@@ -69,11 +72,15 @@ key, which is then used to encrypt the token via AES-GCM. The nonce, encrypted
 payload, and the sink's public key are then written to the output file, where
 the client can compute the shared secret and decrypt the token value.
 
-~> NOTE: Token encryption is not a protection against MITM attacks! The purpose
+:::warning
+
+NOTE: Token encryption is not a protection against MITM attacks! The purpose
 of this feature is for forward-secrecy and coverage against bare token values
 being persisted. A MITM that can write to the sink's output and/or client
 public-key input files could attack this exchange. Using TLS to protect the
 transit of tokens is highly recommended.
+
+:::
 
 To help mitigate MITM attacks, additional authenticated data (AAD) can be
 provided to Agent and Proxy. This data is written as part of the AES-GCM tag and must
@@ -92,7 +99,7 @@ written.
 
 If writing a client that uses this feature, it will likely be helpful to look
 at the
-[dhutil](https://github.com/lf-edge/openbao/blob/main/helper/dhutil/dhutil.go)
+[dhutil](https://github.com/openbao/openbao/blob/main/helper/dhutil/dhutil.go)
 library. This shows the expected format of the public key input and envelope
 output formats.
 
@@ -106,17 +113,21 @@ The top level `auto_auth` block has two configuration entries:
 
 ### Configuration (Method)
 
-~> Auto-auth does not support using tokens with a limited number of uses. Auto-auth
+:::warning
+
+Auto-auth does not support using tokens with a limited number of uses. Auto-auth
 does not track the number of uses remaining, and may allow the token to
 expire before attempting to renew it. For example, if using AppRole auto-auth,
 you must use 0 (meaning unlimited) as the value for
-[`token_num_uses`](/vault/api-docs/auth/approle#token_num_uses).
+[`token_num_uses`](/api-docs/auth/approle#token_num_uses).
+
+:::
 
 These are common configuration values that live within the `method` block:
 
-- `type` `(string: required)` - The type of the method to use, e.g. `aws`,
-  `gcp`, `azure`, etc. _Note_: when using HCL this can be used as the key for
-  the block, e.g. `method "aws" {...}`.
+- `type` `(string: required)` - The type of the method to use, e.g. `jwt`,
+  `ldap`, `cert`, etc. _Note_: when using HCL this can be used as the key for
+  the block, e.g. `method "jwt" {...}`.
 
 - `mount_path` `(string: optional)` - The mount path of the method. If not
   specified, defaults to a value of `auth/<method type>`.
@@ -134,15 +145,15 @@ These are common configuration values that live within the `method` block:
   sinks, but does not allow the auto-auth to keep the token renewed or
   automatically reauthenticate when it expires. Rather than a simple string,
   the written value will be a JSON-encoded
-  [SecretWrapInfo](https://godoc.org/github.com/lf-edge/openbao/api#SecretWrapInfo)
-  structure. Uses [duration format strings](/vault/docs/concepts/duration-format).
+  [SecretWrapInfo](https://godoc.org/github.com/openbao/openbao/api#SecretWrapInfo)
+  structure. Uses [duration format strings](/docs/concepts/duration-format).
 
 - `min_backoff` `(string or integer: "1s")` - The minimum backoff time auto-auth
   will delay before retrying after a failed auth attempt. The backoff will start
   at the configured value and double (with some randomness) after successive
   failures, capped by `max_backoff.` If Agent templating is being used, this
   value is also used as the min backoff time for the templating server.
-  Uses [duration format strings](/vault/docs/concepts/duration-format).
+  Uses [duration format strings](/docs/concepts/duration-format).
 
 - `max_backoff` `(string or integer: "5m")` - The maximum time Agent will delay
   before retrying after a failed auth attempt. The backoff will start at
@@ -150,7 +161,7 @@ These are common configuration values that live within the `method` block:
   capped by `max_backoff.` If Agent templating is being used, this value is also
   used as the max backoff time for the templating server. `max_backoff` is the
   duration between retries, and **not** the duration that retries will be
-  performed before giving up. Uses [duration format strings](/vault/docs/concepts/duration-format).
+  performed before giving up. Uses [duration format strings](/docs/concepts/duration-format).
 
 - `exit_on_err` `(bool: false)` - When set to true, OpenBao Agent and OpenBao Proxy
   will exit if any errors occur during authentication. This configurable only affects login
@@ -172,8 +183,8 @@ These configuration values are common to all Sinks:
   the method, but allows auto-auth to keep the token renewed and automatically
   reauthenticate when it expires. Rather than a simple string, the written
   value will be a JSON-encoded
-  [SecretWrapInfo](https://godoc.org/github.com/lf-edge/openbao/api#SecretWrapInfo)
-  structure. Uses [duration format strings](/vault/docs/concepts/duration-format).
+  [SecretWrapInfo](https://godoc.org/github.com/openbao/openbao/api#SecretWrapInfo)
+  structure. Uses [duration format strings](/docs/concepts/duration-format).
 
 - `dh_type` `(string: optional)` - If specified, the type of Diffie-Hellman exchange to
   perform, meaning, which ciphers and/or curves. Currently only `curve25519` is
@@ -209,8 +220,12 @@ the two formats.
 The HCL format may define any number of sink objects with an optional wrapping
 `sinks {...}` object.
 
-~> Note: The [corresponding JSON format](#sinks-json-format) _must_ specify a
+:::warning
+
+Note: The [corresponding JSON format](#sinks-json-format) _must_ specify a
 `"sinks" : [...]` array to encapsulate all `sink` JSON objects.
+
+:::
 
 ```hcl
 // Other OpenBao Agent or OpenBao Proxy configuration blocks

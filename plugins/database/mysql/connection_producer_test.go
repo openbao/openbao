@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	paths "path"
 	"path/filepath"
@@ -16,7 +15,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/certhelpers"
-	"github.com/openbao/openbao/sdk/database/helper/dbutil"
+	"github.com/openbao/openbao/sdk/v2/database/helper/dbutil"
 	dockertest "github.com/ory/dockertest/v3"
 )
 
@@ -172,7 +171,7 @@ ssl-key=/etc/mysql/server-key.pem`
 }
 
 func makeTempDir(t *testing.T) (confDir string) {
-	confDir, err := ioutil.TempDir(".", "mysql-test-data")
+	confDir, err := os.MkdirTemp(".", "mysql-test-data")
 	if err != nil {
 		t.Fatalf("Unable to make temp directory: %s", err)
 	}
@@ -312,7 +311,7 @@ func setUpX509User(t *testing.T, db *sql.DB, cert certhelpers.Certificate) (user
 func writeFile(t *testing.T, filename string, data []byte, perms os.FileMode) {
 	t.Helper()
 
-	err := ioutil.WriteFile(filename, data, perms)
+	err := os.WriteFile(filename, data, perms)
 	if err != nil {
 		t.Fatalf("Unable to write to file [%s]: %s", filename, err)
 	}

@@ -26,10 +26,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/helper/errutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/helper/errutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/ryanuber/go-glob"
 	"golang.org/x/crypto/cryptobyte"
 	cbbasn1 "golang.org/x/crypto/cryptobyte/asn1"
@@ -135,7 +135,7 @@ func (sc *storageContext) fetchCAInfoByIssuerId(issuerId issuerID, usage issuerU
 		return nil, errutil.InternalError{Err: fmt.Sprintf("error while attempting to use issuer %v: %v", issuerId, err)}
 	}
 
-	parsedBundle, err := parseCABundle(sc.Context, sc.Backend, bundle)
+	parsedBundle, err := bundle.ToParsedCertBundle()
 	if err != nil {
 		return nil, errutil.InternalError{Err: err.Error()}
 	}
@@ -186,7 +186,7 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 	case strings.HasPrefix(prefix, "revoked/"):
 		legacyPath = "revoked/" + colonSerial
 		path = "revoked/" + hyphenSerial
-	case serial == legacyCRLPath || serial == deltaCRLPath || serial == unifiedCRLPath || serial == unifiedDeltaCRLPath:
+	case serial == legacyCRLPath || serial == deltaCRLPath:
 		warnings, err := sc.Backend.crlBuilder.rebuildIfForced(sc)
 		if err != nil {
 			return nil, err
@@ -199,13 +199,12 @@ func fetchCertBySerial(sc *storageContext, prefix, serial string) (*logical.Stor
 			sc.Backend.Logger().Warn(msg)
 		}
 
-		unified := serial == unifiedCRLPath || serial == unifiedDeltaCRLPath
-		path, err = sc.resolveIssuerCRLPath(defaultRef, unified)
+		path, err = sc.resolveIssuerCRLPath(defaultRef)
 		if err != nil {
 			return nil, err
 		}
 
-		if serial == deltaCRLPath || serial == unifiedDeltaCRLPath {
+		if serial == deltaCRLPath {
 			if sc.Backend.useLegacyBundleCaStorage() {
 				return nil, fmt.Errorf("refusing to serve delta CRL with legacy CA bundle")
 			}
@@ -763,6 +762,18 @@ func generateCert(sc *storageContext,
 		data.Params.IsCA = isCA
 		data.Params.PermittedDNSDomains = input.apiData.Get("permitted_dns_domains").([]string)
 
+		if rawKeyUsageValue, ok := input.apiData.GetOk("key_usage"); ok {
+			data.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := input.apiData.GetOk("ext_key_usage"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := input.apiData.GetOk("ext_key_usage_oids"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
+
 		if data.SigningBundle == nil {
 			// Generating a self-signed root certificate. Since we have no
 			// issuer entry yet, we default to the global URLs.
@@ -996,7 +1007,7 @@ func signCert(b *backend,
 
 		if actualKeyBits < 2048 {
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-				"Vault requires a minimum of a 2048-bit key, but CSR's key is %d bits",
+				"OpenBao requires a minimum of a 2048-bit key, but CSR's key is %d bits",
 				actualKeyBits)}
 		}
 	} else if actualKeyType == "ec" {
@@ -1021,9 +1032,21 @@ func signCert(b *backend,
 
 	if isCA {
 		creation.Params.PermittedDNSDomains = data.apiData.Get("permitted_dns_domains").([]string)
+
+		if rawKeyUsageValue, ok := data.apiData.GetOk("key_usage"); ok {
+			creation.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := data.apiData.GetOk("ext_key_usage"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := data.apiData.GetOk("ext_key_usage_oids"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
 	} else {
 		for _, ext := range csr.Extensions {
-			if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) {
+			if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) && !data.role.BasicConstraintsValidForNonCA {
 				warnings = append(warnings, "specified CSR contained a Basic Constraints extension that was ignored during issuance")
 			}
 		}
@@ -1146,6 +1169,20 @@ func forEachSAN(extension []byte, callback func(tag int, data []byte) error) err
 	return nil
 }
 
+func dedupCommonNames(cnRaw string) []string {
+	// Translated from go-secure-stdlib/strutil:
+	//
+	// https://github.com/hashicorp/go-secure-stdlib/blob/c651aeae0c80f35905cf5a275c55e494c0eae09f/strutil/strutil.go#L56-L67
+	input := strings.TrimSpace(cnRaw)
+	parsed := []string{}
+	if input == "" {
+		// Don't return nil
+		return parsed
+	}
+
+	return strutil.RemoveDuplicatesStable(strings.Split(input, ","), false)
+}
+
 // generateCreationBundle is a shared function that reads parameters supplied
 // from the various endpoints and generates a CreationParameters with the
 // parameters that can be used to issue or sign
@@ -1207,7 +1244,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		if csr == nil || !data.role.UseCSRSANs {
 			cnAltRaw, ok := data.apiData.GetOk("alt_names")
 			if ok {
-				cnAlt := strutil.ParseDedupAndSortStrings(cnAltRaw.(string), ",")
+				cnAlt := dedupCommonNames(cnAltRaw.(string))
 				for _, v := range cnAlt {
 					if strings.Contains(v, "@") {
 						emailAddresses = append(emailAddresses, v)
@@ -1463,7 +1500,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	creation := &certutil.CreationBundle{
 		Params: &certutil.CreationParameters{
 			Subject:                       subject,
-			DNSNames:                      strutil.RemoveDuplicates(dnsNames, false),
+			DNSNames:                      strutil.RemoveDuplicatesStable(dnsNames, false),
 			EmailAddresses:                strutil.RemoveDuplicates(emailAddresses, false),
 			IPAddresses:                   ipAddresses,
 			URIs:                          URIs,

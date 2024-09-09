@@ -8,16 +8,15 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/pluginutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -449,11 +448,11 @@ func cleanup(t *testing.T, b *databaseBackend, reqs []*logical.Request) {
 }
 
 func TestBackend_PluginMain_MockV4(t *testing.T) {
-	if os.Getenv(pluginutil.PluginUnwrapTokenEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginUnwrapTokenEnv) == "" {
 		return
 	}
 
-	caPEM := os.Getenv(pluginutil.PluginCACertPEMEnv)
+	caPEM := api.ReadBaoVariable(pluginutil.PluginCACertPEMEnv)
 	if caPEM == "" {
 		t.Fatal("CA cert not passed in")
 	}
@@ -468,7 +467,7 @@ func TestBackend_PluginMain_MockV4(t *testing.T) {
 }
 
 func TestBackend_PluginMain_MockV5(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 
@@ -476,7 +475,7 @@ func TestBackend_PluginMain_MockV5(t *testing.T) {
 }
 
 func TestBackend_PluginMain_MockV6Multiplexed(t *testing.T) {
-	if os.Getenv(pluginutil.PluginVaultVersionEnv) == "" {
+	if api.ReadBaoVariable(pluginutil.PluginVaultVersionEnv) == "" {
 		return
 	}
 

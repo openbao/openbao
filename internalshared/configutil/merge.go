@@ -24,11 +24,6 @@ func (c *SharedConfig) Merge(c2 *SharedConfig) *SharedConfig {
 		result.UserLockouts = append(result.UserLockouts, userlockout)
 	}
 
-	result.Entropy = c.Entropy
-	if c2.Entropy != nil {
-		result.Entropy = c2.Entropy
-	}
-
 	for _, s := range c.Seals {
 		result.Seals = append(result.Seals, s)
 	}
@@ -39,11 +34,6 @@ func (c *SharedConfig) Merge(c2 *SharedConfig) *SharedConfig {
 	result.Telemetry = c.Telemetry
 	if c2.Telemetry != nil {
 		result.Telemetry = c2.Telemetry
-	}
-
-	result.DisableMlock = c.DisableMlock
-	if c2.DisableMlock {
-		result.DisableMlock = c2.DisableMlock
 	}
 
 	result.DefaultMaxRequestDuration = c.DefaultMaxRequestDuration

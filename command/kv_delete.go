@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -31,7 +31,7 @@ func (c *KVDeleteCommand) Synopsis() string {
 
 func (c *KVDeleteCommand) Help() string {
 	helpText := `
-Usage: vault kv delete [options] PATH
+Usage: bao kv delete [options] PATH
 
   Deletes the data for the provided version and path in the key-value store. The
   versioned data will not be fully removed, but marked as deleted and will no
@@ -39,17 +39,17 @@ Usage: vault kv delete [options] PATH
 
   To delete the latest version of the key "foo": 
 
-      $ vault kv delete -mount=secret foo
+      $ bao kv delete -mount=secret foo
 
   The deprecated path-like syntax can also be used, but this should be avoided 
   for KV v2, as the fact that it is not actually the full API path to 
   the secret (secret/data/foo) can cause confusion: 
   
-      $ vault kv delete secret/foo
+      $ bao kv delete secret/foo
 
   To delete version 3 of key foo:
 
-      $ vault kv delete -mount=secret -versions=3 foo
+      $ bao kv delete -mount=secret -versions=3 foo
 
   To delete all versions and metadata, see the "vault kv metadata" subcommand.
 

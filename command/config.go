@@ -9,11 +9,11 @@ import (
 
 const (
 	// DefaultConfigPath is the default path to the configuration file
-	DefaultConfigPath = "~/.vault"
+	DefaultConfigPath = "~/.bao"
 
 	// ConfigPathEnv is the environment variable that can be used to
 	// override where the Vault configuration is.
-	ConfigPathEnv = "VAULT_CONFIG_PATH"
+	ConfigPathEnv = "BAO_CONFIG_PATH"
 )
 
 // Config is the CLI configuration for Vault that can be specified via

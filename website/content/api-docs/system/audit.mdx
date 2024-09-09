@@ -1,6 +1,4 @@
 ---
-layout: api
-page_title: /sys/audit - HTTP API
 description: The `/sys/audit` endpoint is used to enable and disable audit devices.
 ---
 
@@ -65,7 +63,7 @@ single word name or a more complex, nested path.
   audit device.
 
 - `options` `(map<string|string>: nil)` – Specifies configuration options to pass to the audit device itself.
-  For more details, please see the relevant page for an audit device `type`, under [Audit Devices docs](/vault/docs/audit).
+  For more details, please see the relevant page for an audit device `type`, under [Audit Devices docs](/docs/audit).
 
 - `type` `(string: <required>)` – Specifies the type of the audit device.
   Valid types are `file`, `socket` and `syslog`.
@@ -95,9 +93,13 @@ $ curl \
 
 This endpoint disables the audit device at the given path.
 
-~> Note: Once an audit device is disabled, you will no longer be able to HMAC values
+:::warning
+
+Note: Once an audit device is disabled, you will no longer be able to HMAC values
 for comparison with entries in the audit logs. This is true even if you re-enable
 the audit device at the same path, as a new salt will be created for hashing.
+
+:::
 
 - **`sudo` required** – This endpoint requires `sudo` capability in addition to
   any path-specific capabilities.

@@ -1,13 +1,12 @@
 ---
-layout: docs
-page_title: OpenBao Auto-Auth JWT Method
+sidebar_label: JWT
 description: JWT Method for OpenBao Auto-Auth
 ---
 
 # OpenBao Auto-Auth JWT method
 
 The `jwt` method reads in a JWT from a file and sends it to the [JWT Auth
-method](/vault/docs/auth/jwt).
+method](/docs/auth/jwt).
 
 ## Configuration
 
@@ -27,4 +26,4 @@ the symlink, not the JWT. Does nothing if `remove_jwt_after_reading` is false.
 - `jwt_read_period` `(duration: "0.5s", optional)` - The duration after which
 Agent will attempt to read the JWT stored at `path`. Defaults to `1m` if
 `remove_jwt_after_reading` is set to `true`, or `0.5s` otherwise.
-Uses [duration format strings](/vault/docs/concepts/duration-format).
+Uses [duration format strings](/docs/concepts/duration-format).

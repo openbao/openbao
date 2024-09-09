@@ -13,7 +13,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/identity"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func TestIdentityStore_Groups_AddByNameEntityUpdate(t *testing.T) {
@@ -201,7 +201,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 
 func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a child group
 	resp, err := i.HandleRequest(ctx, &logical.Request{
@@ -270,7 +270,7 @@ func TestIdentityStore_MemberGroupIDDelete(t *testing.T) {
 
 func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	testGroupName := "testGroupName"
 
@@ -341,7 +341,7 @@ func TestIdentityStore_CaseInsensitiveGroupName(t *testing.T) {
 
 func TestIdentityStore_GroupByName(t *testing.T) {
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity using the "name" endpoint
 	resp, err := i.HandleRequest(ctx, &logical.Request{
@@ -460,7 +460,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
@@ -497,7 +497,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 	var resp *logical.Response
 
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupReq := &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
@@ -548,7 +548,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	var err error
 	ctx := namespace.RootContext(nil)
-	i, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	i, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a dummy group
 	group := &identity.Group{
@@ -659,7 +659,7 @@ func TestIdentityStore_GroupsCreateUpdate(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
 	entityRegisterReq := &logical.Request{
@@ -783,7 +783,7 @@ func TestIdentityStore_GroupsCreateUpdateDuplicatePolicy(t *testing.T) {
 	var err error
 
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create a group with the above created 2 entities as its members
 	groupData := map[string]interface{}{
@@ -870,7 +870,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 	var resp *logical.Response
 	var err error
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 
 	// Create an entity and get its ID
 	entityRegisterReq := &logical.Request{
@@ -1006,7 +1006,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 	var resp *logical.Response
 	var err error
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group",
@@ -1097,7 +1097,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	var resp *logical.Response
 	var err error
 	ctx := namespace.RootContext(nil)
-	is, _, _ := testIdentityStoreWithGithubAuth(ctx, t)
+	is, _, _ := testIdentityStoreWithAppRoleAuth(ctx, t)
 	groupRegisterReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "group",

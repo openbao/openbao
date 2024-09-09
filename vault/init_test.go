@@ -10,9 +10,9 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
-	"github.com/openbao/openbao/sdk/helper/logging"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical/inmem"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical/inmem"
 )
 
 func TestCore_Init(t *testing.T) {
@@ -21,10 +21,10 @@ func TestCore_Init(t *testing.T) {
 }
 
 func testCore_NewTestCore(t *testing.T, seal Seal) (*Core, *CoreConfig) {
-	return testCore_NewTestCoreLicensing(t, seal, nil)
+	return testCore_NewTestCoreLicensing(t, seal)
 }
 
-func testCore_NewTestCoreLicensing(t *testing.T, seal Seal, licensingConfig *LicensingConfig) (*Core, *CoreConfig) {
+func testCore_NewTestCoreLicensing(t *testing.T, seal Seal) (*Core, *CoreConfig) {
 	logger := logging.NewVaultLogger(log.Trace)
 
 	inm, err := inmem.NewInmem(nil, logger)
@@ -32,13 +32,11 @@ func testCore_NewTestCoreLicensing(t *testing.T, seal Seal, licensingConfig *Lic
 		t.Fatal(err)
 	}
 	conf := &CoreConfig{
-		Physical:     inm,
-		DisableMlock: true,
+		Physical: inm,
 		LogicalBackends: map[string]logical.Factory{
 			"kv": LeasedPassthroughBackendFactory,
 		},
-		Seal:            seal,
-		LicensingConfig: licensingConfig,
+		Seal: seal,
 	}
 	c, err := NewCore(conf)
 	if err != nil {

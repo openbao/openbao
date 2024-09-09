@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )

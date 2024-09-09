@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -320,7 +319,6 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 		config = c
 		return nil
 	}, bo)
-
 	if err != nil {
 		if !d.RunOptions.DoNotAutoRemove {
 			cleanup()
@@ -405,7 +403,7 @@ func (d *Runner) Start(ctx context.Context, addSuffix, forceLocalAddr bool) (*St
 	}
 	resp, _ := d.DockerAPI.ImageCreate(ctx, cfg.Image, opts)
 	if resp != nil {
-		_, _ = ioutil.ReadAll(resp)
+		_, _ = io.ReadAll(resp)
 	}
 
 	for vol, mtpt := range d.RunOptions.VolumeNameToMountPoint {

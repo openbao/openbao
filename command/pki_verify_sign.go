@@ -14,7 +14,7 @@ import (
 	"github.com/openbao/openbao/command/healthcheck"
 
 	"github.com/ghodss/yaml"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/ryanuber/columnize"
 )
 
@@ -33,7 +33,7 @@ func (c *PKIVerifySignCommand) Synopsis() string {
 
 func (c *PKIVerifySignCommand) Help() string {
 	helpText := `
-Usage: vault pki verify-sign POSSIBLE-ISSUER POSSIBLE-ISSUED
+Usage: bao pki verify-sign POSSIBLE-ISSUER POSSIBLE-ISSUED
 
   Verifies whether the listed issuer has signed the listed issued certificate.
 

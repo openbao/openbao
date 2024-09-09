@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/keysutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func (b *backend) pathBYOKExportKeys() *framework.Path {
@@ -78,6 +78,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 	}
 	defer dstP.Unlock()
 
+	if dstP.SoftDeleted {
+		return nil, fmt.Errorf("for destination key: %v", keysutil.ErrSoftDeleted)
+	}
+
 	srcP, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
 		Storage: req.Storage,
 		Name:    src,
@@ -95,6 +99,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 
 	if !srcP.Exportable {
 		return logical.ErrorResponse("key is not exportable"), nil
+	}
+
+	if srcP.SoftDeleted {
+		return nil, fmt.Errorf("for source key: %v", keysutil.ErrSoftDeleted)
 	}
 
 	retKeys := map[string]string{}
@@ -154,7 +162,7 @@ func getBYOKExportKey(dstP *keysutil.Policy, srcP *keysutil.Policy, key *keysuti
 
 	var targetKey interface{}
 	switch srcP.Type {
-	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_HMAC:
+	case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305, keysutil.KeyType_HMAC:
 		targetKey = key.Key
 	case keysutil.KeyType_RSA2048, keysutil.KeyType_RSA3072, keysutil.KeyType_RSA4096:
 		targetKey = key.RSAKey

@@ -26,19 +26,19 @@ func (c *NamespaceDeleteCommand) Synopsis() string {
 
 func (c *NamespaceDeleteCommand) Help() string {
 	helpText := `
-Usage: vault namespace delete [options] PATH
+Usage: bao namespace delete [options] PATH
 
   Delete an existing namespace. The namespace deleted will be relative to the
-  namespace provided in either the VAULT_NAMESPACE environment variable or
+  namespace provided in either the BAO_NAMESPACE environment variable or
   -namespace CLI flag.
 
   Delete a namespace (e.g. ns1/):
 
-      $ vault namespace delete ns1
+      $ bao namespace delete ns1
 
   Delete a namespace namespace from a parent namespace (e.g. ns1/ns2/):
 
-      $ vault namespace delete -namespace=ns1 ns2
+      $ bao namespace delete -namespace=ns1 ns2
 
 ` + c.Flags().Help()
 

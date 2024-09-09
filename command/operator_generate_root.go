@@ -12,9 +12,9 @@ import (
 
 	"github.com/hashicorp/go-secure-stdlib/password"
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
-	"github.com/openbao/openbao/sdk/helper/roottoken"
+	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 	"github.com/posener/complete"
 )
 
@@ -26,9 +26,8 @@ var (
 type generateRootKind int
 
 const (
-	generateRootRegular generateRootKind = iota
-	generateRootDR
-	generateRootRecovery
+	generateRootRegular  generateRootKind = iota
+	generateRootRecovery                  = iota + 1
 )
 
 type OperatorGenerateRootCommand struct {
@@ -42,7 +41,6 @@ type OperatorGenerateRootCommand struct {
 	flagPGPKey        string
 	flagNonce         string
 	flagGenerateOTP   bool
-	flagDRToken       bool
 	flagRecoveryToken bool
 
 	testStdin io.Reader // for tests
@@ -54,7 +52,7 @@ func (c *OperatorGenerateRootCommand) Synopsis() string {
 
 func (c *OperatorGenerateRootCommand) Help() string {
 	helpText := `
-Usage: vault operator generate-root [options] [KEY]
+Usage: bao operator generate-root [options] [KEY]
 
   Generates a new root token by combining a quorum of share holders. One of
   the following must be provided to start the root token generation:
@@ -73,16 +71,16 @@ Usage: vault operator generate-root [options] [KEY]
 
   Generate an OTP code for the final token:
 
-      $ vault operator generate-root -generate-otp
+      $ bao operator generate-root -generate-otp
 
   Start a root token generation:
 
-      $ vault operator generate-root -init -otp="..."
-      $ vault operator generate-root -init -pgp-key="..."
+      $ bao operator generate-root -init -otp="..."
+      $ bao operator generate-root -init -pgp-key="..."
 
   Enter an unseal key to progress root token generation:
 
-      $ vault operator generate-root -otp="..."
+      $ bao operator generate-root -otp="..."
 
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
@@ -141,16 +139,6 @@ func (c *OperatorGenerateRootCommand) Flags() *FlagSets {
 		Completion: complete.PredictNothing,
 		Usage: "Generate and print a high-entropy one-time-password (OTP) " +
 			"suitable for use with the \"-init\" flag.",
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:       "dr-token",
-		Target:     &c.flagDRToken,
-		Default:    false,
-		EnvVar:     "",
-		Completion: complete.PredictNothing,
-		Usage: "Set this flag to do generate root operations on DR Operational " +
-			"tokens.",
 	})
 
 	f.BoolVar(&BoolVar{
@@ -220,11 +208,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 		return 1
 	}
 
-	if c.flagDRToken && c.flagRecoveryToken {
-		c.UI.Error("Both -recovery-token and -dr-token flags are set")
-		return 1
-	}
-
 	client, err := c.Client()
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -233,8 +216,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 
 	kind := generateRootRegular
 	switch {
-	case c.flagDRToken:
-		kind = generateRootDR
 	case c.flagRecoveryToken:
 		kind = generateRootRecovery
 	}
@@ -277,8 +258,6 @@ func (c *OperatorGenerateRootCommand) Run(args []string) int {
 func (c *OperatorGenerateRootCommand) generateOTP(client *api.Client, kind generateRootKind) (string, int) {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -317,6 +296,9 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -334,8 +316,6 @@ func (c *OperatorGenerateRootCommand) decode(client *api.Client, encoded, otp st
 
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -374,8 +354,6 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 	// Start the root generation
 	f := client.Sys().GenerateRootInit
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenInit
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenInit
 	}
@@ -398,8 +376,6 @@ func (c *OperatorGenerateRootCommand) init(client *api.Client, otp, pgpKey strin
 func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, kind generateRootKind) int {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}
@@ -433,6 +409,9 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 		if c.testStdin != nil {
 			stdin = c.testStdin
 		}
+		if c.flagNonInteractive {
+			stdin = bytes.NewReader(nil)
+		}
 
 		var buf bytes.Buffer
 		if _, err := io.Copy(&buf, stdin); err != nil {
@@ -444,6 +423,11 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 	case "": // Prompt using the tty
 		// Nonce value is not required if we are prompting via the terminal
 		nonce = status.Nonce
+
+		if c.flagNonInteractive {
+			c.UI.Error(wrapAtLength(fmt.Sprintf("Refusing to read from stdin with -non-interactive specified; specify nonce via the -nonce flag")))
+			return 1
+		}
 
 		w := getWriterFromUI(c.UI)
 		fmt.Fprintf(w, "Operation nonce: %s\n", nonce)
@@ -481,8 +465,6 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 	// Provide the key, this may potentially complete the update
 	fUpd := client.Sys().GenerateRootUpdate
 	switch kind {
-	case generateRootDR:
-		fUpd = client.Sys().GenerateDROperationTokenUpdate
 	case generateRootRecovery:
 		fUpd = client.Sys().GenerateRecoveryOperationTokenUpdate
 	}
@@ -503,8 +485,6 @@ func (c *OperatorGenerateRootCommand) provide(client *api.Client, key string, ki
 func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRootKind) int {
 	f := client.Sys().GenerateRootCancel
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenCancel
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenCancel
 	}
@@ -520,8 +500,6 @@ func (c *OperatorGenerateRootCommand) cancel(client *api.Client, kind generateRo
 func (c *OperatorGenerateRootCommand) status(client *api.Client, kind generateRootKind) int {
 	f := client.Sys().GenerateRootStatus
 	switch kind {
-	case generateRootDR:
-		f = client.Sys().GenerateDROperationTokenStatus
 	case generateRootRecovery:
 		f = client.Sys().GenerateRecoveryOperationTokenStatus
 	}

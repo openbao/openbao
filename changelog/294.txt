@@ -1,0 +1,3 @@
+```release-note:bug
+physical/raft: fix ListPage calls when after=. resulting in an empty list
+```

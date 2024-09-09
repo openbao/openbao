@@ -17,9 +17,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var deniedPassthroughRequestHeaders = []string{
@@ -691,9 +691,6 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	originalMFACreds := req.MFACreds
 	req.MFACreds = nil
 
-	originalControlGroup := req.ControlGroup
-	req.ControlGroup = nil
-
 	// Cache the headers
 	headers := req.Headers
 	req.Headers = nil
@@ -751,9 +748,6 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		req.WrapInfo = wrapInfo
 		req.Headers = headers
 		req.PolicyOverride = originalPolicyOverride
-		// This is only set in one place, after routing, so should never be set
-		// by a backend
-		req.SetLastRemoteWAL(0)
 
 		// This will be used for attaching the mount accessor for the identities
 		// returned by the authentication backends
@@ -771,7 +765,6 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		}
 
 		req.SetTokenEntry(reqTokenEntry)
-		req.ControlGroup = originalControlGroup
 	}()
 
 	// Invoke the backend

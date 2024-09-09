@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -29,7 +29,7 @@ func (c *OperatorRaftAutopilotStateCommand) Synopsis() string {
 
 func (c *OperatorRaftAutopilotStateCommand) Help() string {
 	helpText := `
-Usage: vault operator raft autopilot state
+Usage: bao operator raft autopilot state
 
   Displays the state of the raft cluster under integrated storage as seen by autopilot.
 ` + c.Flags().Help()

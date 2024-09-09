@@ -4,6 +4,7 @@
 package command
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -12,11 +13,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 
 	"github.com/google/tink/go/kwp/subtle"
 
@@ -40,7 +42,7 @@ func (c *TransitImportCommand) Synopsis() string {
 
 func (c *TransitImportCommand) Help() string {
 	helpText := `
-Usage: vault transit import PATH KEY [options...]
+Usage: bao transit import PATH KEY [options...]
 
   Using the Transit key wrapping system, imports key material from
   the base64 encoded KEY (either directly on the CLI or via @path notation),
@@ -166,7 +168,12 @@ func ImportKey(c *BaseCommand, operation string, pathFunc ImportKeyFunc, flags *
 	importCiphertext := base64.StdEncoding.EncodeToString(combinedCiphertext)
 
 	// Parse all the key options
-	data, err := parseArgsData(os.Stdin, args[2:])
+	var stdin io.Reader = os.Stdin
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
+	}
+
+	data, err := parseArgsData(stdin, args[2:])
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Failed to parse extra K=V data: %s", err))
 		return 1

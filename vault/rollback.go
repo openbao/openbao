@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,13 +15,14 @@ import (
 	metrics "github.com/armon/go-metrics"
 	"github.com/gammazero/workerpool"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
 	RollbackDefaultNumWorkers = 256
-	RollbackWorkersEnvVar     = "VAULT_ROLLBACK_WORKERS"
+	RollbackWorkersEnvVar     = "BAO_ROLLBACK_WORKERS"
 )
 
 // RollbackManager is responsible for performing rollbacks of partial
@@ -98,7 +98,7 @@ func NewRollbackManager(ctx context.Context, logger log.Logger, backendsFunc fun
 
 func (m *RollbackManager) numRollbackWorkers() int {
 	numWorkers := m.core.numRollbackWorkers
-	envOverride := os.Getenv(RollbackWorkersEnvVar)
+	envOverride := api.ReadBaoVariable(RollbackWorkersEnvVar)
 	if envOverride != "" {
 		envVarWorkers, err := strconv.Atoi(envOverride)
 		if err != nil || envVarWorkers < 1 {

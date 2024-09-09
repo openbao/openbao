@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/version"
 )
@@ -84,13 +84,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 			return http.StatusBadRequest, nil, fmt.Errorf("bad value for standbyok parameter: %w", err)
 		}
 	}
-	perfStandbyOKStr, perfStandbyOK := r.URL.Query()["perfstandbyok"]
-	if perfStandbyOK {
-		perfStandbyOK, err = parseutil.ParseBool(perfStandbyOKStr[0])
-		if err != nil {
-			return http.StatusBadRequest, nil, fmt.Errorf("bad value for perfstandbyok parameter: %w", err)
-		}
-	}
 
 	uninitCode := http.StatusNotImplemented
 	if code, found, ok := fetchStatusCode(r, "uninitcode"); !ok {
@@ -120,25 +113,11 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		activeCode = code
 	}
 
-	drSecondaryCode := 472 // unofficial 4xx status code
-	if code, found, ok := fetchStatusCode(r, "drsecondarycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		drSecondaryCode = code
-	}
-
-	perfStandbyCode := 473 // unofficial 4xx status code
-	if code, found, ok := fetchStatusCode(r, "performancestandbycode"); !ok {
-		return http.StatusBadRequest, nil, nil
-	} else if found {
-		perfStandbyCode = code
-	}
-
 	ctx := context.Background()
 
 	// Check system status
 	sealed := core.Sealed()
-	standby, perfStandby := core.StandbyStates()
+	standby := core.StandbyStates()
 	var replicationState consts.ReplicationState
 	if standby {
 		replicationState = core.ActiveNodeReplicationState()
@@ -158,12 +137,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		code = uninitCode
 	case sealed:
 		code = sealedCode
-	case replicationState.HasState(consts.ReplicationDRSecondary):
-		code = drSecondaryCode
-	case perfStandby:
-		if !perfStandbyOK {
-			code = perfStandbyCode
-		}
 	case standby:
 		if !standbyOK {
 			code = standbyCode
@@ -189,7 +162,6 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		Initialized:                init,
 		Sealed:                     sealed,
 		Standby:                    standby,
-		PerformanceStandby:         perfStandby,
 		ReplicationPerformanceMode: replicationState.GetPerformanceString(),
 		ReplicationDRMode:          replicationState.GetDRString(),
 		ServerTimeUTC:              time.Now().UTC().Unix(),
@@ -198,45 +170,19 @@ func getSysHealth(core *vault.Core, r *http.Request) (int, *HealthResponse, erro
 		ClusterID:                  clusterID,
 	}
 
-	licenseState, err := vault.LicenseSummary(core)
-	if err != nil {
-		return http.StatusInternalServerError, nil, err
-	}
-
-	if licenseState != nil {
-		body.License = &HealthResponseLicense{
-			State:      licenseState.State,
-			Terminated: licenseState.Terminated,
-		}
-		if !licenseState.ExpiryTime.IsZero() {
-			body.License.ExpiryTime = licenseState.ExpiryTime.Format(time.RFC3339)
-		}
-	}
-
-	if init && !sealed && !standby {
-		body.LastWAL = vault.LastWAL(core)
-	}
-
 	return code, body, nil
 }
 
-type HealthResponseLicense struct {
-	State      string `json:"state"`
-	ExpiryTime string `json:"expiry_time"`
-	Terminated bool   `json:"terminated"`
-}
-
 type HealthResponse struct {
-	Initialized                bool                   `json:"initialized"`
-	Sealed                     bool                   `json:"sealed"`
-	Standby                    bool                   `json:"standby"`
-	PerformanceStandby         bool                   `json:"performance_standby"`
-	ReplicationPerformanceMode string                 `json:"replication_performance_mode"`
-	ReplicationDRMode          string                 `json:"replication_dr_mode"`
-	ServerTimeUTC              int64                  `json:"server_time_utc"`
-	Version                    string                 `json:"version"`
-	ClusterName                string                 `json:"cluster_name,omitempty"`
-	ClusterID                  string                 `json:"cluster_id,omitempty"`
-	LastWAL                    uint64                 `json:"last_wal,omitempty"`
-	License                    *HealthResponseLicense `json:"license,omitempty"`
+	Initialized                bool   `json:"initialized"`
+	Sealed                     bool   `json:"sealed"`
+	Standby                    bool   `json:"standby"`
+	PerformanceStandby         bool   `json:"performance_standby"`
+	ReplicationPerformanceMode string `json:"replication_performance_mode"`
+	ReplicationDRMode          string `json:"replication_dr_mode"`
+	ServerTimeUTC              int64  `json:"server_time_utc"`
+	Version                    string `json:"version"`
+	ClusterName                string `json:"cluster_name,omitempty"`
+	ClusterID                  string `json:"cluster_id,omitempty"`
+	LastWAL                    uint64 `json:"last_wal,omitempty"`
 }

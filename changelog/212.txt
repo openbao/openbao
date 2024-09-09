@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/transit: Allow choosing export key format, specifying format=der or format=pem for consistent PKIX encoded public keys.
+```

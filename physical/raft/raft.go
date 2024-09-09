@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -31,11 +30,12 @@ import (
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
 	snapshot "github.com/hashicorp/raft-snapshot"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/cluster"
 	"github.com/openbao/openbao/vault/seal"
 	"github.com/openbao/openbao/version"
@@ -44,13 +44,13 @@ import (
 
 const (
 	// EnvVaultRaftNodeID is used to fetch the Raft node ID from the environment.
-	EnvVaultRaftNodeID = "VAULT_RAFT_NODE_ID"
+	EnvVaultRaftNodeID = "BAO_RAFT_NODE_ID"
 
 	// EnvVaultRaftPath is used to fetch the path where Raft data is stored from the environment.
-	EnvVaultRaftPath = "VAULT_RAFT_PATH"
+	EnvVaultRaftPath = "BAO_RAFT_PATH"
 
 	// EnvVaultRaftNonVoter is used to override the non_voter config option, telling Vault to join as a non-voter (i.e. read replica).
-	EnvVaultRaftNonVoter  = "VAULT_RAFT_RETRY_JOIN_AS_NON_VOTER"
+	EnvVaultRaftNonVoter  = "BAO_RAFT_RETRY_JOIN_AS_NON_VOTER"
 	raftNonVoterConfigKey = "retry_join_as_non_voter"
 )
 
@@ -73,6 +73,7 @@ var (
 	peersFileName          = "peers.json"
 	restoreOpDelayDuration = 5 * time.Second
 	defaultMaxEntrySize    = uint64(2 * raftchunking.ChunkSize)
+	defaultMaxTxnSize      = 8 * defaultMaxEntrySize
 
 	GetInTxnDisabledError = errors.New("get operations inside transactions are disabled in raft backend")
 )
@@ -136,10 +137,19 @@ type RaftBackend struct {
 	// permitPool is used to limit the number of concurrent storage calls.
 	permitPool *physical.PermitPool
 
-	// maxEntrySize imposes a size limit (in bytes) on a raft entry (put or transaction).
+	// txnPermitPool is used to limit the number of concurrent storage transactions.
+	txnPermitPool *physical.PermitPool
+
+	// maxEntrySize imposes a size limit (in bytes) on a raft entry (put).
 	// It is suggested to use a value of 2x the Raft chunking size for optimal
 	// performance.
 	maxEntrySize uint64
+
+	// maxTxnSize imposees a size limit (in bytes) on a raft entry (transaction).
+	// It is suggested to use a value of 8x the entry size to allow for a
+	// balance between performance without unduly limiting the number of
+	// operations.
+	maxTransactionSize uint64
 
 	// autopilot is the instance of raft-autopilot library implementation of the
 	// autopilot features. This will be instantiated in both leader and followers.
@@ -177,9 +187,6 @@ type RaftBackend struct {
 
 	// upgradeVersion is used to override the Vault SDK version when performing an autopilot automated upgrade.
 	upgradeVersion string
-
-	// redundancyZone specifies a redundancy zone for autopilot.
-	redundancyZone string
 
 	// nonVoter specifies whether the node should join the cluster as a non-voter. Non-voters get
 	// replicated to and can serve reads, but do not take part in leader elections.
@@ -314,7 +321,7 @@ func EnsurePath(path string, dir bool) error {
 
 // NewRaftBackend constructs a RaftBackend using the given directory
 func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
-	path := os.Getenv(EnvVaultRaftPath)
+	path := api.ReadBaoVariable(EnvVaultRaftPath)
 	if path == "" {
 		pathFromConfig, ok := conf["path"]
 		if !ok {
@@ -326,7 +333,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 	var localID string
 	{
 		// Determine the local node ID from the environment.
-		if raftNodeID := os.Getenv(EnvVaultRaftNodeID); raftNodeID != "" {
+		if raftNodeID := api.ReadBaoVariable(EnvVaultRaftNodeID); raftNodeID != "" {
 			localID = raftNodeID
 		}
 
@@ -337,7 +344,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 
 		// If not set in the config check the "node-id" file.
 		if len(localID) == 0 {
-			localIDRaw, err := ioutil.ReadFile(filepath.Join(path, "node-id"))
+			localIDRaw, err := os.ReadFile(filepath.Join(path, "node-id"))
 			switch {
 			case err == nil:
 				if len(localIDRaw) > 0 {
@@ -357,7 +364,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 				return nil, err
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(path, "node-id"), []byte(id), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(path, "node-id"), []byte(id), 0o600); err != nil {
 				return nil, err
 			}
 
@@ -446,6 +453,16 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		maxEntrySize = uint64(i)
 	}
 
+	maxTransactionSize := defaultMaxTxnSize
+	if maxTxnSizeCfg := conf["max_transaction_size"]; len(maxTxnSizeCfg) != 0 {
+		i, err := strconv.Atoi(maxTxnSizeCfg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse 'max_transaction_size': %w", err)
+		}
+
+		maxTransactionSize = uint64(i)
+	}
+
 	var reconcileInterval time.Duration
 	if interval := conf["autopilot_reconcile_interval"]; interval != "" {
 		interval, err := parseutil.ParseDurationSecond(interval)
@@ -488,7 +505,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 	}
 
 	var nonVoter bool
-	if v := os.Getenv(EnvVaultRaftNonVoter); v != "" {
+	if v := api.ReadBaoVariable(EnvVaultRaftNonVoter); v != "" {
 		// Consistent with handling of other raft boolean env vars
 		// VAULT_RAFT_AUTOPILOT_DISABLE and VAULT_RAFT_FREELIST_SYNC
 		nonVoter = true
@@ -514,11 +531,12 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 		dataDir:                    path,
 		localID:                    localID,
 		permitPool:                 physical.NewPermitPool(physical.DefaultParallelOperations),
+		txnPermitPool:              physical.NewPermitPool(physical.DefaultParallelTransactions),
 		maxEntrySize:               maxEntrySize,
+		maxTransactionSize:         maxTransactionSize,
 		followerHeartbeatTicker:    time.NewTicker(time.Second),
 		autopilotReconcileInterval: reconcileInterval,
 		autopilotUpdateInterval:    updateInterval,
-		redundancyZone:             conf["autopilot_redundancy_zone"],
 		nonVoter:                   nonVoter,
 		upgradeVersion:             upgradeVersion,
 		failGetInTxn:               new(uint32),
@@ -587,13 +605,6 @@ func (b *RaftBackend) SetEffectiveSDKVersion(sdkVersion string) {
 	b.l.Unlock()
 }
 
-func (b *RaftBackend) RedundancyZone() string {
-	b.l.RLock()
-	defer b.l.RUnlock()
-
-	return b.redundancyZone
-}
-
 func (b *RaftBackend) NonVoter() bool {
 	b.l.RLock()
 	defer b.l.RUnlock()
@@ -610,18 +621,6 @@ func (b *RaftBackend) EffectiveVersion() string {
 	}
 
 	return version.GetVersion().Version
-}
-
-// DisableUpgradeMigration returns the state of the DisableUpgradeMigration config flag and whether it was set or not
-func (b *RaftBackend) DisableUpgradeMigration() (bool, bool) {
-	b.l.RLock()
-	defer b.l.RUnlock()
-
-	if b.autopilotConfig == nil {
-		return false, false
-	}
-
-	return b.autopilotConfig.DisableUpgradeMigration, true
 }
 
 func (b *RaftBackend) CollectMetrics(sink *metricsutil.ClusterMetricSink) {
@@ -994,8 +993,8 @@ func (b *RaftBackend) SetupCluster(ctx context.Context, opts SetupOpts) error {
 		// Non-voting servers are only allowed in enterprise. If Suffrage is disabled,
 		// error out to indicate that it isn't allowed.
 		for idx := range recoveryConfig.Servers {
-			if !nonVotersAllowed && recoveryConfig.Servers[idx].Suffrage == raft.Nonvoter {
-				return fmt.Errorf("raft recovery failed to parse configuration for node %q: setting `non_voter` is only supported in enterprise", recoveryConfig.Servers[idx].ID)
+			if recoveryConfig.Servers[idx].Suffrage == raft.Nonvoter {
+				return fmt.Errorf("raft recovery failed to parse configuration for node %q: setting `non_voter` not supported in OpenBao", recoveryConfig.Servers[idx].ID)
 			}
 		}
 
@@ -1574,68 +1573,26 @@ func (b *RaftBackend) List(ctx context.Context, prefix string) ([]string, error)
 	return b.fsm.List(ctx, prefix)
 }
 
-// Transaction applies all the given operations into a single log and
-// applies it.
-func (b *RaftBackend) Transaction(ctx context.Context, txns []*physical.TxnEntry) error {
-	defer metrics.MeasureSince([]string{"raft-storage", "transaction"}, time.Now())
+// ListPage enumerates all the items under the prefix from the fsm,
+// applying the paginatino filters.
+func (b *RaftBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	defer metrics.MeasureSince([]string{"raft-storage", "list-page"}, time.Now())
+	if b.fsm == nil {
+		return nil, errors.New("raft: fsm not configured")
+	}
 
 	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	failGetInTxn := atomic.LoadUint32(b.failGetInTxn)
-	for _, t := range txns {
-		if t.Operation == physical.GetOperation && failGetInTxn != 0 {
-			return GetInTxnDisabledError
-		}
-	}
-
-	txnMap := make(map[string]*physical.TxnEntry)
-
-	command := &LogData{
-		Operations: make([]*LogOperation, len(txns)),
-	}
-	for i, txn := range txns {
-		op := &LogOperation{}
-		switch txn.Operation {
-		case physical.PutOperation:
-			if len(txn.Entry.Key) > bolt.MaxKeySize {
-				return fmt.Errorf("%s, max key size for integrated storage is %d", physical.ErrKeyTooLarge, bolt.MaxKeySize)
-			}
-			op.OpType = putOp
-			op.Key = txn.Entry.Key
-			op.Value = txn.Entry.Value
-		case physical.DeleteOperation:
-			op.OpType = deleteOp
-			op.Key = txn.Entry.Key
-		case physical.GetOperation:
-			op.OpType = getOp
-			op.Key = txn.Entry.Key
-			txnMap[op.Key] = txn
-		default:
-			return fmt.Errorf("%q is not a supported transaction operation", txn.Operation)
-		}
-
-		command.Operations[i] = op
+		return nil, err
 	}
 
 	b.permitPool.Acquire()
 	defer b.permitPool.Release()
 
-	b.l.RLock()
-	err := b.applyLog(ctx, command)
-	b.l.RUnlock()
-
-	// loop over results and update pointers to get operations
-	for _, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			if txn, found := txnMap[logOp.Key]; found {
-				txn.Entry.Value = logOp.Value
-			}
-		}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
-	return err
+	return b.fsm.ListPage(ctx, prefix, after, limit)
 }
 
 // applyLog will take a given log command and apply it to the raft log. applyLog
@@ -1649,14 +1606,17 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return err
 	}
 
+	isTx := len(command.Operations) > 0 && command.Operations[0].OpType == beginTxOp
 	commandBytes, err := proto.Marshal(command)
 	if err != nil {
 		return err
 	}
 
 	cmdSize := len(commandBytes)
-	if uint64(cmdSize) > b.maxEntrySize {
+	if !isTx && uint64(cmdSize) > b.maxEntrySize {
 		return fmt.Errorf("%s; got %d bytes, max: %d bytes", physical.ErrValueTooLarge, cmdSize, b.maxEntrySize)
+	} else if isTx && uint64(cmdSize) > b.maxTransactionSize {
+		return fmt.Errorf("%s; got %d bytes, max: %d bytes, %v operations in transaction", physical.ErrValueTooLarge, cmdSize, b.maxTransactionSize, len(command.Operations))
 	}
 
 	defer metrics.AddSample([]string{"raft-storage", "entry_size"}, float32(cmdSize))
@@ -1709,20 +1669,36 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return errors.New("entries on FSM response were empty")
 	}
 
-	for i, logOp := range command.Operations {
-		if logOp.OpType == getOp {
-			fsmEntry := fsmar.EntrySlice[i]
+	if !isTx {
+		for i, logOp := range command.Operations {
+			if logOp.OpType == getOp {
+				fsmEntry := fsmar.EntrySlice[i]
 
-			// this should always be true because the entries in the slice were created in the same order as
-			// the command operations.
-			if logOp.Key == fsmEntry.Key {
-				if len(fsmEntry.Value) > 0 {
-					logOp.Value = fsmEntry.Value
+				// this should always be true because the entries in the slice were created in the same order as
+				// the command operations.
+				if logOp.Key == fsmEntry.Key {
+					if len(fsmEntry.Value) > 0 {
+						logOp.Value = fsmEntry.Value
+					}
+				} else {
+					// this shouldn't happen
+					return errors.New("entries in FSM response were out of order")
 				}
-			} else {
-				// this shouldn't happen
-				return errors.New("entries in FSM response were out of order")
 			}
+		}
+	} else {
+		// There should be at most one EntrySlice entry.
+		if len(fsmar.EntrySlice) > 1 {
+			return fmt.Errorf("multiple responses in entry slice: %v", len(fsmar.EntrySlice))
+		}
+
+		if len(fsmar.EntrySlice) == 1 {
+			fsmEntry := fsmar.EntrySlice[0]
+			if !fsmEntry.IsTxError() {
+				return fmt.Errorf("unknown FSMEntry response type")
+			}
+
+			return fsmEntry.AsTxError()
 		}
 	}
 
@@ -1765,6 +1741,14 @@ func (b *RaftBackend) SetDesiredSuffrage(nonVoter bool) error {
 
 func (b *RaftBackend) DesiredSuffrage() string {
 	return b.fsm.DesiredSuffrage()
+}
+
+func (b *RaftBackend) BeginReadOnlyTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, false)
+}
+
+func (b *RaftBackend) BeginTx(ctx context.Context) (physical.Transaction, error) {
+	return b.newTransaction(ctx, true)
 }
 
 // RaftLock implements the physical Lock interface and enables HA for this
@@ -1941,23 +1925,23 @@ func boltOptions(path string) *bolt.Options {
 		MmapFlags:      getMmapFlags(path),
 	}
 
-	if os.Getenv("VAULT_RAFT_FREELIST_TYPE") == "array" {
+	if api.ReadBaoVariable("BAO_RAFT_FREELIST_TYPE") == "array" {
 		o.FreelistType = bolt.FreelistArrayType
 	}
 
-	if os.Getenv("VAULT_RAFT_FREELIST_SYNC") != "" {
+	if api.ReadBaoVariable("BAO_RAFT_FREELIST_SYNC") != "" {
 		o.NoFreelistSync = false
 	}
 
 	// By default, we want to set InitialMmapSize to 100GB, but only on 64bit platforms.
-	// Otherwise, we set it to whatever the value of VAULT_RAFT_INITIAL_MMAP_SIZE
+	// Otherwise, we set it to whatever the value of BAO_RAFT_INITIAL_MMAP_SIZE
 	// is, assuming it can be parsed as an int. Bolt itself sets this to 0 by default,
 	// so if users are wanting to turn this off, they can also set it to 0. Setting it
 	// to a negative value is the same as not setting it at all.
-	if os.Getenv("VAULT_RAFT_INITIAL_MMAP_SIZE") == "" {
+	if api.ReadBaoVariable("BAO_RAFT_INITIAL_MMAP_SIZE") == "" {
 		o.InitialMmapSize = initialMmapSize
 	} else {
-		imms, err := strconv.Atoi(os.Getenv("VAULT_RAFT_INITIAL_MMAP_SIZE"))
+		imms, err := strconv.Atoi(api.ReadBaoVariable("BAO_RAFT_INITIAL_MMAP_SIZE"))
 
 		// If there's an error here, it means they passed something that's not convertible to
 		// a number. Rather than fail startup, just ignore it.

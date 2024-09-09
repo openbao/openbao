@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-cleanhttp"
-	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 )
 
 // testTesting is used for testing the legacy testing framework

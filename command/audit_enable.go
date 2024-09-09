@@ -4,13 +4,14 @@
 package command
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -35,7 +36,7 @@ func (c *AuditEnableCommand) Synopsis() string {
 
 func (c *AuditEnableCommand) Help() string {
 	helpText := `
-Usage: vault audit enable [options] TYPE [CONFIG K=V...]
+Usage: bao audit enable [options] TYPE [CONFIG K=V...]
 
   Enables an audit device at a given path.
 
@@ -46,7 +47,7 @@ Usage: vault audit enable [options] TYPE [CONFIG K=V...]
   For example, to configure the file audit device to write audit logs at the
   path "/var/log/audit.log":
 
-      $ vault audit enable file file_path=/var/log/audit.log
+      $ bao audit enable file file_path=/var/log/audit.log
 
 ` + c.Flags().Help()
 
@@ -130,6 +131,9 @@ func (c *AuditEnableCommand) Run(args []string) int {
 	stdin := (io.Reader)(os.Stdin)
 	if c.testStdin != nil {
 		stdin = c.testStdin
+	}
+	if c.flagNonInteractive {
+		stdin = bytes.NewReader(nil)
 	}
 
 	options, err := parseArgsDataString(stdin, args[1:])

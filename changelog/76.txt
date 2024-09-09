@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Add support for KeyUsage, ExtKeyUsage when issuing CA certificates, allowing compliance with CA/BF guidelines (e.g., with GCP Load Balancers).
+```

@@ -1,6 +1,4 @@
 ---
-layout: docs
-page_title: Policies
 description: >-
   Policies are how authorization is done in OpenBao, allowing you to restrict
   which parts of OpenBao a user can access.
@@ -18,7 +16,7 @@ system.
 ## Policy-authorization workflow
 
 Before a human or machine can gain access, an administrator must configure OpenBao
-with an [auth method](/vault/docs/concepts/auth). Authentication is
+with an [auth method](/docs/concepts/auth). Authentication is
 the process by which human or machine-supplied information is verified against
 an internal or external system.
 
@@ -27,7 +25,7 @@ would take to configure OpenBao to authenticate using a corporate LDAP or
 ActiveDirectory installation. Even though this example uses LDAP, the concept
 applies to all auth methods.
 
-[![OpenBao Auth Workflow](/img/vault-policy-workflow.svg)](/img/vault-policy-workflow.svg)
+[![OpenBao Auth Workflow](/img/openbao-policy-workflow.png)](/img/openbao-policy-workflow.png)
 
 1. The security team configures OpenBao to connect to an auth method.
    This configuration varies by auth method. In the case of LDAP, OpenBao
@@ -55,7 +53,7 @@ Now OpenBao has an internal mapping between a backend authentication system and
 internal policy. When a user authenticates to OpenBao, the actual authentication
 is delegated to the auth method. As a user, the flow looks like:
 
-[![OpenBao Auth Workflow](/img/vault-auth-workflow.svg)](/img/vault-auth-workflow.svg)
+[![OpenBao Auth Workflow](/img/openbao-auth-workflow.png)](/img/openbao-auth-workflow.png)
 
 1. A user attempts to authenticate to OpenBao using their LDAP credentials,
    providing OpenBao with their LDAP username and password.
@@ -84,7 +82,7 @@ user or machine is allowed to access.
 
 [hcl]: https://github.com/hashicorp/hcl
 
-Here is a very simple policy which grants read capabilities to the [KVv1](/vault/api-docs/secret/kv/kv-v1) path
+Here is a very simple policy which grants read capabilities to the [KVv1](/api-docs/secret/kv/kv-v1) path
 `"secret/foo"`:
 
 ```ruby
@@ -150,7 +148,7 @@ path "secret/zip-*" {
 ```
 
 In addition, a `+` can be used to denote any number of characters bounded
-within a single path segment (this appeared in Vault 1.1):
+within a single path segment:
 
 ```ruby
 # Permit reading the "teamb" path under any top-level path under secret/
@@ -169,12 +167,16 @@ corresponding path and capability - even OpenBao's internal core configuration
 endpoints live under the `"sys/"` path. Policies define access to these paths and
 capabilities, which controls a token's access to credentials in OpenBao.
 
-~> **Note:** The policy rules that OpenBao applies are determined by the most-specific match
+:::warning
+
+**Note:** The policy rules that OpenBao applies are determined by the most-specific match
 available, using the priority rules described below. This may be an exact match
 or the longest-prefix match of a glob. If the same pattern appears in multiple
 policies, we take the union of the capabilities. If different patterns appear in
 the applicable policies, we take only the highest-priority match from those
 policies.
+
+:::
 
 This means if you define a policy for `"secret/foo*"`, the policy would
 also match `"secret/foobar"`. Specifically, when there are potentially multiple
@@ -191,8 +193,12 @@ wildcard appears in the same place, both end in `*` and the latter has two wildc
 segments while the former has zero. So we end at rule (3), and give `"secret/+/+/foo/*"`
 _lower_ priority.
 
-!> **Informational:**The glob character referred to in this documentation is the asterisk (`*`).
+:::danger
+
+**Informational:**The glob character referred to in this documentation is the asterisk (`*`).
 It _is not a regular expression_ and is only supported **as the last character of the path**!
+
+:::
 
 When providing `list` capability, it is important to note that since listing
 always operates on a prefix, policies must operate on a prefix because OpenBao
@@ -205,7 +211,7 @@ control over permitted (or denied) operations. As shown in the examples above,
 capabilities are always specified as a list of strings, even if there is only
 one capability.
 
-To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](/vault/docs/commands#print-policy-requirements) document section.
+To determine the capabilities needed to perform a specific operation, the `-output-policy` flag can be added to the CLI subcommand. For an example, refer to the [Print Policy Requirements](/docs/commands#print-policy-requirements) document section.
 
 
 The list of capabilities include the following:
@@ -249,11 +255,15 @@ HTTP verbs.
 - `deny` - Disallows access. This always takes precedence regardless of any
   other defined capabilities, including `sudo`.
 
-~> **Note:** Capabilities usually map to the HTTP verb, and not the underlying
+:::warning
+
+**Note:** Capabilities usually map to the HTTP verb, and not the underlying
 action taken. This can be a common source of confusion. Generating database
 credentials _creates_ database credentials, but the HTTP request is a GET which
 corresponds to a `read` capability. Thus, to grant access to generate database
 credentials, the policy would grant `read` access on the appropriate path.
+
+:::
 
 ## Templated policies
 
@@ -305,10 +315,14 @@ path "secret/metadata/groups/{{identity.groups.ids.fb036ebc-2f62-4124-9503-42aa7
 }
 ```
 
-~> **Note:** When developing templated policies, use IDs wherever possible. Each ID is
+:::warning
+
+**Note:** When developing templated policies, use IDs wherever possible. Each ID is
 unique to the user, whereas names can change over time and can be reused. This
 ensures that if a given user or group name is changed, the policy will be
 mapped to the intended entity or group.
+
+:::
 
 If you want to use the metadata associated with an authentication plugin in your
 templates, you will need to get its _mount accessor_ and access it via the
@@ -341,11 +355,19 @@ path take precedence over permissions on parameters.
 
 ### Parameter constraints
 
-!> **Note:** The use of [globs](/vault/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
+:::danger
 
-~> **Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/vault/docs/secrets/kv/kv-v2).
+**Note:** The use of [globs](/docs/concepts/policies#policy-syntax) (`*`) may result in [surprising or unexpected behavior](#parameter-constraints-limitations).
 
-See the [API Specification](/vault/api-docs/secret/kv/kv-v2) for more information.
+:::
+
+:::warning
+
+**Note:** The `allowed_parameters`, `denied_parameters`, and `required_parameters` fields are not supported for policies used with the [version 2 kv secrets engine](/docs/secrets/kv/kv-v2).
+
+:::
+
+See the [API Specification](/api-docs/secret/kv/kv-v2) for more information.
 
 Policies can take into account HTTP request parameters to further
 constrain requests, using the following options:
@@ -379,12 +401,6 @@ constrain requests, using the following options:
       }
     }
     ```
-
-    -> **Usage example:** The [ACL Policy Path
-     Templating](/vault/tutorials/policies/policy-templating)
-     tutorial demonstrates the use of `allowed_parameters` to permit a user to
-     update the user's password when using the [userpass auth
-     method](/vault/docs/auth/userpass) to log in with OpenBao.
 
   - Setting a parameter with a value of a populated list allows the parameter
     to contain only those values.
@@ -487,7 +503,11 @@ path "secret/foo" {
 }
 ```
 
-~> **Note:** the only value that can be used with the `*` parameter is `[]`.
+:::warning
+
+**Note:** the only value that can be used with the `*` parameter is `[]`.
+
+:::
 
 #### Parameter constraints limitations
 
@@ -571,8 +591,8 @@ path "secret/foo" {
 
 These parameters can be used to set minimums/maximums on TTLs set by clients
 when requesting that a response be
-[wrapped](/vault/docs/concepts/response-wrapping), with a granularity of a
-second. These use [duration format strings](/vault/docs/concepts/duration-format).
+[wrapped](/docs/concepts/response-wrapping), with a granularity of a
+second. These use [duration format strings](/docs/concepts/duration-format).
 
 In practice, setting a minimum TTL of one second effectively makes response
 wrapping mandatory for a particular path.
@@ -650,7 +670,7 @@ Any user associated with this policy becomes a root user. A root user can do
 _anything_ within OpenBao. As such, it is **highly recommended** that you revoke
 any root tokens before running OpenBao in production.
 
-When a OpenBao server is first initialized, there always exists one root user.
+When an OpenBao server is first initialized, there always exists one root user.
 This user is used to do the initial configuration and setup of OpenBao. After
 configured, the initial root token should be revoked and more strictly
 controlled users and authentication should be used.
@@ -670,11 +690,6 @@ $ curl \
   --data '{"token": "<token>"}' \
   https://openbao.hashicorp.rocks/v1/auth/token/revoke
 ```
-
-For more information, please read:
-
-- [Production Hardening](/vault/tutorials/operations/production-hardening)
-- [Generating a Root Token](/vault/tutorials/operations/generate-root)
 
 ## Managing policies
 
@@ -698,9 +713,13 @@ $ curl \
   https://openbao.hashicorp.rocks/v1/sys/policy
 ```
 
-~> **Note:** You may also see the CLI command `bao policies`. This is a convenience
+:::warning
+
+**Note:** You may also see the CLI command `bao policies`. This is a convenience
 wrapper around reading the sys endpoint directly. It provides the same
 functionality but formats the output in a special manner.
+
+:::
 
 ### Creating policies
 
@@ -772,7 +791,7 @@ authorization. This configuration varies significantly between authentication
 backends. For simplicity, this example will use OpenBao's built-in userpass
 auth method.
 
-A OpenBao administrator or someone from the security team would create the user in
+An OpenBao administrator or someone from the security team would create the user in
 OpenBao with a list of associated policies:
 
 ```shell-session
@@ -798,40 +817,44 @@ authenticated user.
 
 ## Root protected API endpoints
 
-~> **Note:** OpenBao treats the HTTP POST and PUT verbs as equivalent, so for each mention
+:::warning
+
+**Note:** OpenBao treats the HTTP POST and PUT verbs as equivalent, so for each mention
    of POST in the table above, PUT may also be used. OpenBao uses the non-standard LIST HTTP
    verb, but also allows list requests to be made using the GET verb along with `?list=true`
    as a query parameter, so for each mention of LIST in the table above, GET with `?list=true`
    may also be used.
 
+:::
+
 The following paths requires a root token or `sudo` capability in the policy:
 
 | Path                                                                                                                                                   | HTTP verb         | Description                                                                                                                                         |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [auth/token/accessors](/vault/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
-| [auth/token/create](/vault/api-docs/auth/token#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
-| [pki/root](/vault/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](/vault/docs/secrets/pki))                                                                           |
-| [pki/root/sign-self-issued](/vault/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](/vault/docs/secrets/pki))                                 |
-| [sys/audit](/vault/api-docs/system/audit)                                                                                                              | GET               | List enabled audit devices                                                                                                                          |
-| [sys/audit/:path](/vault/api-docs/system/audit)                                                                                                        | POST, DELETE      | Enable or remove an audit device                                                                                                                    |
-| [sys/auth/:path](/vault/api-docs/system/auth)                                                                                                          | GET, POST, DELETE | Manage the auth methods (enable, read, and delete)                                                                                                  |
-| [sys/auth/:path/tune](/vault/api-docs/system/auth#tune-auth-method)                                                                                    | GET, POST         | Manage the auth methods (enable, read, delete, and tune)                                                                                            |
-| [sys/config/auditing/request-headers](/vault/api-docs/system/config-auditing)                                                                          | GET               | List the request headers that are configured to be audited                                                                                          |
-| [sys/config/auditing/request-headers/:name](/vault/api-docs/system/config-auditing)                                                                    | GET, POST, DELETE | Manage the auditing headers (create, update, read and delete)                                                                                       |
-| [sys/config/cors](/vault/api-docs/system/config-cors)                                                                                                  | GET, POST, DELETE | Configure CORS setting                                                                                                                              |
-| [sys/config/ui/headers](/vault/api-docs/system/config-ui)                                                                                              | GET, LIST         | Configure the UI settings                                                                                                                           |
-| [sys/config/ui/headers/:name](/vault/api-docs/system/config-ui#name)                                                                                   | POST, DELETE      | Configure custom HTTP headers to be served with the UI                                                                                              |
-| [sys/internal/inspect/router/:tag](/vault/api-docs/system/inspect/router)                                                                              | GET               | Inspect the internal components of OpenBao's router. `tag` must be one of root, uuid, accessor, or storage                                            |
-| [sys/leases/lookup/:prefix](/vault/api-docs/system/leases#list-leases)                                                                                 | LIST              | List lease IDs                                                                                                                                      |
-| [sys/leases/revoke-force/:prefix](/vault/api-docs/system/leases#revoke-force)                                                                          | POST              | Revoke all secrets or tokens ignoring backend errors                                                                                                |
-| [sys/leases/revoke-prefix/:prefix](/vault/api-docs/system/leases#revoke-prefix)                                                                        | POST              | Revoke all secrets generated under a given prefix                                                                                                   |
-| [sys/plugins/catalog/:type/:name](/vault/api-docs/system/plugins-catalog#register-plugin)                                                              | GET, POST, DELETE | Register a new plugin, or read/remove an existing plugin                                                                                            |
-| [sys/raw:path](/vault/api-docs/system/raw)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in OpenBao                                                                                                    |
-| [sys/raw:prefix](/vault/api-docs/system/raw#list-raw)                                                                                                  | GET, LIST         | Returns a list keys for a given path prefix                                                                                                         |
-| [sys/remount](/vault/api-docs/system/remount)                                                                                                          | POST              | Moves an already-mounted backend to a new mount point                                                                                               |
-| [sys/rotate](/vault/api-docs/system/rotate)                                                                                                            | POST              | Trigger a rotation of the backend encryption key                                                                                                    |
-| [sys/seal](/vault/api-docs/system/seal)                                                                                                                | POST              | Seals the OpenBao                                                                                                                                     |
-| [sys/step-down](/vault/api-docs/system/step-down)                                                                                                      | POST              | Forces a node to give up active status                                                                                                              |
+| [auth/token/accessors](/api-docs/auth/token#list-accessors)                                                                                      | LIST              | List token accessors for all current OpenBao service tokens                                                                                           |
+| [auth/token/create](/api-docs/auth/token#create-token)                                                                                           | POST              | Create a periodic or an orphan token (`period` or `no_parent`) option                                                                               |
+| [pki/root](/api-docs/secret/pki#delete-all-issuers-and-keys)                                                                                     | DELETE            | Delete the current CA key ([pki secrets engine](/docs/secrets/pki))                                                                           |
+| [pki/root/sign-self-issued](/api-docs/secret/pki#sign-self-issued)                                                                               | POST              | Use the configured CA certificate to sign a self-issued certificate ([pki secrets engine](/docs/secrets/pki))                                 |
+| [sys/audit](/api-docs/system/audit)                                                                                                              | GET               | List enabled audit devices                                                                                                                          |
+| [sys/audit/:path](/api-docs/system/audit)                                                                                                        | POST, DELETE      | Enable or remove an audit device                                                                                                                    |
+| [sys/auth/:path](/api-docs/system/auth)                                                                                                          | GET, POST, DELETE | Manage the auth methods (enable, read, and delete)                                                                                                  |
+| [sys/auth/:path/tune](/api-docs/system/auth#tune-auth-method)                                                                                    | GET, POST         | Manage the auth methods (enable, read, delete, and tune)                                                                                            |
+| [sys/config/auditing/request-headers](/api-docs/system/config-auditing)                                                                          | GET               | List the request headers that are configured to be audited                                                                                          |
+| [sys/config/auditing/request-headers/:name](/api-docs/system/config-auditing)                                                                    | GET, POST, DELETE | Manage the auditing headers (create, update, read and delete)                                                                                       |
+| [sys/config/cors](/api-docs/system/config-cors)                                                                                                  | GET, POST, DELETE | Configure CORS setting                                                                                                                              |
+| [sys/config/ui/headers](/api-docs/system/config-ui)                                                                                              | GET, LIST         | Configure the UI settings                                                                                                                           |
+| [sys/config/ui/headers/:name](/api-docs/system/config-ui#name)                                                                                   | POST, DELETE      | Configure custom HTTP headers to be served with the UI                                                                                              |
+| [sys/internal/inspect/router/:tag](/api-docs/system/inspect/router)                                                                              | GET               | Inspect the internal components of OpenBao's router. `tag` must be one of root, uuid, accessor, or storage                                            |
+| [sys/leases/lookup/:prefix](/api-docs/system/leases#list-leases)                                                                                 | LIST              | List lease IDs                                                                                                                                      |
+| [sys/leases/revoke-force/:prefix](/api-docs/system/leases#revoke-force)                                                                          | POST              | Revoke all secrets or tokens ignoring backend errors                                                                                                |
+| [sys/leases/revoke-prefix/:prefix](/api-docs/system/leases#revoke-prefix)                                                                        | POST              | Revoke all secrets generated under a given prefix                                                                                                   |
+| [sys/plugins/catalog/:type/:name](/api-docs/system/plugins-catalog#register-plugin)                                                              | GET, POST, DELETE | Register a new plugin, or read/remove an existing plugin                                                                                            |
+| [sys/raw:path](/api-docs/system/raw)                                                                                                             | GET, POST, DELETE | Used to access the raw underlying store in OpenBao                                                                                                    |
+| [sys/raw:prefix](/api-docs/system/raw#list-raw)                                                                                                  | GET, LIST         | Returns a list keys for a given path prefix                                                                                                         |
+| [sys/remount](/api-docs/system/remount)                                                                                                          | POST              | Moves an already-mounted backend to a new mount point                                                                                               |
+| [sys/rotate](/api-docs/system/rotate)                                                                                                            | POST              | Trigger a rotation of the backend encryption key                                                                                                    |
+| [sys/seal](/api-docs/system/seal)                                                                                                                | POST              | Seals the OpenBao                                                                                                                                     |
+| [sys/step-down](/api-docs/system/step-down)                                                                                                      | POST              | Forces a node to give up active status                                                                                                              |
 
 ### Tokens
 
@@ -859,10 +882,3 @@ new set of policies.
 However, the _contents_ of policies are parsed in real-time whenever the token is used.
 As a result, if a policy is modified, the modified rules will be in force the
 next time a token, with that policy attached, is used to make a call to OpenBao.
-
-## Tutorial
-
-Refer to the following tutorials for further learning:
-
-- [OpenBao Policies](/vault/tutorials/policies/policies)
-- [ACL Policy Path Templating](/vault/tutorials/policies/policy-templating)

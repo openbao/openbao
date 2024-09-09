@@ -1,6 +1,5 @@
 ---
-layout: docs
-page_title: operator generate-root - Command
+sidebar_label: generate-root
 description: |-
   The "operator generate-root" command generates a new root token by combining a
   quorum of share holders.
@@ -20,15 +19,12 @@ One of the following must be provided to start the root token generation:
   final value.
 
 - A file containing a PGP key or a
-  [keybase](/vault/docs/concepts/pgp-gpg-keybase) username in the `-pgp-key`
+  [keybase](/docs/concepts/pgp-gpg-keybase) username in the `-pgp-key`
   flag. The resulting token is encrypted with this public key.
 
 An unseal key may be provided directly on the command line as an argument to the
 command. If key is specified as "-", the command will read from stdin. If a TTY
 is available, the command will prompt for text.
-
-Please see the [generate root guide](/vault/tutorials/operations/generate-root) for
-step-by-step instructions.
 
 ## Examples
 
@@ -53,13 +49,13 @@ $ bao operator generate-root -otp="..."
 ## Usage
 
 The following flags are available in addition to the [standard set of
-flags](/vault/docs/commands) included on all commands.
+flags](/docs/commands) included on all commands.
 
 ### Output options
 
 - `-format` `(string: "table")` - Print the output in the given format. Valid
   formats are "table", "json", or "yaml". This can also be specified via the
-  `VAULT_FORMAT` environment variable.
+  `BAO_FORMAT` environment variable.
 
 ### Command options
 

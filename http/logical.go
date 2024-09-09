@@ -17,10 +17,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/helper/experiments"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 	"go.uber.org/atomic"
 )
@@ -45,7 +44,7 @@ func (b *bufferedReader) Close() error {
 
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
-func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
+func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
 	ns, err := namespace.FromContext(r.Context())
 	if err != nil {
 		return nil, nil, http.StatusBadRequest, nil
@@ -91,8 +90,6 @@ func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.
 			responseWriter = w
 		case path == "sys/storage/raft/snapshot":
 			responseWriter = w
-		case path == "sys/internal/counters/activity/export":
-			responseWriter = w
 		case path == "sys/monitor":
 			passHTTPReq = true
 			responseWriter = w
@@ -135,7 +132,7 @@ func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.
 
 				data = formData
 			} else {
-				origBody, err = parseJSONRequest(perfStandby, r, w, &data)
+				origBody, err = parseJSONRequest(r, w, &data)
 				if err == io.EOF {
 					data = nil
 					err = nil
@@ -163,7 +160,7 @@ func buildLogicalRequestNoAuth(perfStandby bool, w http.ResponseWriter, r *http.
 			return nil, nil, http.StatusUnsupportedMediaType, fmt.Errorf("PATCH requires Content-Type of %s, provided %s", MergePatchContentTypeHeader, contentType)
 		}
 
-		origBody, err = parseJSONRequest(perfStandby, r, w, &data)
+		origBody, err = parseJSONRequest(r, w, &data)
 
 		if err == io.EOF {
 			data = nil
@@ -264,12 +261,11 @@ func buildLogicalPath(r *http.Request) (string, int, error) {
 }
 
 func buildLogicalRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
-	req, origBody, status, err := buildLogicalRequestNoAuth(core.PerfStandby(), w, r)
+	req, origBody, status, err := buildLogicalRequestNoAuth(w, r)
 	if err != nil || status != 0 {
 		return nil, nil, status, err
 	}
 
-	req.SetRequiredState(r.Header.Values(VaultIndexHeaderName))
 	requestAuth(r, req)
 
 	req, err = requestWrapInfo(r, req)
@@ -316,7 +312,7 @@ func handleLogicalNoForward(core *vault.Core) http.Handler {
 
 func handleLogicalRecovery(raw *vault.RawBackend, token *atomic.String) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req, _, statusCode, err := buildLogicalRequestNoAuth(false, w, r)
+		req, _, statusCode, err := buildLogicalRequestNoAuth(w, r)
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
@@ -350,24 +346,6 @@ func handleLogicalInternal(core *vault.Core, injectDataIntoTopLevel bool, noForw
 		if err != nil || statusCode != 0 {
 			respondError(w, statusCode, err)
 			return
-		}
-
-		// Websockets need to be handled at HTTP layer instead of logical requests.
-		if core.IsExperimentEnabled(experiments.VaultExperimentEventsAlpha1) {
-			ns, err := namespace.FromContext(r.Context())
-			if err != nil {
-				respondError(w, http.StatusInternalServerError, err)
-				return
-			}
-			nsPath := ns.Path
-			if ns.ID == namespace.RootNamespaceID {
-				nsPath = ""
-			}
-			if strings.HasPrefix(r.URL.Path, fmt.Sprintf("/v1/%ssys/events/subscribe/", nsPath)) {
-				handler := handleEventsSubscribe(core, req)
-				handler.ServeHTTP(w, r)
-				return
-			}
 		}
 
 		// Make the internal request. We attach the connection info

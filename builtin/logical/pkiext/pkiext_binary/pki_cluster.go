@@ -6,15 +6,14 @@ package pkiext_binary
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/pki/dnstest"
-	dockhelper "github.com/openbao/openbao/sdk/helper/docker"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
-	"github.com/openbao/openbao/sdk/helper/testcluster/docker"
+	dockhelper "github.com/openbao/openbao/sdk/v2/helper/docker"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 )
 
 type VaultPkiCluster struct {
@@ -23,13 +22,13 @@ type VaultPkiCluster struct {
 }
 
 func NewVaultPkiCluster(t *testing.T) *VaultPkiCluster {
-	binary := os.Getenv("VAULT_BINARY")
+	binary := api.ReadBaoVariable("BAO_BINARY")
 	if binary == "" {
-		t.Skip("only running docker test when $VAULT_BINARY present")
+		t.Skip("only running docker test when $BAO_BINARY present")
 	}
 
 	opts := &docker.DockerClusterOptions{
-		ImageRepo: "docker.mirror.hashicorp.services/hashicorp/vault",
+		ImageRepo: "quay.io/openbao/openbao",
 		// We're replacing the binary anyway, so we're not too particular about
 		// the docker image version tag.
 		ImageTag:    "latest",

@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathConfigCluster(b *backend) *framework.Path {
@@ -33,12 +33,12 @@ This should only point back to this particular PR replica and should not ever
 point to another PR cluster. It may point to any node in the PR replica,
 including standby nodes, and need not always point to the active node.
 
-For example: https://pr1.vault.example.com:8200/v1/pki`,
+For example: https://pr1.bao.example.com:8200/v1/pki`,
 			},
 			"aia_path": {
 				Type: framework.TypeString,
 				Description: `Optional URI to this mount's AIA distribution
-point; may refer to an external non-Vault responder. This is for resolving AIA
+point; may refer to an external non-OpenBao responder. This is for resolving AIA
 URLs and providing the {{cluster_aia_path}} template parameter and will not
 be used for other purposes. As such, unlike path above, this could safely
 be an insecure transit mechanism (like HTTP without TLS).
@@ -69,12 +69,12 @@ This should only point back to this particular PR replica and should not ever
 point to another PR cluster. It may point to any node in the PR replica,
 including standby nodes, and need not always point to the active node.
 
-For example: https://pr1.vault.example.com:8200/v1/pki`,
+For example: https://pr1.bao.example.com:8200/v1/pki`,
 							},
 							"aia_path": {
 								Type: framework.TypeString,
 								Description: `Optional URI to this mount's AIA distribution
-point; may refer to an external non-Vault responder. This is for resolving AIA
+point; may refer to an external non-OpenBao responder. This is for resolving AIA
 URLs and providing the {{cluster_aia_path}} template parameter and will not
 be used for other purposes. As such, unlike path above, this could safely
 be an insecure transit mechanism (like HTTP without TLS).
@@ -105,13 +105,13 @@ This should only point back to this particular PR replica and should not ever
 point to another PR cluster. It may point to any node in the PR replica,
 including standby nodes, and need not always point to the active node.
 
-For example: https://pr1.vault.example.com:8200/v1/pki`,
+For example: https://pr1.bao.example.com:8200/v1/pki`,
 								Required: true,
 							},
 							"aia_path": {
 								Type: framework.TypeString,
 								Description: `Optional URI to this mount's AIA distribution
-point; may refer to an external non-Vault responder. This is for resolving AIA
+point; may refer to an external non-OpenBao responder. This is for resolving AIA
 URLs and providing the {{cluster_aia_path}} template parameter and will not
 be used for other purposes. As such, unlike path above, this could safely
 be an insecure transit mechanism (like HTTP without TLS).

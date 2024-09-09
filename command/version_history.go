@@ -28,13 +28,13 @@ func (c *VersionHistoryCommand) Synopsis() string {
 
 func (c *VersionHistoryCommand) Help() string {
 	helpText := `
-Usage: vault version-history
+Usage: bao version-history
 
   Prints the version history of the target Vault server.
 
   Print the version history:
 
-      $ vault version-history
+      $ bao version-history
 ` + c.Flags().Help()
 	return strings.TrimSpace(helpText)
 }

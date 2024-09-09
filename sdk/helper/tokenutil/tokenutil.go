@@ -11,9 +11,9 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	sockaddr "github.com/hashicorp/go-sockaddr"
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 // TokenParams contains a set of common parameters that auth plugins can use
@@ -47,6 +47,9 @@ type TokenParams struct {
 
 	// The TTL to user for the token
 	TokenTTL time.Duration `json:"token_ttl" mapstructure:"token_ttl"`
+
+	// Whether to strictly CIDRs to the source IP address
+	TokenStrictlyBindIP bool `json:"token_strictly_bind_ip"`
 }
 
 // AddTokenFields adds fields to an existing role. It panics if it would
@@ -157,6 +160,15 @@ func TokenFields() map[string]*framework.FieldSchema {
 				Group: "Tokens",
 			},
 		},
+
+		"token_strictly_bind_ip": {
+			Type:        framework.TypeBool,
+			Description: "If true, CIDRs for the token will be strictly bound to the source IP address of the login request",
+			DisplayAttrs: &framework.DisplayAttributes{
+				Name:  "Strictly bind to the source IP address",
+				Group: "Tokens",
+			},
+		},
 	}
 }
 
@@ -238,6 +250,14 @@ func (t *TokenParams) ParseTokenFields(req *logical.Request, d *framework.FieldD
 		return errors.New("'token_ttl' cannot be greater than 'token_max_ttl'")
 	}
 
+	if strictlyBindRaw, ok := d.GetOk("token_strictly_bind_ip"); ok {
+		t.TokenStrictlyBindIP = strictlyBindRaw.(bool)
+	}
+
+	if t.TokenStrictlyBindIP && len(t.TokenBoundCIDRs) > 0 {
+		return errors.New("'token_strictly_bind_ip' conflicts with 'token_bound_cidrs'; set only one")
+	}
+
 	return nil
 }
 
@@ -252,6 +272,7 @@ func (t *TokenParams) PopulateTokenData(m map[string]interface{}) {
 	m["token_type"] = t.TokenType.String()
 	m["token_ttl"] = int64(t.TokenTTL.Seconds())
 	m["token_num_uses"] = t.TokenNumUses
+	m["token_strictly_bind_ip"] = t.TokenStrictlyBindIP
 
 	if len(t.TokenPolicies) == 0 {
 		m["token_policies"] = []string{}
@@ -263,7 +284,7 @@ func (t *TokenParams) PopulateTokenData(m map[string]interface{}) {
 }
 
 // PopulateTokenAuth populates Auth with parameters
-func (t *TokenParams) PopulateTokenAuth(auth *logical.Auth) {
+func (t *TokenParams) PopulateTokenAuth(auth *logical.Auth, req *logical.Request) error {
 	auth.BoundCIDRs = t.TokenBoundCIDRs
 	auth.ExplicitMaxTTL = t.TokenExplicitMaxTTL
 	auth.MaxTTL = t.TokenMaxTTL
@@ -274,6 +295,24 @@ func (t *TokenParams) PopulateTokenAuth(auth *logical.Auth) {
 	auth.TokenType = t.TokenType
 	auth.TTL = t.TokenTTL
 	auth.NumUses = t.TokenNumUses
+
+	if t.TokenStrictlyBindIP {
+		// http.WrapForwardedForHandler sets the correct portion of the
+		// X-Forwarded-For header (if any) to req.RemoteAddr which ends up
+		// on req.Connection.RemoteAddr after translation. This means we
+		// don't need to let plugins know how to handle X-Forwarded and can
+		// simply consume req.Connection.RemoteAddr.
+		addrs := []string{req.Connection.RemoteAddr}
+
+		cidrs, err := parseutil.ParseAddrs(addrs)
+		if err != nil {
+			return err
+		}
+
+		auth.BoundCIDRs = cidrs
+	}
+
+	return nil
 }
 
 func DeprecationText(param string) string {

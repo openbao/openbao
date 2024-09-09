@@ -4,7 +4,6 @@
 package pki
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -15,9 +14,9 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/certutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func getGenerationParams(sc *storageContext, data *framework.FieldData) (exported bool, format string, role *roleEntry, errorResp *logical.Response) {
@@ -82,17 +81,6 @@ func getGenerationParams(sc *storageContext, data *framework.FieldData) (exporte
 }
 
 func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.CreationBundle, randomSource io.Reader) (*certutil.ParsedCertBundle, error) {
-	ctx := sc.Context
-	b := sc.Backend
-
-	if kmsRequested(input) {
-		keyId, err := getManagedKeyId(input.apiData)
-		if err != nil {
-			return nil, err
-		}
-		return generateManagedKeyCABundle(ctx, b, keyId, data, randomSource)
-	}
-
 	if existingKeyRequested(input) {
 		keyRef, err := getKeyRefWithErr(input.apiData)
 		if err != nil {
@@ -104,14 +92,6 @@ func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.Cre
 			return nil, err
 		}
 
-		if keyEntry.isManagedPrivateKey() {
-			keyId, err := keyEntry.getManagedKeyUUID()
-			if err != nil {
-				return nil, err
-			}
-			return generateManagedKeyCABundle(ctx, b, keyId, data, randomSource)
-		}
-
 		return certutil.CreateCertificateWithKeyGenerator(data, randomSource, existingKeyGeneratorFromBytes(keyEntry))
 	}
 
@@ -119,18 +99,6 @@ func generateCABundle(sc *storageContext, input *inputBundle, data *certutil.Cre
 }
 
 func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.CreationBundle, addBasicConstraints bool, randomSource io.Reader) (*certutil.ParsedCSRBundle, error) {
-	ctx := sc.Context
-	b := sc.Backend
-
-	if kmsRequested(input) {
-		keyId, err := getManagedKeyId(input.apiData)
-		if err != nil {
-			return nil, err
-		}
-
-		return generateManagedKeyCSRBundle(ctx, b, keyId, data, addBasicConstraints, randomSource)
-	}
-
 	if existingKeyRequested(input) {
 		keyRef, err := getKeyRefWithErr(input.apiData)
 		if err != nil {
@@ -142,25 +110,10 @@ func generateCSRBundle(sc *storageContext, input *inputBundle, data *certutil.Cr
 			return nil, err
 		}
 
-		if key.isManagedPrivateKey() {
-			keyId, err := key.getManagedKeyUUID()
-			if err != nil {
-				return nil, err
-			}
-			return generateManagedKeyCSRBundle(ctx, b, keyId, data, addBasicConstraints, randomSource)
-		}
-
 		return certutil.CreateCSRWithKeyGenerator(data, addBasicConstraints, randomSource, existingKeyGeneratorFromBytes(key))
 	}
 
 	return certutil.CreateCSRWithRandomSource(data, addBasicConstraints, randomSource)
-}
-
-func parseCABundle(ctx context.Context, b *backend, bundle *certutil.CertBundle) (*certutil.ParsedCertBundle, error) {
-	if bundle.PrivateKeyType == certutil.ManagedPrivateKey {
-		return parseManagedKeyCABundle(ctx, b, bundle)
-	}
-	return bundle.ToParsedCertBundle()
 }
 
 func (sc *storageContext) getKeyTypeAndBitsForRole(data *framework.FieldData) (string, int, error) {
@@ -186,19 +139,6 @@ func (sc *storageContext) getKeyTypeAndBitsForRole(data *framework.FieldData) (s
 	}
 
 	var pubKey crypto.PublicKey
-	if kmsRequestedFromFieldData(data) {
-		keyId, err := getManagedKeyId(data)
-		if err != nil {
-			return "", 0, errors.New("unable to determine managed key id: " + err.Error())
-		}
-
-		pubKeyManagedKey, err := getManagedKeyPublicKey(sc.Context, sc.Backend, keyId)
-		if err != nil {
-			return "", 0, errors.New("failed to lookup public key from managed key: " + err.Error())
-		}
-		pubKey = pubKeyManagedKey
-	}
-
 	if existingKeyRequestedFromFieldData(data) {
 		existingPubKey, err := sc.getExistingPublicKey(data)
 		if err != nil {
@@ -224,7 +164,7 @@ func (sc *storageContext) getExistingPublicKey(data *framework.FieldData) (crypt
 	if err != nil {
 		return nil, err
 	}
-	return getPublicKey(sc.Context, sc.Backend, key)
+	return getPublicKey(key)
 }
 
 func getKeyTypeAndBitsFromPublicKeyForRole(pubKey crypto.PublicKey) (certutil.PrivateKeyType, int, error) {
@@ -237,7 +177,7 @@ func getKeyTypeAndBitsFromPublicKeyForRole(pubKey crypto.PublicKey) (certutil.Pr
 		keyBits = certutil.GetPublicKeySize(pubKey)
 	case *ecdsa.PublicKey:
 		keyType = certutil.ECPrivateKey
-	case *ed25519.PublicKey:
+	case ed25519.PublicKey:
 		keyType = certutil.Ed25519PrivateKey
 	default:
 		return certutil.UnknownPrivateKey, 0, fmt.Errorf("unsupported public key: %#v", pubKey)
@@ -290,11 +230,12 @@ func buildSignVerbatimRole(data *framework.FieldData, role *roleEntry) *roleEntr
 		CNValidations:             []string{"disabled"},
 		GenerateLease:             new(bool),
 		// If adding new fields to be read, update the field list within addSignVerbatimRoleFields
-		KeyUsage:        data.Get("key_usage").([]string),
-		ExtKeyUsage:     data.Get("ext_key_usage").([]string),
-		ExtKeyUsageOIDs: data.Get("ext_key_usage_oids").([]string),
-		SignatureBits:   data.Get("signature_bits").(int),
-		UsePSS:          data.Get("use_pss").(bool),
+		KeyUsage:                      data.Get("key_usage").([]string),
+		ExtKeyUsage:                   data.Get("ext_key_usage").([]string),
+		ExtKeyUsageOIDs:               data.Get("ext_key_usage_oids").([]string),
+		SignatureBits:                 data.Get("signature_bits").(int),
+		UsePSS:                        data.Get("use_pss").(bool),
+		BasicConstraintsValidForNonCA: data.Get("basic_constraints_valid_for_non_ca").(bool),
 	}
 	*entry.AllowWildcardCertificates = true
 	*entry.GenerateLease = false
@@ -314,6 +255,9 @@ func buildSignVerbatimRole(data *framework.FieldData, role *roleEntry) *roleEntr
 		}
 		entry.NoStore = role.NoStore
 		entry.Issuer = role.Issuer
+		if _, ok := data.GetOk("basic_constraints_valid_for_non_ca"); !ok {
+			entry.BasicConstraintsValidForNonCA = role.BasicConstraintsValidForNonCA
+		}
 	}
 
 	if len(entry.Issuer) == 0 {

@@ -13,10 +13,10 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/salt"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/salt"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 const (
@@ -104,7 +104,6 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 	}
 	viewPath := entry.ViewPath()
 	view := NewBarrierView(c.barrier, viewPath)
-	addAuditPathChecker(c, entry, view, viewPath)
 	origViewReadOnlyErr := view.getReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
@@ -213,8 +212,6 @@ func (c *Core) disableAudit(ctx context.Context, path string, updateStorage bool
 		c.logger.Info("disabled audit backend", "path", path)
 	}
 
-	removeAuditPathChecker(c, entry)
-
 	return true, nil
 }
 
@@ -298,7 +295,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 		entry.namespace = ns
 	}
 
-	if !needPersist || c.perfStandby {
+	if !needPersist {
 		return nil
 	}
 
@@ -393,7 +390,6 @@ func (c *Core) setupAudits(ctx context.Context) error {
 		// Create a barrier view using the UUID
 		viewPath := entry.ViewPath()
 		view := NewBarrierView(c.barrier, viewPath)
-		addAuditPathChecker(c, entry, view, viewPath)
 		origViewReadOnlyErr := view.getReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and
@@ -438,7 +434,6 @@ func (c *Core) teardownAudits() error {
 	if c.audit != nil {
 		for _, entry := range c.audit.Entries {
 			c.removeAuditReloadFunc(entry)
-			removeAuditPathChecker(c, entry)
 		}
 	}
 

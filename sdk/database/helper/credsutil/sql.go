@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/openbao/openbao/sdk/database/dbplugin"
+	"github.com/openbao/openbao/sdk/v2/database/dbplugin"
 )
 
 const (

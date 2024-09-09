@@ -14,10 +14,10 @@ import (
 	"layeh.com/radius"
 	. "layeh.com/radius/rfc2865"
 
-	"github.com/openbao/openbao/sdk/framework"
-	"github.com/openbao/openbao/sdk/helper/cidrutil"
-	"github.com/openbao/openbao/sdk/helper/policyutil"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
+	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 func pathLogin(b *backend) *framework.Path {
@@ -131,7 +131,10 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 			Name: username,
 		},
 	}
-	cfg.PopulateTokenAuth(auth)
+
+	if err := cfg.PopulateTokenAuth(auth, req); err != nil {
+		return nil, fmt.Errorf("failed to populate auth information: %w", err)
+	}
 
 	resp.Auth = auth
 	if policies != nil {

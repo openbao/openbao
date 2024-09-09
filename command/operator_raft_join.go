@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"
 )
 
@@ -19,7 +19,6 @@ var (
 
 type OperatorRaftJoinCommand struct {
 	flagRetry            bool
-	flagNonVoter         bool
 	flagLeaderCACert     string
 	flagLeaderClientCert string
 	flagLeaderClientKey  string
@@ -34,28 +33,28 @@ func (c *OperatorRaftJoinCommand) Synopsis() string {
 
 func (c *OperatorRaftJoinCommand) Help() string {
 	helpText := `
-Usage: vault operator raft join [options] <leader-api-addr|auto-join-configuration>
+Usage: bao operator raft join [options] <leader-api-addr|auto-join-configuration>
 
   Join the current node as a peer to the Raft cluster by providing the address
   of the Raft leader node.
 
-      $ vault operator raft join "http://127.0.0.2:8200"
+      $ bao operator raft join "http://127.0.0.2:8200"
 
   Join the current node as a peer to the Raft cluster by providing cloud auto-join
   configuration.
 
-      $ vault operator raft join "provider=aws region=eu-west-1 ..."
+      $ bao operator raft join "provider=aws region=eu-west-1 ..."
 			
   Join the current node as a peer to the Raft cluster by providing cloud auto-join
   configuration with an explicit URI scheme and port.
 
-			$ vault operator raft join -auto-join-scheme="http" -auto-join-port=8201 \
+			$ bao operator raft join -auto-join-scheme="http" -auto-join-port=8201 \
 			  "provider=aws region=eu-west-1 ..."
 
   TLS certificate data can also be consumed from a file on disk by prefixing with
   the "@" symbol. For example:
 
-      $ vault operator raft join "http://127.0.0.2:8200" \
+      $ bao operator raft join "http://127.0.0.2:8200" \
         -leader-ca-cert=@leader_ca.crt \
         -leader-client-cert=@leader_client.crt \
         -leader-client-key=@leader.key
@@ -112,13 +111,6 @@ func (c *OperatorRaftJoinCommand) Flags() *FlagSets {
 		Target:  &c.flagRetry,
 		Default: false,
 		Usage:   "Continuously retry joining the Raft cluster upon failures.",
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    "non-voter",
-		Target:  &c.flagNonVoter,
-		Default: false,
-		Usage:   "(Enterprise-only) This flag is used to make the server not participate in the Raft quorum, and have it only receive the data replication stream. This can be used to add read scalability to a cluster in cases where a high volume of reads to servers are needed.",
 	})
 
 	return set
@@ -187,7 +179,6 @@ func (c *OperatorRaftJoinCommand) Run(args []string) int {
 		LeaderClientCert: leaderClientCert,
 		LeaderClientKey:  leaderClientKey,
 		Retry:            c.flagRetry,
-		NonVoter:         c.flagNonVoter,
 	}
 
 	if strings.Contains(leaderInfo, "provider=") {

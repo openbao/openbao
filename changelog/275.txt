@@ -1,0 +1,3 @@
+```release-note:bug
+packaging: fix systemd service to refer to /etc/openbao/env for environment variables
+```

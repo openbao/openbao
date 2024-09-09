@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -23,10 +23,10 @@ import (
 	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
-	"github.com/openbao/openbao/api"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/version"
 	"github.com/posener/complete"
 )
@@ -199,31 +199,31 @@ func (c *DebugCommand) Flags() *FlagSets {
 
 func (c *DebugCommand) Help() string {
 	helpText := `
-Usage: vault debug [options]
+Usage: bao debug [options]
 
-  Probes a specific Vault server node for a specified period of time, recording
+  Probes a specific OpenBao server node for a specified period of time, recording
   information about the node, its cluster, and its host environment. The
   information collected is packaged and written to the specified path.
 
   Certain endpoints that this command uses require ACL permissions to access.
   If not permitted, the information from these endpoints will not be part of the
-  output. The command uses the Vault address and token as specified via
+  output. The command uses the OpenBao address and token as specified via
   the login command, environment variables, or CLI flags.
 
   To create a debug package using default duration and interval values in the 
   current directory that captures all applicable targets:
 
-  $ vault debug
+  $ bao debug
 
   To create a debug package with a specific duration and interval in the current
   directory that capture all applicable targets:
 
-  $ vault debug -duration=10m -interval=1m
+  $ bao debug -duration=10m -interval=1m
 
   To create a debug package in the current directory with a specific sub-set of
   targets:
 
-  $ vault debug -target=host -target=metrics
+  $ bao debug -target=host -target=metrics
 
 ` + c.Flags().Help()
 
@@ -258,7 +258,7 @@ func (c *DebugCommand) Run(args []string) int {
 
 	// Print debug information
 	c.UI.Output("==> Starting debug capture...")
-	c.UI.Info(fmt.Sprintf("         Vault Address: %s", c.debugIndex.VaultAddress))
+	c.UI.Info(fmt.Sprintf("       OpenBao Address: %s", c.debugIndex.VaultAddress))
 	c.UI.Info(fmt.Sprintf("        Client Version: %s", c.debugIndex.ClientVersion))
 	c.UI.Info(fmt.Sprintf("        Server Version: %s", c.debugIndex.ServerVersion))
 	c.UI.Info(fmt.Sprintf("              Duration: %s", c.flagDuration))
@@ -374,7 +374,7 @@ func (c *DebugCommand) generateIndex() error {
 	}
 
 	// Write out file
-	if err := ioutil.WriteFile(filepath.Join(c.flagOutput, "index.json"), bytes, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(c.flagOutput, "index.json"), bytes, 0o600); err != nil {
 		return fmt.Errorf("error generating index file; %s", err)
 	}
 
@@ -426,28 +426,19 @@ func (c *DebugCommand) preflight(rawArgs []string) (string, error) {
 	// Make sure we can talk to the server
 	client, err := c.Client()
 	if err != nil {
-		return "", fmt.Errorf("unable to create client to connect to Vault: %s", err)
+		return "", fmt.Errorf("unable to create client to connect to OpenBao: %s", err)
 	}
 	serverHealth, err := client.Sys().Health()
 	if err != nil {
 		return "", fmt.Errorf("unable to connect to the server: %s", err)
 	}
 
-	// Check if server is DR Secondary and we need to further
-	// ignore any targets due to endpoint restrictions
-	if serverHealth.ReplicationDRMode == "secondary" {
-		invalidDRTargets := strutil.Difference(c.flagTargets, c.validDRSecondaryTargets(), true)
-		if len(invalidDRTargets) != 0 {
-			c.UI.Info(fmt.Sprintf("Ignoring invalid targets for DR Secondary: %s", strings.Join(invalidDRTargets, ", ")))
-			c.flagTargets = strutil.Difference(c.flagTargets, invalidDRTargets, true)
-		}
-	}
 	c.cachedClient = client
 
 	captureTime := time.Now().UTC()
 	if len(c.flagOutput) == 0 {
 		formattedTime := captureTime.Format(fileFriendlyTimeFormat)
-		c.flagOutput = fmt.Sprintf("vault-debug-%s", formattedTime)
+		c.flagOutput = fmt.Sprintf("bao-debug-%s", formattedTime)
 	}
 
 	// Strip trailing slash before proceeding
@@ -513,10 +504,6 @@ func (c *DebugCommand) preflight(rawArgs []string) (string, error) {
 
 func (c *DebugCommand) defaultTargets() []string {
 	return []string{"config", "host", "requests", "metrics", "pprof", "replication-status", "server-status", "log"}
-}
-
-func (c *DebugCommand) validDRSecondaryTargets() []string {
-	return []string{"metrics", "replication-status", "server-status"}
 }
 
 func (c *DebugCommand) captureStaticTargets() error {
@@ -777,7 +764,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 					return
 				}
 
-				err = ioutil.WriteFile(filepath.Join(dirName, target+".prof"), data, 0o600)
+				err = os.WriteFile(filepath.Join(dirName, target+".prof"), data, 0o600)
 				if err != nil {
 					c.captureError("pprof."+target, err)
 				}
@@ -795,7 +782,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "goroutines.txt"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "goroutines.txt"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.goroutines-text", err)
 			}
@@ -819,7 +806,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "profile.prof"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "profile.prof"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.profile", err)
 			}
@@ -835,7 +822,7 @@ func (c *DebugCommand) collectPprof(ctx context.Context) {
 				return
 			}
 
-			err = ioutil.WriteFile(filepath.Join(dirName, "trace.out"), data, 0o600)
+			err = os.WriteFile(filepath.Join(dirName, "trace.out"), data, 0o600)
 			if err != nil {
 				c.captureError("pprof.trace", err)
 			}
@@ -971,7 +958,7 @@ func (c *DebugCommand) persistCollection(collection []map[string]interface{}, ou
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filepath.Join(c.flagOutput, outFile), bytes, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(c.flagOutput, outFile), bytes, 0o600); err != nil {
 		return err
 	}
 
@@ -1007,7 +994,7 @@ func pprofTarget(ctx context.Context, client *api.Client, target string, params 
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1027,7 +1014,7 @@ func pprofProfile(ctx context.Context, client *api.Client, duration time.Duratio
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1047,7 +1034,7 @@ func pprofTrace(ctx context.Context, client *api.Client, duration time.Duration)
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -1067,7 +1054,7 @@ func (c *DebugCommand) captureError(target string, err error) {
 }
 
 func (c *DebugCommand) writeLogs(ctx context.Context) {
-	out, err := os.OpenFile(filepath.Join(c.flagOutput, "vault.log"), os.O_CREATE|os.O_WRONLY, 0o600)
+	out, err := os.OpenFile(filepath.Join(c.flagOutput, "bao.log"), os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		c.captureError("log", err)
 		return

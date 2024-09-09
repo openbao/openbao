@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -29,19 +28,17 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
-	"github.com/hashicorp/go-secure-stdlib/mlock"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-testing-interface"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	config2 "github.com/openbao/openbao/command/config"
 	"github.com/openbao/openbao/command/server"
 	"github.com/openbao/openbao/helper/builtinplugins"
-	"github.com/openbao/openbao/helper/constants"
-	"github.com/openbao/openbao/helper/experiments"
 	loghelper "github.com/openbao/openbao/helper/logging"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -50,12 +47,12 @@ import (
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
-	"github.com/openbao/openbao/sdk/helper/consts"
-	"github.com/openbao/openbao/sdk/helper/jsonutil"
-	"github.com/openbao/openbao/sdk/helper/strutil"
-	"github.com/openbao/openbao/sdk/helper/testcluster"
-	"github.com/openbao/openbao/sdk/logical"
-	"github.com/openbao/openbao/sdk/physical"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/strutil"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	sr "github.com/openbao/openbao/serviceregistration"
 	"github.com/openbao/openbao/vault"
 	vaultseal "github.com/openbao/openbao/vault/seal"
@@ -85,8 +82,7 @@ const (
 
 	// Even though there are more types than the ones below, the following consts
 	// are declared internally for value comparison and reusability.
-	storageTypeRaft   = "raft"
-	storageTypeConsul = "consul"
+	storageTypeRaft = "raft"
 )
 
 type ServerCommand struct {
@@ -112,17 +108,15 @@ type ServerCommand struct {
 
 	cleanupGuard sync.Once
 
-	reloadFuncsLock   *sync.RWMutex
-	reloadFuncs       *map[string][]reloadutil.ReloadFunc
-	startedCh         chan (struct{}) // for tests
-	reloadedCh        chan (struct{}) // for tests
-	licenseReloadedCh chan (error)    // for tests
+	reloadFuncsLock *sync.RWMutex
+	reloadFuncs     *map[string][]reloadutil.ReloadFunc
+	startedCh       chan (struct{}) // for tests
+	reloadedCh      chan (struct{}) // for tests
 
 	allLoggers []hclog.Logger
 
 	flagConfigs            []string
 	flagRecovery           bool
-	flagExperiments        []string
 	flagDev                bool
 	flagDevTLS             bool
 	flagDevTLSCertDir      string
@@ -139,12 +133,10 @@ type ServerCommand struct {
 	flagDevSkipInit        bool
 	flagDevThreeNode       bool
 	flagDevFourCluster     bool
-	flagDevTransactional   bool
 	flagDevAutoSeal        bool
 	flagDevClusterJson     string
 	flagTestVerifyOnly     bool
 	flagTestServerConfig   bool
-	flagDevConsul          bool
 	flagExitOnCoreShutdown bool
 }
 
@@ -154,7 +146,7 @@ func (c *ServerCommand) Synopsis() string {
 
 func (c *ServerCommand) Help() string {
 	helpText := `
-Usage: vault server [options]
+Usage: bao server [options]
 
   This command starts a Vault server that responds to API requests. By default,
   Vault will start in a "sealed" state. The Vault cluster must be initialized
@@ -164,11 +156,11 @@ Usage: vault server [options]
 
   Start a server with a configuration file:
 
-      $ vault server -config=/etc/vault/config.hcl
+      $ bao server -config=/etc/vault/config.hcl
 
   Run in "dev" mode:
 
-      $ vault server -dev -dev-root-token-id="root"
+      $ bao server -dev -dev-root-token-id="root"
 
   For a full list of examples, please see the documentation.
 
@@ -212,17 +204,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 			"Using a recovery operation token, \"sys/raw\" API can be used to manipulate the storage.",
 	})
 
-	f.StringSliceVar(&StringSliceVar{
-		Name:       "experiment",
-		Target:     &c.flagExperiments,
-		Completion: complete.PredictSet(experiments.ValidExperiments()...),
-		Usage: "Name of an experiment to enable. Experiments should NOT be used in production, and " +
-			"the associated APIs may have backwards incompatible changes between releases. This " +
-			"flag can be specified multiple times to specify multiple experiments. This can also be " +
-			fmt.Sprintf("specified via the %s environment variable as a comma-separated list. ", EnvVaultExperiments) +
-			"Valid experiments are: " + strings.Join(experiments.ValidExperiments(), ", "),
-	})
-
 	f = set.NewFlagSet("Dev Options")
 
 	f.BoolVar(&BoolVar{
@@ -254,7 +235,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:    "dev-root-token-id",
 		Target:  &c.flagDevRootTokenID,
 		Default: "",
-		EnvVar:  "VAULT_DEV_ROOT_TOKEN_ID",
+		EnvVar:  "BAO_DEV_ROOT_TOKEN_ID",
 		Usage: "Initial root token. This only applies when running in \"dev\" " +
 			"mode.",
 	})
@@ -263,7 +244,7 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Name:    "dev-listen-address",
 		Target:  &c.flagDevListenAddr,
 		Default: "127.0.0.1:8200",
-		EnvVar:  "VAULT_DEV_LISTEN_ADDRESS",
+		EnvVar:  "BAO_DEV_LISTEN_ADDRESS",
 		Usage:   "Address to bind to in \"dev\" mode.",
 	})
 	f.BoolVar(&BoolVar{
@@ -301,13 +282,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:    "dev-ha",
 		Target:  &c.flagDevHA,
-		Default: false,
-		Hidden:  true,
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    "dev-transactional",
-		Target:  &c.flagDevTransactional,
 		Default: false,
 		Hidden:  true,
 	})
@@ -362,13 +336,6 @@ func (c *ServerCommand) Flags() *FlagSets {
 	f.BoolVar(&BoolVar{
 		Name:    "dev-four-cluster",
 		Target:  &c.flagDevFourCluster,
-		Default: false,
-		Hidden:  true,
-	})
-
-	f.BoolVar(&BoolVar{
-		Name:    "dev-consul",
-		Target:  &c.flagDevConsul,
 		Default: false,
 		Hidden:  true,
 	})
@@ -432,11 +399,6 @@ func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError,
 		}
 	}
 
-	if config != nil && config.Entropy != nil && config.Entropy.Mode == configutil.EntropyAugmentation && constants.IsFIPS() {
-		c.UI.Warn("WARNING: Entropy Augmentation is not supported in FIPS 140-2 Inside mode; disabling from server configuration!\n")
-		config.Entropy = nil
-	}
-
 	return config, configErrors, nil
 }
 
@@ -479,7 +441,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	namedGRPCLogFaker := c.logger.Named("grpclogfaker")
 	grpclog.SetLogger(&grpclogFaker{
 		logger: namedGRPCLogFaker,
-		log:    os.Getenv("VAULT_GRPC_LOGGING") != "",
+		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
 
 	if config.Storage == nil {
@@ -500,7 +462,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 		return 1
 	}
 	if config.Storage.Type == storageTypeRaft || (config.HAStorage != nil && config.HAStorage.Type == storageTypeRaft) {
-		if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+		if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 			config.ClusterAddr = envCA
 		}
 
@@ -537,8 +499,8 @@ func (c *ServerCommand) runRecoveryMode() int {
 
 	configSeal := config.Seals[0]
 	sealType := wrapping.WrapperTypeShamir.String()
-	if !configSeal.Disabled && os.Getenv("VAULT_SEAL_TYPE") != "" {
-		sealType = os.Getenv("VAULT_SEAL_TYPE")
+	if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
+		sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 		configSeal.Type = sealType
 	} else {
 		sealType = configSeal.Type
@@ -582,7 +544,6 @@ func (c *ServerCommand) runRecoveryMode() int {
 		Seal:         barrierSeal,
 		LogLevel:     config.LogLevel,
 		Logger:       c.logger,
-		DisableMlock: config.DisableMlock,
 		RecoveryMode: c.flagRecovery,
 		ClusterAddr:  config.ClusterAddr,
 	}
@@ -647,17 +608,11 @@ func (c *ServerCommand) runRecoveryMode() int {
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
-
 	// Server configuration output
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -715,7 +670,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	}
 
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 	}
 
 	c.flushLog()
@@ -723,7 +678,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	for {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 
 			c.cleanupGuard.Do(listenerCloseFunc)
 
@@ -788,18 +743,8 @@ func (c *ServerCommand) setupStorage(config *server.Config) (physical.Backend, e
 
 	// Do any custom configuration needed per backend
 	switch config.Storage.Type {
-	case storageTypeConsul:
-		if config.ServiceRegistration == nil {
-			// If Consul is configured for storage and service registration is unconfigured,
-			// use Consul for service registration without requiring additional configuration.
-			// This maintains backward-compatibility.
-			config.ServiceRegistration = &server.ServiceRegistration{
-				Type:   "consul",
-				Config: config.Storage.Config,
-			}
-		}
 	case storageTypeRaft:
-		if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+		if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 			config.ClusterAddr = envCA
 		}
 		if len(config.ClusterAddr) == 0 {
@@ -934,13 +879,7 @@ func configureDevTLS(c *ServerCommand) (func(), *server.Config, string, error) {
 	var devStorageType string
 
 	switch {
-	case c.flagDevConsul:
-		devStorageType = "consul"
-	case c.flagDevHA && c.flagDevTransactional:
-		devStorageType = "inmem_transactional_ha"
-	case !c.flagDevHA && c.flagDevTransactional:
-		devStorageType = "inmem_transactional"
-	case c.flagDevHA && !c.flagDevTransactional:
+	case c.flagDevHA:
 		devStorageType = "inmem_ha"
 	default:
 		devStorageType = "inmem"
@@ -1016,7 +955,7 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Automatically enable dev mode if other dev flags are provided.
-	if c.flagDevConsul || c.flagDevHA || c.flagDevTransactional || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevFourCluster || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
+	if c.flagDevHA || c.flagDevLeasedKV || c.flagDevThreeNode || c.flagDevFourCluster || c.flagDevAutoSeal || c.flagDevKVV1 || c.flagDevTLS {
 		c.flagDev = true
 	}
 
@@ -1111,7 +1050,7 @@ func (c *ServerCommand) Run(args []string) int {
 	c.allLoggers = append(c.allLoggers, namedGRPCLogFaker)
 	grpclog.SetLogger(&grpclogFaker{
 		logger: namedGRPCLogFaker,
-		log:    os.Getenv("VAULT_GRPC_LOGGING") != "",
+		log:    api.ReadBaoVariable("BAO_GRPC_LOGGING") != "",
 	})
 
 	if memProfilerEnabled {
@@ -1123,39 +1062,6 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	logProxyEnvironmentVariables(c.logger)
-
-	if envMlock := os.Getenv("VAULT_DISABLE_MLOCK"); envMlock != "" {
-		var err error
-		config.DisableMlock, err = strconv.ParseBool(envMlock)
-		if err != nil {
-			c.UI.Output("Error parsing the environment variable VAULT_DISABLE_MLOCK")
-			return 1
-		}
-	}
-
-	if envLicensePath := os.Getenv(EnvVaultLicensePath); envLicensePath != "" {
-		config.LicensePath = envLicensePath
-	}
-	if envLicense := os.Getenv(EnvVaultLicense); envLicense != "" {
-		config.License = envLicense
-	}
-
-	if err := server.ExperimentsFromEnvAndCLI(config, EnvVaultExperiments, c.flagExperiments); err != nil {
-		c.UI.Error(err.Error())
-		return 1
-	}
-
-	// If mlockall(2) isn't supported, show a warning. We disable this in dev
-	// because it is quite scary to see when first using Vault. We also disable
-	// this if the user has explicitly disabled mlock in configuration.
-	if !c.flagDev && !config.DisableMlock && !mlock.Supported() {
-		c.UI.Warn(wrapAtLength(
-			"WARNING! mlock is not supported on this system! An mlockall(2)-like " +
-				"syscall to prevent memory from being swapped to disk is not " +
-				"supported on this system. For better security, only run Vault on " +
-				"systems where this call is supported. If you are running Vault " +
-				"in a Docker container, provide the IPC_LOCK cap to the container."))
-	}
 
 	inmemMetrics, metricSink, prometheusEnabled, err := configutil.SetupTelemetry(&configutil.SetupTelemetryOpts{
 		Config:      config.Telemetry,
@@ -1215,12 +1121,6 @@ func (c *ServerCommand) Run(args []string) int {
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
 
-	if len(config.Experiments) != 0 {
-		expKey := "experiments"
-		info[expKey] = strings.Join(config.Experiments, ", ")
-		infoKeys = append(infoKeys, expKey)
-	}
-
 	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, infoKeys, info)
 	// Check error here
 	if err != nil {
@@ -1258,14 +1158,14 @@ func (c *ServerCommand) Run(args []string) int {
 
 	coreConfig := createCoreConfig(c, config, backend, configSR, barrierSeal, unwrapSeal, metricsHelper, metricSink, secureRandomReader)
 	if c.flagDevThreeNode {
-		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, os.Getenv("VAULT_DEV_TEMP_DIR"))
+		return c.enableThreeNodeDevCluster(&coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
 	if c.flagDevFourCluster {
-		return enableFourClusterDev(c, &coreConfig, info, infoKeys, c.flagDevListenAddr, os.Getenv("VAULT_DEV_TEMP_DIR"))
+		return enableFourClusterDev(c, &coreConfig, info, infoKeys, c.flagDevListenAddr, api.ReadBaoVariable("BAO_DEV_TEMP_DIR"))
 	}
 
-	if allowPendingRemoval := os.Getenv(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
+	if allowPendingRemoval := api.ReadBaoVariable(consts.EnvVaultAllowPendingRemovalMounts); allowPendingRemoval != "" {
 		var err error
 		coreConfig.PendingRemovalMountsAllowed, err = strconv.ParseBool(allowPendingRemoval)
 		if err != nil {
@@ -1297,11 +1197,11 @@ func (c *ServerCommand) Run(args []string) int {
 	}
 
 	// Override the UI enabling config by the environment variable
-	if enableUI := os.Getenv("VAULT_UI"); enableUI != "" {
+	if enableUI := api.ReadBaoVariable("BAO_UI"); enableUI != "" {
 		var err error
 		coreConfig.EnableUI, err = strconv.ParseBool(enableUI)
 		if err != nil {
-			c.UI.Output("Error parsing the environment variable VAULT_UI")
+			c.UI.Output("Error parsing the environment variable BAO_UI")
 			return 1
 		}
 	}
@@ -1313,18 +1213,9 @@ func (c *ServerCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Apply any enterprise configuration onto the coreConfig.
-	adjustCoreConfigForEnt(config, &coreConfig)
-
-	if !storageSupportedForEnt(&coreConfig) {
-		c.UI.Warn("")
-		c.UI.Warn(wrapAtLength(fmt.Sprintf("WARNING: storage configured to use %q which is not supported for Vault Enterprise, must be \"raft\" or \"consul\"", coreConfig.StorageType)))
-		c.UI.Warn("")
-	}
-
 	if !c.flagDev {
 		inMemStorageTypes := []string{
-			"inmem", "inmem_ha", "inmem_transactional", "inmem_transactional_ha",
+			"inmem", "inmem_ha",
 		}
 
 		if strutil.StrListContains(inMemStorageTypes, coreConfig.StorageType) {
@@ -1354,10 +1245,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Compile server information for output later
 	info["storage"] = config.Storage.Type
-	info["mlock"] = fmt.Sprintf(
-		"supported: %v, enabled: %v",
-		mlock.Supported(), !config.DisableMlock && mlock.Supported())
-	infoKeys = append(infoKeys, "mlock", "storage")
+	infoKeys = append(infoKeys, "storage")
 
 	if coreConfig.ClusterAddr != "" {
 		info["cluster address"] = coreConfig.ClusterAddr
@@ -1419,17 +1307,11 @@ func (c *ServerCommand) Run(args []string) int {
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
-
 	infoKeys = append(infoKeys, "administrative namespace")
 	info["administrative namespace"] = config.AdministrativeNamespacePath
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -1516,7 +1398,7 @@ func (c *ServerCommand) Run(args []string) int {
 
 	// Output the header that the server has started
 	if !c.logFlags.flagCombineLogs {
-		c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+		c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 	}
 
 	// Inform any tests that the server is ready
@@ -1583,14 +1465,14 @@ func (c *ServerCommand) Run(args []string) int {
 	for !shutdownTriggered {
 		select {
 		case <-coreShutdownDoneCh:
-			c.UI.Output("==> Vault core was shut down")
+			c.UI.Output("==> OpenBao core was shut down")
 			retCode = 1
 			shutdownTriggered = true
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 			shutdownTriggered = true
 		case <-c.SighupCh:
-			c.UI.Output("==> Vault reload triggered")
+			c.UI.Output("==> OpenBao reload triggered")
 
 			// Notify systemd that the server is reloading config
 			c.notifySystemd(systemd.SdNotifyReloading)
@@ -1651,23 +1533,6 @@ func (c *ServerCommand) Run(args []string) int {
 				c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
 			}
 
-			// Reload license file
-			if err = vault.LicenseReload(core); err != nil {
-				c.UI.Error(err.Error())
-			}
-
-			if err := core.ReloadCensus(); err != nil {
-				c.UI.Error(err.Error())
-			}
-			select {
-			case c.licenseReloadedCh <- err:
-			default:
-			}
-
-			// Let the managedKeyRegistry react to configuration changes (i.e.
-			// changes in kms_libraries)
-			core.ReloadManagedKeyRegistryConfig()
-
 			// Notify systemd that the server has completed reloading config
 			c.notifySystemd(systemd.SdNotifyReady)
 
@@ -1675,11 +1540,11 @@ func (c *ServerCommand) Run(args []string) int {
 			logWriter := c.logger.StandardWriter(&hclog.StandardLoggerOptions{})
 			pprof.Lookup("goroutine").WriteTo(logWriter, 2)
 
-			if os.Getenv("VAULT_STACKTRACE_WRITE_TO_FILE") != "" {
+			if api.ReadBaoVariable("BAO_STACKTRACE_WRITE_TO_FILE") != "" {
 				c.logger.Info("Writing stacktrace to file")
 
 				dir := ""
-				path := os.Getenv("VAULT_STACKTRACE_FILE_PATH")
+				path := api.ReadBaoVariable("BAO_STACKTRACE_FILE_PATH")
 				if path != "" {
 					if _, err := os.Stat(path); err != nil {
 						c.logger.Error("Checking stacktrace path failed", "error", err)
@@ -1713,9 +1578,9 @@ func (c *ServerCommand) Run(args []string) int {
 			// We can only get pprof outputs via the API but sometimes Vault can get
 			// into a state where it cannot process requests so we can get pprof outputs
 			// via SIGUSR2.
-			if os.Getenv("VAULT_PPROF_WRITE_TO_FILE") != "" {
+			if api.ReadBaoVariable("BAO_PPROF_WRITE_TO_FILE") != "" {
 				dir := ""
-				path := os.Getenv("VAULT_PPROF_FILE_PATH")
+				path := api.ReadBaoVariable("BAO_PPROF_FILE_PATH")
 				if path != "" {
 					if _, err := os.Stat(path); err != nil {
 						c.logger.Error("Checking pprof path failed", "error", err)
@@ -1924,7 +1789,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 
 	// Set the token
 	if !c.flagDevNoStoreToken {
-		tokenHelper, err := c.TokenHelper()
+		tokenHelper, err := c.TokenHelper("dev-server")
 		if err != nil {
 			return nil, err
 		}
@@ -1981,14 +1846,6 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	testCluster := vault.NewTestCluster(&testing.RuntimeT{}, conf, opts)
 	defer c.cleanupGuard.Do(testCluster.Cleanup)
 
-	if constants.IsEnterprise {
-		err := testcluster.WaitForActiveNodeAndPerfStandbys(context.Background(), testCluster)
-		if err != nil {
-			c.UI.Error(fmt.Sprintf("perf standbys didn't become ready: %v", err))
-			return 1
-		}
-	}
-
 	info["cluster parameters path"] = testCluster.TempDir
 	infoKeys = append(infoKeys, "cluster parameters path")
 
@@ -2014,17 +1871,11 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	infoKeys = append(infoKeys, "go version")
 	info["go version"] = runtime.Version()
 
-	fipsStatus := getFIPSInfoKey()
-	if fipsStatus != "" {
-		infoKeys = append(infoKeys, "fips")
-		info["fips"] = fipsStatus
-	}
-
 	// Server configuration output
 	padding := 24
 
 	sort.Strings(infoKeys)
-	c.UI.Output("==> Vault server configuration:\n")
+	c.UI.Output("==> OpenBao server configuration:\n")
 
 	for _, k := range infoKeys {
 		c.UI.Output(fmt.Sprintf(
@@ -2087,7 +1938,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}
 
 	// Set the token
-	tokenHelper, err := c.TokenHelper()
+	tokenHelper, err := c.TokenHelper("dev-server")
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error getting token helper: %s", err))
 		return 1
@@ -2097,7 +1948,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 		return 1
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(testCluster.TempDir, "root_token"), []byte(testCluster.RootToken), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(testCluster.TempDir, "root_token"), []byte(testCluster.RootToken), 0o600); err != nil {
 		c.UI.Error(fmt.Sprintf("Error writing token to tempfile: %s", err))
 		return 1
 	}
@@ -2121,9 +1972,9 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 
 	c.UI.Output(fmt.Sprintf(
 		"\nUseful env vars:\n"+
-			"VAULT_TOKEN=%s\n"+
-			"VAULT_ADDR=%s\n"+
-			"VAULT_CACERT=%s/ca_cert.pem\n",
+			"BAO_TOKEN=%s\n"+
+			"BAO_ADDR=%s\n"+
+			"BAO_CACERT=%s/ca_cert.pem\n",
 		testCluster.RootToken,
 		testCluster.Cores[0].Client.Address(),
 		testCluster.TempDir,
@@ -2153,7 +2004,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	}
 
 	// Output the header that the server has started
-	c.UI.Output("==> Vault server started! Log data will stream in below:\n")
+	c.UI.Output("==> OpenBao server started! Log data will stream in below:\n")
 
 	// Inform any tests that the server is ready
 	select {
@@ -2170,7 +2021,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 	for !shutdownTriggered {
 		select {
 		case <-c.ShutdownCh:
-			c.UI.Output("==> Vault shutdown triggered")
+			c.UI.Output("==> OpenBao shutdown triggered")
 
 			// Stop the listeners so that we don't process further client requests.
 			c.cleanupGuard.Do(testCluster.Cleanup)
@@ -2187,7 +2038,7 @@ func (c *ServerCommand) enableThreeNodeDevCluster(base *vault.CoreConfig, info m
 			shutdownTriggered = true
 
 		case <-c.SighupCh:
-			c.UI.Output("==> Vault reload triggered")
+			c.UI.Output("==> OpenBao reload triggered")
 			for _, core := range testCluster.Cores {
 				if err := c.Reload(core.ReloadFuncsLock, core.ReloadFuncs, nil, core.Core); err != nil {
 					c.UI.Error(fmt.Sprintf("Error(s) were encountered during reload: %s", err))
@@ -2470,8 +2321,8 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys []string, info ma
 	var createdSeals []vault.Seal = make([]vault.Seal, len(config.Seals))
 	for _, configSeal := range config.Seals {
 		sealType := wrapping.WrapperTypeShamir.String()
-		if !configSeal.Disabled && os.Getenv("VAULT_SEAL_TYPE") != "" {
-			sealType = os.Getenv("VAULT_SEAL_TYPE")
+		if !configSeal.Disabled && api.ReadBaoVariable("BAO_SEAL_TYPE") != "" {
+			sealType = api.ReadBaoVariable("BAO_SEAL_TYPE")
 			configSeal.Type = sealType
 		} else {
 			sealType = configSeal.Type
@@ -2577,17 +2428,17 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 
 func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.Config) error {
 	var retErr error
-	if envRA := os.Getenv("VAULT_API_ADDR"); envRA != "" {
+	if envRA := api.ReadBaoVariable("BAO_API_ADDR"); envRA != "" {
 		coreConfig.RedirectAddr = envRA
-	} else if envRA := os.Getenv("VAULT_REDIRECT_ADDR"); envRA != "" {
+	} else if envRA := api.ReadBaoVariable("BAO_REDIRECT_ADDR"); envRA != "" {
 		coreConfig.RedirectAddr = envRA
-	} else if envAA := os.Getenv("VAULT_ADVERTISE_ADDR"); envAA != "" {
+	} else if envAA := api.ReadBaoVariable("BAO_ADVERTISE_ADDR"); envAA != "" {
 		coreConfig.RedirectAddr = envAA
 	}
 
 	// Attempt to detect the redirect address, if possible
 	if coreConfig.RedirectAddr == "" {
-		c.logger.Warn("no `api_addr` value specified in config or in VAULT_API_ADDR; falling back to detection if possible, but this value should be manually set")
+		c.logger.Warn("no `api_addr` value specified in config or in BAO_API_ADDR; falling back to detection if possible, but this value should be manually set")
 	}
 
 	var ok bool
@@ -2622,7 +2473,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 func findClusterAddress(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.Config, disableClustering bool) error {
 	if disableClustering {
 		coreConfig.ClusterAddr = ""
-	} else if envCA := os.Getenv("VAULT_CLUSTER_ADDR"); envCA != "" {
+	} else if envCA := api.ReadBaoVariable("BAO_CLUSTER_ADDR"); envCA != "" {
 		coreConfig.ClusterAddr = envCA
 	} else {
 		var addrToUse string
@@ -2725,7 +2576,6 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		ImpreciseLeaseRoleTracking:     config.ImpreciseLeaseRoleTracking,
 		DisableSentinelTrace:           config.DisableSentinelTrace,
 		DisableCache:                   config.DisableCache,
-		DisableMlock:                   config.DisableMlock,
 		MaxLeaseTTL:                    config.MaxLeaseTTL,
 		DefaultLeaseTTL:                config.DefaultLeaseTTL,
 		ClusterName:                    config.ClusterName,
@@ -2747,11 +2597,13 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		SecureRandomReader:             secureRandomReader,
 		EnableResponseHeaderHostname:   config.EnableResponseHeaderHostname,
 		EnableResponseHeaderRaftNodeID: config.EnableResponseHeaderRaftNodeID,
-		License:                        config.License,
-		LicensePath:                    config.LicensePath,
-		DisableSSCTokens:               config.DisableSSCTokens,
-		Experiments:                    config.Experiments,
 		AdministrativeNamespacePath:    config.AdministrativeNamespacePath,
+	}
+
+	if config.DisableSSCTokens != nil {
+		coreConfig.DisableSSCTokens = *config.DisableSSCTokens
+	} else {
+		coreConfig.DisableSSCTokens = true
 	}
 
 	if c.flagDev {
@@ -2766,11 +2618,7 @@ func createCoreConfig(c *ServerCommand, config *server.Config, backend physical.
 		}
 		if c.flagDevLatency > 0 {
 			injectLatency := time.Duration(c.flagDevLatency) * time.Millisecond
-			if _, txnOK := backend.(physical.Transactional); txnOK {
-				coreConfig.Physical = physical.NewTransactionalLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
-			} else {
-				coreConfig.Physical = physical.NewLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
-			}
+			coreConfig.Physical = physical.NewLatencyInjector(backend, injectLatency, c.flagDevLatencyJitter, c.logger)
 		}
 	}
 	return *coreConfig
@@ -2851,21 +2699,21 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 					endpointURL := protocol + config.Listeners[0].Address
 					if runtime.GOOS == "windows" {
 						c.UI.Warn("PowerShell:")
-						c.UI.Warn(fmt.Sprintf("    $env:VAULT_ADDR=\"%s\"", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $env:BAO_ADDR=\"%s\"", endpointURL))
 						c.UI.Warn("cmd.exe:")
-						c.UI.Warn(fmt.Sprintf("    set VAULT_ADDR=%s", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    set BAOT_ADDR=%s", endpointURL))
 					} else {
-						c.UI.Warn(fmt.Sprintf("    $ export VAULT_ADDR='%s'", endpointURL))
+						c.UI.Warn(fmt.Sprintf("    $ export BAO_ADDR='%s'", endpointURL))
 					}
 
 					if c.flagDevTLS {
 						if runtime.GOOS == "windows" {
 							c.UI.Warn("PowerShell:")
-							c.UI.Warn(fmt.Sprintf("    $env:VAULT_CACERT=\"%s/vault-ca.pem\"", certDir))
+							c.UI.Warn(fmt.Sprintf("    $env:BAO_CACERT=\"%s/vault-ca.pem\"", certDir))
 							c.UI.Warn("cmd.exe:")
-							c.UI.Warn(fmt.Sprintf("    set VAULT_CACERT=%s/vault-ca.pem", certDir))
+							c.UI.Warn(fmt.Sprintf("    set BAO_CACERT=%s/vault-ca.pem", certDir))
 						} else {
-							c.UI.Warn(fmt.Sprintf("    $ export VAULT_CACERT='%s/vault-ca.pem'", certDir))
+							c.UI.Warn(fmt.Sprintf("    $ export BAO_CACERT='%s/vault-ca.pem'", certDir))
 						}
 						c.UI.Warn("")
 					}

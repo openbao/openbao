@@ -24,7 +24,7 @@ import (
 	"github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2"
 	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
-	"github.com/openbao/openbao/sdk/logical"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 var (
@@ -196,7 +196,7 @@ func configureWrapper(configKMS *KMS, infoKeys *[]string, info *map[string]strin
 		wrapper, kmsInfo, err = GetTransitKMSFunc(configKMS, opts...)
 
 	case wrapping.WrapperTypePkcs11:
-		return nil, fmt.Errorf("KMS type 'pkcs11' requires the Vault Enterprise HSM binary")
+		return nil, fmt.Errorf("KMS type 'pkcs11' is not supported by OpenBao")
 
 	default:
 		return nil, fmt.Errorf("Unknown KMS type %q", configKMS.Type)

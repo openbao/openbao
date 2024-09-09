@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -20,17 +19,16 @@ import (
 	"github.com/hashicorp/raft"
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/mitchellh/mapstructure"
+	"github.com/openbao/openbao/api/v2"
 	"go.uber.org/atomic"
 )
 
 type CleanupDeadServersValue int
 
 const (
-	CleanupDeadServersUnset    CleanupDeadServersValue = 0
-	CleanupDeadServersTrue     CleanupDeadServersValue = 1
-	CleanupDeadServersFalse    CleanupDeadServersValue = 2
-	AutopilotUpgradeVersionTag string                  = "upgrade_version"
-	AutopilotRedundancyZoneTag string                  = "redundancy_zone"
+	CleanupDeadServersUnset CleanupDeadServersValue = 0
+	CleanupDeadServersTrue  CleanupDeadServersValue = 1
+	CleanupDeadServersFalse CleanupDeadServersValue = 2
 )
 
 func (c CleanupDeadServersValue) Value() bool {
@@ -74,19 +72,6 @@ type AutopilotConfig struct {
 	// stable, healthy state before it can be added to the cluster. Only applicable
 	// with Raft protocol version 3 or higher.
 	ServerStabilizationTime time.Duration `mapstructure:"-"`
-
-	// (Enterprise-only) DisableUpgradeMigration will disable Autopilot's upgrade migration
-	// strategy of waiting until enough newer-versioned servers have been added to the
-	// cluster before promoting them to voters.
-	DisableUpgradeMigration bool `mapstructure:"disable_upgrade_migration"`
-
-	// (Enterprise-only) RedundancyZoneTag is the node tag to use for separating
-	// servers into zones for redundancy. If left blank, this feature will be disabled.
-	RedundancyZoneTag string `mapstructure:"redundancy_zone_tag"`
-
-	// (Enterprise-only) UpgradeVersionTag is the node tag to use for version info when
-	// performing upgrade migrations. If left blank, the Consul version will be used.
-	UpgradeVersionTag string `mapstructure:"upgrade_version_tag"`
 }
 
 // Merge combines the supplied config with the receiver. Supplied ones take
@@ -113,10 +98,6 @@ func (to *AutopilotConfig) Merge(from *AutopilotConfig) {
 	if from.ServerStabilizationTime != 0 {
 		to.ServerStabilizationTime = from.ServerStabilizationTime
 	}
-
-	// UpgradeVersionTag and RedundancyZoneTag are purposely not included here since those values aren't user
-	// controllable and should never change.
-	to.DisableUpgradeMigration = from.DisableUpgradeMigration
 }
 
 // Clone returns a duplicate instance of AutopilotConfig with the exact same values.
@@ -131,9 +112,6 @@ func (ac *AutopilotConfig) Clone() *AutopilotConfig {
 		MaxTrailingLogs:                ac.MaxTrailingLogs,
 		MinQuorum:                      ac.MinQuorum,
 		ServerStabilizationTime:        ac.ServerStabilizationTime,
-		UpgradeVersionTag:              ac.UpgradeVersionTag,
-		RedundancyZoneTag:              ac.RedundancyZoneTag,
-		DisableUpgradeMigration:        ac.DisableUpgradeMigration,
 	}
 }
 
@@ -147,9 +125,6 @@ func (ac *AutopilotConfig) MarshalJSON() ([]byte, error) {
 		"max_trailing_logs":                  ac.MaxTrailingLogs,
 		"min_quorum":                         ac.MinQuorum,
 		"server_stabilization_time":          ac.ServerStabilizationTime.String(),
-		"upgrade_version_tag":                ac.UpgradeVersionTag,
-		"redundancy_zone_tag":                ac.RedundancyZoneTag,
-		"disable_upgrade_migration":          ac.DisableUpgradeMigration,
 	})
 }
 
@@ -187,7 +162,6 @@ type FollowerState struct {
 	DesiredSuffrage string
 	Version         string
 	UpgradeVersion  string
-	RedundancyZone  string
 }
 
 // EchoRequestUpdate is here to avoid 1) the list of arguments to Update() getting huge 2) an import cycle on the vault package
@@ -198,7 +172,6 @@ type EchoRequestUpdate struct {
 	DesiredSuffrage string
 	UpgradeVersion  string
 	SDKVersion      string
-	RedundancyZone  string
 }
 
 // FollowerStates holds information about all the followers in the raft cluster
@@ -237,7 +210,6 @@ func (s *FollowerStates) Update(req *EchoRequestUpdate) bool {
 	state.LastHeartbeat = time.Now()
 	state.Version = req.SDKVersion
 	state.UpgradeVersion = req.UpgradeVersion
-	state.RedundancyZone = req.RedundancyZone
 
 	return !present
 }
@@ -314,7 +286,7 @@ func (d *Delegate) AutopilotConfig() *autopilot.Config {
 		MaxTrailingLogs:         d.autopilotConfig.MaxTrailingLogs,
 		MinQuorum:               d.autopilotConfig.MinQuorum,
 		ServerStabilizationTime: d.autopilotConfig.ServerStabilizationTime,
-		Ext:                     d.autopilotConfigExt(),
+		Ext:                     nil,
 	}
 	d.l.RUnlock()
 	return config
@@ -428,9 +400,9 @@ func (d *Delegate) KnownServers() map[raft.ServerID]*autopilot.Server {
 			ID:          currentServerID,
 			Name:        id,
 			RaftVersion: raft.ProtocolVersionMax,
-			Meta:        d.meta(state),
+			Meta:        nil,
 			Version:     followerVersion,
-			Ext:         d.autopilotServerExt(state),
+			Ext:         nil,
 		}
 
 		// As KnownServers is a delegate called by autopilot let's check if we already
@@ -464,13 +436,10 @@ func (d *Delegate) KnownServers() map[raft.ServerID]*autopilot.Server {
 		RaftVersion: raft.ProtocolVersionMax,
 		NodeStatus:  autopilot.NodeAlive,
 		NodeType:    autopilot.NodeVoter, // The leader must be a voter
-		Meta: d.meta(&FollowerState{
-			UpgradeVersion: d.EffectiveVersion(),
-			RedundancyZone: d.RedundancyZone(),
-		}),
-		Version:  d.effectiveSDKVersion,
-		Ext:      d.autopilotServerExt(nil),
-		IsLeader: true,
+		Meta:        nil,
+		Version:     d.effectiveSDKVersion,
+		Ext:         nil,
+		IsLeader:    true,
 	}
 
 	return ret
@@ -544,9 +513,6 @@ func (b *RaftBackend) defaultAutopilotConfig() *AutopilotConfig {
 		DeadServerLastContactThreshold: 24 * time.Hour,
 		MaxTrailingLogs:                1000,
 		ServerStabilizationTime:        10 * time.Second,
-		DisableUpgradeMigration:        false,
-		UpgradeVersionTag:              AutopilotUpgradeVersionTag,
-		RedundancyZoneTag:              AutopilotRedundancyZoneTag,
 	}
 }
 
@@ -624,7 +590,6 @@ type AutopilotState struct {
 	Leader                     string                      `json:"leader" mapstructure:"leader"`
 	Voters                     []string                    `json:"voters" mapstructure:"voters"`
 	NonVoters                  []string                    `json:"non_voters,omitempty" mapstructure:"non_voters,omitempty"`
-	RedundancyZones            map[string]AutopilotZone    `json:"redundancy_zones,omitempty" mapstructure:"redundancy_zones,omitempty"`
 	Upgrade                    *AutopilotUpgrade           `json:"upgrade_info,omitempty" mapstructure:"upgrade_info,omitempty"`
 	OptimisticFailureTolerance int                         `json:"optimistic_failure_tolerance,omitempty" mapstructure:"optimistic_failure_tolerance,omitempty"`
 }
@@ -643,7 +608,6 @@ type AutopilotServer struct {
 	StableSince    time.Time         `json:"stable_since" mapstructure:"stable_since"`
 	Status         string            `json:"status" mapstructure:"status"`
 	Version        string            `json:"version" mapstructure:"version"`
-	RedundancyZone string            `json:"redundancy_zone,omitempty" mapstructure:"redundancy_zone,omitempty"`
 	UpgradeVersion string            `json:"upgrade_version,omitempty" mapstructure:"upgrade_version,omitempty"`
 	ReadReplica    bool              `json:"read_replica,omitempty" mapstructure:"read_replica,omitempty"`
 	NodeType       string            `json:"node_type,omitempty" mapstructure:"node_type,omitempty"`
@@ -656,15 +620,14 @@ type AutopilotZone struct {
 }
 
 type AutopilotUpgrade struct {
-	Status                    string                                  `json:"status" mapstructure:"status"`
-	TargetVersion             string                                  `json:"target_version,omitempty" mapstructure:"target_version,omitempty"`
-	TargetVersionVoters       []string                                `json:"target_version_voters,omitempty" mapstructure:"target_version_voters,omitempty"`
-	TargetVersionNonVoters    []string                                `json:"target_version_non_voters,omitempty" mapstructure:"target_version_non_voters,omitempty"`
-	TargetVersionReadReplicas []string                                `json:"target_version_read_replicas,omitempty" mapstructure:"target_version_read_replicas,omitempty"`
-	OtherVersionVoters        []string                                `json:"other_version_voters,omitempty" mapstructure:"other_version_voters,omitempty"`
-	OtherVersionNonVoters     []string                                `json:"other_version_non_voters,omitempty" mapstructure:"other_version_non_voters,omitempty"`
-	OtherVersionReadReplicas  []string                                `json:"other_version_read_replicas,omitempty" mapstructure:"other_version_read_replicas,omitempty"`
-	RedundancyZones           map[string]AutopilotZoneUpgradeVersions `json:"redundancy_zones,omitempty" mapstructure:"redundancy_zones,omitempty"`
+	Status                    string   `json:"status" mapstructure:"status"`
+	TargetVersion             string   `json:"target_version,omitempty" mapstructure:"target_version,omitempty"`
+	TargetVersionVoters       []string `json:"target_version_voters,omitempty" mapstructure:"target_version_voters,omitempty"`
+	TargetVersionNonVoters    []string `json:"target_version_non_voters,omitempty" mapstructure:"target_version_non_voters,omitempty"`
+	TargetVersionReadReplicas []string `json:"target_version_read_replicas,omitempty" mapstructure:"target_version_read_replicas,omitempty"`
+	OtherVersionVoters        []string `json:"other_version_voters,omitempty" mapstructure:"other_version_voters,omitempty"`
+	OtherVersionNonVoters     []string `json:"other_version_non_voters,omitempty" mapstructure:"other_version_non_voters,omitempty"`
+	OtherVersionReadReplicas  []string `json:"other_version_read_replicas,omitempty" mapstructure:"other_version_read_replicas,omitempty"`
 }
 
 type AutopilotZoneUpgradeVersions struct {
@@ -748,11 +711,6 @@ func autopilotToAPIState(state *autopilot.State) (*AutopilotState, error) {
 		out.Servers[string(id)] = aps
 	}
 
-	err := autopilotToAPIStateEnterprise(state, out)
-	if err != nil {
-		return nil, err
-	}
-
 	return out, nil
 }
 
@@ -770,11 +728,6 @@ func autopilotToAPIServer(srv *autopilot.ServerState) (*AutopilotServer, error) 
 		Status:      string(srv.State),
 		Version:     srv.Server.Version,
 		NodeType:    string(srv.Server.NodeType),
-	}
-
-	err := autopilotToAPIServerEnterprise(&srv.Server, apiSrv)
-	if err != nil {
-		return nil, err
 	}
 
 	return apiSrv, nil
@@ -812,7 +765,7 @@ func (b *RaftBackend) DisableAutopilot() {
 // it. If autopilot is disabled, this function does nothing.
 func (b *RaftBackend) SetupAutopilot(ctx context.Context, storageConfig *AutopilotConfig, followerStates *FollowerStates, disable bool) {
 	b.l.Lock()
-	if disable || os.Getenv("VAULT_RAFT_AUTOPILOT_DISABLE") != "" {
+	if disable || api.ReadBaoVariable("BAO_RAFT_AUTOPILOT_DISABLE") != "" {
 		b.disableAutopilot = true
 	}
 
@@ -831,7 +784,7 @@ func (b *RaftBackend) SetupAutopilot(ctx context.Context, storageConfig *Autopil
 	// Create the autopilot instance
 	options := []autopilot.Option{
 		autopilot.WithLogger(b.logger),
-		autopilot.WithPromoter(b.autopilotPromoter()),
+		autopilot.WithPromoter(autopilot.DefaultPromoter()),
 	}
 	if b.autopilotReconcileInterval != 0 {
 		options = append(options, autopilot.WithReconcileInterval(b.autopilotReconcileInterval))

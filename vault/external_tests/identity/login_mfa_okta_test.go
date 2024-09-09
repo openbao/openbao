@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/api"
-	"github.com/openbao/openbao/builtin/credential/okta"
 	"github.com/openbao/openbao/builtin/credential/userpass"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/logical"
@@ -25,50 +24,7 @@ var (
 var identityOktaMFACoreConfig = &vault.CoreConfig{
 	CredentialBackends: map[string]logical.Factory{
 		"userpass": userpass.Factory,
-		"okta":     okta.Factory,
 	},
-}
-
-func TestOktaEngineMFA(t *testing.T) {
-	t.Skip("This test requires manual intervention and OKTA verify on cellphone is needed")
-	cluster := vault.NewTestCluster(t, identityOktaMFACoreConfig, &vault.TestClusterOptions{
-		HandlerFunc: vaulthttp.Handler,
-	})
-	cluster.Start()
-	defer cluster.Cleanup()
-
-	client := cluster.Cores[0].Client
-
-	// Enable Okta engine
-	err := client.Sys().EnableAuthWithOptions("okta", &api.EnableAuthOptions{
-		Type: "okta",
-	})
-	if err != nil {
-		t.Fatalf("failed to enable okta auth: %v", err)
-	}
-
-	_, err = client.Logical().Write("auth/okta/config", map[string]interface{}{
-		"base_url":  "okta.com",
-		"org_name":  org_name,
-		"api_token": api_token,
-	})
-	if err != nil {
-		t.Fatalf("error configuring okta mount: %v", err)
-	}
-
-	_, err = client.Logical().Write("auth/okta/groups/testgroup", map[string]interface{}{
-		"policies": "default",
-	})
-	if err != nil {
-		t.Fatalf("error configuring okta group, %v", err)
-	}
-
-	_, err = client.Logical().Write("auth/okta/login/<okta username>", map[string]interface{}{
-		"password": "<okta password>",
-	})
-	if err != nil {
-		t.Fatalf("error configuring okta group, %v", err)
-	}
 }
 
 func TestInteg_PolicyMFAOkta(t *testing.T) {

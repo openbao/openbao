@@ -55,6 +55,12 @@ const config: Config = {
           ],
           path: "content/docs",
         },
+        sitemap: {
+          lastmod: 'datetime',
+          changefreq: 'hourly',
+          priority: 0.5,
+          filename: 'sitemap.xml',
+        },
         blog: false,
         theme: {
           customCss: "./src/css/custom.css",
@@ -142,6 +148,7 @@ const config: Config = {
         `For web site terms of use, trademark policy and other project policies please see <a href="https://lfprojects.org">lfprojects.org</a>. <br>`,
         ` OpenBao is a <a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
         `<a href="https://www.lfedge.org/"><img src="/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
+        `<br><br><a href="/sitemap.xml">Sitemap</a>`,
       ].join(" "),
     },
     prism: {

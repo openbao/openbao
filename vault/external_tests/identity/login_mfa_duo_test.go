@@ -6,7 +6,6 @@ package identity
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/openbao/openbao/api/v2"

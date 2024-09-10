@@ -110,12 +110,17 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Chat Server",
+              label: "Matrix Chat Server",
               href: "https://chat.lfx.linuxfoundation.org/",
             },
             {
-              label: "Wiki",
-              href: "https://wiki.lfedge.org/display/OH/OpenBao+%28Hashicorp+Vault+Fork+effort%29+FAQ",
+              label: "LF Edge Wiki",
+              href: "https://lf-edge.atlassian.net/wiki/spaces/OP/overview",
+            },
+            {
+              label: "Charter",
+              to: "pathname:///assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf",
+              target: "_blank",
             },
           ],
         },

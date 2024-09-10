@@ -101,6 +101,11 @@ const config: Config = {
         },
         { to: "/api-docs/", label: "API", position: "left" },
         {
+          to: "/downloads",
+          label: "Downloads",
+          position: "left",
+        },
+        {
           type: "dropdown",
           label: "Community",
           position: "left",

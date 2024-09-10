@@ -7,14 +7,12 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/credential/userpass"
-	"github.com/openbao/openbao/helper/constants"
 	"github.com/openbao/openbao/helper/testhelpers"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
 	vaulthttp "github.com/openbao/openbao/http"
@@ -40,116 +38,6 @@ var identityOktaMFACoreConfig = &vault.CoreConfig{
 	CredentialBackends: map[string]logical.Factory{
 		"userpass": userpass.Factory,
 	},
-}
-
-func TestInteg_PolicyMFAOkta(t *testing.T) {
-	if os.Getenv(logicaltest.TestEnvVar) == "" {
-		t.Skip("This test requires manual intervention and OKTA verify on cellphone is needed")
-	}
-	if !constants.IsEnterprise {
-		t.Skip("PolicyMFA is an enterprise-only feature")
-	}
-
-	// Ensure each cred is populated.
-	credNames := []string{
-		"OKTA_ORG",
-		"OKTA_API_TOKEN",
-		"OKTA_USERNAME",
-	}
-	testhelpers.SkipUnlessEnvVarsSet(t, credNames)
-
-	cluster := vault.NewTestCluster(t, identityOktaMFACoreConfig, &vault.TestClusterOptions{
-		HandlerFunc: vaulthttp.Handler,
-	})
-	cluster.Start()
-	defer cluster.Cleanup()
-
-	client := cluster.Cores[0].Client
-
-	// Enable Userpass authentication
-	mountAccessor := testhelpers.SetupUserpassMountAccessor(t, client)
-	entityClient, _, _ := testhelpers.CreateCustomEntityAndAliasWithinMount(t,
-		client, mountAccessor, "userpass", "testuser",
-		map[string]interface{}{
-			"name":     "test-entity",
-			"policies": "mfa_policy",
-			"metadata": map[string]string{
-				"email": os.Getenv("OKTA_USERNAME"),
-			},
-		})
-
-	err := mfaGenerateOktaPolicyMFATest(entityClient, mountAccessor)
-	if err != nil {
-		t.Fatalf("Okta failed: %s", err)
-	}
-}
-
-func mfaGenerateOktaPolicyMFATest(client *api.Client, mountAccessor string) error {
-	var err error
-
-	rules := `
-path "secret/foo" {
-	capabilities = ["read"]
-	mfa_methods = ["my_okta"]
-}
-	`
-
-	err = client.Sys().PutPolicy("mfa_policy", rules)
-	if err != nil {
-		return fmt.Errorf("failed to create mfa_policy: %v", err)
-	}
-
-	mfaConfigData := map[string]interface{}{
-		"mount_accessor":  mountAccessor,
-		"org_name":        os.Getenv("OKTA_ORG"),
-		"api_token":       os.Getenv("OKTA_API_TOKEN"),
-		"primary_email":   true,
-		"username_format": "{{entity.metadata.email}}",
-	}
-	_, err = client.Logical().Write("sys/mfa/method/okta/my_okta", mfaConfigData)
-	if err != nil {
-		return fmt.Errorf("failed to persist TOTP MFA configuration: %v", err)
-	}
-
-	// Write some data in the path that requires TOTP MFA
-	genericData := map[string]interface{}{
-		"somedata": "which can only be read if MFA succeeds",
-	}
-	_, err = client.Logical().Write("secret/foo", genericData)
-	if err != nil {
-		return fmt.Errorf("failed to store data in generic backend: %v", err)
-	}
-
-	// Replace the token in client with the one that has access to MFA
-	// required path
-	originalToken := client.Token()
-	defer client.SetToken(originalToken)
-
-	// login to the testuser
-	secret, err := client.Logical().Write("auth/userpass/login/testuser", map[string]interface{}{
-		"password": "testpassword",
-	})
-	if err != nil {
-		return fmt.Errorf("failed to login using userpass auth: %v", err)
-	}
-
-	userpassToken := secret.Auth.ClientToken
-	client.SetToken(userpassToken)
-
-	secret, err = client.Logical().Read("secret/foo")
-	if err != nil {
-		return fmt.Errorf("failed to read the secret: %v", err)
-	}
-
-	// It should be possible to access the secret
-	// secret, err = api.ParseSecret(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to parse the secret: %v", err)
-	}
-	if !reflect.DeepEqual(secret.Data, genericData) {
-		return fmt.Errorf("bad: generic data; expected: %#v\nactual: %#v", genericData, secret.Data)
-	}
-	return nil
 }
 
 func TestInteg_LoginMFAOkta(t *testing.T) {

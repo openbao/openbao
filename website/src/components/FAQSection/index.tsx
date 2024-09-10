@@ -22,23 +22,26 @@ const accordionData: AccordionItem[] = [
     ),
   },
   {
-    title: "Is the forked code available?",
+    title: "What is the status of the fork?",
     description: (
       <>
-        It is being worked on at{" "}
-        <a href="https://github.com/openbao/openbao">
-          github.com/openbao/openbao
-        </a>{" "}
-        in the main branch. Upcoming releases have their own branches.
+        The fork is now GA! Check out our{" "}
+        <a href="https://github.com/openbao/openbao/releases">
+          GitHub releases
+        </a>
+        {" "}or our{" "}
+        <a href="/downloads">
+          downloads page
+        </a>.
       </>
     ),
   },
   {
-    title: "Which version of Hashicorp Vault are you planning to fork?",
+    title: "Which version of Hashicorp Vault are you planning to fork from?",
     description: (
       <>
         OpenBao was forked prior to upstream's last commit
-        (<a href="https://github.com/hashicorp/vault/commit/8993802145833ab01d49c6070d787a9eccb81546">8993802</a>)
+        (<a href="https://github.com/hashicorp/vault/commit/8993802145833ab01d49c6070d787a9eccb81546"><code>8993802</code></a>)
         prior to the BUSL. This corresponds to a few commits after 1.14.8,
         but prior to 1.14.9 being cut.
 
@@ -52,14 +55,11 @@ const accordionData: AccordionItem[] = [
     title: "How do I get involved?",
     description: (
       <>
-        Subscribe to the{" "}
-        <a href="https://lists.lfedge.org/g/openbao">
-          OpenBao meetings and mailing list
+        Check out our{" "}
+        <a href="https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md">
+          contributing guide
         </a>
-        . The meetings are scheduled for Thursday mornings at 9:00am US Eastern,
-        beginning November 9th 2023. Community decisions and discussions happen
-        in GitHub Discussions, and daily chatter takes place in the "openbao-*"
-        chat rooms on the LFX Matrix chat server (login with your LF ID).
+        {" "} for more information!
       </>
     ),
   },

@@ -96,6 +96,7 @@ const sidebars: SidebarsConfig = {
         {
           "sys/internal/inspect": [
             "system/inspect/index",
+            "system/inspect/request",
             "system/inspect/router",
           ],
         },

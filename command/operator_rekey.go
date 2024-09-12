@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/fatih/structs"
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/password"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/pgpkeys"
 	"github.com/posener/complete"

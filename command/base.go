@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/cli"
 	"github.com/mattn/go-isatty"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/token"
 	"github.com/openbao/openbao/helper/namespace"

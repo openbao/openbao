@@ -18,10 +18,10 @@ import (
 	"github.com/armon/go-metrics/prometheus"
 	stackdriver "github.com/google/go-metrics-stackdriver"
 	stackdrivervault "github.com/google/go-metrics-stackdriver/vault"
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"google.golang.org/api/option"
 )

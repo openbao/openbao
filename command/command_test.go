@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/audit"
 	kv "github.com/openbao/openbao/builtin/logical/kv"

@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/mholt/archiver/v3"
-	"github.com/mitchellh/cli"
 	"github.com/oklog/run"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"

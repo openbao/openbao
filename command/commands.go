@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mitchellh/cli"
+	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/audit"
 	"github.com/openbao/openbao/builtin/plugin"
 	"github.com/openbao/openbao/sdk/v2/logical"

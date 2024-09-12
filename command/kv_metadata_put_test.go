@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/mitchellh/cli"
+	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 )
 

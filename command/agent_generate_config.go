@@ -13,9 +13,9 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclwrite"
-	"github.com/mitchellh/cli"
 	"github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/posener/complete"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mitchellh/cli"
+	"github.com/hashicorp/cli"
 
 	credUserpass "github.com/openbao/openbao/builtin/credential/userpass"
 )

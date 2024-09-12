@@ -14,7 +14,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/mitchellh/cli"
+	"github.com/hashicorp/cli"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/builtin/logical/ssh"

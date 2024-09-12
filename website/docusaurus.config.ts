@@ -55,6 +55,12 @@ const config: Config = {
           ],
           path: "content/docs",
         },
+        sitemap: {
+          lastmod: 'datetime',
+          changefreq: 'hourly',
+          priority: 0.5,
+          filename: 'sitemap.xml',
+        },
         blog: false,
         theme: {
           customCss: "./src/css/custom.css",
@@ -101,6 +107,11 @@ const config: Config = {
         },
         { to: "/api-docs/", label: "API", position: "left" },
         {
+          to: "/downloads",
+          label: "Downloads",
+          position: "left",
+        },
+        {
           type: "dropdown",
           label: "Community",
           position: "left",
@@ -110,12 +121,17 @@ const config: Config = {
               href: "https://github.com/openbao/openbao/discussions",
             },
             {
-              label: "Chat Server",
+              label: "Matrix Chat Server",
               href: "https://chat.lfx.linuxfoundation.org/",
             },
             {
-              label: "Wiki",
-              href: "https://wiki.lfedge.org/display/OH/OpenBao+%28Hashicorp+Vault+Fork+effort%29+FAQ",
+              label: "LF Edge Wiki",
+              href: "https://lf-edge.atlassian.net/wiki/spaces/OP/overview",
+            },
+            {
+              label: "Charter",
+              to: "pathname:///assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf",
+              target: "_blank",
             },
           ],
         },
@@ -132,6 +148,7 @@ const config: Config = {
         `For web site terms of use, trademark policy and other project policies please see <a href="https://lfprojects.org">lfprojects.org</a>. <br>`,
         ` OpenBao is a <a href="https://wiki.lfedge.org/display/LE/Stage+1%3A+At+Large">Stage One project</a> at`,
         `<a href="https://www.lfedge.org/"><img src="/img/lfedge-logo.svg" alt="LF Edge Logo" width="90px"></a>.`,
+        `<br><br><a href="/sitemap.xml">Sitemap</a>`,
       ].join(" "),
     },
     prism: {

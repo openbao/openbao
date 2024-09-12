@@ -235,3 +235,23 @@ func TestPki_PermitFQDNs(t *testing.T) {
 		})
 	}
 }
+
+func TestPki_getCertificateNotBefore(t *testing.T) {
+	data := inputBundle{
+		role: &roleEntry{
+			NotBefore: "2024-12-31T23:59:59Z",
+		},
+		apiData: &framework.FieldData{},
+	}
+
+	expectedNotBefore := "2024-12-31 23:59:59 +0000 UTC"
+
+	notBefore, err := getCertificateNotBefore(&data)
+	if err != nil {
+		t.Fatalf("Error: %v", err)
+	}
+
+	if expectedNotBefore != notBefore.String() {
+		t.Fatalf("Expected Not Before %v, got %v", expectedNotBefore, notBefore)
+	}
+}

@@ -398,6 +398,11 @@ information, which must include an oid, and may include a notice and/or cps url,
 			Type:        framework.TypeInt64,
 			Description: `The duration in seconds before now which the certificate needs to be backdated by.`,
 		},
+		"not_before": {
+			Type: framework.TypeString,
+			Description: `Set the not before field of the certificate with specified date value.
+The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
+		},
 		"not_after": {
 			Type: framework.TypeString,
 			Description: `Set the not after field of the certificate with specified date value.
@@ -818,6 +823,11 @@ information, which must include an oid, and may include a notice and/or cps url,
 					Value: 30,
 				},
 			},
+			"not_before": {
+				Type: framework.TypeString,
+				Description: `Set the not before field of the certificate with specified date value.
+The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
+			},
 			"not_after": {
 				Type: framework.TypeString,
 				Description: `Set the not after field of the certificate with specified date value.
@@ -1119,6 +1129,7 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		PolicyIdentifiers:             getPolicyIdentifier(data, nil),
 		BasicConstraintsValidForNonCA: data.Get("basic_constraints_valid_for_non_ca").(bool),
 		NotBeforeDuration:             time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+		NotBefore:                     data.Get("not_before").(string),
 		NotAfter:                      data.Get("not_after").(string),
 		Issuer:                        data.Get("issuer_ref").(string),
 		Name:                          name,
@@ -1319,6 +1330,7 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		PolicyIdentifiers:             getPolicyIdentifier(data, &oldEntry.PolicyIdentifiers),
 		BasicConstraintsValidForNonCA: getWithExplicitDefault(data, "basic_constraints_valid_for_non_ca", oldEntry.BasicConstraintsValidForNonCA).(bool),
 		NotBeforeDuration:             getTimeWithExplicitDefault(data, "not_before_duration", oldEntry.NotBeforeDuration),
+		NotBefore:                     data.Get("not_before").(string),
 		NotAfter:                      getWithExplicitDefault(data, "not_after", oldEntry.NotAfter).(string),
 		Issuer:                        getWithExplicitDefault(data, "issuer_ref", oldEntry.Issuer).(string),
 	}
@@ -1529,6 +1541,7 @@ type roleEntry struct {
 	ExtKeyUsageOIDs               []string      `json:"ext_key_usage_oids"`
 	BasicConstraintsValidForNonCA bool          `json:"basic_constraints_valid_for_non_ca"`
 	NotBeforeDuration             time.Duration `json:"not_before_duration"`
+	NotBefore                     string        `json:"not_before"`
 	NotAfter                      string        `json:"not_after"`
 	Issuer                        string        `json:"issuer"`
 	// Name is only set when the role has been stored, on the fly roles have a blank name
@@ -1581,6 +1594,7 @@ func (r *roleEntry) ToResponseData() map[string]interface{} {
 		"policy_identifiers":                 r.PolicyIdentifiers,
 		"basic_constraints_valid_for_non_ca": r.BasicConstraintsValidForNonCA,
 		"not_before_duration":                int64(r.NotBeforeDuration.Seconds()),
+		"not_before":                         r.NotBefore,
 		"not_after":                          r.NotAfter,
 		"issuer_ref":                         r.Issuer,
 	}

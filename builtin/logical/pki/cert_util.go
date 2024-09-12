@@ -1434,12 +1434,32 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
 	}
 
+	// Get certificate's Not Before
+	notBefore, err := getCertificateNotBefore(data)
+	if err != nil {
+		return nil, warnings, err
+	}
+
 	// Get the TTL and verify it against the max allowed
 	notAfter, ttlWarnings, err := getCertificateNotAfter(b, data, caSign)
 	if err != nil {
 		return nil, warnings, err
 	}
 	warnings = append(warnings, ttlWarnings...)
+
+	// Verify that notBefore is older than notAfter.
+	if notBefore.After(notAfter) {
+		return nil, nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
+		}
+	}
+
+	// Disallow zero duration certificate.
+	if notBefore.Equal(notAfter) {
+		return nil, nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
+		}
+	}
 
 	// Parse SKID from the request for cross-signing.
 	var skid []byte
@@ -1509,6 +1529,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 			KeyBits:                       data.role.KeyBits,
 			SignatureBits:                 data.role.SignatureBits,
 			UsePSS:                        data.role.UsePSS,
+			NotBefore:                     notBefore,
 			NotAfter:                      notAfter,
 			KeyUsage:                      x509.KeyUsage(parseKeyUsages(data.role.KeyUsage)),
 			ExtKeyUsage:                   parseExtKeyUsages(data.role),
@@ -1553,6 +1574,30 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	}
 
 	return creation, warnings, nil
+}
+
+// compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
+func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
+	var notBefore time.Time
+	var err error
+
+	notBeforeAlt := data.role.NotBefore
+
+	if notBeforeAlt == "" {
+		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
+		if ok {
+			notBeforeAlt = notBeforeAltRaw.(string)
+		}
+	}
+
+	if notBeforeAlt != "" {
+		notBefore, err = time.Parse(time.RFC3339, notBeforeAlt)
+		if err != nil {
+			return notBefore, errutil.UserError{Err: err.Error()}
+		}
+	}
+
+	return notBefore, err
 }
 
 // getCertificateNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input

@@ -126,7 +126,7 @@ to the min_encryption_version configured on the key.`,
 			"partial_failure_response_code": {
 				Type: framework.TypeInt,
 				Description: `
-Ordinarily, if a batch item fails to encrypt due to a bad input, but other batch items succeed, 
+Ordinarily, if a batch item fails to encrypt due to a bad input, but other batch items succeed,
 the HTTP response code is 400 (Bad Request).  Some applications may want to treat partial failures differently.
 Providing the parameter returns the given response code integer instead of a 400 in this case. If all values fail
 HTTP 400 is still returned.`,

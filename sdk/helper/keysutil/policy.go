@@ -2392,3 +2392,79 @@ func wrapTargetPKCS8ForImport(wrappingKey *rsa.PublicKey, preppedTargetKey []byt
 	wrappedKeys := append(ephKeyWrapped, targetKeyWrapped...)
 	return base64.StdEncoding.EncodeToString(wrappedKeys), nil
 }
+
+func (p *Policy) CreateCSR(keyVersion int, csrTemplate *x509.CertificateRequest) ([]byte, error) {
+	if !p.Type.SigningSupported() {
+		return nil, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
+	}
+
+	keyEntry, err := p.safeGetKeyEntry(keyVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if keyEntry.IsPrivateKeyMissing() {
+		return nil, errutil.UserError{Err: "private key not imported for key version selected"}
+	}
+
+	csrTemplate.Signature = nil
+	csrTemplate.SignatureAlgorithm = x509.UnknownSignatureAlgorithm
+
+	key, err := p.getPrivateKey(&keyEntry)
+	if err != nil {
+		return nil, err
+	}
+
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, key)
+	if err != nil {
+		return nil, fmt.Errorf("could not create the CSR: %w", err)
+	}
+
+	pemCSR := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrBytes,
+	})
+
+	return pemCSR, nil
+}
+
+func (p *Policy) getPrivateKey(keyEntry *KeyEntry) (crypto.Signer, error) {
+	switch p.Type {
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
+		curve, err := p.getCurve()
+		if err != nil {
+			return nil, err
+		}
+		key := &ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				Curve: curve,
+				X:     keyEntry.EC_X,
+				Y:     keyEntry.EC_Y,
+			},
+			D: keyEntry.EC_D,
+		}
+		return key, nil
+	case KeyType_ED25519:
+		if p.Derived {
+			return nil, errutil.UserError{Err: "operation not supported on keys with derivation enabled"}
+		}
+		return ed25519.PrivateKey(keyEntry.Key), nil
+	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+		return keyEntry.RSAKey, nil
+	default:
+		return nil, errutil.InternalError{Err: fmt.Sprintf("selected key type '%s' does not support signing", p.Type.String())}
+	}
+}
+
+func (p *Policy) getCurve() (elliptic.Curve, error) {
+	switch p.Type {
+	case KeyType_ECDSA_P256:
+		return elliptic.P256(), nil
+	case KeyType_ECDSA_P384:
+		return elliptic.P384(), nil
+	case KeyType_ECDSA_P521:
+		return elliptic.P521(), nil
+	default:
+		return nil, errutil.InternalError{Err: fmt.Sprintf("key type '%s' does not have a curve parameter", p.Type)}
+	}
+}

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-sockaddr"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/pires/go-proxyproto"
 )

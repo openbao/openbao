@@ -12,8 +12,8 @@ import (
 	// We must import sha512 so that it registers with the runtime so that
 	// certificates that use it can be parsed.
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/helper/proxyutil"
 	"github.com/openbao/openbao/internalshared/configutil"
 )

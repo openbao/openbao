@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 )
 

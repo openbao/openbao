@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/cli"
 	"github.com/mholt/archiver/v3"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 )
 

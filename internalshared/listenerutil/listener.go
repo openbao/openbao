@@ -12,11 +12,11 @@ import (
 	osuser "os/user"
 	"strconv"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/jefferai/isbadcipher"
-	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/internalshared/configutil"
 )
 

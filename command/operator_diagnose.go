@@ -16,10 +16,10 @@ import (
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 
+	"github.com/hashicorp/cli"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
 	uuid "github.com/hashicorp/go-uuid"
-	"github.com/mitchellh/cli"
 
 	bApi "github.com/openbao/openbao/api/v2"
 	cserver "github.com/openbao/openbao/command/server"

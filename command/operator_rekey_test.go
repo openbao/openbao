@@ -14,7 +14,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/helper/roottoken"
 
-	"github.com/mitchellh/cli"
+	"github.com/hashicorp/cli"
 	"github.com/openbao/openbao/api/v2"
 )
 

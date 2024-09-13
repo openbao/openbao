@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/cli"
 	"github.com/hashicorp/hcl/hcl/printer"
-	"github.com/mitchellh/cli"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"

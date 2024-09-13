@@ -9,6 +9,7 @@ import {
     GetReleases,
     AssetArchitecture,
     OsPrettyPrint,
+    ArchPackageMapApply,
 } from "@site/src/components/Releases";
 
 // Create a context
@@ -24,7 +25,7 @@ const OptionsProvider = ({ children }) => {
         const fetchOptions = async () => {
             try {
                 // Check if options are cached in localStorage and not expired
-                const cachedOptions = localStorage.getItem("options");
+                const cachedOptions = localStorage.getItem("gh-releases");
                 if (cachedOptions) {
                     const { data, timestamp } = JSON.parse(cachedOptions);
                     if (new Date().getTime() - timestamp < 600000) {
@@ -41,14 +42,14 @@ const OptionsProvider = ({ children }) => {
                     "https://api.github.com/repos/openbao/openbao/releases",
                 );
                 if (!response.ok) {
-                    throw new Error("Failed to fetch options");
+                    throw new Error("Failed to fetch gh-releases");
                 }
                 const ghReleases = await response.json();
                 const releases = GetReleases(ghReleases);
                 const versions = Object.keys(releases);
                 setOptions(releases);
                 localStorage.setItem(
-                    "options",
+                    "gh-releases",
                     JSON.stringify({
                         data: releases,
                         timestamp: new Date().getTime(),
@@ -103,18 +104,74 @@ const VersionSelect = () => {
     );
 };
 
-const Asset = ({ url }) => {
+const Asset = ({ urls }) => {
+    let asset: string;
+    let gpgSig: string;
+    let coCert: string;
+    let coSig: string;
+    let name: string = "Binary";
+
+    for (let url of urls) {
+        if (url.toLowerCase().includes(".deb")) {
+            name = "Debian Package";
+        } else if (url.toLowerCase().includes(".rpm")) {
+            name = "RPM Package";
+        } else if (url.toLowerCase().includes(".pkg") && url.toLowerCase().includes("linux")) {
+            name = "Arch Package";
+        }
+
+        if (url.toLowerCase().includes(".gpgsig")) {
+            gpgSig = url;
+            continue;
+        }
+        if (url.toLowerCase().includes(".pem")) {
+            coCert = url;
+            continue;
+        }
+        if (url.toLowerCase().includes(".sig")) {
+            coSig = url;
+            continue;
+        }
+        asset = url;
+    }
+
+    if (asset === undefined) {
+        console.trace("UNKOWN ASSET: ", asset, urls, gpgSig, coCert, coSig);
+        return;
+    }
+
     const { selectedItem } = useOptions();
     return (
-        <div className="pagination-nav__item">
-            <a className="pagination-nav__link" href={url}>
-                <div className="pagination-nav__label">
-                    {AssetArchitecture(url).toUpperCase()}
+        <div className="pagination-nav__item card">
+                <div className="card__header">
+                    <h5>
+                        <a href={asset}>
+                            {AssetArchitecture(asset).toUpperCase()} - {name}
+                        </a>
+                    </h5>
                 </div>
-                <div className="pagination-nav__sublabel">
-                    Version: {selectedItem}
+                <div className="card__body">
+                    <p className="text--center">
+                        Version: {selectedItem}
+                    </p>
                 </div>
-            </a>
+                <div className="card__footer">
+                    <div class="button-group button-group--block">
+                        <a class="button button--primary" href={asset}>Download</a>
+                        {
+                            gpgSig &&
+                            <a class="button button--secondary" href={gpgSig}>GPG Signature</a>
+                        }
+                        {
+                            coSig &&
+                            <a class="button button--secondary" href={coSig}>Cosign Signature</a>
+                        }
+                        {
+                            coCert &&
+                            <a class="button button--secondary" href={coCert}>Cosign Certificate</a>
+                        }
+                    </div>
+                </div>
         </div>
     );
 };
@@ -123,9 +180,31 @@ const Docker = ({ version, name }) => {
     const { options } = useOptions();
     return (
         <Tabs>
-            <TabItem value="amd64" label="AMD64">
+            <TabItem value="quay" label="quay.io">
                 <CodeBlock language="shell">
                     {`docker pull quay.io/openbao/openbao:${version.slice(1)}`}
+                </CodeBlock>
+                <p>or</p>
+                <CodeBlock language="shell">
+                    {`docker pull quay.io/openbao/openbao-ubi:${version.slice(1)}`}
+                </CodeBlock>
+            </TabItem>
+            <TabItem value="ghcr" label="ghcr.io">
+                <CodeBlock language="shell">
+                    {`docker pull ghcr.io/openbao/openbao:${version.slice(1)}`}
+                </CodeBlock>
+                <p>or</p>
+                <CodeBlock language="shell">
+                    {`docker pull ghcr.io/openbao/openbao-ubi:${version.slice(1)}`}
+                </CodeBlock>
+            </TabItem>
+            <TabItem value="docker" label="docker.io">
+                <CodeBlock language="shell">
+                    {`docker pull docker.io/openbao/openbao:${version.slice(1)}`}
+                </CodeBlock>
+                <p>or</p>
+                <CodeBlock language="shell">
+                    {`docker pull docker.io/openbao/openbao-ubi:${version.slice(1)}`}
                 </CodeBlock>
             </TabItem>
         </Tabs>
@@ -142,8 +221,9 @@ const LinuxPackage = ({ version, name }) => {
                     {version &&
                         Object(options)[version]["assets"][name] &&
                         Object(options)[version]["assets"][name]["deb"] &&
-                        Object(options)[version]["assets"][name]["deb"].map(
-                            (props, idx) => <Asset key={idx} url={props} />,
+                        ArchPackageMapApply(
+                            Object(options)[version]["assets"][name]["deb"],
+                            (props, idx) => <Asset key={idx} urls={props} />,
                         )}
                 </nav>
             </TabItem>
@@ -153,8 +233,9 @@ const LinuxPackage = ({ version, name }) => {
                     {version &&
                         Object(options)[version]["assets"][name] &&
                         Object(options)[version]["assets"][name]["rpm"] &&
-                        Object(options)[version]["assets"][name]["rpm"].map(
-                            (props, idx) => <Asset key={idx} url={props} />,
+                        ArchPackageMapApply(
+                            Object(options)[version]["assets"][name]["rpm"],
+                            (props, idx) => <Asset key={idx} urls={props} />,
                         )}
                 </nav>
             </TabItem>
@@ -164,8 +245,9 @@ const LinuxPackage = ({ version, name }) => {
                     {version &&
                         Object(options)[version]["assets"][name] &&
                         Object(options)[version]["assets"][name]["pkg"] &&
-                        Object(options)[version]["assets"][name]["pkg"].map(
-                            (props, idx) => <Asset key={idx} url={props} />,
+                        ArchPackageMapApply(
+                            Object(options)[version]["assets"][name]["pkg"],
+                            (props, idx) => <Asset key={idx} urls={props} />,
                         )}
                 </nav>
             </TabItem>
@@ -206,11 +288,12 @@ const OS = ({ name }) => {
                             Object(options)[version]["assets"][name][
                                 "binary"
                             ] &&
-                            Object(options)[version]["assets"][name][
-                                "binary"
-                            ].map((props, idx) => (
-                                <Asset key={idx} url={props} />
-                            ))}
+                            ArchPackageMapApply(
+                                Object(options)[version]["assets"][name]["binary"],
+                                (props, idx) => (
+                                    <Asset key={idx} urls={props} />
+                                )
+                            )}
                     </nav>
                 </div>
             </div>
@@ -238,6 +321,24 @@ const DownloadComponent = () => {
                 >
                     <h1 className="margin-bottom--none">Download OpenBao</h1>
                     <VersionSelect />
+                </div>
+            </div>
+            <div className="row">
+                <div
+                    className="col col--12 text--center margin-horiz--md"
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <p className="text--left">
+                        <br />
+                        GPG Signatures are performed with our <a href="/assets/openbao-gpg-pub-20240618.asc">GPG key</a>.
+                        SBOMs are available on our <a href={"https://github.com/openbao/openbao/releases/tag/" + version}>GitHub Release</a> page.
+                        <br />
+                        <br />
+                        Check out our <a href="/docs/install/">installation guide</a> for more details!
+                    </p>
                 </div>
             </div>
             {/* Check if version is not undefined before accessing releases */}

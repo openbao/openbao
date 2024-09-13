@@ -5,7 +5,6 @@ package kubernetes
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"sync"
 
@@ -111,7 +110,7 @@ func getRequiredField(logger hclog.Logger, config map[string]string, envVar, con
 	value := ""
 	switch {
 	case api.ReadBaoVariable(envVar) != "":
-		value = os.Getenv(envVar)
+		value = api.ReadBaoVariable(envVar)
 	case config[configParam] != "":
 		value = config[configParam]
 	default:

@@ -27,10 +27,6 @@ const SupportList: SupportItem[] = [
         description: "Open-source community efforts",
     },
     {
-        title: "ZEDEDA",
-        description: "Open-source community efforts",
-    },
-    {
         title: "Viaccess-Orca",
         description: "Development; open-source community efforts",
     },

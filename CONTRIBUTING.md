@@ -63,7 +63,6 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 | James Butcher     | james@iotechsys.com                 |                                            | Brad Corrion (brad@iotechsys.com)       | IOTech Systems            | Member       |
 | Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |                                            | Dan Ghita (dan.ghita@viaccess-orca.com) | Viaccess-Orca             | Member       |
 | Julian Cassignol  | jcassignol@wallix.com               |                                            | Cristian Popi (cpopi@wallix.com)        | Wallix                    | Member       |
-| Michael Maxey     | maxey@zededa.com                    |                                            |                                         | Zededa                    | Member       |
 
 
 ### OpenBao Working Groups

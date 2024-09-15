@@ -228,6 +228,8 @@ func TestPKI_DeviceCert(t *testing.T) {
 		"allow_subdomains":   true,
 		"not_after":          "9999-12-31T23:59:59Z",
 		"not_before":         "1900-01-01T00:00:00Z",
+		"not_after_bound":    "9999-12-31T23:59:59Z",
+		"not_before_bound":   "permit",
 	})
 	if err != nil {
 		t.Fatal(err)

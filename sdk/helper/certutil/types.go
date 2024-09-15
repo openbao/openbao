@@ -704,6 +704,45 @@ func (n NotAfterBehavior) String() string {
 	return "unknown"
 }
 
+type notBeforeBound int
+
+const (
+	ForbidNotBeforeBound notBeforeBound = iota
+	PermitNotBeforeBound
+)
+
+var notBeforeBoundNames = map[notBeforeBound]string{
+	ForbidNotBeforeBound: "forbid",
+	PermitNotBeforeBound: "permit",
+}
+
+func (n notBeforeBound) String() string {
+	if name, ok := notBeforeBoundNames[n]; ok && len(name) > 0 {
+		return name
+	}
+	return "unknown"
+}
+
+type NotAfterBound int
+
+const (
+	ForbidNotAfterBound NotAfterBound = iota
+	TTLNotAfterBound
+)
+
+var notAfterBoundNames = map[NotAfterBound]string{
+	ForbidNotAfterBound: "forbid",
+	TTLNotAfterBound:    "ttl-limited",
+}
+
+func (n NotAfterBound) String() string {
+	if name, ok := notAfterBoundNames[n]; ok && len(name) > 0 {
+		return name
+	}
+
+	return "unknown"
+}
+
 type CAInfoBundle struct {
 	ParsedCertBundle
 	URLs                 *URLEntries

@@ -404,10 +404,22 @@ information, which must include an oid, and may include a notice and/or cps url,
 			Description: `Set the not before field of the certificate with specified date value.
 The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 		},
+		"not_before_bound": {
+			Type:          framework.TypeString,
+			Description:   `Set how not_before can be configured.`,
+			AllowedValues: []interface{}{certutil.PermitNotBeforeBound.String(), certutil.ForbidNotBeforeBound.String()},
+			Default:       certutil.PermitNotBeforeBound.String(),
+		},
 		"not_after": {
 			Type: framework.TypeString,
 			Description: `Set the not after field of the certificate with specified date value.
 The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
+		},
+		"not_after_bound": {
+			Type:          framework.TypeString,
+			Description:   `Set how not_after can be configured.`,
+			AllowedValues: []interface{}{certutil.ForbidNotAfterBound.String(), certutil.TTLNotAfterBound.String(), "an explicit timestamp"},
+			Default:       certutil.TTLNotAfterBound.String(),
 		},
 		"issuer_ref": {
 			Type: framework.TypeString,
@@ -829,10 +841,22 @@ information, which must include an oid, and may include a notice and/or cps url,
 				Description: `Set the not before field of the certificate with specified date value.
 The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 			},
+			"not_before_bound": {
+				Type:          framework.TypeString,
+				Description:   `Set how not_before can be configured.`,
+				AllowedValues: []interface{}{certutil.PermitNotBeforeBound.String(), certutil.ForbidNotBeforeBound.String()},
+				Default:       certutil.PermitNotBeforeBound.String(),
+			},
 			"not_after": {
 				Type: framework.TypeString,
 				Description: `Set the not after field of the certificate with specified date value.
 The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
+			},
+			"not_after_bound": {
+				Type:          framework.TypeString,
+				Description:   `Set how not_after can be configured.`,
+				AllowedValues: []interface{}{certutil.TTLNotAfterBound.String(), certutil.ForbidNotAfterBound.String(), "an explicit timestamp"},
+				Default:       certutil.TTLNotAfterBound.String(),
 			},
 			"issuer_ref": {
 				Type: framework.TypeString,
@@ -1131,7 +1155,9 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		BasicConstraintsValidForNonCA: data.Get("basic_constraints_valid_for_non_ca").(bool),
 		NotBeforeDuration:             time.Duration(data.Get("not_before_duration").(int)) * time.Second,
 		NotBefore:                     data.Get("not_before").(string),
+		NotBeforeBound:                data.Get("not_before_bound").(string),
 		NotAfter:                      data.Get("not_after").(string),
+		NotAfterBound:                 data.Get("not_after_bound").(string),
 		Issuer:                        data.Get("issuer_ref").(string),
 		Name:                          name,
 	}
@@ -1171,6 +1197,22 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 		}
 	}
 
+	notAfterBoundData, wasSet := data.GetOk("not_after_bound")
+	if wasSet {
+		resp, err := validateNotAfterBound(notAfterBoundData.(string))
+		if err != nil {
+			return resp, err
+		}
+	}
+
+	notBeforeBoundData, wasSet := data.GetOk("not_before_bound")
+	if wasSet {
+		resp, err := validateNoBeforeBound(notBeforeBoundData.(string))
+		if err != nil {
+			return resp, err
+		}
+	}
+
 	resp, err := validateRole(b, entry, ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -1192,6 +1234,40 @@ func (b *backend) pathRoleCreate(ctx context.Context, req *logical.Request, data
 	}
 
 	return resp, nil
+}
+
+func validateNotAfterBound(notAfterBound string) (*logical.Response, error) {
+	resp := &logical.Response{}
+	var err error
+
+	switch notAfterBound {
+	case certutil.ForbidNotAfterBound.String():
+	// nothing to do
+	case certutil.TTLNotAfterBound.String():
+	// nothing to do
+	default:
+		_, err = time.Parse(time.RFC3339, notAfterBound)
+		if err != nil {
+			resp = logical.ErrorResponse("Unknown value for field `not_after_bound`. Possible values are `forbid`, `ttl`, or an explicit timestamp.")
+		}
+	}
+	return resp, err
+}
+
+func validateNoBeforeBound(notBeforebound string) (*logical.Response, error) {
+	resp := &logical.Response{}
+	var err error
+
+	switch notBeforebound {
+	case certutil.ForbidNotBeforeBound.String():
+	// nothing to do
+	case certutil.PermitNotBeforeBound.String():
+	// nothing to do
+	default:
+		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` or `forbid`")
+		err = errors.New("Unknown value")
+	}
+	return resp, err
 }
 
 func validateRole(b *backend, entry *roleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
@@ -1331,8 +1407,10 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 		PolicyIdentifiers:             getPolicyIdentifier(data, &oldEntry.PolicyIdentifiers),
 		BasicConstraintsValidForNonCA: getWithExplicitDefault(data, "basic_constraints_valid_for_non_ca", oldEntry.BasicConstraintsValidForNonCA).(bool),
 		NotBeforeDuration:             getTimeWithExplicitDefault(data, "not_before_duration", oldEntry.NotBeforeDuration),
-		NotBefore:                     data.Get("not_before").(string),
+		NotBefore:                     getWithExplicitDefault(data, "not_before", oldEntry.NotBefore).(string),
+		NotBeforeBound:                getWithExplicitDefault(data, "not_before_bound", oldEntry.NotBeforeBound).(string),
 		NotAfter:                      getWithExplicitDefault(data, "not_after", oldEntry.NotAfter).(string),
+		NotAfterBound:                 getWithExplicitDefault(data, "not_after_bound", oldEntry.NotAfterBound).(string),
 		Issuer:                        getWithExplicitDefault(data, "issuer_ref", oldEntry.Issuer).(string),
 	}
 
@@ -1376,6 +1454,22 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 
 		if *entry.GenerateLease {
 			warning = "it is encouraged to disable generate_lease and rely on PKI's native capabilities when possible; this option can cause instance-wide issues with large numbers of issued certificates"
+		}
+	}
+
+	notAfterBoundData, wasSet := data.GetOk("not_after_bound")
+	if wasSet {
+		resp, err := validateNotAfterBound(notAfterBoundData.(string))
+		if err != nil {
+			return resp, err
+		}
+	}
+
+	notBeforeBoundData, wasSet := data.GetOk("not_before_bound")
+	if wasSet {
+		resp, err := validateNoBeforeBound(notBeforeBoundData.(string))
+		if err != nil {
+			return resp, err
 		}
 	}
 
@@ -1543,7 +1637,9 @@ type roleEntry struct {
 	BasicConstraintsValidForNonCA bool          `json:"basic_constraints_valid_for_non_ca"`
 	NotBeforeDuration             time.Duration `json:"not_before_duration"`
 	NotBefore                     string        `json:"not_before"`
+	NotBeforeBound                string        `json:"not_before_bound"`
 	NotAfter                      string        `json:"not_after"`
+	NotAfterBound                 string        `json:"not_after_bound"`
 	Issuer                        string        `json:"issuer"`
 	// Name is only set when the role has been stored, on the fly roles have a blank name
 	Name string `json:"-"`
@@ -1596,7 +1692,9 @@ func (r *roleEntry) ToResponseData() map[string]interface{} {
 		"basic_constraints_valid_for_non_ca": r.BasicConstraintsValidForNonCA,
 		"not_before_duration":                int64(r.NotBeforeDuration.Seconds()),
 		"not_before":                         r.NotBefore,
+		"not_before_bound":                   r.NotBeforeBound,
 		"not_after":                          r.NotAfter,
+		"not_after_bound":                    r.NotAfterBound,
 		"issuer_ref":                         r.Issuer,
 	}
 	if r.MaxPathLength != nil {

@@ -1439,7 +1439,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	if err != nil {
 		return nil, warnings, err
 	}
-
 	// Get the TTL and verify it against the max allowed
 	notAfter, ttlWarnings, err := getCertificateNotAfter(b, data, caSign)
 	if err != nil {
@@ -1581,12 +1580,18 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time
 	var err error
 
+	notBeforeBound := data.role.NotBeforeBound
 	notBeforeAlt := data.role.NotBefore
 
 	if notBeforeAlt == "" {
 		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
 		if ok {
-			notBeforeAlt = notBeforeAltRaw.(string)
+			switch notBeforeBound {
+			case certutil.PermitNotBeforeBound.String():
+				notBeforeAlt = notBeforeAltRaw.(string)
+			case certutil.ForbidNotBeforeBound.String():
+				return time.Time{}, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
+			}
 		}
 	}
 
@@ -1609,13 +1614,44 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 	var err error
 
 	ttl := time.Duration(data.apiData.Get("ttl").(int)) * time.Second
+
 	notAfterAlt := data.role.NotAfter
-	if notAfterAlt == "" {
-		notAfterAltRaw, ok := data.apiData.GetOk("not_after")
-		if ok {
-			notAfterAlt = notAfterAltRaw.(string)
+	notAfterBound := data.role.NotAfterBound
+	var timestamp time.Time
+	forbidBound := false
+	ttlLimitedBound := false
+	timestampBound := false
+
+	switch notAfterBound {
+	case "":
+	// Nothing to do - for pki/root/generate/internal we have no not_after_bound
+	case certutil.ForbidNotAfterBound.String():
+		forbidBound = true
+	case certutil.TTLNotAfterBound.String():
+		ttlLimitedBound = true
+	default:
+		timestamp, err = time.Parse(time.RFC3339, notAfterBound)
+		if err != nil {
+			return notAfter, warnings, errutil.UserError{Err: err.Error()}
 		}
+		timestampBound = true
 	}
+
+	if !forbidBound {
+		if notAfterAlt == "" {
+			notAfterAltRaw, ok := data.apiData.GetOk("not_after")
+			if ok {
+				notAfterAlt = notAfterAltRaw.(string)
+				notAfter, err = time.Parse(time.RFC3339, notAfterAlt)
+				if err != nil {
+					return notAfter, warnings, errutil.UserError{Err: err.Error()}
+				}
+			}
+		}
+	} else {
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. not_after cannot be provided.", notAfterBound)}
+	}
+
 	if ttl > 0 && notAfterAlt != "" {
 		return time.Time{}, warnings, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
@@ -1637,6 +1673,10 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 	if ttl > maxTTL {
 		warnings = append(warnings, fmt.Sprintf("TTL %q is longer than permitted maxTTL %q, so maxTTL is being used", ttl, maxTTL))
 		ttl = maxTTL
+	}
+
+	if ttlLimitedBound && notAfter.After(time.Now().Add(ttl)) {
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot satisfy request as that would result in notAfter of %s that is beyond the TTL of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), ttl)}
 	}
 
 	if notAfterAlt != "" {
@@ -1664,6 +1704,11 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 				"cannot satisfy request, as TTL would result in notAfter of %s that is beyond the expiration of the CA certificate at %s", notAfter.UTC().Format(time.RFC3339Nano), caSign.Certificate.NotAfter.UTC().Format(time.RFC3339Nano))}
 		}
 	}
+
+	if timestampBound && notAfter.After(timestamp) {
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), timestamp.UTC().Format(time.RFC3339Nano))}
+	}
+
 	return notAfter, warnings, nil
 }
 

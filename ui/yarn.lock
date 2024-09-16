@@ -5255,10 +5255,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__destroyable@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "@types/ember__destroyable@npm:4.0.1"
-  checksum: 5cd5f22cc9f76a841a11f805444af9717d964fe72ad7020cbc211a359b9e4a0447ef08aa3b9fb7b4caed593f7aebb4025bc77338afd3fe5e55a5ae20ca6be948
+"@types/ember__destroyable@npm:^4.0.5":
+  version: 4.0.5
+  resolution: "@types/ember__destroyable@npm:4.0.5"
+  checksum: 65fe01e00148427b0d716b18e33b1e36ec32c93176c1fcbeba38338a20d6437d2e31a4ce62ae720714b07f6619cf30c8529f8cdbcd169cc8222516bff14ae8e5
   languageName: node
   linkType: hard
 
@@ -24216,7 +24216,7 @@ __metadata:
     "@types/ember__component": ^4.0.11
     "@types/ember__controller": ^4.0.3
     "@types/ember__debug": ^4.0.3
-    "@types/ember__destroyable": ^4.0.1
+    "@types/ember__destroyable": ^4.0.5
     "@types/ember__engine": ^4.0.4
     "@types/ember__error": ^4.0.1
     "@types/ember__object": ^4.0.5

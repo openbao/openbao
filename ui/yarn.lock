@@ -10778,10 +10778,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"d3-ease@npm:1, d3-ease@npm:^1.0.5":
+"d3-ease@npm:1":
   version: 1.0.7
   resolution: "d3-ease@npm:1.0.7"
   checksum: 117811d51dfc4a126e8d23d249252df792fbbe30a93615e1d67158c482eff69b900e45a4cc92746fe65b1143287455406a89aae04eb4ca1ba5b1dc2a42af5b85
+  languageName: node
+  linkType: hard
+
+"d3-ease@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "d3-ease@npm:3.0.1"
+  checksum: 06e2ee5326d1e3545eab4e2c0f84046a123dcd3b612e68858219aa034da1160333d9ce3da20a1d3486d98cb5c2a06f7d233eee1bc19ce42d1533458bd85dedcd
   languageName: node
   linkType: hard
 
@@ -24244,7 +24251,7 @@ __metadata:
     codemirror: ^5.58.2
     columnify: ^1.5.4
     d3-axis: ^1.0.8
-    d3-ease: ^1.0.5
+    d3-ease: ^3.0.1
     d3-scale: ^1.0.7
     d3-selection: ^1.3.0
     d3-time-format: ^2.1.1

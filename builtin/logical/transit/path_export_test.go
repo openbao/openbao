@@ -675,8 +675,6 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	})
 	require.NoError(t, err)
 
-	// NOTE: Should it be possible for the "import" endpoint to also import the cert chain?
-	// import cert chain
 	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set_certificate", keyName), map[string]interface{}{
 		"certificate_chain": leafCertPEM,
 	})

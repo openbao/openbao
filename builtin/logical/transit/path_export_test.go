@@ -5,6 +5,8 @@ package transit
 
 import (
 	"context"
+	cryptoRand "crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -14,7 +16,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/builtin/logical/pki"
+	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransit_Export_KeyVersion_ExportsCorrectVersion(t *testing.T) {
@@ -553,5 +560,137 @@ func verifyExportsCorrectFormat(t *testing.T, exportType, keyType string) {
 	} else {
 		verifyFormat("der")
 		verifyFormat("pem")
+	}
+}
+
+func TestTransit_Export_CertificateChain(t *testing.T) {
+	generateKeys(t)
+
+	// create Cluster
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"transit": Factory,
+			"pki":     pki.Factory,
+		},
+	}
+
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	cores := cluster.Cores
+	vault.TestWaitActive(t, cores[0].Core)
+	client := cores[0].Client
+
+	// mount transit backend
+	err := client.Sys().Mount("transit", &api.MountInput{
+		Type: "transit",
+	})
+	require.NoError(t, err)
+
+	// mount PKI backend
+	err = client.Sys().Mount("pki", &api.MountInput{
+		Type: "pki",
+	})
+	require.NoError(t, err)
+
+	t.Parallel()
+	testTransit_Export_CertificateChain(t, client, "rsa-2048")
+	testTransit_Export_CertificateChain(t, client, "rsa-3072")
+	testTransit_Export_CertificateChain(t, client, "rsa-4096")
+	testTransit_Export_CertificateChain(t, client, "ecdsa-p256")
+	testTransit_Export_CertificateChain(t, client, "ecdsa-p384")
+	testTransit_Export_CertificateChain(t, client, "ecdsa-p521")
+	testTransit_Export_CertificateChain(t, client, "ed25519")
+}
+
+func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, keyType string) {
+	keyName := fmt.Sprintf("%s", keyType)
+	issuerName := fmt.Sprintf("%s-issuer", keyType)
+
+	// get key to be imported
+	privKey := getKey(t, keyType)
+	privKeyBytes, err := x509.MarshalPKCS8PrivateKey(privKey)
+	require.NoError(t, err, fmt.Sprintf("failed to marshal private key: %s", err))
+
+	// create CSR
+	var csrTemplate x509.CertificateRequest
+	csrTemplate.Subject.CommonName = "example.com"
+	csrBytes, err := x509.CreateCertificateRequest(cryptoRand.Reader, &csrTemplate, privKey)
+	require.NoError(t, err, fmt.Sprintf("failed to create CSR: %s", err))
+
+	pemCsr := string(pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrBytes,
+	}))
+
+	// generate PKI root
+	_, err = apiClient.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+		"issuer_name": issuerName,
+		"common_name": "PKI Root X1",
+	})
+	require.NoError(t, err)
+
+	// create role to be used in the certificate issuing
+	_, err = apiClient.Logical().Write("pki/roles/example-dot-com", map[string]interface{}{
+		"issuer_ref":                         issuerName,
+		"allowed_domains":                    "example.com",
+		"allow_bare_domains":                 true,
+		"basic_constraints_valid_for_non_ca": true,
+		"key_type":                           "any",
+	})
+	require.NoError(t, err)
+
+	// sign the CSR
+	resp, err := apiClient.Logical().Write("pki/sign/example-dot-com", map[string]interface{}{
+		"issuer_ref": issuerName,
+		"csr":        pemCsr,
+		"ttl":        "10m",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	leafCertPEM := resp.Data["certificate"].(string)
+
+	// get wrapping key
+	resp, err = apiClient.Logical().Read("transit/wrapping_key")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	pubWrappingKeyString := strings.TrimSpace(resp.Data["public_key"].(string))
+	wrappingKeyPemBlock, _ := pem.Decode([]byte(pubWrappingKeyString))
+
+	pubWrappingKey, err := x509.ParsePKIXPublicKey(wrappingKeyPemBlock.Bytes)
+	require.NoError(t, err, "failed to parse wrapping key")
+
+	blob := wrapTargetPKCS8ForImport(t, pubWrappingKey.(*rsa.PublicKey), privKeyBytes, "SHA256")
+
+	// import key
+	_, err = apiClient.Logical().Write(fmt.Sprintf("/transit/keys/%s/import", keyName), map[string]interface{}{
+		"ciphertext": blob,
+		"type":       keyType,
+	})
+	require.NoError(t, err)
+
+	// NOTE: Should it be possible for the "import" endpoint to also import the cert chain?
+	// import cert chain
+	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set_certificate", keyName), map[string]interface{}{
+		"certificate_chain": leafCertPEM,
+	})
+	require.NoError(t, err)
+
+	// export cert chain
+	resp, err = apiClient.Logical().Read(fmt.Sprintf("transit/export/certificate-chain/%s", keyName))
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	exportedKeys := resp.Data["keys"].(map[string]interface{})
+	exportedCertChainPEM := exportedKeys["1"].(string)
+
+	if exportedCertChainPEM != leafCertPEM {
+		t.Fatalf("expected exported cert chain to match with imported value")
 	}
 }

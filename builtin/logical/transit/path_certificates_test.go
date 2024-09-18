@@ -240,24 +240,24 @@ func testTransit_ImportCertChain(t *testing.T, apiClient *api.Client, keyType st
 
 	certificateChain := strings.Join([]string{leafCertPEM, rootCertPEM}, "\n")
 	// import certificate chain to transit key version
-	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set_certificate", keyName), map[string]interface{}{
 		"certificate_chain": certificateChain,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
-	// resp, err = apiClient.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
-	// require.NotNil(t, resp)
-	// keys, ok := resp.Data["keys"].(map[string]interface{})
-	// if !ok {
-	// 	t.Fatalf("could not cast Keys value")
-	// }
-	// keyData, ok := keys["1"].(map[string]interface{})
-	// if !ok {
-	// 	t.Fatalf("could not cast key version 1 from keys")
-	// }
-	// _, present := keyData["certificate_chain"]
-	// if !present {
-	// 	t.Fatalf("certificate chain not present in key version 1")
-	// }
+	resp, err = apiClient.Logical().Read(fmt.Sprintf("transit/keys/%s", keyName))
+	require.NotNil(t, resp)
+	keys, ok := resp.Data["keys"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("could not cast Keys value")
+	}
+	keyData, ok := keys["1"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("could not cast key version 1 from keys")
+	}
+	_, present := keyData["certificate_chain"]
+	if !present {
+		t.Fatalf("certificate chain not present in key version 1")
+	}
 }

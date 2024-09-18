@@ -39,20 +39,20 @@ O1aQIm23HrrG
 `
 )
 
-func TestTransit_CreateCSR(t *testing.T) {
+func TestTransit_Certificates_CreateCSR(t *testing.T) {
 	t.Parallel()
 
-	testTransitCreateCSR(t, "rsa-2048", templateCSR)
-	testTransitCreateCSR(t, "rsa-3072", templateCSR)
-	testTransitCreateCSR(t, "rsa-4096", templateCSR)
-	testTransitCreateCSR(t, "ecdsa-p256", templateCSR)
-	testTransitCreateCSR(t, "ecdsa-p384", templateCSR)
-	testTransitCreateCSR(t, "ecdsa-p521", templateCSR)
-	testTransitCreateCSR(t, "ed25519", templateCSR)
-	testTransitCreateCSR(t, "aes256-gcm96", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "rsa-2048", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "rsa-3072", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "rsa-4096", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "ecdsa-p256", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "ecdsa-p384", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "ecdsa-p521", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "ed25519", templateCSR)
+	testTransit_Certificates_CreateCSR(t, "aes256-gcm96", templateCSR)
 }
 
-func testTransitCreateCSR(t *testing.T, keyType string, pemTemplateCSR string) {
+func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplateCSR string) {
 	keyName := "test-key"
 	var resp *logical.Response
 	var err error
@@ -118,7 +118,7 @@ func testTransitCreateCSR(t *testing.T, keyType string, pemTemplateCSR string) {
 }
 
 // NOTE: Tests are using two 'different' methods of checking for errors, which one should we prefer?
-func TestTransit_ImportCertChain(t *testing.T) {
+func TestTransit_Certificates_ImportCertChain(t *testing.T) {
 	// create cluster
 	coreConfig := &vault.CoreConfig{
 		LogicalBackends: map[string]logical.Factory{
@@ -147,20 +147,19 @@ func TestTransit_ImportCertChain(t *testing.T) {
 	err = client.Sys().Mount("pki", &api.MountInput{
 		Type: "pki",
 	})
-	require.NoError(t, err) // NOTE: These functions accept a message
+	require.NoError(t, err)
 
-	t.Parallel() // NOTE: Can it be called here?
-
-	testTransit_ImportCertChain(t, client, "rsa-2048")
-	testTransit_ImportCertChain(t, client, "rsa-3072")
-	testTransit_ImportCertChain(t, client, "rsa-4096")
-	testTransit_ImportCertChain(t, client, "ecdsa-p256")
-	testTransit_ImportCertChain(t, client, "ecdsa-p384")
-	testTransit_ImportCertChain(t, client, "ecdsa-p521")
-	testTransit_ImportCertChain(t, client, "ed25519")
+	t.Parallel()
+	testTransit_Certificates_ImportCertChain(t, client, "rsa-2048")
+	testTransit_Certificates_ImportCertChain(t, client, "rsa-3072")
+	testTransit_Certificates_ImportCertChain(t, client, "rsa-4096")
+	testTransit_Certificates_ImportCertChain(t, client, "ecdsa-p256")
+	testTransit_Certificates_ImportCertChain(t, client, "ecdsa-p384")
+	testTransit_Certificates_ImportCertChain(t, client, "ecdsa-p521")
+	testTransit_Certificates_ImportCertChain(t, client, "ed25519")
 }
 
-func testTransit_ImportCertChain(t *testing.T, apiClient *api.Client, keyType string) {
+func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Client, keyType string) {
 	keyName := keyType
 	issuerName := fmt.Sprintf("%s-issuer", keyType)
 

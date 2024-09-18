@@ -49,7 +49,7 @@ func (b *backend) pathCreateCSR() *framework.Path {
 
 func (b *backend) pathImportCertChain() *framework.Path {
 	return &framework.Path{
-		Pattern: "keys/" + framework.GenericNameRegex("name") + "/set-certificate",
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/set_certificate",
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeString,

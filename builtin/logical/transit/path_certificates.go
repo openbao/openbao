@@ -35,12 +35,6 @@ func (b *backend) pathCreateCSR() *framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.pathCreateCSRWrite,
-				DisplayAttrs: &framework.DisplayAttributes{
-					OperationVerb: "write",
-				},
-			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathCreateCSRWrite,
 				DisplayAttrs: &framework.DisplayAttributes{
@@ -55,8 +49,6 @@ func (b *backend) pathCreateCSR() *framework.Path {
 
 func (b *backend) pathImportCertChain() *framework.Path {
 	return &framework.Path{
-		// NOTE: `set-certificate` or `set_certificate`? Paths seem to use different
-		// case, such as `transit/wrapping_key` and `transit/cache-config`
 		Pattern: "keys/" + framework.GenericNameRegex("name") + "/set-certificate",
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
@@ -76,12 +68,6 @@ func (b *backend) pathImportCertChain() *framework.Path {
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
-			logical.CreateOperation: &framework.PathOperation{
-				Callback: b.pathImportCertChainWrite,
-				DisplayAttrs: &framework.DisplayAttributes{
-					OperationVerb: "write",
-				},
-			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathImportCertChainWrite,
 				DisplayAttrs: &framework.DisplayAttributes{
@@ -183,7 +169,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 	}
 
 	if !b.System().CachingDisabled() {
-		policy.Lock(true) // NOTE: Lck as we might write to the policy
+		policy.Lock(true) // NOTE: Lock as we might write to the policy
 	}
 	defer policy.Unlock()
 
@@ -267,7 +253,6 @@ func parseCertificateChain(certChain string) ([]*x509.Certificate, error) {
 }
 
 const (
-	// NOTE: `from` or `for`?
 	pathCreateCSRHelpSynopsis    = "Create a CSR for a key in transit."
 	pathCreateCSRHelpDescription = "This path is used to create a CSR for a key in transit. If a CSR template is provided, its significant information, expect key related data, are included in the CSR otherwise an empty CSR is returned. The key in transit must be a signing key and not be derived. The CSR can be signed by the latest version of the key in transit or by a specific version of the key in transit. The custom template must a valid CSR and PEM encoded."
 

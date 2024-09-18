@@ -242,7 +242,6 @@ type KeyEntry struct {
 	// is more precise
 	DeprecatedCreationTime int64 `json:"creation_time"`
 
-	// NOTE: Description?
 	// Key entry certificate chain. If set, leaf certificate key matches the keyEntry 'key'
 	CertificateChain [][]byte `json:"certificate_chain"`
 }
@@ -2435,7 +2434,7 @@ func (p *Policy) CreateCSR(keyVersion int, csrTemplate *x509.CertificateRequest)
 func (p *Policy) getPrivateKey(keyEntry *KeyEntry) (crypto.Signer, error) {
 	switch p.Type {
 	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
-		curve, err := p.getCurve()
+		curve, err := p.getECDSAKeyCurve()
 		if err != nil {
 			return nil, err
 		}
@@ -2460,8 +2459,7 @@ func (p *Policy) getPrivateKey(keyEntry *KeyEntry) (crypto.Signer, error) {
 	}
 }
 
-// NOTE: Make name for explicit?
-func (p *Policy) getCurve() (elliptic.Curve, error) {
+func (p *Policy) getECDSAKeyCurve() (elliptic.Curve, error) {
 	switch p.Type {
 	case KeyType_ECDSA_P256:
 		return elliptic.P256(), nil
@@ -2522,7 +2520,6 @@ func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage
 }
 
 func (p *Policy) validateCertificateKeyMatch(keyVersion int, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
-	// NOTE: Is this check needed?
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
 	}
@@ -2554,7 +2551,7 @@ func (p *Policy) validateCertificateKeyMatch(keyVersion int, certificatePublicKe
 	switch certificatePublicKeyAlgorithm {
 	case x509.ECDSA:
 		certificatePublicKey := certificatePublicKey.(*ecdsa.PublicKey)
-		keyCurve, _ := p.getCurve()
+		keyCurve, _ := p.getECDSAKeyCurve()
 		publicKey := &ecdsa.PublicKey{
 			Curve: keyCurve,
 			X:     keyEntry.EC_X,
@@ -2563,7 +2560,6 @@ func (p *Policy) validateCertificateKeyMatch(keyVersion int, certificatePublicKe
 
 		return publicKey.Equal(certificatePublicKey), nil
 	case x509.Ed25519:
-		// NOTE: Is this check really needed?
 		if p.Derived {
 			return false, errutil.UserError{Err: "operation not supported on keys with derivation enabled"}
 		}

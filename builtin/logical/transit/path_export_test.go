@@ -675,7 +675,7 @@ func testTransit_Export_CertificateChain(t *testing.T, apiClient *api.Client, ke
 	})
 	require.NoError(t, err)
 
-	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set_certificate", keyName), map[string]interface{}{
+	_, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
 		"certificate_chain": leafCertPEM,
 	})
 	require.NoError(t, err)

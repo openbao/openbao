@@ -38,7 +38,7 @@ func (b *backend) pathCreateCSR() *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathCreateCSRWrite,
 				DisplayAttrs: &framework.DisplayAttributes{
-					OperationVerb: "write",
+					OperationVerb: "get-csr",
 				},
 			},
 		},
@@ -49,7 +49,7 @@ func (b *backend) pathCreateCSR() *framework.Path {
 
 func (b *backend) pathImportCertChain() *framework.Path {
 	return &framework.Path{
-		Pattern: "keys/" + framework.GenericNameRegex("name") + "/set_certificate",
+		Pattern: "keys/" + framework.GenericNameRegex("name") + "/set-certificate",
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeString,
@@ -71,7 +71,7 @@ func (b *backend) pathImportCertChain() *framework.Path {
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathImportCertChainWrite,
 				DisplayAttrs: &framework.DisplayAttributes{
-					OperationVerb: "write",
+					OperationVerb: "set-chain",
 				},
 			},
 		},

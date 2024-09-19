@@ -239,7 +239,7 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 
 	certificateChain := strings.Join([]string{leafCertPEM, rootCertPEM}, "\n")
 	// import certificate chain to transit key version
-	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set_certificate", keyName), map[string]interface{}{
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
 		"certificate_chain": certificateChain,
 	})
 	require.NoError(t, err)

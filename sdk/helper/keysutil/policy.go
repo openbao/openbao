@@ -242,7 +242,7 @@ type KeyEntry struct {
 	// is more precise
 	DeprecatedCreationTime int64 `json:"creation_time"`
 
-	// Key entry certificate chain. If set, leaf certificate key matches the keyEntry 'key'
+	// Key entry certificate chain. If set, leaf certificate key matches the keyEntry 'key'. The leaf certificate is the first element in the chain.
 	CertificateChain [][]byte `json:"certificate_chain"`
 }
 
@@ -2474,7 +2474,7 @@ func (p *Policy) getECDSAKeyCurve() (elliptic.Curve, error) {
 
 func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage logical.Storage, keyVersion int, certificateChain []*x509.Certificate) error {
 	if len(certificateChain) == 0 {
-		return errutil.UserError{Err: "expected at least a certificate in the certificate chain"}
+		return errutil.UserError{Err: "expected at least one certificate in the certificate chain"}
 	}
 
 	if certificateChain[0].BasicConstraintsValid && certificateChain[0].IsCA {

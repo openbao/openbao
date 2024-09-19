@@ -75,7 +75,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 	}
 
 	csrSignReq := &logical.Request{
-		Operation: logical.CreateOperation,
+		Operation: logical.UpdateOperation,
 		Path:      fmt.Sprintf("keys/%s/csr", keyName),
 		Storage:   s,
 		Data: map[string]interface{}{

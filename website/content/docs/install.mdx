@@ -171,7 +171,7 @@ When running the Docker image, include the flag `--memory-swappiness=0`.
 
 Download the release and checksum files:
 
-````
+```shell-session
 $ OS="freebsd"
 $ ARCH="x86_64"
 $ PLATFORM="$OS_$ARCH"
@@ -184,7 +184,7 @@ $ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-
 
 Verify the checksum using `sha256sum`:
 
-```
+```shell-session
 $ sha256sum --check checksums-$OS.txt 2>/dev/null
 ```
 
@@ -194,7 +194,7 @@ $ sha256sum --check checksums-$OS.txt 2>/dev/null
 
 First, download our [GPG key](pathname:///assets/openbao-gpg-pub-20240618.asc) and import it:
 
-```
+```shell-session
 $ wget https://openbao.org/assets/openbao-gpg-pub-20240618.asc
 $ gpg2 --import openbao-gpg-pub-20240618.asc
 gpg: key D200CD702853E6D0: public key "OpenBao <openbao@lists.lfedge.org>" imported
@@ -204,7 +204,7 @@ gpg:               imported: 1
 
 To verify GPG signed artifacts, use `gpg2` from the command line. For example, to verify `checksums-freebsd.txt` with the `checksums-freebsd.txt.gpgsig` stored locally:
 
-```
+```shell-session
 $ gpg2 --verify checksums-freebsd.txt.gpgsig checksums-freebsd.txt
 gpg: Signature made Wed 17 Jul 2024 06:12:03 PM EDT
 gpg:                using RSA key E617DCD4065C2AFC0B2CF7A7BA8BC08C0F691F94
@@ -221,7 +221,7 @@ To verify Cosign signed artifacts, use `rekor-cli` or `curl` to [pull the entry 
 
 For example, to verify `checksums.txt` with the `checksums.txt.sig` stored locally:
 
-```
+```shell-session
 $ SHASUM="$(openssl sha256 -r checksums.txt | awk '{print $1}')"
 bc53476e7e69c98650bf69690caf1aa32dc08c19735375819ae3b29bb9c2b733
 $ curl -X POST -H "Content-type: application/json" 'https://rekor.sigstore.dev/api/v1/index/retrieve' --data-raw "{\"hash\":\"sha256:$SHASUM\"}"

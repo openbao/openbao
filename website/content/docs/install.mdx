@@ -165,6 +165,29 @@ When running the Docker image, include the flag `--memory-swappiness=0`.
 
 [The swap space on macOS is always encrypted](https://support.apple.com/guide/mac-help/what-is-secure-virtual-memory-on-mac-mh11852/mac).
 
+## Checksum Verification
+
+### SHA-256
+
+Download the release and checksum files:
+
+````
+$ OS="freebsd"
+$ ARCH="x86_64"
+$ PLATFORM="$OS_$ARCH"
+$ VERSION=$(curl -s https://api.github.com/repos/openbao/openbao/releases | jq -r '.[0] .tag_name' | cut -d'v' -f2-)
+$ RELEASE="bao_$VERSION_$PLATFORM.tar.gz"
+$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/bao_$VERSION_$PLATFORM.tar.gz
+$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt
+$ wget https://github.com/openbao/openbao/releases/download/v$VERSION/checksums-$OS.txt.gpgsig
+```
+
+Verify the checksum using `sha256sum`:
+
+```
+$ sha256sum --check checksums-$OS.txt 2>/dev/null
+```
+
 ## Signature Verification
 
 ### GPG
@@ -172,13 +195,12 @@ When running the Docker image, include the flag `--memory-swappiness=0`.
 First, download our [GPG key](pathname:///assets/openbao-gpg-pub-20240618.asc) and import it:
 
 ```
-
+$ wget https://openbao.org/assets/openbao-gpg-pub-20240618.asc
 $ gpg2 --import openbao-gpg-pub-20240618.asc
 gpg: key D200CD702853E6D0: public key "OpenBao <openbao@lists.lfedge.org>" imported
 gpg: Total number processed: 1
 gpg:               imported: 1
 ```
-
 
 To verify GPG signed artifacts, use `gpg2` from the command line. For example, to verify `checksums-freebsd.txt` with the `checksums-freebsd.txt.gpgsig` stored locally:
 
@@ -207,7 +229,7 @@ $ curl -X POST -H "Content-type: application/json" 'https://rekor.sigstore.dev/a
 $ UUID=24296fb24b8ad77aedcc1a0cea8b33a04926d6f3b8db35107a1e864c007bb4aa84416a5153cc0bca
 $ curl -X GET "https://rekor.sigstore.dev/api/v1/log/entries/${UUID}" > response.json
 $ jq -r ".[\"$UUID\"].body" < response.json | base64 -d | jq -r '.spec.signature.publicKey.content' | base64 -d > certificate.pem
-$ base64 -d < checksums-linux.txt.sig > checksums-linux.txt.rawsig
-$ openssl pkeyutl -verify -certin -inkey certificate.pem -sigfile checksums-linux.txt.rawsig -in checksums-linux.txt -rawin
+$ base64 -d < checksums-freebsd.txt.sig > checksums-freebsd.txt.rawsig
+$ openssl pkeyutl -verify -certin -inkey certificate.pem -sigfile checksums-freebsd.txt.rawsig -in checksums-freebsd.txt -rawin
 Signature Verified Successfully
 ```

@@ -22,19 +22,22 @@ import (
 const (
 	templateCSR = `
 -----BEGIN CERTIFICATE REQUEST-----
-MIICRTCCAS0CAQAwADCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAM49
-McW7u3ILuAJfSFLUtGOMGBytHmMFcjTiX+5JcajFj0Uszb+HQ7eIsJJNXhVc/7fg
-Z01DZvcCqb9ChEWE3xi4GEkPMXay7p7G1ooSLnQp6Z0lL5CuIFfMVOTvjfhTwRaJ
-l9v2mMlm80BeiAUBqeoyGVrIh5fKASxaE0jrhjAxhGzqrXdDnL8A4na6ArprV4iS
-aEAziODd2WmplSKgUwEaFdeG1t1bJf3o5ZQRCnKNtQcAk8UmgtvFEO8ohGMln/Fj
-O7u7s6iRhOGf1g1NCAP5pGqxNx3bjz5f/CUcTSIGAReEomg41QTIhD9muCTL8qnm
-6lS87wkGTv7qbeIGB7sCAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4IBAQAfjE+jNqIk
-4V1tL3g5XPjxr2+QcwddPf8opmbAzgt0+TiIHcDGBAxsXyi7sC9E5AFfFp7W07Zv
-r5+v4i529K9q0BgGtHFswoEnhd4dC8Ye53HtSoEtXkBpZMDrtbS7eZa9WccT6zNx
-4taTkpptZVrmvPj+jLLFkpKJJ3d+Gbrp6hiORPadT+igLKkqvTeocnhOdAtt427M
-RXTVgN14pV3tqO+5MXzNw5tGNPcwWARWwPH9eCRxLwLUuxE4Qu73pUeEFjDEfGkN
-iBnlTsTXBOMqSGryEkmRaZslWDvblvYeObYw+uc3kCbJ7jRy9soVwkbb5FueF/yC
-O1aQIm23HrrG
+MIIC5zCCAc8CAQAwaDELMAkGA1UEBhMCVVMxDjAMBgNVBAgMBVN0YXRlMQ0wCwYD
+VQQHDARDaXR5MRUwEwYDVQQKDAxPcmdhbml6YXRpb24xDTALBgNVBAsMBFVuaXQx
+FDASBgNVBAMMC2V4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
+CgKCAQEAtqoiFEAdvKtBe5LdhPXddsQBGfq2wU7oLRjg85ow6TeDFCP4X/QvKWqk
+/oaZuy7RENQ8rZZML5XN1zlwRyxyqYUoIwLJrvZUHKyBVDp7axQ4X6RzSl++A6KI
+vlMAiOzn0ByaI/qrTzpMvKyn/Y2AaIM0SdSczVBczmcfrthYikzWzphvYFqsCTRn
+01E1hBiqk5/JoaFgljzQp7Xv+fl3E0grnuLPjc1p6gDJDG/5QNIQt144ahwt8you
+rpryjYmRWlFX0UhK5X4aywLGtGP8pEZcxmMvslziqeKt1YfzYcI0zsWkOeLXtjVd
+pkBT9r2tz/Df6d5+RtmtNrketXN1AQIDAQABoDowOAYJKoZIhvcNAQkOMSswKTAn
+BgNVHREEIDAeggtleGFtcGxlLmNvbYIPd3d3LmV4YW1wbGUuY29tMA0GCSqGSIb3
+DQEBCwUAA4IBAQAmGyhKkDbTs156EiXhXUim8/eoB5+Gp+2lldNhh3/jUqj487CG
+vR0ArKx2xGBQNwBOR5Z+rMRh5Xg+OQaK7uMeQM0El4hW4VL4GEXRbqrAy1ixYk9s
+hvZTQD5XGxkJM0ffKsyxk5t/tQWcCDPWwoBv+R5ikkABFzCcwRq+IHvOUxB59cgC
+VldIH29XCpF71qiIbpg9Y+LJI9skdE3x/Ufa9h9Z8ioHhPu1xXCaKKjaZ3lv8t1+
+9iWpATejh7Av9o/8y+vpRN8vrxNcprbj0ItJ5jcg6pnA7DEqW7QNIKYtWg2YjKBd
+Bgw5bMA6qRI09cxO4pN2diD2KYI+YuioXtYl
 -----END CERTIFICATE REQUEST-----
 `
 )
@@ -83,7 +86,7 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 		},
 	}
 
-	// request creation of CSR
+	// request the CSR
 	resp, err = b.HandleRequest(context.Background(), csrSignReq)
 	switch keyType {
 	case "rsa-2048", "rsa-3072", "rsa-4096", "ecdsa-p256", "ecdsa-p384", "ecdsa-p521", "ed25519":
@@ -106,9 +109,24 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 			t.Fatalf("failed to parse returned template CSR, err:%v", err)
 		}
 
-		// NOTE: Check other fields?
 		if !reflect.DeepEqual(signedCSR.Subject, templateCSR.Subject) {
-			t.Fatalf("subjects should have matched:%v", err)
+			t.Fatal("CSR subjects should have matched")
+		}
+
+		if !reflect.DeepEqual(signedCSR.DNSNames, templateCSR.DNSNames) {
+			t.Fatal("CSR DNS names should have matched")
+		}
+
+		if !reflect.DeepEqual(signedCSR.EmailAddresses, templateCSR.EmailAddresses) {
+			t.Fatal("CSR email addresses should have matched")
+		}
+
+		if !reflect.DeepEqual(signedCSR.IPAddresses, templateCSR.IPAddresses) {
+			t.Fatal("CSR IP addresses should have matched")
+		}
+
+		if !reflect.DeepEqual(signedCSR.URIs, templateCSR.URIs) {
+			t.Fatal("CSR URIs should have matched")
 		}
 	default:
 		if err == nil || (resp != nil && !resp.IsError()) {
@@ -117,7 +135,6 @@ func testTransit_Certificates_CreateCSR(t *testing.T, keyType string, pemTemplat
 	}
 }
 
-// NOTE: Tests are using two 'different' methods of checking for errors, which one should we prefer?
 func TestTransit_Certificates_ImportCertChain(t *testing.T) {
 	// create cluster
 	coreConfig := &vault.CoreConfig{

@@ -169,7 +169,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 	}
 
 	if !b.System().CachingDisabled() {
-		policy.Lock(true) // NOTE: Lock as we might write to the policy
+		policy.Lock(true)
 	}
 	defer policy.Unlock()
 

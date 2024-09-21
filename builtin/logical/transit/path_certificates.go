@@ -257,5 +257,5 @@ const (
 	pathCreateCSRHelpDescription = "This path is used to create a CSR for a key in transit. If a CSR template is provided, its significant information, expect key related data, are included in the CSR otherwise an empty CSR is returned. The key in transit must be a signing key and not be derived. The CSR can be signed by the latest version of the key in transit or by a specific version of the key in transit. The custom template must a valid CSR and PEM encoded."
 
 	pathImportCertChainHelpSynopsis    = "Imports an externally-signed certificate chain into an existing key version"
-	pathImportCertChainHelpDescription = "This path is used to import an externally-signed certificate chain into an existing key version in transit. The leaf certificate key has to match the selected key."
+	pathImportCertChainHelpDescription = "This path is used to import an externally-signed certificate chain into an existing key version in transit. The leaf certificate has to be in the first element and match the selected key."
 )

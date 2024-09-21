@@ -21,17 +21,17 @@ func (b *backend) pathCreateCSR() *framework.Path {
 			"name": {
 				Type:        framework.TypeString,
 				Required:    true,
-				Description: "Name of the key to create a CSR for.",
+				Description: "Name of the key to sign the CSR with.",
 			},
 			"version": {
 				Type:        framework.TypeInt,
 				Required:    false,
-				Description: "The version of the key to create a CSR for. If not set, the latest version, `latest`, will be used.",
+				Description: "Version of the key to use for signing. If the version is set to `latest`, or is not set, the current key will be returned",
 			},
 			"csr": {
 				Type:        framework.TypeString,
 				Required:    false,
-				Description: "PEM encoded CSR template to use. The information attributes will be used as a basis for the CSR with the key in transit. If not set, a default template will be used.",
+				Description: "Optional PEM-encoded CSR template to use as the basis for the new CSR signed by this key. If not set, an empty CSR is used.",
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -54,12 +54,12 @@ func (b *backend) pathImportCertChain() *framework.Path {
 			"name": {
 				Type:        framework.TypeString,
 				Required:    true,
-				Description: "Name of the key.",
+				Description: "Name of the key to import the certificate chain against.",
 			},
 			"version": {
 				Type:        framework.TypeInt,
 				Required:    false,
-				Description: "Key version of which the certificate chain is going to be attatched to. If not set, the latest version, `latest`, will be used.",
+				Description: "Version of the key to import the certificate chain against.",
 			},
 			"certificate_chain": {
 				Type:        framework.TypeString,
@@ -253,9 +253,19 @@ func parseCertificateChain(certChain string) ([]*x509.Certificate, error) {
 }
 
 const (
-	pathCreateCSRHelpSynopsis    = "Create a CSR for a key in transit."
-	pathCreateCSRHelpDescription = "This path is used to create a CSR for a key in transit. If a CSR template is provided, its significant information, expect key related data, are included in the CSR otherwise an empty CSR is returned. The key in transit must be a signing key and not be derived. The CSR can be signed by the latest version of the key in transit or by a specific version of the key in transit. The custom template must a valid CSR and PEM encoded."
+	pathCreateCSRHelpSynopsis    = "Sign a CSR with a key in transit"
+	pathCreateCSRHelpDescription = `
+This path signs a CSR using the provided key, ensuring the key material stays
+within Transit. If no CSR is provided, it signs an empty CSR. Otherwise, it signs
+the provided CSR, replacing its key material with the key material.
+The key in transit must be a signing key and not be derived.
+`
 
-	pathImportCertChainHelpSynopsis    = "Imports an externally-signed certificate chain into an existing key version"
-	pathImportCertChainHelpDescription = "This path is used to import an externally-signed certificate chain into an existing key version in transit. The leaf certificate has to be in the first element and match the selected key."
+	pathImportCertChainHelpSynopsis    = "Set a certificate chain for a key in transit"
+	pathImportCertChainHelpDescription = `
+This paths sets the certificate chain for the provided key, ensuring the key
+material stays within Transit and certificates are managed in one place.
+It also allows chain updates and rotation, as it will overwrite any existing
+certificate chain.
+`
 )

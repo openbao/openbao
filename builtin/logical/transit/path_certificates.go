@@ -197,7 +197,7 @@ func (b *backend) pathImportCertChainWrite(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 
-	err = policy.ValidateAndPersistCertificateChain(ctx, req.Storage, keyVersion, certChain)
+	err = policy.PersistCertificateChain(ctx, req.Storage, keyVersion, certChain)
 	if err != nil {
 		prefixedErr := fmt.Errorf("failed to persist certificate chain: %w", err)
 		switch err.(type) {

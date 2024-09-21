@@ -2472,13 +2472,10 @@ func (p *Policy) getECDSAKeyCurve() (elliptic.Curve, error) {
 	}
 }
 
-func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage logical.Storage, keyVersion int, certificateChain []*x509.Certificate) error {
-	// validate that the certificate chain has at least two certificates, a leaf certificate and a CA certificate
-	switch len(certificateChain) {
-	case 0:
+func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.Storage, keyVersion int, certificateChain []*x509.Certificate) error {
+	// validate that the certificate chain has at least one certifiate, the leaf certificate
+	if len(certificateChain) == 0 {
 		return errutil.UserError{Err: "expected at least one certificate in the certificate chain"}
-	case 1:
-		return errutil.UserError{Err: "certificate chain must contain at least two certificates, a leaf certificate and a CA certificate"}
 	}
 
 	// validate that the first element in the certificate chain is a leaf certificate
@@ -2487,7 +2484,7 @@ func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage
 	}
 
 	// validate that the first element in the certificate chain is a CA certificate
-	if !certificateChain[len(certificateChain)-1].IsCA {
+	if len(certificateChain) > 1 && !certificateChain[len(certificateChain)-1].IsCA {
 		return errutil.UserError{Err: "certificate in the last element is not a valid CA certificate"}
 	}
 
@@ -2498,7 +2495,7 @@ func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage
 		}
 	}
 
-	valid, err := p.validateCertificateKeyMatch(keyVersion, certificateChain[0].PublicKeyAlgorithm, certificateChain[0].PublicKey)
+	valid, err := p.validateKeyVersionCertificateKeyMatch(keyVersion, certificateChain[0].PublicKeyAlgorithm, certificateChain[0].PublicKey)
 	if err != nil {
 		prefixedErr := fmt.Errorf("could not validate key match between leaf certificate key and key entry in transit: %w", err)
 		switch err.(type) {
@@ -2530,7 +2527,7 @@ func (p *Policy) ValidateAndPersistCertificateChain(ctx context.Context, storage
 	return p.Persist(ctx, storage)
 }
 
-func (p *Policy) validateCertificateKeyMatch(keyVersion int, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
+func (p *Policy) validateKeyVersionCertificateKeyMatch(keyVersion int, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
 	}

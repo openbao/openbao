@@ -61,7 +61,11 @@ const config: Config = {
           priority: 0.5,
           filename: 'sitemap.xml',
         },
-        blog: false,
+        blog: {
+          blogTitle: 'OpenBao Blog',
+          blogDescription: 'Official blog of the Bao Evangelism Taskforce (BET)',
+          path: "content/blog",
+        },
         theme: {
           customCss: "./src/css/custom.css",
         },
@@ -100,6 +104,11 @@ const config: Config = {
         srcDark: "img/logo-white.svg",
       },
       items: [
+        {
+          to: "/blog/",
+          label: "Blog",
+          position: "left",
+        },
         {
           to: "/docs/",
           label: "Docs",

@@ -19444,10 +19444,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"normalize.css@npm:4.1.1":
-  version: 4.1.1
-  resolution: "normalize.css@npm:4.1.1"
-  checksum: 48500b12c63141286b637a0ed771d23e95872469eb9726171aea4fa90c9e9fe97870ee52c81dc42ef391733423bf0887dc0fdadae0e5f6020b6eb04e60ffcd68
+"normalize.css@npm:8.0.1":
+  version: 8.0.1
+  resolution: "normalize.css@npm:8.0.1"
+  checksum: 4698cae88ec35e3f3e82f9f9402e6ffb906c27ccd6373cad88e6b3f5634fc7a043cb38702472299e5edb73825cf8b18d5fd9283f58829eddda79ea97453049a2
   languageName: node
   linkType: hard
 
@@ -24321,7 +24321,7 @@ __metadata:
     lint-staged: ^10.5.1
     loader.js: ^4.7.0
     node-notifier: ^8.0.1
-    normalize.css: 4.1.1
+    normalize.css: 8.0.1
     npm-run-all: ^4.1.5
     pkijs: ^2.2.2
     pretender: ^3.4.3

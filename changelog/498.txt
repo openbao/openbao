@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/pki: Use transactions for root generation, issuer import
+```

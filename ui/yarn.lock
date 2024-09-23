@@ -3959,7 +3959,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ember/render-modifiers@npm:^1.0.2 || ^2.0.0, @ember/render-modifiers@npm:^2.0.2, @ember/render-modifiers@npm:^2.0.4":
+"@ember/render-modifiers@npm:^1.0.2 || ^2.0.0, @ember/render-modifiers@npm:^2.0.4":
   version: 2.0.4
   resolution: "@ember/render-modifiers@npm:2.0.4"
   dependencies:
@@ -11692,7 +11692,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-auto-import@npm:2.4.2, ember-auto-import@npm:^2.4.0, ember-auto-import@npm:^2.4.1, ember-auto-import@npm:^2.4.2":
+"ember-auto-import@npm:2.4.2, ember-auto-import@npm:^2.4.0, ember-auto-import@npm:^2.4.2":
   version: 2.4.2
   resolution: "ember-auto-import@npm:2.4.2"
   dependencies:
@@ -12054,17 +12054,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-flash@npm:4.0.0":
-  version: 4.0.0
-  resolution: "ember-cli-flash@npm:4.0.0"
+"ember-cli-flash@npm:5.1.0":
+  version: 5.1.0
+  resolution: "ember-cli-flash@npm:5.1.0"
   dependencies:
-    "@ember/render-modifiers": ^2.0.2
-    "@glimmer/component": ^1.1.2
-    "@glimmer/tracking": ^1.1.2
-    ember-auto-import: ^2.4.1
-    ember-cli-babel: ^7.26.11
-    ember-cli-htmlbars: ^6.0.1
-  checksum: 30cc3c18bae61332688eafe6af4d1ee8e6cd545b08ce276cf1ab761ed6dc1a172265ab01648bbf11d087d7896e3245a6679037a51a0c7eff4e44b942c125ecbd
+    "@embroider/addon-shim": ^1.0.0
+  peerDependencies:
+    "@ember/string": ">= 3.0.0"
+    "@embroider/macros": ^1.13.2
+    ember-modifier: ">= 4.0.0"
+  checksum: 2153451be0d7730075700881231038181d95130234873d048eb1948f4503f35c5741cc53de1d92682bf85fd1ff3714f3202b12851a89a1318fe2db645f35505a
   languageName: node
   linkType: hard
 
@@ -24264,7 +24263,7 @@ __metadata:
     ember-cli-content-security-policy: 2.0.3
     ember-cli-dependency-checker: ^3.3.1
     ember-cli-deprecation-workflow: ^2.1.0
-    ember-cli-flash: 4.0.0
+    ember-cli-flash: 5.1.0
     ember-cli-htmlbars: ^6.0.1
     ember-cli-inject-live-reload: ^2.1.0
     ember-cli-mirage: 2.4.0

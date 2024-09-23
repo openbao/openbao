@@ -13928,13 +13928,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-qunit@npm:^7.2.0":
-  version: 7.3.1
-  resolution: "eslint-plugin-qunit@npm:7.3.1"
+"eslint-plugin-qunit@npm:^8.1.2":
+  version: 8.1.2
+  resolution: "eslint-plugin-qunit@npm:8.1.2"
   dependencies:
     eslint-utils: ^3.0.0
     requireindex: ^1.2.0
-  checksum: 3c223751b62c365d8a4ceb57986731da2e0e5149b721efe0591a580ba3cd495bc3c42c5951c5b294fdf0cfbbdb03c2f8afd43c42d4c14c3f7e74d30fc280af09
+  checksum: a908a585e56c1de5e4de10e3d8386574a22102a550d63bbb97ddbad4599fdacf02a00038cb303f81687db83a7632b50204f50320bb7a0fb8e2bf178b00a1e92f
   languageName: node
   linkType: hard
 
@@ -24311,7 +24311,7 @@ __metadata:
     eslint-plugin-ember: ^10.6.1
     eslint-plugin-node: ^11.1.0
     eslint-plugin-prettier: ^4.0.0
-    eslint-plugin-qunit: ^7.2.0
+    eslint-plugin-qunit: ^8.1.2
     filesize: ^4.2.1
     flat: ^4.1.0
     handlebars: 4.7.7

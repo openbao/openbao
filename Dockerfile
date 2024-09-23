@@ -35,6 +35,8 @@ RUN apk add --no-cache libcap su-exec dumb-init tzdata
 
 COPY $BIN_NAME /bin/
 
+RUN ln -s /bin/${BIN_NAME} /bin/vault
+
 # /vault/logs is made available to use as a location to store audit logs, if
 # desired; /vault/file is made available to use as a location with the file
 # storage backend, if desired; the server will be started with /vault/config as
@@ -110,6 +112,8 @@ RUN groupadd --gid 1000 openbao && \
 # Copy in the new OpenBao from CRT pipeline, rather than fetching it from our
 # public releases.
 COPY $BIN_NAME /bin/
+
+RUN ln -s /bin/${BIN_NAME} /bin/vault
 
 # /vault/logs is made available to use as a location to store audit logs, if
 # desired; /vault/file is made available to use as a location with the file

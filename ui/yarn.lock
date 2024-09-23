@@ -14704,7 +14704,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"filesize@npm:^4.1.2, filesize@npm:^4.2.1":
+"filesize@npm:^10.1.6":
+  version: 10.1.6
+  resolution: "filesize@npm:10.1.6"
+  checksum: a797a9d41c8f27a9ae334d23f99fc5d903eac5d03c82190dc163901205435b56626fe1260c779ba3e87a2a34d426f19ff264c3f7d956e00f2d3ac69760b52e33
+  languageName: node
+  linkType: hard
+
+"filesize@npm:^4.1.2":
   version: 4.2.1
   resolution: "filesize@npm:4.2.1"
   checksum: 3179f5852519cfe140bdd1e35852d552654e1e232f45b76d5a0df7cefa810b66b4808650cd1705ab00821c5709520bf01fbf7bf74872bd2652a420bfdcbb1a82
@@ -24312,7 +24319,7 @@ __metadata:
     eslint-plugin-node: ^11.1.0
     eslint-plugin-prettier: ^4.0.0
     eslint-plugin-qunit: ^7.2.0
-    filesize: ^4.2.1
+    filesize: ^10.1.6
     flat: ^4.1.0
     handlebars: 4.7.7
     highlight.js: ^10.4.1

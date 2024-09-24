@@ -142,7 +142,8 @@ const Asset = ({ urls }) => {
 
     const { selectedItem } = useOptions();
     return (
-        <div className="pagination-nav__item card">
+        <div className="card download-card">
+            <div className="pagination-nav__item">
                 <div className="card__header">
                     <h5>
                         <a href={asset}>
@@ -172,6 +173,7 @@ const Asset = ({ urls }) => {
                         }
                     </div>
                 </div>
+            </div>
         </div>
     );
 };

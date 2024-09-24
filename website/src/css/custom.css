@@ -27,4 +27,29 @@
   --ifm-color-primary-lighter: #99cfbf;
   --ifm-color-primary-lightest: #b9ded3;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  /*
+   * Fix shadow on all cards in dark mode. This was too light for the display
+   * to view on certain background colors.
+   */
+  --ifm-global-shadow-lw: 0 1px 2px 0 rgba(255, 255, 255, 0.1);
+}
+
+/*
+ * Make our download page cards a darker color in dark mode so they look
+ * visually different than the main part of the page.
+ */
+[data-theme="dark"] div.download-card {
+  background-color: var(--ifm-background-color);
+}
+
+/*
+ * Allow buttons to reflow on smaller width screens. Smaller is relative
+ * as even moderately sized screens will cause the buttons to exceed the
+ * size of their container.
+ */
+@media screen and (max-width:1400px) {
+  div.download-card .button-group--block {
+    flex-wrap: wrap;
+  }
 }

@@ -2479,19 +2479,19 @@ func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.St
 	}
 
 	// validate that the first element in the certificate chain is a leaf certificate
-	if certificateChain[0].IsCA && certificateChain[0].BasicConstraintsValid {
+	if !certificateChain[0].BasicConstraintsValid || certificateChain[0].IsCA {
 		return errutil.UserError{Err: "certificate in the first element is not a valid leaf certificate"}
 	}
 
 	// validate that the last element in the certificate chain is a CA certificate
-	if len(certificateChain) > 1 && !certificateChain[len(certificateChain)-1].IsCA {
+	if len(certificateChain) > 1 && (!certificateChain[len(certificateChain)-1].BasicConstraintsValid || !certificateChain[len(certificateChain)-1].IsCA) {
 		return errutil.UserError{Err: "certificate in the last element is not a valid CA certificate"}
 	}
 
 	// validate that the certificate chain contains only one leaf certificate
 	for _, certificate := range certificateChain[1 : len(certificateChain)-1] {
-		if !certificate.IsCA {
-			return errutil.UserError{Err: "provided certificate chain contains more than one leaf certificate"}
+		if !certificate.BasicConstraintsValid || !certificate.IsCA {
+			return errutil.UserError{Err: "could not validate if there is only one leaf certificate in the provided chain"}
 		}
 	}
 

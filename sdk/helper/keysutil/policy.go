@@ -2488,8 +2488,6 @@ func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.St
 		return errutil.UserError{Err: "certificate in the last element is not a valid CA certificate"}
 	}
 
-	// NOTE: Does this check make sense?
-
 	// validate that the certificate chain contains only one leaf certificate
 	for _, certificate := range certificateChain[1 : len(certificateChain)-1] {
 		if !certificate.IsCA {
@@ -2497,7 +2495,12 @@ func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.St
 		}
 	}
 
-	valid, err := p.validateKeyVersionCertificateKeyMatch(keyVersion, certificateChain[0].PublicKeyAlgorithm, certificateChain[0].PublicKey)
+	keyEntry, err := p.safeGetKeyEntry(keyVersion)
+	if err != nil {
+		return err
+	}
+
+	valid, err := p.validateKeyVersionCertificateKeyMatch(keyEntry, certificateChain[0].PublicKeyAlgorithm, certificateChain[0].PublicKey)
 	if err != nil {
 		prefixedErr := fmt.Errorf("could not validate key match between leaf certificate key and key entry in transit: %w", err)
 		switch err.(type) {
@@ -2509,11 +2512,6 @@ func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.St
 	}
 	if !valid {
 		return errors.New("leaf certificate public key does not match the selected key version")
-	}
-
-	keyEntry, err := p.safeGetKeyEntry(keyVersion)
-	if err != nil {
-		return err
 	}
 
 	// convert the certificate chain to DER format
@@ -2529,7 +2527,7 @@ func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.St
 	return p.Persist(ctx, storage)
 }
 
-func (p *Policy) validateKeyVersionCertificateKeyMatch(keyVersion int, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
+func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
 	if !p.Type.SigningSupported() {
 		return false, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
 	}
@@ -2551,11 +2549,6 @@ func (p *Policy) validateKeyVersionCertificateKeyMatch(keyVersion int, certifica
 	}
 	if !keyTypeMatches {
 		return false, errutil.UserError{Err: fmt.Sprintf("provided leaf certificate public key algorithm '%s' does not match the transit key type '%s'", certificatePublicKeyAlgorithm, p.Type)}
-	}
-
-	keyEntry, err := p.safeGetKeyEntry(keyVersion)
-	if err != nil {
-		return false, err
 	}
 
 	switch certificatePublicKeyAlgorithm {

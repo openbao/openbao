@@ -158,18 +158,18 @@ const Asset = ({ urls }) => {
                 </div>
                 <div className="card__footer">
                     <div class="button-group button-group--block">
-                        <a class="button button--primary" href={asset}>Download</a>
+                        <a class="button button--primary" href={asset}><span>Download</span></a>
                         {
                             gpgSig &&
-                            <a class="button button--secondary" href={gpgSig}>GPG Signature</a>
+                            <a class="button button--secondary" href={gpgSig}><span>GPG Signature</span></a>
                         }
                         {
                             coSig &&
-                            <a class="button button--secondary" href={coSig}>Cosign Signature</a>
+                            <a class="button button--secondary" href={coSig}><span>Cosign Signature</span></a>
                         }
                         {
                             coCert &&
-                            <a class="button button--secondary" href={coCert}>Cosign Certificate</a>
+                            <a class="button button--secondary" href={coCert}><span>Cosign Certificate</span></a>
                         }
                     </div>
                 </div>

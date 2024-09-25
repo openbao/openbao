@@ -48,8 +48,21 @@
  * as even moderately sized screens will cause the buttons to exceed the
  * size of their container.
  */
-@media screen and (max-width:1400px) {
-  div.download-card .button-group--block {
-    flex-wrap: wrap;
-  }
+div.download-card div.button-group--block {
+  flex-wrap: wrap;
+}
+
+div.download-card a.button {
+  padding: 0px 0px !important;
+}
+
+div.download-card a.button span {
+  display: inline-block;
+  margin:
+    calc(
+      var(--ifm-button-padding-vertical) * var(--ifm-button-size-multiplier) * 1.50
+    )
+    calc(
+      var(--ifm-button-padding-horizontal) * var(--ifm-button-size-multiplier) * 0.50
+    );
 }

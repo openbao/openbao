@@ -255,6 +255,21 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	t.Logf("leaf: %v", leafCertPEM)
 
 	certificateChain := strings.Join([]string{leafCertPEM, rootCertPEM}, "\n")
+
+	// Import root as leaf; this should fail.
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+		"certificate_chain": rootCertPEM,
+	})
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	// Import root->leaf; this should fail.
+	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
+		"certificate_chain": strings.Join([]string{rootCertPEM, leafCertPEM}, "\n"),
+	})
+	require.Error(t, err)
+	require.Nil(t, resp)
+
 	// import certificate chain to transit key version
 	resp, err = apiClient.Logical().Write(fmt.Sprintf("transit/keys/%s/set-certificate", keyName), map[string]interface{}{
 		"certificate_chain": certificateChain,

@@ -241,6 +241,9 @@ type KeyEntry struct {
 	// This is deprecated (but still filled) in favor of the value above which
 	// is more precise
 	DeprecatedCreationTime int64 `json:"creation_time"`
+
+	// Key entry certificate chain. If set, leaf certificate key matches the keyEntry 'key'. The leaf certificate is the first element in the chain.
+	CertificateChain [][]byte `json:"certificate_chain"`
 }
 
 func (ke *KeyEntry) IsPrivateKeyMissing() bool {
@@ -2391,4 +2394,197 @@ func wrapTargetPKCS8ForImport(wrappingKey *rsa.PublicKey, preppedTargetKey []byt
 	// Combined wrapped keys into a single blob and base64 encode
 	wrappedKeys := append(ephKeyWrapped, targetKeyWrapped...)
 	return base64.StdEncoding.EncodeToString(wrappedKeys), nil
+}
+
+func (p *Policy) CreateCSR(keyVersion int, csrTemplate *x509.CertificateRequest) ([]byte, error) {
+	if !p.Type.SigningSupported() {
+		return nil, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
+	}
+
+	keyEntry, err := p.safeGetKeyEntry(keyVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	if keyEntry.IsPrivateKeyMissing() {
+		return nil, errutil.UserError{Err: "private key not imported for key version selected"}
+	}
+
+	csrTemplate.Signature = nil
+	csrTemplate.SignatureAlgorithm = x509.UnknownSignatureAlgorithm
+
+	key, err := p.getPrivateKey(&keyEntry)
+	if err != nil {
+		return nil, err
+	}
+
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, key)
+	if err != nil {
+		return nil, fmt.Errorf("could not create the CSR: %w", err)
+	}
+
+	pemCSR := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrBytes,
+	})
+
+	return pemCSR, nil
+}
+
+func (p *Policy) getPrivateKey(keyEntry *KeyEntry) (crypto.Signer, error) {
+	switch p.Type {
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
+		curve, err := p.getECDSAKeyCurve()
+		if err != nil {
+			return nil, err
+		}
+		key := &ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				Curve: curve,
+				X:     keyEntry.EC_X,
+				Y:     keyEntry.EC_Y,
+			},
+			D: keyEntry.EC_D,
+		}
+		return key, nil
+	case KeyType_ED25519:
+		if p.Derived {
+			return nil, errutil.UserError{Err: "operation not supported on keys with derivation enabled"}
+		}
+		return ed25519.PrivateKey(keyEntry.Key), nil
+	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+		return keyEntry.RSAKey, nil
+	default:
+		return nil, errutil.InternalError{Err: fmt.Sprintf("selected key type '%s' does not support signing", p.Type.String())}
+	}
+}
+
+func (p *Policy) getECDSAKeyCurve() (elliptic.Curve, error) {
+	switch p.Type {
+	case KeyType_ECDSA_P256:
+		return elliptic.P256(), nil
+	case KeyType_ECDSA_P384:
+		return elliptic.P384(), nil
+	case KeyType_ECDSA_P521:
+		return elliptic.P521(), nil
+	default:
+		return nil, errutil.InternalError{Err: fmt.Sprintf("key type '%s' does not have a curve parameter", p.Type)}
+	}
+}
+
+func (p *Policy) PersistCertificateChain(ctx context.Context, storage logical.Storage, keyVersion int, certificateChain []*x509.Certificate) error {
+	// validate that the certificate chain has at least one certifiate, the leaf certificate
+	if len(certificateChain) == 0 {
+		return errutil.UserError{Err: "expected at least one certificate in the certificate chain"}
+	}
+
+	// validate that the first element in the certificate chain is a leaf certificate
+	if certificateChain[0].BasicConstraintsValid && certificateChain[0].IsCA {
+		return errutil.UserError{Err: "certificate in the first element is not a valid leaf certificate"}
+	}
+
+	// validate that the last element in the certificate chain is a CA certificate
+	if len(certificateChain) > 1 && (!certificateChain[len(certificateChain)-1].BasicConstraintsValid || !certificateChain[len(certificateChain)-1].IsCA) {
+		return errutil.UserError{Err: "certificate in the last element is not a valid CA certificate"}
+	}
+
+	// validate that the certificate chain contains only one leaf certificate
+	if len(certificateChain) > 1 {
+		for _, certificate := range certificateChain[1 : len(certificateChain)-1] {
+			if !certificate.BasicConstraintsValid || !certificate.IsCA {
+				return errutil.UserError{Err: "could not validate if there is only one leaf certificate in the provided chain"}
+			}
+		}
+	}
+
+	keyEntry, err := p.safeGetKeyEntry(keyVersion)
+	if err != nil {
+		return err
+	}
+
+	valid, err := p.validateKeyVersionCertificateKeyMatch(keyEntry, certificateChain[0].PublicKeyAlgorithm, certificateChain[0].PublicKey)
+	if err != nil {
+		prefixedErr := fmt.Errorf("could not validate key match between leaf certificate key and key entry in transit: %w", err)
+		switch err.(type) {
+		case errutil.UserError:
+			return errutil.UserError{Err: prefixedErr.Error()}
+		default:
+			return prefixedErr
+		}
+	}
+	if !valid {
+		return errors.New("leaf certificate public key does not match the selected key version")
+	}
+
+	// convert the certificate chain to DER format
+	derCertificates := make([][]byte, len(certificateChain))
+	for i, certificate := range certificateChain {
+		derCertificates[i] = certificate.Raw
+	}
+
+	// set the certificate chain in the key entry
+	keyEntry.CertificateChain = derCertificates
+
+	p.Keys[strconv.Itoa(keyVersion)] = keyEntry
+	return p.Persist(ctx, storage)
+}
+
+func (p *Policy) validateKeyVersionCertificateKeyMatch(keyEntry KeyEntry, certificatePublicKeyAlgorithm x509.PublicKeyAlgorithm, certificatePublicKey any) (bool, error) {
+	if !p.Type.SigningSupported() {
+		return false, errutil.UserError{Err: fmt.Sprintf("key type '%s' does not support signing", p.Type)}
+	}
+
+	var keyTypeMatches bool
+	switch p.Type {
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
+		if certificatePublicKeyAlgorithm == x509.ECDSA {
+			keyTypeMatches = true
+		}
+	case KeyType_ED25519:
+		if certificatePublicKeyAlgorithm == x509.Ed25519 {
+			keyTypeMatches = true
+		}
+	case KeyType_RSA2048, KeyType_RSA3072, KeyType_RSA4096:
+		if certificatePublicKeyAlgorithm == x509.RSA {
+			keyTypeMatches = true
+		}
+	}
+	if !keyTypeMatches {
+		return false, errutil.UserError{Err: fmt.Sprintf("provided leaf certificate public key algorithm '%s' does not match the transit key type '%s'", certificatePublicKeyAlgorithm, p.Type)}
+	}
+
+	switch certificatePublicKeyAlgorithm {
+	case x509.ECDSA:
+		certificatePublicKey := certificatePublicKey.(*ecdsa.PublicKey)
+		keyCurve, _ := p.getECDSAKeyCurve()
+		publicKey := &ecdsa.PublicKey{
+			Curve: keyCurve,
+			X:     keyEntry.EC_X,
+			Y:     keyEntry.EC_Y,
+		}
+
+		return publicKey.Equal(certificatePublicKey), nil
+	case x509.Ed25519:
+		if p.Derived {
+			return false, errutil.UserError{Err: "operation not supported on keys with derivation enabled"}
+		}
+		certificatePublicKey := certificatePublicKey.(ed25519.PublicKey)
+
+		publicKeyRaw, err := base64.StdEncoding.DecodeString(keyEntry.FormattedPublicKey)
+		if err != nil {
+			return false, err
+		}
+		publicKey := ed25519.PublicKey(publicKeyRaw)
+
+		return publicKey.Equal(certificatePublicKey), nil
+	case x509.RSA:
+		certificatePublicKey := certificatePublicKey.(*rsa.PublicKey)
+		publicKey := keyEntry.RSAKey.PublicKey
+
+		return publicKey.Equal(certificatePublicKey), nil
+	case x509.UnknownPublicKeyAlgorithm:
+		return false, errutil.InternalError{Err: "certificate signed with an unknown algorithm"}
+	}
+
+	return false, nil
 }

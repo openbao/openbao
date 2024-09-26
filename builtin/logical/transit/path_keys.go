@@ -7,8 +7,10 @@ import (
 	"context"
 	"crypto/elliptic"
 	"encoding/base64"
+	"encoding/pem"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ed25519"
@@ -325,9 +327,10 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 
 // Built-in helper type for returning asymmetric keys
 type asymKey struct {
-	Name         string    `json:"name" structs:"name" mapstructure:"name"`
-	PublicKey    string    `json:"public_key" structs:"public_key" mapstructure:"public_key"`
-	CreationTime time.Time `json:"creation_time" structs:"creation_time" mapstructure:"creation_time"`
+	Name             string    `json:"name" structs:"name" mapstructure:"name"`
+	PublicKey        string    `json:"public_key" structs:"public_key" mapstructure:"public_key"`
+	CertificateChain string    `json:"certificate_chain" structs:"certificate_chain" mapstructure:"certificate_chain"`
+	CreationTime     time.Time `json:"creation_time" structs:"creation_time" mapstructure:"creation_time"`
 }
 
 func (b *backend) pathPolicyRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -435,6 +438,19 @@ func (b *backend) formatKeyPolicy(p *keysutil.Policy, context []byte) (*logical.
 			}
 			if key.CreationTime.IsZero() {
 				key.CreationTime = time.Unix(v.DeprecatedCreationTime, 0)
+			}
+
+			if v.CertificateChain != nil {
+				var pemCerts []string
+				for _, derCertBytes := range v.CertificateChain {
+					pemCert := strings.TrimSpace(string(pem.EncodeToMemory(
+						&pem.Block{
+							Type:  "CERTIFICATE",
+							Bytes: derCertBytes,
+						})))
+					pemCerts = append(pemCerts, pemCert)
+				}
+				key.CertificateChain = strings.Join(pemCerts, "\n")
 			}
 
 			switch p.Type {

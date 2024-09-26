@@ -23,10 +23,11 @@ import (
 )
 
 const (
-	exportTypeEncryptionKey = "encryption-key"
-	exportTypeSigningKey    = "signing-key"
-	exportTypeHMACKey       = "hmac-key"
-	exportTypePublicKey     = "public-key"
+	exportTypeEncryptionKey    = "encryption-key"
+	exportTypeSigningKey       = "signing-key"
+	exportTypeHMACKey          = "hmac-key"
+	exportTypePublicKey        = "public-key"
+	exportTypeCertificateChain = "certificate-chain"
 )
 
 const (
@@ -85,6 +86,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	case exportTypeSigningKey:
 	case exportTypeHMACKey:
 	case exportTypePublicKey:
+	case exportTypeCertificateChain:
 	default:
 		return logical.ErrorResponse(fmt.Sprintf("invalid export type: %s", exportType)), logical.ErrInvalidRequest
 	}
@@ -113,7 +115,7 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	}
 	defer p.Unlock()
 
-	if !p.Exportable && exportType != exportTypePublicKey {
+	if !p.Exportable && exportType != exportTypePublicKey && exportType != exportTypeCertificateChain {
 		return logical.ErrorResponse("private key material is not exportable"), nil
 	}
 
@@ -129,6 +131,10 @@ func (b *backend) pathPolicyExportRead(ctx context.Context, req *logical.Request
 	case exportTypeSigningKey:
 		if !p.Type.SigningSupported() {
 			return logical.ErrorResponse("signing not supported for the key"), logical.ErrInvalidRequest
+		}
+	case exportTypeCertificateChain:
+		if !p.Type.SigningSupported() {
+			return logical.ErrorResponse("certificate chain not supported for keys that do not support signing"), logical.ErrInvalidRequest
 		}
 	}
 
@@ -271,6 +277,21 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 			}
 			return rsaKey, nil
 		}
+	case exportTypeCertificateChain:
+		if key.CertificateChain == nil {
+			return "", errors.New("selected key version does not have a certificate chain imported")
+		}
+		var pemCertificates []string
+		for _, derCertificateBytes := range key.CertificateChain {
+			pemCert := strings.TrimSpace(string(pem.EncodeToMemory(
+				&pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: derCertificateBytes,
+				})))
+			pemCertificates = append(pemCertificates, pemCert)
+		}
+		certificateChain := strings.Join(pemCertificates, "\n")
+		return certificateChain, nil
 	}
 
 	return "", fmt.Errorf("unknown key type %v for export type %v", policy.Type, exportType)

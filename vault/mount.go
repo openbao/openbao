@@ -649,15 +649,15 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	viewPath := entry.ViewPath()
 	view := NewBarrierView(c.barrier, viewPath)
 
-	origReadOnlyErr := view.getReadOnlyErr()
+	origReadOnlyErr := view.GetReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
 	// ensure that it is reset after. This ensures that there will be no
 	// writes during the construction of the backend.
-	view.setReadOnlyErr(logical.ErrSetupReadOnly)
+	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 	// We defer this because we're already up and running so we don't need to
 	// time it for after postUnseal
-	defer view.setReadOnlyErr(origReadOnlyErr)
+	defer view.SetReadOnlyErr(origReadOnlyErr)
 
 	var backend logical.Backend
 	sysView := c.mountEntrySysView(entry)
@@ -705,7 +705,7 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 
 	// restore the original readOnlyErr, so we can write to the view in
 	// Initialize() if necessary
-	view.setReadOnlyErr(origReadOnlyErr)
+	view.SetReadOnlyErr(origReadOnlyErr)
 	// initialize, using the core's active context.
 	err = backend.Initialize(c.activeContext, &logical.InitializationRequest{Storage: view})
 	if err != nil {
@@ -1394,14 +1394,14 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		// Create a barrier storage view using the UUID
 		view := NewBarrierView(c.barrier, barrierPath)
 
-		origReadOnlyErr := view.getReadOnlyErr()
+		origReadOnlyErr := view.GetReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
-		view.setReadOnlyErr(logical.ErrSetupReadOnly)
+		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 		if strutil.StrListContains(singletonMounts, entry.Type) {
-			defer view.setReadOnlyErr(origReadOnlyErr)
+			defer view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
 		var backend logical.Backend
@@ -1476,7 +1476,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 				return
 			}
 			if !strutil.StrListContains(singletonMounts, localEntry.Type) {
-				view.setReadOnlyErr(origReadOnlyErr)
+				view.SetReadOnlyErr(origReadOnlyErr)
 			}
 
 			err := backend.Initialize(ctx, &logical.InitializationRequest{Storage: view})
@@ -1756,7 +1756,7 @@ func (c *Core) singletonMountTables() (mounts, auth *MountTable) {
 	return
 }
 
-func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view *BarrierView) {
+func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view BarrierView) {
 	switch entry.Type {
 	case mountTypeSystem:
 		c.systemBackend = backend.(*SystemBackend)

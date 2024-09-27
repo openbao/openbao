@@ -117,7 +117,7 @@ var (
 		if storage == nil {
 			return fmt.Errorf("no cubby mount entry")
 		}
-		view := storage.(*BarrierView)
+		view := storage.(BarrierView)
 
 		switch {
 		case te.NamespaceID == namespace.RootNamespaceID && !IsServiceToken(te.ID):
@@ -713,11 +713,11 @@ type TokenStore struct {
 
 	batchTokenEncryptor BarrierEncryptor
 
-	baseBarrierView     *BarrierView
-	idBarrierView       *BarrierView
-	accessorBarrierView *BarrierView
-	parentBarrierView   *BarrierView
-	rolesBarrierView    *BarrierView
+	baseBarrierView     BarrierView
+	idBarrierView       BarrierView
+	accessorBarrierView BarrierView
+	parentBarrierView   BarrierView
+	rolesBarrierView    BarrierView
 
 	expiration *ExpirationManager
 
@@ -2180,7 +2180,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			if view == nil {
 				return fmt.Errorf("no cubby mount entry")
 			}
-			bview := view.(*BarrierView)
+			bview := view.(BarrierView)
 
 			cubbyholeKeys, err := bview.List(quitCtx, "")
 			if err != nil {

@@ -362,7 +362,7 @@ type Core struct {
 	cubbyholeBackend *CubbyholeBackend
 
 	// systemBarrierView is the barrier view for the system backend
-	systemBarrierView *BarrierView
+	systemBarrierView BarrierView
 
 	// expiration manager is used for managing LeaseIDs,
 	// renewal, expiration and revocation

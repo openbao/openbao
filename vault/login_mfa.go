@@ -2876,7 +2876,7 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 	return b.putMFAConfigCommon(ctx, mConfig, loginMFAConfigPrefix, mConfig.ID, barrierView)
 }
 
-func (b *MFABackend) putMFAConfigCommon(ctx context.Context, mConfig *mfa.Config, prefix, suffix string, barrierView *BarrierView) error {
+func (b *MFABackend) putMFAConfigCommon(ctx context.Context, mConfig *mfa.Config, prefix, suffix string, barrierView BarrierView) error {
 	entryIndex := prefix + suffix
 	marshaledEntry, err := proto.Marshal(mConfig)
 	if err != nil {
@@ -2889,7 +2889,7 @@ func (b *MFABackend) putMFAConfigCommon(ctx context.Context, mConfig *mfa.Config
 	})
 }
 
-func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView *BarrierView) (*mfa.Config, error) {
+func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.Config, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err
@@ -2908,7 +2908,7 @@ func (b *MFABackend) getMFAConfig(ctx context.Context, path string, barrierView 
 	return &mConfig, nil
 }
 
-func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView *BarrierView) (*mfa.MFAEnforcementConfig, error) {
+func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path string, barrierView BarrierView) (*mfa.MFAEnforcementConfig, error) {
 	entry, err := barrierView.Get(ctx, path)
 	if err != nil {
 		return nil, err

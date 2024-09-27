@@ -538,7 +538,7 @@ func testCore_Unmount_Cleanup(t *testing.T, causeFailure bool) {
 	}
 
 	if causeFailure {
-		view.(*BarrierView).setReadOnlyErr(logical.ErrSetupReadOnly)
+		view.(BarrierView).SetReadOnlyErr(logical.ErrSetupReadOnly)
 	}
 
 	// Unmount, this should cleanup

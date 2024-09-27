@@ -104,13 +104,13 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 	}
 	viewPath := entry.ViewPath()
 	view := NewBarrierView(c.barrier, viewPath)
-	origViewReadOnlyErr := view.getReadOnlyErr()
+	origViewReadOnlyErr := view.GetReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
 	// ensure that it is reset after. This ensures that there will be no
 	// writes during the construction of the backend.
-	view.setReadOnlyErr(logical.ErrSetupReadOnly)
-	defer view.setReadOnlyErr(origViewReadOnlyErr)
+	view.SetReadOnlyErr(logical.ErrSetupReadOnly)
+	defer view.SetReadOnlyErr(origViewReadOnlyErr)
 
 	// Lookup the new backend
 	backend, err := c.newAuditBackend(ctx, entry, view, entry.Options)
@@ -390,14 +390,14 @@ func (c *Core) setupAudits(ctx context.Context) error {
 		// Create a barrier view using the UUID
 		viewPath := entry.ViewPath()
 		view := NewBarrierView(c.barrier, viewPath)
-		origViewReadOnlyErr := view.getReadOnlyErr()
+		origViewReadOnlyErr := view.GetReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and
 		// ensure that it is reset after. This ensures that there will be no
 		// writes during the construction of the backend.
-		view.setReadOnlyErr(logical.ErrSetupReadOnly)
+		view.SetReadOnlyErr(logical.ErrSetupReadOnly)
 		c.postUnsealFuncs = append(c.postUnsealFuncs, func() {
-			view.setReadOnlyErr(origViewReadOnlyErr)
+			view.SetReadOnlyErr(origViewReadOnlyErr)
 		})
 
 		// Initialize the backend

@@ -12,10 +12,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-func TestBarrierView_impl(t *testing.T) {
-	var _ logical.Storage = new(BarrierView)
-}
-
 func TestBarrierView_spec(t *testing.T) {
 	_, barrier, _ := mockBarrier(t)
 	view := NewBarrierView(barrier, "foo/")
@@ -298,7 +294,7 @@ func TestBarrierView_Readonly(t *testing.T) {
 	}
 
 	// Enable read only mode
-	view.readOnlyErr = logical.ErrReadOnly
+	view.SetReadOnlyErr(logical.ErrReadOnly)
 
 	// Put should fail in readonly mode
 	if err := view.Put(context.Background(), entry); err != logical.ErrReadOnly {

@@ -83,6 +83,18 @@ func (b *versionedKVBackend) pathConfigRead() framework.OperationFunc {
 // pathConfigWrite handles create and update commands to the config
 func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		maxRaw, mOk := data.GetOk("max_versions")
 		casRaw, cOk := data.GetOk("cas_required")
 		dvaRaw, dvaOk := data.GetOk("delete_version_after")
@@ -127,6 +139,15 @@ func (b *versionedKVBackend) pathConfigWrite() framework.OperationFunc {
 		})
 		if err != nil {
 			return nil, err
+		}
+
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
 		}
 
 		b.globalConfigLock.Lock()

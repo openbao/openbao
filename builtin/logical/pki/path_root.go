@@ -312,20 +312,6 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 	}
 	b.ifCountEnabledIncrementTotalCertificatesCount(certsCounted, key)
 
-	// Build a fresh CRL, using our _original_ storage, to prevent this from
-	// being done inside a transaction (with limited size).
-	warnings, err = b.crlBuilder.rebuild(crlSc, true)
-	if err != nil {
-		return nil, err
-	}
-	for index, warning := range warnings {
-		resp.AddWarning(fmt.Sprintf("Warning %d during CRL rebuild: %v", index+1, warning))
-	}
-
-	if parsedBundle.Certificate.MaxPathLen == 0 {
-		resp.AddWarning("Max path length of the generated certificate is zero. This certificate cannot be used to issue intermediate CA certificates.")
-	}
-
 	// Check whether we need to update our default issuer configuration.
 	config, err := sc.getIssuersConfig()
 	if err != nil {
@@ -336,12 +322,27 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	// Finally, commit our transaction if we created one!
+	// Commit our transaction if we created one! We're done making
+	// modifications to storage.
 	if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
 		if err := txn.Commit(ctx); err != nil {
 			return nil, err
 		}
 		req.Storage = originalStorage
+	}
+
+	// Build a fresh CRL, using our _original_ storage, to prevent this from
+	// being done inside a transaction (with limited size).
+	warnings, err = b.crlBuilder.rebuild(crlSc, true)
+	if err != nil {
+		resp.AddWarning(err.Error())
+	}
+	for index, warning := range warnings {
+		resp.AddWarning(fmt.Sprintf("Warning %d during CRL rebuild: %v", index+1, warning))
+	}
+
+	if parsedBundle.Certificate.MaxPathLen == 0 {
+		resp.AddWarning("Max path length of the generated certificate is zero. This certificate cannot be used to issue intermediate CA certificates.")
 	}
 
 	return resp, nil

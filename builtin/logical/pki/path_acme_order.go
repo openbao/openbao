@@ -966,6 +966,7 @@ func parseOrderIdentifiers(data map[string]interface{}) ([]*ACMEIdentifier, erro
 			if ip == nil {
 				return nil, fmt.Errorf("value argument (%s) failed validation: failed parsing as IP: %w", valueStr, ErrMalformed)
 			}
+			identifier.IsIPv6 = ip.To4() == nil
 		case string(ACMEDNSIdentifier):
 			identifier.Type = ACMEDNSIdentifier
 

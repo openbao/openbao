@@ -5,6 +5,7 @@ package physical
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 
 	metrics "github.com/armon/go-metrics"
@@ -86,8 +87,13 @@ type transactionalCache struct {
 
 type cacheTransaction struct {
 	cache
-	parent   TransactionalCache
-	modified map[string]struct{}
+	parent TransactionalCache
+
+	// lock is necessary because, while cache.locks protects access to the
+	// same key from parallel threads, we could still adding new modified
+	// entries with different keys from parallel threads.
+	modifiedLock sync.Mutex
+	modified     map[string]struct{}
 }
 
 // Verify Cache satisfies the correct interfaces
@@ -152,6 +158,10 @@ func (c *cache) SetEnabled(enabled bool) {
 		return
 	}
 	atomic.StoreUint32(c.enabled, 0)
+}
+
+func (c *cache) GetEnabled() bool {
+	return atomic.LoadUint32(c.enabled) == 1
 }
 
 // Purge is used to clear the cache
@@ -264,7 +274,9 @@ func (c *cache) cloneWithStorage(b Backend) *cache {
 	// fresh, localized cache. This is globally sub-optimal (as it starts
 	// with an empty cache), but easiest to implement (as the transaction can
 	// modify its cache as it pleases).
-	return NewCache(b, c.size, c.logger, c.metricSink).(*cache)
+	cacheCopy := NewCache(b, c.size, c.logger, c.metricSink).(*cache)
+	cacheCopy.SetEnabled(c.GetEnabled())
+	return cacheCopy
 }
 
 func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
@@ -279,6 +291,7 @@ func (c *transactionalCache) BeginReadOnlyTx(ctx context.Context) (Transaction, 
 	return &cacheTransaction{
 		*ctxn,
 		c,
+		sync.Mutex{},
 		make(map[string]struct{}),
 	}, nil
 }
@@ -294,6 +307,7 @@ func (c *transactionalCache) BeginTx(ctx context.Context) (Transaction, error) {
 	return &cacheTransaction{
 		*ctxn,
 		c,
+		sync.Mutex{},
 		make(map[string]struct{}),
 	}, nil
 }
@@ -324,7 +338,9 @@ func (c *cacheTransaction) Put(ctx context.Context, entry *Entry) error {
 			copy(cacheEntry.ValueHash, entry.ValueHash)
 		}
 		c.lru.Add(entry.Key, cacheEntry)
+		c.modifiedLock.Lock()
 		c.modified[entry.Key] = struct{}{}
+		c.modifiedLock.Unlock()
 		c.metricSink.IncrCounter([]string{"cache", "write"}, 1)
 	}
 	return err
@@ -341,8 +357,11 @@ func (c *cacheTransaction) Delete(ctx context.Context, key string) error {
 
 	err := c.backend.Delete(ctx, key)
 	if err == nil {
-		c.lru.Remove(key)
+		c.modifiedLock.Lock()
 		c.modified[key] = struct{}{}
+		c.modifiedLock.Unlock()
+
+		c.lru.Remove(key)
 	}
 	return err
 }
@@ -359,6 +378,7 @@ func (c *cacheTransaction) Commit(ctx context.Context) error {
 	// update this cache. Thus, removing the value from the cache is the most
 	// optimal strategy (incurring one additional read) without causing
 	// incorrect behavior.
+	c.modifiedLock.Lock()
 	for key := range c.modified {
 		func() {
 			lock := locksutil.LockForKey(c.parent.(*transactionalCache).locks, key)
@@ -368,6 +388,7 @@ func (c *cacheTransaction) Commit(ctx context.Context) error {
 			c.parent.(*transactionalCache).lru.Remove(key)
 		}()
 	}
+	c.modifiedLock.Unlock()
 
 	return nil
 }

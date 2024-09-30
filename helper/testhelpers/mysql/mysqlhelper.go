@@ -26,7 +26,7 @@ func PrepareTestContainer(t *testing.T, legacy bool, pw string) (func(), string)
 		return func() {}, os.Getenv("MYSQL_URL")
 	}
 
-	imageVersion := "5.7"
+	imageVersion := "9.0"
 	if legacy {
 		imageVersion = "5.6"
 	}

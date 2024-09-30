@@ -23,19 +23,19 @@ func (c *OperatorCommand) Help() string {
 	helpText := `
 Usage: bao operator <subcommand> [options] [args]
 
-  This command groups subcommands for operators interacting with Vault. Most
+  This command groups subcommands for operators interacting with OpenBao. Most
   users will not need to interact with these commands. Here are a few examples
   of the operator commands:
 
-  Initialize a new Vault cluster:
+  Initialize a new OpenBao cluster:
 
       $ bao operator init
 
-  Force a Vault to resign leadership in a cluster:
+  Force an OpenBao node to resign leadership in a cluster:
 
       $ bao operator step-down
 
-  Rotate Vault's underlying encryption key:
+  Rotate OpenBao's underlying encryption key:
 
       $ bao operator rotate
 

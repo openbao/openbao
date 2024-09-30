@@ -16,14 +16,14 @@ type OperatorRaftCommand struct {
 }
 
 func (c *OperatorRaftCommand) Synopsis() string {
-	return "Interact with Vault's raft storage backend"
+	return "Interact with OpenBao's raft storage backend"
 }
 
 func (c *OperatorRaftCommand) Help() string {
 	helpText := `
 Usage: bao operator raft <subcommand> [options] [args]
 
-  This command groups subcommands for operators interacting with the Vault raft
+  This command groups subcommands for operators interacting with the OpenBao raft
   storage backend. Most users will not need to interact with these commands. Here
   are a few examples of the raft operator commands:
 

@@ -51,7 +51,7 @@ Usage: bao kv delete [options] PATH
 
       $ bao kv delete -mount=secret -versions=3 foo
 
-  To delete all versions and metadata, see the "vault kv metadata" subcommand.
+  To delete all versions and metadata, see the "bao kv metadata" subcommand.
 
   Additional flags and more advanced use cases are detailed below.
 

@@ -34,10 +34,10 @@ Usage: bao operator rotate [options]
   decrypt older data.
 
   This is an online operation and does not cause downtime. This command is run
-  per-cluster (not per-server), since Vault servers in HA mode share the same
+  per-cluster (not per-server), since OpenBao servers in HA mode share the same
   storage backend.
 
-  Rotate Vault's encryption key:
+  Rotate OpenBao's encryption key:
 
       $ bao operator rotate
 

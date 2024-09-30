@@ -50,7 +50,7 @@ func (p *Predict) Client() *api.Client {
 }
 
 // defaultPredictVaultMounts is the default list of mounts to return to the
-// user. This is a best-guess, given we haven't communicated with the Vault
+// user. This is a best-guess, given we haven't communicated with the OpenBao
 // server. If the user has no token or if the token does not have the default
 // policy attached, it won't be able to read cubbyhole/, but it's a better UX
 // that returning nothing.
@@ -77,7 +77,7 @@ func PredictClient() *api.Client {
 }
 
 // PredictVaultAvailableMounts returns a predictor for the available mounts in
-// Vault. For now, there is no way to programmatically get this list. If, in the
+// OpenBao. For now, there is no way to programmatically get this list. If, in the
 // future, such a list exists, we can adapt it here. Until then, it's
 // hard-coded.
 func (b *BaseCommand) PredictVaultAvailableMounts() complete.Predictor {
@@ -98,7 +98,7 @@ func (b *BaseCommand) PredictVaultAvailableMounts() complete.Predictor {
 }
 
 // PredictVaultAvailableAuths returns a predictor for the available auths in
-// Vault. For now, there is no way to programmatically get this list. If, in the
+// OpenBao. For now, there is no way to programmatically get this list. If, in the
 // future, such a list exists, we can adapt it here. Until then, it's
 // hard-coded.
 func (b *BaseCommand) PredictVaultAvailableAuths() complete.Predictor {
@@ -117,10 +117,10 @@ func (b *BaseCommand) PredictVaultAvailableAuths() complete.Predictor {
 	)
 }
 
-// PredictVaultFiles returns a predictor for Vault mounts and paths based on the
+// PredictVaultFiles returns a predictor for OpenBao mounts and paths based on the
 // configured client for the base command. Unfortunately this happens pre-flag
 // parsing, so users must rely on environment variables for autocomplete if they
-// are not using Vault at the default endpoints.
+// are not using OpenBao at the default endpoints.
 func (b *BaseCommand) PredictVaultFiles() complete.Predictor {
 	return NewPredict().VaultFiles()
 }
@@ -137,19 +137,19 @@ func (b *BaseCommand) PredictVaultNamespaces() complete.Predictor {
 	return NewPredict().VaultNamespaces()
 }
 
-// PredictVaultMounts returns a predictor for "folders". See PredictVaultFiles
+// PredictVaultMounts returns a predictor for mounts. See PredictVaultFiles
 // for more information and restrictions.
 func (b *BaseCommand) PredictVaultMounts() complete.Predictor {
 	return NewPredict().VaultMounts()
 }
 
-// PredictVaultAudits returns a predictor for "folders". See PredictVaultFiles
+// PredictVaultAudits returns a predictor for audit devices. See PredictVaultFiles
 // for more information and restrictions.
 func (b *BaseCommand) PredictVaultAudits() complete.Predictor {
 	return NewPredict().VaultAudits()
 }
 
-// PredictVaultAuths returns a predictor for "folders". See PredictVaultFiles
+// PredictVaultAuths returns a predictor for auth mounts. See PredictVaultFiles
 // for more information and restrictions.
 func (b *BaseCommand) PredictVaultAuths() complete.Predictor {
 	return NewPredict().VaultAuths()
@@ -160,7 +160,7 @@ func (b *BaseCommand) PredictVaultPlugins(pluginTypes ...api.PluginType) complet
 	return NewPredict().VaultPlugins(pluginTypes...)
 }
 
-// PredictVaultPolicies returns a predictor for "folders". See PredictVaultFiles
+// PredictVaultPolicies returns a predictor for policies. See PredictVaultFiles
 // for more information and restrictions.
 func (b *BaseCommand) PredictVaultPolicies() complete.Predictor {
 	return NewPredict().VaultPolicies()
@@ -177,48 +177,50 @@ func (b *BaseCommand) PredictVaultDebugTargets() complete.Predictor {
 	)
 }
 
-// VaultFiles returns a predictor for Vault "files". This is a public API for
+// VaultFiles returns a predictor for OpenBao "files". This is a public API for
 // consumers, but you probably want BaseCommand.PredictVaultFiles instead.
 func (p *Predict) VaultFiles() complete.Predictor {
 	return p.vaultPaths(true)
 }
 
-// VaultFolders returns a predictor for Vault "folders". This is a public
+// VaultFolders returns a predictor for OpenBao "folders". This is a public
 // API for consumers, but you probably want BaseCommand.PredictVaultFolders
 // instead.
 func (p *Predict) VaultFolders() complete.Predictor {
 	return p.vaultPaths(false)
 }
 
-// VaultNamespaces returns a predictor for Vault "namespaces". This is a public
+// VaultNamespaces returns a predictor for OpenBao "namespaces". This is a public
 // API for consumers, but you probably want BaseCommand.PredictVaultNamespaces
 // instead.
 func (p *Predict) VaultNamespaces() complete.Predictor {
 	return p.filterFunc(p.namespaces)
 }
 
-// VaultMounts returns a predictor for Vault "folders". This is a public
+// VaultMounts returns a predictor for OpenBao mounts. This is a public
 // API for consumers, but you probably want BaseCommand.PredictVaultMounts
 // instead.
 func (p *Predict) VaultMounts() complete.Predictor {
 	return p.filterFunc(p.mounts)
 }
 
-// VaultAudits returns a predictor for Vault "folders". This is a public API for
-// consumers, but you probably want BaseCommand.PredictVaultAudits instead.
+// VaultAudits returns a predictor for OpenBao audit devices. This is a public
+// API for consumers, but you probably want BaseCommand.PredictVaultAudits
+// instead.
 func (p *Predict) VaultAudits() complete.Predictor {
 	return p.filterFunc(p.audits)
 }
 
-// VaultAuths returns a predictor for Vault "folders". This is a public API for
-// consumers, but you probably want BaseCommand.PredictVaultAuths instead.
+// VaultAuths returns a predictor for OpenBao auth mounts. This is a public
+// API for consumers, but you probably want BaseCommand.PredictVaultAuths
+// instead.
 func (p *Predict) VaultAuths() complete.Predictor {
 	return p.filterFunc(p.auths)
 }
 
-// VaultPlugins returns a predictor for Vault's plugin catalog. This is a public
-// API for consumers, but you probably want BaseCommand.PredictVaultPlugins
-// instead.
+// VaultPlugins returns a predictor for OpenBao's plugin catalog. This is a
+// public API for consumers, but you probably want
+// BaseCommand.PredictVaultPlugins instead.
 func (p *Predict) VaultPlugins(pluginTypes ...api.PluginType) complete.Predictor {
 	filterFunc := func() []string {
 		return p.plugins(pluginTypes...)
@@ -226,8 +228,9 @@ func (p *Predict) VaultPlugins(pluginTypes ...api.PluginType) complete.Predictor
 	return p.filterFunc(filterFunc)
 }
 
-// VaultPolicies returns a predictor for Vault "folders". This is a public API for
-// consumers, but you probably want BaseCommand.PredictVaultPolicies instead.
+// VaultPolicies returns a predictor for OpenBao policies. This is a public
+// API for consumers, but you probably want BaseCommand.PredictVaultPolicies
+// instead.
 func (p *Predict) VaultPolicies() complete.Predictor {
 	return p.filterFunc(p.policies)
 }
@@ -305,7 +308,7 @@ func (p *Predict) paths(mountType, mountVersion, path string, includeFiles bool)
 		return nil
 	}
 
-	// Vault does not support listing based on a sub-key, so we have to back-pedal
+	// OpenBao does not support listing based on a sub-key, so we have to back-pedal
 	// to the last "/" and return all paths on that "folder". Then we perform
 	// client-side filtering.
 	root := path
@@ -353,7 +356,7 @@ func toKVv2ListPath(path string) string {
 	return path[:firstSlashIdx] + "/metadata" + path[firstSlashIdx:]
 }
 
-// audits returns a sorted list of the audit backends for Vault server for
+// audits returns a sorted list of the audit backends for OpenBao server for
 // which the client is configured to communicate with.
 func (p *Predict) audits() []string {
 	client := p.Client()
@@ -374,7 +377,7 @@ func (p *Predict) audits() []string {
 	return list
 }
 
-// auths returns a sorted list of the enabled auth provides for Vault server for
+// auths returns a sorted list of the enabled auth provides for OpenBao server for
 // which the client is configured to communicate with.
 func (p *Predict) auths() []string {
 	client := p.Client()
@@ -432,7 +435,7 @@ func (p *Predict) plugins(pluginTypes ...api.PluginType) []string {
 	return plugins
 }
 
-// policies returns a sorted list of the policies stored in this Vault
+// policies returns a sorted list of the policies stored in this OpenBao
 // server.
 func (p *Predict) policies() []string {
 	client := p.Client()
@@ -449,7 +452,7 @@ func (p *Predict) policies() []string {
 }
 
 // mountInfos returns a map with mount paths as keys and MountOutputs as values
-// for the Vault server which the client is configured to communicate with.
+// for the OpenBao server which the client is configured to communicate with.
 // Returns error if server communication fails.
 func (p *Predict) mountInfos() (map[string]*api.MountOutput, error) {
 	client := p.Client()
@@ -465,7 +468,7 @@ func (p *Predict) mountInfos() (map[string]*api.MountOutput, error) {
 	return mounts, nil
 }
 
-// mounts returns a sorted list of the mount paths for Vault server for
+// mounts returns a sorted list of the mount paths for OpenBao server for
 // which the client is configured to communicate with. This function returns the
 // default list of mounts if an error occurs.
 func (p *Predict) mounts() []string {
@@ -482,7 +485,7 @@ func (p *Predict) mounts() []string {
 	return list
 }
 
-// namespaces returns a sorted list of the namespace paths for Vault server for
+// namespaces returns a sorted list of the namespace paths for OpenBao server for
 // which the client is configured to communicate with. This function returns
 // an empty list in any error occurs.
 func (p *Predict) namespaces() []string {

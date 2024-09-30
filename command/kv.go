@@ -16,14 +16,14 @@ type KVCommand struct {
 }
 
 func (c *KVCommand) Synopsis() string {
-	return "Interact with Vault's Key-Value storage"
+	return "Interact with OpenBao's Key-Value storage"
 }
 
 func (c *KVCommand) Help() string {
 	helpText := `
 Usage: bao kv <subcommand> [options] [args]
 
-  This command has subcommands for interacting with Vault's key-value
+  This command has subcommands for interacting with OpenBao's key-value
   store. Here are some simple examples, and more detailed examples are
   available in the subcommands or the documentation.
 

@@ -92,14 +92,14 @@ type ProxyCommand struct {
 }
 
 func (c *ProxyCommand) Synopsis() string {
-	return "Start a Vault Proxy"
+	return "Start an OpenBao Proxy"
 }
 
 func (c *ProxyCommand) Help() string {
 	helpText := `
 Usage: bao proxy [options]
 
-  This command starts a Vault Proxy that can perform automatic authentication
+  This command starts an OpenBao Proxy that can perform automatic authentication
   in certain environments.
 
   Start a proxy with a configuration file:
@@ -142,11 +142,11 @@ func (c *ProxyCommand) Flags() *FlagSets {
 
 	// Internal-only flags to follow.
 	//
-	// Why hello there little source code reader! Welcome to the Vault source
+	// Why hello there little source code reader! Welcome to the OpenBao source
 	// code. The remaining options are intentionally undocumented and come with
 	// no warranty or backwards-compatibility promise. Do not use these flags
 	// in production. Do not build automation using these flags. Unless you are
-	// developing against Vault, you should not need any of these flags.
+	// developing against OpenBao, you should not need any of these flags.
 	f.BoolVar(&BoolVar{
 		Name:    "test-verify-only",
 		Target:  &c.flagTestVerifyOnly,
@@ -245,7 +245,7 @@ func (c *ProxyCommand) Run(args []string) int {
 	}
 
 	// Ignore any setting of Agent/Proxy's address. This client is used by the Proxy
-	// to reach out to Vault. This should never loop back to the proxy.
+	// to reach out to OpenBao. This should never loop back to the proxy.
 	c.flagAgentProxyAddress = ""
 	client, err := c.Client()
 	if err != nil {

@@ -43,13 +43,13 @@ func (c *LoginCommand) Help() string {
 	helpText := `
 Usage: bao login [options] [AUTH K=V...]
 
-  Authenticates users or machines to Vault using the provided arguments. A
-  successful authentication results in a Vault token - conceptually similar to
+  Authenticates users or machines to OpenBao using the provided arguments. A
+  successful authentication results in a OpenBao token - conceptually similar to
   a session token on a website. By default, this token is cached on the local
   machine for future requests.
 
   The default auth method is "token". If not supplied via the CLI,
-  Vault will prompt for input. If the argument is "-", the values are read
+  OpenBao will prompt for input. If the argument is "-", the values are read
   from stdin.
 
   The -method flag allows using other auth methods, such as userpass, github, or
@@ -59,8 +59,8 @@ Usage: bao login [options] [AUTH K=V...]
       $ bao login -method=userpass username=my-username
 
   For more information about the list of configuration parameters available for
-  a given auth method, use the "vault auth help TYPE" command. You can also use
-  "vault auth list" to see the list of enabled auth methods.
+  a given auth method, use the "bao auth help TYPE" command. You can also use
+  "bao auth list" to see the list of enabled auth methods.
 
   If an auth method is enabled at a non-standard path, the -method flag still
   refers to the canonical type, but the -path flag refers to the enabled path.
@@ -183,7 +183,7 @@ func (c *LoginCommand) Run(args []string) int {
 	authHandler, ok := c.Handlers[authMethod]
 	if !ok {
 		c.UI.Error(wrapAtLength(fmt.Sprintf(
-			"Unknown auth method: %s. Use \"vault auth list\" to see the "+
+			"Unknown auth method: %s. Use \"bao auth list\" to see the "+
 				"complete list of auth methods. Additionally, some "+
 				"auth methods are only available via the HTTP API.",
 			authMethod)))

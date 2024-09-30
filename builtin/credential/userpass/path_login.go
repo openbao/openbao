@@ -5,7 +5,6 @@ package userpass
 
 import (
 	"context"
-	"crypto/subtle"
 	"fmt"
 	"strings"
 
@@ -74,47 +73,31 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 	user, userError := b.user(ctx, req.Storage, username)
 
 	var userPassword []byte
-	var legacyPassword bool
 	// If there was an error or it's nil, we fake a password for the bcrypt
 	// check so as not to have a timing leak. Specifics of the underlying
 	// storage still leaks a bit but generally much more in the noise compared
 	// to bcrypt.
 	if user != nil && userError == nil {
-		if user.PasswordHash == nil {
-			userPassword = []byte(user.Password)
-			legacyPassword = true
-		} else {
-			userPassword = user.PasswordHash
+		if len(user.PasswordHash) == 0 {
+			return nil, fmt.Errorf("invalid user entry: refusing to process pre-Vault v0.2 record")
 		}
+
+		userPassword = user.PasswordHash
 	} else {
 		// This is still acceptable as bcrypt will still make sure it takes
 		// a long time, it's just nicer to be random if possible
 		userPassword = []byte("dummy")
 	}
 
-	// Check for a password match. Check for a hash collision for Vault 0.2+,
-	// but handle the older legacy passwords with a constant time comparison.
+	// Check for a password match.
 	passwordBytes := []byte(password)
-	switch {
-	case !legacyPassword:
-		if err := bcrypt.CompareHashAndPassword(userPassword, passwordBytes); err != nil {
-			// The failed login info of existing users alone are tracked as only
-			// existing user's failed login information is stored in storage for optimization
-			if user == nil || userError != nil {
-				return logical.ErrorResponse("invalid username or password"), nil
-			}
-			return logical.ErrorResponse("invalid username or password"), logical.ErrInvalidCredentials
+	if err := bcrypt.CompareHashAndPassword(userPassword, passwordBytes); err != nil {
+		// The failed login info of existing users alone are tracked as only
+		// existing user's failed login information is stored in storage for optimization
+		if user == nil || userError != nil {
+			return logical.ErrorResponse("invalid username or password"), nil
 		}
-	default:
-		if subtle.ConstantTimeCompare(userPassword, passwordBytes) != 1 {
-			// The failed login info of existing users alone are tracked as only
-			// existing user's failed login information is stored in storage for optimization
-			if user == nil || userError != nil {
-				return logical.ErrorResponse("invalid username or password"), nil
-			}
-			return logical.ErrorResponse("invalid username or password"), logical.ErrInvalidCredentials
-		}
-
+		return logical.ErrorResponse("invalid username or password"), logical.ErrInvalidCredentials
 	}
 
 	if userError != nil {

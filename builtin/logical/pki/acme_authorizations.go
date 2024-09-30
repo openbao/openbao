@@ -20,6 +20,7 @@ type ACMEIdentifier struct {
 	Value         string             `json:"value"`
 	OriginalValue string             `json:"original_value"`
 	IsWildcard    bool               `json:"is_wildcard"`
+	IsIPv6        bool               `json:"is_ipv6"`
 }
 
 func (ai *ACMEIdentifier) MaybeParseWildcard() (bool, string, error) {

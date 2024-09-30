@@ -69,7 +69,7 @@
     "@types/ember-data__adapter": "^4.0.1",
     "@types/ember-data__model": "^4.0.0",
     "@types/ember-data__serializer": "^4.0.1",
-    "@types/ember-data__store": "^4.0.2",
+    "@types/ember-data__store": "^4.0.7",
     "@types/ember-qunit": "^5.0.2",
     "@types/ember-resolver": "^5.0.13",
     "@types/ember__application": "^4.0.4",

@@ -103,7 +103,7 @@
     "broccoli-asset-rev": "^3.0.0",
     "broccoli-sri-hash": "meirish/broccoli-sri-hash#rooturl",
     "codemirror": "^5.58.2",
-    "columnify": "^1.5.4",
+    "columnify": "^1.6.0",
     "d3-axis": "^1.0.8",
     "d3-ease": "^1.0.5",
     "d3-scale": "^1.0.7",

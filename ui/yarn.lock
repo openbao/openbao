@@ -10032,13 +10032,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"columnify@npm:^1.5.4":
-  version: 1.5.4
-  resolution: "columnify@npm:1.5.4"
+"columnify@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "columnify@npm:1.6.0"
   dependencies:
-    strip-ansi: ^3.0.0
+    strip-ansi: ^6.0.1
     wcwidth: ^1.0.0
-  checksum: f0693937412ec41d387f8ae89ff8cd5811a07ad636f753f0276ba8394fd76c0f610621ebeb379d6adcb30d98696919546dbbf93a28bd4e546efc7e30d905edc2
+  checksum: 0d590023616a27bcd2135c0f6ddd6fac94543263f9995538bbe391068976e30545e5534d369737ec7c3e9db4e53e70a277462de46aeb5a36e6997b4c7559c335
   languageName: node
   linkType: hard
 
@@ -24242,7 +24242,7 @@ __metadata:
     broccoli-asset-rev: ^3.0.0
     broccoli-sri-hash: "meirish/broccoli-sri-hash#rooturl"
     codemirror: ^5.58.2
-    columnify: ^1.5.4
+    columnify: ^1.6.0
     d3-axis: ^1.0.8
     d3-ease: ^1.0.5
     d3-scale: ^1.0.7

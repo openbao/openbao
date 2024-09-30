@@ -1,3 +1,5 @@
-```release-note:improvement
-secrets/transit: Add support to sign CSRs from keys in transit engine and import/export x509 certificates
+```release-note:feature
+**Transit**: Support PKI CSR and certificate storage alongside key material.
+ - This allows callers to securely create keys and submit requests for certificates without the key material leaving Transit.
+ - Additionally, storage of the certificate on the key avoids the need for an additional K/V mount. Rotation of this certificate and its chain is also supported.
 ```

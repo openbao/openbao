@@ -36,7 +36,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
 
-	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
@@ -169,10 +168,10 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 		return tls.ConnectionState{}, err
 	}
 	// Load the CA cert required by the client to authenticate the server.
-	rootConfig := &rootcerts.Config{
+	rootConfig := &api.CertConfig{
 		CAFile: serverCAPath,
 	}
-	serverCAs, err := rootcerts.LoadCACerts(rootConfig)
+	serverCAs, err := api.LoadCACerts(rootConfig)
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
@@ -2051,10 +2050,10 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	rootConfig := &rootcerts.Config{
+	rootConfig := &api.CertConfig{
 		CAFile: rootCertPath,
 	}
-	rootCAs, err := rootcerts.LoadCACerts(rootConfig)
+	rootCAs, err := api.LoadCACerts(rootConfig)
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}

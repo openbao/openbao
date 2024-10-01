@@ -15,6 +15,10 @@ talk to us! You can find out our thoughts and ensure that your contribution
 won't clash or be obviated by OpenBao's normal direction. A great way to do this
 is via the [GitHub Discussions][2].
 
+## Community Roles
+
+To view community roles or who holds those roles, see [MAINTAINERS.md](MAINTAINERS.md).
+
 ## Source-Available License Policy
 
 This policy prohibits the utilization or copy from any source that is protected

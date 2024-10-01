@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	backoff "github.com/cenkalti/backoff/v3"
+	backoff "github.com/cenkalti/backoff/v4"
 	"github.com/gocql/gocql"
 	"github.com/openbao/openbao/helper/testhelpers/cassandra"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"

@@ -64,7 +64,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.4.9
 	github.com/hashicorp/go-raftchunking v0.6.3-0.20191002164813-7e9e8525653a
-	github.com/hashicorp/go-retryablehttp v0.7.7	
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/fileutil v0.1.0
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
@@ -258,13 +258,13 @@ require (
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/consul/sdk v0.14.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
+	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.3.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.3 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/hashicorp/mdns v1.0.4 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

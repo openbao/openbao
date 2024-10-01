@@ -11,10 +11,10 @@ import (
 
 	"github.com/openbao/openbao/command/healthcheck"
 
-	"github.com/ghodss/yaml"
 	"github.com/hashicorp/cli"
 	"github.com/posener/complete"
 	"github.com/ryanuber/columnize"
+	"sigs.k8s.io/yaml"
 )
 
 const (

@@ -11,8 +11,8 @@ import (
 
 	"github.com/openbao/openbao/api/v2"
 
-	"github.com/ghodss/yaml"
 	"github.com/ryanuber/columnize"
+	"sigs.k8s.io/yaml"
 )
 
 type PKIListIntermediateCommand struct {

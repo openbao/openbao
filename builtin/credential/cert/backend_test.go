@@ -2056,13 +2056,19 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	rootConfig := &api.CertConfig{
-		CAFile: rootCertPath,
-	}
-	rootCAs, err := api.LoadCACerts(rootConfig)
+	// Load the CA cert required by the client to authenticate the server
+	pem, err := os.ReadFile(rootCertPath)
 	if err != nil {
-		return tls.ConnectionState{}, err
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
 	}
+	rootCAs := x509.NewCertPool()
+
+	// Append the CA certificates from the PEM file to the cert pool
+	ok := rootCAs.AppendCertsFromPEM(pem)
+	if !ok {
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", rootCertPath)
+	}
+
 	listenConf := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		ClientAuth:         tls.RequestClientCert,

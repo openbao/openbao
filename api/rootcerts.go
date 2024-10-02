@@ -28,6 +28,7 @@ func ConfigureTLS(t *tls.Config, c *CertConfig) error {
 	if t == nil {
 		return nil
 	}
+	// Greedily load all possible CA sources into the pool.
 	pool, err := LoadCACerts(c)
 	if err != nil {
 		return err
@@ -36,56 +37,64 @@ func ConfigureTLS(t *tls.Config, c *CertConfig) error {
 	return nil
 }
 
-// LoadCACerts loads a CertPool based on the CertConfig specified.
+// LoadCACerts loads a CertPool from all available CA sources in CertConfig.
 func LoadCACerts(c *CertConfig) (*x509.CertPool, error) {
-	if c == nil {
-		c = &CertConfig{}
-	}
-	if c.CAFile != "" {
-		return LoadCAFile(c.CAFile)
-	}
-	if len(c.CACertificate) != 0 {
-		return AppendCertificate(c.CACertificate)
-	}
-	if c.CAPath != "" {
-		return LoadCAPath(c.CAPath)
+	// Start with system CAs.
+	pool, err := LoadSystemCAs()
+	if err != nil {
+		pool = x509.NewCertPool()
 	}
 
-	return LoadSystemCAs()
+	// Load from CAFile, if specified.
+	if c.CAFile != "" {
+		if err := AppendCAFile(pool, c.CAFile); err != nil {
+			return nil, err
+		}
+	}
+
+	// Load from CACertificate, if specified.
+	if len(c.CACertificate) != 0 {
+		if err := AppendCertificate(pool, c.CACertificate); err != nil {
+			return nil, err
+		}
+	}
+
+	// Load from CAPath, if specified.
+	if c.CAPath != "" {
+		if err := AppendCAPath(pool, c.CAPath); err != nil {
+			return nil, err
+		}
+	}
+
+	return pool, nil
 }
 
-// LoadCAFile loads a single PEM-encoded file from the path specified.
-func LoadCAFile(caFile string) (*x509.CertPool, error) {
-	pool := x509.NewCertPool()
-
+// AppendCAFile loads a single PEM-encoded file and appends it to the provided CertPool.
+func AppendCAFile(pool *x509.CertPool, caFile string) error {
 	pem, err := os.ReadFile(caFile)
 	if err != nil {
-		return nil, fmt.Errorf("Error loading CA File: %w", err)
+		return fmt.Errorf("Error loading CA File: %w", err)
 	}
 
 	ok := pool.AppendCertsFromPEM(pem)
 	if !ok {
-		return nil, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", caFile)
+		return fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", caFile)
 	}
 
-	return pool, nil
+	return nil
 }
 
-// AppendCertificate appends an in-memory PEM-encoded certificate or bundle and returns a pool.
-func AppendCertificate(ca []byte) (*x509.CertPool, error) {
-	pool := x509.NewCertPool()
-
+// AppendCertificate appends an in-memory PEM-encoded certificate or bundle to the provided CertPool.
+func AppendCertificate(pool *x509.CertPool, ca []byte) error {
 	ok := pool.AppendCertsFromPEM(ca)
 	if !ok {
-		return nil, errors.New("Error appending CA: Couldn't parse PEM")
+		return errors.New("Error appending CA: Couldn't parse PEM")
 	}
-
-	return pool, nil
+	return nil
 }
 
-// LoadCAPath walks the provided path and loads all certificates encountered into a pool.
-func LoadCAPath(caPath string) (*x509.CertPool, error) {
-	pool := x509.NewCertPool()
+// AppendCAPath loads all certificates from the provided directory into the CertPool.
+func AppendCAPath(pool *x509.CertPool, caPath string) error {
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -110,10 +119,10 @@ func LoadCAPath(caPath string) (*x509.CertPool, error) {
 
 	err := filepath.Walk(caPath, walkFn)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return pool, nil
+	return nil
 }
 
 // LoadSystemCAs loads the system's CA certificates into a pool.

@@ -293,12 +293,12 @@ func (c *Config) configureTLS(t *TLSConfig) error {
 	if t.CACert != "" || len(t.CACertBytes) != 0 || t.CAPath != "" {
 		c.curlCACert = t.CACert
 		c.curlCAPath = t.CAPath
-		rootConfig := &CertConfig{
+		rootConfig := &certConfig{
 			CAFile:        t.CACert,
 			CACertificate: t.CACertBytes,
 			CAPath:        t.CAPath,
 		}
-		if err := ConfigureTLS(clientTLSConfig, rootConfig); err != nil {
+		if err := configureTLS(clientTLSConfig, rootConfig); err != nil {
 			return err
 		}
 	}

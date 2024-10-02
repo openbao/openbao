@@ -106,11 +106,11 @@ func (c *SSHHelperConfig) NewClient() (*Client, error) {
 
 	// Check if certificates are provided via config file.
 	if c.shouldSetTLSParameters() {
-		rootConfig := &CertConfig{
+		rootConfig := &certConfig{
 			CAFile: c.CACert,
 			CAPath: c.CAPath,
 		}
-		certPool, err := LoadCACerts(rootConfig)
+		certPool, err := loadCACerts(rootConfig)
 		if err != nil {
 			return nil, err
 		}

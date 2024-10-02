@@ -66,6 +66,7 @@ type sshRole struct {
 	AlgorithmSigner            string            `mapstructure:"algorithm_signer" json:"algorithm_signer"`
 	Version                    int               `mapstructure:"role_version" json:"role_version"`
 	NotBeforeDuration          time.Duration     `mapstructure:"not_before_duration" json:"not_before_duration"`
+	NotBeforeAbsolute          time.Time         `mapstructure:"not_before_absolute" json:"not_before_absolute"`
 }
 
 func pathListRoles(b *backend) *framework.Path {
@@ -374,6 +375,18 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+
+			"not_before_absolute": {
+				Type: framework.TypeTime,
+				Description: `
+        [Not applicable for OTP type] [Optional for CA type]
+        This field specifies the absolute start time for the validity of the SSH certificate.
+        It should be provided in ISO8601 or RFC3339 format, e.g., "2024-09-01T00:00:00Z". If set, 
+        this will override not_before_duration. Certificates will not be valid before this timestamp.`,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name: "Not Before Absolute",
+				},
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -510,6 +523,22 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AlgorithmSigner:           signer,
 		Version:                   roleEntryVersion,
 		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+	}
+
+	// HACK: I don't like this check, refactor this later
+	if notBeforeAbsoluteRaw, ok := data.GetOk("not_before_absolute"); ok {
+		switch v := notBeforeAbsoluteRaw.(type) {
+		case string:
+			notBeforeAbsolute, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				return nil, logical.ErrorResponse(fmt.Sprintf("invalid not_before_absolute time: %v", err))
+			}
+			role.NotBeforeAbsolute = notBeforeAbsolute
+		case time.Time:
+			role.NotBeforeAbsolute = v
+		default:
+			return nil, logical.ErrorResponse("not_before_absolute must be a valid RFC3339 timestamp string or time.Time object")
+		}
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {
@@ -702,6 +731,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"allowed_user_key_lengths":    role.AllowedUserKeyTypesLengths,
 			"algorithm_signer":            role.AlgorithmSigner,
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
+			"not_before_absolute":         role.NotBeforeAbsolute,
 		}
 	case KeyTypeDynamic:
 		return nil, fmt.Errorf("dynamic key type roles are no longer supported")

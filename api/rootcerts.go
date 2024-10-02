@@ -12,12 +12,10 @@ import (
 
 // CertConfig determines where LoadCACerts will load certificates from.
 type CertConfig struct {
-	// CAFile is a path to a PEM-encoded certificate file or bundle. Takes
-	// precedence over CACertificate and CAPath.
+	// CAFile is a path to a PEM-encoded certificate file or bundle.
 	CAFile string
 
-	// CACertificate is a PEM-encoded certificate or bundle. Takes precedence
-	// over CAPath.
+	// CACertificate is a PEM-encoded certificate or bundle. 
 	CACertificate []byte
 
 	// CAPath is a path to a directory populated with PEM-encoded certificates.
@@ -95,38 +93,6 @@ func AppendCertificate(pool *x509.CertPool, ca []byte) error {
 	return nil
 }
 
-// AppendCAPath loads all certificates from the provided directory into the CertPool.
-// func AppendCAPath(pool *x509.CertPool, caPath string) error {
-// 	walkFn := func(path string, info os.FileInfo, err error) error {
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		if info.IsDir() {
-// 			return nil
-// 		}
-
-// 		pem, err := os.ReadFile(path)
-// 		if err != nil {
-// 			return fmt.Errorf("Error loading file from CAPath: %w", err)
-// 		}
-
-// 		ok := pool.AppendCertsFromPEM(pem)
-// 		if !ok {
-// 			return fmt.Errorf("Error loading CA Path: Couldn't parse PEM in: %s", path)
-// 		}
-
-// 		return nil
-// 	}
-
-// 	err := filepath.Walk(caPath, walkFn)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
 func AppendCAPath(pool *x509.CertPool, caPath string) error {
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -144,7 +110,7 @@ func AppendCAPath(pool *x509.CertPool, caPath string) error {
 
 		// Decode the PEM blocks and only append certificate blocks
 		var block *pem.Block
-		var rest = pemData
+		rest := pemData
 		for {
 			block, rest = pem.Decode(rest)
 			if block == nil {
@@ -174,7 +140,6 @@ func AppendCAPath(pool *x509.CertPool, caPath string) error {
 
 	return nil
 }
-
 
 // LoadSystemCAs loads the system's CA certificates into a pool.
 func LoadSystemCAs() (*x509.CertPool, error) {

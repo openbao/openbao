@@ -66,6 +66,7 @@ type sshRole struct {
 	AlgorithmSigner            string            `mapstructure:"algorithm_signer" json:"algorithm_signer"`
 	Version                    int               `mapstructure:"role_version" json:"role_version"`
 	NotBeforeDuration          time.Duration     `mapstructure:"not_before_duration" json:"not_before_duration"`
+	NotBefore                  time.Time         `mapstructure:"not_before" json:"not_before"`
 }
 
 func pathListRoles(b *backend) *framework.Path {
@@ -374,6 +375,16 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+			"not_before": {
+				Type: framework.TypeTime,
+				Description: `
+				[Not applicable for OTP type] [Optional for CA type]
+      	The time before which the certificate is not valid. This is specified as a RFC3339 formatted string.
+        If specified, takes precedence over 'not_before_duration'.`,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name: "Not Before",
+				},
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -510,6 +521,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AlgorithmSigner:           signer,
 		Version:                   roleEntryVersion,
 		NotBeforeDuration:         time.Duration(data.Get("not_before_duration").(int)) * time.Second,
+		NotBefore:                 data.Get("not_before").(time.Time),
 	}
 
 	if !role.AllowUserCertificates && !role.AllowHostCertificates {
@@ -526,6 +538,12 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 	if ttl != 0 && maxTTL != 0 && ttl > maxTTL {
 		return nil, logical.ErrorResponse(
 			`"ttl" value must be less than "max_ttl" when both are specified`)
+	}
+
+	if !role.NotBefore.IsZero() {
+		if role.NotBefore.After(time.Now()) {
+			return nil, logical.ErrorResponse("'not_before' value can not be in the future")
+		}
 	}
 
 	// Persist TTLs
@@ -702,6 +720,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"allowed_user_key_lengths":    role.AllowedUserKeyTypesLengths,
 			"algorithm_signer":            role.AlgorithmSigner,
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
+			"not_before":                  role.NotBefore,
 		}
 	case KeyTypeDynamic:
 		return nil, fmt.Errorf("dynamic key type roles are no longer supported")

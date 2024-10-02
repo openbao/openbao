@@ -1816,6 +1816,42 @@ func TestSSHBackend_ValidateNotBeforeDuration(t *testing.T) {
 	logicaltest.Test(t, testCase)
 }
 
+func TestSSHBackend_ValidateNotBefore(t *testing.T) {
+	config := logical.TestBackendConfig()
+
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+
+	pastTime := time.Now().Add(-1 * time.Hour).Round(time.Second)
+
+	testCase := logicaltest.TestCase{
+		LogicalBackend: b,
+		Steps: []logicaltest.TestStep{
+			configCaStep(testCAPublicKey, testCAPrivateKey),
+
+			createRoleStep("testing", map[string]interface{}{
+				"key_type":                "ca",
+				"allow_host_certificates": true,
+				"allowed_domains":         "example.com,example.org",
+				"allow_subdomains":        true,
+				"not_before":              pastTime.Format(time.RFC3339),
+			}),
+
+			signCertificateStep("testing", "vault-root-22608f5ef173aabf700797cb95c5641e792698ec6380e8e1eb55523e39aa5e51", ssh.HostCert, []string{"dummy.example.org", "second.example.com"},
+				nil, nil, 2*time.Hour, map[string]interface{}{
+					"public_key":       publicKey2,
+					"ttl":              "2h",
+					"cert_type":        "host",
+					"valid_principals": "dummy.example.org,second.example.com",
+				}),
+		},
+	}
+
+	logicaltest.Test(t, testCase)
+}
+
 func TestSSHBackend_IssueSign(t *testing.T) {
 	config := logical.TestBackendConfig()
 

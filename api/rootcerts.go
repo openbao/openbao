@@ -1,3 +1,9 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+//
+// See https://github.com/hashicorp/go-rootcerts's rootcerts.go as of bb0b55efd5a1de16cb10686096b9596cfbab1fad.
+
 package api
 
 import (
@@ -15,7 +21,7 @@ type CertConfig struct {
 	// CAFile is a path to a PEM-encoded certificate file or bundle.
 	CAFile string
 
-	// CACertificate is a PEM-encoded certificate or bundle. 
+	// CACertificate is a PEM-encoded certificate or bundle.
 	CACertificate []byte
 
 	// CAPath is a path to a directory populated with PEM-encoded certificates.

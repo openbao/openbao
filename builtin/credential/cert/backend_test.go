@@ -168,12 +168,18 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 		return tls.ConnectionState{}, err
 	}
 	// Load the CA cert required by the client to authenticate the server.
-	rootConfig := &api.CertConfig{
-		CAFile: serverCAPath,
-	}
-	serverCAs, err := api.LoadCACerts(rootConfig)
+	pem, err := os.ReadFile(serverCAPath)
 	if err != nil {
-		return tls.ConnectionState{}, err
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
+	}
+
+	// Initialize the cert pool.
+	serverCAs := x509.NewCertPool()
+
+	// Append the CA certificates from the PEM file to the cert pool.
+	ok := serverCAs.AppendCertsFromPEM(pem)
+	if !ok {
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", serverCAPath)
 	}
 	// Prepare the dial configuration that the client uses to establish the connection.
 	dialConf := &tls.Config{

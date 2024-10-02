@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -28,6 +29,7 @@ func ConfigureTLS(t *tls.Config, c *CertConfig) error {
 	if t == nil {
 		return nil
 	}
+
 	// Greedily load all possible CA sources into the pool.
 	pool, err := LoadCACerts(c)
 	if err != nil {
@@ -94,6 +96,37 @@ func AppendCertificate(pool *x509.CertPool, ca []byte) error {
 }
 
 // AppendCAPath loads all certificates from the provided directory into the CertPool.
+// func AppendCAPath(pool *x509.CertPool, caPath string) error {
+// 	walkFn := func(path string, info os.FileInfo, err error) error {
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		if info.IsDir() {
+// 			return nil
+// 		}
+
+// 		pem, err := os.ReadFile(path)
+// 		if err != nil {
+// 			return fmt.Errorf("Error loading file from CAPath: %w", err)
+// 		}
+
+// 		ok := pool.AppendCertsFromPEM(pem)
+// 		if !ok {
+// 			return fmt.Errorf("Error loading CA Path: Couldn't parse PEM in: %s", path)
+// 		}
+
+// 		return nil
+// 	}
+
+// 	err := filepath.Walk(caPath, walkFn)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
 func AppendCAPath(pool *x509.CertPool, caPath string) error {
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -104,14 +137,31 @@ func AppendCAPath(pool *x509.CertPool, caPath string) error {
 			return nil
 		}
 
-		pem, err := os.ReadFile(path)
+		pemData, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("Error loading file from CAPath: %w", err)
 		}
 
-		ok := pool.AppendCertsFromPEM(pem)
-		if !ok {
-			return fmt.Errorf("Error loading CA Path: Couldn't parse PEM in: %s", path)
+		// Decode the PEM blocks and only append certificate blocks
+		var block *pem.Block
+		var rest = pemData
+		for {
+			block, rest = pem.Decode(rest)
+			if block == nil {
+				break
+			}
+
+			// Ensure the PEM block is a certificate
+			if block.Type != "CERTIFICATE" {
+				fmt.Printf("Ignoring non-certificate PEM block found in %s\n", path)
+				continue
+			}
+
+			// Append the certificate to the pool
+			ok := pool.AppendCertsFromPEM(pem.EncodeToMemory(block))
+			if !ok {
+				return fmt.Errorf("Error loading CA Path: Couldn't parse PEM in %s", path)
+			}
 		}
 
 		return nil
@@ -124,6 +174,7 @@ func AppendCAPath(pool *x509.CertPool, caPath string) error {
 
 	return nil
 }
+
 
 // LoadSystemCAs loads the system's CA certificates into a pool.
 func LoadSystemCAs() (*x509.CertPool, error) {

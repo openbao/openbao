@@ -65,7 +65,7 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 
 	// Load from CACertificate, if specified.
 	if len(c.CACertificate) != 0 {
-		fileAdded, err := appendCAFile(pool, c.CAFile)
+		fileAdded, err := appendCertificate(pool, c.CACertificate)
 		if err != nil {
 			return nil, err
 		}

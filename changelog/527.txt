@@ -1,0 +1,3 @@
+```release-note:bug
+serviceregistration/k8s: Fix compatibility with legacy VAULT_-prefixed environment variables.
+```

@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 )
 
-// CertConfig determines where LoadCACerts will load certificates from.
+// certConfig determines wherelLoadCACerts will load certificates from.
 type certConfig struct {
 	// CAFile is a path to a PEM-encoded certificate file or bundle.
 	CAFile string
@@ -28,7 +28,7 @@ type certConfig struct {
 	CAPath string
 }
 
-// ConfigureTLS sets up the RootCAs on the provided tls.Config based on the CertConfig specified.
+// configureTLS sets up the RootCAs on the provided tls.Config based on the certConfig specified.
 func configureTLS(t *tls.Config, c *certConfig) error {
 	if t == nil {
 		return nil
@@ -43,8 +43,11 @@ func configureTLS(t *tls.Config, c *certConfig) error {
 	return nil
 }
 
-// LoadCACerts loads a CertPool from all available CA sources in CertConfig.
+// loadCACerts loads a CertPool from all available CA sources in certConfig.
 func loadCACerts(c *certConfig) (*x509.CertPool, error) {
+	// to track if we've successfully added any certificates
+	var added bool
+
 	// Start with system CAs.
 	pool, err := loadSystemCAs()
 	if err != nil {
@@ -53,53 +56,67 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 
 	// Load from CAFile, if specified.
 	if c.CAFile != "" {
-		if err := appendCAFile(pool, c.CAFile); err != nil {
+		fileAdded, err := appendCAFile(pool, c.CAFile)
+		if err != nil {
 			return nil, err
 		}
+		added = added || fileAdded
 	}
 
 	// Load from CACertificate, if specified.
 	if len(c.CACertificate) != 0 {
-		if err := appendCertificate(pool, c.CACertificate); err != nil {
+		fileAdded, err := appendCAFile(pool, c.CAFile)
+		if err != nil {
 			return nil, err
 		}
+		added = added || fileAdded
 	}
 
 	// Load from CAPath, if specified.
 	if c.CAPath != "" {
-		if err := appendCAPath(pool, c.CAPath); err != nil {
+		fileAdded, err := appendCAPath(pool, c.CAPath)
+		if err != nil {
 			return nil, err
 		}
+		added = added || fileAdded
+	}
+
+	// If no certificates were added and system CAs failed, return nil.
+	if !added {
+		return nil, nil
 	}
 
 	return pool, nil
 }
 
-// AppendCAFile loads a single PEM-encoded file and appends it to the provided CertPool.
-func appendCAFile(pool *x509.CertPool, caFile string) error {
+// appendCAFile loads a single PEM-encoded file and appends it to the provided CertPool.
+func appendCAFile(pool *x509.CertPool, caFile string) (bool, error) {
 	pem, err := os.ReadFile(caFile)
 	if err != nil {
-		return fmt.Errorf("Error loading CA File: %w", err)
+		return false, fmt.Errorf("Error loading CA File: %w", err)
 	}
 
 	ok := pool.AppendCertsFromPEM(pem)
 	if !ok {
-		return fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", caFile)
+		return false, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", caFile)
 	}
 
-	return nil
+	return true, nil
 }
 
-// AppendCertificate appends an in-memory PEM-encoded certificate or bundle to the provided CertPool.
-func appendCertificate(pool *x509.CertPool, ca []byte) error {
+// appendCertificate appends an in-memory PEM-encoded certificate or bundle to the provided CertPool.
+func appendCertificate(pool *x509.CertPool, ca []byte) (bool, error) {
 	ok := pool.AppendCertsFromPEM(ca)
 	if !ok {
-		return errors.New("Error appending CA: Couldn't parse PEM")
+		return false, errors.New("Error appending CA: Couldn't parse PEM")
 	}
-	return nil
+	return true, nil
 }
 
-func appendCAPath(pool *x509.CertPool, caPath string) error {
+// appendCAPath loads and appends all valid PEM-encoded certificates from the specified directory
+// to the provided CertPool. Non-certificate PEM blocks are ignored.
+func appendCAPath(pool *x509.CertPool, caPath string) (bool, error) {
+	var added bool
 	walkFn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -129,6 +146,7 @@ func appendCAPath(pool *x509.CertPool, caPath string) error {
 
 			for _, cert := range certificates {
 				pool.AddCert(cert)
+				added = true
 			}
 		}
 
@@ -137,13 +155,13 @@ func appendCAPath(pool *x509.CertPool, caPath string) error {
 
 	err := filepath.Walk(caPath, walkFn)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return added, nil
 }
 
-// LoadSystemCAs loads the system's CA certificates into a pool.
+// loadSystemCAs loads the system's CA certificates into a pool.
 func loadSystemCAs() (*x509.CertPool, error) {
 	pool, err := x509.SystemCertPool()
 	if err != nil {

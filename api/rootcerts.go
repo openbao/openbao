@@ -114,25 +114,21 @@ func appendCAPath(pool *x509.CertPool, caPath string) error {
 			return fmt.Errorf("Error loading file from CAPath: %w", err)
 		}
 
-		// Decode the PEM blocks and only append certificate blocks
-		var block *pem.Block
-		rest := pemData
-		for {
-			block, rest = pem.Decode(rest)
+		// Decode and process all PEM blocks opportunistically
+		for len(pemData) > 0 {
+			var block *pem.Block
+			block, pemData = pem.Decode(pemData)
 			if block == nil {
 				break
 			}
-
-			// Ensure the PEM block is a certificate
-			if block.Type != "CERTIFICATE" {
-				fmt.Printf("Ignoring non-certificate PEM block found in %s\n", path)
+			certificates, err := x509.ParseCertificates(block.Bytes)
+			if err != nil {
+				// Not a valid certificate, ignore it and move on
 				continue
 			}
 
-			// Append the certificate to the pool
-			ok := pool.AppendCertsFromPEM(pem.EncodeToMemory(block))
-			if !ok {
-				return fmt.Errorf("Error loading CA Path: Couldn't parse PEM in %s", path)
+			for _, cert := range certificates {
+				pool.AddCert(cert)
 			}
 		}
 

@@ -191,6 +191,10 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 
 	switch {
 	case len(parsedPrincipals) == 0:
+		if !role.AllowEmptyPrincipals && principalsAllowedByRole != "*" {
+			return nil, fmt.Errorf("refusing to issue unsafe, globally-valid certificate with no principals specified; set valid_principals or default_user")
+		}
+
 		// There is nothing to process
 		return nil, nil
 	case len(allowedPrincipals) == 0:

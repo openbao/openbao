@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 )
 
-// certConfig determines wherelLoadCACerts will load certificates from.
+// certConfig determines where loadCACerts will load certificates from.
 type certConfig struct {
 	// CAFile is a path to a PEM-encoded certificate file or bundle.
 	CAFile string

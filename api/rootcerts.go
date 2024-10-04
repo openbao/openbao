@@ -26,6 +26,10 @@ type certConfig struct {
 
 	// CAPath is a path to a directory populated with PEM-encoded certificates.
 	CAPath string
+
+	// SystemCerts determines if system certificates should be included in the pool.
+	// Defaults to true
+	SystemCerts *bool
 }
 
 // configureTLS sets up the RootCAs on the provided tls.Config based on the certConfig specified.
@@ -47,16 +51,24 @@ func configureTLS(t *tls.Config, c *certConfig) error {
 func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 	// to track if we've successfully added any certificates
 	var added bool
+	var certPool *x509.CertPool
 
-	// Start with system CAs.
-	pool, err := loadSystemCAs()
-	if err != nil {
-		pool = x509.NewCertPool()
+	// If SystemCerts is nil or set to true, load system CAs
+	if c.SystemCerts == nil || *c.SystemCerts {
+		pool, err := loadSystemCAs()
+
+		if err != nil {
+			certPool = x509.NewCertPool()
+		} else {
+			certPool = pool
+		}
+	} else {
+		certPool = x509.NewCertPool()
 	}
 
 	// Load from CAFile, if specified.
 	if c.CAFile != "" {
-		fileAdded, err := appendCAFile(pool, c.CAFile)
+		fileAdded, err := appendCAFile(certPool, c.CAFile)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +77,7 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 
 	// Load from CACertificate, if specified.
 	if len(c.CACertificate) != 0 {
-		fileAdded, err := appendCertificate(pool, c.CACertificate)
+		fileAdded, err := appendCertificate(certPool, c.CACertificate)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +86,7 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 
 	// Load from CAPath, if specified.
 	if c.CAPath != "" {
-		fileAdded, err := appendCAPath(pool, c.CAPath)
+		fileAdded, err := appendCAPath(certPool, c.CAPath)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +98,7 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 		return nil, nil
 	}
 
-	return pool, nil
+	return certPool, nil
 }
 
 // appendCAFile loads a single PEM-encoded file and appends it to the provided CertPool.

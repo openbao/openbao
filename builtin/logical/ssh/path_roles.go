@@ -60,6 +60,7 @@ type sshRole struct {
 	AllowBareDomains           bool              `mapstructure:"allow_bare_domains" json:"allow_bare_domains"`
 	AllowSubdomains            bool              `mapstructure:"allow_subdomains" json:"allow_subdomains"`
 	AllowUserKeyIDs            bool              `mapstructure:"allow_user_key_ids" json:"allow_user_key_ids"`
+	AllowEmptyPrincipals       bool              `mapstructure:"allow_empty_principals" json:"allow_empty_principals"`
 	KeyIDFormat                string            `mapstructure:"key_id_format" json:"key_id_format"`
 	OldAllowedUserKeyLengths   map[string]int    `mapstructure:"allowed_user_key_lengths" json:"allowed_user_key_lengths,omitempty"`
 	AllowedUserKeyTypesLengths map[string][]int  `mapstructure:"allowed_user_key_types_lengths" json:"allowed_user_key_types_lengths"`
@@ -374,6 +375,23 @@ func pathRoles(b *backend) *framework.Path {
 					Value: 30,
 				},
 			},
+			"allow_empty_principals": {
+				Type: framework.TypeBool,
+				Description: `
+                [Optional for CA type]
+				If true, host and user certificates can be issued without any valid principals. For
+				host certificates, this means that any domain a host claims to be will be trusted by
+				the connecting client. For user certificates, when a CA certificate is placed in a
+				user's AuthorizedKeys file, any principal on that certificate will be allowed to
+				connect. When allowed_users or allowed_domains is set to * (corresponding to the
+				role/certificate type), allow_empty_principals=false still permits issuance.
+
+				It is recommend to leave this disabled.
+                `,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name: "Allow User Key IDs",
+				},
+			},
 		},
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
@@ -504,6 +522,7 @@ func (b *backend) createCARole(allowedUsers, defaultUser, signer string, data *f
 		AllowBareDomains:          data.Get("allow_bare_domains").(bool),
 		AllowSubdomains:           data.Get("allow_subdomains").(bool),
 		AllowUserKeyIDs:           data.Get("allow_user_key_ids").(bool),
+		AllowEmptyPrincipals:      data.Get("allow_empty_principals").(bool),
 		DefaultExtensionsTemplate: data.Get("default_extensions_template").(bool),
 		KeyIDFormat:               data.Get("key_id_format").(string),
 		KeyType:                   KeyTypeCA,
@@ -694,6 +713,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"allow_bare_domains":          role.AllowBareDomains,
 			"allow_subdomains":            role.AllowSubdomains,
 			"allow_user_key_ids":          role.AllowUserKeyIDs,
+			"allow_empty_principals":      role.AllowEmptyPrincipals,
 			"key_id_format":               role.KeyIDFormat,
 			"key_type":                    role.KeyType,
 			"default_critical_options":    role.DefaultCriticalOptions,

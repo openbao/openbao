@@ -201,7 +201,8 @@ func createDeleteHelper(t *testing.T, b logical.Backend, config *logical.Backend
 	}
 
 	issueOptions := map[string]interface{}{
-		"public_key": testCAPublicKeyEd25519,
+		"public_key":       testCAPublicKeyEd25519,
+		"valid_principals": "toor",
 	}
 	issueReq := &logical.Request{
 		Path:      "sign/ca-issuance",

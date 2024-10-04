@@ -1261,6 +1261,7 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 			createRoleStep("weakkey", map[string]interface{}{
 				"key_type":                "ca",
 				"allow_user_certificates": true,
+				"allowed_users":           "toor",
 				"allowed_user_key_lengths": map[string]interface{}{
 					"rsa": 4096,
 				},
@@ -1269,7 +1270,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/weakkey",
 				Data: map[string]interface{}{
-					"public_key": testCAPublicKey,
+					"public_key":       testCAPublicKey,
+					"valid_principals": "toor",
 				},
 				ErrorOk: true,
 				Check: func(resp *logical.Response) error {
@@ -1282,6 +1284,7 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 			createRoleStep("stdkey", map[string]interface{}{
 				"key_type":                "ca",
 				"allow_user_certificates": true,
+				"allowed_users":           "*", // validate we can bypass allow_empty_principals=false
 				"allowed_user_key_lengths": map[string]interface{}{
 					"rsa": 2048,
 				},
@@ -1312,6 +1315,7 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 			createRoleStep("multikey", map[string]interface{}{
 				"key_type":                "ca",
 				"allow_user_certificates": true,
+				"allowed_users":           "toor",
 				"allowed_user_key_lengths": map[string]interface{}{
 					"rsa": []int{2048, 4096},
 				},
@@ -1321,7 +1325,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/multikey",
 				Data: map[string]interface{}{
-					"public_key": testCAPublicKey,
+					"public_key":       testCAPublicKey,
+					"valid_principals": "toor",
 				},
 			},
 			// Pass with 4096-bit key
@@ -1329,7 +1334,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/multikey",
 				Data: map[string]interface{}{
-					"public_key": publicKey4096,
+					"public_key":       publicKey4096,
+					"valid_principals": "toor",
 				},
 			},
 			// Fail with 3072-bit key
@@ -1337,7 +1343,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/multikey",
 				Data: map[string]interface{}{
-					"public_key": publicKey3072,
+					"public_key":       publicKey3072,
+					"valid_principals": "toor",
 				},
 				ErrorOk: true,
 				Check: func(resp *logical.Response) error {
@@ -1352,7 +1359,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/multikey",
 				Data: map[string]interface{}{
-					"public_key": publicKeyECDSA256,
+					"public_key":       publicKeyECDSA256,
+					"valid_principals": "toor",
 				},
 				ErrorOk: true,
 				Check: func(resp *logical.Response) error {
@@ -1365,6 +1373,7 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 			createRoleStep("ectypes", map[string]interface{}{
 				"key_type":                "ca",
 				"allow_user_certificates": true,
+				"allowed_users":           "toor",
 				"allowed_user_key_lengths": map[string]interface{}{
 					"ec":                  []int{256},
 					"ecdsa-sha2-nistp521": 0,
@@ -1375,7 +1384,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/ectypes",
 				Data: map[string]interface{}{
-					"public_key": publicKeyECDSA256,
+					"public_key":       publicKeyECDSA256,
+					"valid_principals": "toor",
 				},
 			},
 			// Pass with ECDSA P-521
@@ -1383,7 +1393,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/ectypes",
 				Data: map[string]interface{}{
-					"public_key": publicKeyECDSA521,
+					"public_key":       publicKeyECDSA521,
+					"valid_principals": "toor",
 				},
 			},
 			// Fail with RSA key
@@ -1391,7 +1402,8 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 				Operation: logical.UpdateOperation,
 				Path:      "sign/ectypes",
 				Data: map[string]interface{}{
-					"public_key": publicKey3072,
+					"public_key":       publicKey3072,
+					"valid_principals": "toor",
 				},
 				ErrorOk: true,
 				Check: func(resp *logical.Response) error {
@@ -1840,6 +1852,7 @@ func TestSSHBackend_IssueSign(t *testing.T) {
 				"key_type":                "ca",
 				"allow_user_key_ids":      false,
 				"allow_user_certificates": true,
+				"allowed_users":           "*",
 				"allowed_user_key_lengths": map[string]interface{}{
 					"ssh-rsa":             []int{2048, 3072, 4096},
 					"ecdsa-sha2-nistp521": 0,
@@ -2117,8 +2130,9 @@ func issueSSHKeyPairStep(role, keyType string, keyBits int, expectError bool, er
 		Operation: logical.UpdateOperation,
 		Path:      "issue/" + role,
 		Data: map[string]interface{}{
-			"key_type": keyType,
-			"key_bits": keyBits,
+			"key_type":         keyType,
+			"key_bits":         keyBits,
+			"valid_principals": "toor",
 		},
 		ErrorOk: true,
 		Check: func(resp *logical.Response) error {
@@ -2675,13 +2689,31 @@ func TestProperAuthing(t *testing.T) {
 	_, err = client.Logical().WriteWithContext(ctx, "ssh/roles/test-ca", map[string]interface{}{
 		"key_type":                "ca",
 		"allow_user_certificates": true,
+		"allowed_users":           "*",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	_, err = client.Logical().WriteWithContext(ctx, "ssh/issue/test-ca", map[string]interface{}{
-		"username": "toor",
+		"valid_principals": "toor",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().WriteWithContext(ctx, "ssh/roles/test-ca-empty", map[string]interface{}{
+		"key_type":                "ca",
+		"allow_host_certificates": true,
+		"allow_empty_principals":  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = client.Logical().WriteWithContext(ctx, "ssh/issue/test-ca-empty", map[string]interface{}{
+		"cert_type": "host",
+		"key_type":  "ssh-ed25519",
 	})
 	if err != nil {
 		t.Fatal(err)

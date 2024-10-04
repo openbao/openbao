@@ -27,9 +27,9 @@ type certConfig struct {
 	// CAPath is a path to a directory populated with PEM-encoded certificates.
 	CAPath string
 
-	// SystemCerts determines if system certificates should be included in the pool.
-	// Defaults to true
-	SystemCerts *bool
+	// SkipSystemCerts determines if system certificates should be included in the pool.
+	// Defaults to false
+	SkipSystemCerts bool
 }
 
 // configureTLS sets up the RootCAs on the provided tls.Config based on the certConfig specified.
@@ -53,8 +53,8 @@ func loadCACerts(c *certConfig) (*x509.CertPool, error) {
 	var added bool
 	var certPool *x509.CertPool
 
-	// If SystemCerts is nil or set to true, load system CAs
-	if c.SystemCerts == nil || *c.SystemCerts {
+	// If SkipSystemCerts is set to false, load system CAs
+	if !c.SkipSystemCerts {
 		pool, err := loadSystemCAs()
 
 		if err != nil {

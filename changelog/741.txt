@@ -1,0 +1,3 @@
+```release-note:feature
+raft: Added support for nodes to join the Raft cluster as non-voters.
+```

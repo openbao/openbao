@@ -135,6 +135,17 @@ active node's API address will need to be specified:
 $ bao operator raft join https://node1.openbao.local:8200
 ```
 
+#### Non-Voting nodes
+
+Nodes that are joined to a cluster can be specified as non-voters. A non-voting
+node has all of OpenBao's data replicated to it, but does not contribute to the
+quorum count. This can be used to add read scalability to
+a cluster in cases where a high volume of reads to servers are needed.
+
+```shell-session
+$ bao operator raft join -non-voter https://node1.openbao.local:8200
+```
+
 ### Removing peers
 
 Removing a peer node is a necessary step when you no longer want the node in the

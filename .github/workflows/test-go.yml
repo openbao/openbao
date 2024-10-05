@@ -109,7 +109,7 @@ jobs:
         if: inputs.binary-tests
         id: list-binary-tests
         run: |
-          LIST="$(go list ./... github.com/openbao/openbao/api/... github.com/openbao/openbao/sdk/... | grep "_binary" | xargs)"
+          LIST="$(go list ./... github.com/openbao/openbao/api/v2/... github.com/openbao/openbao/sdk/v2/... | grep "_binary" | xargs)"
           echo "list=$LIST" >> "$GITHUB_OUTPUT"
       - name: Build complete matrix
         id: build

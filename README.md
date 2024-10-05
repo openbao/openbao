@@ -117,7 +117,7 @@ $ make test TEST=./vault
 ### Importing OpenBao
 
 This repository publishes two libraries that may be imported by other projects:
-`github.com/openbao/openbao/api` and `github.com/openbao/openbao/sdk`.
+`github.com/openbao/openbao/api/v2` and `github.com/openbao/openbao/sdk/v2`.
 
 Note that this repository also contains OpenBao (the product), and as with most Go
 projects, OpenBao uses Go modules to manage its dependencies. The mechanism to do
@@ -171,7 +171,7 @@ An example of how to use it:
 ```go
 import (
   "testing"
-  "github.com/openbao/openbao/sdk/helper/testcluster/docker"
+  "github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 )
 
 func Test_Something_With_Docker(t *testing.T) {

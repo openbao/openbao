@@ -127,6 +127,18 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 
 func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Create a read-only transaction if we can. We do not need to commit
+		// this as we're not writing to storage.
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		key := data.Get("path").(string)
 
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
@@ -306,6 +318,18 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		lock.Lock()
 		defer lock.Unlock()
 
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
 			return nil, err
@@ -334,6 +358,17 @@ func (b *versionedKVBackend) pathMetadataWrite() framework.OperationFunc {
 		}
 
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
+		if err == nil {
+			// Commit our transaction if we created one! We're done making
+			// modifications to storage.
+			if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+				if err := txn.Commit(ctx); err != nil {
+					return nil, err
+				}
+				req.Storage = originalStorage
+			}
+		}
+
 		return resp, err
 	}
 }
@@ -393,6 +428,18 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 		lock.Lock()
 		defer lock.Unlock()
 
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
 			return nil, err
@@ -436,6 +483,15 @@ func (b *versionedKVBackend) pathMetadataPatch() framework.OperationFunc {
 			return nil, err
 		}
 
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
+		}
+
 		return resp, nil
 	}
 }
@@ -447,6 +503,18 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 		lock := locksutil.LockForKey(b.locks, key)
 		lock.Lock()
 		defer lock.Unlock()
+
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
 
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
@@ -479,6 +547,16 @@ func (b *versionedKVBackend) pathMetadataDelete() framework.OperationFunc {
 
 		// Use encrypted key storage to delete the key
 		err = es.Delete(ctx, key)
+		if err == nil {
+			// Commit our transaction if we created one! We're done making
+			// modifications to storage.
+			if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+				if err := txn.Commit(ctx); err != nil {
+					return nil, err
+				}
+				req.Storage = originalStorage
+			}
+		}
 		return nil, err
 	}
 }

@@ -75,6 +75,18 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 		lock.Lock()
 		defer lock.Unlock()
 
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
 			return nil, err
@@ -106,6 +118,15 @@ func (b *versionedKVBackend) pathUndeleteWrite() framework.OperationFunc {
 			return nil, err
 		}
 
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
+		}
+
 		return nil, nil
 	}
 }
@@ -123,6 +144,18 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 		lock := locksutil.LockForKey(b.locks, key)
 		lock.Lock()
 		defer lock.Unlock()
+
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
 
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
@@ -157,6 +190,15 @@ func (b *versionedKVBackend) pathDeleteWrite() framework.OperationFunc {
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
 		if err != nil {
 			return nil, err
+		}
+
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
 		}
 
 		return nil, nil

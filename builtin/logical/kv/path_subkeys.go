@@ -90,6 +90,18 @@ func removeValues(input map[string]interface{}, maxDepth int) {
 // leaf keys with null.
 func (b *versionedKVBackend) pathSubkeysRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Create a read-only transaction if we can. We do not need to commit
+		// this as we're not writing to storage.
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		key := data.Get("path").(string)
 		depth := data.Get("depth").(int)
 

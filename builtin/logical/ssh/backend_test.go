@@ -38,8 +38,6 @@ const (
 	testCIDRList      = "127.0.0.1/32"
 	testAtRoleName    = "test@RoleName"
 	testOTPRoleName   = "testOTPRoleName"
-	// testKeyName is the name of the entry that will be written to SSHMOUNTPOINT/ssh/keys
-	testKeyName = "testKeyName"
 	// testSharedPrivateKey is the value of the entry that will be written to SSHMOUNTPOINT/ssh/keys
 	testSharedPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----

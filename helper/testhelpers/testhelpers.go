@@ -810,6 +810,14 @@ func RetryUntil(t testing.T, timeout time.Duration, f func() error) {
 // CreateEntityAndAlias clones an existing client and creates an entity/alias.
 // It returns the cloned client, entityID, and aliasID.
 func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entityName, aliasName string) (*api.Client, string, string) {
+	return CreateCustomEntityAndAliasWithinMount(t, client, mountAccessor, "userpass", aliasName, map[string]interface{}{
+		"name": entityName,
+	})
+}
+
+// CreateCustomEntityAndAliasWithinMount clones an existing client and creates an entity/alias, using the custom entity, within the specified mountPath
+// It returns the cloned client, entityID, and aliasID.
+func CreateCustomEntityAndAliasWithinMount(t testing.T, client *api.Client, mountAccessor, mountPath, aliasName string, entity map[string]interface{}) (*api.Client, string, string) {
 	t.Helper()
 	userClient, err := client.Clone()
 	if err != nil {
@@ -817,9 +825,7 @@ func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entity
 	}
 	userClient.SetToken(client.Token())
 
-	resp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity", map[string]interface{}{
-		"name": entityName,
-	})
+	resp, err := client.Logical().WriteWithContext(context.Background(), "identity/entity", entity)
 	if err != nil {
 		t.Fatalf("failed to create an entity:%v", err)
 	}
@@ -837,7 +843,8 @@ func CreateEntityAndAlias(t testing.T, client *api.Client, mountAccessor, entity
 	if aliasID == "" {
 		t.Fatal("Alias ID not present in response")
 	}
-	_, err = client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("auth/userpass/users/%s", aliasName), map[string]interface{}{
+	path := fmt.Sprintf("auth/%s/users/%s", mountPath, aliasName)
+	_, err = client.Logical().WriteWithContext(context.Background(), path, map[string]interface{}{
 		"password": "testpassword",
 	})
 	if err != nil {

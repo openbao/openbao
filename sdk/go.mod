@@ -23,6 +23,8 @@ require (
 	github.com/go-test/deep v1.1.0
 	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.4
+	// github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
+	github.com/google/tink/go v1.7.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
@@ -50,7 +52,6 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/stretchr/testify v1.8.4
-	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	go.uber.org/atomic v1.9.0
 	golang.org/x/crypto v0.21.0
 	golang.org/x/net v0.22.0

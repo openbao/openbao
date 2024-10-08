@@ -362,6 +362,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-require github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164 // indirect
-
 retract [v0.1.0, v1.17.0]

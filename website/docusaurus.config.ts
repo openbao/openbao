@@ -71,6 +71,7 @@ const config: Config = {
         },
 		gtag: {
 		  trackingID: "GTM-MWH2V47T",
+		  anonymizeIP: true,
 		},
       } satisfies Preset.Options,
     ],

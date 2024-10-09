@@ -19,5 +19,6 @@ func TestInmem(t *testing.T) {
 		t.Fatal(err)
 	}
 	physical.ExerciseBackend(t, inm)
+	physical.ExerciseTransactionalBackend(t, inm.(physical.TransactionalBackend))
 	physical.ExerciseBackend_ListPrefix(t, inm)
 }

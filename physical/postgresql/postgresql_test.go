@@ -77,6 +77,8 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b1)
+	logger.Info("Running transactional backend tests")
+	physical.ExerciseTransactionalBackend(t, b1.(physical.TransactionalBackend))
 	logger.Info("Running list prefix backend tests")
 	physical.ExerciseBackend_ListPrefix(t, b1)
 

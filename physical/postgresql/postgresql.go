@@ -37,7 +37,10 @@ const (
 )
 
 // Verify PostgreSQLBackend satisfies the correct interfaces
-var _ physical.Backend = (*PostgreSQLBackend)(nil)
+var (
+	_ physical.Backend              = (*PostgreSQLBackend)(nil)
+	_ physical.TransactionalBackend = (*PostgreSQLBackend)(nil)
+)
 
 // HA backend was implemented based on the DynamoDB backend pattern
 // With distinction using central postgres clock, hereby avoiding
@@ -66,9 +69,10 @@ type PostgreSQLBackend struct {
 
 	upsert_function string
 
-	haEnabled  bool
-	logger     log.Logger
-	permitPool *physical.PermitPool
+	haEnabled     bool
+	logger        log.Logger
+	permitPool    *physical.PermitPool
+	txnPermitPool *physical.PermitPool
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.
@@ -124,6 +128,20 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		}
 	} else {
 		maxParInt = physical.DefaultParallelOperations
+	}
+
+	txnMaxParStr, ok := conf["transaction_max_parallel"]
+	var txnMaxParInt int
+	if ok {
+		txnMaxParInt, err = strconv.Atoi(txnMaxParStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing transaction_max_parallel parameter: %w", err)
+		}
+		if logger.IsDebug() {
+			logger.Debug("transaction_max_parallel set", "transaction_max_parallel", txnMaxParInt)
+		}
+	} else {
+		txnMaxParInt = physical.DefaultParallelTransactions
 	}
 
 	maxIdleConnsStr, maxIdleConnsIsSet := conf["max_idle_connections"]
@@ -213,6 +231,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
 		logger:          logger,
 		permitPool:      physical.NewPermitPool(maxParInt),
+		txnPermitPool:   physical.NewPermitPool(txnMaxParInt),
 		haEnabled:       conf["ha_enabled"] == "true",
 		upsert_function: quoted_upsert_function,
 	}

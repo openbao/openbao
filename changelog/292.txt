@@ -1,0 +1,10 @@
+```release-note:feature
+**Transactional Storage**: Plugin developers can now take advantage of safe
+  storage modification APIs when the underlying physical storage supports
+  them. The `physical.TransactionalBackend` and `logical.TransactionalStorage`
+  types allow developers to begin read-only and writable transactions,
+  committing or rolling back the desired changes.
+```
+```release-note:improvement
+storage/raft: Add support for transactional storage semantics.
+```

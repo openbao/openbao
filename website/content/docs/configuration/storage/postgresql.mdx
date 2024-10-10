@@ -40,8 +40,68 @@ to disable SSL.
 
 :::
 
-The PostgreSQL storage backend does not automatically create the table. Here is
-some sample SQL to create the schema and indexes.
+## `postgresql` parameters
+
+- `connection_url` `(string: <required>)` – Specifies the connection string to
+  use to authenticate and connect to PostgreSQL. The connection URL can also be
+  set using the `BAO_PG_CONNECTION_URL` environment variable. A full list of supported
+  parameters can be found in the [pgx library][pgxlib] and [PostgreSQL connection string][pg_conn_docs]
+  documentation. For example connection string URLs, see the examples section below.
+
+- `table` `(string: "openbao_kv_store")` – Specifies the name of the table in
+  which to write OpenBao data. This table must already exist (OpenBao will not
+  attempt to create it).
+
+- `max_idle_connections` `(int)` - Default not set. Sets the maximum number of
+  connections in the idle connection pool. See
+  [golang docs on SetMaxIdleConns][golang_setmaxidleconns] for more information.
+  Requires OpenBao 1.2 or later.
+
+- `max_parallel` `(string: "128")` – Specifies the maximum number of concurrent
+  requests to PostgreSQL.
+
+- `ha_enabled` `(string: "true|false")` – Default not enabled, requires
+  PostgreSQL 9.5 or later.
+
+- `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
+  for storing high availability information. This table must already exist (OpenBao
+  will not attempt to create it).
+
+- `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
+  function to execute for upsert capabilities on PostgreSQL versions earlier
+  than 9.5. This function must already exist. See above documentation.
+
+- `skip_create_table` `(string: "true|false", default "false")` - When enabled,
+  will not attempt to automatically create database tables if missing. Requires
+  PostgreSQL 9.5 or later. Set to `false` if the database user does not have
+  the required permissions.
+
+## `postgresql` examples
+
+### Custom SSL verification
+
+This example shows connecting to a PostgreSQL cluster using full SSL
+verification (recommended).
+
+```hcl
+storage "postgresql" {
+  connection_url = "postgres://user:pass@localhost:5432/database?sslmode=verify-full"
+}
+```
+
+To disable SSL verification (not recommended), replace `verify-full` with
+`disable`:
+
+```hcl
+storage "postgresql" {
+  connection_url = "postgres://user:pass@localhost:5432/database?sslmode=disable"
+}
+```
+
+## Manually creating tables
+
+OpenBao will attempt to automatically create tables compatible with PostgreSQL
+9.5 or later. However, to manually create tables, use the following schemas:
 
 ```sql
 CREATE TABLE openbao_kv_store (
@@ -95,58 +155,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-```
-
-## `postgresql` parameters
-
-- `connection_url` `(string: <required>)` – Specifies the connection string to
-  use to authenticate and connect to PostgreSQL. The connection URL can also be
-  set using the `BAO_PG_CONNECTION_URL` environment variable. A full list of supported
-  parameters can be found in the [pgx library][pgxlib] and [PostgreSQL connection string][pg_conn_docs]
-  documentation. For example connection string URLs, see the examples section below.
-
-- `table` `(string: "openbao_kv_store")` – Specifies the name of the table in
-  which to write OpenBao data. This table must already exist (OpenBao will not
-  attempt to create it).
-
-- `max_idle_connections` `(int)` - Default not set. Sets the maximum number of
-  connections in the idle connection pool. See
-  [golang docs on SetMaxIdleConns][golang_setmaxidleconns] for more information.
-  Requires 1.2 or later.
-
-- `max_parallel` `(string: "128")` – Specifies the maximum number of concurrent
-  requests to PostgreSQL.
-
-- `ha_enabled` `(string: "true|false")` – Default not enabled, requires 9.5 or later.
-
-- `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
-  for storing high availability information. This table must already exist (OpenBao
-  will not attempt to create it).
-
-- `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
-  function to execute for upsert capabilities on PostgreSQL versions earlier
-  than 9.5. This function must already exist. See above documentation.
-
-## `postgresql` examples
-
-### Custom SSL verification
-
-This example shows connecting to a PostgreSQL cluster using full SSL
-verification (recommended).
-
-```hcl
-storage "postgresql" {
-  connection_url = "postgres://user:pass@localhost:5432/database?sslmode=verify-full"
-}
-```
-
-To disable SSL verification (not recommended), replace `verify-full` with
-`disable`:
-
-```hcl
-storage "postgresql" {
-  connection_url = "postgres://user:pass@localhost:5432/database?sslmode=disable"
-}
 ```
 
 [golang_setmaxidleconns]: https://golang.org/pkg/database/sql/#DB.SetMaxIdleConns

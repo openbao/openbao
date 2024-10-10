@@ -3,7 +3,7 @@
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
 This plugin generates Kubernetes Service Accounts.
 
-**Please note**: We take Vault's security and our users' trust very seriously. If you believe you have found a security issue in Vault, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](mailto:openbao-security@lists.lfedge.org).
+**Please note**: We take OpenBao's security and our users' trust very seriously. If you believe you have found a security issue in OpenBao, _please responsibly disclose_ by contacting us at [openbao-security@lists.lfedge.org](mailto:openbao-security@lists.lfedge.org).
 
 ## Quick Links
 

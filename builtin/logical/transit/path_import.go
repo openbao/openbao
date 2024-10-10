@@ -17,10 +17,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/tink/go/kwp/subtle"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/keysutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	// "github.com/tink-crypto/tink-go/kwp/subtle"
+	"github.com/google/tink/go/kwp/subtle"
 )
 
 const EncryptedKeyBytes = 512

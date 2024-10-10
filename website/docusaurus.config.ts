@@ -146,6 +146,14 @@ const config: Config = {
               to: "pathname:///assets/OpenBao-Technical-Charter-Final-2024-05-08.pdf",
               target: "_blank",
             },
+            {
+              label: "Policies",
+              to: "/docs/policies/",
+            },
+            {
+              label: "Contributing",
+              to: "/docs/contributing/",
+            },
           ],
         },
         {

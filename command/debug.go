@@ -4,10 +4,13 @@
 package command
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -21,7 +24,6 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/gatedwriter"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/mholt/archiver/v3"
 	"github.com/oklog/run"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/osutil"
@@ -210,7 +212,7 @@ Usage: bao debug [options]
   output. The command uses the OpenBao address and token as specified via
   the login command, environment variables, or CLI flags.
 
-  To create a debug package using default duration and interval values in the 
+  To create a debug package using default duration and interval values in the
   current directory that captures all applicable targets:
 
   $ bao debug
@@ -970,9 +972,76 @@ func (c *DebugCommand) compress(dst string) error {
 		defer osutil.Umask(osutil.Umask(0o077))
 	}
 
-	tgz := archiver.NewTarGz()
-	if err := tgz.Archive([]string{c.flagOutput}, dst); err != nil {
-		return fmt.Errorf("failed to compress data: %s", err)
+	// Do this in a sub-function so we validate close works prior to
+	// removing the output, while letting us keep using defer.
+	if err := func() error {
+		output, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+		if err != nil {
+			return fmt.Errorf("failed to open output archive for writing: %w", err)
+		}
+		defer output.Close()
+
+		gzipped := gzip.NewWriter(output)
+		defer gzipped.Close()
+
+		archive := tar.NewWriter(gzipped)
+		defer archive.Close()
+
+		parent := filepath.Dir(c.flagOutput)
+		child := filepath.Base(c.flagOutput)
+
+		ofs := os.DirFS(parent)
+		if err := fs.WalkDir(ofs, child, func(path string, d fs.DirEntry, err error) error {
+			var fileType byte = tar.TypeReg
+			var tarPath string = path
+			if d.IsDir() {
+				fileType = tar.TypeDir
+				if !strings.HasSuffix(path, "/") {
+					tarPath += "/"
+				}
+			}
+
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+
+			header := tar.Header{
+				Typeflag: fileType,
+				Name:     tarPath,
+				Size:     info.Size(),
+			}
+
+			if err := archive.WriteHeader(&header); err != nil {
+				return err
+			}
+
+			if d.IsDir() {
+				return nil
+			}
+
+			input, err := os.Open(filepath.Join(parent, path))
+			if err != nil {
+				return err
+			}
+
+			data, err := io.ReadAll(input)
+			if err != nil {
+				return err
+			}
+
+			if _, err := archive.Write(data); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return fmt.Errorf("failed to compress data: %w", err)
+		}
+
+		return nil
+	}(); err != nil {
+		return err
 	}
 
 	// If everything is fine up to this point, remove original directory

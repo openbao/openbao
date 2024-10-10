@@ -479,6 +479,7 @@ const sidebars: SidebarsConfig = {
                 "policies/migration",
                 "policies/plugins",
                 "policies/release",
+                "policies/support",
             ],
             Contributing: [
                 "contributing/index",

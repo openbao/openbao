@@ -1,26 +1,32 @@
+const arches: string[] = ["amd64", "arm64", "armhf", "armv7hl", "arm", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x"];
+
+interface ArchPackageMap {
+    [key: string]: string[];
+}
+
 interface Release {
     assets: {
         linux: {
-            deb: string[];
-            rpm: string[];
-            pkg: string[];
-            binary: string[];
-            docker: string[];
+            deb: ArchPackageMap;
+            rpm: ArchPackageMap;
+            pkg: ArchPackageMap;
+            binary: ArchPackageMap;
+            docker: ArchPackageMap;
         };
         darwin: {
-            binary: string[];
+            binary: ArchPackageMap;
         };
         freebsd: {
-            binary: string[];
+            binary: ArchPackageMap;
         };
         netbsd: {
-            binary: string[];
+            binary: ArchPackageMap;
         };
         openbsd: {
-            binary: string[];
+            binary: ArchPackageMap;
         };
         windows: {
-            binary: string[];
+            binary: ArchPackageMap;
         };
     };
 }
@@ -38,6 +44,15 @@ interface GHAsset {
     browser_download_url: string;
 }
 
+function NewArchPackageMap(): ArchPackageMap {
+    let x: ArchPackageMap = {};
+    for (let arch of arches) {
+        x[arch] = [];
+    }
+    x["<none>"] = [];
+    return x;
+}
+
 export function GetReleases(response): Releases {
     const releases: GHRelease[] = response as GHRelease[];
     const result: Releases = {};
@@ -48,47 +63,33 @@ export function GetReleases(response): Releases {
         var release = {
             assets: {
                 linux: {
-                    deb: [],
-                    rpm: [],
-                    pkg: [],
-                    binary: [],
-                    docker: [],
+                    deb: NewArchPackageMap(),
+                    rpm: NewArchPackageMap(),
+                    pkg: NewArchPackageMap(),
+                    binary: NewArchPackageMap(),
+                    docker: NewArchPackageMap(),
                 },
                 darwin: {
-                    binary: [],
+                    binary: NewArchPackageMap(),
                 },
                 freebsd: {
-                    binary: [],
+                    binary: NewArchPackageMap(),
                 },
                 netbsd: {
-                    binary: [],
+                    binary: NewArchPackageMap(),
                 },
                 openbsd: {
-                    binary: [],
+                    binary: NewArchPackageMap(),
                 },
                 windows: {
-                    binary: [],
+                    binary: NewArchPackageMap(),
                 },
             },
         } as Release;
         for (var a of r.assets) {
+            let arch = AssetArchitecture(a.browser_download_url);
             if (a.browser_download_url.toLowerCase().includes("sbom")) {
                 // skip SBOM release assets, they are not relevant for the
-                // download page
-                continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".sig")) {
-                // skip signature release assets, they are not relevant for the
-                // download page
-                continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".gpgsig")) {
-                // skip signature release assets, they are not relevant for the
-                // download page
-                continue;
-            }
-            if (a.browser_download_url.toLowerCase().includes(".pem")) {
-                // skip signature release assets, they are not relevant for the
                 // download page
                 continue;
             }
@@ -98,42 +99,42 @@ export function GetReleases(response): Releases {
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes("windows")) {
-                release.assets.windows.binary.push(a.browser_download_url);
+                release.assets.windows.binary[arch].push(a.browser_download_url);
             }
             if (a.browser_download_url.toLowerCase().includes("openbsd")) {
-                release.assets.openbsd.binary.push(a.browser_download_url);
+                release.assets.openbsd.binary[arch].push(a.browser_download_url);
             }
             if (a.browser_download_url.toLowerCase().includes("netbsd")) {
-                release.assets.netbsd.binary.push(a.browser_download_url);
+                release.assets.netbsd.binary[arch].push(a.browser_download_url);
             }
             if (a.browser_download_url.toLowerCase().includes("freebsd")) {
-                release.assets.freebsd.binary.push(a.browser_download_url);
+                release.assets.freebsd.binary[arch].push(a.browser_download_url);
             }
             if (a.browser_download_url.toLowerCase().includes("darwin")) {
-                release.assets.darwin.binary.push(a.browser_download_url);
+                release.assets.darwin.binary[arch].push(a.browser_download_url);
             }
             if (a.browser_download_url.toLowerCase().includes("docker")) {
-                release.assets.linux.docker.push(a.browser_download_url);
+                release.assets.linux.docker[arch].push(a.browser_download_url);
                 // docker urls also contain "linux", so contiune if we find it
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes(".rpm")) {
-                release.assets.linux.rpm.push(a.browser_download_url);
+                release.assets.linux.rpm[arch].push(a.browser_download_url);
                 // rpm urls also contain "linux", so contiune if we find it
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes(".deb")) {
-                release.assets.linux.deb.push(a.browser_download_url);
+                release.assets.linux.deb[arch].push(a.browser_download_url);
                 // deb urls also contain "linux", so contiune if we find it
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes(".pkg")) {
-                release.assets.linux.pkg.push(a.browser_download_url);
+                release.assets.linux.pkg[arch].push(a.browser_download_url);
                 // pkg urls also contain "linux", so contiune if we find it
                 continue;
             }
             if (a.browser_download_url.toLowerCase().includes("linux")) {
-                release.assets.linux.binary.push(a.browser_download_url);
+                release.assets.linux.binary[arch].push(a.browser_download_url);
             }
         }
         result[version] = release;
@@ -143,35 +144,10 @@ export function GetReleases(response): Releases {
 }
 
 export function AssetArchitecture(url: string): string {
-    if (url.includes("amd64")) {
-        return "amd64";
-    }
-    if (url.includes("arm64")) {
-        return "arm64";
-    }
-    if (url.includes("armhf")) {
-        return "armhf";
-    }
-    if (url.includes("armv7hl")) {
-        return "armv7hl";
-    }
-    if (url.includes("arm")) {
-        return "arm";
-    }
-    if (url.includes("riscv64")) {
-        return "riscv64";
-    }
-    if (url.includes("aarch64")) {
-        return "aarch64";
-    }
-    if (url.includes("x86_64")) {
-        return "x86_64";
-    }
-    if (url.includes("ppc64le")) {
-        return "ppc64le";
-    }
-    if (url.includes("s390x")) {
-        return "s390x";
+    for (let arch of arches) {
+        if (url.includes(arch)) {
+            return arch;
+        }
     }
     return "<none>";
 }
@@ -192,4 +168,19 @@ export function OsPrettyPrint(name: string): string {
             return "Windows";
     }
     return "";
+}
+
+interface ArchPackageMapApplicationLambda {
+    (value: string, key: string): JSX.Element;
+}
+
+export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackageMapApplicationLambda): JSX.Element[] {
+    var result: JSX.Element[] = [];
+    for (let arch of arches) {
+        if (arch in category) {
+            result.push(lambda(category[arch], arch));
+        }
+    }
+
+    return result;
 }

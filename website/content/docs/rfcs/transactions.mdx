@@ -168,7 +168,11 @@ The Postgres backend stores [all data in a single table](https://github.com/open
 
 This will be much easier than the Raft+`bbolt` implementation above, should we wish to resurrect the Postgres backend in the future.
 
-The above Raft semantics likely roughly [correspond to `read committed` isolation](https://www.postgresql.org/docs/current/transaction-iso.html).
+The above Raft semantics likely roughly [correspond to `repeatable read` isolation](https://www.postgresql.org/docs/current/transaction-iso.html).
+
+:::info
+Raft and PostgreSQL will have different semantics: PostgreSQL prevents a single thread from interacting with two separate transactions, so developers will need to take care to avoid this.
+:::
 
 ### Implementation in File, InMem
 

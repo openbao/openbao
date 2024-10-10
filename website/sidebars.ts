@@ -489,6 +489,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/paginated-lists",
                 "rfcs/mlock-removal",
                 "rfcs/signed-commits",
+                "rfcs/transactions",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

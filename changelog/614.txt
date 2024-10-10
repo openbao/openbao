@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/postgresql: Allow table creation to improve first-start UX.
+```

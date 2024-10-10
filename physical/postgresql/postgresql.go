@@ -14,6 +14,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/openbao/openbao/api/v2"
@@ -234,6 +235,56 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		txnPermitPool:   physical.NewPermitPool(txnMaxParInt),
 		haEnabled:       conf["ha_enabled"] == "true",
 		upsert_function: quoted_upsert_function,
+	}
+
+	// Determine if we should create tables.
+	raw_skip_create_table, ok := conf["skip_create_table"]
+	if !ok {
+		raw_skip_create_table = "false"
+	}
+	skip_create_table, err := parseutil.ParseBool(raw_skip_create_table)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
+	}
+	if !skip_create_table {
+		txn, err := db.BeginTx(context.TODO(), &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to begin transaction to attempt table creation: %w", err)
+		}
+
+		defer txn.Rollback()
+
+		createTableQuery := "CREATE TABLE IF NOT EXISTS " + quoted_table + " (" +
+			`parent_path TEXT COLLATE "C" NOT NULL,` +
+			`  path        TEXT COLLATE "C",` +
+			`  key         TEXT COLLATE "C",` +
+			`  value       BYTEA,` +
+			`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
+			`);`
+		if _, err := db.Exec(createTableQuery); err != nil {
+			return nil, fmt.Errorf("failed to create table: %w", err)
+		}
+
+		createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + quoted_table + ` (parent_path);`
+		if _, err := db.Exec(createIndexQuery); err != nil {
+			return nil, fmt.Errorf("failed to create index on table: %w", err)
+		}
+
+		if m.haEnabled {
+			// Successfully detected that there is no table; create it.
+			createTableQuery := `CREATE TABLE IF NOT EXISTS ` + quoted_ha_table + ` (` +
+				`  ha_key      TEXT COLLATE "C" NOT NULL,` +
+				`  ha_identity TEXT COLLATE "C" NOT NULL,` +
+				`  ha_value    TEXT COLLATE "C",` +
+				`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
+				`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
+				`);`
+			if _, err := db.Exec(createTableQuery); err != nil {
+				return nil, fmt.Errorf("failed to create ha table: %w", err)
+			}
+		}
 	}
 
 	return m, nil

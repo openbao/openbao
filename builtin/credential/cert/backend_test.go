@@ -36,7 +36,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	vaulthttp "github.com/openbao/openbao/http"
 
-	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/builtin/logical/pki"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"
@@ -169,12 +168,18 @@ func connectionState(serverCAPath, serverCertPath, serverKeyPath, clientCertPath
 		return tls.ConnectionState{}, err
 	}
 	// Load the CA cert required by the client to authenticate the server.
-	rootConfig := &rootcerts.Config{
-		CAFile: serverCAPath,
-	}
-	serverCAs, err := rootcerts.LoadCACerts(rootConfig)
+	pem, err := os.ReadFile(serverCAPath)
 	if err != nil {
-		return tls.ConnectionState{}, err
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
+	}
+
+	// Initialize the cert pool.
+	serverCAs := x509.NewCertPool()
+
+	// Append the CA certificates from the PEM file to the cert pool.
+	ok := serverCAs.AppendCertsFromPEM(pem)
+	if !ok {
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", serverCAPath)
 	}
 	// Prepare the dial configuration that the client uses to establish the connection.
 	dialConf := &tls.Config{
@@ -2051,13 +2056,19 @@ func testConnState(certPath, keyPath, rootCertPath string) (tls.ConnectionState,
 	if err != nil {
 		return tls.ConnectionState{}, err
 	}
-	rootConfig := &rootcerts.Config{
-		CAFile: rootCertPath,
-	}
-	rootCAs, err := rootcerts.LoadCACerts(rootConfig)
+	// Load the CA cert required by the client to authenticate the server
+	pem, err := os.ReadFile(rootCertPath)
 	if err != nil {
-		return tls.ConnectionState{}, err
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: %w", err)
 	}
+	rootCAs := x509.NewCertPool()
+
+	// Append the CA certificates from the PEM file to the cert pool
+	ok := rootCAs.AppendCertsFromPEM(pem)
+	if !ok {
+		return tls.ConnectionState{}, fmt.Errorf("Error loading CA File: Couldn't parse PEM in: %s", rootCertPath)
+	}
+
 	listenConf := &tls.Config{
 		Certificates:       []tls.Certificate{cert},
 		ClientAuth:         tls.RequestClientCert,

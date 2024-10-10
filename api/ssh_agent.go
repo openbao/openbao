@@ -14,7 +14,6 @@ import (
 	"github.com/hashicorp/errwrap"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	multierror "github.com/hashicorp/go-multierror"
-	rootcerts "github.com/hashicorp/go-rootcerts"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/mitchellh/mapstructure"
@@ -107,11 +106,11 @@ func (c *SSHHelperConfig) NewClient() (*Client, error) {
 
 	// Check if certificates are provided via config file.
 	if c.shouldSetTLSParameters() {
-		rootConfig := &rootcerts.Config{
+		rootConfig := &certConfig{
 			CAFile: c.CACert,
 			CAPath: c.CAPath,
 		}
-		certPool, err := rootcerts.LoadCACerts(rootConfig)
+		certPool, err := loadCACerts(rootConfig)
 		if err != nil {
 			return nil, err
 		}

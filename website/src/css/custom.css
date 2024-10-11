@@ -66,3 +66,14 @@ div.download-card a.button span {
       var(--ifm-button-padding-horizontal) * var(--ifm-button-size-multiplier) * 0.50
     );
 }
+
+@media (max-width: 500px) {
+  div.all-downloads nav.pagination-nav {
+    grid-template-columns: 1fr;
+  }
+
+  div.all-downloads nav.pagination-nav div.download-card {
+    max-width: 85%;
+    margin: 0 auto;
+  }
+}

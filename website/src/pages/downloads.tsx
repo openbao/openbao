@@ -136,7 +136,6 @@ const Asset = ({ urls }) => {
     }
 
     if (asset === undefined) {
-        console.trace("UNKOWN ASSET: ", asset, urls, gpgSig, coCert, coSig);
         return;
     }
 
@@ -312,7 +311,7 @@ const DownloadComponent = () => {
         version = selectedItem;
     }
     return (
-        <div className="container margin-vert--lg">
+        <div className="container margin-vert--lg all-downloads">
             <div className="row">
                 <div
                     className="col col--12 text--center margin-horiz--md"

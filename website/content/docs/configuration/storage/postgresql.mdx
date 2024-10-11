@@ -49,8 +49,8 @@ to disable SSL.
   documentation. For example connection string URLs, see the examples section below.
 
 - `table` `(string: "openbao_kv_store")` – Specifies the name of the table in
-  which to write OpenBao data. This table must already exist (OpenBao will not
-  attempt to create it).
+  which to write OpenBao data. OpenBao will attempt to create it if missing and
+  `skip_create_table=false` (the default).
 
 - `max_idle_connections` `(int)` - Default not set. Sets the maximum number of
   connections in the idle connection pool. See
@@ -64,8 +64,8 @@ to disable SSL.
   PostgreSQL 9.5 or later.
 
 - `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
-  for storing high availability information. This table must already exist (OpenBao
-  will not attempt to create it).
+  for storing high availability information. OpenBao will attempt to create it
+  if missing and `skip_create_table=false` (the default).
 
 - `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the
   function to execute for upsert capabilities on PostgreSQL versions earlier
@@ -73,8 +73,8 @@ to disable SSL.
 
 - `skip_create_table` `(string: "true|false", default "false")` - When enabled,
   will not attempt to automatically create database tables if missing. Requires
-  PostgreSQL 9.5 or later. Set to `false` if the database user does not have
-  the required permissions.
+  PostgreSQL 9.5 or later. Set to `true` if the database user does not have
+  the required permissions; otherwise, OpenBao will fail to start.
 
 ## `postgresql` examples
 

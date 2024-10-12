@@ -357,3 +357,8 @@ func TestUUID(t *testing.T) {
 		require.Regexp(t, re, id)
 	}
 }
+
+func TestMatchesGlob(t *testing.T) {
+	require.True(t, matchesGlob("prod-*", "prod-20241012"))
+	require.False(t, matchesGlob("prod-*", "production"))
+}

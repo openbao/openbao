@@ -49,6 +49,7 @@ func Option(opts ...string) Opt {
 // StringTemplate creates strings based on the provided template.
 // This uses the go templating language, so anything that adheres to that language will function in this struct.
 // There are several custom functions available for use in the template:
+//
 // - random
 //   - Randomly generated characters. This uses the charset specified in RandomCharset. Must include a length.
 //     Example: {{ rand 20 }}
@@ -97,6 +98,11 @@ func Option(opts ...string) Opt {
 // - uuid
 //   - Generates a UUID
 //     Example: {{ uuid }}
+//
+// - glob
+//   - Returns true if the second argument matches a glob (wildcard) pattern
+//     in the first argument.
+//     Example {{ if glob "release/*" .branch }}is_release_branch: true{{ end }}
 type StringTemplate struct {
 	rawTemplate string
 	tmpl        *template.Template
@@ -123,6 +129,7 @@ func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 			"unix_time_millis": unixTimeMillis,
 			"timestamp":        timestamp,
 			"uuid":             uuid,
+			"glob":             matchesGlob,
 		},
 	}
 

@@ -207,3 +207,29 @@ func TestBadConstructorArguments(t *testing.T) {
 		require.Equal(t, "", str)
 	})
 }
+
+func TestTemplateGlob(t *testing.T) {
+	st, err := NewTemplate(
+		Template("{{ if glob \"release/*\" .branch }}is_release_branch: true{{ end }}"),
+	)
+	require.NoError(t, err)
+
+	str, err := st.Generate(map[string]string{
+		"branch": "main",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "")
+
+	str, err = st.Generate(map[string]string{
+		"branch": "release/v2.0.2",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "is_release_branch: true")
+
+	// glob should match itself
+	str, err = st.Generate(map[string]string{
+		"branch": "release/*",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "is_release_branch: true")
+}

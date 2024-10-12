@@ -84,6 +84,10 @@ func Option(opts ...string) Opt {
 //   - base64 encodes the previous value.
 //     Example: {{ .DisplayName | base64 }}
 //
+// - decode_base64
+//   - decode_base64 decodes the previous value.
+//     Example: {{ .DisplayName | decode_base64 }}
+//
 // - unix_time
 //   - Provides the current unix time in seconds.
 //     Example: {{ unix_time }}
@@ -124,6 +128,7 @@ func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 			"replace":         replace,
 			"sha256":          hashSHA256,
 			"base64":          encodeBase64,
+			"decode_base64":   decodeBase64,
 
 			"unix_time":        unixTime,
 			"unix_time_millis": unixTimeMillis,

@@ -64,6 +64,11 @@ func encodeBase64(str string) string {
 	return base64.StdEncoding.EncodeToString([]byte(str))
 }
 
+func decodeBase64(str string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(str)
+	return string(data), err
+}
+
 func uppercase(str string) string {
 	return strings.ToUpper(str)
 }

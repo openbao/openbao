@@ -54,6 +54,7 @@ div.download-card div.button-group--block {
 
 div.download-card a.button {
   padding: 0px 0px !important;
+  border-radius: var(--ifm-button-border-radius) !important;
 }
 
 div.download-card a.button span {

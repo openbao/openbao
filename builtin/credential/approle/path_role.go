@@ -1600,6 +1600,19 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 	lock.Lock()
 	defer lock.Unlock()
 
+	originalStorage := req.Storage
+	var txn logical.Transaction
+
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		var err error
+		txn, err = txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		}
+		defer txn.Rollback(ctx) // Ensure rollback if anything goes wrong
+		req.Storage = txn
+	}
+
 	// Check if the role already exists
 	role, err := b.roleEntry(ctx, req.Storage, roleName)
 	if err != nil {
@@ -1725,6 +1738,15 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 		}
 		resp.AddWarning("token_max_ttl is greater than the backend mount's maximum TTL value; issued tokens' max TTL value will be truncated")
 	}
+
+	if txn != nil {
+		if err := txn.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("failed to commit transaction during renewal: %w", err)
+		}
+	}
+
+	// Restore the original storage
+	req.Storage = originalStorage
 
 	// Store the entry.
 	return resp, b.setRoleEntry(ctx, req.Storage, role.name, role, previousRoleID)
@@ -1960,6 +1982,19 @@ func (b *backend) pathRoleSecretIDDestroyUpdateDelete(ctx context.Context, req *
 	roleLock.RLock()
 	defer roleLock.RUnlock()
 
+	originalStorage := req.Storage
+	var txn logical.Transaction
+
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		var err error
+		txn, err = txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		}
+		defer txn.Rollback(ctx) // Ensure rollback if anything goes wrong
+		req.Storage = txn
+	}
+
 	role, err := b.roleEntry(ctx, req.Storage, roleName)
 	if err != nil {
 		return nil, err
@@ -2001,7 +2036,14 @@ func (b *backend) pathRoleSecretIDDestroyUpdateDelete(ctx context.Context, req *
 	if err := req.Storage.Delete(ctx, entryIndex); err != nil {
 		return nil, fmt.Errorf("failed to delete secret_id: %w", err)
 	}
+	if txn != nil {
+		if err := txn.Commit(ctx); err != nil {
+			return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		}
+	}
 
+	// Restore the original storage
+	req.Storage = originalStorage
 	return nil, nil
 }
 

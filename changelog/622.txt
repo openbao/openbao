@@ -1,0 +1,7 @@
+```release-note:feature
+**Remove Mount Table Limits**: Using transactional storage, we've split the
+auth and secret mount tables into separate storage entires, removing the
+requirement that the entire table fit into a single storage entry limited by
+`max_entry_size`. This allows potentially hundreds of thousands of mounts on
+a single scaled-up server.
+```

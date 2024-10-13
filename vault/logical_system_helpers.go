@@ -68,9 +68,9 @@ func (b *SystemBackend) tuneMountTTLs(ctx context.Context, path string, me *Moun
 	var err error
 	switch {
 	case strings.HasPrefix(path, credentialRoutePrefix):
-		err = b.Core.persistAuth(ctx, b.Core.auth, &me.Local)
+		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &me.Local, me.UUID)
 	default:
-		err = b.Core.persistMounts(ctx, b.Core.mounts, &me.Local)
+		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &me.Local, me.UUID)
 	}
 	if err != nil {
 		me.Config.MaxLeaseTTL = origMax

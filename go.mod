@@ -51,7 +51,6 @@ require (
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-metrics-stackdriver v0.2.0
-	github.com/google/tink/go v1.7.0
 	github.com/hashicorp/cap v0.3.0
 	github.com/hashicorp/cli v1.1.6
 	github.com/hashicorp/errwrap v1.1.0
@@ -137,6 +136,7 @@ require (
 	github.com/sethvargo/go-limiter v0.7.1
 	github.com/shirou/gopsutil/v3 v3.22.6
 	github.com/stretchr/testify v1.9.0
+	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	go.etcd.io/bbolt v1.3.7
 	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/sdk v1.19.0

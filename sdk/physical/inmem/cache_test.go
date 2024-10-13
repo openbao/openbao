@@ -25,6 +25,7 @@ func TestCache(t *testing.T) {
 	cache := physical.NewCache(inm, 0, logger, &metrics.BlackholeSink{})
 	cache.SetEnabled(true)
 	physical.ExerciseBackend(t, cache)
+	physical.ExerciseTransactionalBackend(t, cache.(physical.TransactionalBackend))
 	physical.ExerciseBackend_ListPrefix(t, cache)
 }
 

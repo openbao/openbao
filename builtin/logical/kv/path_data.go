@@ -84,6 +84,18 @@ func (b *versionedKVBackend) dataExistenceCheck() framework.ExistenceFunc {
 // pathDataRead handles read commands to a kv entry
 func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Create a read-only transaction if we can. We do not need to commit
+		// this as we're not writing to storage.
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		key := data.Get("path").(string)
 
 		lock := locksutil.LockForKey(b.locks, key)
@@ -273,6 +285,18 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 		lock.Lock()
 		defer lock.Unlock()
 
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
 			return nil, err
@@ -354,6 +378,15 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 			resp.AddWarning(warning)
 		}
 
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
+		}
+
 		return resp, nil
 	}
 }
@@ -398,6 +431,18 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 		lock := locksutil.LockForKey(b.locks, key)
 		lock.Lock()
 		defer lock.Unlock()
+
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
 
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
@@ -549,6 +594,15 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 			resp.AddWarning(warning)
 		}
 
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
+		}
+
 		return resp, nil
 	}
 }
@@ -560,6 +614,18 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 		lock := locksutil.LockForKey(b.locks, key)
 		lock.Lock()
 		defer lock.Unlock()
+
+		// Create a transaction if we can.
+		originalStorage := req.Storage
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
 
 		meta, err := b.getKeyMetadata(ctx, req.Storage, key)
 		if err != nil {
@@ -592,6 +658,15 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
 		if err != nil {
 			return nil, err
+		}
+
+		// Commit our transaction if we created one! We're done making
+		// modifications to storage.
+		if txn, ok := req.Storage.(logical.Transaction); ok && req.Storage != originalStorage {
+			if err := txn.Commit(ctx); err != nil {
+				return nil, err
+			}
+			req.Storage = originalStorage
 		}
 
 		return nil, nil
@@ -666,7 +741,7 @@ A patch operation must be performed on an existing secret. The secret must neith
 be deleted nor destroyed. Like a write operation, patch operations accept an
 options object and data object. The options object is used to pass some options to
 the patch command and the data object is used to perform a partial update on the
-current version of the secret and store the encrypted result in the storage backend. 
+current version of the secret and store the encrypted result in the storage backend.
 
 A read operation will return the latest version for a key unless the "version"
 parameter is set, then it returns the version at that number.

@@ -410,11 +410,20 @@ var Backend_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StorageClient interface {
+	// logical.Storage calls.
 	List(ctx context.Context, in *StorageListArgs, opts ...grpc.CallOption) (*StorageListReply, error)
 	ListPage(ctx context.Context, in *StorageListPageArgs, opts ...grpc.CallOption) (*StorageListReply, error)
 	Get(ctx context.Context, in *StorageGetArgs, opts ...grpc.CallOption) (*StorageGetReply, error)
 	Put(ctx context.Context, in *StoragePutArgs, opts ...grpc.CallOption) (*StoragePutReply, error)
 	Delete(ctx context.Context, in *StorageDeleteArgs, opts ...grpc.CallOption) (*StorageDeleteReply, error)
+	// Sentinel call to detect transaction support.
+	IsTransactional(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageIsTransactionalReply, error)
+	// logical.Transactional calls.
+	BeginReadOnlyTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageBeginTxReply, error)
+	BeginTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageBeginTxReply, error)
+	// logical.Transaction calls.
+	Commit(ctx context.Context, in *StorageCommitTxArgs, opts ...grpc.CallOption) (*StorageCommitTxReply, error)
+	Rollback(ctx context.Context, in *StorageRollbackTxArgs, opts ...grpc.CallOption) (*StorageRollbackTxReply, error)
 }
 
 type storageClient struct {
@@ -470,15 +479,69 @@ func (c *storageClient) Delete(ctx context.Context, in *StorageDeleteArgs, opts 
 	return out, nil
 }
 
+func (c *storageClient) IsTransactional(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageIsTransactionalReply, error) {
+	out := new(StorageIsTransactionalReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/IsTransactional", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) BeginReadOnlyTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageBeginTxReply, error) {
+	out := new(StorageBeginTxReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/BeginReadOnlyTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) BeginTx(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*StorageBeginTxReply, error) {
+	out := new(StorageBeginTxReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/BeginTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) Commit(ctx context.Context, in *StorageCommitTxArgs, opts ...grpc.CallOption) (*StorageCommitTxReply, error) {
+	out := new(StorageCommitTxReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/Commit", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageClient) Rollback(ctx context.Context, in *StorageRollbackTxArgs, opts ...grpc.CallOption) (*StorageRollbackTxReply, error) {
+	out := new(StorageRollbackTxReply)
+	err := c.cc.Invoke(ctx, "/pb.Storage/Rollback", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StorageServer is the server API for Storage service.
 // All implementations must embed UnimplementedStorageServer
 // for forward compatibility
 type StorageServer interface {
+	// logical.Storage calls.
 	List(context.Context, *StorageListArgs) (*StorageListReply, error)
 	ListPage(context.Context, *StorageListPageArgs) (*StorageListReply, error)
 	Get(context.Context, *StorageGetArgs) (*StorageGetReply, error)
 	Put(context.Context, *StoragePutArgs) (*StoragePutReply, error)
 	Delete(context.Context, *StorageDeleteArgs) (*StorageDeleteReply, error)
+	// Sentinel call to detect transaction support.
+	IsTransactional(context.Context, *Empty) (*StorageIsTransactionalReply, error)
+	// logical.Transactional calls.
+	BeginReadOnlyTx(context.Context, *Empty) (*StorageBeginTxReply, error)
+	BeginTx(context.Context, *Empty) (*StorageBeginTxReply, error)
+	// logical.Transaction calls.
+	Commit(context.Context, *StorageCommitTxArgs) (*StorageCommitTxReply, error)
+	Rollback(context.Context, *StorageRollbackTxArgs) (*StorageRollbackTxReply, error)
 	mustEmbedUnimplementedStorageServer()
 }
 
@@ -500,6 +563,21 @@ func (UnimplementedStorageServer) Put(context.Context, *StoragePutArgs) (*Storag
 }
 func (UnimplementedStorageServer) Delete(context.Context, *StorageDeleteArgs) (*StorageDeleteReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedStorageServer) IsTransactional(context.Context, *Empty) (*StorageIsTransactionalReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method IsTransactional not implemented")
+}
+func (UnimplementedStorageServer) BeginReadOnlyTx(context.Context, *Empty) (*StorageBeginTxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BeginReadOnlyTx not implemented")
+}
+func (UnimplementedStorageServer) BeginTx(context.Context, *Empty) (*StorageBeginTxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BeginTx not implemented")
+}
+func (UnimplementedStorageServer) Commit(context.Context, *StorageCommitTxArgs) (*StorageCommitTxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Commit not implemented")
+}
+func (UnimplementedStorageServer) Rollback(context.Context, *StorageRollbackTxArgs) (*StorageRollbackTxReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Rollback not implemented")
 }
 func (UnimplementedStorageServer) mustEmbedUnimplementedStorageServer() {}
 
@@ -604,6 +682,96 @@ func _Storage_Delete_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Storage_IsTransactional_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).IsTransactional(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/IsTransactional",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).IsTransactional(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_BeginReadOnlyTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).BeginReadOnlyTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/BeginReadOnlyTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).BeginReadOnlyTx(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_BeginTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).BeginTx(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/BeginTx",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).BeginTx(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_Commit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StorageCommitTxArgs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).Commit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/Commit",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).Commit(ctx, req.(*StorageCommitTxArgs))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Storage_Rollback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StorageRollbackTxArgs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServer).Rollback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Storage/Rollback",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServer).Rollback(ctx, req.(*StorageRollbackTxArgs))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Storage_ServiceDesc is the grpc.ServiceDesc for Storage service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -630,6 +798,26 @@ var Storage_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _Storage_Delete_Handler,
+		},
+		{
+			MethodName: "IsTransactional",
+			Handler:    _Storage_IsTransactional_Handler,
+		},
+		{
+			MethodName: "BeginReadOnlyTx",
+			Handler:    _Storage_BeginReadOnlyTx_Handler,
+		},
+		{
+			MethodName: "BeginTx",
+			Handler:    _Storage_BeginTx_Handler,
+		},
+		{
+			MethodName: "Commit",
+			Handler:    _Storage_Commit_Handler,
+		},
+		{
+			MethodName: "Rollback",
+			Handler:    _Storage_Rollback_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

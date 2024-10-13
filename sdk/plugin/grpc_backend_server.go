@@ -93,7 +93,11 @@ func (b *backendGRPCPluginServer) Setup(ctx context.Context, args *pb.SetupArgs)
 		return &pb.SetupReply{}, err
 	}
 
-	storage := newGRPCStorageClient(brokeredClient)
+	storage, err := newGRPCStorageClient(ctx, brokeredClient)
+	if err != nil {
+		return &pb.SetupReply{}, err
+	}
+
 	sysView := newGRPCSystemView(brokeredClient)
 
 	config := &logical.BackendConfig{
@@ -138,7 +142,10 @@ func (b *backendGRPCPluginServer) HandleRequest(ctx context.Context, args *pb.Ha
 		return &pb.HandleRequestReply{}, err
 	}
 
-	logicalReq.Storage = newGRPCStorageClient(brokeredClient)
+	logicalReq.Storage, err = newGRPCStorageClient(ctx, brokeredClient)
+	if err != nil {
+		return &pb.HandleRequestReply{}, err
+	}
 
 	resp, respErr := backend.HandleRequest(ctx, logicalReq)
 
@@ -163,8 +170,13 @@ func (b *backendGRPCPluginServer) Initialize(ctx context.Context, _ *pb.Initiali
 		return &pb.InitializeReply{}, ErrServerInMetadataMode
 	}
 
+	storage, err := newGRPCStorageClient(ctx, brokeredClient)
+	if err != nil {
+		return &pb.InitializeReply{}, err
+	}
+
 	req := &logical.InitializationRequest{
-		Storage: newGRPCStorageClient(brokeredClient),
+		Storage: storage,
 	}
 
 	respErr := backend.Initialize(ctx, req)
@@ -213,7 +225,10 @@ func (b *backendGRPCPluginServer) HandleExistenceCheck(ctx context.Context, args
 		return &pb.HandleExistenceCheckReply{}, err
 	}
 
-	logicalReq.Storage = newGRPCStorageClient(brokeredClient)
+	logicalReq.Storage, err = newGRPCStorageClient(ctx, brokeredClient)
+	if err != nil {
+		return &pb.HandleExistenceCheckReply{}, err
+	}
 
 	checkFound, exists, err := backend.HandleExistenceCheck(ctx, logicalReq)
 	return &pb.HandleExistenceCheckReply{

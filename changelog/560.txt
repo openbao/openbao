@@ -1,0 +1,3 @@
+```release-note:improvement
+secrets/kv: Implement transactions to prevent canceled operations from corrupting storage.
+```

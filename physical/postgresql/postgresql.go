@@ -14,6 +14,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/openbao/openbao/api/v2"
@@ -37,7 +38,10 @@ const (
 )
 
 // Verify PostgreSQLBackend satisfies the correct interfaces
-var _ physical.Backend = (*PostgreSQLBackend)(nil)
+var (
+	_ physical.Backend              = (*PostgreSQLBackend)(nil)
+	_ physical.TransactionalBackend = (*PostgreSQLBackend)(nil)
+)
 
 // HA backend was implemented based on the DynamoDB backend pattern
 // With distinction using central postgres clock, hereby avoiding
@@ -66,9 +70,10 @@ type PostgreSQLBackend struct {
 
 	upsert_function string
 
-	haEnabled  bool
-	logger     log.Logger
-	permitPool *physical.PermitPool
+	haEnabled     bool
+	logger        log.Logger
+	permitPool    *physical.PermitPool
+	txnPermitPool *physical.PermitPool
 }
 
 // PostgreSQLLock implements a lock using an PostgreSQL client.
@@ -124,6 +129,20 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		}
 	} else {
 		maxParInt = physical.DefaultParallelOperations
+	}
+
+	txnMaxParStr, ok := conf["transaction_max_parallel"]
+	var txnMaxParInt int
+	if ok {
+		txnMaxParInt, err = strconv.Atoi(txnMaxParStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing transaction_max_parallel parameter: %w", err)
+		}
+		if logger.IsDebug() {
+			logger.Debug("transaction_max_parallel set", "transaction_max_parallel", txnMaxParInt)
+		}
+	} else {
+		txnMaxParInt = physical.DefaultParallelTransactions
 	}
 
 	maxIdleConnsStr, maxIdleConnsIsSet := conf["max_idle_connections"]
@@ -213,8 +232,59 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
 		logger:          logger,
 		permitPool:      physical.NewPermitPool(maxParInt),
+		txnPermitPool:   physical.NewPermitPool(txnMaxParInt),
 		haEnabled:       conf["ha_enabled"] == "true",
 		upsert_function: quoted_upsert_function,
+	}
+
+	// Determine if we should create tables.
+	raw_skip_create_table, ok := conf["skip_create_table"]
+	if !ok {
+		raw_skip_create_table = "false"
+	}
+	skip_create_table, err := parseutil.ParseBool(raw_skip_create_table)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
+	}
+	if !skip_create_table {
+		txn, err := db.BeginTx(context.TODO(), &sql.TxOptions{
+			Isolation: sql.LevelRepeatableRead,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to begin transaction to attempt table creation: %w", err)
+		}
+
+		defer txn.Rollback()
+
+		createTableQuery := "CREATE TABLE IF NOT EXISTS " + quoted_table + " (" +
+			`parent_path TEXT COLLATE "C" NOT NULL,` +
+			`  path        TEXT COLLATE "C",` +
+			`  key         TEXT COLLATE "C",` +
+			`  value       BYTEA,` +
+			`  CONSTRAINT pkey PRIMARY KEY (path, key)` +
+			`);`
+		if _, err := db.Exec(createTableQuery); err != nil {
+			return nil, fmt.Errorf("failed to create table: %w", err)
+		}
+
+		createIndexQuery := `CREATE INDEX IF NOT EXISTS parent_path_idx ON ` + quoted_table + ` (parent_path);`
+		if _, err := db.Exec(createIndexQuery); err != nil {
+			return nil, fmt.Errorf("failed to create index on table: %w", err)
+		}
+
+		if m.haEnabled {
+			// Successfully detected that there is no table; create it.
+			createTableQuery := `CREATE TABLE IF NOT EXISTS ` + quoted_ha_table + ` (` +
+				`  ha_key      TEXT COLLATE "C" NOT NULL,` +
+				`  ha_identity TEXT COLLATE "C" NOT NULL,` +
+				`  ha_value    TEXT COLLATE "C",` +
+				`  valid_until TIMESTAMP WITH TIME ZONE NOT NULL,` +
+				`  CONSTRAINT ha_key PRIMARY KEY (ha_key)` +
+				`);`
+			if _, err := db.Exec(createTableQuery); err != nil {
+				return nil, fmt.Errorf("failed to create ha table: %w", err)
+			}
+		}
 	}
 
 	return m, nil

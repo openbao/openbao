@@ -4,6 +4,7 @@
 package postgresql
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -22,8 +23,9 @@ func TestPostgreSQLBackend(t *testing.T) {
 	// Use docker as pg backend if no url is provided via environment variables
 	connURL := os.Getenv("PGURL")
 	if connURL == "" {
-		_, u := postgresql.PrepareTestContainer(t, "11.1")
+		cleanup, u := postgresql.PrepareTestContainer(t, "11.1")
 		connURL = u
+		defer cleanup()
 	}
 
 	table := os.Getenv("PGTABLE")
@@ -77,6 +79,8 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b1)
+	logger.Info("Running transactional backend tests")
+	physical.ExerciseTransactionalBackend(t, b1.(physical.TransactionalBackend))
 	logger.Info("Running list prefix backend tests")
 	physical.ExerciseBackend_ListPrefix(t, b1)
 
@@ -384,4 +388,59 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 
 	// Cleanup
 	newLock.Unlock()
+}
+
+func TestPostgreSQLBackend_CreateTables(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	b, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": connURL,
+		"table":          "openbao_kv_store",
+		"ha_enabled":     "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+
+	// Do not call SetupDatabaseObjects here; this should be handled automatically.
+
+	logger.Info("Running basic backend tests")
+	physical.ExerciseBackend(t, b)
+}
+
+func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	b, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url":    connURL,
+		"table":             "openbao_kv_store",
+		"ha_enabled":        "true",
+		"skip_create_table": "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+
+	// Put should fail with an error.
+	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
+	err = b.Put(context.Background(), entry)
+	if err == nil {
+		t.Fatalf("expected put to fail due to missing tables")
+	}
+
+	pg := b.(*PostgreSQLBackend)
+	SetupDatabaseObjects(t, pg)
+
+	logger.Info("Running basic backend tests")
+	physical.ExerciseBackend(t, b)
 }

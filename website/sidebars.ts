@@ -479,6 +479,7 @@ const sidebars: SidebarsConfig = {
                 "policies/migration",
                 "policies/plugins",
                 "policies/release",
+                "policies/support",
             ],
             Contributing: [
                 "contributing/index",
@@ -489,6 +490,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/paginated-lists",
                 "rfcs/mlock-removal",
                 "rfcs/signed-commits",
+                "rfcs/transactions",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

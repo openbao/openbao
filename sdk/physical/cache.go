@@ -19,6 +19,10 @@ const (
 	// DefaultCacheSize is used if no cache size is specified for NewCache
 	DefaultCacheSize = 128 * 1024
 
+	// TransactionCacheFactor is a multiple of cache size to reduce
+	// transactions by, to avoid high memory usage.
+	TransactionCacheFactor = DefaultParallelTransactions
+
 	// refreshCacheCtxKey is a ctx value that denotes the cache should be
 	// refreshed during a Get call.
 	refreshCacheCtxKey = "refresh_cache"
@@ -279,7 +283,7 @@ func (c *cache) cloneWithStorage(b Backend) *cache {
 	// fresh, localized cache. This is globally sub-optimal (as it starts
 	// with an empty cache), but easiest to implement (as the transaction can
 	// modify its cache as it pleases).
-	cacheCopy := newCache(b, c.size, c.logger, c.metricSink).(*cache)
+	cacheCopy := newCache(b, c.size/TransactionCacheFactor, c.logger, c.metricSink).(*cache)
 	cacheCopy.SetEnabled(c.GetEnabled())
 	return cacheCopy
 }

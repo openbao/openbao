@@ -120,14 +120,19 @@ backend cannot be declared.
   Only valid if there is at least one `retry_join` stanza.
 
 - `max_entry_size` `(integer: 1048576)` - This configures the maximum number of
-  bytes for a Raft entry. It applies to both Put operations and transactions.
-  Any put or transaction operation exceeding this configuration value will cause
-  the respective operation to fail. Raft has a suggested max size of data in a
-  Raft log entry. This is based on current architecture, default timing, etc.
-  Integrated Storage also uses a chunk size that is the threshold used for
-  breaking a large value into chunks. By default, the chunk size is the same as
-  Raft's max size log entry. The default value for this configuration is 1048576
-  -- two times the chunking size.
+  bytes for a Raft entry. It applies to Put operations: Any put operation exceeding
+  this configuration value will cause the respective operation to fail. Raft has a
+  suggested max size of data in a Raft log entry. This is based on current
+  architecture, default timing, etc. Integrated Storage also uses a chunk size that
+  is the threshold used for breaking a large value into chunks. By default, the
+  chunk size is the same as Raft's max size log entry. The default value for this
+  configuration is 1048576 -- two times the chunking size.
+
+- `max_transaction_size` `(integer: 8388608)` - This configures the maximum
+  number of bytes for a Raft entry containing a [transaction](/docs/rfcs/transactions).
+  Each individual operation within a transaction must still be less than the
+  size of a maximum entry (`max_entry_size`). This defaults to 16 times the
+  minimum chunking size and must be set independently of `max_entry_size`.
 
 - `autopilot_reconcile_interval` `(string: "10s")` - This is the interval after
   which autopilot will pick up any state changes. State change could mean multiple

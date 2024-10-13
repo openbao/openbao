@@ -3872,6 +3872,7 @@ func TestSystemBackend_InternalUIMounts(t *testing.T) {
 		},
 	}
 	if diff := deep.Equal(resp.Data, exp); diff != nil {
+		t.Logf("resp.Data[secret][sys/] = %#v", ((resp.Data["secret"]).(map[string]interface{}))["sys/"])
 		t.Fatal(diff)
 	}
 
@@ -5902,7 +5903,7 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Fatal()
 		}
 		mountEntry.Version = nonExistentBuiltinVersion
-		err = core.persistMounts(ctx, core.mounts, &mountEntry.Local)
+		err = core.persistMounts(ctx, nil, core.mounts, &mountEntry.Local, mountEntry.UUID)
 		if err != nil {
 			t.Fatal(err)
 		}

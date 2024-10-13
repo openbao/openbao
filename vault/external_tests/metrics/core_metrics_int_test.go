@@ -53,6 +53,10 @@ func TestMountTableMetrics(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	if nonlocalLogicalMountsize <= 0 {
+		t.Fatalf("expected non-zero value for nonlocalLogicalMountsize: %v", nonlocalLogicalMountsize)
+	}
+
 	// Mount new kv
 	if err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
@@ -68,13 +72,15 @@ func TestMountTableMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Notably, the gauge only reports the size of the new table entry; it
+	// does not report the total size on a transactional storage backend.
 	nonlocalLogicalMountsizeAfterMount, err := gaugeSearchHelper(data, 4)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	if nonlocalLogicalMountsizeAfterMount <= nonlocalLogicalMountsize {
-		t.Errorf("Mount size does not change after new mount is mounted")
+	if nonlocalLogicalMountsizeAfterMount <= 0 {
+		t.Fatalf("expected non-zero value for nonlocalLogicalMountsizeAfterMount: %v", nonlocalLogicalMountsizeAfterMount)
 	}
 }
 

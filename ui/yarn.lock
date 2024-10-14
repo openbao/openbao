@@ -13022,9 +13022,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-modal-dialog@npm:^4.0.1":
-  version: 4.0.1
-  resolution: "ember-modal-dialog@npm:4.0.1"
+"ember-modal-dialog@npm:^4.1.4":
+  version: 4.1.4
+  resolution: "ember-modal-dialog@npm:4.1.4"
   dependencies:
     "@embroider/macros": ^1.0.0
     "@embroider/util": ^1.0.0
@@ -13034,11 +13034,11 @@ __metadata:
     ember-decorators: ^6.1.1
     ember-wormhole: ^0.6.0
   peerDependencies:
-    ember-tether: ^2.0.1
+    ember-tether: ^3.0.0
   peerDependenciesMeta:
     ember-tether:
       optional: true
-  checksum: d8005d3f9e0aab6fc4ce3f16a8bfb5ff9308e8ab9292b7e1be84e657f179f749414c9b0c029bf5c060526de0058fcb0acb38c3d19c80ad67e9ceb034de4b4e0c
+  checksum: 64d6242ae87370e74eb5659d27d3afc66d76797abe15494796ddbeaa2c083a01cce2fac721aefe2d30bfe8b74f7be0374a52ae3dd781a60462f67cf9c37bfdac
   languageName: node
   linkType: hard
 
@@ -24285,7 +24285,7 @@ __metadata:
     ember-inflector: 4.0.2
     ember-load-initializers: ^2.1.2
     ember-maybe-in-element: ^2.0.3
-    ember-modal-dialog: ^4.0.1
+    ember-modal-dialog: ^4.1.4
     ember-modifier: ^3.1.0
     ember-page-title: ^7.0.0
     ember-power-select: 6.0.1

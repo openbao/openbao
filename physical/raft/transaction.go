@@ -18,6 +18,7 @@ import (
 
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"go.etcd.io/bbolt"
+	bolt "go.etcd.io/bbolt"
 )
 
 // Hashes used to perform verification operations.
@@ -30,6 +31,10 @@ const (
 // When more hardware implements fast SHA-3 intrinsics, we could consider
 // switching to SHA-3-256 instead for lower wire overhead.
 var defaultVerifyHash = sha384VerifyHash
+
+// Bytes of overhead a single Put entry has versus a transaction, excluding
+// the size of the path. Verified by TestRaft_Backend_PutTxnMargin.
+const maxEntrySizeMultipleTxnOverhead = 11
 
 type verifyListOpParams struct {
 	Prefix string `json:"p"`
@@ -190,6 +195,17 @@ func (t *RaftTransaction) Put(ctx context.Context, entry *physical.Entry) error 
 	}
 	if t.haveFinishedTx {
 		return physical.ErrTransactionAlreadyCommitted
+	}
+
+	// Check if we exceed the size of a regular put entry.
+	valueSize := len(entry.Value)
+	keySize := len(entry.Key)
+	if keySize > bolt.MaxKeySize {
+		return fmt.Errorf("%s, max key size for integrated storage is %d", physical.ErrKeyTooLarge, bolt.MaxKeySize)
+	}
+
+	if valueSize >= (int(t.b.maxEntrySize) - keySize - maxEntrySizeMultipleTxnOverhead) {
+		return fmt.Errorf("%v; got %d bytes, max %d bytes", physical.ErrValueTooLarge, keySize, t.b.maxEntrySize)
 	}
 
 	t.haveWritten = true

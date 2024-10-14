@@ -16,8 +16,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/armon/go-metrics"
+	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/physical"
-	"go.etcd.io/bbolt"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -35,6 +36,29 @@ var defaultVerifyHash = sha384VerifyHash
 // Bytes of overhead a single Put entry has versus a transaction, excluding
 // the size of the path. Verified by TestRaft_Backend_PutTxnMargin.
 const maxEntrySizeMultipleTxnOverhead = 11
+
+type beginTxOpParams struct {
+	Index uint64 `json:"i"`
+}
+
+func (b *RaftBackend) createBeginTxOpValue() (uint64, []byte, error) {
+	s := beginTxOpParams{
+		Index: b.AppliedIndex(),
+	}
+
+	data, err := json.Marshal(s)
+	return s.Index, data, err
+}
+
+func parseBeginTxOpValue(data []byte) (*beginTxOpParams, error) {
+	var s beginTxOpParams
+
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal begin tx op value: %w", err)
+	}
+
+	return &s, nil
+}
 
 type verifyListOpParams struct {
 	Prefix string `json:"p"`
@@ -147,12 +171,13 @@ type raftTxnUpdateRecord struct {
 type RaftTransaction struct {
 	b              *RaftBackend
 	l              sync.Mutex
-	tx             *bbolt.Tx
+	tx             *bolt.Tx
 	updates        map[string]*raftTxnUpdateRecord
 	log            *LogData
 	writable       bool
 	haveWritten    bool
 	haveFinishedTx bool
+	index          uint64
 }
 
 var _ physical.Transaction = &RaftTransaction{}
@@ -172,6 +197,15 @@ func (b *RaftBackend) newTransaction(ctx context.Context, writable bool) (*RaftT
 		return nil, fmt.Errorf("failed to start underlying bbolt transaction: %w", err)
 	}
 
+	index, beginValue, err := b.createBeginTxOpValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal begin tx value: %w", err)
+	}
+
+	if writable {
+		b.fsm.fastTxnTracker.trackWrite(index)
+	}
+
 	return &RaftTransaction{
 		b:       b,
 		tx:      tx,
@@ -180,10 +214,12 @@ func (b *RaftBackend) newTransaction(ctx context.Context, writable bool) (*RaftT
 			Operations: []*LogOperation{
 				{
 					OpType: beginTxOp,
+					Value:  beginValue,
 				},
 			},
 		},
 		writable: writable,
+		index:    index,
 	}, nil
 }
 
@@ -537,19 +573,17 @@ func (t *RaftTransaction) Commit(ctx context.Context) error {
 	//
 	// Also unlock the read lock on the underlying fsm.
 	defer func() {
+		if t.writable {
+			t.b.fsm.fastTxnTracker.completeWrite(t.index)
+		}
+
 		t.b.fsm.l.RUnlock()
 		t.b.txnPermitPool.Release()
 		t.haveFinishedTx = true
 
-		// Restore ourselves to the initial state.
+		// Clear our state
 		t.updates = make(map[string]*raftTxnUpdateRecord)
-		t.log = &LogData{
-			Operations: []*LogOperation{
-				{
-					OpType: beginTxOp,
-				},
-			},
-		}
+		t.log = &LogData{}
 	}()
 
 	// Always rollback the underlying transaction.
@@ -599,20 +633,17 @@ func (t *RaftTransaction) Rollback(ctx context.Context) error {
 	//
 	// Also unlock the read lock on the underlying fsm.
 	defer func() {
-		t.b.fsm.l.RUnlock()
-		t.b.txnPermitPool.Release()
-
+		if t.writable {
+			t.b.fsm.fastTxnTracker.completeWrite(t.index)
+		}
 		t.haveFinishedTx = true
 
-		// Restore ourselves to the initial state.
+		// Clear our state.
 		t.updates = make(map[string]*raftTxnUpdateRecord)
-		t.log = &LogData{
-			Operations: []*LogOperation{
-				{
-					OpType: beginTxOp,
-				},
-			},
-		}
+		t.log = &LogData{}
+
+		t.b.fsm.l.RUnlock()
+		t.b.txnPermitPool.Release()
 	}()
 
 	// Rollback the underlying transaction.
@@ -621,4 +652,262 @@ func (t *RaftTransaction) Rollback(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+type fsmTxnCommitIndexTracker struct {
+	l sync.Mutex
+
+	// sourceIndexMap tracks the number of write transactions started at a given
+	// application log index, so we can keep track of writes between them.
+	sourceIndexMap map[uint64]int
+
+	// indexModifiedMap keeps track of which storage entries were modified at
+	// given points, letting us fast commit additional entries if the new
+	// transaction's verified reads and lists do not conflict with earlier
+	// writes. This is slightly non-trivial to track as we need to ensure that
+	// verified list operations correctly invalidate on writes to subkeys
+	// which are net-new to a list.
+	//
+	// For example, on an empty storage tree, writing to /foo/bar/fud should
+	// invalidate the list on /foo (as it adds /bar in). Luckily, we can use
+	// paginated lists to see if bar is contained in foo/'s tree already.
+	indexModifiedMap map[uint64]map[string]struct{}
+}
+
+func FsmTxnCommitIndexTracker() *fsmTxnCommitIndexTracker {
+	return &fsmTxnCommitIndexTracker{
+		sourceIndexMap:   make(map[uint64]int, physical.DefaultParallelTransactions),
+		indexModifiedMap: make(map[uint64]map[string]struct{}, physical.DefaultParallelTransactions),
+	}
+}
+
+func (t *fsmTxnCommitIndexTracker) trackWrite(index uint64) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.sourceIndexMap[index] += 1
+}
+
+func (t *fsmTxnCommitIndexTracker) completeWrite(index uint64) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	existing := t.sourceIndexMap[index]
+	if existing >= 1 {
+		t.sourceIndexMap[index] -= 1
+	}
+
+	if existing == 1 {
+		// See if we invalidated the smallest entry; if so, find the next
+		// smallest entry and invalidate all earlier indexModifiedMap
+		// entries as a result.
+		minIndex := index
+		for key := range t.sourceIndexMap {
+			if key < minIndex {
+				minIndex = key
+			}
+		}
+
+		if minIndex < index {
+			return
+		}
+
+		deletedIndices := make([]uint64, 0, physical.DefaultParallelTransactions/2)
+		for key := range t.indexModifiedMap {
+			if key <= minIndex {
+				deletedIndices = append(deletedIndices, key)
+			}
+		}
+
+		for _, index := range deletedIndices {
+			delete(t.indexModifiedMap, index)
+		}
+	}
+}
+
+// Logs a single, non-transactional write.
+func (t *fsmTxnCommitIndexTracker) logWrite(index uint64, key string) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.indexModifiedMap[index] = make(map[string]struct{}, 1)
+	t.indexModifiedMap[index][key] = struct{}{}
+}
+
+func (t *fsmTxnCommitIndexTracker) logTxnWrites(index uint64, writes map[string]struct{}) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.indexModifiedMap[index] = writes
+}
+
+func (t *fsmTxnCommitIndexTracker) hasModifiedEntry(minIndex uint64, maxIndex uint64, key string) (uint64, bool) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	for index, modifications := range t.indexModifiedMap {
+		if index <= minIndex || index > maxIndex {
+			continue
+		}
+
+		if _, ok := modifications[key]; ok {
+			return index, true
+		}
+	}
+
+	return 0, false
+}
+
+func (t *fsmTxnCommitIndexTracker) hasModifiedListEntry(minIndex uint64, maxIndex uint64, key string) (uint64, bool) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	normKey := key
+	if len(key) > 0 && key[len(key)-1] != '/' {
+		normKey += "/"
+	}
+
+	for index, modifications := range t.indexModifiedMap {
+		if index <= minIndex || index > maxIndex {
+			continue
+		}
+
+		for modified := range modifications {
+			if key == "" || key == "/" {
+				return index, true
+			}
+
+			if strings.HasPrefix(modified, normKey) {
+				return index, true
+			}
+		}
+	}
+
+	return 0, false
+}
+
+type fsmTxnCommitIndexApplicationState struct {
+	// parent access
+	parent *fsmTxnCommitIndexTracker
+
+	// logger
+	logger log.Logger
+
+	// Last index applied prior to stating batch application.
+	latestAppliedIndex uint64
+
+	// Index of this transaction within the batch.
+	commandOffset int
+
+	// Actual index of this transaction within the full Raft log.
+	commandIndex uint64
+
+	// Latest applied index at the time of this transaction.
+	txnStartIndex uint64
+
+	// Whether we're in a transaction
+	inTx bool
+
+	// List of writes from this transaction.
+	modifiedMap map[string]struct{}
+}
+
+func (t *fsmTxnCommitIndexTracker) applyState(logger log.Logger, latestAppliedIndex uint64, commandOffset int, commandIndex uint64) *fsmTxnCommitIndexApplicationState {
+	return &fsmTxnCommitIndexApplicationState{
+		parent:             t,
+		logger:             logger,
+		latestAppliedIndex: latestAppliedIndex,
+		commandOffset:      commandOffset,
+		commandIndex:       commandIndex,
+		inTx:               false,
+		modifiedMap:        make(map[string]struct{}, 1),
+	}
+}
+
+func (s *fsmTxnCommitIndexApplicationState) setStartIndex(index uint64) {
+	s.txnStartIndex = index
+}
+
+func (s *fsmTxnCommitIndexApplicationState) setInTx() {
+	s.inTx = true
+}
+
+func (s *fsmTxnCommitIndexApplicationState) getInTx() bool {
+	return s.inTx
+}
+
+func (s *fsmTxnCommitIndexApplicationState) logWrite(key string) {
+	if s.inTx {
+		s.modifiedMap[key] = struct{}{}
+	} else {
+		s.parent.logWrite(s.commandIndex, key)
+	}
+}
+
+func (s *fsmTxnCommitIndexApplicationState) finishTxn() {
+	s.parent.logTxnWrites(s.commandIndex, s.modifiedMap)
+}
+
+func (s *fsmTxnCommitIndexApplicationState) canFastWrite() bool {
+	return s.inTx && s.commandOffset == 0 && s.latestAppliedIndex == s.txnStartIndex
+}
+
+func (s *fsmTxnCommitIndexApplicationState) indexDelta() uint64 {
+	return s.latestAppliedIndex - s.txnStartIndex
+}
+
+func (s *fsmTxnCommitIndexApplicationState) canFastWriteBypassRead(key string) bool {
+	// If we found a modifying entry, we can't fast-write: we need to
+	// validate that the corresponding write didn't modify our entry
+	// and cause the verification to fail.
+	_, found := s.parent.hasModifiedEntry(s.txnStartIndex, s.commandIndex, key)
+	return !found
+}
+
+func (s *fsmTxnCommitIndexApplicationState) canFastWriteBypassList(key string) bool {
+	_, found := s.parent.hasModifiedListEntry(s.txnStartIndex, s.commandIndex, key)
+	return !found
+}
+
+func (s *fsmTxnCommitIndexApplicationState) doVerifyRead(b *bolt.Bucket, op *LogOperation) error {
+	if s.canFastWrite() || s.canFastWriteBypassRead(op.Key) {
+		metrics.IncrCounter([]string{"raft-storage", "txn_fast_apply_read_hit"}, 1)
+		// return nil
+	}
+
+	metrics.AddSample([]string{"raft-storage", "txn_applied_index_delta"}, float32(s.indexDelta()))
+	metrics.IncrCounter([]string{"raft-storage", "txn_fast_apply_miss"}, 1)
+	val := b.Get([]byte(op.Key))
+	err := doVerifyEntry(op.Key, val, op.Value)
+
+	if err != nil && (s.canFastWrite() || s.canFastWriteBypassRead(op.Key)) {
+		panic(fmt.Sprintf("expected to be able to fast write (%v / %v) but err'd=%v", s.canFastWrite(), s.canFastWriteBypassRead(op.Key), err))
+	}
+
+	return err
+}
+
+func (s *fsmTxnCommitIndexApplicationState) doVerifyList(tx *bolt.Tx, b *bolt.Bucket, op *LogOperation) error {
+	if s.canFastWrite() {
+		metrics.IncrCounter([]string{"raft-storage", "txn_fast_apply_list_hit"}, 1)
+		return nil
+	}
+
+	metrics.AddSample([]string{"raft-storage", "txn_applied_index_delta"}, float32(s.indexDelta()))
+	metrics.IncrCounter([]string{"raft-storage", "txn_fast_apply_miss"}, 1)
+
+	params, err := parseListVerifyParams(op.Key)
+	if err == nil {
+		var keys []string
+		keys, err = listPageInner(context.Background(), tx, params.Prefix, params.After, params.Limit)
+		if err == nil {
+			err = doVerifyList(op.Key, keys, op.Value)
+		}
+	}
+
+	if err != nil && (s.canFastWrite() || s.canFastWriteBypassList(op.Key)) {
+		panic(fmt.Sprintf("expected to be able to fast write (%v / %v) but err'd=%v", s.canFastWrite(), s.canFastWriteBypassList(op.Key), err))
+	}
+
+	return err
 }

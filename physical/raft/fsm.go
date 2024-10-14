@@ -133,6 +133,9 @@ type FSM struct {
 	localID         string
 	desiredSuffrage string
 	unknownOpTypes  sync.Map
+
+	// tracker for fast application of transactions
+	fastTxnTracker *fsmTxnCommitIndexTracker
 }
 
 // NewFSM constructs a FSM using the given directory
@@ -157,6 +160,7 @@ func NewFSM(path string, localID string, logger log.Logger) (*FSM, error) {
 		// setup if this is already part of a cluster with a desired suffrage.
 		desiredSuffrage: "voter",
 		localID:         localID,
+		fastTxnTracker:  FsmTxnCommitIndexTracker(),
 	}
 
 	f.chunker = raftchunking.NewChunkingBatchingFSM(f, &FSMChunkStorage{
@@ -633,6 +637,126 @@ func listPageInner(ctx context.Context, tx *bolt.Tx, prefix string, after string
 	return keys, nil
 }
 
+// Within ApplyBatch, applies non-transactional operations.
+func (f *FSM) applyBatchNonTxOps(b *bolt.Bucket, txnState *fsmTxnCommitIndexApplicationState, command *LogData) error {
+	for _, op := range command.Operations {
+		var err error
+		switch op.OpType {
+		case putOp:
+			err = b.Put([]byte(op.Key), op.Value)
+			if err == nil {
+				// This log occurs directly to the state tracker, so we
+				// want to ensure we only track it when the write succeeded.
+				txnState.logWrite(op.Key)
+			}
+		case deleteOp:
+			err = b.Delete([]byte(op.Key))
+			if err == nil {
+				// See note above.
+				txnState.logWrite(op.Key)
+			}
+		case restoreCallbackOp:
+			if f.restoreCb != nil {
+				// Kick off the restore callback function in a go routine
+				go f.restoreCb(context.Background())
+			}
+		default:
+			if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
+				f.logger.Error("unsupported transaction operation", "op", op.OpType)
+				f.unknownOpTypes.Store(op.OpType, struct{}{})
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Within ApplyBatch, applies a transaction within the broader context of the
+// batch's transaction.
+func (f *FSM) applyBatchTxOps(tx *bolt.Tx, b *bolt.Bucket, txnState *fsmTxnCommitIndexApplicationState, command *LogData) error {
+	txnState.setInTx()
+
+	// First we verify the transaction can apply correctly before doing any
+	// write operations. This allows us to safely ignore it if it conflicts
+	// with previous writes.
+	//
+	// This assumes that the transaction is constructed so that all verify
+	// operations are relative to the initial state of storage and not the
+	// in-transaction updated state.
+	var err error
+	for index, op := range command.Operations {
+		switch op.OpType {
+		case beginTxOp, commitTxOp:
+			// Ensure a well-formed transaction.
+			if command.Operations[0].OpType != beginTxOp || command.Operations[len(command.Operations)-1].OpType != commitTxOp || (index != 0 && index != len(command.Operations)-1) {
+				return fmt.Errorf("unsupported transaction: saw beginTxOp/commitTxOp mixed inside other operations: %w", physical.ErrTransactionCommitFailure)
+			}
+
+			if op.OpType == beginTxOp {
+				s, err := parseBeginTxOpValue(op.Value)
+				if err != nil {
+					return err
+				}
+				txnState.setStartIndex(s.Index)
+			}
+		case putOp:
+			// ignore
+		case deleteOp:
+			// ignore
+		case verifyReadOp:
+			err = txnState.doVerifyRead(b, op)
+		case verifyListOp:
+			err = txnState.doVerifyList(tx, b, op)
+		default:
+			if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
+				f.logger.Error("unsupported transaction operation", "op", op.OpType)
+				f.unknownOpTypes.Store(op.OpType, struct{}{})
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// Now we apply the write operations since the verification succeeded.
+	for _, op := range command.Operations {
+		switch op.OpType {
+		case beginTxOp, commitTxOp:
+			// ignore
+		case putOp:
+			err = b.Put([]byte(op.Key), op.Value)
+			txnState.logWrite(op.Key)
+		case deleteOp:
+			err = b.Delete([]byte(op.Key))
+			txnState.logWrite(op.Key)
+		case verifyReadOp:
+			// ignore
+		case verifyListOp:
+			// ignore
+		default:
+			if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
+				f.logger.Error("unsupported transaction operation", "op", op.OpType)
+				f.unknownOpTypes.Store(op.OpType, struct{}{})
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	// Record the transaction as having been applied and merge state back into
+	// the central fast application tracking.
+	txnState.finishTxn()
+
+	return nil
+}
+
 // ApplyBatch will apply a set of logs to the FSM. This is called from the raft
 // library.
 func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
@@ -697,118 +821,79 @@ func (f *FSM) ApplyBatch(logs []*raft.Log) []interface{} {
 		f.applyCallback()
 	}
 
-	// This loop and subsequent f.db.Update call were reordered from upstream,
-	// to enable one transaction per command. Raft chunking will already be
-	// applied, so if logs are split across multiple operations, we'll see
-	// only a single call here. This ensures that our transaction really will
-	// apply at the bolt level, independent of the other operations occurring,
-	// and lets us back out just the changes in the transaction if they fail
-	// to apply.
-	for _, commandRaw := range commands {
-		inTx := false
-		entrySlice := make([]*FSMEntry, 0)
-		err = f.db.Update(func(tx *bolt.Tx) error {
-			b := tx.Bucket(dataBucketName)
+	// One would think that this f.db.Update(...) and the following loop over
+	// commands should be in the opposite order, as we want transactions to be
+	// applied atomically. Indeed, 2c154ad516162dcb8b15ad270cd6a15516f2ce59 had
+	// this ordered that way. It has two issues though:
+	//
+	// 1. It is slower, as each bbolt transaction incurs additional storage
+	//    writes.
+	// 2. Technically, Raft expects the entire batch to succeed or fail as a
+	//    unit; thus, we don't want to commit partial state from a previous
+	//    log entry (that succeeded) when a later log entry fails.
+	//
+	// Hence, keep the original upstream ordering of Update w.r.t. batch
+	// application and switch to pre-verifying transactions prior to
+	// performing any writes in them.
+	err = f.db.Update(func(tx *bolt.Tx) error {
+		var err error
+		b := tx.Bucket(dataBucketName)
+		configB := tx.Bucket(configBucketName)
+		latestIndex := atomic.LoadUint64(f.latestIndex)
+
+		for commandIndex, commandRaw := range commands {
+			entrySlice := make([]*FSMEntry, 0, 1)
+
 			switch command := commandRaw.(type) {
 			case *LogData:
-				for index, op := range command.Operations {
-					var err error
-					switch op.OpType {
-					case beginTxOp, commitTxOp:
-						inTx = true
-						if command.Operations[0].OpType != beginTxOp || command.Operations[len(command.Operations)-1].OpType != commitTxOp || (index != 0 && index != len(command.Operations)-1) {
-							return fmt.Errorf("unsupported transaction: saw beginTxOp/commitTxOp mixed inside other operations: %w", physical.ErrTransactionCommitFailure)
-						}
-					case putOp:
-						err = b.Put([]byte(op.Key), op.Value)
-					case deleteOp:
-						err = b.Delete([]byte(op.Key))
-					case getOp:
-						fsmEntry := &FSMEntry{
-							Key: op.Key,
-						}
-						val := b.Get([]byte(op.Key))
-						if len(val) > 0 {
-							newVal := make([]byte, len(val))
-							copy(newVal, val)
-							fsmEntry.Value = newVal
-						}
-						entrySlice = append(entrySlice, fsmEntry)
-					case restoreCallbackOp:
-						if f.restoreCb != nil {
-							// Kick off the restore callback function in a go routine
-							go f.restoreCb(context.Background())
-						}
-					case verifyReadOp:
-						val := b.Get([]byte(op.Key))
-						err = doVerifyEntry(op.Key, val, op.Value)
-					case verifyListOp:
-						var params *verifyListOpParams
-						params, err = parseListVerifyParams(op.Key)
+				txnState := f.fastTxnTracker.applyState(latestIndex, commandIndex, logs[commandIndex].Index)
 
-						if err == nil {
-							var keys []string
-							keys, err = listPageInner(context.Background(), tx, params.Prefix, params.After, params.Limit)
-							if err == nil {
-								err = doVerifyList(op.Key, keys, op.Value)
-							}
-						}
-					default:
-						if _, ok := f.unknownOpTypes.Load(op.OpType); !ok {
-							f.logger.Error("unsupported transaction operation", "op", op.OpType)
-							f.unknownOpTypes.Store(op.OpType, struct{}{})
-						}
-					}
-					if err != nil {
-						// If we're in a transaction, we want to err out of
-						// this f.db.Update call, but we also need a way of
-						// informing the applyLog(...) caller that the
-						// transaction failed (instead of panic(...)ing below
-						// like we do for non-transaction operations).
-						//
-						// Create a special FSMEntry to send back the error
-						// message, that applyLog(...) will look for if it
-						// sent a transaction.
-						if inTx && errors.Is(err, physical.ErrTransactionCommitFailure) {
-							entrySlice = append(entrySlice, &FSMEntry{
-								Key:   fsmEntryTxErrorKey,
-								Value: []byte(err.Error()),
-							})
-						}
-
-						return err
-					}
+				if len(command.Operations) == 0 || command.Operations[0].OpType != beginTxOp {
+					err = f.applyBatchNonTxOps(b, txnState, command)
+				} else {
+					err = f.applyBatchTxOps(tx, b, txnState, command)
 				}
 
+				if err != nil {
+					// If we're in a transaction, we do not want to err the
+					// global f.db.Update call unless this is a critical error
+					// worthy of a panic(...).
+					//
+					// Create a special FSMEntry to send back the error
+					// message, that applyLog(...) will look for if it
+					// sent a transaction.
+					if txnState.getInTx() && errors.Is(err, physical.ErrTransactionCommitFailure) {
+						entrySlice = append(entrySlice, &FSMEntry{
+							Key:   fsmEntryTxErrorKey,
+							Value: []byte(err.Error()),
+						})
+
+						// Process other events; this transaction failure was handled
+						// appropriately already in applyBatchTxOps.
+						err = nil
+					}
+				}
 			case *ConfigurationValue:
-				b := tx.Bucket(configBucketName)
 				configBytes, err := proto.Marshal(command)
 				if err != nil {
 					return err
 				}
-				if err := b.Put(latestConfigKey, configBytes); err != nil {
+				if err := configB.Put(latestConfigKey, configBytes); err != nil {
 					return err
 				}
 			}
 
-			return nil
-		})
+			entrySlices = append(entrySlices, entrySlice)
 
-		entrySlices = append(entrySlices, entrySlice)
-
-		if err != nil && inTx && errors.Is(err, physical.ErrTransactionCommitFailure) {
-			// Process other events; this transaction failure was handled
-			// appropriately.
-			err = nil
-			continue
+			if err != nil {
+				break
+			}
 		}
 
-		if err != nil {
-			// Unknown error type or non-transactional error; exit and panic.
-			break
-		}
-	}
+		return err
+	})
 
+	// If we had no error, update our last applied log.
 	if err == nil {
 		err = f.db.Update(func(tx *bolt.Tx) error {
 			if len(logIndex) > 0 {

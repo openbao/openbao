@@ -29,16 +29,17 @@ import (
 type H map[string]interface{}
 
 type testConfig struct {
-	oidc           bool
-	role_type_oidc bool
-	audience       bool
-	boundClaims    bool
-	boundCIDRs     bool
-	jwks           bool
-	defaultLeeway  int
-	expLeeway      int
-	nbfLeeway      int
-	groupsClaim    string
+	oidc             bool
+	role_type_oidc   bool
+	audience         bool
+	boundClaims      bool
+	boundCIDRs       bool
+	jwks             bool
+	defaultLeeway    int
+	expLeeway        int
+	nbfLeeway        int
+	groupsClaim      string
+	policiesTemplate bool
 }
 
 type closeableBackend struct {
@@ -128,6 +129,10 @@ func setupBackend(t *testing.T, cfg testConfig) (closeableBackend, logical.Stora
 	}
 	if cfg.boundCIDRs {
 		data["bound_cidrs"] = "127.0.0.42"
+	}
+	if cfg.policiesTemplate {
+		data["token_policies_template_claims"] = true
+		data["policies"] = []string{"policy_{{ .sub }}", "{{ .custom_claim }}", "{{ .nested_claim.policy }}"}
 	}
 
 	data["clock_skew_leeway"] = cfg.defaultLeeway
@@ -837,6 +842,80 @@ func testLogin_JWT(t *testing.T, jwks bool) {
 		}
 		if resp.Error().Error() != `role "plugin-test-bad" could not be found` {
 			t.Fatalf("unexpected error: %s", resp.Error())
+		}
+	}
+
+	// test templating policies
+	{
+		cfg := testConfig{
+			audience:         true,
+			policiesTemplate: true,
+			jwks:             jwks,
+		}
+		b, storage := setupBackend(t, cfg)
+
+		cl := sqjwt.Claims{
+			Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+			Issuer:    "https://team-vault.auth0.com/",
+			NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+			Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+		}
+
+		privateCl := map[string]interface{}{
+			"custom_claim": "policy_for_custom_claim",
+			"nested_claim": map[string]interface{}{
+				"policy": "policy_for_nested_claim",
+			},
+			"unused":               "not_present",
+			"https://vault/user":   "admin",
+			"https://vault/groups": []string{"abc", "def"},
+		}
+
+		jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+
+		data := map[string]interface{}{
+			"role": "plugin-test",
+			"jwt":  jwtData,
+		}
+
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "login",
+			Storage:   storage,
+			Data:      data,
+			Connection: &logical.Connection{
+				RemoteAddr: "127.0.0.42",
+			},
+		}
+
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp == nil {
+			t.Fatal("got nil response")
+		}
+		if resp.IsError() {
+			t.Fatalf("got error: %v", resp.Error())
+		}
+
+		// Validate we have expected templated policies
+		auth := resp.Auth
+		switch {
+		case len(auth.Policies) != 3 || auth.Policies[2] != "policy_r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients" || auth.Policies[0] != "policy_for_custom_claim" || auth.Policies[1] != "policy_for_nested_claim":
+			t.Fatal(auth.Policies)
+		}
+
+		// Call again, this time without a required policy field; this
+		// should fail.
+		delete(privateCl, "nested_claim")
+
+		jwtData, _ = getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+		data["jwt"] = jwtData
+
+		resp, err = b.HandleRequest(context.Background(), req)
+		if err == nil {
+			t.Fatalf("expected non-nil err; got resp=%#v", resp)
 		}
 	}
 }

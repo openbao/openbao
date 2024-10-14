@@ -23059,10 +23059,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^3.36.2":
-  version: 3.48.0
-  resolution: "swagger-ui-dist@npm:3.48.0"
-  checksum: e059bb91589158abc7338a31494264bff8c4f46c847895888265e03947c5236ff4a48fdd0d2c6db0c71035d5224f5ffb111fe439b23461597e1c5b8313f6a833
+"swagger-ui-dist@npm:^5.17.14":
+  version: 5.17.14
+  resolution: "swagger-ui-dist@npm:5.17.14"
+  checksum: e10f8068e370fb17cf6882c8d8b925044862ea74b67296c6d97eef42a904eed3e9ed21867cc0458cbf0de7bd2a49e79282a1a3b7e6a1ccdbba1b650d86b528bb
   languageName: node
   linkType: hard
 
@@ -24335,7 +24335,7 @@ __metadata:
     shell-quote: ^1.6.1
     string.prototype.endswith: ^0.2.0
     string.prototype.startswith: ^0.2.0
-    swagger-ui-dist: ^3.36.2
+    swagger-ui-dist: ^5.17.14
     text-encoder-lite: 2.0.0
     typescript: ^4.8.4
     uuid: ^9.0.0

@@ -182,9 +182,44 @@ entities attempting to login. At least one of the bound values must be set.
   time the user was actively authenticated with the OIDC provider. If set, the `max_age` request parameter
   will be included in the authentication request. See [AuthRequest](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest)
   for additional details. Accepts an integer number of seconds, or a Go duration format string.
-- `token_policies_template_claims` `(bool: false)` - When enabled, allows token_policies to represent templates which are computed with all claims on the underlying JWT or OIDC token. This uses [`sdk/helper/template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2@v2.0.1/helper/template) which is based on [`text/template`](https://pkg.go.dev/text/template).
+- `token_policies_template_claims` `(bool: false)` - When enabled, allows entries in
+  `token_policies` to contain templates which are computed with all claims on the
+  underlying JWT or OIDC ID token. This uses [`sdk/helper/template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2@v2.0.1/helper/template)
+  which is based on [`text/template`](https://pkg.go.dev/text/template) for templating.
+  Templates which evaluate to the empty string are removed and all referenced claims
+  must exist on the authenticating token. See [examples](#acl-policy-templating-examples)
+  below.
 
 @include 'tokenfields.mdx'
+
+### ACL policy templating examples
+
+If the given JWT contains custom claims for `project_id`, `environment`, and
+`branch` (such as from a CI integration) and a ACL policy exists for
+`project_1234/env_prod/branch_main`, this could be encoded as:
+
+```
+token_policies=["project_{{.project_id}}/env_{{.environment}}/branch_{{.branch}}"]
+```
+
+To make this conditional on whether or not the environment is `prod`, one could
+encode this as:
+
+```
+token_policies=["{{if eq \"prod\" .environment}}project_{{.project_id}}/env_{{.environment}}/branch_{{.branch}}{{end}}"]
+```
+
+and this ACL policy would be empty (and thus, removed) if the `environment` claim
+on the token used during authentication was `testing` or `staging`.
+
+To reference claims not always present on a token, one can wrap the statement in
+an `if` check using the `index` function:
+
+```
+{{ if ne nil (index . "optional_claim") }}
+... some statement using .optional_claim ...
+{{ end }}
+```
 
 ### Sample payload
 

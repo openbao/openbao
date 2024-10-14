@@ -5273,10 +5273,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__error@npm:*, @types/ember__error@npm:^4.0.1":
+"@types/ember__error@npm:*":
   version: 4.0.1
   resolution: "@types/ember__error@npm:4.0.1"
   checksum: b4cd081d0efe57c584fb031c8d2b26b16c1e79e4bd115f289a0db438a134ae6a787d03dbc13fe0d80eec5a87942053e5f4d663a9a86006862a4b131f5a0ffd8e
+  languageName: node
+  linkType: hard
+
+"@types/ember__error@npm:^4.0.6":
+  version: 4.0.6
+  resolution: "@types/ember__error@npm:4.0.6"
+  checksum: 8433d8960925ac59870f8152b32e9e2ee31fdcb89d2446d268a40fa68bd7551dc8cf168ff6d1dce66b56ad36a877c77e3c53da337259b76afc04b8553c995c84
   languageName: node
   linkType: hard
 
@@ -24218,7 +24225,7 @@ __metadata:
     "@types/ember__debug": ^4.0.3
     "@types/ember__destroyable": ^4.0.1
     "@types/ember__engine": ^4.0.4
-    "@types/ember__error": ^4.0.1
+    "@types/ember__error": ^4.0.6
     "@types/ember__object": ^4.0.5
     "@types/ember__polyfills": ^4.0.1
     "@types/ember__routing": ^4.0.12

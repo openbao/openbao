@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	autopilot "github.com/hashicorp/raft-autopilot"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"go.uber.org/atomic"
 )
 
@@ -805,7 +807,23 @@ func (b *RaftBackend) SetupAutopilot(ctx context.Context, storageConfig *Autopil
 	go b.startFollowerHeartbeatTracker()
 }
 
-type CustomPromoter struct{}
+// Ensure that the CustomPromoter implements the autopilot.Promoter interface
+var _ autopilot.Promoter = (*CustomPromoter)(nil)
+
+type CustomPromoter struct {
+	*RaftBackend
+
+	// dl is a lock dedicated for guarding the promoter's fields
+	dl                 sync.RWMutex
+	permanentNonVoters map[raft.ServerID]bool
+}
+
+func NewCustomPromoter(b *RaftBackend) *CustomPromoter {
+	return &CustomPromoter{
+		RaftBackend:        b,
+		permanentNonVoters: make(map[raft.ServerID]bool),
+	}
+}
 
 func (_ *CustomPromoter) GetServerExt(_ *autopilot.Config, srv *autopilot.ServerState) interface{} {
 	return nil
@@ -856,4 +874,79 @@ func (_ *CustomPromoter) CalculatePromotionsAndDemotions(c *autopilot.Config, s 
 
 func (_ *CustomPromoter) IsPotentialVoter(nodeType autopilot.NodeType) bool {
 	return nodeType == autopilot.NodeVoter
+}
+
+func (c *CustomPromoter) AddNonVoter(id raft.ServerID) error {
+	c.dl.Lock()
+	c.permanentNonVoters[id] = true
+	c.dl.Unlock()
+
+	return c.updateNonVoters()
+}
+
+func (c *CustomPromoter) IsNonVoter(id raft.ServerID) bool {
+	c.dl.RLock()
+	defer c.dl.RUnlock()
+	if _, ok := c.permanentNonVoters[id]; ok {
+		return true
+	}
+	return false
+}
+
+func (c *CustomPromoter) RemoveNonVoter(id raft.ServerID) error {
+	c.dl.Lock()
+	delete(c.permanentNonVoters, id)
+	c.dl.Unlock()
+
+	return c.updateNonVoters()
+}
+
+func (c *CustomPromoter) updateNonVoters() error {
+	c.dl.RLock()
+	defer c.dl.RUnlock()
+	v, err := json.Marshal(c.permanentNonVoters)
+	if err != nil {
+		return err
+	}
+	e := physical.Entry{
+		Key:   "autopilot/non-voters",
+		Value: v,
+	}
+
+	return c.Put(context.Background(), &e)
+}
+
+func (c *CustomPromoter) fetchNonVoters() error {
+	e, err := c.Get(context.Background(), "autopilot/non-voters")
+	if err != nil {
+		return err
+	}
+
+	if e == nil {
+		return nil
+	}
+
+	var nonVoters map[raft.ServerID]bool
+	if err := json.Unmarshal(e.Value, &nonVoters); err != nil {
+		return err
+	}
+
+	c.dl.RLock()
+	defer c.dl.RUnlock()
+	if !maps.Equal(c.permanentNonVoters, nonVoters) {
+		c.dl.Lock()
+		c.permanentNonVoters = nonVoters
+		c.dl.Unlock()
+	}
+	return nil
+}
+
+func (c *CustomPromoter) SyncNonVoters() error {
+	state := c.autopilot.GetState()
+
+	if state.Leader == raft.ServerID(c.NodeID()) {
+		return c.updateNonVoters()
+	}
+
+	return c.fetchNonVoters()
 }

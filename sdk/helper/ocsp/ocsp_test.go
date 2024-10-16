@@ -25,7 +25,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-retryablehttp"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ocsp"
 )
@@ -47,7 +47,7 @@ func TestOCSP(t *testing.T) {
 	}
 
 	for _, tgt := range targetURL {
-		c.ocspResponseCache, _ = lru.New2Q(10)
+		c.ocspResponseCache, _ = lru.New2Q[certIDKey, *ocspCachedResponse](10)
 		for _, tr := range transports {
 			c := &http.Client{
 				Transport: tr,

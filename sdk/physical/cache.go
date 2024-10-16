@@ -10,7 +10,7 @@ import (
 
 	metrics "github.com/armon/go-metrics"
 	log "github.com/hashicorp/go-hclog"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 )
@@ -77,7 +77,7 @@ type TransactionalCache interface {
 type cache struct {
 	backend         Backend
 	size            int
-	lru             *lru.TwoQueueCache
+	lru             *lru.TwoQueueCache[string, *Entry]
 	locks           []*locksutil.LockEntry
 	logger          log.Logger
 	enabled         *uint32
@@ -129,7 +129,7 @@ func newCache(b Backend, size int, logger log.Logger, metricSink metrics.MetricS
 	pm := pathmanager.New()
 	pm.AddPaths(cacheExceptionsPaths)
 
-	lruCache, _ := lru.New2Q(size)
+	lruCache, _ := lru.New2Q[string, *Entry](size)
 	c := &cache{
 		backend: b,
 		size:    size,
@@ -232,7 +232,7 @@ func (c *cache) Get(ctx context.Context, key string) (*Entry, error) {
 				return nil, nil
 			}
 			c.metricSink.IncrCounter([]string{"cache", "hit"}, 1)
-			return raw.(*Entry), nil
+			return raw, nil
 		}
 	}
 

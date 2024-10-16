@@ -350,3 +350,13 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
+
+.PHONY: dev-gorelease
+dev-gorelease: export GORELEASER_PREVIOUS_TAG := $(shell git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0)
+dev-gorelease: export GORELEASER_CURRENT_TAG := $(shell git describe --tags --exclude "api/*" --exclude "sdk/*" )
+dev-gorelease: export GPG_KEY_FILE := /dev/null
+dev-gorelease:
+	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	goreleaser release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign

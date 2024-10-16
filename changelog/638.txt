@@ -1,0 +1,7 @@
+```release-note:feature
+**PKI Secret Engine**: Added support for revoking expired certificates by introducing the 
+`allow_expired_cert_revocation` flag. 
+**PKI Secret Engine**: Added a new field `revoked_safety_buffer` to the CRL configuration, 
+allowing differentiation between retention times for revoked certificates and 
+expired-but-not-revoked certificates.
+```

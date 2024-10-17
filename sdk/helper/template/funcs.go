@@ -12,6 +12,7 @@ import (
 	"time"
 
 	UUID "github.com/hashicorp/go-uuid"
+	"github.com/ryanuber/go-glob"
 )
 
 func unixTime() string {
@@ -63,6 +64,11 @@ func encodeBase64(str string) string {
 	return base64.StdEncoding.EncodeToString([]byte(str))
 }
 
+func decodeBase64(str string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(str)
+	return string(data), err
+}
+
 func uppercase(str string) string {
 	return strings.ToUpper(str)
 }
@@ -77,4 +83,8 @@ func replace(find string, replace string, str string) string {
 
 func uuid() (string, error) {
 	return UUID.GenerateUUID()
+}
+
+func matchesGlob(pattern string, value string) bool {
+	return glob.Glob(pattern, value)
 }

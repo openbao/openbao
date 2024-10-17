@@ -50,6 +50,7 @@ func TestGenerate(t *testing.T) {
 {{.String | replace " " "."}}
 {{.String | sha256}}
 {{.String | base64}}
+{{.String | base64 | decode_base64}}
 {{.String | truncate_sha256 20}}`,
 			data: struct {
 				String string
@@ -62,8 +63,18 @@ some string with multiple capitals letters
 Some.string.with.Multiple.Capitals.LETTERS
 da9872dd96609c72897defa11fe81017a62c3f44339d9d3b43fe37540ede3601
 U29tZSBzdHJpbmcgd2l0aCBNdWx0aXBsZSBDYXBpdGFscyBMRVRURVJT
+Some string with Multiple Capitals LETTERS
 Some string 6841cf80`,
 			expectErr: false,
+		},
+		"template with invalid base64": {
+			template: `{{.String | decode_base64}}`,
+			data: struct {
+				String string
+			}{
+				String: "invalid: *",
+			},
+			expectErr: true,
 		},
 		"custom function": {
 			template: "{{foo}}",
@@ -206,4 +217,30 @@ func TestBadConstructorArguments(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, "", str)
 	})
+}
+
+func TestTemplateGlob(t *testing.T) {
+	st, err := NewTemplate(
+		Template("{{ if glob \"release/*\" .branch }}is_release_branch: true{{ end }}"),
+	)
+	require.NoError(t, err)
+
+	str, err := st.Generate(map[string]string{
+		"branch": "main",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "")
+
+	str, err = st.Generate(map[string]string{
+		"branch": "release/v2.0.2",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "is_release_branch: true")
+
+	// glob should match itself
+	str, err = st.Generate(map[string]string{
+		"branch": "release/*",
+	})
+	require.NoError(t, err)
+	require.Equal(t, str, "is_release_branch: true")
 }

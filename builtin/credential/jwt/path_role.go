@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/template"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -190,6 +191,11 @@ in OIDC responses.`,
 				Description: `Specifies the allowable elapsed time in seconds since the last time the 
 user was actively authenticated.`,
 			},
+			"token_policies_template_claims": {
+				Type: framework.TypeBool,
+				Description: `When enabled, allows token_policies to be templated 
+based upon claims in the JWT or OIDC ID token. Empty policies are ignored.`,
+			},
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -238,20 +244,21 @@ type jwtRole struct {
 	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
 
 	// Role binding properties
-	BoundAudiences       []string               `json:"bound_audiences"`
-	BoundSubject         string                 `json:"bound_subject"`
-	BoundClaimsType      string                 `json:"bound_claims_type"`
-	BoundClaims          map[string]interface{} `json:"bound_claims"`
-	ClaimMappings        map[string]string      `json:"claim_mappings"`
-	Oauth2Metadata       []string               `json:"oauth2_metadata"`
-	UserClaim            string                 `json:"user_claim"`
-	GroupsClaim          string                 `json:"groups_claim"`
-	OIDCScopes           []string               `json:"oidc_scopes"`
-	AllowedRedirectURIs  []string               `json:"allowed_redirect_uris"`
-	CallbackMode         string                 `json:"callback_mode"`
-	VerboseOIDCLogging   bool                   `json:"verbose_oidc_logging"`
-	MaxAge               time.Duration          `json:"max_age"`
-	UserClaimJSONPointer bool                   `json:"user_claim_json_pointer"`
+	BoundAudiences              []string               `json:"bound_audiences"`
+	BoundSubject                string                 `json:"bound_subject"`
+	BoundClaimsType             string                 `json:"bound_claims_type"`
+	BoundClaims                 map[string]interface{} `json:"bound_claims"`
+	ClaimMappings               map[string]string      `json:"claim_mappings"`
+	Oauth2Metadata              []string               `json:"oauth2_metadata"`
+	UserClaim                   string                 `json:"user_claim"`
+	GroupsClaim                 string                 `json:"groups_claim"`
+	OIDCScopes                  []string               `json:"oidc_scopes"`
+	AllowedRedirectURIs         []string               `json:"allowed_redirect_uris"`
+	CallbackMode                string                 `json:"callback_mode"`
+	VerboseOIDCLogging          bool                   `json:"verbose_oidc_logging"`
+	MaxAge                      time.Duration          `json:"max_age"`
+	UserClaimJSONPointer        bool                   `json:"user_claim_json_pointer"`
+	TokenPoliciesTemplateClaims bool                   `json:"token_policies_template_claims"`
 
 	// Deprecated by TokenParams
 	Policies   []string                      `json:"policies"`
@@ -309,6 +316,32 @@ func (b *jwtAuthBackend) role(ctx context.Context, s logical.Storage, name strin
 	return role, nil
 }
 
+func (role *jwtRole) maybeTemplatePolicies(auth *logical.Auth, allClaims map[string]interface{}) error {
+	if !role.TokenPoliciesTemplateClaims {
+		return nil
+	}
+
+	var results []string
+	for index, policy := range auth.Policies {
+		tmpl, err := template.NewTemplate(template.Template(policy), template.Option("missingkey=error"))
+		if err != nil {
+			return fmt.Errorf("failed to parse template policy [%d]: %w", index, err)
+		}
+
+		templated, err := tmpl.Generate(allClaims)
+		if err != nil {
+			return fmt.Errorf("failed to template policy [%d]: %w", index, err)
+		}
+
+		if len(templated) > 0 {
+			results = append(results, templated)
+		}
+	}
+
+	auth.Policies = strutil.RemoveDuplicates(results, false)
+	return nil
+}
+
 // pathRoleExistenceCheck returns whether the role with the given name exists or not.
 func (b *jwtAuthBackend) pathRoleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	role, err := b.role(ctx, req.Storage, data.Get("name").(string))
@@ -351,24 +384,25 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 
 	// Create a map of data to be returned
 	d := map[string]interface{}{
-		"role_type":               role.RoleType,
-		"expiration_leeway":       int64(role.ExpirationLeeway.Seconds()),
-		"not_before_leeway":       int64(role.NotBeforeLeeway.Seconds()),
-		"clock_skew_leeway":       int64(role.ClockSkewLeeway.Seconds()),
-		"bound_audiences":         role.BoundAudiences,
-		"bound_subject":           role.BoundSubject,
-		"bound_claims_type":       role.BoundClaimsType,
-		"bound_claims":            role.BoundClaims,
-		"claim_mappings":          role.ClaimMappings,
-		"oauth2_metadata":         role.Oauth2Metadata,
-		"user_claim":              role.UserClaim,
-		"user_claim_json_pointer": role.UserClaimJSONPointer,
-		"groups_claim":            role.GroupsClaim,
-		"allowed_redirect_uris":   role.AllowedRedirectURIs,
-		"callback_mode":           role.CallbackMode,
-		"oidc_scopes":             role.OIDCScopes,
-		"verbose_oidc_logging":    role.VerboseOIDCLogging,
-		"max_age":                 int64(role.MaxAge.Seconds()),
+		"role_type":                      role.RoleType,
+		"expiration_leeway":              int64(role.ExpirationLeeway.Seconds()),
+		"not_before_leeway":              int64(role.NotBeforeLeeway.Seconds()),
+		"clock_skew_leeway":              int64(role.ClockSkewLeeway.Seconds()),
+		"bound_audiences":                role.BoundAudiences,
+		"bound_subject":                  role.BoundSubject,
+		"bound_claims_type":              role.BoundClaimsType,
+		"bound_claims":                   role.BoundClaims,
+		"claim_mappings":                 role.ClaimMappings,
+		"oauth2_metadata":                role.Oauth2Metadata,
+		"user_claim":                     role.UserClaim,
+		"user_claim_json_pointer":        role.UserClaimJSONPointer,
+		"groups_claim":                   role.GroupsClaim,
+		"allowed_redirect_uris":          role.AllowedRedirectURIs,
+		"callback_mode":                  role.CallbackMode,
+		"oidc_scopes":                    role.OIDCScopes,
+		"verbose_oidc_logging":           role.VerboseOIDCLogging,
+		"max_age":                        int64(role.MaxAge.Seconds()),
+		"token_policies_template_claims": role.TokenPoliciesTemplateClaims,
 	}
 
 	role.PopulateTokenData(d)
@@ -520,6 +554,10 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		role.MaxAge = time.Duration(maxAgeRaw.(int)) * time.Second
 	}
 
+	if tokenPoliciesTemplateClaimsRaw, ok := data.GetOk("token_policies_template_claims"); ok {
+		role.TokenPoliciesTemplateClaims = tokenPoliciesTemplateClaimsRaw.(bool)
+	}
+
 	boundClaimsType := data.Get("bound_claims_type").(string)
 	switch boundClaimsType {
 	case boundClaimsTypeString, boundClaimsTypeGlob:
@@ -644,6 +682,17 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		resp.AddWarning(`verbose_oidc_logging has been enabled for this role. ` +
 			`This is not recommended in production since sensitive information ` +
 			`may be present in OIDC responses.`)
+	}
+
+	// Check that if templating of policies is enabled, we can parse all
+	// policies as templates.
+	if role.TokenPoliciesTemplateClaims {
+		for index, policy := range role.TokenPolicies {
+			_, err := template.NewTemplate(template.Template(policy))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse template policy [%d]: %w", index, err)
+			}
+		}
 	}
 
 	// Store the entry.

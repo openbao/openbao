@@ -350,3 +350,17 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
+
+.PHONY: dev-rpm
+dev-rpm: dev
+	@export GORELEASER_PREVIOUS_TAG=$(shell git describe --tags $(shell git rev-list --tags --max-count=1))
+	@echo GORELEASER_PREVIOUS_TAG: $(GORELEASER_PREVIOUS_TAG)
+	@if [ -z $(GORELEASER_CURRENT_TAG) ]; then \
+		echo "ERROR: Set GORELEASER_CURRENT_TAG to a specific version"; \
+		exit 1; \
+	fi
+	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	@export GPG_KEY_FILE=/dev/null
+	goreleaser release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign

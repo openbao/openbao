@@ -27,6 +27,7 @@ const (
 	boundClaimsTypeGlob   = "glob"
 	callbackModeDirect    = "direct"
 	callbackModeClient    = "client"
+	callbackModeDevice    = "device"
 )
 
 func pathRoleList(b *jwtAuthBackend) *framework.Path {
@@ -176,8 +177,13 @@ for referencing claims.`,
 			},
 			"callback_mode": {
 				Type:        framework.TypeString,
-				Description: `OIDC callback mode from Authorization Server: allowed values are 'direct' to server or 'client', default 'client'`,
+				Description: `OIDC callback mode from Authorization Server: allowed values are 'device' for device flow, 'direct' to server, or 'client', default 'client'`,
 				Default:     callbackModeClient,
+			},
+			"poll_interval": {
+				Type:        framework.TypeInt,
+				Description: `poll interval in seconds for device and direct flows, default value from Authorization Server for device flow, or '5'`,
+				// don't set Default here because server may set a default
 			},
 			"verbose_oidc_logging": {
 				Type: framework.TypeBool,
@@ -249,6 +255,7 @@ type jwtRole struct {
 	OIDCScopes           []string               `json:"oidc_scopes"`
 	AllowedRedirectURIs  []string               `json:"allowed_redirect_uris"`
 	CallbackMode         string                 `json:"callback_mode"`
+	PollInterval         int                    `json:"poll_interval"`
 	VerboseOIDCLogging   bool                   `json:"verbose_oidc_logging"`
 	MaxAge               time.Duration          `json:"max_age"`
 	UserClaimJSONPointer bool                   `json:"user_claim_json_pointer"`
@@ -372,6 +379,10 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 	}
 
 	role.PopulateTokenData(d)
+
+	if role.PollInterval > 0 {
+		d["poll_interval"] = role.PollInterval
+	}
 
 	if len(role.Policies) > 0 {
 		d["policies"] = d["token_policies"]
@@ -604,9 +615,13 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 		role.AllowedRedirectURIs = allowedRedirectURIs.([]string)
 	}
 
+	if pollInterval, ok := data.GetOk("poll_interval"); ok {
+		role.PollInterval = pollInterval.(int)
+	}
+
 	callbackMode := data.Get("callback_mode").(string)
 	switch callbackMode {
-	case callbackModeDirect, callbackModeClient:
+	case callbackModeDevice, callbackModeDirect, callbackModeClient:
 		role.CallbackMode = callbackMode
 	default:
 		return logical.ErrorResponse("invalid 'callback_mode': %s", callbackMode), nil

@@ -14,7 +14,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 
@@ -87,10 +86,6 @@ hyphen-separated octal`,
 				Description: `Certificate to revoke in PEM format; must be
 signed by an issuer in this mount.`,
 			},
-			"allow_expired_cert_revocation": {
-				Type:        framework.TypeBool,
-				Description: `Optional flag to allow revocation of expired certificates.`,
-			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -155,11 +150,6 @@ signed by an issuer in this mount.`,
 				Type: framework.TypeString,
 				Description: `Key to use to verify revocation permission; must
 be in PEM format.`,
-			},
-			"allow_expired_cert_revocation": {
-				Type:        framework.TypeBool,
-				Description: `Optional flag to allow revocation of expired certificates.`,
-				Default:     false,
 			},
 		},
 
@@ -475,7 +465,6 @@ func (b *backend) pathRevokeWrite(ctx context.Context, req *logical.Request, dat
 	rawSerial, haveSerial := data.GetOk("serial_number")
 	rawCertificate, haveCert := data.GetOk("certificate")
 	sc := b.makeStorageContext(ctx, req.Storage)
-	allowExpiredRevocation, _ := data.GetOk("allow_expired_cert_revocation")
 
 	if !haveSerial && !haveCert {
 		return logical.ErrorResponse("The serial number or certificate to revoke must be provided."), nil
@@ -538,11 +527,6 @@ func (b *backend) pathRevokeWrite(ctx context.Context, req *logical.Request, dat
 
 	if cert == nil {
 		return logical.ErrorResponse(fmt.Sprintf("certificate with serial %s not found.", serial)), nil
-	}
-
-	// Check if expired certificates can be revoked based on the flag
-	if cert.NotAfter.Before(time.Now()) && allowExpiredRevocation != nil && !allowExpiredRevocation.(bool) {
-		return logical.ErrorResponse("Cannot revoke expired certificate without the allow_expired_cert_revocation flag."), nil
 	}
 
 	// Before we write the certificate, we've gotta verify the request in

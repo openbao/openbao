@@ -6268,6 +6268,7 @@ func TestPKI_EmptyCRLConfigUpgraded(t *testing.T) {
 	require.Equal(t, resp.Data["auto_rebuild_grace_period"], defaultCrlConfig.AutoRebuildGracePeriod)
 	require.Equal(t, resp.Data["enable_delta"], defaultCrlConfig.EnableDelta)
 	require.Equal(t, resp.Data["delta_rebuild_interval"], defaultCrlConfig.DeltaRebuildInterval)
+	require.Equal(t, resp.Data["allow_expired_cert_revocation"], defaultCrlConfig.AllowExpiredCertRevocation)
 }
 
 func TestPKI_ListRevokedCerts(t *testing.T) {

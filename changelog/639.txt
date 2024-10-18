@@ -1,0 +1,3 @@
+```release-note:improvement
+rpm: Fix packaging to properly annotate configs entries for noreplace
+```

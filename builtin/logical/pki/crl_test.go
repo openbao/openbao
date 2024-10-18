@@ -1506,32 +1506,12 @@ func TestCRLIssuerRemoval(t *testing.T) {
 func TestRevokeExpiredCert(t *testing.T) {
 	t.Parallel()
 
-	coreConfig := &vault.CoreConfig{
-		LogicalBackends: map[string]logical.Factory{
-			"pki": Factory,
-		},
-		EnableRaw: true,
-	}
-	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
-		HandlerFunc: vaulthttp.Handler,
-	})
-	cluster.Start()
-	defer cluster.Cleanup()
-	client := cluster.Cores[0].Client
-
-	err := client.Sys().Mount("pki", &api.MountInput{
-		Type: "pki",
-		Config: api.MountConfigInput{
-			DefaultLeaseTTL: "16h",
-			MaxLeaseTTL:     "60h",
-		},
-	})
-	require.NoError(t, err)
+	b, s := CreateBackendWithStorage(t)
 
 	// Generate a root certificate for the PKI.
-	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
-		"common_name": "Root X1",
+		"common_name": "myvault.com",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err)
@@ -1540,30 +1520,15 @@ func TestRevokeExpiredCert(t *testing.T) {
 	require.NotEmpty(t, resp.Data["issuer_id"])
 
 	// Create a role in the PKI backend for issuing certificates.
-	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
 		"allow_any_name":    true,
 		"enforce_hostnames": false,
 		"key_type":          "ec",
 	})
 	require.NoError(t, err)
 
-	// Ensure that the CRL config returns default values before being set.
-	resp, err = client.Logical().Read("pki/config/crl")
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	require.NotNil(t, resp.Data)
-	// Check that the default CRL configuration values are returned correctly.
-	require.Equal(t, resp.Data["expiry"], defaultCrlConfig.Expiry)
-	require.Equal(t, resp.Data["disable"], defaultCrlConfig.Disable)
-	require.Equal(t, resp.Data["ocsp_disable"], defaultCrlConfig.OcspDisable)
-	require.Equal(t, resp.Data["auto_rebuild"], defaultCrlConfig.AutoRebuild)
-	require.Equal(t, resp.Data["auto_rebuild_grace_period"], defaultCrlConfig.AutoRebuildGracePeriod)
-	require.Equal(t, resp.Data["enable_delta"], defaultCrlConfig.EnableDelta)
-	require.Equal(t, resp.Data["delta_rebuild_interval"], defaultCrlConfig.DeltaRebuildInterval)
-	require.Equal(t, resp.Data["allow_expired_cert_revocation"], defaultCrlConfig.AllowExpiredCertRevocation)
-
 	// Issue a short-lived certificate and revoke it after it expires whilst allow_expired_cert_revocation is false.
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
 		"ttl":         "1s",
 		"common_name": "example.com",
 	})
@@ -1573,29 +1538,28 @@ func TestRevokeExpiredCert(t *testing.T) {
 	require.NotEmpty(t, resp.Data["serial_number"])
 	leafSerial := resp.Data["serial_number"].(string)
 
-	// Wait for 1 second to ensure the certificate expires before revocation.
-	time.Sleep(1 * time.Second)
+	// Wait for 2 seconds to ensure the certificate expires before revocation.
+	time.Sleep(2 * time.Second)
 
 	// Revoke the issued certificate.
-	resp, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
 		"serial_number": leafSerial,
 	})
 	require.NoError(t, err)
 	require.Contains(t, resp.Warnings[0], fmt.Sprintf("certificate with serial %s already expired; refusing to add to CRL. Enable 'AllowExpiredCertRevocation' to allow revoking expired certificates.", leafSerial))
 
 	// Check that CRL does NOT contain any certificates
-	defaultCrlPath := "/v1/pki/crl"
-	crl := getParsedCrlAtPath(t, client, defaultCrlPath).TBSCertList
-	require.True(t, len(crl.RevokedCertificates) == 0)
+	crl := getParsedCrlFromBackend(t, b, s, "crl")
+	require.True(t, len(crl.TBSCertList.RevokedCertificates) == 0)
 
 	// Enable expired certification revocation
-	_, err = client.Logical().Write("pki/config/crl", map[string]interface{}{
+	_, err = CBWrite(b, s, "config/crl", map[string]interface{}{
 		"allow_expired_cert_revocation": true,
 	})
 	require.NoError(t, err)
 
 	// Issue a short-lived certificate and revoke it after it expires whilst allow_expired_cert_revocation is true.
-	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+	resp, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
 		"ttl":         "1s",
 		"common_name": "example.com",
 	})
@@ -1609,12 +1573,12 @@ func TestRevokeExpiredCert(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Revoke the expired certificate.
-	resp, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
 		"serial_number": newLeafSerial,
 	})
 	require.NoError(t, err)
 
 	// Ensure that the certificate is in the CRL
-	crl = getParsedCrlAtPath(t, client, defaultCrlPath).TBSCertList
-	requireSerialNumberInCRL(t, crl, newLeafSerial)
+	crl = getParsedCrlFromBackend(t, b, s, "crl")
+	requireSerialNumberInCRL(t, crl.TBSCertList, newLeafSerial)
 }

@@ -1669,24 +1669,7 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		return errors.New("entries on FSM response were empty")
 	}
 
-	if !isTx {
-		for i, logOp := range command.Operations {
-			if logOp.OpType == getOp {
-				fsmEntry := fsmar.EntrySlice[i]
-
-				// this should always be true because the entries in the slice were created in the same order as
-				// the command operations.
-				if logOp.Key == fsmEntry.Key {
-					if len(fsmEntry.Value) > 0 {
-						logOp.Value = fsmEntry.Value
-					}
-				} else {
-					// this shouldn't happen
-					return errors.New("entries in FSM response were out of order")
-				}
-			}
-		}
-	} else {
+	if isTx {
 		// There should be at most one EntrySlice entry.
 		if len(fsmar.EntrySlice) > 1 {
 			return fmt.Errorf("multiple responses in entry slice: %v", len(fsmar.EntrySlice))

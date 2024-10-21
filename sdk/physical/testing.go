@@ -489,8 +489,6 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 }
 
 func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
-	t.Helper()
-
 	// Creating a transaction and committing or rolling it back without doing
 	// anything should succeed, regardless of type of transaction. Doing the
 	// same operation twice should fail as the transaction was already
@@ -553,11 +551,57 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 	err = txn.Commit(context.Background())
 	require.Error(t, err, "expected subsequent commit of read-only transaction to fail")
 
+	// Ensure writes issued before reads commit OK.
+	foo := &Entry{Key: "foo", Value: []byte("foo")}
+	txn, err = b.BeginTx(context.Background())
+	require.NoError(t, err, "failed to start new transaction")
+	err = txn.Put(context.Background(), foo)
+	require.NoError(t, err, "failed to write entry")
+	entry, err := txn.Get(context.Background(), "foo")
+	require.NoError(t, err, "failed to read entry")
+	require.NotNil(t, entry, "expected to get a non-empty entry")
+	require.Equal(t, string(entry.Value), "foo", "expected written value")
+	entries, err := txn.List(context.Background(), "")
+	require.NoError(t, err, "failed to list entries")
+	require.Equal(t, entries, []string{"foo"}, "expected one entry in storage")
+	err = txn.Commit(context.Background())
+	require.NoError(t, err, "failed to commit transaction")
+
+	// Ensure reads before writes commit OK.
+	txn, err = b.BeginTx(context.Background())
+	require.NoError(t, err, "failed to start new transaction")
+	entries, err = txn.List(context.Background(), "")
+	require.NoError(t, err, "failed to list entries")
+	require.Equal(t, entries, []string{"foo"}, "expected one entry in storage")
+	entry, err = txn.Get(context.Background(), "foo")
+	require.NoError(t, err, "failed to read entry")
+	require.NotNil(t, entry, "expected to get a non-empty entry")
+	require.Equal(t, string(entry.Value), "foo", "expected written value")
+	err = txn.Delete(context.Background(), "foo")
+	require.NoError(t, err, "failed to delete entry")
+	err = txn.Commit(context.Background())
+	require.NoError(t, err, "failed to commit transaction")
+
 	// Ensure we have an empty storage
-	entries, err := b.List(context.Background(), "")
+	entries, err = b.List(context.Background(), "")
 	require.NoError(t, err, "failed to list storage entries")
 	require.Empty(t, entries, "expected nothing in storage")
 
+	// Run tests which ensure exclusive writers behave correctly (those which
+	// only write, with no reads).
+	testTransactionalExclusiveWriters(t, b)
+
+	// Run tests which ensure mixed writers behave correctly (those execute
+	// both reads and writes).
+	testTransactionalMixedWriters(t, b)
+
+	// Ensure we left it as we found it.
+	entries, err = b.List(context.Background(), "")
+	require.NoError(t, err, "failed to list storage entries")
+	require.Empty(t, entries, "expected nothing in storage")
+}
+
+func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 	// Now do functionality tests: we have a few readers and writers inside of
 	// transactions plus a lister outside of transactions (which should still
 	// be atomic relative to the transactions that are occurring). When the
@@ -565,7 +609,7 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 	var wg sync.WaitGroup
 	var done atomic.Bool
 	var numFiles int = 25
-	var numWriters int = 10
+	var numWriters int = 100
 	var numWrites int = 25
 	var writeBreak int = 50
 	var numReaders int = 25
@@ -577,9 +621,9 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
-			time.Sleep(time.Duration(worker) * time.Millisecond)
-
 			for write := 1; write <= numWrites; write++ {
+				time.Sleep(time.Duration(worker) * time.Millisecond)
+
 				// Write files
 				ctx := context.Background()
 				txn, err := b.BeginTx(ctx)
@@ -634,8 +678,6 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 					numErrors.Add(1)
 					return
 				}
-
-				time.Sleep(time.Duration(writeBreak) * time.Millisecond)
 			}
 		}(i)
 	}
@@ -663,7 +705,7 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 
 					list, err := txn.List(ctx, "")
 					if err != nil {
-						t.Logf("[%d/%d] read begin tx failed: %v", worker, read, err)
+						t.Logf("[%d/%d] read list failed: %v", worker, read, err)
 						numErrors.Add(1)
 						return
 					}
@@ -790,9 +832,205 @@ func ExerciseTransactionalBackend(t testing.TB, b TransactionalBackend) {
 	if numErrors.Load() > 0 {
 		t.Fatalf("got %v errors while running test; see log messages for more info", numErrors.Load())
 	}
+}
 
-	// Ensure we left it as we found it.
-	entries, err = b.List(context.Background(), "")
-	require.NoError(t, err, "failed to list storage entries")
-	require.Empty(t, entries, "expected nothing in storage")
+func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
+	// We have a few readers and writers inside of transactions
+	var wg sync.WaitGroup
+	var done atomic.Bool
+	var numFiles int = 25
+	var numWriters int = 100
+	var numWrites int = 25
+	var numReaders int = 25
+	var readBreak int = 5
+	var numErrors atomic.Int32
+	for i := 1; i <= numWriters; i++ {
+		wg.Add(1)
+		go func(worker int) {
+			defer wg.Done()
+			for write := 1; write <= numWrites; write++ {
+				time.Sleep(time.Duration(worker) * time.Millisecond)
+
+				// Write files
+				ctx := context.Background()
+				txn, err := b.BeginTx(ctx)
+				if err != nil {
+					t.Logf("[%d/%d] write begin tx failed: %v", worker, write, err)
+					numErrors.Add(1)
+					return
+				}
+
+				// List files that exist; there should be numFiles of them if
+				// write > 1.
+				prefix := fmt.Sprintf("%d/", worker)
+				results, err := txn.List(context.Background(), prefix)
+				if err != nil {
+					t.Logf("[%d/%d] write list failed: %v", worker, write, err)
+					numErrors.Add(1)
+					return
+				}
+
+				if write > 1 {
+					if len(results) != numFiles {
+						t.Logf("[%d/%d] write list failed: expected %v but saw %v entries: %#v", worker, write, numFiles, len(results), results)
+						numErrors.Add(1)
+						return
+					}
+				}
+
+				for file := 1; file <= numFiles; file++ {
+					// Read files before writing them.
+					key := fmt.Sprintf("%d/%d", worker, file)
+					expectedValue := fmt.Sprintf("%d-%d-%d", worker, write-1, file)
+					existingEntry, err := txn.Get(context.Background(), key)
+					if err != nil {
+						t.Logf("[%d/%d] write read failed: %v", worker, write, err)
+						numErrors.Add(1)
+						return
+					}
+
+					if existingEntry != nil && string(existingEntry.Value) != expectedValue {
+						t.Logf("[%d/%d] write read failed: expected %v ; saw %v in entry %v", worker, write, expectedValue, string(existingEntry.Value), key)
+						numErrors.Add(1)
+						return
+					}
+
+					value := fmt.Sprintf("%d-%d-%d", worker, write, file)
+					entry := &Entry{Key: key, Value: []byte(value)}
+					err = txn.Put(ctx, entry)
+					if err != nil {
+						t.Logf("[%d/%d] write put failed: %v", worker, write, err)
+						numErrors.Add(1)
+						return
+					}
+				}
+
+				err = txn.Commit(ctx)
+				if err != nil {
+					t.Logf("[%d/%d] write commit failed: %v", worker, write, err)
+					numErrors.Add(1)
+					return
+				}
+			}
+		}(i)
+	}
+
+	// Validate reads within a transaction are consistent.
+	for i := 1; i <= numReaders; i++ {
+		go func(worker int) {
+			var read int = 1
+			time.Sleep(time.Duration(worker) * time.Millisecond)
+
+			for {
+				switch {
+				case done.Load() == true:
+					t.Logf("shutting down reader")
+					return
+				default:
+					ctx := context.Background()
+
+					txn, err := b.BeginReadOnlyTx(ctx)
+					if err != nil {
+						t.Logf("[%d/%d] read begin tx failed: %v", worker, read, err)
+						numErrors.Add(1)
+						return
+					}
+
+					list, err := txn.List(ctx, "")
+					if err != nil {
+						t.Logf("[%d/%d] read list failed: %v", worker, read, err)
+						numErrors.Add(1)
+						return
+					}
+
+					workerFileValueMap := make(map[int]map[int]string)
+					for workerIndex, workerDir := range list {
+						keyWorker, _ := strconv.Atoi(workerDir[0 : len(workerDir)-1])
+						if _, ok := workerFileValueMap[keyWorker]; !ok {
+							workerFileValueMap[keyWorker] = make(map[int]string)
+						}
+
+						workerList, err := txn.List(ctx, workerDir)
+						if err != nil {
+							t.Logf("[%d/%d/%d] read list worker %v failed: %v", worker, read, workerIndex, keyWorker, err)
+							numErrors.Add(1)
+							return
+
+						}
+
+						for entryIndex, entryName := range workerList {
+							keyFile, _ := strconv.Atoi(entryName)
+							key := fmt.Sprintf("%v%v", workerDir, entryName)
+
+							entry, err := txn.Get(ctx, key)
+							if err != nil {
+								t.Logf("[%d/%d/%d (%v)/%d (%v)] read entry %v failed: %v", worker, read, workerIndex, workerDir, entryIndex, entryName, key, err)
+								numErrors.Add(1)
+								return
+							}
+
+							if entry == nil {
+								t.Logf("[%d/%d/%d (%v)/%d (%v)] read entry %v failed: was unexpectedly nil", worker, read, workerIndex, workerDir, entryIndex, entryName, key)
+								numErrors.Add(1)
+								return
+							}
+
+							expectedValue, present := workerFileValueMap[keyWorker][keyFile]
+							if present {
+								if string(entry.Value) != expectedValue {
+									t.Logf("[%d/%d/%d (%v)/%d (%v)] read entry %v failed: different value: expected=%v / actual=%v", worker, read, workerIndex, workerDir, entryIndex, entryName, key, expectedValue, string(entry.Value))
+									numErrors.Add(1)
+									return
+								}
+							} else {
+								workerFileValueMap[keyWorker][keyFile] = string(entry.Value)
+							}
+						}
+					}
+
+					for keyWorker, keyFiles := range workerFileValueMap {
+						if len(keyFiles) != 0 && len(keyFiles) != numFiles {
+							t.Logf("[%d/%d] read list files failed: expected 0 or %v files due to transaction consistency; got %v for worker %v: %v", worker, read, numFiles, len(keyFiles), keyWorker, keyFiles)
+							numErrors.Add(1)
+							return
+						}
+					}
+
+					err = txn.Rollback(ctx)
+					if err != nil {
+						t.Logf("[%d/%d] read rollback failed: %v", worker, read, err)
+						numErrors.Add(1)
+						return
+					}
+				}
+
+				time.Sleep(time.Duration(readBreak) * time.Millisecond)
+				read += 1
+			}
+		}(i)
+	}
+
+	// Wait for writers to finish
+	wg.Wait()
+
+	// Give readers additional time to finish before we potentially call
+	// fatal.
+	time.Sleep(100 * time.Millisecond)
+	done.Store(true)
+	time.Sleep(250 * time.Millisecond)
+
+	// Handle cleanup
+	if numErrors.Load() > 0 {
+		t.Fatalf("got %v errors while running test; see log messages for more info", numErrors.Load())
+	}
+
+	// Remove remaining files.
+	for i := 1; i <= numWriters; i++ {
+		for write := 1; write <= numWrites; write++ {
+			key := fmt.Sprintf("%d/%d", i, write)
+			if err := b.Delete(context.Background(), key); err != nil {
+				t.Fatalf("unable to perform cleanup of %v: %v", key, err)
+			}
+		}
+	}
 }

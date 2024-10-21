@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -96,7 +96,7 @@ func NewEncryptedKeyStorageWrapper(config EncryptedKeyStorageConfig) (*Encrypted
 		size = DefaultCacheSize
 	}
 
-	cache, err := lru.New2Q(size)
+	cache, err := lru.New2Q[string, string](size)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func NewEncryptedKeyStorageWrapper(config EncryptedKeyStorageConfig) (*Encrypted
 
 type EncryptedKeyStorageWrapper struct {
 	policy *Policy
-	lru    *lru.TwoQueueCache
+	lru    *lru.TwoQueueCache[string, string]
 	prefix string
 }
 
@@ -136,7 +136,7 @@ func (f *EncryptedKeyStorageWrapper) Wrap(s logical.Storage) logical.Storage {
 type encryptedKeyStorage struct {
 	policy *Policy
 	s      logical.Storage
-	lru    *lru.TwoQueueCache
+	lru    *lru.TwoQueueCache[string, string]
 
 	prefix string
 }
@@ -199,7 +199,7 @@ func (s *encryptedKeyStorage) ListPage(ctx context.Context, prefix string, after
 		raw, ok := s.lru.Get(k)
 		if ok {
 			// cache HIT, we can bail early and skip the decode & decrypt operations.
-			decryptedKeys[i] = raw.(string)
+			decryptedKeys[i] = raw
 			continue
 		}
 

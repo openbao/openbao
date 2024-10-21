@@ -5102,6 +5102,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/diff-match-patch@npm:^1.0.36":
+  version: 1.0.36
+  resolution: "@types/diff-match-patch@npm:1.0.36"
+  checksum: 7d7ce03422fcc3e79d0cda26e4748aeb176b75ca4b4e5f38459b112bf24660d628424bdb08d330faefa69039d19a5316e7a102a8ab68b8e294c8346790e55113
+  languageName: node
+  linkType: hard
+
 "@types/ember-data@npm:*, @types/ember-data@npm:^4.4.6":
   version: 4.4.6
   resolution: "@types/ember-data@npm:4.4.6"
@@ -9598,6 +9605,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"chalk@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "chalk@npm:5.3.0"
+  checksum: 623922e077b7d1e9dedaea6f8b9e9352921f8ae3afe739132e0e00c275971bdd331268183b2628cf4ab1727c45ea1f28d7e24ac23ce1db1eb653c414ca8a5a80
+  languageName: node
+  linkType: hard
+
 "chalk@npm:~0.4.0":
   version: 0.4.0
   resolution: "chalk@npm:0.4.0"
@@ -11343,7 +11357,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff-match-patch@npm:^1.0.0":
+"diff-match-patch@npm:^1.0.5":
   version: 1.0.5
   resolution: "diff-match-patch@npm:1.0.5"
   checksum: 841522d01b09cccbc4e4402cf61514a81b906349a7d97b67222390f2d35cf5df277cb23959eeed212d5e46afb5629cebab41b87918672c5a05c11c73688630e3
@@ -17313,15 +17327,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsondiffpatch@npm:^0.4.1":
-  version: 0.4.1
-  resolution: "jsondiffpatch@npm:0.4.1"
+"jsondiffpatch@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "jsondiffpatch@npm:0.6.0"
   dependencies:
-    chalk: ^2.3.0
-    diff-match-patch: ^1.0.0
+    "@types/diff-match-patch": ^1.0.36
+    chalk: ^5.3.0
+    diff-match-patch: ^1.0.5
   bin:
-    jsondiffpatch: ./bin/jsondiffpatch
-  checksum: 2062d188cc7f60f9d84e7bf497a7d89233d2f8ec21d085c26cdb24c2b7c5f4f7231ad9b978355e319c00820de0863499ba881c6c6b1bd92313db1a7d16d6ab1d
+    jsondiffpatch: bin/jsondiffpatch.js
+  checksum: 27d7aa42c3b9f9359fd179bb49c621ed848f6095615014cd0acbd29c37e364c11cb5a19c3ef2c873631e7b5f7ba6d1465978a489efa28cb1dc9fba98b0498712
   languageName: node
   linkType: hard
 
@@ -24316,7 +24331,7 @@ __metadata:
     flat: ^4.1.0
     handlebars: 4.7.7
     highlight.js: ^10.4.1
-    jsondiffpatch: ^0.4.1
+    jsondiffpatch: ^0.6.0
     jsonlint: ^1.6.3
     lint-staged: ^10.5.1
     loader.js: ^4.7.0

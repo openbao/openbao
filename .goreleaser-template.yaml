@@ -788,6 +788,10 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+    files:
+      - 'LICENSE'
+      - 'README.md'
+      - 'CHANGELOG.md'
     builds_info:
       group: root
       owner: root

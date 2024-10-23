@@ -100,6 +100,12 @@ func TestTidyConfigs(t *testing.T) {
 			DefaultValue: int(defaultTidyConfig.SafetyBuffer / time.Second),
 		},
 		{
+			Config:       "revoked_safety_buffer",
+			FirstValue:   1,
+			SecondValue:  2,
+			DefaultValue: int(*defaultTidyConfig.RevokedSafetyBuffer / time.Second),
+		},
+		{
 			Config:       "issuer_safety_buffer",
 			FirstValue:   1,
 			SecondValue:  2,
@@ -548,6 +554,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["interval_duration"] = int(time.Duration(defaultConfigMap["interval_duration"].(float64)) / time.Second)
 	defaultConfigMap["issuer_safety_buffer"] = int(time.Duration(defaultConfigMap["issuer_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
+	defaultConfigMap["revoked_safety_buffer"] = int(time.Duration(defaultConfigMap["revoked_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 
@@ -1312,4 +1319,40 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 
 	t.Logf("got tidy status: %v", statusResp.Data)
 	return statusResp
+}
+
+func TestRevokedSafetyBufferConfig(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
+
+	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is set
+	safetyBuffer := 3600
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer": safetyBuffer,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, safetyBuffer, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
+
+	// Verify that revoked_safety_buffer can be explicitly set
+	revokedSafetyBuffer := 400
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer":         safetyBuffer,
+		"revoked_safety_buffer": revokedSafetyBuffer,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set revoked_safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, revokedSafetyBuffer, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to revokedSafetyBuffer")
+	require.Equal(t, safetyBuffer, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer")
 }

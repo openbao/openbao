@@ -1394,6 +1394,22 @@ func (sc *storageContext) getAutoTidyConfig() (*tidyConfig, error) {
 		result.IssuerSafetyBuffer = defaultTidyConfig.IssuerSafetyBuffer
 	}
 
+	// These cases pass as default
+	// Case 1: SafetyBuffer && RevokedSafetyBuffer are default, RevokedSafetyBuffer is defaultTidyConfig.SafetyBuffer
+	// Case 2: SafetyBuffer is default && RevokedSafetyBuffer has been explicitly set: RevokedSafetyBuffer should be set value
+	// Case 3: SafetyBuffer && RevokedSafetyBuffer have been explicitly set: RevokedSafetyBuffer should be its set value
+
+	// FAILS
+	// Case 4: SafetyBuffer explicitly set && RevokedSafetyBuffer is unset: RevokedSafetyBuffer should be updated SafetyBuffer
+	// Reason for breaking: When defaultTidyConfig.RevokedSafetyBuffer is passed in, it is reassigned to result.RevokedSafetyBuffer and the pointer
+	// no longer points to defaultTidyConfig.SafetyBuffer so I can't check if they're equivalent (i.e., if RevokedSafetyBuffer is unset).
+	// I can check if the value of RevokedSafetyBuffer is the value in defaultTidyConfig.SafetyBuffer, but this causes problems since we can't tell
+	// if it's actually pointing to defaultTidyConfig.SafetyBuffer...
+
+	// if *result.RevokedSafetyBuffer == defaultTidyConfig.SafetyBuffer && result.SafetyBuffer != defaultTidyConfig.SafetyBuffer {
+	// 	*result.RevokedSafetyBuffer = defaultTidyConfig.SafetyBuffer
+	// }
+
 	return &result, nil
 }
 

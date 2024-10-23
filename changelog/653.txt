@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Add `revoked_safety_buffer` to control retention on revoked certificates separately from expired certificates. 
+```

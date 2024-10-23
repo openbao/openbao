@@ -1,4 +1,3 @@
 ```release-note:improvement
 secret/pki: Support revoking expired certificates with the `allow_expired_cert_revocation` CRL configuration.
-secret/pki: Add `revoked_safety_buffer` to control retention on revoked certificates separately from expired certificates. 
 ```

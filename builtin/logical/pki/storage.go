@@ -1394,6 +1394,12 @@ func (sc *storageContext) getAutoTidyConfig() (*tidyConfig, error) {
 		result.IssuerSafetyBuffer = defaultTidyConfig.IssuerSafetyBuffer
 	}
 
+	// If revoked safety buffer is not specified OR it points to the default of safety buffer while safety buffer is specified
+	if result.RevokedSafetyBuffer == nil || (*result.RevokedSafetyBuffer == defaultTidyConfig.SafetyBuffer && result.SafetyBuffer != defaultTidyConfig.SafetyBuffer) {
+		revokedBufferValue := result.SafetyBuffer
+		result.RevokedSafetyBuffer = &revokedBufferValue
+	}
+
 	return &result, nil
 }
 

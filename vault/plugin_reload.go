@@ -203,12 +203,12 @@ func (c *Core) reloadBackendCommon(ctx context.Context, entry *MountEntry, isAut
 	// update the mount table since we changed the runningSha
 	if oldSha != entry.RunningSha256 && MountTableUpdateStorage {
 		if isAuth {
-			err = c.persistAuth(ctx, c.auth, &entry.Local)
+			err = c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = c.persistMounts(ctx, c.mounts, &entry.Local)
+			err = c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID)
 			if err != nil {
 				return err
 			}

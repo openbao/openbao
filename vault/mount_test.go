@@ -319,7 +319,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(context.Background(), c.mounts, nil); err != nil {
+	if err := c.persistMounts(context.Background(), nil, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -816,7 +816,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		t.Fatal(err)
 	}
 
-	var persistFunc func(context.Context, *MountTable, *bool) error
+	var persistFunc func(context.Context, logical.Storage, *MountTable, *bool, string) error
 
 	// It should load successfully and be upgraded and persisted
 	switch testType {
@@ -830,7 +830,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		mt = c.auth
 	case "audits":
 		err = c.loadAudits(context.Background())
-		persistFunc = func(ctx context.Context, mt *MountTable, b *bool) error {
+		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
 				*b = false
@@ -868,19 +868,19 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(context.Background(), mt, nil); err == nil {
+	if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(context.Background(), mt, nil); err == nil {
+		if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(context.Background(), mt, nil); err != nil {
+		if err := persistFunc(context.Background(), nil, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}

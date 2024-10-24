@@ -491,6 +491,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/mlock-removal",
                 "rfcs/signed-commits",
                 "rfcs/transactions",
+                "rfcs/split-mount-tables",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

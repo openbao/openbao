@@ -522,7 +522,7 @@ Defaults to 72 hours.`,
 beyond certificate revocation before it is removed
 from the revocation list.
 Defaults to safety_buffer (which defaults to 72 hours).`,
-		Default: int(*defaultTidyConfig.RevokedSafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
+		Default: nil,
 	}
 
 	fields["issuer_safety_buffer"] = &framework.FieldSchema{

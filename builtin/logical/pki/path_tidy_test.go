@@ -103,7 +103,7 @@ func TestTidyConfigs(t *testing.T) {
 			Config:       "revoked_safety_buffer",
 			FirstValue:   1,
 			SecondValue:  2,
-			DefaultValue: int(*defaultTidyConfig.RevokedSafetyBuffer / time.Second),
+			DefaultValue: int(defaultTidyConfig.SafetyBuffer / time.Second),
 		},
 		{
 			Config:       "issuer_safety_buffer",
@@ -554,7 +554,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["interval_duration"] = int(time.Duration(defaultConfigMap["interval_duration"].(float64)) / time.Second)
 	defaultConfigMap["issuer_safety_buffer"] = int(time.Duration(defaultConfigMap["issuer_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
-	defaultConfigMap["revoked_safety_buffer"] = int(time.Duration(defaultConfigMap["revoked_safety_buffer"].(float64)) / time.Second)
+	defaultConfigMap["revoked_safety_buffer"] = int(defaultConfigMap["safety_buffer"].(int))
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 

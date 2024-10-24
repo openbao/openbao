@@ -117,13 +117,6 @@ var defaultTidyConfig = tidyConfig{
 	PublishMetrics:          false,
 }
 
-// assign the default value of revoked_safety_buffer to point to the default of safety_buffer
-func init() {
-	if defaultTidyConfig.RevokedSafetyBuffer == nil {
-		defaultTidyConfig.RevokedSafetyBuffer = &defaultTidyConfig.SafetyBuffer
-	}
-}
-
 func pathTidy(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "tidy$",
@@ -686,7 +679,13 @@ available on the tidy-status endpoint.`,
 
 func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	safetyBuffer := d.Get("safety_buffer").(int)
-	revokedSafetyBuffer := d.Get("revoked_safety_buffer").(int)
+	revokedSafetyBuffer := 0
+	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
+		revokedSafetyBuffer = revokedSafetyBufferRaw.(int)
+	} else {
+		// Default to safety buffer's default if missing
+		revokedSafetyBuffer = int(defaultTidyConfig.SafetyBuffer.Seconds())
+	}
 	tidyCertStore := d.Get("tidy_cert_store").(bool)
 	tidyRevokedCerts := d.Get("tidy_revoked_certs").(bool) || d.Get("tidy_revocation_list").(bool)
 	tidyRevokedAssocs := d.Get("tidy_revoked_cert_issuer_associations").(bool)
@@ -1498,12 +1497,20 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	}
 
 	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
+		if config.RevokedSafetyBuffer == nil {
+			config.RevokedSafetyBuffer = new(time.Duration)  // Allocate memory for pointer
+		}
 		*config.RevokedSafetyBuffer = time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
 		if *config.RevokedSafetyBuffer < 1*time.Second {
 			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
 		}
+	} else {
+		// If no explicit value for revoked_safety_buffer, default it to SafetyBuffer
+		if config.RevokedSafetyBuffer == nil {
+			config.RevokedSafetyBuffer = &config.SafetyBuffer
+		}
 	}
-
+	
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
 		config.PauseDuration, err = parseutil.ParseDurationSecond(pauseDurationRaw.(string))
 		if err != nil {
@@ -1756,6 +1763,10 @@ were executed with the posted configuration.
 `
 
 func getTidyConfigData(config tidyConfig) map[string]interface{} {
+	revokedSafetyBufferValue := int(config.SafetyBuffer / time.Second)
+    if config.RevokedSafetyBuffer != nil {
+        revokedSafetyBufferValue = int(*config.RevokedSafetyBuffer / time.Second)
+    }
 	return map[string]interface{}{
 		// This map is in the same order as tidyConfig to ensure that all fields are accounted for
 		"enabled":                                  config.Enabled,
@@ -1767,7 +1778,7 @@ func getTidyConfigData(config tidyConfig) map[string]interface{} {
 		"tidy_move_legacy_ca_bundle":               config.BackupBundle,
 		"tidy_acme":                                config.TidyAcme,
 		"safety_buffer":                            int(config.SafetyBuffer / time.Second),
-		"revoked_safety_buffer":                    int(*config.RevokedSafetyBuffer / time.Second),
+		"revoked_safety_buffer":                    revokedSafetyBufferValue,
 		"issuer_safety_buffer":                     int(config.IssuerSafetyBuffer / time.Second),
 		"acme_account_safety_buffer":               int(config.AcmeAccountSafetyBuffer / time.Second),
 		"pause_duration":                           config.PauseDuration.String(),

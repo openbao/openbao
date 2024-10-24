@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -530,6 +531,39 @@ func TestRaft_Backend_Performance(t *testing.T) {
 	}
 	if localConfig.LeaderLeaseTimeout != defaultConfig.LeaderLeaseTimeout {
 		t.Fatalf("bad config: %v", localConfig)
+	}
+}
+
+func TestRaft_Backend_PutTxnMargin(t *testing.T) {
+	b, dir := GetRaft(t, true, true)
+	defer os.RemoveAll(dir)
+
+	// Ensure different key sizes don't change the results.
+	for _, keySize := range []int{1, 3, 13, 34, 144, 610, 17631} {
+		key := strings.Repeat("a", keySize)
+
+		// Ensure we fail consistently at different sides of the delta.
+		for valueSizeDelta := -10; valueSizeDelta <= 10; valueSizeDelta += 5 {
+			valueSize := int(defaultMaxEntrySize) - keySize - maxEntrySizeMultipleTxnOverhead + valueSizeDelta
+			value := strings.Repeat("b", valueSize)
+
+			entry := &physical.Entry{Key: key, Value: []byte(value)}
+			putErr := b.Put(context.Background(), entry)
+
+			txn, err := b.BeginTx(context.Background())
+			require.NoError(t, err)
+
+			txnErr := txn.Put(context.Background(), entry)
+
+			if (putErr == nil) != (txnErr == nil) {
+				t.Fatalf("[key=%v / value=%v (delta=%v)] expected both b.Put(...)=%v and txn.Put(...)=%v to fail at the same time", keySize, valueSize, valueSizeDelta, putErr, txnErr)
+			}
+			if putErr != nil && txnErr != nil {
+				if strings.Contains(putErr.Error(), physical.ErrValueTooLarge) != strings.Contains(txnErr.Error(), physical.ErrValueTooLarge) {
+					t.Fatalf("[key=%v / value=%v (delta=%v)] expected both b.Put(...)=%v and txn.Put(...)=%v to both have same ErrValueTooLarge error", keySize, valueSize, valueSizeDelta, putErr, txnErr)
+				}
+			}
+		}
 	}
 }
 

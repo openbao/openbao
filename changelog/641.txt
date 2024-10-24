@@ -1,0 +1,3 @@
+```release-note:bug
+release: remove changelog/ directory from binary release tarballs
+```

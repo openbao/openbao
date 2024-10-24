@@ -26,7 +26,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-retryablehttp"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"golang.org/x/crypto/ocsp"
 )
@@ -89,7 +89,7 @@ type Client struct {
 	caRoot map[string]*x509.Certificate
 	// certPool includes the CA certificates.
 	certPool              *x509.CertPool
-	ocspResponseCache     *lru.TwoQueueCache
+	ocspResponseCache     *lru.TwoQueueCache[certIDKey, *ocspCachedResponse]
 	ocspResponseCacheLock sync.RWMutex
 	// cacheUpdated is true if the memory cache is updated
 	cacheUpdated bool
@@ -212,10 +212,7 @@ func (c *Client) encodeCertIDKey(certIDKeyBase64 string) (*certIDKey, error) {
 func (c *Client) checkOCSPResponseCache(encodedCertID *certIDKey, subject, issuer *x509.Certificate) (*ocspStatus, error) {
 	c.ocspResponseCacheLock.RLock()
 	var cacheValue *ocspCachedResponse
-	v, ok := c.ocspResponseCache.Get(*encodedCertID)
-	if ok {
-		cacheValue = v.(*ocspCachedResponse)
-	}
+	cacheValue, _ = c.ocspResponseCache.Get(*encodedCertID)
 	c.ocspResponseCacheLock.RUnlock()
 
 	status, err := c.extractOCSPCacheResponseValue(cacheValue, subject, issuer)
@@ -883,7 +880,7 @@ func New(logFactory func() hclog.Logger, cacheSize int) *Client {
 	if cacheSize < 100 {
 		cacheSize = 100
 	}
-	cache, _ := lru.New2Q(cacheSize)
+	cache, _ := lru.New2Q[certIDKey, *ocspCachedResponse](cacheSize)
 	c := Client{
 		caRoot:            make(map[string]*x509.Certificate),
 		ocspResponseCache: cache,

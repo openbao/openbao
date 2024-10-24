@@ -3,6 +3,7 @@ name: Ensure Verified Commits
 on:
   pull_request:
     types: [opened, synchronize]
+  workflow_call:
 
 jobs:
   verify_commits:

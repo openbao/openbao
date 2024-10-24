@@ -23,6 +23,8 @@ export const localIconMap = {
   kv: 'key-values',
   ldap: 'user',
   okta: 'okta-color',
+  openbao: null,
+  'openbao-single': null,
   radius: 'user',
   ssh: 'terminal-screen',
   totp: 'history',

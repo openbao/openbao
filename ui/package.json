@@ -1,7 +1,7 @@
 {
   "name": "vault",
   "version": "0.0.0",
-  "description": "The official UI for Vault by HashiCorp",
+  "description": "The official UI for OpenBao",
   "repository": "",
   "author": "",
   "directories": {

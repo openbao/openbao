@@ -433,6 +433,10 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to populate auth information: %w", err)
 	}
 
+	if err := role.maybeTemplatePolicies(auth, allClaims); err != nil {
+		return nil, err
+	}
+
 	resp := &logical.Response{}
 	if useHttp {
 		oidcReq.auth = auth

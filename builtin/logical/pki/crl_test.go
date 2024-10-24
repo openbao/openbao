@@ -1502,3 +1502,83 @@ func TestCRLIssuerRemoval(t *testing.T) {
 	}
 	require.Equal(t, len(afterCRLList), len(crlList))
 }
+
+func TestRevokeExpiredCert(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	// Generate a root certificate for the PKI.
+	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "myvault.com",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, resp.Data)
+	require.NotEmpty(t, resp.Data["issuer_id"])
+
+	// Create a role in the PKI backend for issuing certificates.
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+
+	// Issue a short-lived certificate and revoke it after it expires whilst allow_expired_cert_revocation is false.
+	resp, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"ttl":         "1s",
+		"common_name": "example.com",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.NotEmpty(t, resp.Data["serial_number"])
+	leafSerial := resp.Data["serial_number"].(string)
+
+	// Wait for 2 seconds to ensure the certificate expires before revocation.
+	time.Sleep(2 * time.Second)
+
+	// Revoke the issued certificate.
+	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+		"serial_number": leafSerial,
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.Warnings[0], fmt.Sprintf("certificate with serial %s already expired; refusing to add to CRL. Enable 'AllowExpiredCertRevocation' to allow revoking expired certificates.", leafSerial))
+
+	// Check that CRL does NOT contain any certificates
+	crl := getParsedCrlFromBackend(t, b, s, "crl")
+	require.True(t, len(crl.TBSCertList.RevokedCertificates) == 0)
+
+	// Enable expired certification revocation
+	_, err = CBWrite(b, s, "config/crl", map[string]interface{}{
+		"allow_expired_cert_revocation": true,
+	})
+	require.NoError(t, err)
+
+	// Issue a short-lived certificate and revoke it after it expires whilst allow_expired_cert_revocation is true.
+	resp, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"ttl":         "1s",
+		"common_name": "example.com",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data)
+	require.NotEmpty(t, resp.Data["serial_number"])
+	newLeafSerial := resp.Data["serial_number"].(string)
+
+	// Wait for 2 seconds to ensure the certificate expires before revocation.
+	time.Sleep(2 * time.Second)
+
+	// Revoke the expired certificate.
+	resp, err = CBWrite(b, s, "revoke", map[string]interface{}{
+		"serial_number": newLeafSerial,
+	})
+	require.NoError(t, err)
+
+	// Ensure that the certificate is in the CRL
+	crl = getParsedCrlFromBackend(t, b, s, "crl")
+	requireSerialNumberInCRL(t, crl.TBSCertList, newLeafSerial)
+}

@@ -18,28 +18,30 @@ const latestCrlConfigVersion = 1
 
 // CRLConfig holds basic CRL configuration information
 type crlConfig struct {
-	Version                int    `json:"version"`
-	Expiry                 string `json:"expiry"`
-	Disable                bool   `json:"disable"`
-	OcspDisable            bool   `json:"ocsp_disable"`
-	AutoRebuild            bool   `json:"auto_rebuild"`
-	AutoRebuildGracePeriod string `json:"auto_rebuild_grace_period"`
-	OcspExpiry             string `json:"ocsp_expiry"`
-	EnableDelta            bool   `json:"enable_delta"`
-	DeltaRebuildInterval   string `json:"delta_rebuild_interval"`
+	Version                    int    `json:"version"`
+	Expiry                     string `json:"expiry"`
+	Disable                    bool   `json:"disable"`
+	OcspDisable                bool   `json:"ocsp_disable"`
+	AutoRebuild                bool   `json:"auto_rebuild"`
+	AutoRebuildGracePeriod     string `json:"auto_rebuild_grace_period"`
+	OcspExpiry                 string `json:"ocsp_expiry"`
+	EnableDelta                bool   `json:"enable_delta"`
+	DeltaRebuildInterval       string `json:"delta_rebuild_interval"`
+	AllowExpiredCertRevocation bool   `json:"allow_expired_cert_revocation"`
 }
 
 // Implicit default values for the config if it does not exist.
 var defaultCrlConfig = crlConfig{
-	Version:                latestCrlConfigVersion,
-	Expiry:                 "72h",
-	Disable:                false,
-	OcspDisable:            false,
-	OcspExpiry:             "12h",
-	AutoRebuild:            false,
-	AutoRebuildGracePeriod: "12h",
-	EnableDelta:            false,
-	DeltaRebuildInterval:   "15m",
+	Version:                    latestCrlConfigVersion,
+	Expiry:                     "72h",
+	Disable:                    false,
+	OcspDisable:                false,
+	OcspExpiry:                 "12h",
+	AutoRebuild:                false,
+	AutoRebuildGracePeriod:     "12h",
+	EnableDelta:                false,
+	DeltaRebuildInterval:       "15m",
+	AllowExpiredCertRevocation: false,
 }
 
 func pathConfigCRL(b *backend) *framework.Path {
@@ -88,6 +90,10 @@ the NextUpdate field); defaults to 12 hours`,
 				Type:        framework.TypeString,
 				Description: `The time between delta CRL rebuilds if a new revocation has occurred. Must be shorter than the CRL expiry. Defaults to 15m.`,
 				Default:     "15m",
+			},
+			"allow_expired_cert_revocation": {
+				Type:        framework.TypeBool,
+				Description: `If set to true, allows the revocation of expired certificates.`,
 			},
 		},
 
@@ -143,6 +149,11 @@ the NextUpdate field); defaults to 12 hours`,
 								Description: `The time between delta CRL rebuilds if a new revocation has occurred. Must be shorter than the CRL expiry. Defaults to 15m.`,
 								Required:    true,
 							},
+							"allow_expired_cert_revocation": {
+								Type:        framework.TypeBool,
+								Description: `If set to true, allows the revocation of expired certificates.`,
+								Required:    true,
+							},
 						},
 					}},
 				},
@@ -194,6 +205,10 @@ the NextUpdate field); defaults to 12 hours`,
 								Type:        framework.TypeString,
 								Description: `The time between delta CRL rebuilds if a new revocation has occurred. Must be shorter than the CRL expiry. Defaults to 15m.`,
 								Default:     "15m",
+							},
+							"allow_expired_cert_revocation": {
+								Type:        framework.TypeBool,
+								Description: `If set to true, allows the revocation of expired certificates.`,
 							},
 						},
 					}},
@@ -282,6 +297,10 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 		config.DeltaRebuildInterval = deltaRebuildInterval
 	}
 
+	if allowExpiredCertRevocationRaw, ok := d.GetOk("allow_expired_cert_revocation"); ok {
+		config.AllowExpiredCertRevocation = allowExpiredCertRevocationRaw.(bool)
+	}
+
 	expiry, _ := parseutil.ParseDurationSecond(config.Expiry)
 	if config.AutoRebuild {
 		gracePeriod, _ := parseutil.ParseDurationSecond(config.AutoRebuildGracePeriod)
@@ -344,14 +363,15 @@ func (b *backend) pathCRLWrite(ctx context.Context, req *logical.Request, d *fra
 func genResponseFromCrlConfig(config *crlConfig) *logical.Response {
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"expiry":                    config.Expiry,
-			"disable":                   config.Disable,
-			"ocsp_disable":              config.OcspDisable,
-			"ocsp_expiry":               config.OcspExpiry,
-			"auto_rebuild":              config.AutoRebuild,
-			"auto_rebuild_grace_period": config.AutoRebuildGracePeriod,
-			"enable_delta":              config.EnableDelta,
-			"delta_rebuild_interval":    config.DeltaRebuildInterval,
+			"expiry":                        config.Expiry,
+			"disable":                       config.Disable,
+			"ocsp_disable":                  config.OcspDisable,
+			"ocsp_expiry":                   config.OcspExpiry,
+			"auto_rebuild":                  config.AutoRebuild,
+			"auto_rebuild_grace_period":     config.AutoRebuildGracePeriod,
+			"enable_delta":                  config.EnableDelta,
+			"delta_rebuild_interval":        config.DeltaRebuildInterval,
+			"allow_expired_cert_revocation": config.AllowExpiredCertRevocation,
 		},
 	}
 }

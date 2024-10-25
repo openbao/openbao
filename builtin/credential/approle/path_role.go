@@ -1738,15 +1738,14 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 		}
 		resp.AddWarning("token_max_ttl is greater than the backend mount's maximum TTL value; issued tokens' max TTL value will be truncated")
 	}
+	// Restore the original storage
+	req.Storage = originalStorage
 
 	if txn != nil {
 		if err := txn.Commit(ctx); err != nil {
 			return nil, fmt.Errorf("failed to commit transaction during renewal: %w", err)
 		}
 	}
-
-	// Restore the original storage
-	req.Storage = originalStorage
 
 	// Store the entry.
 	return resp, b.setRoleEntry(ctx, req.Storage, role.name, role, previousRoleID)
@@ -2492,15 +2491,14 @@ func (b *backend) pathRolePoliciesUpdate(ctx context.Context, req *logical.Reque
 			role.Policies = nil
 		}
 	}
+	// Restore the original storage
+	req.Storage = originalStorage
 
 	if txn != nil {
 		if err := txn.Commit(ctx); err != nil {
 			return nil, fmt.Errorf("failed to commit transaction during renewal: %w", err)
 		}
 	}
-
-	// Restore the original storage
-	req.Storage = originalStorage
 
 	return nil, b.setRoleEntry(ctx, req.Storage, role.name, role, "")
 }

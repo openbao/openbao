@@ -4189,9 +4189,10 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 
 	// Issue a tidy on /pki
 	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
-		"tidy_cert_store":    true,
-		"tidy_revoked_certs": true,
-		"safety_buffer":      "1s",
+		"tidy_cert_store":       true,
+		"tidy_revoked_certs":    true,
+		"safety_buffer":         "1s",
+		"revoked_safety_buffer": "1s",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -4219,9 +4220,10 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 
 	// Issue a tidy on /pki
 	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
-		"tidy_cert_store":    true,
-		"tidy_revoked_certs": true,
-		"safety_buffer":      "1s",
+		"tidy_cert_store":       true,
+		"tidy_revoked_certs":    true,
+		"safety_buffer":         "1s",
+		"revoked_safety_buffer": "1s",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -4238,6 +4240,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 		}
 		expectedData := map[string]interface{}{
 			"safety_buffer":                         json.Number("1"),
+			"revoked_safety_buffer":                 json.Number("1"),
 			"issuer_safety_buffer":                  json.Number("31536000"),
 			"tidy_cert_store":                       true,
 			"tidy_revoked_certs":                    true,

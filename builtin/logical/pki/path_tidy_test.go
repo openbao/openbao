@@ -1254,6 +1254,45 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 	return statusResp
 }
 
+func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
+	var foundTidyRunning string
+	var foundTidyFinished bool
+	timeoutChan := time.After(120 * time.Second)
+
+	for {
+		if foundTidyRunning != "" && foundTidyFinished {
+			break
+		}
+
+		select {
+		case <-timeoutChan:
+			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)
+		default:
+			time.Sleep(250 * time.Millisecond)
+
+			resp, err := client.Logical().Read("pki/tidy-status")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.NotNil(t, resp.Data)
+			require.NotEmpty(t, resp.Data["state"])
+			require.NotEmpty(t, resp.Data["time_started"])
+
+			state := resp.Data["state"].(string)
+			started := resp.Data["time_started"].(string)
+			t.Logf("Resp: %v", resp.Data)
+
+			// We want the _next_ tidy run after the cert expires. This
+			// means if we're currently finished when we hit this the
+			// first time, we want to wait for the next run.
+			if foundTidyRunning == "" {
+				foundTidyRunning = started
+			} else if foundTidyRunning != started && state == "Finished" {
+				foundTidyFinished = true
+			}
+		}
+	}
+}
+
 func TestRevokedSafetyBufferConfig(t *testing.T) {
 	t.Parallel()
 

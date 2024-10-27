@@ -689,9 +689,10 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 		// Run with a short safety buffer and both set to true, both should be cleared
 		{
 			resp, err := client.Logical().Write(rootName+"tidy", map[string]interface{}{
-				"safety_buffer":      "1s",
-				"tidy_cert_store":    true,
-				"tidy_revoked_certs": true,
+				"safety_buffer":         "1s",
+				"revoked_safety_buffer": "1s",
+				"tidy_cert_store":       true,
+				"tidy_revoked_certs":    true,
 			})
 			if err != nil {
 				t.Fatal(err)

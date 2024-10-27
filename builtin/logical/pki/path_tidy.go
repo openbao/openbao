@@ -1690,17 +1690,24 @@ normal certificate storage must be enabled with 'tidy_cert_store' and cleanup
 from revocation information must be enabled with 'tidy_revocation_list'.
 
 The 'safety_buffer' parameter is useful to ensure that clock skew amongst your
-hosts cannot lead to a certificate being removed from the CRL while it is still
-considered valid by other hosts (for instance, if their clocks are a few
-minutes behind). The 'safety_buffer' parameter can be an integer number of
-seconds or a string duration like "72h".
+hosts cannot lead to an expired certificate being removed from certificate storage 
+while it is still considered valid by other hosts (for instance, if their clocks 
+are a few minutes behind). The 'safety_buffer' parameter can be an integer number 
+of seconds or a string duration like "72h".
+
+The 'revoked_safety_buffer' parameter can be used to ensure that clock skew amongst 
+your hosts cannot lead to a revoked certificate being removed from the CRL while it 
+is still considered valid by other hosts (for instance, if their clocks are a few 
+minutes behind). The 'revoked_safety_buffer' defaults 'safety_buffer' if it is unset
+and can be an integer number of seconds or a string duration like "72h".
 
 All certificates and/or revocation information currently stored in the backend
 will be checked when this endpoint is hit. The expiration of the
 certificate/revocation information of each certificate being held in
 certificate storage or in revocation information will then be checked. If the
 current time, minus the value of 'safety_buffer', is greater than the
-expiration, it will be removed.
+expiration, it will be removed. If the current time, minus the value of 
+'revoked_safety_buffer', is greater than the revoked time, it will be removed.
 `
 
 const pathTidyCancelHelpSyn = `
@@ -1725,6 +1732,7 @@ operation, or the most recent if none is currently running.
 
 The result includes the following fields:
 * 'safety_buffer': the value of this parameter when initiating the tidy operation
+* 'revoked_safety_buffer': the value of this parameter when initiating the tidy operation
 * 'tidy_cert_store': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_certs': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_cert_issuer_associations': the value of this parameter when initiating the tidy operation

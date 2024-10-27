@@ -1018,7 +1018,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 			// past its NotAfter value. This is because we use the
 			// information on revoked/ to build the CRL and the
 			// information on certs/ for lookup.
-			if time.Since(revokedCert.NotAfter) > config.SafetyBuffer {
+			if time.Since(revokedCert.NotAfter) > *config.RevokedSafetyBuffer {
 				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 					return fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
 				}
@@ -1498,7 +1498,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 
 	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
 		if config.RevokedSafetyBuffer == nil {
-			config.RevokedSafetyBuffer = new(time.Duration)  // Allocate memory for pointer
+			config.RevokedSafetyBuffer = new(time.Duration) // Allocate memory for pointer
 		}
 		*config.RevokedSafetyBuffer = time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
 		if *config.RevokedSafetyBuffer < 1*time.Second {
@@ -1510,7 +1510,7 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 			config.RevokedSafetyBuffer = &config.SafetyBuffer
 		}
 	}
-	
+
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
 		config.PauseDuration, err = parseutil.ParseDurationSecond(pauseDurationRaw.(string))
 		if err != nil {
@@ -1764,9 +1764,9 @@ were executed with the posted configuration.
 
 func getTidyConfigData(config tidyConfig) map[string]interface{} {
 	revokedSafetyBufferValue := int(config.SafetyBuffer / time.Second)
-    if config.RevokedSafetyBuffer != nil {
-        revokedSafetyBufferValue = int(*config.RevokedSafetyBuffer / time.Second)
-    }
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBufferValue = int(*config.RevokedSafetyBuffer / time.Second)
+	}
 	return map[string]interface{}{
 		// This map is in the same order as tidyConfig to ensure that all fields are accounted for
 		"enabled":                                  config.Enabled,

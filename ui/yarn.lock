@@ -5298,10 +5298,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__polyfills@npm:*, @types/ember__polyfills@npm:^4.0.1":
+"@types/ember__polyfills@npm:*":
   version: 4.0.1
   resolution: "@types/ember__polyfills@npm:4.0.1"
   checksum: a2b6ed3b0637fdeb6d4c93a3a1d5b7902e57124c860bf9bf82f1ea4148264991b8f0311ea6a8a50f5b243804f93650fc2a5f97a53192e0687213b41a5499e4be
+  languageName: node
+  linkType: hard
+
+"@types/ember__polyfills@npm:^4.0.6":
+  version: 4.0.6
+  resolution: "@types/ember__polyfills@npm:4.0.6"
+  checksum: 331d2dd66d106ffd67866d20186da1d6321080692de174bc7f61618735228f67ae41bc435c79fbce9532bd0a63d3489f73843edefe555f63021d28ee70fb0ea8
   languageName: node
   linkType: hard
 
@@ -24220,7 +24227,7 @@ __metadata:
     "@types/ember__engine": ^4.0.4
     "@types/ember__error": ^4.0.1
     "@types/ember__object": ^4.0.5
-    "@types/ember__polyfills": ^4.0.1
+    "@types/ember__polyfills": ^4.0.6
     "@types/ember__routing": ^4.0.12
     "@types/ember__runloop": ^4.0.2
     "@types/ember__service": ^4.0.1

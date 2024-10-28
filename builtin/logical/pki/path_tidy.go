@@ -872,7 +872,12 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 		cert, err := x509.ParseCertificate(certEntry.Value)
 		if err != nil {
-			return fmt.Errorf("unable to parse stored certificate with serial %q: %w", serial, err)
+			logger.Warn("unable to parse stored certificate with serial %q: %w; tidying up since it is not usable", serial, err)
+			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+				return fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
+			}
+			b.tidyStatusIncCertStoreCount()
+			continue
 		}
 
 		if time.Since(cert.NotAfter) > config.SafetyBuffer {

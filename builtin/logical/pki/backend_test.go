@@ -4221,6 +4221,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
 		"tidy_cert_store":    true,
 		"tidy_revoked_certs": true,
+		"tidy_invalid_certs": true,
 		"safety_buffer":      "1s",
 	})
 	if err != nil {
@@ -4241,6 +4242,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 			"issuer_safety_buffer":                  json.Number("31536000"),
 			"tidy_cert_store":                       true,
 			"tidy_revoked_certs":                    true,
+			"tidy_invalid_certs":                    true,
 			"tidy_revoked_cert_issuer_associations": false,
 			"tidy_expired_issuers":                  false,
 			"tidy_move_legacy_ca_bundle":            false,

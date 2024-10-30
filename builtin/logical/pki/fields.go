@@ -459,6 +459,11 @@ and expired certificates, removing them both from the CRL and from storage. The
 CRL will be rotated if this causes any values to be removed.`,
 	}
 
+	fields["tidy_invalid_certs"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Description: `Set to true to delete all invalid certs from storage.`,
+	}
+
 	fields["tidy_revoked_cert_issuer_associations"] = &framework.FieldSchema{
 		Type: framework.TypeBool,
 		Description: `Set to true to validate issuer associations

@@ -41,6 +41,7 @@ type tidyStatus struct {
 
 	tidyCertStore      bool
 	tidyRevokedCerts   bool
+	tidyInvalidCerts   bool
 	tidyRevokedAssocs  bool
 	tidyExpiredIssuers bool
 	tidyBackupBundle   bool
@@ -74,6 +75,7 @@ type tidyConfig struct {
 	// Tidy Operations
 	CertStore      bool `json:"tidy_cert_store"`
 	RevokedCerts   bool `json:"tidy_revoked_certs"`
+	InvalidCerts   bool `json:"tidy_invalid_certs"`
 	IssuerAssocs   bool `json:"tidy_revoked_cert_issuer_associations"`
 	ExpiredIssuers bool `json:"tidy_expired_issuers"`
 	BackupBundle   bool `json:"tidy_move_legacy_ca_bundle"`
@@ -103,6 +105,7 @@ var defaultTidyConfig = tidyConfig{
 	Interval:                12 * time.Hour,
 	CertStore:               false,
 	RevokedCerts:            false,
+	InvalidCerts:            false,
 	IssuerAssocs:            false,
 	ExpiredIssuers:          false,
 	BackupBundle:            false,
@@ -177,6 +180,11 @@ func pathTidyCancel(b *backend) *framework.Path {
 							"tidy_revoked_certs": {
 								Type:        framework.TypeBool,
 								Description: `Tidy revoked certificates`,
+								Required:    false,
+							},
+							"tidy_invalid_certs": {
+								Type:        framework.TypeBool,
+								Description: `Tidy invalid certificates`,
 								Required:    false,
 							},
 							"tidy_revoked_cert_issuer_associations": {
@@ -337,6 +345,11 @@ func pathTidyStatus(b *backend) *framework.Path {
 							"tidy_revoked_certs": {
 								Type:        framework.TypeBool,
 								Description: `Tidy revoked certificates`,
+								Required:    true,
+							},
+							"tidy_invalid_certs": {
+								Type:        framework.TypeBool,
+								Description: `Tidy invalid certificates`,
 								Required:    true,
 							},
 							"tidy_revoked_cert_issuer_associations": {
@@ -511,7 +524,12 @@ available on the tidy-status endpoint.`,
 							},
 							"tidy_revoked_certs": {
 								Type:        framework.TypeBool,
-								Description: `Specifies whether to remove all invalid and expired certificates from storage`,
+								Description: `Specifies whether to remove all revoked and expired certificates from storage`,
+								Required:    true,
+							},
+							"tidy_invalid_certs": {
+								Type:        framework.TypeBool,
+								Description: `Specifies whether to remove invalid certificates from storage`,
 								Required:    true,
 							},
 							"tidy_revoked_cert_issuer_associations": {
@@ -592,7 +610,12 @@ available on the tidy-status endpoint.`,
 							},
 							"tidy_revoked_certs": {
 								Type:        framework.TypeBool,
-								Description: `Specifies whether to remove all invalid and expired certificates from storage`,
+								Description: `Specifies whether to remove all revoked and expired certificates from storage`,
+								Required:    true,
+							},
+							"tidy_invalid_certs": {
+								Type:        framework.TypeBool,
+								Description: `Specifies whether to remove invalid certificates from storage`,
 								Required:    true,
 							},
 							"tidy_revoked_cert_issuer_associations": {
@@ -659,6 +682,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 	safetyBuffer := d.Get("safety_buffer").(int)
 	tidyCertStore := d.Get("tidy_cert_store").(bool)
 	tidyRevokedCerts := d.Get("tidy_revoked_certs").(bool) || d.Get("tidy_revocation_list").(bool)
+	tidyInvalidCerts := d.Get("tidy_invalid_certs").(bool)
 	tidyRevokedAssocs := d.Get("tidy_revoked_cert_issuer_associations").(bool)
 	tidyExpiredIssuers := d.Get("tidy_expired_issuers").(bool)
 	tidyBackupBundle := d.Get("tidy_move_legacy_ca_bundle").(bool)
@@ -702,6 +726,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		Interval:                0 * time.Second,
 		CertStore:               tidyCertStore,
 		RevokedCerts:            tidyRevokedCerts,
+		InvalidCerts:            tidyInvalidCerts,
 		IssuerAssocs:            tidyRevokedAssocs,
 		ExpiredIssuers:          tidyExpiredIssuers,
 		BackupBundle:            tidyBackupBundle,
@@ -872,11 +897,14 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 		cert, err := x509.ParseCertificate(certEntry.Value)
 		if err != nil {
-			logger.Warn("unable to parse stored certificate with serial %q: %w; tidying up since it is not usable", serial, err)
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
+			if config.InvalidCerts {
+				logger.Warn("unable to parse stored certificate with serial %q: %w; tidying up since it is not usable", serial, err)
+				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+					return fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
+				}
+				b.tidyStatusIncCertStoreCount()
 			}
-			b.tidyStatusIncCertStoreCount()
+			logger.Warn("unable to parse stored certificate with serial %q: %w; tidy by enabling tidy_invalid_certs", serial, err)
 			continue
 		}
 
@@ -1375,6 +1403,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	resp.Data["issuer_safety_buffer"] = b.tidyStatus.issuerSafetyBuffer
 	resp.Data["tidy_cert_store"] = b.tidyStatus.tidyCertStore
 	resp.Data["tidy_revoked_certs"] = b.tidyStatus.tidyRevokedCerts
+	resp.Data["tidy_invalid_certs"] = b.tidyStatus.tidyRevokedCerts
 	resp.Data["tidy_revoked_cert_issuer_associations"] = b.tidyStatus.tidyRevokedAssocs
 	resp.Data["tidy_expired_issuers"] = b.tidyStatus.tidyExpiredIssuers
 	resp.Data["tidy_move_legacy_ca_bundle"] = b.tidyStatus.tidyBackupBundle
@@ -1451,6 +1480,10 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 
 	if revokedCertsRaw, ok := d.GetOk("tidy_revoked_certs"); ok {
 		config.RevokedCerts = revokedCertsRaw.(bool)
+	}
+
+	if InvalidCertsRaw, ok := d.GetOk("tidy_invalid_certs"); ok {
+		config.InvalidCerts = InvalidCertsRaw.(bool)
 	}
 
 	if issuerAssocRaw, ok := d.GetOk("tidy_revoked_cert_issuer_associations"); ok {
@@ -1679,6 +1712,7 @@ The result includes the following fields:
 * 'safety_buffer': the value of this parameter when initiating the tidy operation
 * 'tidy_cert_store': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_certs': the value of this parameter when initiating the tidy operation
+* 'tidy_invalid_certs': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_cert_issuer_associations': the value of this parameter when initiating the tidy operation
 * 'state': one of "Inactive", "Running", "Finished", "Error"
 * 'error': the error message, if the operation ran into an error
@@ -1721,6 +1755,7 @@ func getTidyConfigData(config tidyConfig) map[string]interface{} {
 		"interval_duration":                        int(config.Interval / time.Second),
 		"tidy_cert_store":                          config.CertStore,
 		"tidy_revoked_certs":                       config.RevokedCerts,
+		"tidy_invalid_certs":                       config.RevokedCerts,
 		"tidy_revoked_cert_issuer_associations":    config.IssuerAssocs,
 		"tidy_expired_issuers":                     config.ExpiredIssuers,
 		"tidy_move_legacy_ca_bundle":               config.BackupBundle,

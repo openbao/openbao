@@ -78,8 +78,14 @@
 // if using @stretched on FlightIcon there must be an explicit height set on the parent if used in a flexbox
 // without height set the flexbox will scale out of proportion on Safari
 
-.brand-icon-large {
-  width: 62px;
+.openbao-logo {
+  height: fit-content;
+  margin: auto;
+}
+
+.brand-icon-large,
+.brand-icon-large span {
+  width: 186px;
   height: 62px;
 }
 

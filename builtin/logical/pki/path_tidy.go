@@ -1423,6 +1423,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 			"issuer_safety_buffer":                  nil,
 			"tidy_cert_store":                       nil,
 			"tidy_revoked_certs":                    nil,
+			"tidy_invalid_certs":                    nil,
 			"tidy_revoked_cert_issuer_associations": nil,
 			"tidy_expired_issuers":                  nil,
 			"tidy_move_legacy_ca_bundle":            nil,
@@ -1469,7 +1470,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	resp.Data["issuer_safety_buffer"] = b.tidyStatus.issuerSafetyBuffer
 	resp.Data["tidy_cert_store"] = b.tidyStatus.tidyCertStore
 	resp.Data["tidy_revoked_certs"] = b.tidyStatus.tidyRevokedCerts
-	resp.Data["tidy_invalid_certs"] = b.tidyStatus.tidyRevokedCerts
+	resp.Data["tidy_invalid_certs"] = b.tidyStatus.tidyInvalidCerts
 	resp.Data["tidy_revoked_cert_issuer_associations"] = b.tidyStatus.tidyRevokedAssocs
 	resp.Data["tidy_expired_issuers"] = b.tidyStatus.tidyExpiredIssuers
 	resp.Data["tidy_move_legacy_ca_bundle"] = b.tidyStatus.tidyBackupBundle
@@ -1821,7 +1822,7 @@ func getTidyConfigData(config tidyConfig) map[string]interface{} {
 		"interval_duration":                        int(config.Interval / time.Second),
 		"tidy_cert_store":                          config.CertStore,
 		"tidy_revoked_certs":                       config.RevokedCerts,
-		"tidy_invalid_certs":                       config.RevokedCerts,
+		"tidy_invalid_certs":                       config.InvalidCerts,
 		"tidy_revoked_cert_issuer_associations":    config.IssuerAssocs,
 		"tidy_expired_issuers":                     config.ExpiredIssuers,
 		"tidy_move_legacy_ca_bundle":               config.BackupBundle,

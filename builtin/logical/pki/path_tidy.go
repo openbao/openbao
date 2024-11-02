@@ -683,8 +683,8 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
 		revokedSafetyBuffer = revokedSafetyBufferRaw.(int)
 	} else {
-		// Default to safety buffer's default if missing
-		revokedSafetyBuffer = int(defaultTidyConfig.SafetyBuffer.Seconds())
+		// Default to safety buffer
+		revokedSafetyBuffer = safetyBuffer
 	}
 	tidyCertStore := d.Get("tidy_cert_store").(bool)
 	tidyRevokedCerts := d.Get("tidy_revoked_certs").(bool) || d.Get("tidy_revocation_list").(bool)
@@ -1497,17 +1497,16 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 	}
 
 	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
-		if config.RevokedSafetyBuffer == nil {
-			config.RevokedSafetyBuffer = new(time.Duration) // Allocate memory for pointer
-		}
-		*config.RevokedSafetyBuffer = time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
+		revokedSafetyBuffer := time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
+		config.RevokedSafetyBuffer = &revokedSafetyBuffer
 		if *config.RevokedSafetyBuffer < 1*time.Second {
 			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
 		}
 	} else {
 		// If no explicit value for revoked_safety_buffer, default it to SafetyBuffer
 		if config.RevokedSafetyBuffer == nil {
-			config.RevokedSafetyBuffer = &config.SafetyBuffer
+			safetyBuffer := config.SafetyBuffer
+			config.RevokedSafetyBuffer = &safetyBuffer
 		}
 	}
 

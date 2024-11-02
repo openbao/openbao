@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-@keyframes vault-loading-animation {
+@keyframes openbao-loading-animation {
   0%,
   70%,
   100% {
@@ -15,38 +15,38 @@
   }
 }
 
-#vault-loading {
-  polygon {
-    animation: vault-loading-animation 1.3s infinite ease-in-out;
+#openbao-loading {
+  path {
+    animation: openbao-loading-animation 1.3s infinite ease-in-out;
     transform-origin: 50% 50%;
     fill: #dce2e9;
   }
 
-  .vault-loading-order-1 {
+  .openbao-loading-order-1 {
     animation-delay: 0.1s;
   }
 
-  .vault-loading-order-2 {
+  .openbao-loading-order-2 {
     animation-delay: 0.2s;
   }
 
-  .vault-loading-order-3 {
+  .openbao-loading-order-3 {
     animation-delay: 0.3s;
   }
 
-  .vault-loading-order-4 {
+  .openbao-loading-order-4 {
     animation-delay: 0.4s;
   }
 }
 
-#vault-loading-animated {
+#openbao-loading-animated {
   @media all and (-ms-high-contrast: none), (-ms-high-contrast: active) {
     // For IE11
     display: none;
   }
 }
 
-#vault-loading-static {
+#openbao-loading-static {
   display: none;
   font-size: 9px;
 

@@ -781,15 +781,8 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 		logger := b.Logger().Named("tidy")
 
 		doTidy := func() error {
-			if config.CertStore {
+			if config.CertStore || config.InvalidCerts {
 				if err := b.doTidyCertStore(ctx, req, logger, config); err != nil {
-					return err
-				}
-			}
-
-			// if operator is tidying invalid certs and not the cert store
-			if config.InvalidCerts && !config.CertStore {
-				if err := b.doTidyInvalidCerts(ctx, req, logger, config); err != nil {
 					return err
 				}
 			}
@@ -929,79 +922,11 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 			continue
 		}
 
-		if time.Since(cert.NotAfter) > config.SafetyBuffer {
+		if config.CertStore && time.Since(cert.NotAfter) > config.SafetyBuffer {
 			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
 				return fmt.Errorf("error deleting serial %q from storage: %w", serial, err)
 			}
 			b.tidyStatusIncCertStoreCount()
-		}
-	}
-
-	b.tidyStatusLock.RLock()
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries_remaining"}, float32(uint(serialCount)-b.tidyStatus.certStoreDeletedCount))
-	b.tidyStatusLock.RUnlock()
-
-	return nil
-}
-
-func (b *backend) doTidyInvalidCerts(ctx context.Context, req *logical.Request, logger hclog.Logger, config *tidyConfig) error {
-	serials, err := req.Storage.List(ctx, "certs/")
-	if err != nil {
-		return fmt.Errorf("error fetching list of certs: %w", err)
-	}
-
-	haveWarned := false
-	serialCount := len(serials)
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries"}, float32(serialCount))
-	for i, serial := range serials {
-		b.tidyStatusMessage(fmt.Sprintf("Tidying invalid certificates: checking entry %d of %d", i, serialCount))
-		metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(i))
-
-		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return tidyCancelledError
-		}
-
-		// Check for pause duration to reduce resource consumption.
-		if config.PauseDuration > (0 * time.Second) {
-			time.Sleep(config.PauseDuration)
-		}
-
-		certEntry, err := req.Storage.Get(ctx, "certs/"+serial)
-		if err != nil {
-			return fmt.Errorf("error fetching certificate %q: %w", serial, err)
-		}
-
-		if certEntry == nil {
-			logger.Warn("certificate entry is nil; tidying up since it is no longer useful for any server operations", "serial", serial)
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return fmt.Errorf("error deleting nil entry with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-			continue
-		}
-
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
-			logger.Warn("certificate entry has no value; tidying up since it is no longer useful for any server operations", "serial", serial)
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return fmt.Errorf("error deleting entry with nil value with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-			continue
-		}
-
-		_, err = x509.ParseCertificate(certEntry.Value)
-		if err != nil {
-			if !haveWarned {
-				logger.Warn("unable to parse stored certificate with serial %q: %w; tidying up since it is not usable", serial, err)
-				haveWarned = true
-			}
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-
-			continue
 		}
 	}
 

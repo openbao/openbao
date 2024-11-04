@@ -134,7 +134,7 @@ export default class PkiRoleModel extends Model {
     subText:
       'Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.',
     editType: 'boolean',
-    docLink: '/vault/api-docs/secret/pki#create-update-role',
+    docLink: '/api-docs/secret/pki#create-update-role',
   })
   generateLease;
 
@@ -144,7 +144,7 @@ export default class PkiRoleModel extends Model {
     subText:
       'This can improve performance when issuing large numbers of certificates. However, certificates issued in this way cannot be enumerated or revoked.',
     editType: 'boolean',
-    docLink: '/vault/api-docs/secret/pki#create-update-role',
+    docLink: '/api-docs/secret/pki#create-update-role',
   })
   noStore;
 
@@ -216,7 +216,7 @@ export default class PkiRoleModel extends Model {
     label: 'URI Subject Alternative Names (URI SANs)',
     subText: 'Defines allowed URI Subject Alternative Names.',
     editType: 'stringArray',
-    docLink: '/vault/docs/concepts/policies',
+    docLink: '/docs/concepts/policies',
   })
   allowedUriSans;
 
@@ -224,7 +224,7 @@ export default class PkiRoleModel extends Model {
     label: 'Allow URI SANs template',
     subText: 'If true, the URI SANs above may contain templates, as with ACL Path Templating.',
     editType: 'boolean',
-    docLink: '/vault/docs/concepts/policies',
+    docLink: '/docs/concepts/policies',
   })
   allowUriSansTemplate;
 
@@ -337,7 +337,7 @@ export default class PkiRoleModel extends Model {
         footer: {
           text: 'These options can interact intricately with one another. For more information,',
           docText: 'learn more here.',
-          docLink: '/vault/api-docs/secret/pki#allowed_domains',
+          docLink: '/api-docs/secret/pki#allowed_domains',
         },
       },
       'Key parameters': {

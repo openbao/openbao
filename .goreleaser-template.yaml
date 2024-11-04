@@ -33,11 +33,11 @@ builds:
       - REPLACE_WITH_RELEASE_GOOS
     goarch:
       - amd64
-      - arm
-      - arm64
-      - ppc64le
-      - riscv64
-      - s390x
+#OTHERARCH#      - arm
+#OTHERARCH#      - arm64
+#OTHERARCH#      - ppc64le
+#OTHERARCH#      - riscv64
+#OTHERARCH#      - s390x
     goarm:
       - "6"
     ignore:
@@ -190,14 +190,17 @@ report_sizes: true
 #LINUXONLY#          mode: 0644
 #LINUXONLY#      - src: ./.release/linux/package/etc/openbao/openbao.env
 #LINUXONLY#        dst: /etc/openbao/openbao.env
+#LINUXONLY#        type: config|noreplace
 #LINUXONLY#        file_info:
 #LINUXONLY#          mode: 0644
 #LINUXONLY#      - src: ./.release/linux/package/etc/openbao/openbao.hcl
 #LINUXONLY#        dst: /etc/openbao/openbao.hcl
+#LINUXONLY#        type: config|noreplace
 #LINUXONLY#        file_info:
 #LINUXONLY#          mode: 0644
 #LINUXONLY#      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
 #LINUXONLY#        dst: /usr/lib/systemd/system/openbao.service
+#LINUXONLY#        type: config|noreplace
 #LINUXONLY#        file_info:
 #LINUXONLY#          mode: 0644
 #LINUXONLY#    scripts:

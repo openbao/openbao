@@ -5262,7 +5262,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__engine@npm:*, @types/ember__engine@npm:^4.0.4":
+"@types/ember__engine@npm:*":
   version: 4.0.4
   resolution: "@types/ember__engine@npm:4.0.4"
   dependencies:
@@ -5270,6 +5270,16 @@ __metadata:
     "@types/ember__object": "*"
     "@types/ember__owner": "*"
   checksum: 1b387a89206263ba26dfc0cc6417e8a3aecbb12af3d16522eeb09c78273da12851c5fca614099070920ec17c51ff50ba31e487d73259ab5673d143956b97d35a
+  languageName: node
+  linkType: hard
+
+"@types/ember__engine@npm:^4.0.11":
+  version: 4.0.11
+  resolution: "@types/ember__engine@npm:4.0.11"
+  dependencies:
+    "@types/ember__object": "*"
+    "@types/ember__owner": "*"
+  checksum: 55a2fc9eb82f64e5d87d74b0624198b0ae898389ec5bb5ff845234aa60e4c8d72ccfe99bec449b3edd3f236f38d1ad5f07e64bb1daf9aacd0441a86041b4d56a
   languageName: node
   linkType: hard
 
@@ -24217,7 +24227,7 @@ __metadata:
     "@types/ember__controller": ^4.0.3
     "@types/ember__debug": ^4.0.3
     "@types/ember__destroyable": ^4.0.1
-    "@types/ember__engine": ^4.0.4
+    "@types/ember__engine": ^4.0.11
     "@types/ember__error": ^4.0.1
     "@types/ember__object": ^4.0.5
     "@types/ember__polyfills": ^4.0.1

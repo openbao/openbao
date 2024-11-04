@@ -30,7 +30,7 @@ module('Integration | Component | icon', function (hooks) {
     assert.dom('.hs-icon').hasClass('hs-icon-xl', 'adds the larger size class');
 
     const promise = waitForError();
-    render(hbs`<Icon @name="vault-logo" @size="12"/>`);
+    render(hbs`<Icon @name="openbao" @size="12"/>`);
     const err = await promise;
     assert.strictEqual(
       err.message,

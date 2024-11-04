@@ -400,7 +400,10 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, data
 
 	var txn logical.Transaction
 
-	// Begin a transaction if transactional storage is available
+	// Begin a transaction if transactional storage is available.
+	//
+	// b.roleEntry may upgrade storage entries, so we wish to ensure
+	// the read and any subsequent are consistent. 
 	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
 		var err error
 		txn, err = txnStorage.BeginTx(ctx)

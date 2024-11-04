@@ -2593,7 +2593,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
@@ -2606,7 +2606,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 			true,
 		)
 
-		if !strings.HasPrefix(resp.Data["value"].(string), `{"type":"mounts"`) {
+		if !strings.HasPrefix(resp.Data["value"].(string), `{"type":"audit"`) {
 			t.Fatalf("bad: %v", resp)
 		}
 	})
@@ -2614,7 +2614,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("base64", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"encoding": "base64",
 		}
@@ -2627,7 +2627,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
 		}
 
-		if !strings.HasPrefix(string(resp.Data["value"].([]byte)), `{"type":"mounts"`) {
+		if !strings.HasPrefix(string(resp.Data["value"].([]byte)), `{"type":"audit"`) {
 			t.Fatalf("bad: %v", resp)
 		}
 	})
@@ -2635,7 +2635,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("invalid_encoding", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"encoding": "invalid_encoding",
 		}
@@ -2652,7 +2652,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("compressed_false", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"compressed": false,
 		}
@@ -2673,7 +2673,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 	t.Run("compressed_false_base64", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"compressed": false,
 			"encoding":   "base64",
@@ -2790,7 +2790,8 @@ func TestSystemBackend_rawReadWrite(t *testing.T) {
 
 func TestSystemBackend_rawWrite_ExistanceCheck(t *testing.T) {
 	b := testSystemBackendRaw(t)
-	req := logical.TestRequest(t, logical.CreateOperation, "raw/core/mounts")
+
+	req := logical.TestRequest(t, logical.CreateOperation, "raw/core/audit")
 	_, exist, err := b.HandleExistenceCheck(namespace.RootContext(nil), req)
 	if err != nil {
 		t.Fatalf("err: #{err}")
@@ -2886,14 +2887,14 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 	t.Run("use_existing_compression", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		mounts := resp.Data["value"].(string)
-		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"value":            mounts,
 			"compression_type": compressutil.CompressionTypeGzip,
@@ -2911,7 +2912,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		)
 
 		// Read back and check gzip was applied by looking for prefix byte
-		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"compressed": false,
 			"encoding":   "base64",
@@ -2934,14 +2935,14 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 	t.Run("compression_type_matches_existing_compression", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		mounts := resp.Data["value"].(string)
-		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"value": mounts,
 		}
@@ -2951,7 +2952,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		// Read back and check gzip was applied by looking for prefix byte
-		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"compressed": false,
 			"encoding":   "base64",
@@ -2973,14 +2974,14 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 	t.Run("write_uncompressed_over_existing_compressed", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		mounts := resp.Data["value"].(string)
-		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"value":            mounts,
 			"compression_type": "",
@@ -2991,7 +2992,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 		}
 
 		// Read back and check gzip was not applied by looking for prefix byte
-		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"compressed": false,
 			"encoding":   "base64",
@@ -3006,7 +3007,7 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 			t.Fatalf("value is a not an array of bytes, it is %T", resp.Data["value"])
 		}
 
-		if !strings.HasPrefix(string(resp.Data["value"].([]byte)), `{"type":"mounts"`) {
+		if !strings.HasPrefix(string(resp.Data["value"].([]byte)), `{"type":"audit"`) {
 			t.Fatalf("bad: %v", resp)
 		}
 	})
@@ -3014,14 +3015,14 @@ func TestSystemBackend_rawReadWrite_Compressed(t *testing.T) {
 	t.Run("invalid_compression_type", func(t *testing.T) {
 		b := testSystemBackendRaw(t)
 
-		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/mounts")
+		req := logical.TestRequest(t, logical.ReadOperation, "raw/core/audit")
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		mounts := resp.Data["value"].(string)
-		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/mounts")
+		req = logical.TestRequest(t, logical.UpdateOperation, "raw/core/audit")
 		req.Data = map[string]interface{}{
 			"value":            mounts,
 			"compression_type": "invalid_type",
@@ -5903,9 +5904,16 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Fatal()
 		}
 		mountEntry.Version = nonExistentBuiltinVersion
-		err = core.persistMounts(ctx, nil, core.mounts, &mountEntry.Local, mountEntry.UUID)
-		if err != nil {
-			t.Fatal(err)
+		if tc.mountTable == "mounts" {
+			err = core.persistMounts(ctx, nil, core.mounts, &mountEntry.Local, mountEntry.UUID)
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			err = core.persistAuth(ctx, nil, core.auth, &mountEntry.Local, mountEntry.UUID)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 
 		config = readMountConfig(tc.pluginName, tc.mountTable)

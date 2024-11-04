@@ -227,9 +227,19 @@ func TestCore_EnableCredential(t *testing.T) {
 		}
 	}
 
-	// Verify matching auth tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	// Verify matching auth tables, up to order.
+	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	for _, entry := range c.auth.Entries {
+		cAuth[entry.UUID] = entry
+	}
+
+	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	for _, entry := range c2.auth.Entries {
+		c2Auth[entry.UUID] = entry
+	}
+
+	if !reflect.DeepEqual(cAuth, c2Auth) {
+		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
 	}
 }
 
@@ -285,9 +295,19 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		}
 	}
 
-	// Verify matching auth tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	// Verify matching auth tables, up to order.
+	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	for _, entry := range c.auth.Entries {
+		cAuth[entry.UUID] = entry
+	}
+
+	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	for _, entry := range c2.auth.Entries {
+		c2Auth[entry.UUID] = entry
+	}
+
+	if !reflect.DeepEqual(cAuth, c2Auth) {
+		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
 	}
 }
 
@@ -333,20 +353,16 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(c.auth.Entries) != 2 {
+		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
+	}
 
-	rawLocal, err := c.barrier.Get(context.Background(), coreLocalAuthConfigPath)
+	localEntries, err := c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local credential")
-	}
-	localCredentialTable := &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localCredentialTable); err != nil {
-		t.Fatal(err)
-	}
-	if len(localCredentialTable.Entries) > 0 {
-		t.Fatalf("expected no entries in local credential table, got %#v", localCredentialTable)
+	if len(localEntries) != 0 {
+		t.Fatalf("expected zero entry in local auth table, got %#v", localEntries)
 	}
 
 	c.auth.Entries[1].Local = true
@@ -354,19 +370,29 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rawLocal, err = c.barrier.Get(context.Background(), coreLocalAuthConfigPath)
+	localEntries, err = c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local credential")
+	if len(localEntries) != 1 {
+		t.Fatalf("expected one entry in local auth table, got %#v", localEntries)
 	}
-	localCredentialTable = &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localCredentialTable); err != nil {
-		t.Fatal(err)
-	}
-	if len(localCredentialTable.Entries) != 1 {
-		t.Fatalf("expected one entry in local credential table, got %#v", localCredentialTable)
+	for _, localEntry := range localEntries {
+		rawLocal, err := c.barrier.Get(context.Background(), coreLocalAuthConfigPath+"/"+localEntry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rawLocal == nil {
+			t.Fatal("expected non-nil local auth")
+		}
+
+		localMountEntry := &MountEntry{}
+		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
+			t.Fatal(err)
+		}
+		if localMountEntry.Path != "noop2/" {
+			t.Fatalf("expected only noop2/ entry in local auth table, got %#v at %v", localMountEntry, coreLocalAuthConfigPath+"/"+localEntry)
+		}
 	}
 
 	oldCredential := c.auth
@@ -379,7 +405,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	if len(c.auth.Entries) != 2 {
-		t.Fatalf("expected two credential entries, got %#v", localCredentialTable)
+		t.Fatalf("expected two credential entries, got %#v", c.auth.Entries)
 	}
 }
 

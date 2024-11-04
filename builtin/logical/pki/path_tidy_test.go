@@ -1304,7 +1304,7 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
 
-	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is set
+	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set
 	safetyBuffer := 3600
 	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
 		"safety_buffer": safetyBuffer,
@@ -1314,6 +1314,20 @@ func TestRevokedSafetyBufferConfig(t *testing.T) {
 	resp, err = CBRead(b, s, "config/auto-tidy")
 	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
 	require.Equal(t, safetyBuffer, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
+	require.Equal(t, safetyBuffer, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer")
+
+	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set multiple times,
+	// and revoked_safety_buffer is not set explicitly.
+	safetyBuffer2 := 200
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer": safetyBuffer2,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, safetyBuffer2, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer2")
+	require.Equal(t, safetyBuffer2, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer2")
 
 	// Verify that revoked_safety_buffer can be explicitly set
 	revokedSafetyBuffer := 400

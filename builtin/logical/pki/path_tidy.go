@@ -1018,7 +1018,13 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 			// past its NotAfter value. This is because we use the
 			// information on revoked/ to build the CRL and the
 			// information on certs/ for lookup.
-			if time.Since(revokedCert.NotAfter) > *config.RevokedSafetyBuffer {
+
+			revokedSafetyBuffer := config.SafetyBuffer
+			if config.RevokedSafetyBuffer != nil {
+				revokedSafetyBuffer = *config.RevokedSafetyBuffer
+			}
+
+			if time.Since(revokedCert.NotAfter) > revokedSafetyBuffer {
 				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 					return fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
 				}
@@ -1502,12 +1508,6 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 		if *config.RevokedSafetyBuffer < 1*time.Second {
 			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
 		}
-	} else {
-		// If no explicit value for revoked_safety_buffer, default it to SafetyBuffer
-		if config.RevokedSafetyBuffer == nil {
-			safetyBuffer := config.SafetyBuffer
-			config.RevokedSafetyBuffer = &safetyBuffer
-		}
 	}
 
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
@@ -1576,9 +1576,14 @@ func (b *backend) tidyStatusStart(config *tidyConfig) {
 	b.tidyStatusLock.Lock()
 	defer b.tidyStatusLock.Unlock()
 
+	revokedSafetyBuffer := int(config.SafetyBuffer / time.Second)
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBuffer = int(*config.RevokedSafetyBuffer / time.Second)
+	}
+
 	b.tidyStatus = &tidyStatus{
 		safetyBuffer:            int(config.SafetyBuffer / time.Second),
-		revokedSafetyBuffer:     int(*config.RevokedSafetyBuffer / time.Second),
+		revokedSafetyBuffer:     revokedSafetyBuffer,
 		issuerSafetyBuffer:      int(config.IssuerSafetyBuffer / time.Second),
 		acmeAccountSafetyBuffer: int(config.AcmeAccountSafetyBuffer / time.Second),
 		tidyCertStore:           config.CertStore,

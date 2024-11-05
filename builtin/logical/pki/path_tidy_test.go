@@ -1333,56 +1333,6 @@ ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
 NZA=
 -----END CERTIFICATE-----`
 
-	// Write invalid certificate directly to storage as if it were added to the cert store
-	err := s.Put(ctx, &logical.StorageEntry{
-		Key:   "certs/1",
-		Value: []byte(invalidCert),
-	})
-	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
-
-	resp, err := CBList(b, s, "certs")
-	t.Logf("Certificates in store: %v", resp.Data["keys"])
-
-	// Enable auto-tidy for invalid certificates
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
-		"enabled":            true,
-		"tidy_invalid_certs": true,
-	})
-	require.NoError(t, err)
-	requireSuccessNonNilResponse(t, resp, err, "failed to enable tidy_invalid_certs configuration")
-
-	// Perform the tidy operation
-	resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
-		"tidy_invalid_certs": true,
-		"tidy_cert_store":    true,
-	})
-	require.NoError(t, err, "tidy operation should complete without errors")
-
-	// Verify that the invalid certificate has been removed from the store
-	resp, err = CBList(b, s, "certs")
-	require.NoError(t, err)
-	require.Nil(t, resp.Data["keys"], "invalid certificate should have been removed from the store")
-}
-
-func TestTidyWithInvalidCertInStore2(t *testing.T) {
-	t.Parallel()
-	b, s := CreateBackendWithStorage(t)
-
-	// Invalid certificate content to simulate an unprocessable cert in the store
-	invalidCert := `
------BEGIN CERTIFICATE-----
-MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
-MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
-BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
-SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
-yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
-jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
-DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
-d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
-ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
-NZA=
------END CERTIFICATE-----`
-
 	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
 	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"common_name": "root example.com",

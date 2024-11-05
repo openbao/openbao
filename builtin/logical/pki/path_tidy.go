@@ -901,13 +901,13 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 
 			// only log warning once
 			if !haveWarned {
-				logger.Warn("unable to parse stored certificate with serial %q: %w; %s. Other invalid certificates may exist.", serial, err,
-					func() string {
-						if config.InvalidCerts {
-							return "tidying up since it is not usable"
-						}
-						return "tidy by enabling tidy_invalid_certs"
-					}())
+				msg := "Unable to parse stored certificate. Other invalid certificates may exist; "
+				if config.InvalidCerts {
+					msg += "tidying up since it is not usable."
+				} else {
+					msg += "tidy by enabling tidy_invalid_certs=true."
+				}
+				logger.Warn(msg, "serial", serial, "err", err)
 				haveWarned = true
 			}
 

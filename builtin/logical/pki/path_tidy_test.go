@@ -1313,3 +1313,162 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 	t.Logf("got tidy status: %v", statusResp.Data)
 	return statusResp
 }
+
+func TestTidyWithInvalidCertInStore(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+-----BEGIN CERTIFICATE-----
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=
+-----END CERTIFICATE-----`
+
+	// Write invalid certificate directly to storage as if it were added to the cert store
+	err := s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: []byte(invalidCert),
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	resp, err := CBList(b, s, "certs")
+	t.Logf("Certificates in store: %v", resp.Data["keys"])
+
+	// Enable auto-tidy for invalid certificates
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"enabled":            true,
+		"tidy_invalid_certs": true,
+	})
+	require.NoError(t, err)
+	requireSuccessNonNilResponse(t, resp, err, "failed to enable tidy_invalid_certs configuration")
+
+	// Perform the tidy operation
+	resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
+		"tidy_invalid_certs": true,
+		"tidy_cert_store":    true,
+	})
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	// Verify that the invalid certificate has been removed from the store
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err)
+	require.Nil(t, resp.Data["keys"], "invalid certificate should have been removed from the store")
+}
+
+func TestTidyWithInvalidCertInStore2(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+-----BEGIN CERTIFICATE-----
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=
+-----END CERTIFICATE-----`
+
+	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "root example.com",
+		"issuer_name": "root",
+		"ttl":         "20m",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "long-lived",
+		"ttl":         "5s",
+	})
+	require.NoError(t, err)
+	resp, err := CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "short-lived",
+		"ttl":         "1s",
+	})
+	require.NoError(t, err)
+	shortLivedCert := parseCert(t, resp.Data["certificate"].(string))
+	shortLivedSerial := resp.Data["serial_number"].(string)
+
+	// Write invalid certificate to storage
+	err = s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: []byte(invalidCert),
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	// check root, invalid and valid certs are in store
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err)
+	certKeys := resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 4, "expected 4 certificates in the store")
+
+	// Wait for short lived cert to expire and the safety buffer to elapse.
+	time.Sleep(time.Until(shortLivedCert.NotAfter) + 1*time.Second)
+
+	// Enable auto-tidy for cert store
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"enabled":         true,
+		"tidy_cert_store": true,
+	})
+	require.NoError(t, err)
+	requireSuccessNonNilResponse(t, resp, err, "failed to enable tidy_invalid_certs configuration")
+
+	// Perform the tidy operation for cert store and invalid certs
+	resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
+		"tidy_invalid_certs": true,
+		"tidy_cert_store":    true,
+		"safety_buffer":      1,
+	})
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	// Check if tidy operation has completed every 50ms
+	timeout := time.After(2 * time.Second)
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			require.FailNow(t, "Tidy operation timed out")
+		case <-ticker.C:
+			statusResp, err := CBRead(b, s, "tidy-status")
+			require.NoError(t, err, "unable to get tidy status")
+
+			status := statusResp.Data["state"].(string)
+			if status != "Running" {
+				// Tidy operation is finished
+				resp, err := CBList(b, s, "certs")
+				require.NoError(t, err, "unable to list certificates in store")
+				certKeys := resp.Data["keys"].([]string)
+
+				// Verify root and long-lived leaf certs are in cert store, while the expired and invalid certs are not.
+				require.Len(t, certKeys, 2, "expected two certificates to remain in the store")
+				require.NotContains(t, certKeys, "1", "invalid certificate '1' should have been removed from the store")
+				require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
+
+				return
+			}
+		}
+	}
+}

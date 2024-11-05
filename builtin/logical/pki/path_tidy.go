@@ -36,6 +36,7 @@ const (
 type tidyStatus struct {
 	// Parameters used to initiate the operation
 	safetyBuffer            int
+	revokedSafetyBuffer     int
 	issuerSafetyBuffer      int
 	acmeAccountSafetyBuffer int
 
@@ -80,10 +81,11 @@ type tidyConfig struct {
 	TidyAcme       bool `json:"tidy_acme"`
 
 	// Safety Buffers
-	SafetyBuffer            time.Duration `json:"safety_buffer"`
-	IssuerSafetyBuffer      time.Duration `json:"issuer_safety_buffer"`
-	AcmeAccountSafetyBuffer time.Duration `json:"acme_account_safety_buffer"`
-	PauseDuration           time.Duration `json:"pause_duration"`
+	SafetyBuffer            time.Duration  `json:"safety_buffer"`
+	RevokedSafetyBuffer     *time.Duration `json:"revoked_safety_buffer"`
+	IssuerSafetyBuffer      time.Duration  `json:"issuer_safety_buffer"`
+	AcmeAccountSafetyBuffer time.Duration  `json:"acme_account_safety_buffer"`
+	PauseDuration           time.Duration  `json:"pause_duration"`
 
 	// Metrics.
 	MaintainCount  bool `json:"maintain_stored_certificate_counts"`
@@ -162,6 +164,11 @@ func pathTidyCancel(b *backend) *framework.Path {
 							"safety_buffer": {
 								Type:        framework.TypeInt,
 								Description: `Safety buffer time duration`,
+								Required:    false,
+							},
+							"revoked_safety_buffer": {
+								Type:        framework.TypeInt,
+								Description: `Revoked safety buffer time duration`,
 								Required:    false,
 							},
 							"issuer_safety_buffer": {
@@ -317,6 +324,11 @@ func pathTidyStatus(b *backend) *framework.Path {
 							"safety_buffer": {
 								Type:        framework.TypeInt,
 								Description: `Safety buffer time duration`,
+								Required:    true,
+							},
+							"revoked_safety_buffer": {
+								Type:        framework.TypeInt,
+								Description: `Revoked safety buffer time duration`,
 								Required:    true,
 							},
 							"issuer_safety_buffer": {
@@ -534,6 +546,11 @@ available on the tidy-status endpoint.`,
 								Description: `Safety buffer time duration`,
 								Required:    true,
 							},
+							"revoked_safety_buffer": {
+								Type:        framework.TypeInt,
+								Description: `Revoked safety buffer time duration`,
+								Required:    true,
+							},
 							"issuer_safety_buffer": {
 								Type:        framework.TypeInt,
 								Description: `Issuer safety buffer`,
@@ -615,6 +632,11 @@ available on the tidy-status endpoint.`,
 								Description: `Safety buffer time duration`,
 								Required:    true,
 							},
+							"revoked_safety_buffer": {
+								Type:        framework.TypeInt,
+								Description: `Revoked safety buffer time duration`,
+								Required:    true,
+							},
 							"issuer_safety_buffer": {
 								Type:        framework.TypeInt,
 								Description: `Issuer safety buffer`,
@@ -657,6 +679,13 @@ available on the tidy-status endpoint.`,
 
 func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	safetyBuffer := d.Get("safety_buffer").(int)
+	revokedSafetyBuffer := 0
+	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
+		revokedSafetyBuffer = revokedSafetyBufferRaw.(int)
+	} else {
+		// Default to safety buffer
+		revokedSafetyBuffer = safetyBuffer
+	}
 	tidyCertStore := d.Get("tidy_cert_store").(bool)
 	tidyRevokedCerts := d.Get("tidy_revoked_certs").(bool) || d.Get("tidy_revocation_list").(bool)
 	tidyRevokedAssocs := d.Get("tidy_revoked_cert_issuer_associations").(bool)
@@ -670,6 +699,10 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 
 	if safetyBuffer < 1 {
 		return logical.ErrorResponse("safety_buffer must be greater than zero"), nil
+	}
+
+	if revokedSafetyBuffer < 1 {
+		return logical.ErrorResponse("revokedSafetyBuffer must be greater than zero"), nil
 	}
 
 	if issuerSafetyBuffer < 1 {
@@ -693,6 +726,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 	}
 
 	bufferDuration := time.Duration(safetyBuffer) * time.Second
+	revokedBufferDuration := time.Duration(revokedSafetyBuffer) * time.Second
 	issuerBufferDuration := time.Duration(issuerSafetyBuffer) * time.Second
 	acmeAccountSafetyBufferDuration := time.Duration(acmeAccountSafetyBuffer) * time.Second
 
@@ -706,6 +740,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		ExpiredIssuers:          tidyExpiredIssuers,
 		BackupBundle:            tidyBackupBundle,
 		SafetyBuffer:            bufferDuration,
+		RevokedSafetyBuffer:     &revokedBufferDuration,
 		IssuerSafetyBuffer:      issuerBufferDuration,
 		PauseDuration:           pauseDuration,
 		TidyAcme:                tidyAcme,
@@ -983,7 +1018,13 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 			// past its NotAfter value. This is because we use the
 			// information on revoked/ to build the CRL and the
 			// information on certs/ for lookup.
-			if time.Since(revokedCert.NotAfter) > config.SafetyBuffer {
+
+			revokedSafetyBuffer := config.SafetyBuffer
+			if config.RevokedSafetyBuffer != nil {
+				revokedSafetyBuffer = *config.RevokedSafetyBuffer
+			}
+
+			if time.Since(revokedCert.NotAfter) > revokedSafetyBuffer {
 				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 					return fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
 				}
@@ -1321,6 +1362,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	resp := &logical.Response{
 		Data: map[string]interface{}{
 			"safety_buffer":                         nil,
+			"revoked_safety_buffer":                 nil,
 			"issuer_safety_buffer":                  nil,
 			"tidy_cert_store":                       nil,
 			"tidy_revoked_certs":                    nil,
@@ -1367,6 +1409,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	}
 
 	resp.Data["safety_buffer"] = b.tidyStatus.safetyBuffer
+	resp.Data["revoked_safety_buffer"] = b.tidyStatus.revokedSafetyBuffer
 	resp.Data["issuer_safety_buffer"] = b.tidyStatus.issuerSafetyBuffer
 	resp.Data["tidy_cert_store"] = b.tidyStatus.tidyCertStore
 	resp.Data["tidy_revoked_certs"] = b.tidyStatus.tidyRevokedCerts
@@ -1459,6 +1502,14 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 		}
 	}
 
+	if revokedSafetyBufferRaw, ok := d.GetOk("revoked_safety_buffer"); ok {
+		revokedSafetyBuffer := time.Duration(revokedSafetyBufferRaw.(int)) * time.Second
+		config.RevokedSafetyBuffer = &revokedSafetyBuffer
+		if *config.RevokedSafetyBuffer < 1*time.Second {
+			return logical.ErrorResponse(fmt.Sprintf("revoked_safety_buffer must be at least one second; got: %v", revokedSafetyBufferRaw)), nil
+		}
+	}
+
 	if pauseDurationRaw, ok := d.GetOk("pause_duration"); ok {
 		config.PauseDuration, err = parseutil.ParseDurationSecond(pauseDurationRaw.(string))
 		if err != nil {
@@ -1525,8 +1576,14 @@ func (b *backend) tidyStatusStart(config *tidyConfig) {
 	b.tidyStatusLock.Lock()
 	defer b.tidyStatusLock.Unlock()
 
+	revokedSafetyBuffer := int(config.SafetyBuffer / time.Second)
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBuffer = int(*config.RevokedSafetyBuffer / time.Second)
+	}
+
 	b.tidyStatus = &tidyStatus{
 		safetyBuffer:            int(config.SafetyBuffer / time.Second),
+		revokedSafetyBuffer:     revokedSafetyBuffer,
 		issuerSafetyBuffer:      int(config.IssuerSafetyBuffer / time.Second),
 		acmeAccountSafetyBuffer: int(config.AcmeAccountSafetyBuffer / time.Second),
 		tidyCertStore:           config.CertStore,
@@ -1637,17 +1694,24 @@ normal certificate storage must be enabled with 'tidy_cert_store' and cleanup
 from revocation information must be enabled with 'tidy_revocation_list'.
 
 The 'safety_buffer' parameter is useful to ensure that clock skew amongst your
-hosts cannot lead to a certificate being removed from the CRL while it is still
-considered valid by other hosts (for instance, if their clocks are a few
-minutes behind). The 'safety_buffer' parameter can be an integer number of
-seconds or a string duration like "72h".
+hosts cannot lead to an expired certificate being removed from certificate storage 
+while it is still considered valid by other hosts (for instance, if their clocks 
+are a few minutes behind). The 'safety_buffer' parameter can be an integer number 
+of seconds or a string duration like "72h".
+
+The 'revoked_safety_buffer' parameter can be used to ensure that clock skew amongst 
+your hosts cannot lead to a revoked certificate being removed from the CRL while it 
+is still considered valid by other hosts (for instance, if their clocks are a few 
+minutes behind). The 'revoked_safety_buffer' defaults 'safety_buffer' if it is unset
+and can be an integer number of seconds or a string duration like "72h".
 
 All certificates and/or revocation information currently stored in the backend
 will be checked when this endpoint is hit. The expiration of the
 certificate/revocation information of each certificate being held in
 certificate storage or in revocation information will then be checked. If the
 current time, minus the value of 'safety_buffer', is greater than the
-expiration, it will be removed.
+expiration, it will be removed. If the current time, minus the value of 
+'revoked_safety_buffer', is greater than the revoked time, it will be removed.
 `
 
 const pathTidyCancelHelpSyn = `
@@ -1672,6 +1736,7 @@ operation, or the most recent if none is currently running.
 
 The result includes the following fields:
 * 'safety_buffer': the value of this parameter when initiating the tidy operation
+* 'revoked_safety_buffer': the value of this parameter when initiating the tidy operation
 * 'tidy_cert_store': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_certs': the value of this parameter when initiating the tidy operation
 * 'tidy_revoked_cert_issuer_associations': the value of this parameter when initiating the tidy operation
@@ -1710,6 +1775,10 @@ were executed with the posted configuration.
 `
 
 func getTidyConfigData(config tidyConfig) map[string]interface{} {
+	revokedSafetyBufferValue := int(config.SafetyBuffer / time.Second)
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBufferValue = int(*config.RevokedSafetyBuffer / time.Second)
+	}
 	return map[string]interface{}{
 		// This map is in the same order as tidyConfig to ensure that all fields are accounted for
 		"enabled":                                  config.Enabled,
@@ -1721,6 +1790,7 @@ func getTidyConfigData(config tidyConfig) map[string]interface{} {
 		"tidy_move_legacy_ca_bundle":               config.BackupBundle,
 		"tidy_acme":                                config.TidyAcme,
 		"safety_buffer":                            int(config.SafetyBuffer / time.Second),
+		"revoked_safety_buffer":                    revokedSafetyBufferValue,
 		"issuer_safety_buffer":                     int(config.IssuerSafetyBuffer / time.Second),
 		"acme_account_safety_buffer":               int(config.AcmeAccountSafetyBuffer / time.Second),
 		"pause_duration":                           config.PauseDuration.String(),

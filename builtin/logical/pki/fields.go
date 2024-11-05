@@ -511,9 +511,18 @@ deactivated ACME account is deleted.`,
 		Type: framework.TypeDurationSecond,
 		Description: `The amount of extra time that must have passed
 beyond certificate expiration before it is removed
-from the backend storage and/or revocation list.
+from the backend storage.
 Defaults to 72 hours.`,
 		Default: int(defaultTidyConfig.SafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
+	}
+
+	fields["revoked_safety_buffer"] = &framework.FieldSchema{
+		Type: framework.TypeDurationSecond,
+		Description: `The amount of extra time that must have passed
+beyond certificate revocation before it is removed
+from the revocation list.
+Defaults to safety_buffer (which defaults to 72 hours).`,
+		Default: nil,
 	}
 
 	fields["issuer_safety_buffer"] = &framework.FieldSchema{

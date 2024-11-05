@@ -4238,6 +4238,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 		}
 		expectedData := map[string]interface{}{
 			"safety_buffer":                         json.Number("1"),
+			"revoked_safety_buffer":                 json.Number("1"),
 			"issuer_safety_buffer":                  json.Number("31536000"),
 			"tidy_cert_store":                       true,
 			"tidy_revoked_certs":                    true,

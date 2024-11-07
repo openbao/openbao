@@ -182,6 +182,7 @@ entities attempting to login. At least one of the bound values must be set.
   time the user was actively authenticated with the OIDC provider. If set, the `max_age` request parameter
   will be included in the authentication request. See [AuthRequest](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest)
   for additional details. Accepts an integer number of seconds, or a Go duration format string.
+- `token_policies_template_claims` `(bool: false)` - When enabled, allows token_policies to represent templates which are computed with all claims on the underlying JWT or OIDC token. This uses [`sdk/helper/template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2@v2.0.1/helper/template) which is based on [`text/template`](https://pkg.go.dev/text/template).
 
 @include 'tokenfields.mdx'
 

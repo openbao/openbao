@@ -36,6 +36,16 @@ func Function(name string, f interface{}) Opt {
 	}
 }
 
+// Option allows the user to specify options for the underlying
+// text/template library. See https://pkg.go.dev/text/template#Template.Option
+// for more information.
+func Option(opts ...string) Opt {
+	return func(up *StringTemplate) error {
+		up.options = opts
+		return nil
+	}
+}
+
 // StringTemplate creates strings based on the provided template.
 // This uses the go templating language, so anything that adheres to that language will function in this struct.
 // There are several custom functions available for use in the template:
@@ -91,6 +101,7 @@ type StringTemplate struct {
 	rawTemplate string
 	tmpl        *template.Template
 	funcMap     template.FuncMap
+	options     []string
 }
 
 // NewTemplate creates a StringTemplate. No arguments are required
@@ -131,6 +142,7 @@ func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 
 	tmpl, err := template.New("template").
 		Funcs(up.funcMap).
+		Option(up.options...).
 		Parse(up.rawTemplate)
 	if err != nil {
 		return StringTemplate{}, fmt.Errorf("unable to parse template: %w", err)

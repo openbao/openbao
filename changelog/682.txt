@@ -1,0 +1,3 @@
+```release-note:bug
+docker: fix configuration of bao cluster and redirect address on separate interfaces when using environment variables
+```

@@ -7023,6 +7023,7 @@ func TestProperAuthing(t *testing.T) {
 		"cert/delta-crl/raw":                     shouldBeUnauthedReadList,
 		"cert/delta-crl/raw/pem":                 shouldBeUnauthedReadList,
 		"certs":                                  shouldBeAuthed,
+		"certs/detailed":                         shouldBeAuthed,
 		"certs/revoked":                          shouldBeAuthed,
 		"config/acme":                            shouldBeAuthed,
 		"config/auto-tidy":                       shouldBeAuthed,

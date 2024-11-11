@@ -4,6 +4,7 @@
 package pki
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestListCertificates(t *testing.T) {
+func TestListCertificatesWithDetails(t *testing.T) {
 	t.Parallel()
 
 	// Set up the test cluster
@@ -48,7 +49,7 @@ func TestListCertificates(t *testing.T) {
 	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
 		"common_name": RootCN,
-		"key_type":    "ec",
+		"key_type":    "rsa",
 	})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -79,22 +80,25 @@ func TestListCertificates(t *testing.T) {
 
 	// Expected certificate details for Root and Leaf certificates
 	expectedRootCertDetails := map[string]interface{}{
-		"DNSNames":    []string{RootCN},
 		"common_name": RootCN,
 		"issuer":      "CN=Root",
-		"key_type":    rootCert.PublicKeyAlgorithm.String(),
-		"expiration":  rootCert.NotAfter.Format(time.RFC3339),
+		"key_type":    "rsa",
+		"key_bits":    2048,
+		"not_after":   rootCert.NotAfter.Format(time.RFC3339),
 		"not_before":  rootCert.NotBefore.Format(time.RFC3339),
+		"dns_names":   []string{RootCN},
 	}
 	expectedLeafCertDetails := map[string]interface{}{
-		"DNSNames":    append([]string{leafCN}, altLeafNames...),
 		"common_name": leafCN,
 		"issuer":      "CN=Root",
-		"key_type":    leafCert.PublicKeyAlgorithm.String(),
-		"expiration":  leafCert.NotAfter.Format(time.RFC3339),
+		"key_type":    "ec",
+		"key_bits":    256,
+		"not_after":   leafCert.NotAfter.Format(time.RFC3339),
 		"not_before":  leafCert.NotBefore.Format(time.RFC3339),
+		"dns_names":   append([]string{leafCN}, altLeafNames...),
 	}
 
+	// List certificates with details
 	storageRespDetailed, err := client.Logical().List("pki/certs/detailed/")
 	require.NoError(t, err, "unable to retrieve storage contents")
 	require.NotNil(t, storageRespDetailed, "expected non-nil storage response, but got nil")
@@ -119,8 +123,8 @@ func TestListCertificates(t *testing.T) {
 }
 
 func checkCertificateDetails(t *testing.T, certData, expectedDetails map[string]interface{}) {
-	actualDNSNames, ok := certData["DNSNames"].([]interface{})
-	require.True(t, ok, "Expected DNSNames to be a list")
+	actualDNSNames, ok := certData["dns_names"].([]interface{})
+	require.True(t, ok, "Expected dns_names to be a list")
 
 	// Convert actual DNS names to a string slice for comparison
 	actualDNSNamesStr := make([]string, len(actualDNSNames))
@@ -129,14 +133,19 @@ func checkCertificateDetails(t *testing.T, certData, expectedDetails map[string]
 	}
 
 	// Check that each expected DNS name is contained within the actual DNS names
-	for _, expectedDNSName := range expectedDetails["DNSNames"].([]string) {
-		require.Contains(t, actualDNSNamesStr, expectedDNSName, "Expected DNS name not found in 'pki/certs/detailed/'")
+	for _, expectedDNSName := range expectedDetails["dns_names"].([]string) {
+		require.Contains(t, actualDNSNamesStr, expectedDNSName, "Expected DNS name not found")
 	}
 
-	// Check common name and issuer
+	// Convert key_bits to int before checking
+	keyBits, err := certData["key_bits"].(json.Number).Int64()
+	require.NoError(t, err, "Failed to convert key_bits to int")
+	require.Equal(t, expectedDetails["key_bits"], int(keyBits), "Mismatch in key bits")
+
+	// Check the rest of the details match
 	require.Equal(t, expectedDetails["common_name"], certData["common_name"], "Mismatch in common name")
 	require.Equal(t, expectedDetails["issuer"], certData["issuer"], "Mismatch in issuer")
 	require.Equal(t, expectedDetails["key_type"], certData["key_type"], "Mismatch in key type")
-	require.Equal(t, expectedDetails["expiration"], certData["expiration"], "Mismatch in expiration")
+	require.Equal(t, expectedDetails["not_after"], certData["not_after"], "Mismatch in not after")
 	require.Equal(t, expectedDetails["not_before"], certData["not_before"], "Mismatch in not before")
 }

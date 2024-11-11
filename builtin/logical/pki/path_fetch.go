@@ -5,6 +5,8 @@ package pki
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -15,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"golang.org/x/crypto/ed25519"
 )
 
 var pathFetchReadSchema = map[int][]framework.Response{
@@ -310,7 +313,7 @@ func pathFetchListCertsDetailed(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Request, data *framework.FieldData) (response *logical.Response, retErr error) {
+func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var responseKeys []string
 	responseInfo := make(map[string]interface{})
 
@@ -318,6 +321,20 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 	limit := data.Get("limit").(int)
 	if limit <= 0 {
 		limit = -1
+	}
+
+	// Use a read-only transaction if available. This doesn't stop others from writing to
+	// storage but ensures that all read operations within this block work on a consistent
+	// snapshot of the data in case an entry is deleted or updated during the read process.
+	originalStorage := req.Storage
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		readOnlyTxn, err := txnStorage.BeginReadOnlyTx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start read-only transaction: %w", err)
+		}
+
+		defer readOnlyTxn.Rollback(ctx) // Ensure rollback after the operation
+		req.Storage = readOnlyTxn
 	}
 
 	entries, err := req.Storage.ListPage(ctx, "certs/", after, limit)
@@ -330,6 +347,9 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 		if err != nil {
 			return nil, err
 		}
+		if entry == nil {
+			return logical.ErrorResponse(fmt.Sprintf("failed to retrieve entry for %s", entries[i])), nil
+		}
 
 		entries[i] = denormalizeSerial(entries[i])
 		responseKeys = append(responseKeys, string(entries[i]))
@@ -337,7 +357,7 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 		// Parse the certificate details
 		certData, err := x509.ParseCertificate(entry.Value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse certificate for %s: %w", entries[i], err)
+			return logical.ErrorResponse(fmt.Sprintf("failed to parse certificate for %s: %s", entries[i], err)), nil
 		}
 
 		// limit DNS names to 5
@@ -346,15 +366,36 @@ func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Re
 			dnsNames = dnsNames[:5]
 		}
 
+		// Parse the key bits and type
+		var keyBits int
+		var keyType string
+		switch pubKey := certData.PublicKey.(type) {
+		case *rsa.PublicKey:
+			keyBits = pubKey.Size() * 8 // Convert byte size to bits
+			keyType = "rsa"
+		case *ecdsa.PublicKey:
+			keyBits = pubKey.Curve.Params().BitSize
+			keyType = "ec"
+		case ed25519.PublicKey:
+			keyBits = 256 // Fixed size for Ed25519
+			keyType = "ed25519"
+		default:
+			keyBits = 0 // Unknown key type
+			keyType = "unknown"
+		}
+
 		responseInfo[string(entries[i])] = map[string]interface{}{
 			"common_name": certData.Subject.CommonName,
 			"issuer":      certData.Issuer.String(),
-			"key_type":    certData.PublicKeyAlgorithm.String(),
-			"expiration":  certData.NotAfter,
+			"key_type":    keyType,
+			"key_bits":    keyBits,
+			"not_after":   certData.NotAfter,
 			"not_before":  certData.NotBefore,
-			"DNSNames":    dnsNames,
+			"dns_names":   dnsNames,
 		}
 	}
+
+	req.Storage = originalStorage
 
 	return logical.ListResponseWithInfo(responseKeys, responseInfo), nil
 }

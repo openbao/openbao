@@ -18,10 +18,6 @@ export default Model.extend({
   type: attr('string'),
   license: attr('object'),
 
-  /* Licensing concerns */
-  licenseExpiry: alias('license.expiry_time'),
-  licenseState: alias('license.state'),
-
   needsInit: computed('nodes', 'nodes.@each.initialized', function () {
     // needs init if no nodes are initialized
     return this.nodes.isEvery('initialized', false);

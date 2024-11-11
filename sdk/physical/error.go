@@ -19,38 +19,69 @@ const (
 )
 
 // ErrorInjector is used to add errors into underlying physical requests
-type ErrorInjector struct {
+type ErrorInjector interface {
+	Backend
+	SetErrorPercentage(int)
+}
+
+type errorInjector struct {
 	backend      Backend
 	errorPercent int
 	randomLock   *sync.Mutex
 	random       *rand.Rand
 }
 
-// Verify ErrorInjector satisfies the correct interfaces
+var _ ErrorInjector = &errorInjector{}
+
+type transactionalErrorInjector struct {
+	*errorInjector
+}
+
 var (
-	_ Backend = (*ErrorInjector)(nil)
+	_ ErrorInjector        = &transactionalErrorInjector{}
+	_ TransactionalBackend = &transactionalErrorInjector{}
+)
+
+type errorInjectorTransaction struct {
+	*errorInjector
+}
+
+var (
+	_ ErrorInjector = &errorInjectorTransaction{}
+	_ Transaction   = &errorInjectorTransaction{}
 )
 
 // NewErrorInjector returns a wrapped physical backend to inject error
-func NewErrorInjector(b Backend, errorPercent int, logger log.Logger) *ErrorInjector {
+func NewErrorInjector(b Backend, errorPercent int, logger log.Logger) ErrorInjector {
 	if errorPercent < 0 || errorPercent > 100 {
 		errorPercent = DefaultErrorPercent
 	}
-	logger.Info("creating error injector")
 
-	return &ErrorInjector{
+	if logger != nil {
+		logger.Info("creating error injector")
+	}
+
+	e := &errorInjector{
 		backend:      b,
 		errorPercent: errorPercent,
 		randomLock:   new(sync.Mutex),
 		random:       rand.New(rand.NewSource(int64(time.Now().Nanosecond()))),
 	}
+
+	if _, ok := b.(TransactionalBackend); ok {
+		return &transactionalErrorInjector{
+			e,
+		}
+	}
+
+	return e
 }
 
-func (e *ErrorInjector) SetErrorPercentage(p int) {
+func (e *errorInjector) SetErrorPercentage(p int) {
 	e.errorPercent = p
 }
 
-func (e *ErrorInjector) addError() error {
+func (e *errorInjector) addError() error {
 	e.randomLock.Lock()
 	roll := e.random.Intn(100)
 	e.randomLock.Unlock()
@@ -61,37 +92,65 @@ func (e *ErrorInjector) addError() error {
 	return nil
 }
 
-func (e *ErrorInjector) Put(ctx context.Context, entry *Entry) error {
+func (e *errorInjector) Put(ctx context.Context, entry *Entry) error {
 	if err := e.addError(); err != nil {
 		return err
 	}
 	return e.backend.Put(ctx, entry)
 }
 
-func (e *ErrorInjector) Get(ctx context.Context, key string) (*Entry, error) {
+func (e *errorInjector) Get(ctx context.Context, key string) (*Entry, error) {
 	if err := e.addError(); err != nil {
 		return nil, err
 	}
 	return e.backend.Get(ctx, key)
 }
 
-func (e *ErrorInjector) Delete(ctx context.Context, key string) error {
+func (e *errorInjector) Delete(ctx context.Context, key string) error {
 	if err := e.addError(); err != nil {
 		return err
 	}
 	return e.backend.Delete(ctx, key)
 }
 
-func (e *ErrorInjector) List(ctx context.Context, prefix string) ([]string, error) {
+func (e *errorInjector) List(ctx context.Context, prefix string) ([]string, error) {
 	if err := e.addError(); err != nil {
 		return nil, err
 	}
 	return e.backend.List(ctx, prefix)
 }
 
-func (e *ErrorInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+func (e *errorInjector) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	if err := e.addError(); err != nil {
 		return nil, err
 	}
 	return e.backend.ListPage(ctx, prefix, after, limit)
+}
+
+func (e *transactionalErrorInjector) BeginReadOnlyTx(ctx context.Context) (Transaction, error) {
+	txn, err := e.errorInjector.backend.(TransactionalBackend).BeginReadOnlyTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := NewErrorInjector(txn, e.errorInjector.errorPercent, nil)
+	return &errorInjectorTransaction{ret.(*errorInjector)}, nil
+}
+
+func (e *transactionalErrorInjector) BeginTx(ctx context.Context) (Transaction, error) {
+	txn, err := e.errorInjector.backend.(TransactionalBackend).BeginTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := NewErrorInjector(txn, e.errorInjector.errorPercent, nil)
+	return &errorInjectorTransaction{ret.(*errorInjector)}, nil
+}
+
+func (e *errorInjectorTransaction) Commit(ctx context.Context) error {
+	return e.errorInjector.backend.(Transaction).Commit(ctx)
+}
+
+func (e *errorInjectorTransaction) Rollback(ctx context.Context) error {
+	return e.errorInjector.backend.(Transaction).Rollback(ctx)
 }

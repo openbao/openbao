@@ -303,43 +303,64 @@ func TestCore_Mount_Local(t *testing.T) {
 		t.Fatalf("expected two entries, got %d", len(c.mounts.Entries))
 	}
 
-	rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath)
+	localEntries, err := c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local mounts")
+	if len(localEntries) != 1 {
+		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
 	}
-	localMountsTable := &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localMountsTable); err != nil {
-		t.Fatal(err)
-	}
-	if len(localMountsTable.Entries) != 1 || localMountsTable.Entries[0].Type != "cubbyhole" {
-		t.Fatalf("expected only cubbyhole entry in local mount table, got %#v", localMountsTable)
+	for _, localEntry := range localEntries {
+		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rawLocal == nil {
+			t.Fatal("expected non-nil local mounts")
+		}
+
+		localMountEntry := &MountEntry{}
+		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
+			t.Fatal(err)
+		}
+
+		if localMountEntry.Type != "cubbyhole" {
+			t.Fatalf("expected only cubbyhole entry in local mount table, got %#v at %v", localMountEntry, coreLocalMountConfigPath+"/"+localEntry)
+		}
 	}
 
 	c.mounts.Entries[1].Local = true
-	if err := c.persistMounts(context.Background(), c.mounts, nil); err != nil {
+	if err := c.persistMounts(context.Background(), nil, c.mounts, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	rawLocal, err = c.barrier.Get(context.Background(), coreLocalMountConfigPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local mount")
-	}
-	localMountsTable = &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localMountsTable); err != nil {
-		t.Fatal(err)
-	}
 	// This requires some explanation: because we're directly munging the mount
 	// table, the table initially when core unseals contains cubbyhole as per
 	// above, but then we overwrite it with our own table with one local entry,
 	// so we should now only expect the noop2 entry
-	if len(localMountsTable.Entries) != 1 || localMountsTable.Entries[0].Path != "noop2/" {
-		t.Fatalf("expected one entry in local mount table, got %#v", localMountsTable)
+	localEntries, err = c.barrier.List(context.Background(), coreLocalMountConfigPath+"/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(localEntries) != 1 {
+		t.Fatalf("expected one entry in local mount table, got %#v", localEntries)
+	}
+	for _, localEntry := range localEntries {
+		rawLocal, err := c.barrier.Get(context.Background(), coreLocalMountConfigPath+"/"+localEntry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rawLocal == nil {
+			t.Fatal("expected non-nil local mounts")
+		}
+
+		localMountEntry := &MountEntry{}
+		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
+			t.Fatal(err)
+		}
+		if localMountEntry.Path != "noop2/" {
+			t.Fatalf("expected only noop2/ entry in local mount table, got %#v at %v", localMountEntry, coreLocalMountConfigPath+"/"+localEntry)
+		}
 	}
 
 	oldMounts := c.mounts
@@ -360,7 +381,7 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 
 	if len(c.mounts.Entries) != 2 {
-		t.Fatalf("expected two mount entries, got %#v", localMountsTable)
+		t.Fatalf("expected two mount entries, got %#v", c.mounts.Entries)
 	}
 }
 
@@ -777,7 +798,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	}
 
 	// We filter out local entries here since the logic is rather dumb
-	// (straight JSON comparison) and doesn't seal well with the separate
+	// (straight JSON comparison) and doesn't deal well with the separate
 	// locations
 	newEntries := mt.Entries[:0]
 	for _, entry := range mt.Entries {
@@ -808,6 +829,23 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		t.Fatalf("bad: values here should be different")
 	}
 
+	// Remove any transactional storage entries: we want to replace the mount
+	// table with a pre-transactional variant to force upgrades to be run.
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
+		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, txnEntry := range postTxnEntries {
+			t.Logf("removing entry: %v", path+"/"+txnEntry)
+			if err := c.barrier.Delete(context.Background(), path+"/"+txnEntry); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+
+	// Write the pre-typed version
 	entry := &logical.StorageEntry{
 		Key:   path,
 		Value: raw,
@@ -816,7 +854,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		t.Fatal(err)
 	}
 
-	var persistFunc func(context.Context, *MountTable, *bool) error
+	var persistFunc func(context.Context, logical.Storage, *MountTable, *bool, string) error
 
 	// It should load successfully and be upgraded and persisted
 	switch testType {
@@ -830,7 +868,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		mt = c.auth
 	case "audits":
 		err = c.loadAudits(context.Background())
-		persistFunc = func(ctx context.Context, mt *MountTable, b *bool) error {
+		persistFunc = func(ctx context.Context, barrier logical.Storage, mt *MountTable, b *bool, mount string) error {
 			if b == nil {
 				b = new(bool)
 				*b = false
@@ -843,44 +881,103 @@ func testCore_MountTable_UpgradeToTyped_Common(
 		t.Fatal(err)
 	}
 
-	entry, err = c.barrier.Get(context.Background(), path)
-	if err != nil {
+	// If we are using a transactional backend, validate the migrated path.
+	var actual []byte
+	if _, ok := c.barrier.(logical.TransactionalStorage); ok && testType != "audits" {
+		// Assume we got the outer, implicit type correct.
+		postTxnEntries, err := c.barrier.List(context.Background(), path+"/")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mapEntries := make(map[string]string)
+		for _, txnEntry := range postTxnEntries {
+			entry, err = c.barrier.Get(context.Background(), path+"/"+txnEntry)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if entry == nil {
+				t.Fatal("nil value")
+			}
+
+			mapEntries[txnEntry] = strings.TrimSpace(string(entry.Value))
+		}
+
+		// Reconstruct them in the correct order.
+		var entries string
+		for _, entry := range mt.Entries {
+			if _, present := mapEntries[entry.UUID]; !present {
+				continue
+			}
+
+			if len(entries) > 0 {
+				entries += ","
+			}
+			entries += mapEntries[entry.UUID]
+		}
+
+		// Assume we would've gotten the outer type correct.
+		actual = []byte(`{"type":"` + mt.Type + `","entries":[` + entries + `]}`)
+
+		// Read the old mount table entry and ensure it was deleted.
+		entry, err = c.barrier.Get(context.Background(), path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry != nil && len(entry.Value) > 0 {
+			t.Fatalf("expected empty entry at non-transactional mount table path: %v\n\tentry: %#v", path, string(entry.Value))
+		}
+	} else {
+		entry, err = c.barrier.Get(context.Background(), path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if entry == nil {
+			t.Fatal("nil value")
+		}
+
+		decompressedBytes, uncompressed, err := compressutil.Decompress(entry.Value)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		actual = decompressedBytes
+		if uncompressed {
+			actual = entry.Value
+		}
+	}
+
+	// Decode actual and expected and compare.
+	var expectedDecoded map[string]interface{}
+	var actualDecoded map[string]interface{}
+
+	if err := json.Unmarshal(goodJson, &expectedDecoded); err != nil {
 		t.Fatal(err)
 	}
-	if entry == nil {
-		t.Fatal("nil value")
-	}
-
-	decompressedBytes, uncompressed, err := compressutil.Decompress(entry.Value)
-	if err != nil {
+	if err := json.Unmarshal(actual, &actualDecoded); err != nil {
 		t.Fatal(err)
 	}
 
-	actual := decompressedBytes
-	if uncompressed {
-		actual = entry.Value
-	}
-
-	if strings.TrimSpace(string(actual)) != strings.TrimSpace(string(goodJson)) {
-		t.Fatalf("bad: expected\n%s\nactual\n%s\n", string(goodJson), string(actual))
+	if diff := deep.Equal(actualDecoded, expectedDecoded); len(diff) > 0 {
+		t.Fatalf("bad: expected\n%s\nactual\n%s\n\n\tdiff: %#v", string(goodJson), string(actual), diff)
 	}
 
 	// Now try saving invalid versions
 	origTableType := mt.Type
 	mt.Type = "foo"
-	if err := persistFunc(context.Background(), mt, nil); err == nil {
+	if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
 		t.Fatal("expected error")
 	}
 
 	if len(mt.Entries) > 0 {
 		mt.Type = origTableType
 		mt.Entries[0].Table = "bar"
-		if err := persistFunc(context.Background(), mt, nil); err == nil {
+		if err := persistFunc(context.Background(), nil, mt, nil, ""); err == nil {
 			t.Fatal("expected error")
 		}
 
 		mt.Entries[0].Table = mt.Type
-		if err := persistFunc(context.Background(), mt, nil); err != nil {
+		if err := persistFunc(context.Background(), nil, mt, nil, ""); err != nil {
 			t.Fatal(err)
 		}
 	}

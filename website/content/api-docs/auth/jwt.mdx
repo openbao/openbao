@@ -166,10 +166,15 @@ entities attempting to login. At least one of the bound values must be set.
   treats the information in a safe manner.
 - `oidc_scopes` `(list: <optional>)` - If set, a list of OIDC scopes to be used with an OIDC role.
   The standard scope "openid" is automatically included and need not be specified.
-- `allowed_redirect_uris` `(list: <required>)` - The list of allowed values for redirect_uri
+- `allowed_redirect_uris` `(list: <required except in device callback mode>)` - The list of allowed values for redirect_uri
   during OIDC logins.
 - `callback_mode` `(string: <optional>)` - The callback mode from the OIDC provider, either "client" (the default)
-  to call back to the client or "direct" to call back to the OpenBao server.
+  to call back to the client,
+  "direct" to call back to the OpenBao server,
+  or "device" for device flow which has no callback.
+- `poll_interval` `(int: <optional>)` - Poll interval in seconds for device
+  and direct callback modes, default value from Authorization Server for
+  device flow, or '5'.
 - `verbose_oidc_logging` `(bool: false)` - Log received OIDC tokens and claims when debug-level
   logging is active. Not recommended in production since sensitive information may be present
   in OIDC responses.
@@ -177,8 +182,44 @@ entities attempting to login. At least one of the bound values must be set.
   time the user was actively authenticated with the OIDC provider. If set, the `max_age` request parameter
   will be included in the authentication request. See [AuthRequest](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest)
   for additional details. Accepts an integer number of seconds, or a Go duration format string.
+- `token_policies_template_claims` `(bool: false)` - When enabled, allows entries in
+  `token_policies` to contain templates which are computed with all claims on the
+  underlying JWT or OIDC ID token. This uses [`sdk/helper/template`](https://pkg.go.dev/github.com/openbao/openbao/sdk/v2@v2.0.1/helper/template)
+  which is based on [`text/template`](https://pkg.go.dev/text/template) for templating.
+  Templates which evaluate to the empty string are removed and all referenced claims
+  must exist on the authenticating token. See [examples](#acl-policy-templating-examples)
+  below.
 
 @include 'tokenfields.mdx'
+
+### ACL policy templating examples
+
+If the given JWT contains custom claims for `project_id`, `environment`, and
+`branch` (such as from a CI integration) and a ACL policy exists for
+`project_1234/env_prod/branch_main`, this could be encoded as:
+
+```
+token_policies=["project_{{.project_id}}/env_{{.environment}}/branch_{{.branch}}"]
+```
+
+To make this conditional on whether or not the environment is `prod`, one could
+encode this as:
+
+```
+token_policies=["{{if eq \"prod\" .environment}}project_{{.project_id}}/env_{{.environment}}/branch_{{.branch}}{{end}}"]
+```
+
+and this ACL policy would be empty (and thus, removed) if the `environment` claim
+on the token used during authentication was `testing` or `staging`.
+
+To reference claims not always present on a token, one can wrap the statement in
+an `if` check using the `index` function:
+
+```
+{{ if ne nil (index . "optional_claim") }}
+... some statement using .optional_claim ...
+{{ end }}
+```
 
 ### Sample payload
 
@@ -320,6 +361,12 @@ $ curl \
 
 Obtain an authorization URL from OpenBao to start an OIDC login flow.
 
+The response will include a `auth_url` that the user will need to go
+to in a web browser to complete the login flow.
+
+In device callback mode the response may include a `user_code` keyword
+which should be shown to the user to enter at the `auth_url`.
+
 | Method | Path                      |
 | :----- | :------------------------ |
 | `POST` | `/auth/jwt/oidc/auth_url` |
@@ -328,7 +375,7 @@ Obtain an authorization URL from OpenBao to start an OIDC login flow.
 
 - `role` `(string: <optional>)` - Name of the role against which the login is being
   attempted. Defaults to configured `default_role` if not provided.
-- `redirect_uri` `(string: <required>)` - Path to the callback to complete the login. This will be
+- `redirect_uri` `(string: <required except in device callback mode>)` - Path to the callback to complete the login. This will be
   of the form, "https&#x3A;//.../oidc/callback" where the leading portion is dependent on your OpenBao
   server location, port, and the mount of the JWT plugin. This must be configured with OpenBao and the
   provider. See [Redirect URIs](/docs/auth/jwt#redirect-uris) for more information.
@@ -336,14 +383,27 @@ Obtain an authorization URL from OpenBao to start an OIDC login flow.
   must match the `client_nonce` value provided during a subsequent request to the
   [callback](/api-docs/auth/jwt#oidc-callback) API.
 
-### Sample payload
+### Sample payloads
+
+For client or direct callback modes:
 
 ```json
 {
   "role": "dev-role",
-  "redirect_uri": "https://openbao.myco.com:8200/ui/openbao/auth/jwt/oidc/callback"
+  "redirect_uri": "https://openbao.myco.com:8200/ui/openbao/auth/jwt/oidc/callback",
+  "client_nonce": "ni42i2idj2jj"
 }
 ```
+
+For device callback mode:
+
+```json
+{
+  "role": "dev-role",
+  "client_nonce": "ni42i2idj2jj"
+}
+```
+
 
 ### Sample request
 
@@ -354,7 +414,9 @@ $ curl \
     https://127.0.0.1:8200/v1/auth/jwt/oidc/auth_url
 ```
 
-### Sample response
+### Sample responses
+
+For client or direct callback modes:
 
 ```json
 {
@@ -366,10 +428,26 @@ $ curl \
 }
 ```
 
+For device callback mode:
+
+```json
+{
+  "request_id": "c701169c-64f8-26cc-0315-078e8c3ce897",
+  "data": {
+    "auth_url": "https://myco.auth0.com/device",
+    "user_code": "ABCDEFGHIJK"
+  },
+  ...
+}
+```
+
 ## OIDC callback
 
 Exchange an authorization code for an OIDC ID Token. The ID token will be further validated
 against any bound claims, and if valid an OpenBao token will be returned.
+
+This is normally invoked by the Authorization Server in client
+or direct callback modes, and is not used in device callback mode.
 
 | Method | Path                      |
 | :----- | :------------------------ |
@@ -417,17 +495,18 @@ $ curl \
 
 ## OIDC poll
 
-Poll for a response when using the direct callback mode in order to complete a login.
+Poll for a response when using the direct or device callback modes in order to complete a login.
 The response from the [auth_url](/api-docs/auth/jwt#oidc-authorization-url-request) API
 returns a `poll_interval` data item containing the number of seconds that the client
 should wait between invoking the poll API.
 
-If the callback hasn't yet occurred, the HTTP response code will be 400 and include
+If the direct callback or device mode authorization hasn't yet occurred,
+the HTTP response code will be 400 and include
 an `errors` JSON list including either `authorization_pending` or `slow_down`.
 If the response is `slow_down` then the client should add additional time before
 calling the poll API again.
 
-When the callback has occurred, the response will include either a different `errors`
+When the callback or authorization has occurred, the response will include either a different `errors`
 message or sucessfully return an authorization token.
 
 | Method | Path                      |

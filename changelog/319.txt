@@ -1,0 +1,3 @@
+```release-note:feature
+auth/oidc: Add a new `callback_mode` role option value `device` to use the oidc device flow instead of a callback, add a new `poll_interval` role option to control how often to poll for a response, and add a new `callbackmode=device` option to the oidc login method in the cli.
+```

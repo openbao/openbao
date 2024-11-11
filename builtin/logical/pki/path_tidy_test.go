@@ -1514,7 +1514,7 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 		"tidy_cert_store":       true,
 		"tidy_revoked_certs":    true,
 		"safety_buffer":         "2s",
-		"revoked_safety_buffer": "10s",
+		"revoked_safety_buffer": "15s",
 	})
 	require.NoError(t, err)
 
@@ -1534,11 +1534,23 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	})
 	require.NoError(t, err)
 	revokedSerial := resp.Data["serial_number"].(string)
+	revokedCert := parseCert(t, resp.Data["certificate"].(string))
 
 	_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
 		"serial_number": revokedSerial,
 	})
 	require.NoError(t, err)
+
+	// Issue a certificate that expires after the revoked
+	// certificate. This expiration needs to be longer than
+	// revoked_safety_buffer+revoked.ttl.
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "example.com",
+		"ttl":         "35s",
+	})
+	require.NoError(t, err)
+	lastLeafSerial := resp.Data["serial_number"].(string)
+	lastLeafCert := parseCert(t, resp.Data["certificate"].(string))
 
 	// Wait for the first certificate to expire and the safety buffer to elapse
 	time.Sleep(time.Until(leafCert.NotAfter) + 3*time.Second)
@@ -1552,16 +1564,35 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	require.Nil(t, resp)
 
 	// Ensure the revoked certificate is not tidied before revoked_safety_buffer has passed
-	time.Sleep(2 * time.Second) // Check midway
+	time.Sleep(time.Until(revokedCert.NotAfter) + 3*time.Second)
+	waitForAutoTidyToFinish(t, client)
+
+	// The revoked certificate should still be present: we've not passed
+	// revoked_safety_buffer, only safety_buffer.
 	resp, err = client.Logical().Read("pki/cert/" + revokedSerial)
 	require.NoError(t, err)
+	require.NotNil(t, resp)
 	require.NotNil(t, resp.Data["certificate"], "Revoked certificate should not be tidied before revoked_safety_buffer")
 
 	// Wait for the revoked_safety_buffer to pass
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Until(revokedCert.NotAfter) + 16*time.Second)
+	waitForAutoTidyToFinish(t, client)
 
 	// Confirm the revoked certificate has been tidied
 	resp, err = client.Logical().Read("pki/cert/" + revokedSerial)
+	require.Nil(t, err)
+	require.Nil(t, resp)
+
+	// Confirm the final certificate has not been tidied.
+	resp, err = client.Logical().Read("pki/cert/" + lastLeafSerial)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Ensure it is cleaned up afterwards.
+	time.Sleep(time.Until(lastLeafCert.NotAfter) + 3*time.Second)
+	waitForAutoTidyToFinish(t, client)
+
+	resp, err = client.Logical().Read("pki/cert/" + lastLeafSerial)
 	require.Nil(t, err)
 	require.Nil(t, resp)
 }

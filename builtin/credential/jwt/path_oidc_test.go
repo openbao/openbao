@@ -723,20 +723,25 @@ func TestOIDC_Callback(t *testing.T) {
 	t.Run("successful login", func(t *testing.T) {
 		// run test with and without bound_cidrs configured
 		//   and with and without direct callback mode
-		for i := 1; i <= 3; i++ {
+		for i := 1; i <= 4; i++ {
 			var useBoundCIDRs bool
-			var callbackMode string
+			callbackMode := "client"
 
 			if i == 2 {
 				useBoundCIDRs = true
 			} else if i == 3 {
 				callbackMode = "direct"
+			} else if i == 4 {
+				callbackMode = "device"
 			}
 
 			b, storage, s := getBackendAndServer(t, useBoundCIDRs, callbackMode)
 			defer s.server.Close()
 
 			clientNonce := "456"
+
+			// set mock provider's expected code
+			s.code = "abc"
 
 			// get auth_url
 			data := map[string]interface{}{
@@ -756,42 +761,45 @@ func TestOIDC_Callback(t *testing.T) {
 				t.Fatalf("err:%v resp:%#v\n", err, resp)
 			}
 
-			authURL := resp.Data["auth_url"].(string)
+			var state string
 
-			state := getQueryParam(t, authURL, "state")
-			nonce := getQueryParam(t, authURL, "nonce")
+			if callbackMode == "device" {
+				state = resp.Data["state"].(string)
+				s.customClaims = sampleClaims("")
+			} else {
+				authURL := resp.Data["auth_url"].(string)
+				state = getQueryParam(t, authURL, "state")
+				nonce := getQueryParam(t, authURL, "nonce")
 
-			// set provider claims that will be returned by the mock server
-			s.customClaims = sampleClaims(nonce)
+				// set provider claims that will be returned by the mock server
+				s.customClaims = sampleClaims(nonce)
 
-			// set mock provider's expected code
-			s.code = "abc"
+				// save PKCE challenge
+				s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
 
-			// save PKCE challenge
-			s.codeChallenge = getQueryParam(t, authURL, "code_challenge")
+				// invoke the callback, which will try to exchange the code
+				// with the mock provider.
+				req = &logical.Request{
+					Operation: logical.ReadOperation,
+					Path:      "oidc/callback",
+					Storage:   storage,
+					Data: map[string]interface{}{
+						"state":        state,
+						"code":         "abc",
+						"client_nonce": clientNonce,
+					},
+					Connection: &logical.Connection{
+						RemoteAddr: "127.0.0.42",
+					},
+				}
 
-			// invoke the callback, which will try to exchange the code
-			// with the mock provider.
-			req = &logical.Request{
-				Operation: logical.ReadOperation,
-				Path:      "oidc/callback",
-				Storage:   storage,
-				Data: map[string]interface{}{
-					"state":        state,
-					"code":         "abc",
-					"client_nonce": clientNonce,
-				},
-				Connection: &logical.Connection{
-					RemoteAddr: "127.0.0.42",
-				},
+				resp, err = b.HandleRequest(context.Background(), req)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 
-			resp, err = b.HandleRequest(context.Background(), req)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if callbackMode == "direct" {
+			if callbackMode != "client" {
 				req = &logical.Request{
 					Operation: logical.UpdateOperation,
 					Path:      "oidc/poll",
@@ -1423,6 +1431,7 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			{
 				"issuer": "%s",
 				"authorization_endpoint": "%s/auth",
+				"device_authorization_endpoint": "%s/device",
 				"token_endpoint": "%s/token",
 				"jwks_uri": "%s/certs",
 				"userinfo_endpoint": "%s/userinfo"
@@ -1434,21 +1443,38 @@ func (o *oidcProvider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 	case "/certs_invalid":
 		w.Write([]byte("It's not a keyset!"))
+	case "/device":
+		values := map[string]interface{}{
+			"device_code": o.code,
+		}
+		data, err := json.Marshal(values)
+		if err != nil {
+			o.t.Fatal(err)
+		}
+		w.Write(data)
 	case "/token":
-		code := r.FormValue("code")
-		codeVerifier := r.FormValue("code_verifier")
+		var code string
+		grant_type := r.FormValue("grant_type")
+		if grant_type == "urn:ietf:params:oauth:grant-type:device_code" {
+			code = r.FormValue("device_code")
+		} else {
+			code = r.FormValue("code")
+		}
 
 		if code != o.code {
 			w.WriteHeader(401)
 			break
 		}
 
-		sum := sha256.Sum256([]byte(codeVerifier))
-		computedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
+		if o.codeChallenge != "" {
+			codeVerifier := r.FormValue("code_verifier")
+			sum := sha256.Sum256([]byte(codeVerifier))
+			computedChallenge := base64.RawURLEncoding.EncodeToString(sum[:])
 
-		if computedChallenge != o.codeChallenge {
-			w.WriteHeader(401)
-			break
+			if computedChallenge != o.codeChallenge {
+				w.WriteHeader(401)
+				break
+			}
 		}
 
 		stdClaims := jwt.Claims{

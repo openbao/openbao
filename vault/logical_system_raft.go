@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
@@ -21,6 +21,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"golang.org/x/crypto/hkdf"
 )
 
 // raftStoragePaths returns paths for use when raft is the storage mechanism.
@@ -236,26 +237,46 @@ func (b *SystemBackend) handleRaftRemovePeerUpdate() framework.OperationFunc {
 	}
 }
 
+func (b *SystemBackend) getRaftBootstrapChallengeAnswer(serverID string) []byte {
+	// We take our local key and the given serverID and perform an HKDF
+	// invocation on it. This output is then encrypted using the root key
+	// (which protects our barrier keyring) and the remote peer can
+	// "prove" they're allowed to join by unsealing the challenge answer
+	// and providing it back to us. We assume inverting HKDF is hard (it
+	// is at least as hard as inverting an HMAC) and it is hard for an
+	// attacker to find (serverID, answer) such that:
+	//
+	//     HKDF(challengeKey, serverID) == answer
+	//
+	// The benefit of this is that we only need constant memory (a single
+	// root challenge key) and HKDF is fast and arbitrarily extensible.
+
+	kdf := hkdf.New(sha256.New, b.Core.pendingRaftPeerChallengeKey, []byte("openbao-raft-peer-challenge"), []byte(serverID))
+
+	// hkdf cannot fail on this short of output. While this value was
+	// previously 16 bytes, the root key is 32 bytes so 24 bytes provides
+	// increased safety while still retaining domain safety from the root
+	// key.
+	var answer [24]byte
+	_, err := kdf.Read(answer[:])
+	if err != nil {
+		panic(fmt.Sprintf("hkdf failed on 24 bytes of output: %v", err))
+	}
+
+	return answer[:]
+}
+
 func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 		serverID := d.Get("server_id").(string)
 		if len(serverID) == 0 {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
-
-		var answer []byte
-		answerRaw, ok := b.Core.pendingRaftPeers.Load(serverID)
-		if !ok {
-			var err error
-			answer, err = uuid.GenerateRandomBytes(16)
-			if err != nil {
-				return nil, err
-			}
-			b.Core.pendingRaftPeers.Store(serverID, answer)
-		} else {
-			answer = answerRaw.([]byte)
+		if len(serverID) > 16384 {
+			return logical.ErrorResponse("server id exceeds max length"), logical.ErrInvalidRequest
 		}
 
+		answer := b.getRaftBootstrapChallengeAnswer(serverID)
 		sealAccess := b.Core.seal.GetAccess()
 
 		eBlob, err := sealAccess.Encrypt(ctx, answer, nil)
@@ -292,6 +313,9 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 		if len(serverID) == 0 {
 			return logical.ErrorResponse("no server_id provided"), logical.ErrInvalidRequest
 		}
+		if len(serverID) > 16384 {
+			return logical.ErrorResponse("server id exceeds max length"), logical.ErrInvalidRequest
+		}
 		answerRaw := d.Get("answer").(string)
 		if len(answerRaw) == 0 {
 			return logical.ErrorResponse("no answer provided"), logical.ErrInvalidRequest
@@ -308,14 +332,8 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 			return logical.ErrorResponse("could not base64 decode answer"), logical.ErrInvalidRequest
 		}
 
-		expectedAnswerRaw, ok := b.Core.pendingRaftPeers.Load(serverID)
-		if !ok {
-			return logical.ErrorResponse("no expected answer for the server id provided"), logical.ErrInvalidRequest
-		}
-
-		b.Core.pendingRaftPeers.Delete(serverID)
-
-		if subtle.ConstantTimeCompare(answer, expectedAnswerRaw.([]byte)) == 0 {
+		expectedAnswer := b.getRaftBootstrapChallengeAnswer(serverID)
+		if subtle.ConstantTimeCompare(answer, expectedAnswer) == 0 {
 			return logical.ErrorResponse("invalid answer given"), logical.ErrInvalidRequest
 		}
 

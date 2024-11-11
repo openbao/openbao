@@ -2,7 +2,7 @@
   <p class="has-bottom-margin-xl">
     This dashboard will surface OpenBao's client usage over time. Clients represent a user or service that has authenticated
     to OpenBao. Documentation is available
-    <DocLink @path="/vault/docs/concepts/client-count">here.</DocLink>
+    <DocLink @path="/docs/concepts/client-count">here.</DocLink>
     Date queries are sent in UTC.
   </p>
   <h2 class="title is-6 has-bottom-margin-xs">
@@ -103,7 +103,7 @@
                 {{this.upgradeVersionAndDate}}
                 {{this.upgradeExplanation}}
                 <DocLink
-                  @path="/vault/docs/concepts/client-count/faq#q-which-vault-version-reflects-the-most-accurate-client-counts"
+                  @path="/docs/concepts/client-count/faq#q-which-vault-version-reflects-the-most-accurate-client-counts"
                 >
                   Learn more here.
                 </DocLink>
@@ -121,7 +121,7 @@
              or viewing the current month filtered down to auth method }}
             <Clients::UsageStats
               @title="Total usage"
-              @description="These totals are within 
+              @description="These totals are within
               {{if this.selectedAuthMethod this.selectedAuthMethod 'this namespace and all its children'}}.
               {{if
                 this.isCurrentMonth

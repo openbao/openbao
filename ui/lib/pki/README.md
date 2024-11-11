@@ -6,7 +6,7 @@ Welcome to the OpenBao PKI (Ember) Engine! Below is an overview of PKI and resou
 
 > Public Key Infrastructure (PKI) is a system of processes, technologies, and policies that allows you to encrypt and sign data. (source: [digicert.com](https://www.digicert.com/what-is-pki))
 
-The [OpenBao PKI Secrets Engine](https://developer.hashicorp.com/vault/api-docs/secret/pki) allows security engineers to [create a chain of PKI certificates](https://developer.hashicorp.com/vault/tutorials/secrets-management/pki-engine) much easier than they would with traditional workflows.
+The [OpenBao PKI Secrets Engine](https://openbao.org/api-docs/secret/pki) allows security engineers to create a chain of PKI certificates much easier than they would with traditional workflows.
 
 ## About the UI engine
 

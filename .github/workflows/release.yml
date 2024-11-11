@@ -125,6 +125,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
+          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
           [ "${{ matrix.release_os }}" == "linux" ] && sed -i "s/^#LINUXONLY#//g" .goreleaser.yaml || true
 
       - name: "GoReleaser: Release"

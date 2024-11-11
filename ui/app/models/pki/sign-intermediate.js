@@ -41,7 +41,7 @@ export default class PkiSignIntermediateModel extends PkiCertificateBaseModel {
     label: 'Use CSR values',
     subText:
       'Subject information and key usages specified in the CSR will be used over parameters provided here, and extensions in the CSR will be copied into the issued certificate.',
-    docLink: '/vault/api-docs/secret/pki#use_csr_values',
+    docLink: '/api-docs/secret/pki#use_csr_values',
   })
   useCsrValues;
 

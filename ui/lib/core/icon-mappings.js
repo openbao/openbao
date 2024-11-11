@@ -23,6 +23,10 @@ export const localIconMap = {
   kv: 'key-values',
   ldap: 'user',
   okta: 'okta-color',
+  openbao: null,
+  'openbao-text-color': null,
+  'openbao-single': null,
+  'openbao-white': null,
   radius: 'user',
   ssh: 'terminal-screen',
   totp: 'history',
@@ -31,7 +35,6 @@ export const localIconMap = {
   transit: 'swap-horizontal',
   userpass: 'identity-user',
   stopwatch: 'clock',
-  'vault-logo': null,
   auth: 'user',
   'android-sync': 'sync-reverse',
 };

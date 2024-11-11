@@ -1035,6 +1035,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		return false, fmt.Errorf("error fetching list of revoked certs: %w", err)
 	}
 
+	haveWarned := false
 	revokedSerialsCount := len(revokedSerials) + int(revokedDeleted)
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries"}, float32(revokedSerialsCount))
 
@@ -1068,7 +1069,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		}
 
 		if revokedEntry == nil {
-			logger.Warn("revoked entry is nil; tidying up since it is no longer useful for any server operations", "serial", serial)
+			if !haveWarned {
+				logger.Warn("Revoked entry is nil. Other invalid entries may exist; tidying up since it is no longer useful for any server operations.", "serial", serial)
+			}
 			if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 				return false, fmt.Errorf("error deleting nil revoked entry with serial %s: %w", serial, err)
 			}
@@ -1077,7 +1080,9 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		}
 
 		if revokedEntry.Value == nil || len(revokedEntry.Value) == 0 {
-			logger.Warn("revoked entry has nil value; tidying up since it is no longer useful for any server operations", "serial", serial)
+			if !haveWarned {
+				logger.Warn("Revoked entry has nil value. Other invalid entries may exist; tidying up since it is no longer useful for any server operations", "serial", serial)
+			}
 			if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 				return false, fmt.Errorf("error deleting revoked entry with nil value with serial %s: %w", serial, err)
 			}

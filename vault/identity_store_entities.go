@@ -329,7 +329,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Get the name
 		entityName := d.Get("name").(string)
 		if entityName != "" {
-			entityByName, err := i.MemDBEntityByName(ctx, entityName, false)
+			entityByName, err := i.MemDBEntityByName(ctx, entityName, true)
 			if err != nil {
 				return nil, err
 			}

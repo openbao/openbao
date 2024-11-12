@@ -833,7 +833,7 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 				return tidyCancelledError
 			}
 
-			if config.RevokedCerts || config.IssuerAssocs {
+			if config.RevokedCerts || config.IssuerAssocs || config.InvalidCerts {
 				rebuild, err := b.doTidyRevocationStore(ctx, req, logger, config, revokedDeleted)
 				if err != nil {
 					return err
@@ -1097,13 +1097,33 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 
 		revokedCert, err := x509.ParseCertificate(revInfo.CertificateBytes)
 		if err != nil {
-			return false, fmt.Errorf("unable to parse stored revoked certificate with serial %q: %w", serial, err)
+			// only log warning once
+			if !haveWarned {
+				msg := "Unable to parse revoked certificate. Other invalid certificates may exist; "
+				if config.InvalidCerts {
+					msg += "tidying up since it is not usable."
+				} else {
+					msg += "tidy by enabling tidy_invalid_certs=true."
+				}
+				logger.Warn(msg, "serial", serial, "err", err)
+				haveWarned = true
+			}
+
+			// if tidy_invalid_certs enabled, delete invalid revoked cert
+			if config.InvalidCerts {
+				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+					return false, fmt.Errorf("error deleting invalid revoked certificate %s: %w", serial, err)
+				}
+				b.tidyStatusIncRevokedCertCount()
+			}
+
+			continue
 		}
 
 		// Tidy operations over revoked certs should execute prior to
 		// tidyRevokedCerts as that may remove the entry. If that happens,
 		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool
+		var storeCert bool = false
 		if config.IssuerAssocs {
 			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
 				b.tidyStatusIncMissingIssuerCertCount()

@@ -24,6 +24,14 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// Previously server_id was of unbounded size (capped by max_request_size);
+// because this value is persisted to disk, transited over the network, and
+// used in maps, it makes sense to have _some_ reasonable limit to this, so
+// that a moderate size cluster does not need have megabytes of memory
+// devoted to identifiers. Cap this at 2^14 which should exceed most
+// reasonable values.
+const maxServerIDLength = 1 << 14
+
 // raftStoragePaths returns paths for use when raft is the storage mechanism.
 func (b *SystemBackend) raftStoragePaths() []*framework.Path {
 	return []*framework.Path{
@@ -256,10 +264,13 @@ func (b *SystemBackend) getRaftBootstrapChallengeAnswer(serverID string) []byte 
 	// hkdf cannot fail on this short of output. While this value was
 	// previously 16 bytes, the root key is 32 bytes so 24 bytes provides
 	// increased safety while still retaining domain safety from the root
-	// key.
+	// key. For SHA-256, the maximum HKDF output is 255*32=8160 bytes.
+	//
+	// See e.g., https://cs.opensource.google/go/go/+/refs/tags/go1.23.3:src/crypto/tls/key_schedule.go;l=66
+	// for examples where this panic pattern is also used.
 	var answer [24]byte
-	_, err := kdf.Read(answer[:])
-	if err != nil {
+	n, err := kdf.Read(answer[:])
+	if err != nil || n != 24 {
 		panic(fmt.Sprintf("hkdf failed on 24 bytes of output: %v", err))
 	}
 
@@ -272,7 +283,7 @@ func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationF
 		if len(serverID) == 0 {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
-		if len(serverID) > 16384 {
+		if len(serverID) > maxServerIDLength {
 			return logical.ErrorResponse("server id exceeds max length"), logical.ErrInvalidRequest
 		}
 

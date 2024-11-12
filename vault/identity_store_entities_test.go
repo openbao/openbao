@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
@@ -1312,4 +1313,53 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	if len(entity1Lookup.Policies) != 2 {
 		t.Fatalf("invalid number of entity policies; expected: 2, actualL: %d", len(entity1Lookup.Policies))
 	}
+}
+
+func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+
+	// Create an entity
+	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"name":     "testentity",
+			"policies": "testing",
+		},
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
+	}
+
+	// Read the entity first.
+	readEntityResp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.ReadOperation,
+	})
+	if err != nil || (readEntityResp != nil && readEntityResp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, readEntityResp)
+	}
+
+	// Update the entity to set the root policy; this should fail.
+	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"policies": "default,root",
+		},
+	})
+	if err == nil && resp != nil && !resp.IsError() {
+		t.Fatalf("bad: expected error, got resp=%v / err=%v", resp, err)
+	}
+
+	// Ensure that the entity was not modified.
+	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.ReadOperation,
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
+	}
+
+	require.Equal(t, readEntityResp.Data, resp.Data, "expected initial and final response data to be the same")
 }

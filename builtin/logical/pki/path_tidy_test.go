@@ -1357,16 +1357,16 @@ NZA=`
 	// Wait for short lived cert to expire and the safety buffer to elapse.
 	time.Sleep(time.Until(shortLivedCert.NotAfter) + 1*time.Second)
 
-	// Perform the tidy operation for cert store and invalid certs
-	resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
-		"tidy_invalid_certs": true,
-		"tidy_cert_store":    true,
-		"safety_buffer":      1,
-	})
-	require.NoError(t, err, "tidy operation should complete without errors")
+	// Define tidy configuration
+	tidyConfig := &tidyConfig{
+		CertStore:    true,
+		InvalidCerts: true,
+		SafetyBuffer: 1,
+	}
 
-	// Wait for tidy to finish.
-	time.Sleep(2 * time.Second)
+	// Call doTidyCertStore directly
+	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	require.NoError(t, err, "tidy operation should complete without errors")
 
 	resp, err = CBList(b, s, "certs")
 	require.NoError(t, err, "unable to list certificates in store")

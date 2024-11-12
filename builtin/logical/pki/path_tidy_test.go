@@ -1293,6 +1293,91 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	}
 }
 
+func TestTidyWithInvalidCertInStore(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=`
+
+	// Decode base64 to get raw DER bytes
+	invalidCertDER, err := base64.StdEncoding.DecodeString(invalidCert)
+	require.NoError(t, err, "failed to decode base64 certificate content")
+
+	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "root example.com",
+		"issuer_name": "root",
+		"ttl":         "20m",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "long-lived",
+		"ttl":         "5s",
+	})
+	require.NoError(t, err)
+	resp, err := CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "short-lived",
+		"ttl":         "1s",
+	})
+	require.NoError(t, err)
+	shortLivedCert := parseCert(t, resp.Data["certificate"].(string))
+	shortLivedSerial := resp.Data["serial_number"].(string)
+
+	// Write invalid certificate to storage
+	err = s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: invalidCertDER,
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	// check root, invalid and valid certs are in store
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err)
+	certKeys := resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 4, "expected 4 certificates in the store")
+
+	// Wait for short lived cert to expire and the safety buffer to elapse.
+	time.Sleep(time.Until(shortLivedCert.NotAfter) + 1*time.Second)
+
+	// Define tidy configuration
+	tidyConfig := &tidyConfig{
+		CertStore:    true,
+		InvalidCerts: true,
+		SafetyBuffer: 1,
+	}
+
+	// Call doTidyCertStore directly
+	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err, "unable to list certificates in store")
+	certKeys = resp.Data["keys"].([]string)
+
+	// Verify root and long-lived leaf certs are in cert store, while the expired and invalid certs are not.
+	require.Len(t, certKeys, 2, "expected two certificates to remain in the store")
+	require.NotContains(t, certKeys, "1", "invalid certificate '1' should have been removed from the store")
+	require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
+}
+
 func TestRevokedSafetyBufferConfig(t *testing.T) {
 	t.Parallel()
 

@@ -4242,6 +4242,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 			"issuer_safety_buffer":                  json.Number("31536000"),
 			"tidy_cert_store":                       true,
 			"tidy_revoked_certs":                    true,
+			"tidy_invalid_certs":                    false,
 			"tidy_revoked_cert_issuer_associations": false,
 			"tidy_expired_issuers":                  false,
 			"tidy_move_legacy_ca_bundle":            false,

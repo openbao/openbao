@@ -971,7 +971,10 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 				haveWarned = true
 			}
 
-			// if tidy_invalid_certs enabled, delete invalid cert
+			// if tidy_invalid_certs enabled, delete invalid cert. Because
+			// we're cleaning up revoked certs later by virtue of
+			// config.InvalidCerts=true, we can skip deleting revoked certs
+			// here.
 			if config.InvalidCerts {
 				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
 					return 0, fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
@@ -982,6 +985,13 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 			continue
 		}
 
+		// We could be exclusively looking for invalid certificates; skip
+		// fetching a known-good revocation entry here if so. This also lets
+		// us avoid guarding each deletion check below.
+		if !config.CertStore {
+			continue
+		}
+
 		// Check if a revocation entry exists for this cert; if so, use the
 		// appropriate entry.
 		revokedResp, err := req.Storage.Get(ctx, "revoked/"+serial)
@@ -989,7 +999,7 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 			return 0, fmt.Errorf("error fetching revocation status of serial %q from storage: %w", serial, err)
 		}
 
-		if revokedResp == nil && config.CertStore && time.Since(cert.NotAfter) > config.SafetyBuffer {
+		if revokedResp == nil && time.Since(cert.NotAfter) > config.SafetyBuffer {
 			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
 				return 0, fmt.Errorf("error deleting serial %q from storage: %w", serial, err)
 			}
@@ -1109,7 +1119,10 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 				haveWarned = true
 			}
 
-			// if tidy_invalid_certs enabled, delete invalid revoked cert
+			// If tidy_invalid_certs enabled, delete invalid revoked cert.
+			// We know we've already deleted the invalid cert entry via
+			// doTidyCertStore(...) earlier so don't bother deleting that
+			// too.
 			if config.InvalidCerts {
 				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
 					return false, fmt.Errorf("error deleting invalid revoked certificate %s: %w", serial, err)

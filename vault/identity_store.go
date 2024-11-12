@@ -925,7 +925,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 					}
 
 					// Fetch the associated entity and add the alias to that too.
-					entity, err := i.MemDBEntityByIDInTxn(txn, alias.CanonicalID, false)
+					entity, err := i.MemDBEntityByIDInTxn(txn, alias.CanonicalID, true)
 					if err != nil {
 						i.logger.Error("failed to fetch entity during local alias invalidation", "error", err)
 						return

@@ -1299,7 +1299,6 @@ func TestTidyWithInvalidCertInStore(t *testing.T) {
 
 	// Invalid certificate content to simulate an unprocessable cert in the store
 	invalidCert := `
------BEGIN CERTIFICATE-----
 MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
 MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
 BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
@@ -1309,11 +1308,14 @@ jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
 DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
 d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
 ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
-NZA=
------END CERTIFICATE-----`
+NZA=`
+
+	// Decode base64 to get raw DER bytes
+	invalidCertDER, err := base64.StdEncoding.DecodeString(invalidCert)
+	require.NoError(t, err, "failed to decode base64 certificate content")
 
 	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
-	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"common_name": "root example.com",
 		"issuer_name": "root",
 		"ttl":         "20m",
@@ -1342,7 +1344,7 @@ NZA=
 	// Write invalid certificate to storage
 	err = s.Put(ctx, &logical.StorageEntry{
 		Key:   "certs/1",
-		Value: []byte(invalidCert),
+		Value: invalidCertDER,
 	})
 	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
 
@@ -1355,14 +1357,6 @@ NZA=
 	// Wait for short lived cert to expire and the safety buffer to elapse.
 	time.Sleep(time.Until(shortLivedCert.NotAfter) + 1*time.Second)
 
-	// Enable auto-tidy for cert store
-	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
-		"enabled":         true,
-		"tidy_cert_store": true,
-	})
-	require.NoError(t, err)
-	requireSuccessNonNilResponse(t, resp, err, "failed to enable tidy_invalid_certs configuration")
-
 	// Perform the tidy operation for cert store and invalid certs
 	resp, err = CBWrite(b, s, "tidy", map[string]interface{}{
 		"tidy_invalid_certs": true,
@@ -1371,35 +1365,17 @@ NZA=
 	})
 	require.NoError(t, err, "tidy operation should complete without errors")
 
-	// Check if tidy operation has completed every 50ms
-	timeout := time.After(2 * time.Second)
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
+	// Wait for tidy to finish.
+	time.Sleep(2 * time.Second)
 
-	for {
-		select {
-		case <-timeout:
-			require.FailNow(t, "Tidy operation timed out")
-		case <-ticker.C:
-			statusResp, err := CBRead(b, s, "tidy-status")
-			require.NoError(t, err, "unable to get tidy status")
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err, "unable to list certificates in store")
+	certKeys = resp.Data["keys"].([]string)
 
-			status := statusResp.Data["state"].(string)
-			if status != "Running" {
-				// Tidy operation is finished
-				resp, err := CBList(b, s, "certs")
-				require.NoError(t, err, "unable to list certificates in store")
-				certKeys := resp.Data["keys"].([]string)
-
-				// Verify root and long-lived leaf certs are in cert store, while the expired and invalid certs are not.
-				require.Len(t, certKeys, 2, "expected two certificates to remain in the store")
-				require.NotContains(t, certKeys, "1", "invalid certificate '1' should have been removed from the store")
-				require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
-
-				return
-			}
-		}
-	}
+	// Verify root and long-lived leaf certs are in cert store, while the expired and invalid certs are not.
+	require.Len(t, certKeys, 2, "expected two certificates to remain in the store")
+	require.NotContains(t, certKeys, "1", "invalid certificate '1' should have been removed from the store")
+	require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
 }
 
 func TestRevokedSafetyBufferConfig(t *testing.T) {

@@ -43,9 +43,6 @@ module('Acceptance | Enterprise | sidebar navigation', function (hooks) {
     await fillIn('[data-test-confirmation-modal-input="Disable Replication?"]', 'Disaster Recovery');
     await click('[data-test-confirm-button="Disable Replication?"]');
 
-    await click(link('Client count'));
-    assert.strictEqual(currentURL(), '/vault/clients/dashboard', 'Client counts route renders');
-
     await click(link('License'));
     assert.strictEqual(currentURL(), '/vault/license', 'License route renders');
 

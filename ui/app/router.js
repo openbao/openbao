@@ -24,11 +24,6 @@ Router.map(function () {
       this.mount('open-api-explorer', { path: '/api-explorer' });
       this.route('license');
       this.route('mfa-setup');
-      this.route('clients', function () {
-        this.route('dashboard');
-        this.route('config');
-        this.route('edit');
-      });
       this.route('storage', { path: '/storage/raft' });
       this.route('storage-restore', { path: '/storage/raft/restore' });
       this.route('settings', function () {

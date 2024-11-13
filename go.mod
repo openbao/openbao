@@ -10,7 +10,7 @@ module github.com/openbao/openbao
 // semantic related to Go module handling), this comment should be updated to explain that.
 go 1.22.1
 
-toolchain go1.22.6
+toolchain go1.23.3
 
 replace github.com/openbao/openbao/api v1.9.2 => github.com/openbao/openbao/api v1.100.0-development20240408
 

@@ -558,8 +558,11 @@ type Core struct {
 	raftFollowerStates *raft.FollowerStates
 	// Stop channel for raft TLS rotations
 	raftTLSRotationStopCh chan struct{}
-	// Stores the pending peers we are waiting to give answers
-	pendingRaftPeers *sync.Map
+
+	// Stores the root key for generating challenges for pending peers we are
+	// waiting to give answers. This is constant size unlike the earlier
+	// sync.Map implementation.
+	pendingRaftPeerChallengeKey []byte
 
 	// rawConfig stores the config as-is from the provided server configuration.
 	rawConfig *atomic.Value
@@ -942,6 +945,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		postUnsealStarted:              new(uint32),
 		raftInfo:                       new(atomic.Value),
 		raftJoinDoneCh:                 make(chan struct{}),
+		pendingRaftPeerChallengeKey:    make([]byte, 32),
 		clusterHeartbeatInterval:       clusterHeartbeatInterval,
 		keyRotateGracePeriod:           new(int64),
 		numExpirationWorkers:           conf.NumExpirationWorkers,
@@ -989,6 +993,12 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 	atomic.StoreInt64(c.keyRotateGracePeriod, int64(2*time.Minute))
 
 	c.raftInfo.Store((*raftInformation)(nil))
+
+	// Create a random key for raft peer challenges.
+	_, err := io.ReadFull(rand.Reader, c.pendingRaftPeerChallengeKey)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing pending raft peer challenge key: %w", err)
+	}
 
 	switch conf.ClusterCipherSuites {
 	case "tls13", "tls12":

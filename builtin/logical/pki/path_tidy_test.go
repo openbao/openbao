@@ -1378,6 +1378,85 @@ NZA=`
 	require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
 }
 
+func TestTidyWithInvalidRevokedCertInStore(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=`
+
+	// Decode base64 to get raw DER bytes
+	invalidCertDER, err := base64.StdEncoding.DecodeString(invalidCert)
+	require.NoError(t, err, "failed to decode base64 certificate content")
+
+	// Write invalid certificate to storage
+	err = s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: invalidCertDER,
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	// Write invalid cert to revocation storage.
+	info := revocationInfo{
+		CertificateBytes:  invalidCertDER,
+		RevocationTime:    time.Now().Add(-5 * time.Second).Unix(),
+		RevocationTimeUTC: time.Now().Add(-5 * time.Second).UTC(),
+	}
+	revEntry, err := logical.StorageEntryJSON(revokedPath+"1", info)
+	require.NoError(t, err)
+	err = s.Put(ctx, revEntry)
+	require.NoError(t, err, "failed to write revocation entry")
+
+	// check root, invalid and valid certs are in store
+	resp, err := CBList(b, s, "certs")
+	require.NoError(t, err)
+	certKeys := resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 1, "expected invalid certificate in the store")
+
+	// Check revoked cert is in the store.
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	certKeys = resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 1, "expected invalid certificate in the revocation store")
+
+	// Define tidy configuration
+	tidyConfig := &tidyConfig{
+		InvalidCerts: true,
+		SafetyBuffer: 1,
+	}
+
+	// Call tidy directly
+	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	// There should still be a single entry here
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	require.Len(t, resp.Data["keys"].([]string), 1, "expected a single pending revocation entry")
+
+	_, err = b.doTidyRevocationStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig, 0)
+	require.NoError(t, err, "tidy revoked operation should complete without errors")
+
+	// Verify we have nothing in either list.
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err, "unable to list certificates in store")
+	require.Empty(t, resp.Data)
+
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	require.Empty(t, resp.Data)
+}
+
 func TestRevokedSafetyBufferConfig(t *testing.T) {
 	t.Parallel()
 

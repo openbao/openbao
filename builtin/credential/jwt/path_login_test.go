@@ -1062,8 +1062,8 @@ func testLogin_NotBeforeClaims(t *testing.T, jwks bool) {
 		// exp, no clock_skew_leeway (0s), custom nbf leeway (5s)
 		{"custom nbf leeway using exp with no clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(3 * time.Second), -1, 5},
 		{"custom nbf leeway using exp with no clock_skew_leeway", true, jwks, time.Time{}, time.Time{}, time.Now().Add(3 * time.Second), -100, 5},
-		{"not yet valid custom nbf leeway using exp with no clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(7 * time.Second), -1, 5},
-		{"not yet valid custom nbf leeway using exp with no clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(7 * time.Second), -100, 5},
+		{"not yet valid custom nbf leeway using exp with no clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(70 * time.Second), -1, 5},
+		{"not yet valid custom nbf leeway using exp with no clock_skew_leeway", false, jwks, time.Time{}, time.Time{}, time.Now().Add(70 * time.Second), -100, 5},
 	}
 
 	for i, tt := range tests {

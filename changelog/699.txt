@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Update to 1.23.3.
+```

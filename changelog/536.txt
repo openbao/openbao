@@ -1,5 +1,3 @@
 ```release-note:feature
-**Transit**: Support PKI CSR and certificate storage alongside key material.
- - This allows callers to securely create keys and submit requests for certificates without the key material leaving Transit.
- - Additionally, storage of the certificate on the key avoids the need for an additional K/V mount. Rotation of this certificate and its chain is also supported.
+**Transit**: Support PKI CSR and certificate storage alongside key material. This allows callers to securely create keys and submit requests for certificates without the key material leaving Transit. Storage of the certificate on the key avoids the need for an additional K/V mount. Rotation of this certificate and its chain is also supported.
 ```

@@ -606,7 +606,9 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 	// transactions plus a lister outside of transactions (which should still
 	// be atomic relative to the transactions that are occurring). When the
 	// writers are done, signal the readers/listers to finish up.
-	var wg sync.WaitGroup
+	var wgWriters sync.WaitGroup
+	var wgReaders sync.WaitGroup
+	var wgListers sync.WaitGroup
 	var done atomic.Bool
 	var numFiles int = 25
 	var numWriters int = 100
@@ -618,9 +620,9 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 	var listBreak int = 10
 	var numErrors atomic.Int32
 	for i := 1; i <= numWriters; i++ {
-		wg.Add(1)
+		wgWriters.Add(1)
 		go func(worker int) {
-			defer wg.Done()
+			defer wgWriters.Done()
 			for write := 1; write <= numWrites; write++ {
 				time.Sleep(time.Duration(worker) * time.Millisecond)
 
@@ -684,7 +686,9 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 
 	// Validate reads within a transaction are consistent.
 	for i := 1; i <= numReaders; i++ {
+		wgReaders.Add(1)
 		go func(worker int) {
+			defer wgReaders.Done()
 			var read int = 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
@@ -774,7 +778,9 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 
 	// Validate lists outside of a transaction are consistent.
 	for i := 1; i <= numListers; i++ {
+		wgListers.Add(1)
 		go func(worker int) {
+			defer wgListers.Done()
 			var list int = 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
@@ -820,13 +826,23 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 	}
 
 	// Wait for writers to finish
-	wg.Wait()
+	wgWriters.Wait()
 
-	// Give readers additional time to finish before we potentially call
-	// fatal.
-	time.Sleep(100 * time.Millisecond)
+	// Signal readers and listeners to finish
 	done.Store(true)
-	time.Sleep(250 * time.Millisecond)
+
+	// Wait for readers and listers to finish in parallel
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		wgReaders.Wait()
+	}()
+	go func() {
+		defer wg.Done()
+		wgListers.Wait()
+	}()
+	wg.Wait()
 
 	// Handle cleanup
 	if numErrors.Load() > 0 {
@@ -836,7 +852,8 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 
 func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	// We have a few readers and writers inside of transactions
-	var wg sync.WaitGroup
+	var wgWriters sync.WaitGroup
+	var wgReaders sync.WaitGroup
 	var done atomic.Bool
 	var numFiles int = 25
 	var numWriters int = 100
@@ -845,9 +862,9 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	var readBreak int = 5
 	var numErrors atomic.Int32
 	for i := 1; i <= numWriters; i++ {
-		wg.Add(1)
+		wgWriters.Add(1)
 		go func(worker int) {
-			defer wg.Done()
+			defer wgWriters.Done()
 			for write := 1; write <= numWrites; write++ {
 				time.Sleep(time.Duration(worker) * time.Millisecond)
 
@@ -917,7 +934,9 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 
 	// Validate reads within a transaction are consistent.
 	for i := 1; i <= numReaders; i++ {
+		wgReaders.Add(1)
 		go func(worker int) {
+			defer wgReaders.Done()
 			var read int = 1
 			time.Sleep(time.Duration(worker) * time.Millisecond)
 
@@ -1011,13 +1030,13 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 	}
 
 	// Wait for writers to finish
-	wg.Wait()
+	wgWriters.Wait()
 
-	// Give readers additional time to finish before we potentially call
-	// fatal.
-	time.Sleep(100 * time.Millisecond)
+	// Signal readers to stop
 	done.Store(true)
-	time.Sleep(250 * time.Millisecond)
+
+	// Wait for readers to finish
+	wgReaders.Wait()
 
 	// Handle cleanup
 	if numErrors.Load() > 0 {

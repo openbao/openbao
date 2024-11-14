@@ -49,7 +49,6 @@ builds:
       - goos: illumos
       - goos: netbsd
       - goos: openbsd
-      - goos: solaris
       - goos: wasip1
       - goos: windows
     mod_timestamp: "{{ .CommitTimestamp }}"
@@ -132,16 +131,6 @@ builds:
         goarch: wasm
       - goos: openbsd
         goarm: "7"
-      - goos: solaris
-        goarch: arm
-      - goos: solaris
-        goarch: arm64
-      - goos: solaris
-        goarch: ppc64le
-      - goos: solaris
-        goarch: s390x
-      - goos: solaris
-        goarch: wasm
       - goos: wasip1
         goarch: amd64
       - goos: wasip1

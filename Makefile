@@ -366,3 +366,5 @@ goreleaser-check:
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
 	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check

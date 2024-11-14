@@ -586,7 +586,7 @@ checksum:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -595,7 +595,7 @@ checksum:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -604,7 +604,7 @@ checksum:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -620,21 +620,21 @@ checksum:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
@@ -650,7 +650,7 @@ checksum:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -659,7 +659,7 @@ checksum:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -668,7 +668,7 @@ checksum:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -684,21 +684,21 @@ checksum:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
@@ -714,7 +714,7 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -723,7 +723,7 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -732,7 +732,7 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-riscv64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao:{{ .Version }}-arm
@@ -748,21 +748,21 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}.{{ .Minor }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Major }}
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-ppc64le
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 #LINUXONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:latest
-#LINUXONLY#    skip_push: false
+#LINUXONLY#    skip_push: ${{ .Prerelease }}
 #LINUXONLY#    image_templates:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-amd64
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-arm64
@@ -845,7 +845,7 @@ release:
     owner: openbao
     name: openbao
 
-  prerelease: ${{ .Env.GITHUB_PRERELEASE }}
+  prerelease: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
   make_latest: ${{ .Env.GITHUB_RELEASE_MAKE_LATEST }}
   disable: false
 

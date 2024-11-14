@@ -41,7 +41,6 @@ jobs:
           - illumos
           - netbsd
           - openbsd
-          - solaris
           - windows
     steps:
       - name: Checkout

@@ -4247,6 +4247,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 			"tidy_expired_issuers":                  false,
 			"tidy_move_legacy_ca_bundle":            false,
 			"pause_duration":                        "0s",
+			"page_size":                             json.Number("50"),
 			"state":                                 "Finished",
 			"error":                                 nil,
 			"time_started":                          nil,

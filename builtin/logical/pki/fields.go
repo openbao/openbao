@@ -547,6 +547,15 @@ after being marked revoked or deactivated.`,
 		Default: int(defaultTidyConfig.AcmeAccountSafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
 	}
 
+	fields["page_size"] = &framework.FieldSchema{
+		Type: framework.TypeInt,
+		Description: `The number of certificates to process per page during list pagination. 
+This setting enables tidy to handle certificates in smaller increments, rather than loading 
+the entire set into memory at once. 
+Defaults to 50 certificates, with a minimum of 5 certificates per page.`,
+		Default: int(defaultTidyConfig.PageSize),
+	}
+
 	fields["pause_duration"] = &framework.FieldSchema{
 		Type: framework.TypeString,
 		Description: `The amount of time to wait between processing

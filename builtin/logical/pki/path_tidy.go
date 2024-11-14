@@ -49,6 +49,9 @@ type tidyStatus struct {
 	tidyAcme           bool
 	pauseDuration      string
 
+	// Page size for list pagination
+	pageSize int
+
 	// Status
 	state        tidyStatusState
 	err          error
@@ -89,6 +92,9 @@ type tidyConfig struct {
 	AcmeAccountSafetyBuffer time.Duration  `json:"acme_account_safety_buffer"`
 	PauseDuration           time.Duration  `json:"pause_duration"`
 
+	// Page size for list pagination
+	PageSize int `json:"page_size"`
+
 	// Metrics.
 	MaintainCount  bool `json:"maintain_stored_certificate_counts"`
 	PublishMetrics bool `json:"publish_stored_certificate_count_metrics"`
@@ -116,6 +122,7 @@ var defaultTidyConfig = tidyConfig{
 	IssuerSafetyBuffer:      365 * 24 * time.Hour,
 	AcmeAccountSafetyBuffer: 30 * 24 * time.Hour,
 	PauseDuration:           0 * time.Second,
+	PageSize:                50,
 	MaintainCount:           false,
 	PublishMetrics:          false,
 }
@@ -217,6 +224,11 @@ func pathTidyCancel(b *backend) *framework.Path {
 							"pause_duration": {
 								Type:        framework.TypeString,
 								Description: `Duration to pause between tidying certificates`,
+								Required:    false,
+							},
+							"page_size": {
+								Type:        framework.TypeInt,
+								Description: `The number of certificates per page for list pagination`,
 								Required:    false,
 							},
 							"state": {
@@ -383,6 +395,11 @@ func pathTidyStatus(b *backend) *framework.Path {
 								Type:        framework.TypeString,
 								Description: `Duration to pause between tidying certificates`,
 								Required:    true,
+							},
+							"page_size": {
+								Type:        framework.TypeInt,
+								Description: `The number of certificates per page for list pagination`,
+								Required:    false,
 							},
 							"state": {
 								Type:        framework.TypeString,
@@ -584,6 +601,11 @@ available on the tidy-status endpoint.`,
 								Description: `Duration to pause between tidying certificates`,
 								Required:    true,
 							},
+							"page_size": {
+								Type:        framework.TypeInt,
+								Description: `The number of certificates per page for list pagination`,
+								Required:    false,
+							},
 							"tidy_move_legacy_ca_bundle": {
 								Type:     framework.TypeBool,
 								Required: true,
@@ -675,6 +697,11 @@ available on the tidy-status endpoint.`,
 								Description: `Duration to pause between tidying certificates`,
 								Required:    true,
 							},
+							"page_size": {
+								Type:        framework.TypeInt,
+								Description: `The number of certificates per page for list pagination`,
+								Required:    false,
+							},
 							"tidy_move_legacy_ca_bundle": {
 								Type:     framework.TypeBool,
 								Required: true,
@@ -717,6 +744,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 	tidyBackupBundle := d.Get("tidy_move_legacy_ca_bundle").(bool)
 	issuerSafetyBuffer := d.Get("issuer_safety_buffer").(int)
 	pauseDurationStr := d.Get("pause_duration").(string)
+	pageSize := d.Get("page_size").(int)
 	pauseDuration := 0 * time.Second
 	tidyAcme := d.Get("tidy_acme").(bool)
 	acmeAccountSafetyBuffer := d.Get("acme_account_safety_buffer").(int)
@@ -749,6 +777,10 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 	}
 
+	if pageSize < 5 {
+		return logical.ErrorResponse("page_size must be greater than five"), nil
+	}
+
 	bufferDuration := time.Duration(safetyBuffer) * time.Second
 	revokedBufferDuration := time.Duration(revokedSafetyBuffer) * time.Second
 	issuerBufferDuration := time.Duration(issuerSafetyBuffer) * time.Second
@@ -768,6 +800,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		RevokedSafetyBuffer:     &revokedBufferDuration,
 		IssuerSafetyBuffer:      issuerBufferDuration,
 		PauseDuration:           pauseDuration,
+		PageSize:                pageSize,
 		TidyAcme:                tidyAcme,
 		AcmeAccountSafetyBuffer: acmeAccountSafetyBufferDuration,
 	}
@@ -905,122 +938,136 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 }
 
 func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, logger hclog.Logger, config *tidyConfig) (uint, error) {
-	serials, err := req.Storage.List(ctx, "certs/")
-	if err != nil {
-		return 0, fmt.Errorf("error fetching list of certs: %w", err)
-	}
-
-	revokedSafetyBuffer := config.SafetyBuffer
-	if config.RevokedSafetyBuffer != nil {
-		revokedSafetyBuffer = *config.RevokedSafetyBuffer
-	}
-
-	haveWarned := false
-	serialCount := len(serials)
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries"}, float32(serialCount))
-
+	var after string
+	var serialCount uint
 	var revokedDeleted uint
-	for i, serial := range serials {
-		b.tidyStatusMessage(fmt.Sprintf("Tidying certificate store: checking entry %d of %d", i, serialCount))
-		metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(i))
+	haveWarned := false
 
-		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return 0, tidyCancelledError
-		}
-
-		// Check for pause duration to reduce resource consumption.
-		if config.PauseDuration > (0 * time.Second) {
-			time.Sleep(config.PauseDuration)
-		}
-
-		certEntry, err := req.Storage.Get(ctx, "certs/"+serial)
+	for {
+		// Fetch the next batch of certificate serials using pagination
+		serials, err := req.Storage.ListPage(ctx, "certs/", after, config.PageSize)
 		if err != nil {
-			return 0, fmt.Errorf("error fetching certificate %q: %w", serial, err)
+			return 0, fmt.Errorf("error fetching list of certs: %w", err)
 		}
 
-		if certEntry == nil {
-			logger.Warn("certificate entry is nil; tidying up since it is no longer useful for any server operations", "serial", serial)
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return 0, fmt.Errorf("error deleting nil entry with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-			continue
+		// If no serials are returned, we've reached the end of the cert list
+		if len(serials) == 0 {
+			break
 		}
 
-		if certEntry.Value == nil || len(certEntry.Value) == 0 {
-			logger.Warn("certificate entry has no value; tidying up since it is no longer useful for any server operations", "serial", serial)
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return 0, fmt.Errorf("error deleting entry with nil value with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-			continue
+		serialCount += uint(len(serials))
+
+		revokedSafetyBuffer := config.SafetyBuffer
+		if config.RevokedSafetyBuffer != nil {
+			revokedSafetyBuffer = *config.RevokedSafetyBuffer
 		}
 
-		cert, err := x509.ParseCertificate(certEntry.Value)
-		if err != nil {
-			// only log warning once
-			if !haveWarned {
-				msg := "Unable to parse stored certificate. Other invalid certificates may exist; "
-				if config.InvalidCerts {
-					msg += "tidying up since it is not usable."
-				} else {
-					msg += "tidy by enabling tidy_invalid_certs=true."
-				}
-				logger.Warn(msg, "serial", serial, "err", err)
-				haveWarned = true
+		for i, serial := range serials {
+			// Set the `after` variable for the next ListPage call
+			after = serial
+
+			b.tidyStatusMessage(fmt.Sprintf("Tidying certificate store: checking entry %d of %d on current page; total certs checked: %d", i, config.PageSize, int(serialCount)+i))
+			metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(serialCount)+float32(i))
+
+			// Check for cancel before continuing.
+			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+				return 0, tidyCancelledError
 			}
 
-			// if tidy_invalid_certs enabled, delete invalid cert. Because
-			// we're cleaning up revoked certs later by virtue of
-			// config.InvalidCerts=true, we can skip deleting revoked certs
-			// here.
-			if config.InvalidCerts {
+			// Check for pause duration to reduce resource consumption.
+			if config.PauseDuration > (0 * time.Second) {
+				time.Sleep(config.PauseDuration)
+			}
+
+			certEntry, err := req.Storage.Get(ctx, "certs/"+serial)
+			if err != nil {
+				return 0, fmt.Errorf("error fetching certificate %q: %w", serial, err)
+			}
+
+			if certEntry == nil {
+				logger.Warn("certificate entry is nil; tidying up since it is no longer useful for any server operations", "serial", serial)
 				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-					return 0, fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
+					return 0, fmt.Errorf("error deleting nil entry with serial %s: %w", serial, err)
+				}
+				b.tidyStatusIncCertStoreCount()
+				continue
+			}
+
+			if certEntry.Value == nil || len(certEntry.Value) == 0 {
+				logger.Warn("certificate entry has no value; tidying up since it is no longer useful for any server operations", "serial", serial)
+				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+					return 0, fmt.Errorf("error deleting entry with nil value with serial %s: %w", serial, err)
+				}
+				b.tidyStatusIncCertStoreCount()
+				continue
+			}
+
+			cert, err := x509.ParseCertificate(certEntry.Value)
+			if err != nil {
+				// only log warning once
+				if !haveWarned {
+					msg := "Unable to parse stored certificate. Other invalid certificates may exist; "
+					if config.InvalidCerts {
+						msg += "tidying up since it is not usable."
+					} else {
+						msg += "tidy by enabling tidy_invalid_certs=true."
+					}
+					logger.Warn(msg, "serial", serial, "err", err)
+					haveWarned = true
+				}
+
+				// if tidy_invalid_certs enabled, delete invalid cert. Because
+				// we're cleaning up revoked certs later by virtue of
+				// config.InvalidCerts=true, we can skip deleting revoked certs
+				// here.
+				if config.InvalidCerts {
+					if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+						return 0, fmt.Errorf("error deleting invalid certificate %s: %w", serial, err)
+					}
+					b.tidyStatusIncCertStoreCount()
+				}
+
+				continue
+			}
+
+			// We could be exclusively looking for invalid certificates; skip
+			// fetching a known-good revocation entry here if so. This also lets
+			// us avoid guarding each deletion check below.
+			if !config.CertStore {
+				continue
+			}
+
+			// Check if a revocation entry exists for this cert; if so, use the
+			// appropriate entry.
+			revokedResp, err := req.Storage.Get(ctx, "revoked/"+serial)
+			if err != nil {
+				return 0, fmt.Errorf("error fetching revocation status of serial %q from storage: %w", serial, err)
+			}
+
+			if revokedResp == nil && time.Since(cert.NotAfter) > config.SafetyBuffer {
+				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+					return 0, fmt.Errorf("error deleting serial %q from storage: %w", serial, err)
+				}
+				b.tidyStatusIncCertStoreCount()
+			} else if revokedResp != nil && time.Since(cert.NotAfter) > revokedSafetyBuffer {
+				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+					return 0, fmt.Errorf("error deleting serial %q from store when tidying revoked: %w", serial, err)
+				}
+				// Only tidy revoked certs if requested.
+				if config.RevokedCerts {
+					if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+						return 0, fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
+					}
+					revokedDeleted += 1
+					b.tidyStatusIncRevokedCertCount()
 				}
 				b.tidyStatusIncCertStoreCount()
 			}
-
-			continue
-		}
-
-		// We could be exclusively looking for invalid certificates; skip
-		// fetching a known-good revocation entry here if so. This also lets
-		// us avoid guarding each deletion check below.
-		if !config.CertStore {
-			continue
-		}
-
-		// Check if a revocation entry exists for this cert; if so, use the
-		// appropriate entry.
-		revokedResp, err := req.Storage.Get(ctx, "revoked/"+serial)
-		if err != nil {
-			return 0, fmt.Errorf("error fetching revocation status of serial %q from storage: %w", serial, err)
-		}
-
-		if revokedResp == nil && time.Since(cert.NotAfter) > config.SafetyBuffer {
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return 0, fmt.Errorf("error deleting serial %q from storage: %w", serial, err)
-			}
-			b.tidyStatusIncCertStoreCount()
-		} else if revokedResp != nil && time.Since(cert.NotAfter) > revokedSafetyBuffer {
-			if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-				return 0, fmt.Errorf("error deleting serial %q from store when tidying revoked: %w", serial, err)
-			}
-			// Only tidy revoked certs if requested.
-			if config.RevokedCerts {
-				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
-					return 0, fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
-				}
-				revokedDeleted += 1
-				b.tidyStatusIncRevokedCertCount()
-			}
-			b.tidyStatusIncCertStoreCount()
 		}
 	}
 
 	b.tidyStatusLock.RLock()
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries"}, float32(serialCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries_remaining"}, float32(uint(serialCount)-b.tidyStatus.certStoreDeletedCount))
 	b.tidyStatusLock.RUnlock()
 
@@ -1038,151 +1085,162 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		return false, err
 	}
 
-	rebuildCRL := false
-
-	revokedSerials, err := req.Storage.List(ctx, "revoked/")
-	if err != nil {
-		return false, fmt.Errorf("error fetching list of revoked certs: %w", err)
-	}
-
+	var after string
+	var revokedSerialsCount uint
 	haveWarned := false
-	revokedSerialsCount := len(revokedSerials) + int(revokedDeleted)
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries"}, float32(revokedSerialsCount))
-
+	rebuildCRL := false
 	fixedIssuers := 0
 
-	revokedSafetyBuffer := config.SafetyBuffer
-	if config.RevokedSafetyBuffer != nil {
-		revokedSafetyBuffer = *config.RevokedSafetyBuffer
-	}
-
-	var revInfo revocationInfo
-	for i, serial := range revokedSerials {
-		b.tidyStatusMessage(fmt.Sprintf("Tidying revoked certificates: checking certificate %d of %d", i, len(revokedSerials)))
-		metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(i))
-
-		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return false, tidyCancelledError
-		}
-
-		// Check for pause duration to reduce resource consumption.
-		if config.PauseDuration > (0 * time.Second) {
-			b.revokeStorageLock.Unlock()
-			time.Sleep(config.PauseDuration)
-			b.revokeStorageLock.Lock()
-		}
-
-		revokedEntry, err := req.Storage.Get(ctx, "revoked/"+serial)
+	for {
+		revokedSerials, err := req.Storage.ListPage(ctx, "revoked/", after, config.PageSize)
 		if err != nil {
-			return false, fmt.Errorf("unable to fetch revoked cert with serial %q: %w", serial, err)
+			return false, fmt.Errorf("error fetching list of revoked certs: %w", err)
 		}
 
-		if revokedEntry == nil {
-			if !haveWarned {
-				logger.Warn("Revoked entry is nil. Other invalid entries may exist; tidying up since it is no longer useful for any server operations.", "serial", serial)
-			}
-			if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
-				return false, fmt.Errorf("error deleting nil revoked entry with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncRevokedCertCount()
-			continue
+		// If no revokedSerials are returned, we've reached the end of the list
+		if len(revokedSerials) == 0 {
+			break
 		}
 
-		if revokedEntry.Value == nil || len(revokedEntry.Value) == 0 {
-			if !haveWarned {
-				logger.Warn("Revoked entry has nil value. Other invalid entries may exist; tidying up since it is no longer useful for any server operations", "serial", serial)
-			}
-			if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
-				return false, fmt.Errorf("error deleting revoked entry with nil value with serial %s: %w", serial, err)
-			}
-			b.tidyStatusIncRevokedCertCount()
-			continue
+		revokedSerialsCount += uint(len(revokedSerials) + int(revokedDeleted))
+
+		revokedSafetyBuffer := config.SafetyBuffer
+		if config.RevokedSafetyBuffer != nil {
+			revokedSafetyBuffer = *config.RevokedSafetyBuffer
 		}
 
-		err = revokedEntry.DecodeJSON(&revInfo)
-		if err != nil {
-			return false, fmt.Errorf("error decoding revocation entry for serial %q: %w", serial, err)
-		}
+		var revInfo revocationInfo
+		for i, serial := range revokedSerials {
+			// Set the `after` variable for the next ListPage call
+			after = serial
 
-		revokedCert, err := x509.ParseCertificate(revInfo.CertificateBytes)
-		if err != nil {
-			// only log warning once
-			if !haveWarned {
-				msg := "Unable to parse revoked certificate. Other invalid certificates may exist; "
+			b.tidyStatusMessage(fmt.Sprintf("Tidying revoked certificates: checking certificate %d of %d on current page; total revoked certs checked: %d", i, config.PageSize, int(revokedSerialsCount)+i))
+			metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(i))
+
+			// Check for cancel before continuing.
+			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+				return false, tidyCancelledError
+			}
+
+			// Check for pause duration to reduce resource consumption.
+			if config.PauseDuration > (0 * time.Second) {
+				b.revokeStorageLock.Unlock()
+				time.Sleep(config.PauseDuration)
+				b.revokeStorageLock.Lock()
+			}
+
+			revokedEntry, err := req.Storage.Get(ctx, "revoked/"+serial)
+			if err != nil {
+				return false, fmt.Errorf("unable to fetch revoked cert with serial %q: %w", serial, err)
+			}
+
+			if revokedEntry == nil {
+				if !haveWarned {
+					logger.Warn("Revoked entry is nil. Other invalid entries may exist; tidying up since it is no longer useful for any server operations.", "serial", serial)
+				}
+				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+					return false, fmt.Errorf("error deleting nil revoked entry with serial %s: %w", serial, err)
+				}
+				b.tidyStatusIncRevokedCertCount()
+				continue
+			}
+
+			if revokedEntry.Value == nil || len(revokedEntry.Value) == 0 {
+				if !haveWarned {
+					logger.Warn("Revoked entry has nil value. Other invalid entries may exist; tidying up since it is no longer useful for any server operations", "serial", serial)
+				}
+				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+					return false, fmt.Errorf("error deleting revoked entry with nil value with serial %s: %w", serial, err)
+				}
+				b.tidyStatusIncRevokedCertCount()
+				continue
+			}
+
+			err = revokedEntry.DecodeJSON(&revInfo)
+			if err != nil {
+				return false, fmt.Errorf("error decoding revocation entry for serial %q: %w", serial, err)
+			}
+
+			revokedCert, err := x509.ParseCertificate(revInfo.CertificateBytes)
+			if err != nil {
+				// only log warning once
+				if !haveWarned {
+					msg := "Unable to parse revoked certificate. Other invalid certificates may exist; "
+					if config.InvalidCerts {
+						msg += "tidying up since it is not usable."
+					} else {
+						msg += "tidy by enabling tidy_invalid_certs=true."
+					}
+					logger.Warn(msg, "serial", serial, "err", err)
+					haveWarned = true
+				}
+
+				// If tidy_invalid_certs enabled, delete invalid revoked cert.
+				// We know we've already deleted the invalid cert entry via
+				// doTidyCertStore(...) earlier so don't bother deleting that
+				// too.
 				if config.InvalidCerts {
-					msg += "tidying up since it is not usable."
-				} else {
-					msg += "tidy by enabling tidy_invalid_certs=true."
+					if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+						return false, fmt.Errorf("error deleting invalid revoked certificate %s: %w", serial, err)
+					}
+					b.tidyStatusIncRevokedCertCount()
 				}
-				logger.Warn(msg, "serial", serial, "err", err)
-				haveWarned = true
+
+				continue
 			}
 
-			// If tidy_invalid_certs enabled, delete invalid revoked cert.
-			// We know we've already deleted the invalid cert entry via
-			// doTidyCertStore(...) earlier so don't bother deleting that
-			// too.
-			if config.InvalidCerts {
-				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
-					return false, fmt.Errorf("error deleting invalid revoked certificate %s: %w", serial, err)
-				}
-				b.tidyStatusIncRevokedCertCount()
-			}
-
-			continue
-		}
-
-		// Tidy operations over revoked certs should execute prior to
-		// tidyRevokedCerts as that may remove the entry. If that happens,
-		// we won't persist the revInfo changes (as it was deleted instead).
-		var storeCert bool = false
-		if config.IssuerAssocs {
-			if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
-				b.tidyStatusIncMissingIssuerCertCount()
-				revInfo.CertificateIssuer = issuerID("")
-				storeCert = true
-				if associateRevokedCertWithIsssuer(&revInfo, revokedCert, issuerIDCertMap) {
-					fixedIssuers += 1
+			// Tidy operations over revoked certs should execute prior to
+			// tidyRevokedCerts as that may remove the entry. If that happens,
+			// we won't persist the revInfo changes (as it was deleted instead).
+			var storeCert bool = false
+			if config.IssuerAssocs {
+				if !isRevInfoIssuerValid(&revInfo, issuerIDCertMap) {
+					b.tidyStatusIncMissingIssuerCertCount()
+					revInfo.CertificateIssuer = issuerID("")
+					storeCert = true
+					if associateRevokedCertWithIsssuer(&revInfo, revokedCert, issuerIDCertMap) {
+						fixedIssuers += 1
+					}
 				}
 			}
-		}
 
-		if config.RevokedCerts {
-			// Only remove the entries from revoked/ and certs/ if we're
-			// past its NotAfter value. This is because we use the
-			// information on revoked/ to build the CRL and the
-			// information on certs/ for lookup.
+			if config.RevokedCerts {
+				// Only remove the entries from revoked/ and certs/ if we're
+				// past its NotAfter value. This is because we use the
+				// information on revoked/ to build the CRL and the
+				// information on certs/ for lookup.
 
-			if time.Since(revokedCert.NotAfter) > revokedSafetyBuffer {
-				if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
-					return false, fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
+				if time.Since(revokedCert.NotAfter) > revokedSafetyBuffer {
+					if err := req.Storage.Delete(ctx, "revoked/"+serial); err != nil {
+						return false, fmt.Errorf("error deleting serial %q from revoked list: %w", serial, err)
+					}
+					if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
+						return false, fmt.Errorf("error deleting serial %q from store when tidying revoked: %w", serial, err)
+					}
+					rebuildCRL = true
+					storeCert = false
+					b.tidyStatusIncRevokedCertCount()
 				}
-				if err := req.Storage.Delete(ctx, "certs/"+serial); err != nil {
-					return false, fmt.Errorf("error deleting serial %q from store when tidying revoked: %w", serial, err)
-				}
-				rebuildCRL = true
-				storeCert = false
-				b.tidyStatusIncRevokedCertCount()
-			}
-		}
-
-		// If the entry wasn't removed but was otherwise modified,
-		// go ahead and write it back out.
-		if storeCert {
-			revokedEntry, err = logical.StorageEntryJSON("revoked/"+serial, revInfo)
-			if err != nil {
-				return false, fmt.Errorf("error building entry to persist changes to serial %v from revoked list: %w", serial, err)
 			}
 
-			err = req.Storage.Put(ctx, revokedEntry)
-			if err != nil {
-				return false, fmt.Errorf("error persisting changes to serial %v from revoked list: %w", serial, err)
+			// If the entry wasn't removed but was otherwise modified,
+			// go ahead and write it back out.
+			if storeCert {
+				revokedEntry, err = logical.StorageEntryJSON("revoked/"+serial, revInfo)
+				if err != nil {
+					return false, fmt.Errorf("error building entry to persist changes to serial %v from revoked list: %w", serial, err)
+				}
+
+				err = req.Storage.Put(ctx, revokedEntry)
+				if err != nil {
+					return false, fmt.Errorf("error persisting changes to serial %v from revoked list: %w", serial, err)
+				}
 			}
 		}
 	}
 
 	b.tidyStatusLock.RLock()
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries"}, float32(revokedSerialsCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries_remaining"}, float32(uint(revokedSerialsCount)-b.tidyStatus.revokedCertDeletedCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_entries_incorrect_issuers"}, float32(b.tidyStatus.missingIssuerCertCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_entries_fixed_issuers"}, float32(fixedIssuers))
@@ -1396,34 +1454,48 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 	defer b.acmeAccountLock.Unlock()
 
 	sc := b.makeStorageContext(ctx, req.Storage)
-	thumbprints, err := sc.Storage.List(ctx, acmeThumbprintPrefix)
-	if err != nil {
-		return err
+	var after string
+	var thumbprintsCount uint
+
+	for {
+		thumbprints, err := sc.Storage.ListPage(ctx, acmeThumbprintPrefix, after, config.PageSize)
+		if err != nil {
+			return err
+		}
+
+		// If no thumbprints are returned, we've reached the end of the list
+		if len(thumbprints) == 0 {
+			break
+		}
+
+		thumbprintsCount += uint(len(thumbprints))
+
+		for _, thumbprint := range thumbprints {
+			// Set the `after` variable for the next ListPage call
+			after = thumbprint
+
+			err := b.tidyAcmeAccountByThumbprint(b.acmeState, sc, thumbprint, config.SafetyBuffer, config.AcmeAccountSafetyBuffer)
+			if err != nil {
+				logger.Warn("error tidying account %v: %v", thumbprint, err.Error())
+			}
+
+			// Check for cancel before continuing.
+			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+				return tidyCancelledError
+			}
+
+			// Check for pause duration to reduce resource consumption.
+			if config.PauseDuration > (0 * time.Second) {
+				b.acmeAccountLock.Unlock() // Correct the Lock
+				time.Sleep(config.PauseDuration)
+				b.acmeAccountLock.Lock()
+			}
+		}
 	}
 
 	b.tidyStatusLock.Lock()
-	b.tidyStatus.acmeAccountsCount = uint(len(thumbprints))
+	b.tidyStatus.acmeAccountsCount = uint(thumbprintsCount)
 	b.tidyStatusLock.Unlock()
-
-	for _, thumbprint := range thumbprints {
-		err := b.tidyAcmeAccountByThumbprint(b.acmeState, sc, thumbprint, config.SafetyBuffer, config.AcmeAccountSafetyBuffer)
-		if err != nil {
-			logger.Warn("error tidying account %v: %v", thumbprint, err.Error())
-		}
-
-		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return tidyCancelledError
-		}
-
-		// Check for pause duration to reduce resource consumption.
-		if config.PauseDuration > (0 * time.Second) {
-			b.acmeAccountLock.Unlock() // Correct the Lock
-			time.Sleep(config.PauseDuration)
-			b.acmeAccountLock.Lock()
-		}
-
-	}
 
 	// Clean up any unused EAB
 	eabIds, err := b.acmeState.ListEabIds(sc)
@@ -1505,6 +1577,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 			"tidy_move_legacy_ca_bundle":            nil,
 			"tidy_acme":                             nil,
 			"pause_duration":                        nil,
+			"page_size":                             nil,
 			"state":                                 "Inactive",
 			"error":                                 nil,
 			"time_started":                          nil,
@@ -1553,6 +1626,7 @@ func (b *backend) pathTidyStatusRead(_ context.Context, _ *logical.Request, _ *f
 	resp.Data["tidy_move_legacy_ca_bundle"] = b.tidyStatus.tidyBackupBundle
 	resp.Data["tidy_acme"] = b.tidyStatus.tidyAcme
 	resp.Data["pause_duration"] = b.tidyStatus.pauseDuration
+	resp.Data["page_size"] = b.tidyStatus.pageSize
 	resp.Data["time_started"] = b.tidyStatus.timeStarted
 	resp.Data["message"] = b.tidyStatus.message
 	resp.Data["cert_store_deleted_count"] = b.tidyStatus.certStoreDeletedCount
@@ -1660,6 +1734,13 @@ func (b *backend) pathConfigAutoTidyWrite(ctx context.Context, req *logical.Requ
 		}
 	}
 
+	if PageSizeRaw, ok := d.GetOk("page_size"); ok {
+		config.PageSize = PageSizeRaw.(int)
+		if config.PageSize < 5 {
+			return logical.ErrorResponse("page_size must be at least 5"), nil
+		}
+	}
+
 	if expiredIssuers, ok := d.GetOk("tidy_expired_issuers"); ok {
 		config.ExpiredIssuers = expiredIssuers.(bool)
 	}
@@ -1732,6 +1813,7 @@ func (b *backend) tidyStatusStart(config *tidyConfig) {
 		tidyBackupBundle:        config.BackupBundle,
 		tidyAcme:                config.TidyAcme,
 		pauseDuration:           config.PauseDuration.String(),
+		pageSize:                config.PageSize,
 
 		state:       tidyStatusStarted,
 		timeStarted: time.Now(),
@@ -1894,6 +1976,8 @@ The result includes the following fields:
 * 'tidy_move_legacy_ca_bundle': the value of this parameter when initiating the tidy operation
 * 'tidy_acme': the value of this parameter when initiating the tidy operation
 * 'acme_account_safety_buffer': the value of this parameter when initiating the tidy operation
+* 'pause_duration: the value of this parameter when initiating the tidy operation
+* 'page_size': the value of this parameter when initiating the tidy operation
 * 'total_acme_account_count': the total number of acme accounts in the list to be iterated over
 * 'acme_account_deleted_count': the number of revoked acme accounts deleted during the operation
 * 'acme_account_revoked_count': the number of acme accounts revoked during the operation
@@ -1935,6 +2019,7 @@ func getTidyConfigData(config tidyConfig) map[string]interface{} {
 		"issuer_safety_buffer":                     int(config.IssuerSafetyBuffer / time.Second),
 		"acme_account_safety_buffer":               int(config.AcmeAccountSafetyBuffer / time.Second),
 		"pause_duration":                           config.PauseDuration.String(),
+		"page_size":                                config.PageSize,
 		"publish_stored_certificate_count_metrics": config.PublishMetrics,
 		"maintain_stored_certificate_counts":       config.MaintainCount,
 	}

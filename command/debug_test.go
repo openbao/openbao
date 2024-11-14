@@ -5,8 +5,12 @@ package command
 
 import (
 	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mholt/archiver/v3"
 	"github.com/mitchellh/cli"
 	"github.com/openbao/openbao/api/v2"
 )
@@ -182,25 +185,37 @@ func TestDebugCommand_Archive(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			tgz := archiver.NewTarGz()
-			err = tgz.Walk(bundlePath, func(f archiver.File) error {
-				fh, ok := f.Header.(*tar.Header)
-				if !ok {
-					return fmt.Errorf("invalid file header: %#v", f.Header)
-				}
-
-				// Ignore base directory and index file
-				if fh.Name == basePath+"/" || fh.Name == filepath.Join(basePath, "index.json") {
-					return nil
-				}
-
-				if fh.Name != filepath.Join(basePath, "server_status.json") {
-					return fmt.Errorf("unexpected file: %s", fh.Name)
-				}
-				return nil
-			})
+			input, err := os.Open(bundlePath)
 			if err != nil {
-				t.Fatal(err)
+				t.Fatalf("failed opening file for reading: %v", err)
+			}
+			defer input.Close()
+
+			gunzipped, err := gzip.NewReader(input)
+			if err != nil {
+				t.Fatalf("failed reading gzip header: %v", err)
+			}
+			defer gunzipped.Close()
+
+			unarchived := tar.NewReader(gunzipped)
+
+			header, err := unarchived.Next()
+			for err == nil {
+				// Ignore base directory and index file
+				if header.Name == basePath+"/" || header.Name == filepath.Join(basePath, "index.json") {
+					header, err = unarchived.Next()
+					continue
+				}
+
+				if header.Name != filepath.Join(basePath, "server_status.json") {
+					t.Fatalf("unexpected file: %s ; basePath=%v", header.Name, basePath)
+				}
+
+				header, err = unarchived.Next()
+			}
+
+			if err != nil && !errors.Is(err, io.EOF) {
+				t.Fatalf("failed reading file: %v", err)
 			}
 		})
 	}
@@ -291,29 +306,51 @@ func TestDebugCommand_CaptureTargets(t *testing.T) {
 				t.Fatalf("failed to open archive: %s", err)
 			}
 
-			tgz := archiver.NewTarGz()
-			err = tgz.Walk(bundlePath, func(f archiver.File) error {
-				fh, ok := f.Header.(*tar.Header)
-				if !ok {
-					t.Fatalf("invalid file header: %#v", f.Header)
-				}
+			input, err := os.Open(bundlePath)
+			if err != nil {
+				t.Fatalf("failed opening file for reading: %v", err)
+			}
+			defer input.Close()
 
+			gunzipped, err := gzip.NewReader(input)
+			if err != nil {
+				t.Fatalf("failed reading gzip header: %v", err)
+			}
+			defer gunzipped.Close()
+
+			unarchived := tar.NewReader(gunzipped)
+
+			foundMap := make(map[string]bool)
+			header, err := unarchived.Next()
+			for err == nil {
 				// Ignore base directory and index file
-				if fh.Name == basePath+"/" || fh.Name == filepath.Join(basePath, "index.json") {
-					return nil
+				if header.Name == basePath+"/" || header.Name == filepath.Join(basePath, "index.json") {
+					header, err = unarchived.Next()
+					continue
 				}
 
+				foundMap[header.Name] = true
+
+				header, err = unarchived.Next()
+			}
+
+			if err != nil && !errors.Is(err, io.EOF) {
+				t.Fatalf("failed reading file: %v", err)
+			}
+
+			for actualFilePath := range foundMap {
+				found := false
 				for _, fileName := range tc.expectedFiles {
-					if fh.Name == filepath.Join(basePath, fileName) {
-						return nil
+					filePath := filepath.Join(basePath, fileName)
+					if actualFilePath == filePath {
+						found = true
+						break
 					}
 				}
 
-				// If we reach here, it means that this is an unexpected file
-				return fmt.Errorf("unexpected file: %s", fh.Name)
-			})
-			if err != nil {
-				t.Fatal(err)
+				if !found {
+					t.Fatalf("%v is unexpected present in archive", actualFilePath)
+				}
 			}
 		})
 	}
@@ -679,37 +716,47 @@ func TestDebugCommand_PartialPermissions(t *testing.T) {
 		t.Fatalf("failed to open archive: %s", err)
 	}
 
-	tgz := archiver.NewTarGz()
-	err = tgz.Walk(bundlePath, func(f archiver.File) error {
-		fh, ok := f.Header.(*tar.Header)
-		if !ok {
-			t.Fatalf("invalid file header: %#v", f.Header)
+	input, err := os.Open(bundlePath)
+	if err != nil {
+		t.Fatalf("failed opening file for reading: %v", err)
+	}
+	defer input.Close()
+
+	gunzipped, err := gzip.NewReader(input)
+	if err != nil {
+		t.Fatalf("failed reading gzip header: %v", err)
+	}
+	defer gunzipped.Close()
+
+	unarchived := tar.NewReader(gunzipped)
+
+	header, err := unarchived.Next()
+	for err == nil {
+		// Ignore base directory
+		if header.Name == basePath+"/" {
+			header, err = unarchived.Next()
+			continue
 		}
 
-		// Ignore base directory and index file
-		if fh.Name == basePath+"/" {
-			return nil
-		}
-
-		// Ignore directories, which still get created by pprof but should
-		// otherwise be empty.
-		if fh.FileInfo().IsDir() {
-			return nil
+		if header.Typeflag == tar.TypeDir {
+			header, err = unarchived.Next()
+			continue
 		}
 
 		switch {
-		case fh.Name == filepath.Join(basePath, "index.json"):
-		case fh.Name == filepath.Join(basePath, "replication_status.json"):
-		case fh.Name == filepath.Join(basePath, "server_status.json"):
-		case fh.Name == filepath.Join(basePath, "bao.log"):
+		case header.Name == filepath.Join(basePath, "index.json"):
+		case header.Name == filepath.Join(basePath, "replication_status.json"):
+		case header.Name == filepath.Join(basePath, "server_status.json"):
+		case header.Name == filepath.Join(basePath, "bao.log"):
 		default:
-			return fmt.Errorf("unexpected file: %s", fh.Name)
+			t.Fatalf("unexpected file: %s", header.Name)
 		}
 
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
+		header, err = unarchived.Next()
+	}
+
+	if err != nil && !errors.Is(err, io.EOF) {
+		t.Fatalf("failed reading file: %v", err)
 	}
 }
 
@@ -781,13 +828,13 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			}
 
 			bundlePath := filepath.Join(testDir, tc.outputFile)
-			fs, err := os.Stat(bundlePath)
+			stat, err := os.Stat(bundlePath)
 			if os.IsNotExist(err) {
 				t.Log(ui.OutputWriter.String())
 				t.Fatal(err)
 			}
 			// check permissions of the parent debug directory
-			err = isValidFilePermissions(fs)
+			err = isValidFilePermissions(stat.Mode(), stat.Name())
 			if err != nil {
 				t.Fatalf(err.Error())
 			}
@@ -795,23 +842,35 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 			// check permissions of the files within the parent directory
 			switch tc.compress {
 			case true:
-				tgz := archiver.NewTarGz()
+				input, err := os.Open(bundlePath)
+				if err != nil {
+					t.Fatalf("failed opening file for reading: %v", err)
+				}
+				defer input.Close()
 
-				err = tgz.Walk(bundlePath, func(f archiver.File) error {
-					fh, ok := f.Header.(*tar.Header)
-					if !ok {
-						return fmt.Errorf("invalid file header: %#v", f.Header)
-					}
-					err = isValidFilePermissions(fh.FileInfo())
-					if err != nil {
-						t.Fatalf(err.Error())
-					}
-					return nil
-				})
+				gunzipped, err := gzip.NewReader(input)
+				if err != nil {
+					t.Fatalf("failed reading gzip header: %v", err)
+				}
+				defer gunzipped.Close()
 
+				unarchived := tar.NewReader(gunzipped)
+
+				header, err := unarchived.Next()
+				for err == nil {
+					if err := isValidFilePermissions(fs.FileMode(header.Mode), header.Name); err != nil {
+						t.Fatalf("%v", err)
+					}
+
+					header, err = unarchived.Next()
+				}
+
+				if err != nil && !errors.Is(err, io.EOF) {
+					t.Fatalf("failed reading file: %v", err)
+				}
 			case false:
 				err = filepath.Walk(bundlePath, func(path string, info os.FileInfo, err error) error {
-					err = isValidFilePermissions(info)
+					err = isValidFilePermissions(info.Mode(), info.Name())
 					if err != nil {
 						t.Fatalf(err.Error())
 					}
@@ -826,19 +885,18 @@ func TestDebugCommand_InsecureUmask(t *testing.T) {
 	}
 }
 
-func isValidFilePermissions(info os.FileInfo) (err error) {
-	mode := info.Mode()
+func isValidFilePermissions(mode fs.FileMode, name string) (err error) {
 	// check group permissions
 	for i := 4; i < 7; i++ {
 		if string(mode.String()[i]) != "-" {
-			return fmt.Errorf("expected no permissions for group but got %s permissions for file %s", string(mode.String()[i]), info.Name())
+			return fmt.Errorf("expected no permissions for group but got %s permissions for file %s", string(mode.String()[i]), name)
 		}
 	}
 
 	// check others permissions
 	for i := 7; i < 10; i++ {
 		if string(mode.String()[i]) != "-" {
-			return fmt.Errorf("expected no permissions for others but got %s permissions for file %s", string(mode.String()[i]), info.Name())
+			return fmt.Errorf("expected no permissions for others but got %s permissions for file %s", string(mode.String()[i]), name)
 		}
 	}
 	return err

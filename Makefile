@@ -359,4 +359,10 @@ dev-gorelease:
 	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	goreleaser release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
+
+.PHONY: goreleaser-check
+goreleaser-check:
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check

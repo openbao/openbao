@@ -1,3 +1,24 @@
+## 2.0.3
+## November 15, 2024
+
+SECURITY:
+
+* core/identity: fix root namespace privilege escalation via entity modification. HCSEC-2024-21 / CVE-2024-9180. [[GH-695](https://github.com/openbao/openbao/pull/695)]
+* raft: Fix memory exhaustion when processing raft cluster join requests; results in longer challenge/answers. HCSEC-2024-26 / CVE-2024-8185. [[GH-690](https://github.com/openbao/openbao/pull/690)]
+
+CHANGES:
+
+* command/debug: Replace mholt/archiver with standard library utils. This may change file permissions but does not affect archive layout. [[GH-611](https://github.com/openbao/openbao/pull/611)]
+
+IMPROVEMENTS:
+
+* core: Update to Go 1.22.9. [[GH-725](https://github.com/openbao/openbao/pull/725)]
+* core: Upgrade RHEL UBI container image to 9.5. [[GH-701](https://github.com/openbao/openbao/pull/701)]
+
+BUG FIXES:
+
+* release: remove changelog/ directory from binary release tarballs [[GH-641](https://github.com/openbao/openbao/pull/641)]
+
 ## 2.0.2
 ## October 5, 2024
 

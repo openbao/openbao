@@ -122,7 +122,7 @@ var defaultTidyConfig = tidyConfig{
 	IssuerSafetyBuffer:      365 * 24 * time.Hour,
 	AcmeAccountSafetyBuffer: 30 * 24 * time.Hour,
 	PauseDuration:           0 * time.Second,
-	PageSize:                50,
+	PageSize:                1000,
 	MaintainCount:           false,
 	PublishMetrics:          false,
 }
@@ -777,7 +777,7 @@ func (b *backend) pathTidyWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 	}
 
-	if pageSize < 5 {
+	if pageSize > 0 && pageSize < 5 {
 		return logical.ErrorResponse("page_size must be greater than five"), nil
 	}
 
@@ -938,8 +938,17 @@ func (b *backend) startTidyOperation(req *logical.Request, config *tidyConfig) {
 }
 
 func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, logger hclog.Logger, config *tidyConfig) (uint, error) {
+	revokedSafetyBuffer := config.SafetyBuffer
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBuffer = *config.RevokedSafetyBuffer
+	}
+
+	// Total number of certificates
+	var totalSerialCount int
+	// Number of certificates on current page. This value is <= PageSize.
+	var lenSerials int
+
 	var after string
-	var serialCount uint
 	var revokedDeleted uint
 	haveWarned := false
 
@@ -955,19 +964,12 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 			break
 		}
 
-		serialCount += uint(len(serials))
-
-		revokedSafetyBuffer := config.SafetyBuffer
-		if config.RevokedSafetyBuffer != nil {
-			revokedSafetyBuffer = *config.RevokedSafetyBuffer
-		}
+		lenSerials = len(serials)
+		after = serials[lenSerials-1]
 
 		for i, serial := range serials {
-			// Set the `after` variable for the next ListPage call
-			after = serial
-
-			b.tidyStatusMessage(fmt.Sprintf("Tidying certificate store: checking entry %d of %d on current page; total certs checked: %d", i, config.PageSize, int(serialCount)+i))
-			metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(serialCount)+float32(i))
+			b.tidyStatusMessage(fmt.Sprintf("Tidying certificate store: checking entry %d of %d on current page; total certs checked: %d", i, lenSerials, totalSerialCount+i))
+			metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_current_entry"}, float32(totalSerialCount+i))
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
@@ -1064,11 +1066,14 @@ func (b *backend) doTidyCertStore(ctx context.Context, req *logical.Request, log
 				b.tidyStatusIncCertStoreCount()
 			}
 		}
+
+		// Update the cumulative count after processing the page
+		totalSerialCount += lenSerials
 	}
 
 	b.tidyStatusLock.RLock()
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries"}, float32(serialCount))
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries_remaining"}, float32(uint(serialCount)-b.tidyStatus.certStoreDeletedCount))
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries"}, float32(totalSerialCount))
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "cert_store_total_entries_remaining"}, float32(uint(totalSerialCount)-b.tidyStatus.certStoreDeletedCount))
 	b.tidyStatusLock.RUnlock()
 
 	return revokedDeleted, nil
@@ -1085,8 +1090,20 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 		return false, err
 	}
 
+	revokedSafetyBuffer := config.SafetyBuffer
+	if config.RevokedSafetyBuffer != nil {
+		revokedSafetyBuffer = *config.RevokedSafetyBuffer
+	}
+
+	// Number of certificates on current page. This value is <= PageSize.
+	var lenSerials int
+	// Total number of revoked certificates in storage
+	var totalRevokedSerialCount int = 0
+	// Total number of deleted revoked certificates in this tidy call
+	var revokedDeletedCount int = 0
+
 	var after string
-	var revokedSerialsCount uint
+	var revInfo revocationInfo
 	haveWarned := false
 	rebuildCRL := false
 	fixedIssuers := 0
@@ -1102,20 +1119,12 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 			break
 		}
 
-		revokedSerialsCount += uint(len(revokedSerials) + int(revokedDeleted))
+		lenSerials = len(revokedSerials)
+		after = revokedSerials[lenSerials-1]
 
-		revokedSafetyBuffer := config.SafetyBuffer
-		if config.RevokedSafetyBuffer != nil {
-			revokedSafetyBuffer = *config.RevokedSafetyBuffer
-		}
-
-		var revInfo revocationInfo
 		for i, serial := range revokedSerials {
-			// Set the `after` variable for the next ListPage call
-			after = serial
-
-			b.tidyStatusMessage(fmt.Sprintf("Tidying revoked certificates: checking certificate %d of %d on current page; total revoked certs checked: %d", i, config.PageSize, int(revokedSerialsCount)+i))
-			metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(i))
+			b.tidyStatusMessage(fmt.Sprintf("Tidying revoked certificates: checking certificate %d of %d on current page; total revoked certs checked: %d", i, lenSerials, int(totalRevokedSerialCount)+i))
+			metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_current_entry"}, float32(int(totalRevokedSerialCount)+i))
 
 			// Check for cancel before continuing.
 			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
@@ -1142,6 +1151,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 					return false, fmt.Errorf("error deleting nil revoked entry with serial %s: %w", serial, err)
 				}
 				b.tidyStatusIncRevokedCertCount()
+				revokedDeletedCount += 1
 				continue
 			}
 
@@ -1153,6 +1163,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 					return false, fmt.Errorf("error deleting revoked entry with nil value with serial %s: %w", serial, err)
 				}
 				b.tidyStatusIncRevokedCertCount()
+				revokedDeletedCount += 1
 				continue
 			}
 
@@ -1184,6 +1195,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 						return false, fmt.Errorf("error deleting invalid revoked certificate %s: %w", serial, err)
 					}
 					b.tidyStatusIncRevokedCertCount()
+					revokedDeletedCount += 1
 				}
 
 				continue
@@ -1220,6 +1232,7 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 					rebuildCRL = true
 					storeCert = false
 					b.tidyStatusIncRevokedCertCount()
+					revokedDeletedCount += 1
 				}
 			}
 
@@ -1237,11 +1250,17 @@ func (b *backend) doTidyRevocationStore(ctx context.Context, req *logical.Reques
 				}
 			}
 		}
+
+		// Update the cumulative count after processing the page
+		totalRevokedSerialCount += lenSerials
 	}
 
+	totalRevokedSerialCount += int(revokedDeleted)
+	revokedDeletedCount += int(revokedDeleted)
+
 	b.tidyStatusLock.RLock()
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries"}, float32(revokedSerialsCount))
-	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries_remaining"}, float32(uint(revokedSerialsCount)-b.tidyStatus.revokedCertDeletedCount))
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries"}, float32(totalRevokedSerialCount))
+	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_total_entries_remaining"}, float32(totalRevokedSerialCount-revokedDeletedCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_entries_incorrect_issuers"}, float32(b.tidyStatus.missingIssuerCertCount))
 	metrics.SetGauge([]string{"secrets", "pki", "tidy", "revoked_cert_entries_fixed_issuers"}, float32(fixedIssuers))
 	b.tidyStatusLock.RUnlock()
@@ -1456,6 +1475,7 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 	sc := b.makeStorageContext(ctx, req.Storage)
 	var after string
 	var thumbprintsCount uint
+	var lenThumbprints int
 
 	for {
 		thumbprints, err := sc.Storage.ListPage(ctx, acmeThumbprintPrefix, after, config.PageSize)
@@ -1468,11 +1488,11 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 			break
 		}
 
-		thumbprintsCount += uint(len(thumbprints))
+		lenThumbprints = len(thumbprints)
+		after = thumbprints[lenThumbprints-1]
 
-		for _, thumbprint := range thumbprints {
-			// Set the `after` variable for the next ListPage call
-			after = thumbprint
+		for i, thumbprint := range thumbprints {
+			b.tidyStatusMessage(fmt.Sprintf("Tidying Acme: checking entry %d of %d on current page; total thumbprints checked: %d", i, lenThumbprints, int(thumbprintsCount)+i))
 
 			err := b.tidyAcmeAccountByThumbprint(b.acmeState, sc, thumbprint, config.SafetyBuffer, config.AcmeAccountSafetyBuffer)
 			if err != nil {
@@ -1491,47 +1511,63 @@ func (b *backend) doTidyAcme(ctx context.Context, req *logical.Request, logger h
 				b.acmeAccountLock.Lock()
 			}
 		}
+		thumbprintsCount += uint(lenThumbprints)
 	}
 
 	b.tidyStatusLock.Lock()
 	b.tidyStatus.acmeAccountsCount = uint(thumbprintsCount)
 	b.tidyStatusLock.Unlock()
 
-	// Clean up any unused EAB
-	eabIds, err := b.acmeState.ListEabIds(sc)
-	if err != nil {
-		return fmt.Errorf("failed listing EAB ids: %w", err)
-	}
-
-	for _, eabId := range eabIds {
-		eab, err := b.acmeState.LoadEab(sc, eabId)
+	// Clean up unused ACME EABs with pagination
+	var eabAfter string
+	var eabCount uint
+	var lenEabIds int
+	for {
+		eabIds, err := b.acmeState.ListEabIdsPage(sc, eabAfter, config.PageSize)
 		if err != nil {
-			if errors.Is(err, ErrStorageItemNotFound) {
-				// We don't need to worry about a consumed EAB
-				continue
-			}
-			return err
+			return fmt.Errorf("failed listing EAB ids: %w", err)
 		}
 
-		eabExpiration := eab.CreatedOn.Add(config.AcmeAccountSafetyBuffer)
-		if time.Now().After(eabExpiration) {
-			_, err := b.acmeState.DeleteEab(sc, eabId)
+		// If no eabIds are returned, we've reached the end of the list
+		if len(eabIds) == 0 {
+			break
+		}
+
+		lenEabIds = len(eabIds)
+		eabAfter = eabIds[lenEabIds-1]
+
+		for i, eabId := range eabIds {
+			b.tidyStatusMessage(fmt.Sprintf("Tidying Acme EAB Id's: checking entry %d of %d on current page; total EAB Id's checked: %d", i, lenEabIds, int(eabCount)+i))
+
+			eab, err := b.acmeState.LoadEab(sc, eabId)
 			if err != nil {
-				return fmt.Errorf("failed to tidy eab %s: %w", eabId, err)
+				if errors.Is(err, ErrStorageItemNotFound) {
+					// We don't need to worry about a consumed EAB
+					continue
+				}
+				return err
+			}
+
+			eabExpiration := eab.CreatedOn.Add(config.AcmeAccountSafetyBuffer)
+			if time.Now().After(eabExpiration) {
+				if _, err := b.acmeState.DeleteEab(sc, eabId); err != nil {
+					return fmt.Errorf("failed to tidy eab %s: %w", eabId, err)
+				}
+			}
+
+			// Check for cancel before continuing.
+			if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
+				return tidyCancelledError
+			}
+
+			// Check for pause duration to reduce resource consumption.
+			if config.PauseDuration > 0 {
+				b.acmeAccountLock.Unlock() // Correct the Lock
+				time.Sleep(config.PauseDuration)
+				b.acmeAccountLock.Lock()
 			}
 		}
-
-		// Check for cancel before continuing.
-		if atomic.CompareAndSwapUint32(b.tidyCancelCAS, 1, 0) {
-			return tidyCancelledError
-		}
-
-		// Check for pause duration to reduce resource consumption.
-		if config.PauseDuration > (0 * time.Second) {
-			b.acmeAccountLock.Unlock() // Correct the Lock
-			time.Sleep(config.PauseDuration)
-			b.acmeAccountLock.Lock()
-		}
+		eabCount += uint(lenEabIds)
 	}
 
 	return nil

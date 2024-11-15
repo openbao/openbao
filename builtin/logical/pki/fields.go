@@ -549,10 +549,11 @@ after being marked revoked or deactivated.`,
 
 	fields["page_size"] = &framework.FieldSchema{
 		Type: framework.TypeInt,
-		Description: `The number of certificates to process per page during list pagination. 
-This setting enables tidy to handle certificates in smaller increments, rather than loading 
-the entire set into memory at once. 
-Defaults to 50 certificates, with a minimum of 5 certificates per page.`,
+		Description: `The number of certificates to process per page during list 
+pagination. This setting enables tidy to handle certificates in smaller increments,
+rather than loading the entire set into memory at once. 
+Defaults to 1000 certificates, with a minimum of 5 certificates per page. To 
+revert to the old behavior, set page size to any value less than zero.`,
 		Default: int(defaultTidyConfig.PageSize),
 	}
 

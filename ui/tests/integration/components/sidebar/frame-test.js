@@ -18,7 +18,7 @@ module('Integration | Component | sidebar-frame', function (hooks) {
     assert.dom('[data-test-sidebar-nav]').doesNotExist('Sidebar is hidden');
   });
 
-  test('it should render link status, console ui panel and yield block for app content', async function (assert) {
+  test('it should render console ui panel and yield block for app content', async function (assert) {
     const currentCluster = this.owner.lookup('service:currentCluster');
     currentCluster.setCluster({ hcpLinkStatus: 'connected' });
     const version = this.owner.lookup('service:version');
@@ -32,7 +32,6 @@ module('Integration | Component | sidebar-frame', function (hooks) {
       </Sidebar::Frame>
     `);
 
-    assert.dom('.link-status').exists('Link status component renders');
     assert.dom('[data-test-component="console/ui-panel"]').exists('Console UI panel renders');
     assert.dom('.page-container').exists('Block yields for app content');
   });

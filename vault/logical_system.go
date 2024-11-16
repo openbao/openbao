@@ -2636,18 +2636,23 @@ func (b *SystemBackend) handleDisableAuth(ctx context.Context, req *logical.Requ
 // handlePoliciesList handles /sys/policy/ and /sys/policies/<type> endpoints to provide the enabled policies
 func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		prefix := ""
+		if _, present := data.Schema["name"]; present {
+			prefix = data.Get("name").(string)
+		}
+
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
 			return nil, err
 		}
-		policies, err := b.Core.policyStore.ListPolicies(ctx, policyType)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix)
 		if err != nil {
 			return nil, err
 		}
 
 		switch policyType {
 		case PolicyTypeACL:
-			if ns.ID == namespace.RootNamespaceID {
+			if ns.ID == namespace.RootNamespaceID && prefix == "" {
 				policies = append(policies, "root")
 			}
 			resp := logical.ListResponse(policies)

@@ -488,6 +488,10 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 
 // ListPolicies is used to list the available policies
 func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType) ([]string, error) {
+	return ps.ListPoliciesWithPrefix(ctx, policyType, "")
+}
+
+func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType PolicyType, prefix string) ([]string, error) {
 	defer metrics.MeasureSince([]string{"policy", "list_policies"}, time.Now())
 
 	ns, err := namespace.FromContext(ctx)
@@ -509,7 +513,7 @@ func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType) 
 	var keys []string
 	switch policyType {
 	case PolicyTypeACL:
-		keys, err = logical.CollectKeys(ctx, view)
+		keys, err = logical.CollectKeysWithPrefix(ctx, view, prefix)
 	default:
 		return nil, fmt.Errorf("unknown policy type %q", policyType)
 	}

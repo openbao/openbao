@@ -10,7 +10,6 @@ const ALL_FEATURES = [
   'Performance Replication',
   'DR Replication',
   'MFA',
-  'Sentinel',
   'Seal Wrapping',
   'Control Groups',
   'Performance Standby',

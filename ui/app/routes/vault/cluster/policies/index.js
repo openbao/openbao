@@ -10,15 +10,14 @@ import ListRoute from 'core/mixins/list-route';
 
 export default Route.extend(ClusterRoute, ListRoute, {
   store: service(),
-  version: service(),
 
-  shouldReturnEmptyModel(policyType, version) {
-    return policyType !== 'acl' && (version.get('isOSS') || !version.get('hasSentinel'));
+  shouldReturnEmptyModel(policyType) {
+    return policyType !== 'acl';
   },
 
   model(params) {
     const policyType = this.policyType();
-    if (this.shouldReturnEmptyModel(policyType, this.version)) {
+    if (this.shouldReturnEmptyModel(policyType)) {
       return;
     }
     return this.store

@@ -27,7 +27,7 @@
       class="toolbar-link"
       @filename={{this.model.name}}
       @data={{this.model.policy}}
-      @extension={{if (eq this.policyType "acl") this.model.format "sentinel"}}
+      @extension={{this.model.format}}
     >
       Download policy
       <Chevron @isButton={{true}} />

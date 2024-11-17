@@ -20,7 +20,7 @@ module('Integration | Component | sidebar-frame', function (hooks) {
 
   test('it should render console ui panel and yield block for app content', async function (assert) {
     const currentCluster = this.owner.lookup('service:currentCluster');
-    currentCluster.setCluster({ hcpLinkStatus: 'connected' });
+    currentCluster.setCluster({});
     const version = this.owner.lookup('service:version');
     version.version = '1.13.0-dev1+ent';
 

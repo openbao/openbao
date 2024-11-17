@@ -20,10 +20,6 @@ export default class VersionService extends Service {
     return this.features.includes('DR Replication');
   }
 
-  get hasSentinel() {
-    return this.features.includes('Sentinel');
-  }
-
   get hasNamespaces() {
     return this.features.includes('Namespaces');
   }

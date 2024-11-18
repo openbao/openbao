@@ -319,7 +319,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Sign the intermediate CSR using /pki
 	secret, err = client.Logical().Write("pki/root/sign-intermediate", map[string]interface{}{
-		"permitted_dns_domains": ".myvault.com",
+		"permitted_dns_domains": ".example.com",
 		"csr":                   intermediateCSR,
 	})
 	if err != nil {
@@ -337,7 +337,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Create a role on the intermediate CA mount
 	_, err = client.Logical().Write("pki2/roles/myvault-dot-com", map[string]interface{}{
-		"allowed_domains":  "myvault.com",
+		"allowed_domains":  "example.com",
 		"allow_subdomains": "true",
 		"max_ttl":          "5m",
 	})
@@ -347,7 +347,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Issue a leaf cert using the intermediate CA
 	secret, err = client.Logical().Write("pki2/issue/myvault-dot-com", map[string]interface{}{
-		"common_name": "cert.myvault.com",
+		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 	})
@@ -367,7 +367,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 
 	// Set the intermediate CA cert as a trusted certificate in the backend
 	_, err = client.Logical().Write("auth/cert/certs/myvault-dot-com", map[string]interface{}{
-		"display_name": "myvault.com",
+		"display_name": "example.com",
 		"policies":     "default",
 		"certificate":  intermediateCertPEM,
 	})

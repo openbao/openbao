@@ -256,7 +256,7 @@ func TestSignRevocationList(t *testing.T) {
 	// Generate internal CA.
 	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 	})
 	require.NoError(t, err)
 	caCert := parseCert(t, resp.Data["certificate"].(string))

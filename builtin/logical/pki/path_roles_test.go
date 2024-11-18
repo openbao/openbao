@@ -27,7 +27,7 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 	}
 
@@ -132,7 +132,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 		"key_usage":       []string{"KeyEncipherment", "DigitalSignature"},
 	}
@@ -225,7 +225,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 		"ou":              []string{"abc", "123"},
 		"organization":    []string{"org1", "org2"},
@@ -546,7 +546,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 	}
 
@@ -591,7 +591,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 	roleReq.Operation = logical.UpdateOperation
 	roleReq.Path = "roles/testrole_nostore"
 	roleReq.Data["no_store"] = true
-	roleReq.Data["allowed_domain"] = "myvault.com"
+	roleReq.Data["allowed_domain"] = "example.com"
 	roleReq.Data["allow_subdomains"] = true
 	roleReq.Data["ttl"] = "5h"
 
@@ -613,7 +613,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 
 	// issue a certificate and test that it's not stored
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -629,7 +629,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 	}
 
 	issueData := map[string]interface{}{
-		"common_name": "cert.myvault.com",
+		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 		"ttl":         "1h",
@@ -667,7 +667,7 @@ func TestPki_CertsLease(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -685,7 +685,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	roleData := map[string]interface{}{
-		"allowed_domains":  "myvault.com",
+		"allowed_domains":  "example.com",
 		"allow_subdomains": true,
 		"ttl":              "2h",
 	}
@@ -703,7 +703,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	issueData := map[string]interface{}{
-		"common_name": "cert.myvault.com",
+		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -1054,7 +1054,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}

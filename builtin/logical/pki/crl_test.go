@@ -29,7 +29,7 @@ func TestBackend_CRL_EnableDisableRoot(t *testing.T) {
 
 	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -177,7 +177,7 @@ func TestBackend_CRL_AllKeyTypeSigAlgos(t *testing.T) {
 
 		resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 			"ttl":            "40h",
-			"common_name":    "myvault.com",
+			"common_name":    "example.com",
 			"key_type":       tc.KeyType,
 			"key_bits":       tc.KeyBits,
 			"signature_bits": tc.SigBits,
@@ -220,7 +220,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 
 	resp, err := CBWrite(b_root, s_root, "root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -230,7 +230,7 @@ func crlEnableDisableIntermediateTestForBackend(t *testing.T, withRoot bool) {
 	b_int, s_int := CreateBackendWithStorage(t)
 
 	resp, err = CBWrite(b_int, s_int, "intermediate/generate/internal", map[string]interface{}{
-		"common_name": "intermediate myvault.com",
+		"common_name": "intermediate example.com",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1511,7 +1511,7 @@ func TestRevokeExpiredCert(t *testing.T) {
 	// Generate a root certificate for the PKI.
 	resp, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
 		"ttl":         "40h",
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"key_type":    "ec",
 	})
 	require.NoError(t, err)

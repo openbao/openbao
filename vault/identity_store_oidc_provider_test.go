@@ -3455,7 +3455,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 		"p1": map[string]interface{}{
 			"allowed_client_ids": []string{"xyz"},
 			"scopes_supported":   []string{"groups"},
-			"issuer":             "https://myvault.com:8200",
+			"issuer":             "https://example.com:8200",
 		},
 	}
 	for name, p := range providers {

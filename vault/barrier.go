@@ -34,13 +34,9 @@ var (
 )
 
 const (
-	// barrierInitPath is the path used to store our init sentinel file
-	barrierInitPath = "barrier/init"
-
 	// keyringPath is the location of the keyring data. This is encrypted
 	// by the root key.
-	keyringPath   = "core/keyring"
-	keyringPrefix = "core/"
+	keyringPath = "core/keyring"
 
 	// keyringUpgradePrefix is the path used to store keyring update entries.
 	// When running in HA mode, the active instance will install the new key

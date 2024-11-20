@@ -31,7 +31,6 @@ import (
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/reloadutil"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
@@ -1548,12 +1547,12 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 		// unseal the node.
 		for {
 			if !keyringFound {
-				keys, err := c.underlyingPhysical.List(ctx, keyringPrefix)
+				entry, err := c.underlyingPhysical.Get(ctx, keyringPath)
 				if err != nil {
 					c.logger.Error("failed to list physical keys", "error", err)
 					return
 				}
-				if strutil.StrListContains(keys, "keyring") {
+				if entry != nil {
 					keyringFound = true
 				}
 			}

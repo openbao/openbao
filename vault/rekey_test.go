@@ -326,16 +326,6 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	}
 }
 
-func TestCore_Rekey_Legacy(t *testing.T) {
-	bc := &SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
-	c, masterKeys, _, root := TestCoreUnsealedWithConfigSealOpts(t, bc, nil,
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysNotSupported})
-	testCore_Rekey_Update_Common(t, c, masterKeys, root, false)
-}
-
 func TestCore_Rekey_Invalid(t *testing.T) {
 	bc := &SealConfig{
 		SecretShares:    5,

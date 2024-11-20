@@ -27,9 +27,6 @@ type InitParams struct {
 	BarrierConfig   *SealConfig
 	RecoveryConfig  *SealConfig
 	RootTokenPGPKey string
-	// LegacyShamirSeal should only be used in test code, we don't want to
-	// give the user a way to create legacy shamir seals.
-	LegacyShamirSeal bool
 }
 
 // InitResult is used to provide the key parts back after
@@ -182,11 +179,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}
 	}
 
-	if initParams.LegacyShamirSeal {
-		barrierConfig.StoredShares = 0
-	} else {
-		barrierConfig.StoredShares = 1
-	}
+	barrierConfig.StoredShares = 1
 
 	if len(barrierConfig.PGPKeys) > 0 && len(barrierConfig.PGPKeys) != barrierConfig.SecretShares {
 		return nil, fmt.Errorf("incorrect number of PGP keys")

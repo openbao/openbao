@@ -1411,8 +1411,7 @@ func (c *Core) Unseal(key []byte) (bool, error) {
 // and if we don't have enough we return early.  Otherwise we get
 // back the combined key.
 //
-// For legacy shamir the combined key *is* the master key.  For
-// shamir the combined key is used to decrypt the master key
+// For shamir the combined key is used to decrypt the master key
 // read from storage.  For autoseal the combined key isn't used
 // except to verify that the stored recovery key matches.
 //
@@ -1482,7 +1481,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	}
 
 	// getUnsealKey returns either a recovery key (in the case of an autoseal)
-	// or a master key (legacy shamir) or an unseal key (new-style shamir).
+	// or an unseal key (new-style shamir).
 	combinedKey, err := c.getUnsealKey(ctx, sealToUse)
 	if err != nil || combinedKey == nil {
 		return err
@@ -1505,8 +1504,6 @@ func (c *Core) unsealWithRaft(combinedKey []byte) error {
 	ctx := context.Background()
 
 	if c.seal.BarrierType() == wrapping.WrapperTypeShamir {
-		// If this is a legacy shamir seal this serves no purpose but it
-		// doesn't hurt.
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {
 			err = shamirWrapper.SetAesGcmKeyBytes(combinedKey)
@@ -1793,8 +1790,7 @@ func (c *Core) migrateSeal(ctx context.Context) error {
 			return fmt.Errorf("error generating new master key: %w", err)
 		}
 
-		// Rekey the barrier.  This handles the case where the shamir seal we're
-		// migrating from was a legacy seal without a stored master key.
+		// Rekey the barrier.
 		if err := c.barrier.Rekey(ctx, newMasterKey); err != nil {
 			return fmt.Errorf("error rekeying barrier during migration: %w", err)
 		}
@@ -2651,16 +2647,8 @@ func (c *Core) adjustForSealMigration(unwrapSeal Seal) error {
 	// c.migrationInfo.seal (old seal) and c.seal (new seal) populated.
 	unwrapSeal.SetCore(c)
 
-	// No stored recovery seal config found, what about the legacy recovery config?
 	if existBarrierSealConfig.Type != wrapping.WrapperTypeShamir.String() && existRecoverySealConfig == nil {
-		entry, err := c.physical.Get(ctx, recoverySealConfigPath)
-		if err != nil {
-			return fmt.Errorf("failed to read %q recovery seal configuration: %w", existBarrierSealConfig.Type, err)
-		}
-		if entry == nil {
-			return errors.New("Recovery seal configuration not found for existing seal")
-		}
-		return errors.New("Cannot migrate seals while using a legacy recovery seal config")
+		return errors.New("Recovery seal configuration not found for existing seal")
 	}
 
 	c.migrationInfo = &migrationInformation{
@@ -2821,9 +2809,6 @@ func (c *Core) unsealKeyToMasterKey(ctx context.Context, seal Seal, combinedKey 
 			return nil, fmt.Errorf("unable to retrieve stored keys: %w", err)
 		}
 		return storedKeys[0], nil
-
-	case vaultseal.StoredKeysNotSupported:
-		return combinedKey, nil
 	}
 	return nil, fmt.Errorf("invalid seal")
 }

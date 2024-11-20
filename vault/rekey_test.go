@@ -26,7 +26,7 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 	}
 	c, masterKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
 	if len(masterKeys) != 1 {
-		t.Fatalf("expected %d keys, got %d", bc.SecretShares-bc.StoredShares, len(masterKeys))
+		t.Fatalf("expected %d secret shares and %v stored shares for a total of 1 master key, got %d", bc.SecretShares, bc.StoredShares, len(masterKeys))
 	}
 	testCore_Rekey_Lifecycle_Common(t, c, false)
 }

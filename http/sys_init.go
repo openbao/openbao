@@ -120,7 +120,7 @@ func handleSysInitPut(core *vault.Core, w http.ResponseWriter, r *http.Request) 
 type InitRequest struct {
 	SecretShares      int      `json:"secret_shares"`
 	SecretThreshold   int      `json:"secret_threshold"`
-	StoredShares      int      `json:"stored_shares"`
+	StoredShares      uint     `json:"stored_shares"`
 	PGPKeys           []string `json:"pgp_keys"`
 	RecoveryShares    int      `json:"recovery_shares"`
 	RecoveryThreshold int      `json:"recovery_threshold"`

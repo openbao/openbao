@@ -1679,9 +1679,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 		}
 	}
 
-	if core.SealAccess().StoredKeysSupported() != vaultseal.StoredKeysNotSupported {
-		barrierConfig.StoredShares = 1
-	}
+	barrierConfig.StoredShares = 1
 
 	// Initialize it with a basic single key
 	init, err := core.Initialize(ctx, &vault.InitParams{

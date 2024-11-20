@@ -31,13 +31,8 @@ func NewTestSeal(t testing.T, opts *seal.TestSealOpts) Seal {
 		})
 		return newSeal
 	case seal.StoredKeysNotSupported:
-		newSeal := NewDefaultSeal(seal.NewAccess(aeadwrapper.NewShamirWrapper()))
-		newSeal.SetCachedBarrierConfig(&SealConfig{
-			StoredShares:    0,
-			SecretThreshold: 1,
-			SecretShares:    1,
-		})
-		return newSeal
+		t.Fatal("Legacy shamir's seal no longer supported")
+		return nil
 	default:
 		access, _ := seal.NewTestSeal(opts)
 		seal, err := NewAutoSeal(access)

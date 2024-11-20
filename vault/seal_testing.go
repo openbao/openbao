@@ -8,7 +8,6 @@ import (
 
 	testing "github.com/mitchellh/go-testing-interface"
 	"github.com/openbao/openbao/vault/seal"
-	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
 func TestCoreUnsealedWithConfigs(t testing.T, barrierConf, recoveryConf *SealConfig) (*Core, [][]byte, [][]byte, string) {
@@ -25,9 +24,8 @@ func TestCoreUnsealedWithConfigSealOpts(t testing.T, barrierConf, recoveryConf *
 	seal := NewTestSeal(t, sealOpts)
 	core := TestCoreWithSeal(t, seal, false)
 	result, err := core.Initialize(context.Background(), &InitParams{
-		BarrierConfig:    barrierConf,
-		RecoveryConfig:   recoveryConf,
-		LegacyShamirSeal: sealOpts.StoredKeys == vaultseal.StoredKeysNotSupported,
+		BarrierConfig:  barrierConf,
+		RecoveryConfig: recoveryConf,
 	})
 	if err != nil {
 		t.Fatalf("err: %s", err)

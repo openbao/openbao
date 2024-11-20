@@ -313,7 +313,7 @@ type SealConfig struct {
 	Backup bool `json:"backup" mapstructure:"backup"`
 
 	// How many keys to store, for seals that support storage.  Always 0 or 1.
-	StoredShares int `json:"stored_shares" mapstructure:"stored_shares"`
+	StoredShares uint `json:"stored_shares" mapstructure:"stored_shares"`
 
 	// Stores the progress of the rekey operation (key shares)
 	RekeyProgress [][]byte `json:"-"`

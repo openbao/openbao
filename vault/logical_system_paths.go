@@ -3745,6 +3745,23 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 					Summary: "Retrieve the policy body for the named policy.",
 				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields: map[string]*framework.FieldSchema{
+								"keys": {
+									Type:     framework.TypeStringSlice,
+									Required: true,
+								},
+								"policies": {
+									Type: framework.TypeStringSlice,
+								},
+							},
+						}},
+					},
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesSet(PolicyTypeACL),
 					Responses: map[int][]framework.Response{
@@ -3845,6 +3862,23 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 						}},
 					},
 					Summary: "Retrieve information about the named ACL policy.",
+				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields: map[string]*framework.FieldSchema{
+								"keys": {
+									Type:     framework.TypeStringSlice,
+									Required: true,
+								},
+								"policies": {
+									Type: framework.TypeStringSlice,
+								},
+							},
+						}},
+					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesSet(PolicyTypeACL),

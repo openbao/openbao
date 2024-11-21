@@ -1,0 +1,3 @@
+```release-note:improvement
+core/policies: Allow listing policies under a given prefix.
+```

@@ -65,7 +65,7 @@ func (c *Core) InitializeRecovery(ctx context.Context) error {
 }
 
 // Initialized checks if the Vault is already initialized.  This means one of
-// two things: either the barrier has been created (with keyring and master key)
+// two things: either the barrier has been created (with keyring and root key)
 // and the seal config written to storage, or Raft is forming a cluster and a
 // join/bootstrap is in progress.
 func (c *Core) Initialized(ctx context.Context) (bool, error) {

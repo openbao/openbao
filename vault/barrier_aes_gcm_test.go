@@ -21,7 +21,7 @@ import (
 
 var logger = logging.NewVaultLogger(log.Trace)
 
-// mockBarrier returns a physical backend, security barrier, and master key
+// mockBarrier returns a physical backend, security barrier, and root key
 func mockBarrier(t testing.TB) (physical.Backend, SecurityBarrier, []byte) {
 	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {

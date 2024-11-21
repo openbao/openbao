@@ -135,7 +135,7 @@ type SecurityBarrierCore interface {
 	// SetRotationConfig updates the auto-rotation config for the barrier key
 	SetRotationConfig(ctx context.Context, config KeyRotationConfig) error
 
-	// Rekey is used to change the master key used to protect the keyring
+	// Rekey is used to change the root key used to protect the keyring
 	Rekey(context.Context, []byte) error
 
 	// For replication we must send over the keyring, so this must be available

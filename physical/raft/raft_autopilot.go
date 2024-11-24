@@ -473,6 +473,7 @@ func autopilotToAPIState(state *autopilot.State) (*AutopilotState, error) {
 		FailureTolerance: state.FailureTolerance,
 		Leader:           string(state.Leader),
 		Voters:           stringIDs(state.Voters),
+		NonVoters:        []string{},
 		Servers:          make(map[string]*AutopilotServer),
 	}
 
@@ -482,6 +483,10 @@ func autopilotToAPIState(state *autopilot.State) (*AutopilotState, error) {
 			return nil, err
 		}
 		out.Servers[string(id)] = aps
+
+		if aps.NodeType == "non-voter" {
+			out.NonVoters = append(out.NonVoters, string(id))
+		}
 	}
 
 	return out, nil

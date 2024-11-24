@@ -236,7 +236,7 @@ and how many nodes could fail before the cluster becomes unhealthy ("Failure Tol
 State includes a list of all servers by nodeID and IP address. Last Index
 indicates how close the state on each node is to the leader's.
 
-A node can have a status of "leader" or "voter".
+A node can have a status of "leader", "voter" or "non-voter".
 
 ```text
 Usage: bao operator raft autopilot state
@@ -256,6 +256,8 @@ Voters:
    raft1
    raft2
    raft3
+Non Voters:
+   raft4
 Servers:
    raft1
       Name:            raft1

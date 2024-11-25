@@ -350,10 +350,13 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 	// them to validate no duplicate issuers exist (and place greater
 	// restrictions during parsing) but allows this code to accept OpenSSL
 	// parsed chains (with full textual output between PEM entries).
+	blockCounter := 0
 	for len(bytes.TrimSpace(pemBytes)) > 0 {
+		blockCounter++
 		pemBlock, pemBytes = pem.Decode(pemBytes)
 		if pemBlock == nil {
-			return logical.ErrorResponse("provided PEM block contained no data"), nil
+			msg := fmt.Sprintf("error when parsing block %d: invalid PEM data", blockCounter)
+			return logical.ErrorResponse(msg), nil
 		}
 
 		pemBlockString := string(pem.EncodeToMemory(pemBlock))

@@ -523,6 +523,7 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["revoked_safety_buffer"] = int(defaultConfigMap["safety_buffer"].(int))
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
+	defaultConfigMap["page_size"] = int(defaultConfigMap["page_size"].(float64))
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 
 	require.Equal(t, defaultConfigMap, resp.Data)
@@ -1293,6 +1294,46 @@ func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
 	}
 }
 
+func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]interface{}) {
+	status, err := client.Logical().Read("pki/tidy-status")
+	require.NoError(t, err, "got error reading initial tidy status")
+
+	t.Logf("initial status resp: %v", status)
+
+	_, err = client.Logical().Write("pki/tidy", tidyConfig)
+	require.NoError(t, err, "got error starting tidy")
+
+	timeoutChan := time.After(120 * time.Second)
+
+	for {
+		select {
+		case <-timeoutChan:
+			t.Fatalf("expected manual tidy to run before timeout")
+		default:
+			time.Sleep(50 * time.Millisecond)
+
+			newStatus, err := client.Logical().Read("pki/tidy-status")
+			require.NoError(t, err, "got error reading subsequent tidy status")
+
+			if newStatus.Data["state"].(string) == "Finished" {
+				thisStart, err := time.Parse(time.RFC3339, newStatus.Data["time_started"].(string))
+				require.NoError(t, err, "failed to parse time")
+				lastStartRaw, ok := status.Data["time_started"]
+				if !ok || lastStartRaw == nil {
+					return
+				}
+
+				lastStart, err := time.Parse(time.RFC3339, lastStartRaw.(string))
+				require.NoError(t, err, "failed to parse time")
+
+				if thisStart.After(lastStart) {
+					return
+				}
+			}
+		}
+	}
+}
+
 func TestTidyWithInvalidCertInStore(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
@@ -1650,4 +1691,158 @@ func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
 	resp, err = client.Logical().Read("pki/cert/" + lastLeafSerial)
 	require.Nil(t, err)
 	require.Nil(t, resp)
+}
+
+func TestTidyPaginationConfig(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	// Verify that the default of page_size is 1000
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")
+
+	// Verify that page_size can be explicitly set
+	pageSize := 75
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"page_size": pageSize,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set page_size")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, pageSize, resp.Data["page_size"].(int), "expected page_size to be set to pageSize")
+
+	// Expect an error when setting page_size to less than 5
+	pageSizeInvalid := 4
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"page_size": pageSizeInvalid,
+	})
+	require.Error(t, err, "expected error when setting page_size less than 5")
+	require.Contains(t, err.Error(), "page_size must be at least 5", "page_size must be greater than five")
+
+	// Check page size is still the previous value
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, pageSize, resp.Data["page_size"].(int), "expected page_size to be set to pageSize")
+}
+
+func TestTidyPagination(t *testing.T) {
+	t.Parallel()
+
+	// Short interval duration to trigger frequent auto-tidy runs
+	newPeriod := 1 * time.Second
+
+	// Set up the test cluster
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"pki": Factory,
+		},
+		EnableRaw:      true,
+		RollbackPeriod: newPeriod,
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	// Mount PKI
+	err := client.Sys().Mount("pki", &api.MountInput{
+		Type: "pki",
+		Config: api.MountConfigInput{
+			DefaultLeaseTTL: "10m",
+			MaxLeaseTTL:     "60m",
+		},
+	})
+	require.NoError(t, err)
+
+	// Generate a root certificate
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "Root X1",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, resp.Data)
+	rootSerial := resp.Data["serial_number"].(string)
+
+	// Run tidy so status is not empty when we run it later
+	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+		"tidy_revoked_certs": true,
+	})
+	require.NoError(t, err)
+
+	// Set up a role for testing
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+
+	// Configure auto-tidy
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+		"enabled":               true,
+		"interval_duration":     "1s",
+		"tidy_cert_store":       true,
+		"tidy_revoked_certs":    true,
+		"page_size":             5,
+		"safety_buffer":         "1s",
+		"revoked_safety_buffer": "1s",
+	})
+	require.NoError(t, err)
+
+	// Issue 27 leaf certificates to populate the cert store.
+	// This number is chosen to ensure that the tidy operation can process multiple pages,
+	// even when the page size limit is set below the total number of certificates.
+	for i := 0; i < 26; i++ {
+		_, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+			"common_name": "example.com",
+			"ttl":         "1s",
+		})
+		require.NoError(t, err)
+	}
+	// the last leaf cert being issued
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "last.com",
+		"ttl":         "1s",
+	})
+	require.NoError(t, err)
+	lastCert := parseCert(t, resp.Data["certificate"].(string))
+
+	// Issue another 4 leaf certificates then revoke them. This is done to ensure that
+	// the tidy operation can process certificates less than its the page size.
+	for i := 0; i < 4; i++ {
+		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+			"common_name": fmt.Sprintf("revoked.com"),
+			"ttl":         "1s",
+		})
+		require.NoError(t, err)
+		revokedSerial := resp.Data["serial_number"].(string)
+
+		_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+			"serial_number": revokedSerial,
+		})
+		require.NoError(t, err)
+	}
+
+	// Wait for the last certificate to expire, revoked safety buffer and safety buffer to elapse
+	time.Sleep(time.Until(lastCert.NotAfter) + 3*time.Second)
+
+	// Wait for auto-tidy to run afterwards.
+	waitForAutoTidyToFinish(t, client)
+
+	// List remaining certificates in the cert store
+	resp, err = client.Logical().List("pki/certs/")
+	require.NoError(t, err, "unable to list certificates in store")
+
+	// Check that only the root certificate remains
+	certKeys := resp.Data["keys"].([]interface{})
+	require.Len(t, certKeys, 1, "expected only root cert to remain in the store")
+	require.Contains(t, certKeys, rootSerial, "expected only root cert to remain in the store")
 }

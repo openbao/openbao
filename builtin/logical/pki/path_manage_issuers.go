@@ -355,7 +355,7 @@ func (b *backend) pathImportIssuers(ctx context.Context, req *logical.Request, d
 		blockCounter++
 		pemBlock, pemBytes = pem.Decode(pemBytes)
 		if pemBlock == nil {
-			msg := fmt.Sprintf("Error when parsing block %d: invalid PEM data", blockCounter)
+			msg := fmt.Sprintf("error when parsing block %d: invalid PEM data", blockCounter)
 			return logical.ErrorResponse(msg), nil
 		}
 

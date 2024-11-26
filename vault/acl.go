@@ -302,6 +302,9 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 	if capabilities&PatchCapabilityInt > 0 {
 		pathCapabilities = append(pathCapabilities, PatchCapability)
 	}
+	if capabilities&ScanCapabilityInt > 0 {
+		pathCapabilities = append(pathCapabilities, ScanCapability)
+	}
 
 	// If "deny" is explicitly set or if the path has no capabilities at all,
 	// set the path capabilities to "deny"
@@ -427,6 +430,9 @@ CHECK:
 	case logical.PatchOperation:
 		operationAllowed = capabilities&PatchCapabilityInt > 0
 		grantingPolicies = permissions.GrantingPoliciesMap[PatchCapabilityInt]
+	case logical.ScanOperation:
+		operationAllowed = capabilities&ScanCapabilityInt > 0
+		grantingPolicies = permissions.GrantingPoliciesMap[ScanCapabilityInt]
 
 	// These three re-use UpdateCapabilityInt since that's the most appropriate
 	// capability/operation mapping

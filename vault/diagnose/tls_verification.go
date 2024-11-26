@@ -219,8 +219,7 @@ func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error 
 		}
 	}
 
-	rootSubjs := rootPool.Subjects()
-	if len(rootSubjs) == 0 && len(leafCerts) > 0 {
+	if x509.NewCertPool().Equal(rootPool) && len(leafCerts) > 0 {
 		// this is a self signed server certificate, or the root is just not provided. In any
 		// case, we need to bypass the root verification step by adding the leaf itself to the
 		// root pool.

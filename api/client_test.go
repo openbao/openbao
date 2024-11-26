@@ -6,6 +6,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
@@ -401,7 +402,7 @@ func TestClientEnvSettings(t *testing.T) {
 	}
 
 	tlsConfig := config.HttpClient.Transport.(*http.Transport).TLSClientConfig
-	if len(tlsConfig.RootCAs.Subjects()) == 0 {
+	if x509.NewCertPool().Equal(tlsConfig.RootCAs) {
 		t.Fatalf("bad: expected a cert pool with at least one subject")
 	}
 	if tlsConfig.GetClientCertificate == nil {

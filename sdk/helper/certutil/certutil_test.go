@@ -411,25 +411,60 @@ func TestTLSConfig(t *testing.T) {
 
 		switch usage {
 		case TLSServer | TLSClient:
-			if len(tlsConfig.ClientCAs.Subjects()) != 1 || bytes.Compare(tlsConfig.ClientCAs.Subjects()[0], pcbut.CAChain[0].Certificate.RawSubject) != 0 {
-				t.Fatalf("CA certificate not in client cert pool as expected")
+			if tlsConfig.ClientCAs == nil {
+				t.Fatalf("ClientCAs pool is nil, but expected a valid pool")
 			}
-			if len(tlsConfig.RootCAs.Subjects()) != 1 || bytes.Compare(tlsConfig.RootCAs.Subjects()[0], pcbut.CAChain[0].Certificate.RawSubject) != 0 {
-				t.Fatalf("CA certificate not in root cert pool as expected")
+
+			if tlsConfig.RootCAs == nil {
+				t.Fatalf("RootCAs pool is nil, but expected a valid pool")
+			}
+
+			// Verify the leaf certificate against the RootCAs pool to ensure the
+			// server can authenticate itself to the client using the provided CA
+			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+				DNSName: "localhost",
+				Roots:   tlsConfig.RootCAs,
+			}); err != nil {
+				t.Fatalf("Leaf certificate verification failed: %v", err)
+			}
+
+			// Verify the leaf certificate against the ClientCAs pool to ensure the
+			// client can authenticate itself to the server using the provided CA
+			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+				DNSName: "localhost",
+				Roots:   tlsConfig.ClientCAs,
+			}); err != nil {
+				t.Fatalf("Leaf certificate verification failed: %v", err)
 			}
 		case TLSServer:
-			if len(tlsConfig.ClientCAs.Subjects()) != 1 || bytes.Compare(tlsConfig.ClientCAs.Subjects()[0], pcbut.CAChain[0].Certificate.RawSubject) != 0 {
-				t.Fatalf("CA certificate not in client cert pool as expected")
+			if tlsConfig.ClientCAs == nil {
+				t.Fatalf("ClientCAs pool is nil, but expected a valid pool")
 			}
 			if tlsConfig.RootCAs != nil {
 				t.Fatalf("Found root pools in config object when not expected")
 			}
+			// Verify the leaf certificate against the ClientCAs pool to ensure the
+			// server can authenticate client certificates using the provided CA pool
+			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+				DNSName: "localhost",
+				Roots:   tlsConfig.ClientCAs,
+			}); err != nil {
+				t.Fatalf("Leaf certificate verification failed: %v", err)
+			}
 		case TLSClient:
-			if len(tlsConfig.RootCAs.Subjects()) != 1 || bytes.Compare(tlsConfig.RootCAs.Subjects()[0], pcbut.CAChain[0].Certificate.RawSubject) != 0 {
-				t.Fatalf("CA certificate not in root cert pool as expected")
+			if tlsConfig.RootCAs == nil {
+				t.Fatalf("RootCAs pool is nil, but expected a valid pool")
 			}
 			if tlsConfig.ClientCAs != nil {
-				t.Fatalf("Found root pools in config object when not expected")
+				t.Fatalf("Found client pools in config object when not expected")
+			}
+			// Verify the leaf certificate against the RootCAs pool to ensure the
+			// client can authenticate the server using the provided CA pool
+			if _, err := pcbut.Certificate.Verify(x509.VerifyOptions{
+				DNSName: "localhost",
+				Roots:   tlsConfig.RootCAs,
+			}); err != nil {
+				t.Fatalf("Leaf certificate verification failed: %v", err)
 			}
 		default:
 			if tlsConfig.RootCAs != nil || tlsConfig.ClientCAs != nil {

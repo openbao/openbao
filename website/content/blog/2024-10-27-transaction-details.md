@@ -9,15 +9,15 @@ image: https://raw.githubusercontent.com/openbao/artwork/refs/heads/main/color/o
 
 ## Overview
 
-OpenBao, like its upstream, favors the [`raft` internal storage engine][raft].
+OpenBao, like its upstream, favors the [`raft` internal storage engine](https://openbao.org/docs/configuration/storage/raft).
 While more complex than relying on a database for replication, this storage
 engine allows us to have lower latency on read operations, because it uses
-a [local K/V implementation][bbolt] based on [B+-trees][btree]. For workloads
+a [local K/V implementation](https://github.com/etcd/bbolt) based on [B+-trees](https://en.wikipedia.org/wiki/B%2B_tree). For workloads
 with low writes but high reads (typical of most uses of K/V secrets), this
 trade off allows for the best performance.
 
-An earlier [blog post][blog-transactions] talked about the availability of
-transactions in the [`main` branch][openbao-main], this post will focus on
+An earlier [blog post](https://openbao.org/blog/transactions) talked about the availability of
+transactions in the [`main` branch](https://github.com/openbao/openbao/tree/main), this post will focus on
 the technical details of implementing transactions.
 
 <!-- truncate -->
@@ -33,7 +33,7 @@ unique election result in the case of disagreements.
 
 In OpenBao, the [`raft` storage backend][raft-backend] is the combination of
 an implementation of the [HashiCorp Raft library][hcp-raft] and the
-[bbolt][bbolt] K/V store. When Raft applies a WAL entry, the underlying
+[bbolt](https://github.com/etcd/bbolt) K/V store. When Raft applies a WAL entry, the underlying
 [FSM][raft-fsm] applies the corresponding operations. Prior to transactions,
 these consisted of bare [Put and Delete ops][storage-write]. Further, read
 requests were [handled individually][storage-read], meaning there was no
@@ -147,11 +147,6 @@ Build OpenBao from the `main` branch and submit any bug reports or
 performance discrepancies via [GitHub issue][file-issue].
 :::
 
-[raft]: https://openbao.org/docs/configuration/storage/raft
-[bbolt]: https://github.com/etcd/bbolt
-[btree]: https://en.wikipedia.org/wiki/B%2B_tree
-[blog-transactions]: https://openbao.org/blog/transactions
-[openbao-main]: https://github.com/openbao/openbao/tree/main
 [raft-algo]: https://raft.github.io/
 [etcd]: https://etcd.io/
 [WAL]: https://en.wikipedia.org/wiki/Write-ahead_logging

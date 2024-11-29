@@ -1,3 +1,4 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
@@ -33,7 +34,7 @@ func (a *idAddr) String() string  { return a.id }
 
 func addPeer(t *testing.T, leader, follower *RaftBackend) {
 	t.Helper()
-	if err := leader.AddPeer(context.Background(), follower.NodeID(), follower.NodeID()); err != nil {
+	if err := leader.AddPeer(context.Background(), follower.NodeID(), follower.NodeID(), true); err != nil {
 		t.Fatal(err)
 	}
 

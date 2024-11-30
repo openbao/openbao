@@ -11,8 +11,6 @@ export const localIconMap = {
   reply: 'corner-up-left',
   console: 'terminal-screen',
   pki: 'file-text',
-  replication: 'replication-direct',
-  'perf-replication': 'replication-perf',
   'status-indicator': 'circle-dot',
   tour: null,
   approle: 'cpu',

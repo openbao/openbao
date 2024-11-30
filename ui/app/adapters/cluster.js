@@ -7,7 +7,6 @@ import AdapterError from '@ember-data/adapter/error';
 import { inject as service } from '@ember/service';
 import { assign } from '@ember/polyfills';
 import { hash, resolve } from 'rsvp';
-import { assert } from '@ember/debug';
 import { pluralize } from 'ember-inflector';
 
 import ApplicationAdapter from './application';
@@ -24,19 +23,7 @@ const ENDPOINTS = [
   'license',
 ];
 
-const REPLICATION_ENDPOINTS = {
-  reindex: 'reindex',
-  recover: 'recover',
-  status: 'status',
-
-  primary: ['enable', 'disable', 'demote', 'secondary-token', 'revoke-secondary'],
-
-  secondary: ['enable', 'disable', 'promote', 'update-primary'],
-};
-
-const REPLICATION_MODES = ['dr', 'performance'];
 export default ApplicationAdapter.extend({
-  version: service(),
   namespaceService: service('namespace'),
   shouldBackgroundReloadRecord() {
     return true;
@@ -47,10 +34,7 @@ export default ApplicationAdapter.extend({
       health: this.health(),
       sealStatus: this.sealStatus().catch((e) => e),
     };
-    if (this.version.isEnterprise && this.namespaceService.inRootNamespace) {
-      fetches.replicationStatus = this.replicationStatus().catch((e) => e);
-    }
-    return hash(fetches).then(({ health, sealStatus, replicationStatus }) => {
+    return hash(fetches).then(({ health, sealStatus }) => {
       let ret = {
         id,
         name: snapshot.attr('name'),
@@ -58,9 +42,6 @@ export default ApplicationAdapter.extend({
       ret = assign(ret, health);
       if (sealStatus instanceof AdapterError === false) {
         ret = assign(ret, { nodes: [sealStatus] });
-      }
-      if (replicationStatus && replicationStatus instanceof AdapterError === false) {
-        ret = assign(ret, replicationStatus.data);
       }
       return resolve(ret);
     });
@@ -179,63 +160,5 @@ export default ApplicationAdapter.extend({
       throw new Error(`There is no auth url for ${type}.`);
     }
     return `/v1/auth/${urlPrefix}/${urlSuffix}`;
-  },
-
-  urlForReplication(replicationMode, clusterMode, endpoint) {
-    let suffix;
-    const errString = `Calls to replication ${endpoint} endpoint are not currently allowed in the vault cluster adapater`;
-    if (clusterMode) {
-      assert(errString, REPLICATION_ENDPOINTS[clusterMode].includes(endpoint));
-      suffix = `${replicationMode}/${clusterMode}/${endpoint}`;
-    } else {
-      assert(errString, REPLICATION_ENDPOINTS[endpoint]);
-      suffix = `${endpoint}`;
-    }
-    return `${this.buildURL()}/replication/${suffix}`;
-  },
-
-  replicationStatus() {
-    return this.ajax(`${this.buildURL()}/replication/status`, 'GET', { unauthenticated: true });
-  },
-
-  replicationDrPromote(data, options) {
-    const verb = options && options.checkStatus ? 'GET' : 'PUT';
-    return this.ajax(`${this.buildURL()}/replication/dr/secondary/promote`, verb, {
-      data,
-      unauthenticated: true,
-    });
-  },
-
-  generateDrOperationToken(data, options) {
-    let verb = options && options.checkStatus ? 'GET' : 'PUT';
-    if (options.cancel) {
-      verb = 'DELETE';
-    }
-    let url = `${this.buildURL()}/replication/dr/secondary/generate-operation-token/`;
-    if (!data || data.pgp_key || data.attempt) {
-      // start the generation
-      url = url + 'attempt';
-    } else {
-      // progress the operation
-      url = url + 'update';
-    }
-    return this.ajax(url, verb, {
-      data,
-      unauthenticated: true,
-    });
-  },
-
-  replicationAction(action, replicationMode, clusterMode, data) {
-    assert(
-      `${replicationMode} is an unsupported replication mode.`,
-      replicationMode && REPLICATION_MODES.includes(replicationMode)
-    );
-
-    const url =
-      action === 'recover' || action === 'reindex'
-        ? this.urlForReplication(replicationMode, null, action)
-        : this.urlForReplication(replicationMode, clusterMode, action);
-
-    return this.ajax(url, 'POST', { data });
   },
 });

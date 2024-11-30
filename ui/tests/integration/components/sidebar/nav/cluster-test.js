@@ -16,7 +16,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
   setupRenderingTest(hooks);
 
   test('it should render nav headings', async function (assert) {
-    const headings = ['OpenBao', 'Replication', 'Monitoring'];
+    const headings = ['OpenBao', 'Monitoring'];
     stubFeaturesAndPermissions(this.owner, true, true);
     await renderComponent();
 
@@ -46,11 +46,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
       'Access',
       'Policies',
       'Tools',
-      'Disaster Recovery',
-      'Performance',
-      'Replication',
       'Raft Storage',
-      'Client count',
       'License',
       'Seal OpenBao',
     ];
@@ -66,14 +62,7 @@ module('Integration | Component | sidebar-nav-cluster', function (hooks) {
   });
 
   test('it should hide enterprise related links in child namespace', async function (assert) {
-    const links = [
-      'Disaster Recovery',
-      'Performance',
-      'Replication',
-      'Raft Storage',
-      'License',
-      'Seal OpenBao',
-    ];
+    const links = ['Raft Storage', 'License', 'Seal OpenBao'];
     this.owner.lookup('service:namespace').set('path', 'foo');
     const stubs = stubFeaturesAndPermissions(this.owner, true, true);
     stubs.hasNavPermission.callsFake((route) => route !== 'clients');

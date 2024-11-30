@@ -11,13 +11,7 @@ import Model, { attr } from '@ember-data/model';
 
 import { computed } from '@ember/object';
 
-const SUDO_PATHS = [
-  'sys/seal',
-  'sys/replication/performance/primary/secondary-token',
-  'sys/replication/dr/primary/secondary-token',
-  'sys/replication/reindex',
-  'sys/leases/lookup/',
-];
+const SUDO_PATHS = ['sys/seal', 'sys/leases/lookup/'];
 
 const SUDO_PATH_PREFIXES = ['sys/leases/revoke-prefix', 'sys/leases/revoke-force'];
 

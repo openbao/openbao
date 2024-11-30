@@ -18,7 +18,6 @@ export const stubFeaturesAndPermissions = (owner, isEnterprise = false, setClust
   if (setCluster) {
     owner.lookup('service:currentCluster').setCluster({
       id: 'foo',
-      anyReplicationEnabled: true,
       usingRaft: true,
     });
   }

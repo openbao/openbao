@@ -204,7 +204,12 @@ func HandleListPage(
 			return err
 		}
 
-		// Stop if fewer entries were returned than the limit (end of list)
+		// Stop since all certs have already been processed
+		if limit <= 0 {
+			break
+		}
+
+		// Stop since this is the last page; prevents 1 unnecessary call to ListPage
 		if len(entries) < limit {
 			break
 		}

@@ -64,7 +64,7 @@ func (d *Delegate) AutopilotConfig() *autopilot.Config {
 		MaxTrailingLogs:         d.autopilotConfig.MaxTrailingLogs,
 		MinQuorum:               d.autopilotConfig.MinQuorum,
 		ServerStabilizationTime: d.autopilotConfig.ServerStabilizationTime,
-		Ext:                     d.permanentNonVoters,
+		Ext:                     maps.Clone(d.permanentNonVoters),
 	}
 	return config
 }

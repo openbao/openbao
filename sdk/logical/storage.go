@@ -165,3 +165,54 @@ func ClearViewWithLogging(ctx context.Context, view ClearableView, logger hclog.
 
 	return nil
 }
+
+// HandleListPage provides a helper for processing paginated storage lists.
+// It supports both item-level and batch-level callbacks for flexibility.
+func HandleListPage(
+	storage Storage,
+	prefix string,
+	limit int,
+	itemCallback func(page int, index int, entry string) (bool, error),
+	batchCallback func(page int, entries []string) (bool, error),
+) error {
+	page := 0
+	for {
+		var after string
+
+		// Fetch the next page
+		entries, err := storage.ListPage(context.Background(), prefix, after, limit)
+		if err != nil {
+			return err
+		}
+
+		// Exit if no entries are returned
+		if len(entries) == 0 {
+			break
+		}
+
+		// Process each entry in the page
+		for index, entry := range entries {
+			cont, err := itemCallback(page, index, entry)
+			if err != nil || !cont {
+				return err
+			}
+		}
+
+		// Process the entire batch
+		cont, err := batchCallback(page, entries)
+		if err != nil || !cont {
+			return err
+		}
+
+		// Stop if fewer entries were returned than the limit (end of list)
+		if len(entries) < limit {
+			break
+		}
+
+		// Update after for the next page
+		after = entries[len(entries)-1]
+		page++
+	}
+
+	return nil
+}

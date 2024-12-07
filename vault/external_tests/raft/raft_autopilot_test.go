@@ -412,6 +412,75 @@ func TestRaft_VotersStayVoters(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestRaft_NonVotersStayNonVoters ensures that autopilot doesn't promote a node
+// that was marked as a non-voter after a leader election.
+func TestRaft_NonVotersStayNonVoters(t *testing.T) {
+	cluster, _ := raftCluster(t, &RaftClusterOpts{
+		DisableFollowerJoins: true,
+		InmemCluster:         true,
+		EnableAutopilot:      true,
+		PhysicalFactoryConfig: map[string]interface{}{
+			"performance_multiplier":       "5",
+			"autopilot_reconcile_interval": "300ms",
+			"autopilot_update_interval":    "100ms",
+		},
+		VersionMap: map[int]string{
+			0: version.Version,
+			1: version.Version,
+			2: version.Version,
+			3: version.Version,
+		},
+		NumCores: 4,
+	})
+	defer cluster.Cleanup()
+	testhelpers.WaitForActiveNode(t, cluster)
+
+	client := cluster.Cores[0].Client
+
+	config, err := client.Sys().RaftAutopilotConfiguration()
+	require.NoError(t, err)
+	joinAndStabilizeAndPromote(t, cluster.Cores[1], client, cluster, config, "core-1", 2)
+	joinAndStabilizeAndPromote(t, cluster.Cores[2], client, cluster, config, "core-2", 3)
+
+	errIfNonVotersExist := func() error {
+		t.Helper()
+		resp, err := client.Sys().RaftAutopilotState()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for k, v := range resp.Servers {
+			if v.Status == "non-voter" {
+				return fmt.Errorf("node %q is a non-voter", k)
+			}
+		}
+		return nil
+	}
+
+	errIfVoter := func() error {
+		t.Helper()
+		resp, err := client.Sys().RaftAutopilotState()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.Servers["core-3"].Status == "voter" {
+			return fmt.Errorf("node %q is a voter", "core-3")
+		}
+		return nil
+	}
+	testhelpers.RetryUntil(t, 10*time.Second, errIfNonVotersExist)
+
+	joinAndStabilize(t, cluster.Cores[3], client, cluster, config, "core-3", 4, true)
+
+	// Core0 is the leader, sealing it will both cause an election - and the
+	// new leader won't have seen any heartbeats initially - and create a "down"
+	// node that won't be sending heartbeats.
+	testhelpers.EnsureCoreSealed(t, cluster.Cores[0])
+	time.Sleep(config.ServerStabilizationTime + 2*time.Second)
+	client = cluster.Cores[1].Client
+	err = errIfVoter()
+	require.NoError(t, err)
+}
+
 // TestRaft_Autopilot_DeadServerCleanup tests that dead servers are correctly
 // removed by Vault and autopilot when a node stops and a replacement node joins.
 // The expected behavior is that removing a node from a 3 node cluster wouldn't
@@ -499,7 +568,7 @@ func TestRaft_Autopilot_DeadServerCleanup(t *testing.T) {
 }
 
 func joinAndStabilizeAndPromote(t *testing.T, core *vault.TestClusterCore, client *api.Client, cluster *vault.TestCluster, config *api.AutopilotConfig, nodeID string, numServers int) {
-	joinAndStabilize(t, core, client, cluster, config, nodeID, numServers)
+	joinAndStabilize(t, core, client, cluster, config, nodeID, numServers, false)
 
 	// Now that the server is stable, wait for autopilot to reconcile and
 	// promotion to happen. Reconcile interval is 10 seconds. Bound it by
@@ -523,9 +592,9 @@ func joinAndStabilizeAndPromote(t *testing.T, core *vault.TestClusterCore, clien
 	}
 }
 
-func joinAndStabilize(t *testing.T, core *vault.TestClusterCore, client *api.Client, cluster *vault.TestCluster, config *api.AutopilotConfig, nodeID string, numServers int) {
+func joinAndStabilize(t *testing.T, core *vault.TestClusterCore, client *api.Client, cluster *vault.TestCluster, config *api.AutopilotConfig, nodeID string, numServers int, nonVoter bool) {
 	t.Helper()
-	joinAndUnseal(t, core, cluster, false, false)
+	joinAndUnseal(t, core, cluster, nonVoter, false)
 	time.Sleep(2 * time.Second)
 
 	state, err := client.Sys().RaftAutopilotState()

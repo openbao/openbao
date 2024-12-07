@@ -29,18 +29,4 @@ module('Unit | Service | version', function (hooks) {
     assert.false(service.isOSS);
     assert.true(service.isEnterprise);
   });
-
-  test('hasPerfReplication', function (assert) {
-    const service = this.owner.lookup('service:version');
-    assert.false(service.hasPerfReplication);
-    service.features = ['Performance Replication'];
-    assert.true(service.hasPerfReplication);
-  });
-
-  test('hasDRReplication', function (assert) {
-    const service = this.owner.lookup('service:version');
-    assert.false(service.hasDRReplication);
-    service.features = ['DR Replication'];
-    assert.true(service.hasDRReplication);
-  });
 });

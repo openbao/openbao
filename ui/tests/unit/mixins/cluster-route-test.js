@@ -6,15 +6,7 @@
 import { assign } from '@ember/polyfills';
 import EmberObject from '@ember/object';
 import ClusterRouteMixin from 'vault/mixins/cluster-route';
-import {
-  INIT,
-  UNSEAL,
-  AUTH,
-  CLUSTER,
-  CLUSTER_INDEX,
-  DR_REPLICATION_SECONDARY,
-  REDIRECT,
-} from 'vault/lib/route-paths';
+import { INIT, UNSEAL, AUTH, CLUSTER, CLUSTER_INDEX, REDIRECT } from 'vault/lib/route-paths';
 import { module, test } from 'qunit';
 import sinon from 'sinon';
 
@@ -47,7 +39,6 @@ module('Unit | Mixin | cluster route', function () {
     subject.routeName = CLUSTER;
     assert.strictEqual(
       subject.targetRouteName(),
-      DR_REPLICATION_SECONDARY,
       'forwards to DR_REPLICATION_SECONDARY if is a dr secondary'
     );
   });
@@ -94,13 +85,6 @@ module('Unit | Mixin | cluster route', function () {
       REDIRECT,
       'forwards when authenticated and navigating to AUTH'
     );
-
-    subject.routeName = DR_REPLICATION_SECONDARY;
-    assert.strictEqual(
-      subject.targetRouteName(),
-      CLUSTER,
-      'forwards when not a DR secondary and navigating to DR_REPLICATION_SECONDARY'
-    );
   });
 
   test('#targetRouteName happy path when not authed forwards to AUTH', function (assert) {
@@ -119,13 +103,6 @@ module('Unit | Mixin | cluster route', function () {
       subject.targetRouteName(),
       AUTH,
       'forwards when non-authenticated and navigating to AUTH'
-    );
-
-    subject.routeName = DR_REPLICATION_SECONDARY;
-    assert.strictEqual(
-      subject.targetRouteName(),
-      AUTH,
-      'forwards when not a DR secondary and navigating to DR_REPLICATION_SECONDARY'
     );
   });
 

@@ -26,7 +26,7 @@ module.exports = function (environment) {
 
     APP: {
       // endpoints that the UI polls
-      POLLING_URLS: ['sys/health', 'sys/replication/status', 'sys/seal-status'],
+      POLLING_URLS: ['sys/health', 'sys/seal-status'],
       // endpoints that UI uses to determine the cluster state
       // calls to these endpoints will always go to the root namespace
       // these also need to be updated in the open-api-explorer engine

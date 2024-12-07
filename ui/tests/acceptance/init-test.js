@@ -14,8 +14,6 @@ const HEALTH_RESPONSE = {
   sealed: true,
   standby: true,
   performance_standby: false,
-  replication_performance_mode: 'unknown',
-  replication_dr_mode: 'unknown',
   server_time_utc: 1538066726,
   version: '1.13.0-dev1',
 };

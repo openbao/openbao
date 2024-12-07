@@ -17,7 +17,6 @@ module('Integration | Component | shamir-modal-flow', function (hooks) {
   hooks.beforeEach(function () {
     this.set('isActive', true);
     this.set('onClose', sinon.spy());
-    this.server.get('/sys/replication/dr/secondary/generate-operation-token/attempt', () => {});
   });
 
   test('it renders with initial content by default', async function (assert) {

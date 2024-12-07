@@ -15,8 +15,6 @@ import {
   OIDC_CALLBACK,
   OIDC_PROVIDER,
   NS_OIDC_PROVIDER,
-  DR_REPLICATION_SECONDARY,
-  DR_REPLICATION_SECONDARY_DETAILS,
   EXCLUDED_REDIRECT_URLS,
   REDIRECT,
 } from 'vault/lib/route-paths';
@@ -79,16 +77,6 @@ export default Mixin.create({
     if (cluster.sealed) {
       return UNSEAL;
     }
-    if (cluster?.dr?.isSecondary) {
-      if (transition && transition.targetName === DR_REPLICATION_SECONDARY_DETAILS) {
-        return DR_REPLICATION_SECONDARY_DETAILS;
-      }
-      if (this.router.currentRouteName === DR_REPLICATION_SECONDARY_DETAILS) {
-        return DR_REPLICATION_SECONDARY_DETAILS;
-      }
-
-      return DR_REPLICATION_SECONDARY;
-    }
     if (!isAuthed) {
       if ((transition && transition.targetName === OIDC_PROVIDER) || this.routeName === OIDC_PROVIDER) {
         return OIDC_PROVIDER;
@@ -101,11 +89,7 @@ export default Mixin.create({
       }
       return AUTH;
     }
-    if (
-      (!cluster.needsInit && this.routeName === INIT) ||
-      (!cluster.sealed && this.routeName === UNSEAL) ||
-      (!cluster?.dr?.isSecondary && this.routeName === DR_REPLICATION_SECONDARY)
-    ) {
+    if ((!cluster.needsInit && this.routeName === INIT) || (!cluster.sealed && this.routeName === UNSEAL)) {
       return CLUSTER;
     }
     if (isAuthed && this.routeName === AUTH) {

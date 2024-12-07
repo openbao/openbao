@@ -15,18 +15,4 @@ module('Unit | Service | version', function (hooks) {
     assert.true(service.isOSS);
     assert.false(service.isEnterprise);
   });
-
-  test('setting version computes isEnterprise properly', function (assert) {
-    const service = this.owner.lookup('service:version');
-    service.version = '0.9.5+ent';
-    assert.false(service.isOSS);
-    assert.true(service.isEnterprise);
-  });
-
-  test('setting version with hsm ending computes isEnterprise properly', function (assert) {
-    const service = this.owner.lookup('service:version');
-    service.version = '0.9.5+ent.hsm';
-    assert.false(service.isOSS);
-    assert.true(service.isEnterprise);
-  });
 });

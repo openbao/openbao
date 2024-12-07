@@ -22,17 +22,17 @@
     "fmt:js": "prettier --config .prettierrc.js --write '{app,tests,config,lib}/**/*.js'",
     "fmt:hbs": "prettier --config .prettierrc.js --write '**/*.hbs'",
     "fmt:styles": "prettier --write app/styles/**/*.*",
-    "start": "VAULT_ADDR=http://localhost:8200; ember server --proxy=$VAULT_ADDR",
+    "start": "BAO_ADDR=http://localhost:8200; ember server --proxy=$BAO_ADDR",
     "start2": "ember server --proxy=http://localhost:8202 --port=4202",
     "start:mirage": "start () { MIRAGE_DEV_HANDLER=$1 yarn run start; }; start",
-    "test": "npm-run-all lint:js:quiet lint:hbs:quiet && node scripts/start-vault.js",
+    "test": "npm-run-all lint:js:quiet lint:hbs:quiet && node scripts/start-openbao.js",
     "test:enos": "npm-run-all lint:js:quiet lint:hbs:quiet && node scripts/enos-test-ember.js",
     "test:oss": "yarn run test -f='!enterprise'",
-    "test:quick": "node scripts/start-vault.js",
+    "test:quick": "node scripts/start-openbao.js",
     "test:quick-oss": "yarn test:quick -f='!enterprise'",
     "types:declare": "declare () { yarn tsc $1 --declaration --allowJs --emitDeclarationOnly --experimentalDecorators --outDir $2; }; declare",
-    "vault": "VAULT_REDIRECT_ADDR=http://127.0.0.1:8200 vault server -log-level=error -dev -dev-root-token-id=root -dev-ha -dev-transactional",
-    "vault:cluster": "VAULT_REDIRECT_ADDR=http://127.0.0.1:8202 vault server -log-level=error -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8202 -dev-ha -dev-transactional"
+    "openbao": "BAO_REDIRECT_ADDR=http://127.0.0.1:8200 bao server -log-level=error -dev -dev-root-token-id=root -dev-ha",
+    "openbao:cluster": "BAO_REDIRECT_ADDR=http://127.0.0.1:8202 bao server -log-level=error -dev -dev-root-token-id=root -dev-listen-address=127.0.0.1:8202 -dev-ha"
   },
   "lint-staged": {
     "*.js": [
@@ -189,7 +189,7 @@
     "qunit": "^2.19.1",
     "qunit-dom": "^2.0.0",
     "sass": "^1.58.3",
-    "sass-svg-uri": "^1.0.0",
+    "sass-svg-uri": "^2.0.0",
     "shell-quote": "^1.6.1",
     "string.prototype.endswith": "^0.2.0",
     "string.prototype.startswith": "^0.2.0",

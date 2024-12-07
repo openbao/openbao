@@ -28,14 +28,7 @@ async function processLines(input, eachLine = () => {}) {
   try {
     const vault = testHelper.run(
       'bao',
-      [
-        'server',
-        '-dev',
-        '-dev-ha',
-        '-dev-transactional',
-        '-dev-root-token-id=root',
-        '-dev-listen-address=127.0.0.1:9200',
-      ],
+      ['server', '-dev', '-dev-ha', '-dev-root-token-id=root', '-dev-listen-address=127.0.0.1:9200'],
       false
     );
     processLines(vault.stdout, function (line) {
@@ -59,13 +52,9 @@ async function processLines(input, eachLine = () => {}) {
       if (root && unseal && !written) {
         testHelper.writeKeysFile(unseal, root);
         written = true;
-        console.log('VAULT SERVER READY');
+        console.log('OPENBAO SERVER READY');
       } else if (initError) {
-        console.log('VAULT SERVER START FAILED');
-        console.log(
-          // NOTE: Remove VAULT_LICENSE_PATH reference;
-          'If this is happening, run `export VAULT_LICENSE_PATH=/Users/username/license.hclic` to your valid local vault license filepath, or use OpenBao'
-        );
+        console.log('OPENBAO SERVER START FAILED');
         process.exit(1);
       }
     });

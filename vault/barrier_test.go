@@ -376,7 +376,7 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the master key
+	// Verify the root key
 	if err := b.VerifyRoot(key); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -388,12 +388,12 @@ func testBarrier_Rekey(t *testing.T, b SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the old master key
+	// Verify the old root key
 	if err := b.VerifyRoot(key); err != ErrBarrierInvalidKey {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Verify the new master key
+	// Verify the new root key
 	if err := b.VerifyRoot(newKey); err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -532,7 +532,7 @@ func testBarrier_Upgrade_Rekey(t *testing.T, b1, b2 SecurityBarrier) {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Reload the master key
+	// Reload the root key
 	err = b2.ReloadRootKey(context.Background())
 	if err != nil {
 		t.Fatalf("err: %v", err)

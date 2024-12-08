@@ -356,6 +356,7 @@ const (
 	PatchOperation                    = "patch"
 	DeleteOperation                   = "delete"
 	ListOperation                     = "list"
+	ScanOperation                     = "scan"
 	HelpOperation                     = "help"
 	AliasLookaheadOperation           = "alias-lookahead"
 	ResolveRoleOperation              = "resolve-role"

@@ -102,7 +102,7 @@ Here is a more detailed policy, and it is documented inline:
 # This section grants all access on "secret/*". further restrictions can be
 # applied to this broad policy, as shown below.
 path "secret/*" {
-  capabilities = ["create", "read", "update", "patch", "delete", "list"]
+  capabilities = ["create", "read", "update", "patch", "delete", "list", "scan"]
 }
 
 # Even though we allowed secret/*, this line explicitly denies
@@ -200,9 +200,9 @@ It _is not a regular expression_ and is only supported **as the last character o
 
 :::
 
-When providing `list` capability, it is important to note that since listing
-always operates on a prefix, policies must operate on a prefix because OpenBao
-will sanitize request paths to be prefixes.
+When providing `list` or `scan` capabilities, it is important to note that
+since listing always operates on a prefix, policies must operate on a prefix
+because OpenBao will sanitize request paths to be prefixes.
 
 ### Capabilities
 
@@ -234,6 +234,11 @@ The list of capabilities include the following:
 - `list` (`LIST`) - Allows listing values at the given path. Note that the
   keys returned by a `list` operation are _not_ filtered by policies. Do not
   encode sensitive information in key names. Not all backends support listing.
+
+- `scan` (`SCAN`) - Allows recursively listing ("scanning") values at the
+  given path. Note that the keys returned by a `list` operation are _not_
+  filtered by policies. Do not encode sensitive information in key names. Not
+  all backends support listing.
 
 In the list above, the associated HTTP verbs are shown in parenthesis next to
 the capability. When authoring policy, it is usually helpful to look at the HTTP

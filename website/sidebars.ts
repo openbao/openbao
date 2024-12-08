@@ -492,6 +492,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/signed-commits",
                 "rfcs/transactions",
                 "rfcs/split-mount-tables",
+                "rfcs/scan-operation",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

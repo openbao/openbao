@@ -69,6 +69,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 					logical.UpdateOperation: b.handleWrite(),
 					logical.DeleteOperation: b.handleDelete(),
 					logical.ListOperation:   b.handleList(),
+					logical.ScanOperation:   b.handleScan(),
 				},
 
 				ExistenceCheck: b.handleExistenceCheck(),
@@ -247,6 +248,30 @@ func (b *PassthroughBackend) handleList() framework.OperationFunc {
 
 		// List the keys at the prefix given by the request
 		keys, err := req.Storage.List(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+
+		// Generate the response
+		return logical.ListResponse(keys), nil
+	}
+}
+
+func (b *PassthroughBackend) handleScan() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Right now we only handle directories, so ensure it ends with /; however,
+		// some physical backends may not handle the "/" case properly, so only add
+		// it if we're not listing the root
+		path := data.Get("path").(string)
+		if path != "" && !strings.HasSuffix(path, "/") {
+			path = path + "/"
+		}
+
+		// List the keys at the prefix given by the request
+		var keys []string
+		err := logical.ScanView(ctx, logical.NewStorageView(req.Storage, path), func(p string) {
+			keys = append(keys, p)
+		})
 		if err != nil {
 			return nil, err
 		}

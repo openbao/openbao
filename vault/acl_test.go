@@ -247,6 +247,10 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 		{logical.PatchOperation, "baz/quux", true, false},
 		{logical.ListOperation, "baz/quux", false, false},
 		{logical.UpdateOperation, "baz/quux", false, false},
+		{logical.ScanOperation, "baz/quux", false, false},
+
+		{logical.ScanOperation, "asdf/fdsa", true, false},
+		{logical.ListOperation, "asdf/fdsa", false, false},
 
 		// Path segment wildcards
 		{logical.ReadOperation, "test/foo/bar/segment", false, false},
@@ -1039,6 +1043,9 @@ path "1/2/+" {
 }
 path "1/2/+/+" {
 	capabilities = ["update"]
+}
+path "asdf/fdsa" {
+	capabilities = ["scan"]
 }
 `
 

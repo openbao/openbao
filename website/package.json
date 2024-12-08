@@ -17,7 +17,7 @@
   "dependencies": {
     "@docusaurus/core": "^3.5.2",
     "@docusaurus/plugin-sitemap": "^3.6.1",
-    "@docusaurus/preset-classic": "^3.6.1",
+    "@docusaurus/preset-classic": "^3.6.3",
     "@hashicorp/remark-plugins": "^4.1.1",
     "@mdx-js/react": "^3.1.0",
     "clsx": "^2.1.1",

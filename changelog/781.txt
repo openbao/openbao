@@ -1,0 +1,3 @@
+```release-note:improvement
+**Paginated Lists**: Introduce `HandleListPage()` helper to streamline processing of paginated lists using item-level (`itemCallback`) and batch-level (`batchCallback`) callbacks.
+```

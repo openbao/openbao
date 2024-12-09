@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/pem"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -263,10 +264,13 @@ func (b *backend) pathImportKeyHandler(ctx context.Context, req *logical.Request
 	var pemBlock *pem.Block
 
 	var keys []string
+	blockCounter := 0
 	for len(bytes.TrimSpace(pemBytes)) > 0 {
+		blockCounter++
 		pemBlock, pemBytes = pem.Decode(pemBytes)
 		if pemBlock == nil {
-			return logical.ErrorResponse("provided PEM block contained no data"), nil
+			msg := fmt.Sprintf("error when parsing block %d: invalid PEM data", blockCounter)
+			return logical.ErrorResponse(msg), nil
 		}
 
 		pemBlockString := string(pem.EncodeToMemory(pemBlock))

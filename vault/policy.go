@@ -31,6 +31,7 @@ const (
 	SudoCapability   = "sudo"
 	RootCapability   = "root"
 	PatchCapability  = "patch"
+	ScanCapability   = "scan"
 
 	// Backwards compatibility
 	OldDenyPathPolicy  = "deny"
@@ -48,6 +49,7 @@ const (
 	ListCapabilityInt
 	SudoCapabilityInt
 	PatchCapabilityInt
+	ScanCapabilityInt
 )
 
 type PolicyType uint32
@@ -77,6 +79,7 @@ var cap2Int = map[string]uint32{
 	ListCapability:   ListCapabilityInt,
 	SudoCapability:   SudoCapabilityInt,
 	PatchCapability:  PatchCapabilityInt,
+	ScanCapability:   ScanCapabilityInt,
 }
 
 // Policy is used to represent the policy specified by an ACL configuration.
@@ -384,7 +387,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 				pc.Capabilities = []string{DenyCapability}
 				pc.Permissions.CapabilitiesBitmap = DenyCapabilityInt
 				goto PathFinished
-			case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability:
+			case CreateCapability, ReadCapability, UpdateCapability, DeleteCapability, ListCapability, SudoCapability, PatchCapability, ScanCapability:
 				pc.Permissions.CapabilitiesBitmap |= cap2Int[cap]
 			default:
 				return fmt.Errorf("path %q: invalid capability %q", key, cap)

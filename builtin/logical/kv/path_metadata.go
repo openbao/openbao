@@ -71,6 +71,7 @@ version-agnostic information about a secret.
 			logical.ReadOperation:   b.upgradeCheck(b.pathMetadataRead()),
 			logical.DeleteOperation: b.upgradeCheck(b.pathMetadataDelete()),
 			logical.ListOperation:   b.upgradeCheck(b.pathMetadataList()),
+			logical.ScanOperation:   b.upgradeCheck(b.pathMetadataScan()),
 			logical.PatchOperation:  b.upgradeCheck(b.pathMetadataPatch()),
 		},
 
@@ -122,6 +123,32 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 		// Use encrypted key storage to list the keys
 		keys, err := es.ListPage(ctx, key, after, limit)
 		return logical.ListResponse(keys), err
+	}
+}
+
+func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		key := data.Get("path").(string)
+
+		// Get an encrypted key storage object
+		wrapper, err := b.getKeyEncryptor(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+
+		es := wrapper.Wrap(req.Storage)
+		view := logical.NewStorageView(es, key)
+
+		// Use encrypted key storage to recursively list the keys
+		var keys []string
+		err = logical.ScanView(ctx, view, func(path string) {
+			keys = append(keys, path)
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return logical.ListResponse(keys), nil
 	}
 }
 

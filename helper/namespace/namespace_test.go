@@ -101,10 +101,10 @@ func TestSplitIDFromString(t *testing.T) {
 		},
 	}
 
-	for _, c := range tcases {
+	for i, c := range tcases {
 		pre, id := SplitIDFromString(c.input)
 		if pre != c.prefix || id != c.id {
-			t.Fatalf("bad test case: %s != %s, %s != %s", pre, c.prefix, id, c.id)
+			t.Fatalf("bad test case %d: %s != %s, %s != %s", i, pre, c.prefix, id, c.id)
 		}
 	}
 }

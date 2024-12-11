@@ -7,6 +7,37 @@ import (
 	"testing"
 )
 
+func TestCanonicalize(t *testing.T) {
+	tcases := []struct {
+		nsPath string
+		result string
+	}{
+		{
+			"",
+			"",
+		},
+		{
+			"ns1",
+			"ns1/",
+		},
+		{
+			"/ns1",
+			"ns1/",
+		},
+		{
+			"ns1/ns2",
+			"ns1/ns2/",
+		},
+	}
+
+	for i, c := range tcases {
+		result := Canonicalize(c.nsPath)
+		if result != c.result {
+			t.Fatalf("bad test case %d: %s != %s", i, result, c.result)
+		}
+	}
+}
+
 func TestSplitIDFromString(t *testing.T) {
 	tcases := []struct {
 		input  string

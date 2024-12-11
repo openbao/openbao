@@ -12,7 +12,7 @@ import { allEngines, mountableEngines } from 'vault/helpers/mountable-secret-eng
 import { methods } from 'vault/helpers/mountable-auth-methods';
 
 const secretTypes = mountableEngines().map((engine) => engine.type);
-const allSecretTypes = allEngines().map((engine) => engine.type);
+allEngines().map((engine) => engine.type);
 const authTypes = methods().map((auth) => auth.type);
 
 module('Integration | Component | mount-backend/type-form', function (hooks) {
@@ -56,19 +56,5 @@ module('Integration | Component | mount-backend/type-form', function (hooks) {
     assert.ok(spy.notCalled, 'callback not called');
     await click('[data-test-mount-next]');
     assert.ok(spy.calledOnceWith('github'));
-  });
-
-  module('Enterprise', function (hooks) {
-    hooks.beforeEach(function () {
-      this.version = this.owner.lookup('service:version');
-      this.version.version = '1.12.1+ent';
-    });
-
-    test('it renders correct items for enterprise secrets', async function (assert) {
-      await render(hbs`<MountBackend::TypeForm @mountType="secret" @setMountType={{this.setType}} />`);
-      assert
-        .dom('[data-test-mount-type]')
-        .exists({ count: allSecretTypes.length }, 'Renders all secret engines');
-    });
   });
 });

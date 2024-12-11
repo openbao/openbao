@@ -69,8 +69,8 @@ module('Acceptance | oidc-config clients and assignments', function (hooks) {
     assert.strictEqual(currentURL(), '/vault/access/oidc');
     assert.dom('h1.title.is-3').hasText('OIDC Provider');
     assert.dom(SELECTORS.oidcHeader).hasText(
-      `Configure Vault to act as an OIDC identity provider, and offer Vault’s various authentication
-    methods and source of identity to any client applications. Learn more Create your first app`,
+      `Configure OpenBao to act as an OIDC identity provider, and offer OpenBao’s various authentication
+    methods and source of identity to any client applications. Create your first app`,
       'renders call to action header when no clients are configured'
     );
     assert.dom('[data-test-oidc-landing]').exists('landing page renders when no clients are configured');

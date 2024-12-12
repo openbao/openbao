@@ -173,10 +173,7 @@ func (c *Core) RekeyInit(config *SealConfig, recovery bool) logical.HTTPCodedErr
 func (c *Core) BarrierRekeyInit(config *SealConfig) logical.HTTPCodedError {
 	switch c.seal.BarrierType() {
 	case wrapping.WrapperTypeShamir:
-		// As of Vault 1.3 all seals use StoredShares==1.  The one exception is
-		// legacy shamir seals, which we can read but not write (by design).
-		// So if someone does a rekey, regardless of their intention, we're going
-		// to migrate them to a non-legacy Shamir seal.
+		// As of Vault 1.3 all seals use StoredShares==1.
 		if config.StoredShares != 1 {
 			c.logger.Warn("shamir stored keys supported, forcing rekey shares/threshold to 1")
 			config.StoredShares = 1
@@ -520,17 +517,6 @@ func (c *Core) BarrierRekeyUpdate(ctx context.Context, key []byte, nonce string)
 }
 
 func (c *Core) performBarrierRekey(ctx context.Context, newSealKey []byte) logical.HTTPCodedError {
-	legacyUpgrade := c.seal.StoredKeysSupported() == seal.StoredKeysNotSupported
-	if legacyUpgrade {
-		// We won't be able to call SetStoredKeys without setting StoredShares=1.
-		existingConfig, err := c.seal.BarrierConfig(ctx)
-		if err != nil {
-			return logical.CodedError(http.StatusInternalServerError, fmt.Errorf("failed to fetch existing config: %w", err).Error())
-		}
-		existingConfig.StoredShares = 1
-		c.seal.SetCachedBarrierConfig(existingConfig)
-	}
-
 	if c.seal.StoredKeysSupported() != seal.StoredKeysSupportedGeneric {
 		shamirWrapper, err := c.seal.GetShamirWrapper()
 		if err == nil {

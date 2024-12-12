@@ -83,7 +83,7 @@ and starting a new rekey, which will also provide a new nonce.
 
 - `require_verification` `(bool: false)` – This turns on verification
   functionality. When verification is turned on, after successful authorization
-  with the current unseal keys, the new unseal keys are returned but the master
+  with the current unseal keys, the new unseal keys are returned but the root
   key is not actually rotated. The new keys must be provided to authorize the
   actual rotation of the root key. This ensures that the new keys have been
   successfully saved and protects against a risk of the keys being lost after
@@ -199,7 +199,7 @@ for the verification operation.
 
 ### Parameters
 
-- `key` `(string: <required>)` – Specifies a single master share key.
+- `key` `(string: <required>)` – Specifies a single root share key.
 
 - `nonce` `(string: <required>)` – Specifies the nonce of the rekey operation.
 
@@ -310,7 +310,7 @@ $ curl \
 
 This endpoint is used to enter a single new key share to progress the rekey
 verification operation. If the threshold number of new key shares is reached,
-OpenBao will complete the rekey by performing the actual rotation of the master
+OpenBao will complete the rekey by performing the actual rotation of the root
 key. Otherwise, this API must be called multiple times until that threshold is
 met. The nonce must be provided with each call.
 
@@ -324,7 +324,7 @@ below; otherwise the response will be the same as the `GET` method against
 
 ### Parameters
 
-- `key` `(string: <required>)` – Specifies a single master share key from the
+- `key` `(string: <required>)` – Specifies a single root share key from the
   new set of shares.
 
 - `nonce` `(string: <required>)` – Specifies the nonce of the rekey

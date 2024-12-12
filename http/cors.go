@@ -19,6 +19,7 @@ var allowedMethods = []string{
 	http.MethodPost,
 	http.MethodPut,
 	"LIST", // LIST is not an official HTTP method, but Vault supports it.
+	"SCAN", // SCAN is not an official HTTP method, but Vault supports it.
 }
 
 func wrapCORSHandler(h http.Handler, core *vault.Core) http.Handler {

@@ -34,12 +34,14 @@ const mount = async () => {
   return path;
 };
 
-const newConnection = async (backend, plugin = 'mongodb-database-plugin') => {
+const newConnection = async (backend, plugin = 'mysql-database-plugin') => {
   const name = `connection-${Date.now()}`;
   await connectionPage.visitCreate({ backend });
   await connectionPage.dbPlugin(plugin);
   await connectionPage.name(name);
-  await connectionPage.connectionUrl(`mongodb://127.0.0.1:4321/${name}`);
+  await connectionPage.connectionUrl(`{{username}}:{{password}}@tcp(127.0.0.1:3306)/${name}`);
+  await connectionPage.username('user');
+  await connectionPage.password('so-secure');
   await connectionPage.toggleVerify();
   await connectionPage.save();
   await connectionPage.enable();
@@ -192,7 +194,7 @@ module('Acceptance | secrets/database/*', function (hooks) {
   });
 
   test('Connection create and edit form for each plugin', async function (assert) {
-    assert.expect(161);
+    assert.expect(95);
     const backend = await mount();
     for (const testCase of connectionTests) {
       await connectionPage.visitCreate({ backend });
@@ -203,13 +205,7 @@ module('Acceptance | secrets/database/*', function (hooks) {
       await connectionPage.dbPlugin(testCase.plugin);
       assert.dom('[data-test-empty-state]').doesNotExist('Empty state goes away after plugin selected');
       await connectionPage.name(testCase.name);
-      if (testCase.plugin === 'elasticsearch-database-plugin') {
-        await connectionPage.url(testCase.url);
-        await connectionPage.username(testCase.elasticUser);
-        await connectionPage.password(testCase.elasticPassword);
-      } else {
-        await connectionPage.connectionUrl(testCase.url);
-      }
+      await connectionPage.connectionUrl(testCase.url);
       testCase.requiredFields(assert, testCase.name);
       await connectionPage.toggleVerify();
       await connectionPage.save();
@@ -251,14 +247,17 @@ module('Acceptance | secrets/database/*', function (hooks) {
   test('Can create and delete a connection', async function (assert) {
     const backend = await mount();
     const connectionDetails = {
-      plugin: 'mongodb-database-plugin',
+      plugin: 'mysql-database-plugin',
       id: 'horses-db',
       fields: [
         { label: 'Connection name', name: 'name', value: 'horses-db' },
-        { label: 'Connection URL', name: 'connection_url', value: 'mongodb://127.0.0.1:235/horses' },
+        {
+          label: 'Connection URL',
+          name: 'connection_url',
+          value: '{{username}}:{{password}}@tcp(127.0.0.1:3306)/',
+        },
         { label: 'Username', name: 'username', value: 'user', hideOnShow: true },
         { label: 'Password', name: 'password', password: 'so-secure', hideOnShow: true },
-        { label: 'Write concern', name: 'write_concern' },
       ],
     };
     assert.strictEqual(

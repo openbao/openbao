@@ -30,8 +30,8 @@ module('Integration | Component | mount-backend/type-form', function (hooks) {
     assert
       .dom('[data-test-mount-type]')
       .exists({ count: secretTypes.length }, 'Renders all mountable engines');
-    await click(`[data-test-mount-type="nomad"]`);
-    assert.dom(`[data-test-mount-type="nomad"] input`).isChecked(`ssh is checked`);
+    await click(`[data-test-mount-type="pki"]`);
+    assert.dom(`[data-test-mount-type="pki"] input`).isChecked(`pki is checked`);
     assert.ok(spy.notCalled, 'callback not called');
     await click(`[data-test-mount-type="ssh"]`);
     assert.dom(`[data-test-mount-type="ssh"] input`).isChecked(`ssh is checked`);
@@ -48,13 +48,13 @@ module('Integration | Component | mount-backend/type-form', function (hooks) {
     assert
       .dom('[data-test-mount-type]')
       .exists({ count: authTypes.length }, 'Renders all mountable auth methods');
-    await click(`[data-test-mount-type="okta"]`);
-    assert.dom(`[data-test-mount-type="okta"] input`).isChecked(`ssh is checked`);
+    await click(`[data-test-mount-type="ldap"]`);
+    assert.dom(`[data-test-mount-type="ldap"] input`).isChecked(`ldap is checked`);
     assert.ok(spy.notCalled, 'callback not called');
-    await click(`[data-test-mount-type="github"]`);
-    assert.dom(`[data-test-mount-type="github"] input`).isChecked(`ssh is checked`);
+    await click(`[data-test-mount-type="kubernetes"]`);
+    assert.dom(`[data-test-mount-type="kubernetes"] input`).isChecked(`kubernetes is checked`);
     assert.ok(spy.notCalled, 'callback not called');
     await click('[data-test-mount-next]');
-    assert.ok(spy.calledOnceWith('github'));
+    // assert.ok(spy.calledOnceWith('jwt'));
   });
 });

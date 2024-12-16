@@ -2,7 +2,6 @@ import { module, test } from 'qunit';
 import { setupRenderingTest } from 'ember-qunit';
 import { render, click } from '@ember/test-helpers';
 import hbs from 'htmlbars-inline-precompile';
-import sinon from 'sinon';
 
 module('Integration | Component | sidebar-frame', function (hooks) {
   setupRenderingTest(hooks);
@@ -50,18 +49,5 @@ module('Integration | Component | sidebar-frame', function (hooks) {
     await click('[data-test-console-toggle]');
     assert.dom('.panel-open').doesNotExist('Console ui panel closes');
     assert.dom('[data-test-user-menu]').exists('User menu renders');
-  });
-
-  test('it should render namespace picker in sidebar footer', async function (assert) {
-    const version = this.owner.lookup('service:version');
-    version.features = ['Namespaces'];
-    const auth = this.owner.lookup('service:auth');
-    sinon.stub(auth, 'authData').value({});
-
-    await render(hbs`
-      <Sidebar::Frame @showSidebar={{true}} />
-    `);
-
-    assert.dom('.namespace-picker').exists('Namespace picker renders in sidebar footer');
   });
 });

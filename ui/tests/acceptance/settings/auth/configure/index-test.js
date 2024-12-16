@@ -34,14 +34,14 @@ module('Acceptance | settings/auth/configure', function (hooks) {
   });
 
   test('it redirects to the first section', async function (assert) {
-    const path = `aws-redirect-${this.uid}`;
-    const type = 'aws';
+    const path = `ldap-redirect-${this.uid}`;
+    const type = 'ldap';
     await enablePage.enable(type, path);
     await page.visit({ path });
     assert.strictEqual(currentRouteName(), 'vault.cluster.settings.auth.configure.section');
     assert.strictEqual(
       currentURL(),
-      `/vault/settings/auth/configure/${path}/client`,
+      `/vault/settings/auth/configure/${path}/configuration`,
       'loads the first section for the type of auth method'
     );
   });

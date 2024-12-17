@@ -1,0 +1,4 @@
+```release-note:change
+core/seal: remove support for legacy pre-keyring barrier entries
+core/seal: remove support for legacy (direct) shamir unseal keys
+```

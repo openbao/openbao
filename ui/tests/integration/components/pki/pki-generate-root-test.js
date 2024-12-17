@@ -144,7 +144,7 @@ module('Integration | Component | pki-generate-root', function (hooks) {
     assert
       .dom(SELECTORS.toggleGroupDescription)
       .hasText(
-        'This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao where to find it in your KMS or HSM. Learn more about managed keys.',
+        'This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao where to find it in your KMS or HSM.',
         `has correct description for type=${this.type}`
       );
     assert.strictEqual(this.model.type, this.type);

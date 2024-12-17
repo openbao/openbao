@@ -182,6 +182,8 @@ func pathInvalid(b *versionedKVBackend) []*framework.Path {
 			subCommand = "get"
 		case logical.ListOperation:
 			subCommand = "list"
+		case logical.ScanOperation:
+			subCommand = "scan"
 		case logical.DeleteOperation:
 			subCommand = "delete"
 		}
@@ -200,6 +202,7 @@ func pathInvalid(b *versionedKVBackend) []*framework.Path {
 				logical.ReadOperation:   &framework.PathOperation{Callback: handler, Unpublished: true},
 				logical.DeleteOperation: &framework.PathOperation{Callback: handler, Unpublished: true},
 				logical.ListOperation:   &framework.PathOperation{Callback: handler, Unpublished: true},
+				logical.ScanOperation:   &framework.PathOperation{Callback: handler, Unpublished: true},
 			},
 
 			HelpDescription: pathInvalidHelp,

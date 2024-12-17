@@ -4,7 +4,7 @@ frontend:
 
 .PHONY: backend
 backend:
-	yarn bao
+	yarn openbao
 
 .PHONY: test
 test:

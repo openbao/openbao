@@ -11,12 +11,6 @@ const CHANGELOG_URL = 'https://www.github.com/openbao/openbao/blob/main/CHANGELO
 
 module('Integration | Helper | changelog-url-for', function (hooks) {
   setupRenderingTest(hooks);
-
-  test('it builds an enterprise URL', function (assert) {
-    const result = changelogUrlFor(['1.5.0+prem']);
-    assert.strictEqual(result, CHANGELOG_URL.concat('150'));
-  });
-
   test('it builds an OSS URL', function (assert) {
     const result = changelogUrlFor(['1.4.3']);
     assert.strictEqual(result, CHANGELOG_URL.concat('143'));

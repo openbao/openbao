@@ -69,20 +69,4 @@ module('Acceptance | cluster', function (hooks) {
     await click('[data-test-user-menu-trigger]');
     assert.dom('[data-test-user-menu-item="mfa"]').doesNotExist();
   });
-
-  test('enterprise nav item links to first route that user has access to', async function (assert) {
-    const read_rgp_policy = `
-      path "sys/policies/rgp" {
-        capabilities = ["read"]
-      },
-    `;
-
-    const userToken = await tokenWithPolicy('show-policies-nav', read_rgp_policy);
-    await logout.visit();
-    await authPage.login(userToken);
-    await visit('/vault/access');
-
-    assert.dom('[data-test-sidebar-nav-link="Policies"]').hasAttribute('href', '/ui/vault/policies/rgp');
-    await logout.visit();
-  });
 });

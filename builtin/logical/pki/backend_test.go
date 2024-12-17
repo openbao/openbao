@@ -7288,6 +7288,7 @@ func TestProperAuthing(t *testing.T) {
 		"revoke":                                 shouldBeAuthed,
 		"revoke-with-key":                        shouldBeAuthed,
 		"roles/test":                             shouldBeAuthed,
+		"cel/roles":                              shouldBeAuthed,
 		"roles":                                  shouldBeAuthed,
 		"root":                                   shouldBeAuthed,
 		"root/generate/exported":                 shouldBeAuthed,

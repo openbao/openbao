@@ -23,6 +23,10 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 	testCases := []TestCase{
 		{
+			Name:              "testrole_valid",
+			ValidationProgram: "1 == 1",
+		},
+		{
 			Name:              "testrole_invalid",
 			ValidationProgram: "invalid_cel_syntax", // Should fail validation
 		},
@@ -38,7 +42,6 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 		// Data for creating the role
 		roleData := map[string]interface{}{
-			"name":               testCase.Name,
 			"validation_program": testCase.ValidationProgram,
 		}
 
@@ -53,17 +56,16 @@ func TestPki_CelRoleCreate(t *testing.T) {
 		resp, err = b.HandleRequest(context.Background(), roleReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			if testCase.Name == "testrole_invalid" {
-				// Expect failure for invalid CEL rule
-				t.Logf("expected failure [%d/%s]: %v", index, testCase.Name, err)
+				require.Error(t, err, fmt.Sprintf("expected failure for [%s] but got none", testCase.Name))
 				continue
 			}
-			t.Fatalf("bad [%d/%s] create: err: %v resp: %#v", index, testCase.Name, err, resp)
 		}
 
 		// Read back the role to verify
 		roleReq.Operation = logical.ReadOperation
-		roleReq.Path = "cel/role/" + testCase.Name
+		roleReq.Path = "cel/roles/" + testCase.Name
 		roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+
 		if err != nil || (roleDataResp != nil && roleDataResp.IsError()) {
 			t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", index, testCase.Name, err, resp)
 		}

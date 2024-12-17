@@ -141,7 +141,11 @@ func pathCelRoles(b *backend) *framework.Path {
 
 func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	var err error
-	name := data.Get("name").(string)
+	nameRaw, ok := data.GetOk("name")
+	if !ok {
+		return logical.ErrorResponse("missing required field 'name'"), nil
+	}
+	name := nameRaw.(string)
 
 	entry := &celRoleEntry{
 		Name:              name,
@@ -268,8 +272,9 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 func validateCelRole(b *backend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	if ok, err := validateCelRules(entry.ValidationProgram); !ok {
-		return logical.ErrorResponse(fmt.Sprintf("Invalid CEL rule: %v", err)), nil
+	_, err := validateCelRules(entry.ValidationProgram)
+	if err != nil {
+		return nil, fmt.Errorf("invalid CEL rule: %w", err)
 	}
 
 	resp.Data = entry.ToResponseData()
@@ -298,7 +303,7 @@ func validateCelRules(rule string) (bool, error) {
 const (
 	pathListCelHelpSyn  = `List the existing CEL roles in this backend`
 	pathListCelHelpDesc = `CEL policies will be listed by the role name.`
-	pathCelRoleHelpSyn  = `Manage the cdl roles that can be created with this backend.`
+	pathCelRoleHelpSyn  = `Manage the cel roles that can be created with this backend.`
 	pathCelRoleHelpDesc = `This path lets you manage the cel roles that can be created with this backend.`
 )
 

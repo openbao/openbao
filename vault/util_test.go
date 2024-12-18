@@ -3,19 +3,40 @@
 
 package vault
 
-import "testing"
+import (
+	"math/rand"
+	"testing"
+)
+
+const n = 1024
 
 func TestMemZero(t *testing.T) {
-	b := []byte{1, 2, 3, 4}
+	r := rand.Intn(n)
+	b := randbytes(r)
 	memzero(b)
-	if b[0] != 0 || b[1] != 0 || b[2] != 0 || b[3] != 0 {
-		t.Fatalf("bad: %v", b)
+	if len(b) != r {
+		t.Fatalf("buffer has wrong length: %d", len(b))
+	}
+	for i := range b {
+		if b[i] != 0 {
+			t.Fatalf("buffer contains nonzero bytes: %v", b)
+		}
 	}
 }
 
 func TestRandBytes(t *testing.T) {
-	b := randbytes(12)
-	if len(b) != 12 {
-		t.Fatalf("bad: %v", b)
+	b := randbytes(n)
+	if len(b) != n {
+		t.Fatalf("buffer has wrong length: %d", len(b))
+	}
+	c := 0
+	for i := range b {
+		if b[i] == 0 {
+			c++
+		}
+	}
+	// for large n the probability for a false negative result is very small
+	if c == n {
+		t.Fatalf("buffer contains zero bytes only: %v", b)
 	}
 }

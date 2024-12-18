@@ -37,7 +37,7 @@ import { filterOptions, defaultMatcher } from 'ember-power-select/utils/group-ut
  * @param {array} [excludeOptions] - array of strings containing model ids to filter from the dropdown (ex: ['allow_all'])
 
 // * query params for dropdown items
- * @param {array} models - models to fetch from API. models with varying permissions should be ordered from least restricted to anticipated most restricted (ex. if one model is an enterprise only feature, pass it in last)
+ * @param {array} models - models to fetch from API. models with varying permissions should be ordered from least restricted to anticipated most restricted
 
  // * template only/display args
  * @param {string} id - The name of the form field

@@ -62,8 +62,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'path',
         'description',
         'accessor',
-        'local',
-        'sealWrap',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
         'config.allowedManagedKeys',
@@ -85,8 +83,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'path',
         'description',
         'accessor',
-        'local',
-        'sealWrap',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
         'config.allowedManagedKeys',
@@ -110,8 +106,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'path',
         'description',
         'accessor',
-        'local',
-        'sealWrap',
         'config.defaultLeaseTtl',
         'config.maxLeaseTtl',
         'config.allowedManagedKeys',
@@ -137,8 +131,6 @@ module('Unit | Model | secret-engine', function (hooks) {
         'path',
         'description',
         'accessor',
-        'local',
-        'sealWrap',
         'config.allowedManagedKeys',
         'config.auditNonHmacRequestKeys',
         'config.auditNonHmacResponseKeys',
@@ -161,8 +153,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
             'config.allowedManagedKeys',
@@ -187,8 +177,6 @@ module('Unit | Model | secret-engine', function (hooks) {
             'version',
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
             'config.allowedManagedKeys',
@@ -214,8 +202,6 @@ module('Unit | Model | secret-engine', function (hooks) {
             'version',
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.defaultLeaseTtl',
             'config.maxLeaseTtl',
             'config.allowedManagedKeys',
@@ -240,8 +226,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
@@ -264,8 +248,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
             'config.passthroughRequestHeaders',
@@ -287,8 +269,6 @@ module('Unit | Model | secret-engine', function (hooks) {
           'Method Options': [
             'description',
             'config.listingVisibility',
-            'local',
-            'sealWrap',
             'config.allowedManagedKeys',
             'config.auditNonHmacRequestKeys',
             'config.auditNonHmacResponseKeys',
@@ -367,13 +347,6 @@ module('Unit | Model | secret-engine', function (hooks) {
   });
 
   module('localDisplay', function () {
-    test('returns local if local', function (assert) {
-      assert.expect(1);
-      const model = this.store.createRecord('secret-engine', {
-        local: true,
-      });
-      assert.strictEqual(model.localDisplay, 'local');
-    });
     test('returns replicated if !local', function (assert) {
       assert.expect(1);
       const model = this.store.createRecord('secret-engine', {

@@ -9,13 +9,10 @@ export default class PkiTidyModel extends Model {
   intervalDuration: string;
   issuerSafetyBuffer: string;
   pauseDuration: string;
-  revocationQueueSafetyBuffer: string;
   safetyBuffer: string;
   tidyCertStore: boolean;
-  tidyCrossClusterRevokedCerts: boolean;
   tidyExpiredIssuers: boolean;
   tidyMoveLegacyCaBundle: boolean;
-  tidyRevocationQueue: boolean;
   tidyRevokedCertIssuerAssociations: boolean;
   tidyRevokedCerts: boolean;
   get useOpenAPI(): boolean;

@@ -69,15 +69,6 @@ export default class PkiTidyModel extends Model {
   @attr('string', {
     editType: 'ttl',
     helperTextEnabled:
-      'Specifies a duration after which cross-cluster revocation requests will be removed as expired.',
-    hideToggle: true,
-    formatTtl: true,
-  })
-  revocationQueueSafetyBuffer; // enterprise only
-
-  @attr('string', {
-    editType: 'ttl',
-    helperTextEnabled:
       'For a certificate to be expunged, the time must be after the expiration time of the certificate (according to the local clock) plus the safety buffer. Defaults to 72 hours.',
     hideToggle: true,
     formatTtl: true,
@@ -86,12 +77,6 @@ export default class PkiTidyModel extends Model {
 
   @attr('boolean', { label: 'Tidy the certificate store' })
   tidyCertStore;
-
-  @attr('boolean', {
-    label: 'Tidy cross-cluster revoked certificates',
-    subText: 'Remove expired, cross-cluster revocation entries.',
-  })
-  tidyCrossClusterRevokedCerts; // enterprise only
 
   @attr('boolean', {
     subText: 'Automatically remove expired issuers after the issuer safety buffer duration has elapsed.',
@@ -104,11 +89,6 @@ export default class PkiTidyModel extends Model {
       'Backup any legacy CA/issuers bundle (from Vault versions earlier than 1.11, before the OpenBao fork) to config/ca_bundle.bak. Migration will only occur after issuer safety buffer has passed.',
   })
   tidyMoveLegacyCaBundle;
-
-  @attr('boolean', {
-    label: 'Tidy cross-cluster revocation requests',
-  })
-  tidyRevocationQueue; // enterprise only
 
   @attr('boolean', {
     label: 'Tidy revoked certificate issuer associations',
@@ -153,15 +133,6 @@ export default class PkiTidyModel extends Model {
         'Issuer operations': ['tidyExpiredIssuers', 'tidyMoveLegacyCaBundle', 'issuerSafetyBuffer'],
       },
     ];
-    if (this.version.isEnterprise) {
-      groups.push({
-        'Cross-cluster operations': [
-          'tidyRevocationQueue',
-          'tidyCrossClusterRevokedCerts',
-          'revocationQueueSafetyBuffer',
-        ],
-      });
-    }
     return groups;
   }
 

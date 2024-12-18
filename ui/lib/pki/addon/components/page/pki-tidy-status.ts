@@ -33,8 +33,6 @@ interface TidyStatusParams {
   cert_store_deleted_count: number;
   revoked_cert_deleted_count: number;
   missing_issuer_cert_count: number;
-  revocation_queue_deleted_count: number; // enterprise only
-  cross_revoked_cert_deleted_count: number; // enterprise only
   // tidy settings
   tidy_cert_store: boolean;
   tidy_revoked_certs: boolean;
@@ -42,9 +40,6 @@ interface TidyStatusParams {
   safety_buffer: number;
   tidy_move_legacy_ca_bundle: boolean;
   issuer_safety_buffer: string;
-  tidy_revocation_queue: boolean; // enterprise only
-  tidy_cross_cluster_revoked_certs: boolean; // enterprise only
-  revocation_queue_safety_buffer: string; // enterprise only
 }
 
 export default class PkiTidyStatusComponent extends Component<Args> {
@@ -74,12 +69,6 @@ export default class PkiTidyStatusComponent extends Component<Args> {
     'tidy_move_legacy_ca_bundle',
     'issuer_safety_buffer',
   ];
-
-  // enterprise only
-  crossClusterOperation = {
-    status: ['revocation_queue_deleted_count', 'cross_revoked_cert_deleted_count'],
-    config: ['tidy_revocation_queue', 'tidy_cross_cluster_revoked_certs', 'revocation_queue_safety_buffer'],
-  };
 
   get isEnterprise() {
     return this.version.isEnterprise;

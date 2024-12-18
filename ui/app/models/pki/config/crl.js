@@ -14,7 +14,6 @@ const formFieldGroups = [
   {
     'Online Certificate Status Protocol (OCSP)': ['ocspExpiry'],
   },
-  { 'Unified Revocation': ['crossClusterRevocation', 'unifiedCrl', 'unifiedCrlOnExistingPaths'] },
 ];
 @withFormFields(null, formFieldGroups)
 export default class PkiConfigCrlModel extends Model {
@@ -67,28 +66,6 @@ export default class PkiConfigCrlModel extends Model {
     helperTextDisabled: 'Requests cannot be made to check if an individual certificate is valid.',
   })
   ocspExpiry;
-
-  // enterprise only params
-  @attr('boolean', {
-    label: 'Cross-cluster revocation',
-    helpText:
-      'Enables cross-cluster revocation request queues. When a serial not issued on this local cluster is passed to the /revoke endpoint, it is replicated across clusters and revoked by the issuing cluster if it is online.',
-  })
-  crossClusterRevocation;
-
-  @attr('boolean', {
-    label: 'Unified CRL',
-    helpText:
-      'Enables unified CRL and OCSP building. This synchronizes all revocations between clusters; a single, unified CRL will be built on the active node of the primary performance replication (PR) cluster.',
-  })
-  unifiedCrl;
-
-  @attr('boolean', {
-    label: 'Unified CRL on existing paths',
-    helpText:
-      'If enabled, existing CRL and OCSP paths will return the unified CRL instead of a response based on cluster-local data.',
-  })
-  unifiedCrlOnExistingPaths;
 
   @lazyCapabilities(apiPath`${'id'}/config/crl`, 'id') crlPath;
 

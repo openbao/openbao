@@ -18,17 +18,24 @@ func TestPki_CelRoleCreate(t *testing.T) {
 	// Test case for creating CEL roles
 	type TestCase struct {
 		Name              string
-		ValidationProgram string
+		ValidationProgram ValidationProgram
+		FailurePolicy     string
 	}
 
 	testCases := []TestCase{
 		{
-			Name:              "testrole_valid",
-			ValidationProgram: "1 == 1",
+			Name: "testrole_valid",
+			ValidationProgram: ValidationProgram{
+				Expressions: "1 == 1",
+			},
+			FailurePolicy: "Modify",
 		},
 		{
-			Name:              "testrole_invalid",
-			ValidationProgram: "invalid_cel_syntax", // Should fail validation
+			Name: "testrole_invalid",
+			ValidationProgram: ValidationProgram{
+				Expressions: "invalid_cel_syntax",
+			}, // Should fail validation
+			FailurePolicy: "Modify",
 		},
 	}
 
@@ -42,7 +49,14 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 		// Data for creating the role
 		roleData := map[string]interface{}{
-			"validation_program": testCase.ValidationProgram,
+			"validation_program": ValidationProgram{
+				Expressions: testCase.ValidationProgram.Expressions,
+			},
+		}
+
+		// Add failure_policy only if it's provided in the test case
+		if testCase.FailurePolicy != "" {
+			roleData["failure_policy"] = testCase.FailurePolicy
 		}
 
 		// Create the CEL role
@@ -54,11 +68,10 @@ func TestPki_CelRoleCreate(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), roleReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			if testCase.Name == "testrole_invalid" {
-				require.Error(t, err, fmt.Sprintf("expected failure for [%s] but got none", testCase.Name))
-				continue
-			}
+
+		if testCase.Name == "testrole_invalid" {
+			require.Error(t, err, fmt.Sprintf("expected failure for [%s] but got none", testCase.Name))
+			continue
 		}
 
 		// Read back the role to verify

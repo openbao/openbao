@@ -9,9 +9,23 @@ import (
 	"net/http"
 
 	"github.com/google/cel-go/cel"
+	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
+
+type celRoleEntry struct {
+	Name              string            `json:"name"`                     // Required
+	ValidationProgram ValidationProgram `json:"validation_program"`       // Required
+	FailurePolicy     string            `json:"failure_policy,omitempty"` // Defaults to "Deny"
+	Message           string            `json:"message,omitempty"`
+}
+
+type ValidationProgram struct {
+	Variables         map[string]string `json:"variables,omitempty"`
+	Expressions       string            `json:"expressions"` // Required
+	MessageExpression string            `json:"message_expressions,omitempty"`
+}
 
 func pathListCelRoles(b *backend) *framework.Path {
 	return &framework.Path{
@@ -63,8 +77,16 @@ func pathCelRoles(b *backend) *framework.Path {
 			Description: "Name of the cel role",
 		},
 		"validation_program": {
-			Type:        framework.TypeString,
+			Type:        framework.TypeMap,
 			Description: "CEL rules defining the validation program for the role",
+		},
+		"failure_policy": {
+			Type:        framework.TypeString,
+			Description: "Failure policy if CEL expressions are not validated",
+		},
+		"message": {
+			Type:        framework.TypeString,
+			Description: "Static error message if validation fails",
 		},
 	}
 
@@ -82,8 +104,16 @@ func pathCelRoles(b *backend) *framework.Path {
 				Description: "Name of the cel role",
 			},
 			"validation_program": {
-				Type:        framework.TypeString,
+				Type:        framework.TypeMap,
 				Description: "CEL rules defining the validation program for the role",
+			},
+			"failure_policy": {
+				Type:        framework.TypeString,
+				Description: "Failure policy if CEL expressions are not validated",
+			},
+			"message": {
+				Type:        framework.TypeString,
+				Description: "Static error message if validation fails",
 			},
 		},
 
@@ -147,12 +177,34 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	}
 	name := nameRaw.(string)
 
-	entry := &celRoleEntry{
-		Name:              name,
-		ValidationProgram: data.Get("validation_program").(string),
+	validationProgram := ValidationProgram{}
+	if validationProgramRaw, ok := data.GetOk("validation_program"); !ok {
+		return logical.ErrorResponse("missing required field 'validation_program'"), nil
+		// Ensure "validation_program" is a map
+	} else if validationProgramMap, ok := validationProgramRaw.(map[string]interface{}); !ok {
+		return logical.ErrorResponse("'validation_program' must be a valid map"), nil
+
+		// Decode "validation_program" into the ValidationProgram struct
+	} else if err := mapstructure.Decode(validationProgramMap, &validationProgram); err != nil {
+		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 	}
 
-	resp, err := validateCelRole(b, entry, ctx, req.Storage)
+	failurePolicy := "Deny" // Default value
+	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
+		failurePolicy = failurePolicyRaw.(string)
+		if failurePolicy != "Deny" && failurePolicy != "Modify" {
+			return logical.ErrorResponse("failure_policy must be 'Deny' or 'Modify'"), nil
+		}
+	}
+
+	entry := &celRoleEntry{
+		Name:              name,
+		ValidationProgram: validationProgram,
+		FailurePolicy:     failurePolicy,
+		Message:           data.Get("message").(string),
+	}
+
+	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +270,12 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 
 	entry := &celRoleEntry{
 		Name:              roleName,
-		ValidationProgram: data.Get("validationProgram").(string),
+		ValidationProgram: data.Get("validation_program").(ValidationProgram),
+		FailurePolicy:     data.Get("failure_policy").(string),
+		Message:           data.Get("message").(string),
 	}
 
-	resp, err := validateCelRole(b, entry, ctx, req.Storage)
+	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -269,19 +323,19 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 	return &result, nil
 }
 
-func validateCelRole(b *backend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
+func validateCelRoleCreation(b *backend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelRules(entry.ValidationProgram)
+	_, err := validateCelExpressions(entry.ValidationProgram.Expressions)
 	if err != nil {
-		return nil, fmt.Errorf("invalid CEL rule: %w", err)
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	resp.Data = entry.ToResponseData()
 	return resp, nil
 }
 
-func validateCelRules(rule string) (bool, error) {
+func validateCelExpressions(rule string) (bool, error) {
 	env, err := cel.NewEnv()
 	if err != nil {
 		return false, fmt.Errorf("failed to create CEL environment: %w", err)
@@ -289,7 +343,7 @@ func validateCelRules(rule string) (bool, error) {
 
 	ast, issues := env.Compile(rule)
 	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("CEL rule validation failed: %v", issues.Err())
+		return false, fmt.Errorf("Invalid CEL syntax: %v", issues.Err())
 	}
 
 	// Check AST for errors
@@ -307,14 +361,11 @@ const (
 	pathCelRoleHelpDesc = `This path lets you manage the cel roles that can be created with this backend.`
 )
 
-type celRoleEntry struct {
-	Name              string `json:"name"`
-	ValidationProgram string `json:"validation_program"`
-}
-
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":               r.Name,
 		"validation_program": r.ValidationProgram,
+		"failure_policy":     r.FailurePolicy,
+		"message":            r.Message,
 	}
 }

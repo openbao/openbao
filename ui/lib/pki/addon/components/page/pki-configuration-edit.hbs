@@ -73,11 +73,6 @@
       {{#if @crl.canSet}}
         {{#each @crl.formFieldGroups as |fieldGroup|}}
           {{#each-in fieldGroup as |group fields|}}
-            {{#if (or (not-eq group "Unified Revocation") this.isEnterprise)}}
-              <h2 class="title is-size-5 has-border-bottom-light page-header" data-test-crl-header={{group}}>
-                {{group}}
-              </h2>
-            {{/if}}
             {{#each fields as |attr|}}
               {{#if (eq attr.options.editType "ttl")}}
                 {{#if (or (includes attr.name (array "expiry" "ocspExpiry")) (not @crl.disable))}}
@@ -96,10 +91,6 @@
                       />
                     </div>
                   {{/let}}
-                {{/if}}
-              {{else}}
-                {{#if this.isEnterprise}}
-                  <FormField @attr={{attr}} @model={{@crl}} />
                 {{/if}}
               {{/if}}
             {{/each}}

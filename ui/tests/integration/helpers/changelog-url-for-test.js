@@ -27,7 +27,7 @@ module('Integration | Helper | changelog-url-for', function (hooks) {
   });
 
   test('it builds the url for double-digit versions', function (assert) {
-    const result = changelogUrlFor(['1.13.0+ent']);
+    const result = changelogUrlFor(['1.13.0']);
     assert.strictEqual(result, CHANGELOG_URL.concat('1130'));
   });
 });

@@ -16,8 +16,7 @@
     {{#if (and (eq this.model.httpStatus 403) (eq this.model.policyPath "sys/capabilities-self"))}}
       <p>
         Your auth token does not have access to
-        <code>{{this.model.policyPath}}</code>. Vault Enterprise uses this endpoint to determine what actions are allowed in
-        the interface.
+        <code>{{this.model.policyPath}}</code>.
       </p>
       <p>
         Make sure the policy for the path

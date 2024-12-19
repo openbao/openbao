@@ -43,19 +43,6 @@ export default class SecretEngineModel extends Model {
   description;
   @belongsTo('mount-config', { async: false, inverse: null }) config;
 
-  // Enterprise options (still available on OSS)
-  @attr('boolean', {
-    helpText:
-      'When Replication is enabled, a local mount will not be replicated across clusters. This can only be specified at mount time.',
-  })
-  local;
-  @attr('boolean', {
-    helpText:
-      'When enabled - if a seal supporting seal wrapping is specified in the configuration, all critical security parameters (CSPs) in this backend will be seal wrapped. (For K/V mounts, all values will be seal wrapped.) This can only be specified at mount time.',
-  })
-  sealWrap;
-  @attr('boolean') externalEntropyAccess;
-
   // options.version
   @attr('number', {
     label: 'Version',
@@ -168,12 +155,12 @@ export default class SecretEngineModel extends Model {
   }
 
   get localDisplay() {
-    return this.local ? 'local' : 'replicated';
+    return 'replicated';
   }
 
   get formFields() {
     const type = this.engineType;
-    const fields = ['type', 'path', 'description', 'accessor', 'local', 'sealWrap'];
+    const fields = ['type', 'path', 'description', 'accessor'];
     // no ttl options for keymgmt
     if (type !== 'keymgmt') {
       fields.push('config.defaultLeaseTtl', 'config.maxLeaseTtl');
@@ -198,7 +185,7 @@ export default class SecretEngineModel extends Model {
   get formFieldGroups() {
     let defaultFields = ['path'];
     let optionFields;
-    const CORE_OPTIONS = ['description', 'config.listingVisibility', 'local', 'sealWrap'];
+    const CORE_OPTIONS = ['description', 'config.listingVisibility'];
     const STANDARD_CONFIG = [
       'config.auditNonHmacRequestKeys',
       'config.auditNonHmacResponseKeys',

@@ -38,6 +38,7 @@ import (
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-uuid"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/kdf"
@@ -156,6 +157,14 @@ func (kt KeyType) HashSignatureInput() bool {
 func (kt KeyType) DerivationSupported() bool {
 	switch kt {
 	case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305, KeyType_ED25519:
+		return true
+	}
+	return false
+}
+
+func (kt KeyType) KeyAgreementSupported() bool {
+	switch kt {
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
 		return true
 	}
 	return false
@@ -880,6 +889,80 @@ func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte,
 	default:
 		return nil, errutil.InternalError{Err: "unsupported key derivation mode"}
 	}
+}
+
+func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte) ([]byte, error) {
+
+	var curve elliptic.Curve = elliptic.P256()
+
+	if !p.Type.KeyAgreementSupported() {
+		return nil, errutil.UserError{Err: fmt.Sprintf("base key type %v does not support key agreement", p.Type)}
+	}
+
+	if p.Keys == nil || p.LatestVersion == 0 {
+		return nil, errutil.InternalError{Err: "unable to access the base key; no key versions found"}
+	}
+
+	switch {
+	case baseKeyVer == 0:
+		baseKeyVer = p.LatestVersion
+	case baseKeyVer < 0:
+		return nil, errutil.UserError{Err: "requested version of the base key is negative"}
+	case baseKeyVer > p.LatestVersion:
+		return nil, errutil.UserError{Err: "requested version of the base key is higher than the latest key version"}
+	case baseKeyVer < p.MinAvailableVersion:
+		return nil, errutil.UserError{Err: "requested version of the base key is less than the minimum available key version"}
+	}
+	baseKeyEntry, err := p.safeGetKeyEntry(baseKeyVer)
+	if err != nil {
+		return nil, err
+	}
+
+	switch p.Type {
+	case KeyType_ECDSA_P256:
+		curve = elliptic.P256()
+	case KeyType_ECDSA_P384:
+		curve = elliptic.P384()
+	case KeyType_ECDSA_P521:
+		curve = elliptic.P521()
+	default:
+		return nil, errutil.InternalError{Err: "unsupported base key type for ECDH key agreement"}
+	}
+
+	ownPrivateKey := &ecdsa.PrivateKey{
+		PublicKey: ecdsa.PublicKey{
+			Curve: curve,
+			X:     baseKeyEntry.EC_X,
+			Y:     baseKeyEntry.EC_Y,
+		},
+		D: baseKeyEntry.EC_D,
+	}
+
+	peerPublicKey, err := certutil.ParsePublicKeyPEM(peerPublicKeyPem)
+	if err != nil {
+		return nil, errutil.UserError{Err: fmt.Sprintf("failed to parse peer public key PEM: %s ", err.Error())}
+	}
+
+	if ownPrivateKey.Curve != peerPublicKey.(*ecdsa.PublicKey).Curve {
+		return nil, errutil.UserError{Err: fmt.Sprintf("base private key type %v does not match peer public key curve", p.Type)}
+	}
+
+	ownPrivateKeyEcdh, err := ownPrivateKey.ECDH()
+	if err != nil {
+		return nil, errutil.InternalError{Err: err.Error()}
+	}
+	peerPublicKeyEcdh, err := peerPublicKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		return nil, errutil.InternalError{Err: err.Error()}
+	}
+
+	sharedSecret, err := ownPrivateKeyEcdh.ECDH(peerPublicKeyEcdh)
+	if err != nil {
+		return nil, errutil.InternalError{Err: err.Error()}
+	}
+
+	// TODO - derive symmetric key from shared secret!
+	return sharedSecret, nil
 }
 
 func (p *Policy) safeGetKeyEntry(ver int) (KeyEntry, error) {

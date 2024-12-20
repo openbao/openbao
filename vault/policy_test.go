@@ -111,6 +111,13 @@ path "test/+/wildcard/+/*" {
 path "test/+/wildcard/+/end*" {
 	capabilities = ["create", "sudo"]
 }
+path "paginated-kv/metadata" {
+	capabilities = ["list"]
+	pagination_limit = 12345
+}
+path "unpaginated-kv/metadata" {
+	capabilities = ["list"]
+}
 `)
 
 func TestPolicy_Parse(t *testing.T) {
@@ -339,6 +346,22 @@ func TestPolicy_Parse(t *testing.T) {
 				CapabilitiesBitmap: (CreateCapabilityInt | SudoCapabilityInt),
 			},
 			HasSegmentWildcards: true,
+		},
+		{
+			Path:         "paginated-kv/metadata",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: ListCapabilityInt,
+				PaginationLimit:    12345,
+			},
+			PaginationLimitHCL: 12345,
+		},
+		{
+			Path:         "unpaginated-kv/metadata",
+			Capabilities: []string{"list"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: ListCapabilityInt,
+			},
 		},
 	}
 

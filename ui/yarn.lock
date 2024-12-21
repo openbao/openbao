@@ -11205,6 +11205,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"d3-selection@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "d3-selection@npm:3.0.0"
+  checksum: f4e60e133309115b99f5b36a79ae0a19d71ee6e2d5e3c7216ef3e75ebd2cb1e778c2ed2fa4c01bef35e0dcbd96c5428f5bd6ca2184fe2957ed582fde6841cbc5
+  languageName: node
+  linkType: hard
+
 "d3-shape@npm:1":
   version: 1.3.7
   resolution: "d3-shape@npm:1.3.7"
@@ -24684,7 +24691,7 @@ __metadata:
     d3-axis: ^1.0.8
     d3-ease: ^1.0.5
     d3-scale: ^1.0.7
-    d3-selection: ^1.3.0
+    d3-selection: ^3.0.0
     d3-time-format: ^2.1.1
     d3-tip: ^0.9.1
     d3-transition: ^1.2.0

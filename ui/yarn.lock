@@ -6765,12 +6765,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"anchor-markdown-header@npm:^0.5.7":
-  version: 0.5.7
-  resolution: "anchor-markdown-header@npm:0.5.7"
+"anchor-markdown-header@npm:^0.6.0":
+  version: 0.6.0
+  resolution: "anchor-markdown-header@npm:0.6.0"
   dependencies:
-    emoji-regex: ~6.1.0
-  checksum: 97ed56c61ca8aacca635378de4959fd95929c4966f96e6483df06d5b22b541924e91569c819c49cbed8e8684b3b77eb5760216bc9bd11e54bb58389ce29cedaa
+    emoji-regex: ~10.1.0
+  checksum: 2fe51a4327d07d93fd7c2b4b5dc077598a29300217f876485ce91747e80823a58cbe34f80396f36b8abac24d1cbe080c27fd730dcf976200630f8ac754275606
   languageName: node
   linkType: hard
 
@@ -11693,19 +11693,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"doctoc@npm:^2.2.0":
-  version: 2.2.0
-  resolution: "doctoc@npm:2.2.0"
+"doctoc@npm:^2.2.1":
+  version: 2.2.1
+  resolution: "doctoc@npm:2.2.1"
   dependencies:
     "@textlint/markdown-to-ast": ^12.1.1
-    anchor-markdown-header: ^0.5.7
+    anchor-markdown-header: ^0.6.0
     htmlparser2: ^7.2.0
     minimist: ^1.2.6
     underscore: ^1.13.2
     update-section: ^0.3.3
   bin:
     doctoc: doctoc.js
-  checksum: 78973a1275f056c044263d60546cf518beb15b79bd95a93dc5875d6dd46fa0873568661d74830b68e908c8a4465e9fd602eb49468e4d686e43ce4471d34012c3
+  checksum: 0643c5170fa8c5ec53bde585090c4c140f69eb498fea7d4d4a6a15455bff8b1d04632dcaec8909d2b3719a5f54760947f274aec99f4322fe098bce0c7fb30a0d
   languageName: node
   linkType: hard
 
@@ -13819,10 +13819,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"emoji-regex@npm:~6.1.0":
-  version: 6.1.3
-  resolution: "emoji-regex@npm:6.1.3"
-  checksum: 348c4808cdc614e5522023c1f102eb06093ca24c693c7aa074fac93d3880c51948e9468bf91554d2e77ce47f0053411767aae21dd58fed12fdc54c2352a07976
+"emoji-regex@npm:~10.1.0":
+  version: 10.1.0
+  resolution: "emoji-regex@npm:10.1.0"
+  checksum: 5bc780fc4d75f89369155a87c55f7e83a0bf72bcccda7df7f2c570cde4738d8b17d112d12afdadfec16647d1faef6501307b4304f81d35c823a938fe6547df0f
   languageName: node
   linkType: hard
 
@@ -24698,7 +24698,7 @@ __metadata:
     date-fns: ^2.16.1
     date-fns-tz: ^1.2.2
     deepmerge: ^4.3.1
-    doctoc: ^2.2.0
+    doctoc: ^2.2.1
     dompurify: ^3.0.2
     ember-auto-import: 2.4.2
     ember-basic-dropdown: 6.0.1

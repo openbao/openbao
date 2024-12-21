@@ -25,8 +25,10 @@ func pathVerify(b *backend) *framework.Path {
 				Description: "[Required] One-Time-Key that needs to be validated",
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathVerifyWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathVerifyWrite,
+			},
 		},
 		HelpSynopsis:    pathVerifyHelpSyn,
 		HelpDescription: pathVerifyHelpDesc,

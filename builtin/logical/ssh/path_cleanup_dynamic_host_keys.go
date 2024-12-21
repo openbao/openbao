@@ -21,8 +21,10 @@ func pathCleanupKeys(b *backend) *framework.Path {
 			OperationVerb:   "tidy",
 			OperationSuffix: "dynamic-host-keys",
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.handleCleanupKeys,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.handleCleanupKeys,
+			},
 		},
 		HelpSynopsis:    `This endpoint removes the stored host keys used for the removed Dynamic Key feature, if present.`,
 		HelpDescription: `For more information, refer to the API documentation.`,

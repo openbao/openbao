@@ -152,9 +152,13 @@ will be ignored. Any batch output will preserve the order of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.CreateOperation: b.pathEncryptWrite,
-			logical.UpdateOperation: b.pathEncryptWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathEncryptWrite,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathEncryptWrite,
+			},
 		},
 
 		ExistenceCheck: b.pathEncryptExistenceCheck,

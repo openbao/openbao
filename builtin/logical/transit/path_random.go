@@ -46,8 +46,10 @@ func (b *backend) pathRandom() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathRandomWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathRandomWrite,
+			},
 		},
 
 		HelpSynopsis:    pathRandomHelpSyn,

@@ -46,10 +46,16 @@ func pathLogin(b *backend) *framework.Path {
 				Description: "The name of the certificate role to authenticate against.",
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation:         b.loginPathWrapper(b.pathLogin),
-			logical.AliasLookaheadOperation: b.pathLoginAliasLookahead,
-			logical.ResolveRoleOperation:    b.loginPathWrapper(b.pathLoginResolveRole),
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.loginPathWrapper(b.pathLogin),
+			},
+			logical.AliasLookaheadOperation: &framework.PathOperation{
+				Callback: b.pathLoginAliasLookahead,
+			},
+			logical.ResolveRoleOperation: &framework.PathOperation{
+				Callback: b.loginPathWrapper(b.pathLoginResolveRole),
+			},
 		},
 	}
 }

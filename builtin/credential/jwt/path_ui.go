@@ -21,8 +21,10 @@ func pathUI(b *jwtAuthBackend) *framework.Path {
 			OperationVerb:   "ui",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathUI,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathUI,
+			},
 		},
 	}
 }

@@ -40,8 +40,10 @@ func pathsRole(b *kubeAuthBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathRoleList,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(roleHelp["role-list"][0]),
@@ -116,11 +118,19 @@ default: %q
 				},
 			},
 			ExistenceCheck: b.pathRoleExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.CreateOperation: b.pathRoleCreateUpdate,
-				logical.UpdateOperation: b.pathRoleCreateUpdate,
-				logical.ReadOperation:   b.pathRoleRead,
-				logical.DeleteOperation: b.pathRoleDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathRoleRead,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathRoleDelete,
+				},
 			},
 			HelpSynopsis:    strings.TrimSpace(roleHelp["role"][0]),
 			HelpDescription: strings.TrimSpace(roleHelp["role"][1]),

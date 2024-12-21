@@ -121,8 +121,10 @@ func groupPaths(i *IdentityStore) []*framework.Path {
 				OperationSuffix: "by-id",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathGroupIDList(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathGroupIDList(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupHelp["group-id-list"][0]),
@@ -170,8 +172,10 @@ func groupPaths(i *IdentityStore) []*framework.Path {
 				OperationSuffix: "by-name",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathGroupNameList(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathGroupNameList(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupHelp["group-name-list"][0]),

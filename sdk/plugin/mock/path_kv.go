@@ -17,8 +17,10 @@ func kvPaths(b *backend) []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: "kv/?",
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathKVList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathKVList,
+				},
 			},
 		},
 		{
@@ -29,11 +31,19 @@ func kvPaths(b *backend) []*framework.Path {
 				"version": {Type: framework.TypeInt},
 			},
 			ExistenceCheck: b.pathExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation:   b.pathKVRead,
-				logical.CreateOperation: b.pathKVCreateUpdate,
-				logical.UpdateOperation: b.pathKVCreateUpdate,
-				logical.DeleteOperation: b.pathKVDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathKVRead,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathKVCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathKVCreateUpdate,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathKVDelete,
+				},
 			},
 		},
 	}

@@ -41,8 +41,10 @@ func (b *backend) pathListKeys() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathKeysList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathKeysList,
+			},
 		},
 
 		HelpSynopsis:    pathPolicyHelpSyn,

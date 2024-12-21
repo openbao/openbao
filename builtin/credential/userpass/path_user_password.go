@@ -35,8 +35,10 @@ func pathUserPassword(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathUserPasswordUpdate,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathUserPasswordUpdate,
+			},
 		},
 
 		HelpSynopsis:    pathUserPasswordHelpSyn,

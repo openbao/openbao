@@ -25,9 +25,13 @@ func pathsDelete(b *versionedKVBackend) []*framework.Path {
 					Description: "The versions to be archived. The versioned data will not be deleted, but it will no longer be returned in normal get requests.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.upgradeCheck(b.pathDeleteWrite()),
-				logical.CreateOperation: b.upgradeCheck(b.pathDeleteWrite()),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.upgradeCheck(b.pathDeleteWrite()),
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.upgradeCheck(b.pathDeleteWrite()),
+				},
 			},
 
 			HelpSynopsis:    deleteHelpSyn,
@@ -45,9 +49,13 @@ func pathsDelete(b *versionedKVBackend) []*framework.Path {
 					Description: "The versions to unarchive. The versions will be restored and their data will be returned on normal get requests.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.upgradeCheck(b.pathUndeleteWrite()),
-				logical.CreateOperation: b.upgradeCheck(b.pathUndeleteWrite()),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.upgradeCheck(b.pathUndeleteWrite()),
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.upgradeCheck(b.pathUndeleteWrite()),
+				},
 			},
 
 			HelpSynopsis:    undeleteHelpSyn,

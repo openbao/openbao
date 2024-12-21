@@ -67,8 +67,10 @@ disables automatic rotation for the key.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathKeysConfigWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathKeysConfigWrite,
+			},
 		},
 
 		HelpSynopsis:    pathKeysConfigHelpSyn,

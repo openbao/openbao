@@ -45,8 +45,10 @@ func pathCredsCreate(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathCredsCreateWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCredsCreateWrite,
+			},
 		},
 
 		HelpSynopsis:    pathCredsCreateHelpSyn,

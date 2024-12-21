@@ -266,16 +266,16 @@ fmt: ci-bootstrap
 	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -w
 
 semgrep:
-	semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	semgrep --include '*.go' -a -f tools/semgrep .
 
 semgrep-ci:
-	semgrep --error --include '*.go' --exclude 'vendor' -f tools/semgrep/ci .
+	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' --exclude 'vendor' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."

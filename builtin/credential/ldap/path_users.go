@@ -24,8 +24,10 @@ func pathUsersList(b *backend) *framework.Path {
 			ItemType:        "User",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathUserList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathUserList,
+			},
 		},
 
 		HelpSynopsis:    pathUserHelpSyn,
@@ -67,10 +69,16 @@ func pathUsers(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathUserDelete,
-			logical.ReadOperation:   b.pathUserRead,
-			logical.UpdateOperation: b.pathUserWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathUserDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathUserRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathUserWrite,
+			},
 		},
 
 		HelpSynopsis:    pathUserHelpSyn,

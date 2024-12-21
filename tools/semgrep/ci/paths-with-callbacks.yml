@@ -1,0 +1,14 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+rules:
+  - id: uses-path-callbacks
+    pattern-either:
+      - pattern: |
+            []*framework.Path{..., {..., Pattern: $PATTERN, ..., Callbacks: $CALL, ...}, ...}
+      - pattern: |
+            &framework.Path{..., Pattern: $PATTERN, ..., Callbacks: $CALL, ...}
+             
+    message: "Path has a Callback for pattern $PATTERN"
+    languages: [go]
+    severity: WARNING

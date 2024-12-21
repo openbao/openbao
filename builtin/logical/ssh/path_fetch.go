@@ -19,8 +19,10 @@ func pathFetchPublicKey(b *backend) *framework.Path {
 			OperationSuffix: "public-key",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathFetchPublicKey,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathFetchPublicKey,
+			},
 		},
 
 		HelpSynopsis:    `Retrieve the public key.`,

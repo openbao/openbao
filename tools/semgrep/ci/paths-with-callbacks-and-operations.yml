@@ -9,6 +9,10 @@ rules:
               []*framework.Path{..., {..., Pattern: $PATTERN, ..., Callbacks:$CALL, ..., Operations:$OP, ... }, ...}
           - pattern: |
               []*framework.Path{..., {..., Pattern: $PATTERN, ..., Operations:$OP, ..., Callbacks:$CALL, ... }, ...}
+          - pattern: |
+              &framework.Path{..., Pattern: $PATTERN, ..., Callbacks:$CALL, ..., Operations:$OP, ... }
+          - pattern: |
+              &framework.Path{..., Pattern: $PATTERN, ..., Operations:$OP, ..., Callbacks:$CALL, ... }
              
     message: "Path has both Callbacks and Operations for pattern $PATTERN"
     languages: [go]

@@ -103,8 +103,10 @@ Any batch output will preserve the order of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathHMACWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathHMACWrite,
+			},
 		},
 
 		HelpSynopsis:    pathHMACHelpSyn,

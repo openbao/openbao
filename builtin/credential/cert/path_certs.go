@@ -39,8 +39,10 @@ func pathListCerts(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathCertList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathCertList,
+			},
 		},
 
 		HelpSynopsis:    pathCertHelpSyn,
@@ -231,10 +233,16 @@ certificate.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathCertDelete,
-			logical.ReadOperation:   b.pathCertRead,
-			logical.UpdateOperation: b.pathCertWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathCertDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathCertRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCertWrite,
+			},
 		},
 
 		HelpSynopsis:    pathCertHelpSyn,

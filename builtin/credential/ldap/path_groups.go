@@ -23,8 +23,10 @@ func pathGroupsList(b *backend) *framework.Path {
 			ItemType:        "Group",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathGroupList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathGroupList,
+			},
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,
@@ -58,10 +60,16 @@ func pathGroups(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathGroupDelete,
-			logical.ReadOperation:   b.pathGroupRead,
-			logical.UpdateOperation: b.pathGroupWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathGroupDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathGroupRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathGroupWrite,
+			},
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,

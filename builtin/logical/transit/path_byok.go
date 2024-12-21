@@ -48,8 +48,10 @@ func (b *backend) pathBYOKExportKeys() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathPolicyBYOKExportRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathPolicyBYOKExportRead,
+			},
 		},
 
 		HelpSynopsis:    pathBYOKExportHelpSyn,

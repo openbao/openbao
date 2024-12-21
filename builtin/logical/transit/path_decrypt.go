@@ -86,8 +86,10 @@ of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathDecryptWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathDecryptWrite,
+			},
 		},
 
 		HelpSynopsis:    pathDecryptHelpSyn,

@@ -76,8 +76,10 @@ func pathResetConnection(b *databaseBackend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathConnectionReset(),
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathConnectionReset(),
+			},
 		},
 
 		HelpSynopsis:    pathResetConnectionHelpSyn,
@@ -226,8 +228,10 @@ func pathListPluginConnection(b *databaseBackend) *framework.Path {
 			OperationSuffix: "connections",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.connectionListHandler(),
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.connectionListHandler(),
+			},
 		},
 
 		HelpSynopsis:    pathConfigConnectionHelpSyn,

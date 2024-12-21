@@ -29,8 +29,10 @@ func pathLookup(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathLookupWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathLookupWrite,
+			},
 		},
 
 		HelpSynopsis:    pathLookupSyn,

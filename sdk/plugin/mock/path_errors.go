@@ -20,14 +20,18 @@ func errorPaths(b *backend) []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: "errors/rpc",
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathErrorRPCRead,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathErrorRPCRead,
+				},
 			},
 		},
 		{
 			Pattern: "errors/kill",
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathErrorRPCRead,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathErrorRPCRead,
+				},
 			},
 		},
 		{
@@ -35,9 +39,13 @@ func errorPaths(b *backend) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"err_type": {Type: framework.TypeInt},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.CreateOperation: b.pathErrorRPCRead,
-				logical.UpdateOperation: b.pathErrorRPCRead,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathErrorRPCRead,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathErrorRPCRead,
+				},
 			},
 		},
 	}

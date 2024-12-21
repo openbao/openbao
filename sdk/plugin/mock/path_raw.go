@@ -14,8 +14,10 @@ import (
 func pathRaw(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "raw",
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathRawRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathRawRead,
+			},
 		},
 	}
 }

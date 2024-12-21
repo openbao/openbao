@@ -18,9 +18,13 @@ func pathInternal(b *backend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			"value": {Type: framework.TypeString},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathInternalUpdate,
-			logical.ReadOperation:   b.pathInternalRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathInternalUpdate,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathInternalRead,
+			},
 		},
 	}
 }

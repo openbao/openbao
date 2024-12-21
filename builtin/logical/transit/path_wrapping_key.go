@@ -24,8 +24,10 @@ func (b *backend) pathWrappingKey() *framework.Path {
 			OperationPrefix: operationPrefixTransit,
 			OperationSuffix: "wrapping-key",
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathWrappingKeyRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathWrappingKeyRead,
+			},
 		},
 		HelpSynopsis:    pathWrappingKeyHelpSyn,
 		HelpDescription: pathWrappingKeyHelpDesc,

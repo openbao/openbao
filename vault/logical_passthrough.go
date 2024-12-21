@@ -58,12 +58,22 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 			{
 				Pattern: ".*",
 
-				Callbacks: map[logical.Operation]framework.OperationFunc{
-					logical.ReadOperation:   b.handleRead,
-					logical.CreateOperation: b.handleWrite,
-					logical.UpdateOperation: b.handleWrite,
-					logical.DeleteOperation: b.handleDelete,
-					logical.ListOperation:   b.handleList,
+				Operations: map[logical.Operation]framework.OperationHandler{
+					logical.ReadOperation: &framework.PathOperation{
+						Callback: b.handleRead,
+					},
+					logical.CreateOperation: &framework.PathOperation{
+						Callback: b.handleWrite,
+					},
+					logical.UpdateOperation: &framework.PathOperation{
+						Callback: b.handleWrite,
+					},
+					logical.DeleteOperation: &framework.PathOperation{
+						Callback: b.handleDelete,
+					},
+					logical.ListOperation: &framework.PathOperation{
+						Callback: b.handleList,
+					},
 				},
 
 				ExistenceCheck: b.handleExistenceCheck,

@@ -16126,7 +16126,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"handlebars@npm:4.7.7, handlebars@npm:^4.0.11, handlebars@npm:^4.0.13, handlebars@npm:^4.0.4, handlebars@npm:^4.3.1, handlebars@npm:^4.4.2, handlebars@npm:^4.7.3":
+"handlebars@npm:4.7.8":
+  version: 4.7.8
+  resolution: "handlebars@npm:4.7.8"
+  dependencies:
+    minimist: ^1.2.5
+    neo-async: ^2.6.2
+    source-map: ^0.6.1
+    uglify-js: ^3.1.4
+    wordwrap: ^1.0.0
+  dependenciesMeta:
+    uglify-js:
+      optional: true
+  bin:
+    handlebars: bin/handlebars
+  checksum: 00e68bb5c183fd7b8b63322e6234b5ac8fbb960d712cb3f25587d559c2951d9642df83c04a1172c918c41bcfc81bfbd7a7718bbce93b893e0135fc99edea93ff
+  languageName: node
+  linkType: hard
+
+"handlebars@npm:^4.0.11, handlebars@npm:^4.0.13, handlebars@npm:^4.0.4, handlebars@npm:^4.3.1, handlebars@npm:^4.4.2, handlebars@npm:^4.7.3":
   version: 4.7.7
   resolution: "handlebars@npm:4.7.7"
   dependencies:
@@ -24759,7 +24777,7 @@ __metadata:
     eslint-plugin-qunit: ^7.2.0
     filesize: ^4.2.1
     flat: ^6.0.1
-    handlebars: 4.7.7
+    handlebars: 4.7.8
     highlight.js: ^10.4.1
     jsondiffpatch: ^0.4.1
     jsonlint: ^1.6.3

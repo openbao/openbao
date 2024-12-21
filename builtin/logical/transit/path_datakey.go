@@ -58,8 +58,10 @@ min_encryption_version configured on the key.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathDatakeyWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathDatakeyWrite,
+			},
 		},
 
 		HelpSynopsis:    pathDatakeyHelpSyn,

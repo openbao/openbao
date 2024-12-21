@@ -33,8 +33,10 @@ func pathCredsCreate(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathCredsCreateRead(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathCredsCreateRead(),
+				},
 			},
 
 			HelpSynopsis:    pathCredsCreateReadHelpSyn,
@@ -56,8 +58,10 @@ func pathCredsCreate(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.pathStaticCredsRead(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathStaticCredsRead(),
+				},
 			},
 
 			HelpSynopsis:    pathStaticCredsReadHelpSyn,

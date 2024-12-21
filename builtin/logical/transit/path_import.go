@@ -104,8 +104,10 @@ being automatically rotated. A value of 0
 key.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathImportWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathImportWrite,
+			},
 		},
 		HelpSynopsis:    pathImportWriteSyn,
 		HelpDescription: pathImportWriteDesc,
@@ -148,8 +150,10 @@ ephemeral AES key. Can be one of "SHA1", "SHA224", "SHA256" (default), "SHA384",
 a private key is specified and the 'Latest' key is missing a private key.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathImportVersionWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathImportVersionWrite,
+			},
 		},
 		HelpSynopsis:    pathImportVersionWriteSyn,
 		HelpDescription: pathImportVersionWriteDesc,

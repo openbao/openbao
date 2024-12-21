@@ -42,8 +42,10 @@ func pathUserPolicies(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathUserPoliciesUpdate,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathUserPoliciesUpdate,
+			},
 		},
 
 		HelpSynopsis:    pathUserPoliciesHelpSyn,

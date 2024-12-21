@@ -37,8 +37,10 @@ allowed to be set when either 'min_encryption_version' or
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathTrimUpdate(),
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathTrimUpdate(),
+			},
 		},
 
 		HelpSynopsis:    pathTrimHelpSyn,

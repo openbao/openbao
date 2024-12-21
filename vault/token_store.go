@@ -218,8 +218,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "roles",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: ts.tokenStoreRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: ts.tokenStoreRoleList,
+				},
 			},
 
 			HelpSynopsis:    tokenListRolesHelp,
@@ -234,8 +236,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "accessors",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: ts.tokenStoreAccessorList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: ts.tokenStoreAccessorList,
+				},
 			},
 
 			HelpSynopsis:    tokenListAccessorsHelp,
@@ -253,8 +257,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "orphan",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreateOrphan,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreateOrphan,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateOrphanHelp),
@@ -272,8 +278,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "against-role",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreateAgainstRole,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreateAgainstRole,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateRoleHelp),
@@ -290,8 +298,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationVerb:   "create",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreate,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreate,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateHelp),
@@ -345,8 +355,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateLookupAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateLookupAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenLookupAccessorHelp),
@@ -403,8 +415,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateRevokeAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateRevokeAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeAccessorHelp),
@@ -420,8 +434,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "self",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeSelf,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeSelf,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeSelfHelp),
@@ -443,8 +459,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeTree,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeTree,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeHelp),
@@ -467,8 +485,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeOrphan,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeOrphan,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeOrphanHelp),
@@ -496,8 +516,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateRenewAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateRenewAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewAccessorHelp),
@@ -525,8 +547,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRenewSelf,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRenewSelf,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewSelfHelp),
@@ -553,8 +577,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRenew,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRenew,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewHelp),
@@ -569,8 +595,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationVerb:   "tidy",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleTidy,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleTidy,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenTidyHelp),
@@ -652,11 +680,19 @@ func (ts *TokenStore) paths() []*framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   ts.tokenStoreRoleRead,
-			logical.CreateOperation: ts.tokenStoreRoleCreateUpdate,
-			logical.UpdateOperation: ts.tokenStoreRoleCreateUpdate,
-			logical.DeleteOperation: ts.tokenStoreRoleDelete,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleRead,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleCreateUpdate,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleCreateUpdate,
+			},
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleDelete,
+			},
 		},
 
 		ExistenceCheck: ts.tokenStoreRoleExistenceCheck,

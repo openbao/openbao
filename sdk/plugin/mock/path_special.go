@@ -14,8 +14,10 @@ import (
 func pathSpecial(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "special",
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathSpecialRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathSpecialRead,
+			},
 		},
 	}
 }

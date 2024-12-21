@@ -41,8 +41,10 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathRoleList,
+				},
 			},
 
 			HelpSynopsis:    pathRoleHelpSyn,
@@ -68,8 +70,10 @@ func pathListRoles(b *databaseBackend) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: b.pathRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.pathRoleList,
+				},
 			},
 
 			HelpSynopsis:    pathStaticRoleHelpSyn,
@@ -88,11 +92,19 @@ func pathRoles(b *databaseBackend) []*framework.Path {
 			},
 			Fields:         fieldsForType(databaseRolePath),
 			ExistenceCheck: b.pathRoleExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation:   b.pathRoleRead,
-				logical.CreateOperation: b.pathRoleCreateUpdate,
-				logical.UpdateOperation: b.pathRoleCreateUpdate,
-				logical.DeleteOperation: b.pathRoleDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathRoleRead,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathRoleCreateUpdate,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathRoleDelete,
+				},
 			},
 
 			HelpSynopsis:    pathRoleHelpSyn,
@@ -107,11 +119,19 @@ func pathRoles(b *databaseBackend) []*framework.Path {
 			},
 			Fields:         fieldsForType(databaseStaticRolePath),
 			ExistenceCheck: b.pathStaticRoleExistenceCheck,
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation:   b.pathStaticRoleRead,
-				logical.CreateOperation: b.pathStaticRoleCreateUpdate,
-				logical.UpdateOperation: b.pathStaticRoleCreateUpdate,
-				logical.DeleteOperation: b.pathStaticRoleDelete,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleRead,
+				},
+				logical.CreateOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleCreateUpdate,
+				},
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleCreateUpdate,
+				},
+				logical.DeleteOperation: &framework.PathOperation{
+					Callback: b.pathStaticRoleDelete,
+				},
 			},
 
 			HelpSynopsis:    pathStaticRoleHelpSyn,

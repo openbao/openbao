@@ -35,8 +35,10 @@ func pathCreds(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathCredsRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathCredsRead,
+			},
 		},
 
 		HelpSynopsis:    pathRoleCreateReadHelpSyn,

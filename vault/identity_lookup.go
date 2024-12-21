@@ -45,8 +45,10 @@ func lookupPaths(i *IdentityStore) []*framework.Path {
 					Description: "Accessor of the mount to which the alias belongs to. This should be supplied in conjunction with 'alias_name'.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathLookupEntityUpdate(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathLookupEntityUpdate(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(lookupHelp["lookup-entity"][0]),
@@ -82,8 +84,10 @@ func lookupPaths(i *IdentityStore) []*framework.Path {
 					Description: "Accessor of the mount to which the alias belongs to. This should be supplied in conjunction with 'alias_name'.",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathLookupGroupUpdate(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathLookupGroupUpdate(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(lookupHelp["lookup-group"][0]),

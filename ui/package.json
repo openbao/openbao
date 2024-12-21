@@ -113,7 +113,7 @@
     "d3-transition": "^1.2.0",
     "date-fns": "^2.16.1",
     "date-fns-tz": "^1.2.2",
-    "deepmerge": "^4.0.0",
+    "deepmerge": "^4.3.1",
     "doctoc": "^2.2.0",
     "dompurify": "^3.0.2",
     "ember-auto-import": "2.4.2",

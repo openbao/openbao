@@ -20,3 +20,15 @@
 // Font comes from npm package: https://www.npmjs.com/package/text-security
 // We took the font we wanted and moved it into the ui/fonts folder
 @include font-face('text-security-square');
+
+:root {
+  /* Sidebar Foreground Colors */
+  --token-side-nav-color-foreground-primary: #ffffff; /* Primary text color */
+  --token-side-nav-color-foreground-strong: #e0f0eb; /* Strong foreground (e.g., active items) */
+  --token-side-nav-color-foreground-faint: #9db7af; /* Faint foreground (e.g., secondary text) */
+
+  /* Sidebar Background and Interactive Colors */
+  --token-side-nav-color-surface-primary: #336d5c; /* Sidebar primary background */
+  --token-side-nav-color-surface-interactive-hover: #4f8c77; /* Hover state */
+  --token-side-nav-color-surface-interactive-active: #275547; /* Active state */
+}

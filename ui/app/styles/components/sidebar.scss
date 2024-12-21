@@ -24,3 +24,11 @@
     color: $black;
   }
 }
+
+.sidebar-button {
+  border-color: var(--token-side-nav-color-surface-primary);
+}
+
+.hds-side-nav--is-mobile .hds-side-nav__menu-toggle-button {
+  background-color: var(--token-side-nav-color-surface-interactive-active);
+}

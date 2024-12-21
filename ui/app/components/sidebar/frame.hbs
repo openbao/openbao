@@ -5,7 +5,7 @@
         <Hds::SideNav::Header>
           <:logo>
             <Sidebar::Header::HomeLink
-              @icon="openbao-white"
+              @icon="openbao"
               @route="vault.cluster"
               @model={{this.currentCluster.cluster.name}}
               @ariaLabel="home link"
@@ -14,6 +14,7 @@
           </:logo>
           <:actions>
             <Hds::SideNav::Header::IconButton
+              class="sidebar-button"
               @icon="terminal-screen"
               @ariaLabel="Console toggle"
               data-test-console-toggle

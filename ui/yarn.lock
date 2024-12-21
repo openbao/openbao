@@ -11496,10 +11496,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deepmerge@npm:^4.0.0":
-  version: 4.2.2
-  resolution: "deepmerge@npm:4.2.2"
-  checksum: a8c43a1ed8d6d1ed2b5bf569fa4c8eb9f0924034baf75d5d406e47e157a451075c4db353efea7b6bcc56ec48116a8ce72fccf867b6e078e7c561904b5897530b
+"deepmerge@npm:^4.3.1":
+  version: 4.3.1
+  resolution: "deepmerge@npm:4.3.1"
+  checksum: 2024c6a980a1b7128084170c4cf56b0fd58a63f2da1660dcfe977415f27b17dbe5888668b59d0b063753f3220719d5e400b7f113609489c90160bb9a5518d052
   languageName: node
   linkType: hard
 
@@ -24697,7 +24697,7 @@ __metadata:
     d3-transition: ^1.2.0
     date-fns: ^2.16.1
     date-fns-tz: ^1.2.2
-    deepmerge: ^4.0.0
+    deepmerge: ^4.3.1
     doctoc: ^2.2.0
     dompurify: ^3.0.2
     ember-auto-import: 2.4.2

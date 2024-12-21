@@ -556,7 +556,7 @@ func verifySealConfigTransit(t *testing.T, core *vault.TestClusterCore) {
 }
 
 // verifyBarrierConfig verifies that a barrier configuration is correct.
-func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, shares, threshold, stored int) {
+func verifyBarrierConfig(t *testing.T, cfg *vault.SealConfig, sealType string, shares, threshold int, stored uint) {
 	t.Helper()
 	if cfg.Type != sealType {
 		t.Fatalf("bad seal config: %#v, expected type=%q", cfg, sealType)

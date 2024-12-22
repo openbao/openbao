@@ -3,11 +3,22 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-.hds-side-nav-header__logo-container {
-  width: 103px;
+.hds-side-nav-header__logo-container .hs-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  display: flex;
+  align-items: center;
 }
 
-.hds-side-nav-header__logo-container .hs-icon {
-  width: 87px;
-  height: 40px;
+// Ensure the logo is responsive
+// --hds-app-desktop-breakpoint: 1088px;
+@media (min-width: 1088px) {
+  .hds-side-nav-header__logo-container {
+    width: 96px;
+  }
+
+  .hds-side-nav-header__logo-container .hs-icon {
+    width: 88px;
+  }
 }

@@ -14,8 +14,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/cli"
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/tlsutil"
 	"github.com/jefferai/isbadcipher"
 	"github.com/openbao/openbao/internalshared/configutil"
@@ -79,35 +78,31 @@ func TLSConfig(
 	l *configutil.Listener,
 	props map[string]string,
 	ui cli.Ui,
-) (*tls.Config, reloadutil.ReloadFunc, error) {
+	logger hclog.Logger,
+) (*tls.Config, ReloadableCertGetter, error) {
 	props["tls"] = "disabled"
 
 	if l.TLSDisable {
 		return nil, nil, nil
 	}
 
-	cg := reloadutil.NewCertificateGetter(l.TLSCertFile, l.TLSKeyFile, "")
-	if err := cg.Reload(); err != nil {
-		// We try the key without a passphrase first and if we get an incorrect
-		// passphrase response, try again after prompting for a passphrase
-		if errwrap.Contains(err, x509.IncorrectPasswordError.Error()) {
-			var passphrase string
-			passphrase, err = ui.AskSecret(fmt.Sprintf("Enter passphrase for %s:", l.TLSKeyFile))
-			if err == nil {
-				cg = reloadutil.NewCertificateGetter(l.TLSCertFile, l.TLSKeyFile, passphrase)
-				if err = cg.Reload(); err == nil {
-					goto PASSPHRASECORRECT
-				}
-			}
-		}
-		return nil, nil, fmt.Errorf("error loading TLS cert: %w", err)
+	cg, err := NewCertificateGetter(l, ui, logger)
+	if err != nil {
+		return nil, nil, err
 	}
+	l.TLSCertGetter = cg
 
-PASSPHRASECORRECT:
 	tlsConf := &tls.Config{
 		GetCertificate: cg.GetCertificate,
 		NextProtos:     []string{"h2", "http/1.1"},
 		ClientAuth:     tls.RequestClientCert,
+	}
+
+	if acg, ok := cg.(*ACMECertGetter); ok {
+		protos := acg.ALPNProtos()
+		if protos != nil {
+			tlsConf.NextProtos = append(tlsConf.NextProtos, protos...)
+		}
 	}
 
 	if l.TLSMinVersion == "" {
@@ -188,7 +183,7 @@ Please see https://tools.ietf.org/html/rfc7540#appendix-A for further informatio
 	}
 
 	props["tls"] = "enabled"
-	return tlsConf, cg.Reload, nil
+	return tlsConf, cg, nil
 }
 
 // setFilePermissions handles configuring ownership and permissions

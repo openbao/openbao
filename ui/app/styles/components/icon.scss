@@ -79,13 +79,12 @@
 // without height set the flexbox will scale out of proportion on Safari
 
 .openbao-logo {
-  height: fit-content;
-  margin: auto;
+  height: auto;
 }
 
 .brand-icon-large,
 .brand-icon-large span {
-  width: 186px;
+  width: 62px;
   height: 62px;
 }
 

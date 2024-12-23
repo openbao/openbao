@@ -5,11 +5,39 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/api/auth/approle"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/api/auth/kubernetes"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/api/auth/ldap"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/api/auth/userpass"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/api"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/sdk"
+    schedule:
+      interval: "daily"
   - package-ecosystem: "npm"
-    directory: "/website"
+    directory: "/ui"
     schedule:
       interval: "weekly"
   - package-ecosystem: "npm"
-    directory: "/ui"
+    directory: "/website"
     schedule:
       interval: "weekly"

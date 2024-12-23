@@ -393,9 +393,10 @@ const sidebars: SidebarsConfig = {
                 "audit/socket",
             ],
             Plugins: [
-                "plugins/index",
-                "plugins/plugin-architecture",
+                "plugins/index",                
+                "plugins/plugin-architecture",                
                 "plugins/plugin-development",
+                "plugins/plugin-authors-guide",
                 "plugins/plugin-management",
             ],
             Platforms: [

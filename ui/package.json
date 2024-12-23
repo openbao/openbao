@@ -117,7 +117,7 @@
     "doctoc": "^2.2.1",
     "dompurify": "^3.0.2",
     "ember-auto-import": "2.4.2",
-    "ember-basic-dropdown": "6.0.1",
+    "ember-basic-dropdown": "8.4.0",
     "ember-cli": "~4.4.0",
     "ember-cli-autoprefixer": "^0.8.1",
     "ember-cli-babel": "^7.26.11",
@@ -203,7 +203,7 @@
   "resolutions": {
     "cryptiles": "^4.1.2",
     "eslint-utils": "^1.4.1",
-    "ember-basic-dropdown": "6.0.1",
+    "ember-basic-dropdown": "8.4.0",
     "growl": "^1.10.0",
     "highlight.js": "^10.4.1",
     "https-proxy-agent": "^2.2.3",

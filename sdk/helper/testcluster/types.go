@@ -45,7 +45,6 @@ type VaultNodeConfig struct {
 	//   ClusterName string `hcl:"cluster_name"`
 
 	// Not configurable yet:
-	//   Listeners []*Listener `hcl:"-"`
 	//   Seals   []*KMS   `hcl:"-"`
 	//   Entropy *Entropy `hcl:"-"`
 	//   Telemetry *Telemetry `hcl:"telemetry"`
@@ -76,6 +75,12 @@ type VaultNodeConfig struct {
 	EnableResponseHeaderHostname   bool          `json:"enable_response_header_hostname"`
 	LogRequestsLevel               string        `json:"log_requests_level"`
 	EnableResponseHeaderRaftNodeID bool          `json:"enable_response_header_raft_node_id"`
+
+	// Additional addresses in addition to the default tls-enabled
+	// 0.0.0.0:8200 listener. Currently only works for
+	// DockerClusterNode containers. Each slice item is a map
+	// of listener type -> listener configuration.
+	AdditionalListeners []interface{} `json:"listeners"`
 }
 
 type ClusterNode struct {

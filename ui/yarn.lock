@@ -5514,7 +5514,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember__component@npm:*, @types/ember__component@npm:^4.0.11":
+"@types/ember__component@npm:*":
   version: 4.0.11
   resolution: "@types/ember__component@npm:4.0.11"
   dependencies:
@@ -5522,6 +5522,16 @@ __metadata:
     "@types/ember__component": "*"
     "@types/ember__object": "*"
   checksum: 8b3a012ab6915f43e5d756883e1a05e5a75514d03e4666702bbfeebe1dfab9d0cebbd377ff38908d097bed977ed5a4c4d0fb709d7f657d31386c1f80bbc6d51c
+  languageName: node
+  linkType: hard
+
+"@types/ember__component@npm:^4.0.22":
+  version: 4.0.22
+  resolution: "@types/ember__component@npm:4.0.22"
+  dependencies:
+    "@types/ember": "*"
+    "@types/ember__object": "*"
+  checksum: ef2b7141ca6dabbc311158a253ce6184d56ad691cb6fb22b0ff8f2ac0109fb4f929deef66ef56cf40a1b069cc52d23a1a6e3d511cab56fb29302b6be848e8259
   languageName: node
   linkType: hard
 
@@ -24778,7 +24788,7 @@ __metadata:
     "@types/ember-resolver": ^5.0.13
     "@types/ember__application": ^4.0.4
     "@types/ember__array": ^4.0.3
-    "@types/ember__component": ^4.0.11
+    "@types/ember__component": ^4.0.22
     "@types/ember__controller": ^4.0.3
     "@types/ember__debug": ^4.0.3
     "@types/ember__destroyable": ^4.0.1

@@ -24,7 +24,7 @@ replace github.com/openbao/openbao/sdk/v2 => ./sdk
 
 require (
 	cloud.google.com/go/monitoring v1.17.0
-	github.com/ProtonMail/go-crypto v0.0.0-20230626094100-7e9e0395ebec
+	github.com/ProtonMail/go-crypto v1.1.3
 	github.com/armon/go-metrics v0.4.1
 	github.com/armon/go-radix v1.0.0
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2

@@ -24914,7 +24914,7 @@ __metadata:
     text-encoder-lite: 2.0.0
     typescript: ^4.8.4
     uuid: ^9.0.0
-    walk-sync: ^2.0.2
+    walk-sync: ^3.0.0
     webpack: ^5.97.1
     xstate: ^3.3.3
   languageName: unknown

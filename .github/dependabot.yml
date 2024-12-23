@@ -1,38 +1,42 @@
 version: 2
 
 updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/api/auth/approle"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/api/auth/kubernetes"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/api/auth/ldap"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/api/auth/userpass"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/api"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "gomod"
     directory: "/sdk"
     schedule:
-      interval: "daily"
+      interval: "weekly"
   - package-ecosystem: "npm"
     directory: "/ui"
     schedule:

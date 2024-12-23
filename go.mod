@@ -132,7 +132,7 @@ require (
 	github.com/ryanuber/columnize v2.1.2+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sasha-s/go-deadlock v0.3.5
-	github.com/sethvargo/go-limiter v0.7.1
+	github.com/sethvargo/go-limiter v1.0.0
 	github.com/shirou/gopsutil/v3 v3.22.6
 	github.com/stretchr/testify v1.9.0
 	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164

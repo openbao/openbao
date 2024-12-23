@@ -497,6 +497,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/transactions",
                 "rfcs/split-mount-tables",
                 "rfcs/scan-operation",
+                "rfcs/acme-tls-listeners",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

@@ -738,7 +738,7 @@ func TestRaft_SnapshotAPI_RekeyRotate_Forward(t *testing.T) {
 			Name:   "rotate",
 			Rekey:  false,
 			Rotate: true,
-			// Rotate writes a new master key upgrade using the new term, which
+			// Rotate writes a new root key upgrade using the new term, which
 			// we can no longer decrypt. We must seal here.
 			ShouldSeal: true,
 		},

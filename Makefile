@@ -368,3 +368,11 @@ goreleaser-check:
 	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+
+.PHONY: sync-deps
+sync-deps:
+	sh -c "'$(CURDIR)/scripts/sync-deps.sh'"
+
+.PHONY: ci-sync-deps
+ci-sync-deps: sync-deps
+	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make sync-deps' locally and commit the changes.\n" && exit 1)

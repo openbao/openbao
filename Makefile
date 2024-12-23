@@ -23,9 +23,12 @@ endif
 
 default: dev
 
-# bin generates the releasable binaries for OpenBao
+# bin generates the equivalent of releasable binaries for OpenBao
 bin: prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh'"
+
+bin-plugin: prep
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh' plugin"
 
 # dev creates binaries for testing OpenBao locally. These are put
 # into ./bin/ as well as $GOPATH/bin

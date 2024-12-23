@@ -4202,6 +4202,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ember/test-waiters@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@ember/test-waiters@npm:4.0.0"
+  dependencies:
+    "@embroider/addon-shim": ^1.9.0
+    "@embroider/macros": ^1.16.9
+  checksum: 4eea01abe745a357adc1c32736fbed911e940a33f3f46d7a4d630b6b3c22b5d0597d32a871d877704ac0693dec73d60d5d29482fb2b0a0c3443108a09b97874a
+  languageName: node
+  linkType: hard
+
 "@embroider/addon-shim@npm:^1.0.0, @embroider/addon-shim@npm:^1.2.0, @embroider/addon-shim@npm:^1.5.0, @embroider/addon-shim@npm:^1.8.4":
   version: 1.8.4
   resolution: "@embroider/addon-shim@npm:1.8.4"
@@ -4210,6 +4220,18 @@ __metadata:
     broccoli-funnel: ^3.0.8
     semver: ^7.3.8
   checksum: 107220e97bbd46ead81dfbbfc6cf7daa61731096a6e81b989659a9a0b29b48b3c97ebdd446b6dc0636c4be369f3744e514b7f5e5c0fdc54c1c0e026f54404cc2
+  languageName: node
+  linkType: hard
+
+"@embroider/addon-shim@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "@embroider/addon-shim@npm:1.9.0"
+  dependencies:
+    "@embroider/shared-internals": ^2.8.1
+    broccoli-funnel: ^3.0.8
+    common-ancestor-path: ^1.0.1
+    semver: ^7.3.8
+  checksum: 189c08a9f79ff31baf0c0ae17bca9c5eccb04aaf439c309719f1c8216e96d289d969b2a0b3c4a3e8817bcb8b968a953dbdf9d305ec1d0361b63c8ff4d708a914
   languageName: node
   linkType: hard
 
@@ -4333,6 +4355,27 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@embroider/macros@npm:^1.16.9":
+  version: 1.16.10
+  resolution: "@embroider/macros@npm:1.16.10"
+  dependencies:
+    "@embroider/shared-internals": 2.8.1
+    assert-never: ^1.2.1
+    babel-import-util: ^2.0.0
+    ember-cli-babel: ^7.26.6
+    find-up: ^5.0.0
+    lodash: ^4.17.21
+    resolve: ^1.20.0
+    semver: ^7.3.2
+  peerDependencies:
+    "@glint/template": ^1.0.0
+  peerDependenciesMeta:
+    "@glint/template":
+      optional: true
+  checksum: 19561563d357a76ade7bb09fd8bf3364017f090e340bc11db4f9b3e1cbdd9f289d9e1e4ea3da2b5aa34e267e3b0ed35566f0eecebcb25d103f5beca21ad031ce
+  languageName: node
+  linkType: hard
+
 "@embroider/shared-internals@npm:0.41.0":
   version: 0.41.0
   resolution: "@embroider/shared-internals@npm:0.41.0"
@@ -4376,6 +4419,26 @@ __metadata:
     semver: ^7.3.5
     typescript-memoize: ^1.0.1
   checksum: de636225b3e85379caad5bf4cb3c4f8cc8d95d1c9fab05668faf55654ae2cfe1ca2632c5cc4b81f0b52781d4fc5b80879e6cd143801976de46c591430957040f
+  languageName: node
+  linkType: hard
+
+"@embroider/shared-internals@npm:2.8.1, @embroider/shared-internals@npm:^2.8.1":
+  version: 2.8.1
+  resolution: "@embroider/shared-internals@npm:2.8.1"
+  dependencies:
+    babel-import-util: ^2.0.0
+    debug: ^4.3.2
+    ember-rfc176-data: ^0.3.17
+    fs-extra: ^9.1.0
+    is-subdir: ^1.2.0
+    js-string-escape: ^1.0.1
+    lodash: ^4.17.21
+    minimatch: ^3.0.4
+    pkg-entry-points: ^1.1.0
+    resolve-package-path: ^4.0.1
+    semver: ^7.3.5
+    typescript-memoize: ^1.0.1
+  checksum: ec70adf4a21c93d92b9fd88bf2b988c124021510645185f64d9e30c7cbf5ce4455b0445c783f42e89ef80df02cb4706473de325852e31087e5b8b34c117641a7
   languageName: node
   linkType: hard
 
@@ -7491,6 +7554,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"babel-import-util@npm:^2.0.0":
+  version: 2.1.1
+  resolution: "babel-import-util@npm:2.1.1"
+  checksum: a2aa8fd8c20ae2a9a89bd729791223761f565b1d717098546545021b0d6fcac6f20cc0d85fdcb06d19d0dd4b60d431c2e032dfcb8b137a114a9b554290b86fae
+  languageName: node
+  linkType: hard
+
 "babel-loader@npm:^8.0.6":
   version: 8.2.2
   resolution: "babel-loader@npm:8.2.2"
@@ -8261,6 +8331,15 @@ __metadata:
   dependencies:
     tweetnacl: ^0.14.3
   checksum: 4edfc9fe7d07019609ccf797a2af28351736e9d012c8402a07120c4453a3b789a15f2ee1530dc49eee8f7eb9379331a8dd4b3766042b9e502f74a68e7f662291
+  languageName: node
+  linkType: hard
+
+"better-path-resolve@npm:1.0.0":
+  version: 1.0.0
+  resolution: "better-path-resolve@npm:1.0.0"
+  dependencies:
+    is-windows: ^1.0.0
+  checksum: 5392dbe04e7fe68b944eb37961d9dfa147aaac3ee9ee3f6e13d42e2c9fbe949e68d16e896c14ee9016fa5f8e6e53ec7fd8b5f01b50a32067a7d94ac9cfb9a050
   languageName: node
   linkType: hard
 
@@ -10361,6 +10440,13 @@ __metadata:
   version: 8.3.0
   resolution: "commander@npm:8.3.0"
   checksum: 0f82321821fc27b83bd409510bb9deeebcfa799ff0bf5d102128b500b7af22872c0c92cb6a0ebc5a4cf19c6b550fba9cedfa7329d18c6442a625f851377bacf0
+  languageName: node
+  linkType: hard
+
+"common-ancestor-path@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "common-ancestor-path@npm:1.0.1"
+  checksum: 1d2e4186067083d8cc413f00fc2908225f04ae4e19417ded67faa6494fb313c4fcd5b28a52326d1a62b466e2b3a4325e92c31133c5fee628cdf8856b3a57c3d7
   languageName: node
   linkType: hard
 
@@ -17274,6 +17360,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"is-subdir@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "is-subdir@npm:1.2.0"
+  dependencies:
+    better-path-resolve: 1.0.0
+  checksum: 31029a383972bff4cc4f1bd1463fd04dde017e0a04ae3a6f6e08124a90c6c4656312d593101b0f38805fa3f3c8f6bc4583524bbf72c50784fa5ca0d3e5a76279
+  languageName: node
+  linkType: hard
+
 "is-symbol@npm:^1.0.2, is-symbol@npm:^1.0.3":
   version: 1.0.4
   resolution: "is-symbol@npm:1.0.4"
@@ -17315,7 +17410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-windows@npm:^1.0.1, is-windows@npm:^1.0.2":
+"is-windows@npm:^1.0.0, is-windows@npm:^1.0.1, is-windows@npm:^1.0.2":
   version: 1.0.2
   resolution: "is-windows@npm:1.0.2"
   checksum: 438b7e52656fe3b9b293b180defb4e448088e7023a523ec21a91a80b9ff8cdb3377ddb5b6e60f7c7de4fa8b63ab56e121b6705fe081b3cf1b828b0a380009ad7
@@ -20706,6 +20801,13 @@ __metadata:
   dependencies:
     find-up: ^4.0.0
   checksum: 9863e3f35132bf99ae1636d31ff1e1e3501251d480336edb1c211133c8d58906bed80f154a1d723652df1fda91e01c7442c2eeaf9dc83157c7ae89087e43c8d6
+  languageName: node
+  linkType: hard
+
+"pkg-entry-points@npm:^1.1.0":
+  version: 1.1.1
+  resolution: "pkg-entry-points@npm:1.1.1"
+  checksum: cf122530c2d05b8e14c202fcbd4c17f6f10ba3d16421bf9cf43fa7361f2205af4521278d70c3fef3a99cf04122a88daf21bec5f6eca3a067b762c2aa67dafdcd
   languageName: node
   linkType: hard
 
@@ -24658,7 +24760,7 @@ __metadata:
     "@ember/optional-features": ^2.0.0
     "@ember/render-modifiers": ^1.0.2
     "@ember/test-helpers": 2.8.1
-    "@ember/test-waiters": ^3.0.0
+    "@ember/test-waiters": ^4.0.0
     "@glimmer/component": ^1.1.2
     "@glimmer/tracking": ^1.1.2
     "@hashicorp/design-system-components": 2.3.1

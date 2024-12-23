@@ -57,7 +57,7 @@
     "@ember/optional-features": "^2.0.0",
     "@ember/render-modifiers": "^1.0.2",
     "@ember/test-helpers": "2.8.1",
-    "@ember/test-waiters": "^3.0.0",
+    "@ember/test-waiters": "^4.0.0",
     "@glimmer/component": "^1.1.2",
     "@glimmer/tracking": "^1.1.2",
     "@hashicorp/ember-flight-icons": "^3.0.2",

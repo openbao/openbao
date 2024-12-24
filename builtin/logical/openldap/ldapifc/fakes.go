@@ -34,7 +34,9 @@ func (f *FakeLDAPConnection) Bind(username, password string) error {
 	return nil
 }
 
-func (f *FakeLDAPConnection) Close() {}
+func (f *FakeLDAPConnection) Close() error {
+	return nil
+}
 
 func (f *FakeLDAPConnection) Modify(modifyRequest *ldap.ModifyRequest) error {
 	// Sort the change slices before comparison because they are added in a random order

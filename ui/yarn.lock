@@ -4118,17 +4118,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ember/optional-features@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@ember/optional-features@npm:2.0.0"
+"@ember/optional-features@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@ember/optional-features@npm:2.2.0"
   dependencies:
-    chalk: ^4.1.0
-    ember-cli-version-checker: ^5.1.1
-    glob: ^7.1.6
+    chalk: ^4.1.2
+    ember-cli-version-checker: ^5.1.2
+    glob: ^7.1.7
     inquirer: ^7.3.3
     mkdirp: ^1.0.4
     silent-error: ^1.1.1
-  checksum: 8fce4edc03b95c364770468398b5163791f36d2c305a7ed7221506558d13d114b79a5e5a58fe98d260b38cff4eece2c2fd87ccdff1bc10a7de8270ab3b3f49d1
+  checksum: f4a1e91e9a735b746de830d90388edcffd6034fcb9551e22d8ce8ed1455944e270d31777e83d269c9ad5cf6376efe396de52dc096f8b96d4c31ac8d37f32919c
   languageName: node
   linkType: hard
 
@@ -15945,7 +15945,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^7.2.0, glob@npm:^7.2.3":
+"glob@npm:^7.1.7, glob@npm:^7.2.0, glob@npm:^7.2.3":
   version: 7.2.3
   resolution: "glob@npm:7.2.3"
   dependencies:
@@ -24717,7 +24717,7 @@ __metadata:
     "@babel/plugin-proposal-object-rest-spread": ^7.12.1
     "@babel/plugin-transform-block-scoping": ^7.12.1
     "@ember/legacy-built-in-components": ^0.4.1
-    "@ember/optional-features": ^2.0.0
+    "@ember/optional-features": ^2.2.0
     "@ember/render-modifiers": ^1.0.2
     "@ember/test-helpers": 2.8.1
     "@ember/test-waiters": ^4.0.0

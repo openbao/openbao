@@ -493,6 +493,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/transactions",
                 "rfcs/split-mount-tables",
                 "rfcs/scan-operation",
+                "rfcs/acl-paginated-lists",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

@@ -891,8 +891,7 @@ func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte,
 	}
 }
 
-func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte) ([]byte, error) {
-
+func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedKeySizeInBytes int) ([]byte, error) {
 	var curve elliptic.Curve = elliptic.P256()
 
 	if !p.Type.KeyAgreementSupported() {
@@ -961,8 +960,16 @@ func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte) ([]byte,
 		return nil, errutil.InternalError{Err: err.Error()}
 	}
 
-	// TODO - derive symmetric key from shared secret!
-	return sharedSecret, nil
+	// TODO - should use a salt/IV for derivating different keys ?
+	// Derive secret key from shared secret (using HKDF RFC 5869)
+	hash := sha256.New
+	hkdf := hkdf.New(hash, sharedSecret, nil, nil)
+	derivedKey := make([]byte, derivedKeySizeInBytes)
+	if _, err := io.ReadFull(hkdf, derivedKey); err != nil {
+		return nil, errutil.InternalError{Err: err.Error()}
+	}
+
+	return derivedKey, nil
 }
 
 func (p *Policy) safeGetKeyEntry(ver int) (KeyEntry, error) {

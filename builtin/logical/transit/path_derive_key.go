@@ -26,7 +26,6 @@ func (b *backend) pathDeriveKey() *framework.Path {
 		},
 
 		Fields: map[string]*framework.FieldSchema{
-
 			"key_derivation_algorithm": {
 				Type:    framework.TypeString,
 				Default: defaultKeyDerivationAlgorithm,
@@ -67,8 +66,10 @@ Defaults to "aes256-gcm96".
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathPolicyDeriveKeyWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathPolicyDeriveKeyWrite,
+			},
 		},
 
 		HelpSynopsis:    pathDeriveKeyHelpSyn,
@@ -77,7 +78,6 @@ Defaults to "aes256-gcm96".
 }
 
 func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	derivationAlgorithm := d.Get("key_derivation_algorithm").(string)
 	if derivationAlgorithm == "" {
 		derivationAlgorithm = defaultKeyDerivationAlgorithm
@@ -107,17 +107,20 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		IsPrivateKey:             false,
 	}
 
+	derivedKeySizeInBytes := 32
 	switch strings.ToLower(derivedkeyType) {
 	case "aes128-gcm96":
 		polReq.KeyType = keysutil.KeyType_AES128_GCM96
+		derivedKeySizeInBytes = 16
 	case "aes256-gcm96":
 		polReq.KeyType = keysutil.KeyType_AES256_GCM96
+		derivedKeySizeInBytes = 32
 	case "chacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_ChaCha20_Poly1305
+		derivedKeySizeInBytes = 32
 	case "xchacha20-poly1305":
 		polReq.KeyType = keysutil.KeyType_XChaCha20_Poly1305
-	case "ecdsa-p256":
-		polReq.KeyType = keysutil.KeyType_ECDSA_P256
+		derivedKeySizeInBytes = 32
 	default:
 		return logical.ErrorResponse(fmt.Sprintf("unknown key type %v", derivedkeyType)), logical.ErrInvalidRequest
 	}
@@ -141,7 +144,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 		return logical.ErrorResponse("base key type %v does not support key agreement", p.Type), logical.ErrInvalidRequest
 	}
 
-	derivedKey, err := p.DeriveKeyECDH(baseKeyVer, []byte(peerPublicKeyPem))
+	derivedKey, err := p.DeriveKeyECDH(baseKeyVer, []byte(peerPublicKeyPem), derivedKeySizeInBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +157,9 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 	return nil, nil
 }
 
-const pathDeriveKeyHelpSyn = `Derives a new key from a base key`
-const pathDeriveKeyDesc = `This path uses the named base key from the request path to derive a new named key.
+const (
+	pathDeriveKeyHelpSyn = `Derives a new key from a base key`
+	pathDeriveKeyDesc    = `This path uses the named base key from the request path to derive a new named key.
 When used with the ECDH key agreement algorithm, the base key is one's own EC private key and the "peer_public_key" is the pem-encoded other party's EC public key.
 The computed shared secret is the resulting derived key.`
+)

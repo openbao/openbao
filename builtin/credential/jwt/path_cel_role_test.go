@@ -6,6 +6,7 @@ package jwtauth
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -66,13 +67,13 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			}
 
 			resp, err = b.HandleRequest(context.Background(), roleReq)
-			notFound := err != nil || (resp != nil && resp.IsError())
+			updateError := err != nil || (resp != nil && resp.IsError())
 			if tc.ExpectErr {
-				if !notFound {
+				if !updateError {
 					t.Fatalf("expected failure for [%s] but got none", tc.Name)
 				}
 			} else {
-				if notFound {
+				if updateError {
 					t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", tcNum, tc.Name, err, resp)
 				}
 			}
@@ -81,13 +82,13 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			roleReq.Operation = logical.ReadOperation
 			roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
 			// if we expected an error above there should be no cel role to read
-			notFound = err == nil && roleDataResp == nil
+			found := err == nil && roleDataResp != nil
 			if tc.ExpectErr {
-				if !notFound {
+				if found {
 					t.Fatalf("expected failure for [%s] but got none", tc.Name)
 				}
 			} else {
-				if notFound {
+				if !found {
 					t.Fatalf("bad [%d/%s] read: not found", tcNum, tc.Name)
 				}
 				// Verify role data in read
@@ -99,6 +100,21 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 				// Validate fields
 				require.Equal(t, tc.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", tcNum))
 				require.Equal(t, tc.AuthProgram, data["auth_program"], fmt.Sprintf("bad [%d] auth_program mismatch", tcNum))
+			}
+
+			// List roles to verify
+			roleReq.Path = "cel/roles"
+			roleReq.Operation = logical.ListOperation
+			roleListResp, err := b.HandleRequest(context.Background(), roleReq)
+			foundRoleInList := roleListResp != nil && slices.Contains(roleListResp.Data["keys"].([]string), tc.Name)
+			if tc.ExpectErr {
+				if foundRoleInList {
+					t.Fatalf("expected not to find [%s] in cel roles list", tc.Name)
+				}
+			} else {
+				if !foundRoleInList {
+					t.Fatalf("bad [%d/%s] read: cel role not found", tcNum, tc.Name)
+				}
 			}
 		})
 	}

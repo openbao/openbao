@@ -12,29 +12,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPki_CelRoleCreate(t *testing.T) {
+func TestJwt_CelRoleCreate(t *testing.T) {
 	t.Parallel()
 
 	// Test case for creating CEL roles
 	type TestCase struct {
 		Name          string
-		AuthProgram   AuthProgram
+		AuthProgram   string
+		ExpectErr     bool
 		FailurePolicy string
 	}
 
 	testCases := []TestCase{
 		{
-			Name: "testrole_valid",
-			AuthProgram: AuthProgram{
-				Expressions: "1 == 1",
-			},
+			Name:          "testcelrole_valid",
+			AuthProgram:   "1 == 1",
+			ExpectErr:     false,
 			FailurePolicy: "Modify",
 		},
 		{
-			Name: "testrole_invalid",
-			AuthProgram: AuthProgram{
-				Expressions: "invalid_cel_syntax",
-			}, // Should fail validation
+			Name:          "testcelrole_invalid",
+			AuthProgram:   "invalid_cel_syntax",
+			ExpectErr:     true,
 			FailurePolicy: "Modify",
 		},
 	}
@@ -42,56 +41,65 @@ func TestPki_CelRoleCreate(t *testing.T) {
 	// Create a backend with storage for testing
 	b, storage := getBackend(t)
 
-	for index, testCase := range testCases {
-		var resp *logical.Response
-		var roleDataResp *logical.Response
-		var err error
+	for tcNum, tc := range testCases {
+		t.Run(tc.Name, func(*testing.T) {
+			var resp *logical.Response
+			var roleDataResp *logical.Response
+			var err error
 
-		// Data for creating the role
-		roleData := map[string]interface{}{
-			"auth_program": AuthProgram{
-				Expressions: testCase.AuthProgram.Expressions,
-			},
-		}
+			// Data for creating the role
+			roleData := map[string]interface{}{
+				"auth_program": tc.AuthProgram,
+			}
 
-		// Add failure_policy only if it's provided in the test case
-		if testCase.FailurePolicy != "" {
-			roleData["failure_policy"] = testCase.FailurePolicy
-		}
+			// Add failure_policy only if it's provided in the test case
+			if tc.FailurePolicy != "" {
+				roleData["failure_policy"] = tc.FailurePolicy
+			}
 
-		// Create the CEL role
-		roleReq := &logical.Request{
-			Operation: logical.UpdateOperation,
-			Path:      "cel/roles/" + testCase.Name,
-			Storage:   storage,
-			Data:      roleData,
-		}
+			// Create the CEL role
+			roleReq := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "cel/roles/" + tc.Name,
+				Storage:   storage,
+				Data:      roleData,
+			}
 
-		resp, err = b.HandleRequest(context.Background(), roleReq)
-		if testCase.Name == "testrole_invalid" {
-			require.Error(t, err, fmt.Sprintf("expected failure for [%s] but got none", testCase.Name))
-			continue
-		}
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", index, testCase.Name, err, resp)
-		}
-		// Read back the role to verify
-		roleReq.Operation = logical.ReadOperation
-		roleReq.Path = "cel/roles/" + testCase.Name
-		roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+			resp, err = b.HandleRequest(context.Background(), roleReq)
+			notFound := err != nil || (resp != nil && resp.IsError())
+			if tc.ExpectErr {
+				if !notFound {
+					t.Fatalf("expected failure for [%s] but got none", tc.Name)
+				}
+			} else {
+				if notFound {
+					t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", tcNum, tc.Name, err, resp)
+				}
+			}
 
-		if err != nil || (roleDataResp != nil && roleDataResp.IsError()) {
-			t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", index, testCase.Name, err, resp)
-		}
+			// Read back the role to verify
+			roleReq.Operation = logical.ReadOperation
+			roleDataResp, err = b.HandleRequest(context.Background(), roleReq)
+			// if we expected an error above there should be no cel role to read
+			notFound = err == nil && roleDataResp == nil
+			if tc.ExpectErr {
+				if !notFound {
+					t.Fatalf("expected failure for [%s] but got none", tc.Name)
+				}
+			} else {
+				if notFound {
+					t.Fatalf("bad [%d/%s] read: not found", tcNum, tc.Name)
+				}
+				// Verify role data in read
+				data := roleDataResp.Data
+				if data == nil {
+					t.Fatalf("bad [%d/%s] read: expected data, got nil", tcNum, tc.Name)
+				}
 
-		// Verify role data
-		data := roleDataResp.Data
-		if data == nil {
-			t.Fatalf("bad [%d/%s] read: expected data, got nil", index, testCase.Name)
-		}
-
-		// Validate fields
-		require.Equal(t, testCase.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", index))
-		require.Equal(t, testCase.AuthProgram, data["auth_program"], fmt.Sprintf("bad [%d] auth_program mismatch", index))
+				// Validate fields
+				require.Equal(t, tc.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", tcNum))
+				require.Equal(t, tc.AuthProgram, data["auth_program"], fmt.Sprintf("bad [%d] auth_program mismatch", tcNum))
+			}
+		})
 	}
 }

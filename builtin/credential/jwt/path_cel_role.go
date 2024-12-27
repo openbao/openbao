@@ -177,16 +177,16 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 	name := nameRaw.(string)
 
-	validationProgram := AuthProgram{}
-	if validationProgramRaw, ok := data.GetOk("validation_program"); !ok {
-		return logical.ErrorResponse("missing required field 'validation_program'"), nil
-		// Ensure "validation_program" is a map
-	} else if validationProgramMap, ok := validationProgramRaw.(map[string]interface{}); !ok {
-		return logical.ErrorResponse("'validation_program' must be a valid map"), nil
+	authProgram := AuthProgram{}
+	if authProgramRaw, ok := data.GetOk("auth_program"); !ok {
+		return logical.ErrorResponse("missing required field 'auth_program'"), nil
+		// Ensure "auth_program" is a map
+	} else if authProgramMap, ok := authProgramRaw.(map[string]interface{}); !ok {
+		return logical.ErrorResponse("'auth_program' must be a valid map"), nil
 
-		// Decode "validation_program" into the ValidationProgram struct
-	} else if err := mapstructure.Decode(validationProgramMap, &validationProgram); err != nil {
-		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
+		// Decode "auth_program" into the authProgram struct
+	} else if err := mapstructure.Decode(authProgramMap, &authProgram); err != nil {
+		return logical.ErrorResponse("failed to decode 'auth_program': %v", err), nil
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -199,7 +199,7 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 
 	entry := &celRoleEntry{
 		Name:          name,
-		AuthProgram:   validationProgram,
+		AuthProgram:   authProgram,
 		FailurePolicy: failurePolicy,
 		Message:       data.Get("message").(string),
 	}
@@ -363,9 +363,9 @@ const (
 
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
-		"name":               r.Name,
-		"validation_program": r.AuthProgram,
-		"failure_policy":     r.FailurePolicy,
-		"message":            r.Message,
+		"name":           r.Name,
+		"auth_program":   r.AuthProgram,
+		"failure_policy": r.FailurePolicy,
+		"message":        r.Message,
 	}
 }

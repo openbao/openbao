@@ -17,22 +17,22 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 	// Test case for creating CEL roles
 	type TestCase struct {
-		Name              string
-		ValidationProgram AuthProgram
-		FailurePolicy     string
+		Name          string
+		AuthProgram   AuthProgram
+		FailurePolicy string
 	}
 
 	testCases := []TestCase{
 		{
 			Name: "testrole_valid",
-			ValidationProgram: AuthProgram{
+			AuthProgram: AuthProgram{
 				Expressions: "1 == 1",
 			},
 			FailurePolicy: "Modify",
 		},
 		{
 			Name: "testrole_invalid",
-			ValidationProgram: AuthProgram{
+			AuthProgram: AuthProgram{
 				Expressions: "invalid_cel_syntax",
 			}, // Should fail validation
 			FailurePolicy: "Modify",
@@ -49,8 +49,8 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 		// Data for creating the role
 		roleData := map[string]interface{}{
-			"validation_program": AuthProgram{
-				Expressions: testCase.ValidationProgram.Expressions,
+			"auth_program": AuthProgram{
+				Expressions: testCase.AuthProgram.Expressions,
 			},
 		}
 
@@ -68,12 +68,13 @@ func TestPki_CelRoleCreate(t *testing.T) {
 		}
 
 		resp, err = b.HandleRequest(context.Background(), roleReq)
-
 		if testCase.Name == "testrole_invalid" {
 			require.Error(t, err, fmt.Sprintf("expected failure for [%s] but got none", testCase.Name))
 			continue
 		}
-
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("bad [%d/%s] read: err: %v resp: %#v", index, testCase.Name, err, resp)
+		}
 		// Read back the role to verify
 		roleReq.Operation = logical.ReadOperation
 		roleReq.Path = "cel/roles/" + testCase.Name
@@ -91,6 +92,6 @@ func TestPki_CelRoleCreate(t *testing.T) {
 
 		// Validate fields
 		require.Equal(t, testCase.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", index))
-		require.Equal(t, testCase.ValidationProgram, data["validation_program"], fmt.Sprintf("bad [%d] validation_program mismatch", index))
+		require.Equal(t, testCase.AuthProgram, data["auth_program"], fmt.Sprintf("bad [%d] auth_program mismatch", index))
 	}
 }

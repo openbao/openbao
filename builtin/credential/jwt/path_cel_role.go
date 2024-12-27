@@ -22,11 +22,12 @@ type celRoleEntry struct {
 
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: "cel/roles/?$",
+		Pattern: "cel/roles/?",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixJWT,
 			OperationSuffix: "cel",
+			OperationVerb:   "list",
 		},
 
 		Fields: map[string]*framework.FieldSchema{
@@ -202,7 +203,7 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 
 	// Store it
-	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+name, entry)
+	jsonEntry, err := logical.StorageEntryJSON("cel/roles/"+name, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +273,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 	}
 
 	// Store it
-	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+roleName, entry)
+	jsonEntry, err := logical.StorageEntryJSON("cel/roles/"+roleName, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +285,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 }
 
 func (b *jwtAuthBackend) pathCelRoleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "cel/role/"+data.Get("name").(string))
+	err := req.Storage.Delete(ctx, "cel/roles/"+data.Get("name").(string))
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +294,7 @@ func (b *jwtAuthBackend) pathCelRoleDelete(ctx context.Context, req *logical.Req
 }
 
 func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*celRoleEntry, error) {
-	entry, err := s.Get(ctx, "cel/role/"+roleName)
+	entry, err := s.Get(ctx, "cel/roles/"+roleName)
 	if err != nil {
 		return nil, err
 	}
@@ -344,9 +345,9 @@ func validateCelExpressions(rule string) (bool, error) {
 
 const (
 	pathListCelHelpSyn  = `List the existing CEL roles in this backend`
-	pathListCelHelpDesc = `CEL policies will be listed by the role name.`
-	pathCelRoleHelpSyn  = `Manage the cel roles that can be created with this backend.`
-	pathCelRoleHelpDesc = `This path lets you manage the cel roles that can be created with this backend.`
+	pathListCelHelpDesc = `CEL roles will be listed by the role name.`
+	pathCelRoleHelpSyn  = `Manage the CEL roles that can be created with this backend.`
+	pathCelRoleHelpDesc = `This path lets you manage the CEL roles that can be created with this backend.`
 )
 
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {

@@ -9,22 +9,15 @@ import (
 	"net/http"
 
 	"github.com/google/cel-go/cel"
-	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type celRoleEntry struct {
-	Name          string      `json:"name"`                     // Required
-	AuthProgram   AuthProgram `json:"auth_program"`             // Required
-	FailurePolicy string      `json:"failure_policy,omitempty"` // Defaults to "Deny"
-	Message       string      `json:"message,omitempty"`
-}
-
-type AuthProgram struct {
-	Variables         map[string]string `json:"variables,omitempty"`
-	Expressions       string            `json:"expressions"` // Required
-	MessageExpression string            `json:"message_expressions,omitempty"`
+	Name          string `json:"name"`                     // Required
+	AuthProgram   string `json:"auth_program"`             // Required
+	FailurePolicy string `json:"failure_policy,omitempty"` // Defaults to "Deny"
+	Message       string `json:"message,omitempty"`
 }
 
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
@@ -77,8 +70,8 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Description: "Name of the cel role",
 		},
 		"auth_program": {
-			Type:        framework.TypeMap,
-			Description: "CEL rules defining the auth program for the role",
+			Type:        framework.TypeString,
+			Description: "CEL expression defining the auth program for the role",
 		},
 		"failure_policy": {
 			Type:        framework.TypeString,
@@ -104,8 +97,8 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 				Description: "Name of the cel role",
 			},
 			"auth_program": {
-				Type:        framework.TypeMap,
-				Description: "CEL rules defining the auth program for the role",
+				Type:        framework.TypeString,
+				Description: "CEL expression defining the auth program for the role",
 			},
 			"failure_policy": {
 				Type:        framework.TypeString,
@@ -177,16 +170,11 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 	name := nameRaw.(string)
 
-	authProgram := AuthProgram{}
+	authProgram := ""
 	if authProgramRaw, ok := data.GetOk("auth_program"); !ok {
 		return logical.ErrorResponse("missing required field 'auth_program'"), nil
-		// Ensure "auth_program" is a map
-	} else if authProgramMap, ok := authProgramRaw.(map[string]interface{}); !ok {
-		return logical.ErrorResponse("'auth_program' must be a valid map"), nil
-
-		// Decode "auth_program" into the authProgram struct
-	} else if err := mapstructure.Decode(authProgramMap, &authProgram); err != nil {
-		return logical.ErrorResponse("failed to decode 'auth_program': %v", err), nil
+	} else {
+		authProgram = authProgramRaw.(string)
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -270,7 +258,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		AuthProgram:   data.Get("auth_program").(AuthProgram),
+		AuthProgram:   data.Get("auth_program").(string),
 		FailurePolicy: data.Get("failure_policy").(string),
 		Message:       data.Get("message").(string),
 	}
@@ -326,7 +314,7 @@ func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, role
 func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelExpressions(entry.AuthProgram.Expressions)
+	_, err := validateCelExpressions(entry.AuthProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}

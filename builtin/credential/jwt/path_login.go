@@ -7,7 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
+	"github.com/google/cel-go/cel"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -194,9 +196,71 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
+	if err := b.applyCelRoles(ctx, req, allClaims, auth); err != nil {
+		return nil, fmt.Errorf("error applying cel roles: %w", err)
+	}
+
 	return &logical.Response{
 		Auth: auth,
 	}, nil
+}
+
+func (b *jwtAuthBackend) applyCelRoles(ctx context.Context, req *logical.Request, allClaims map[string]any, auth *logical.Auth) error {
+	celRoleKeys, err := req.Storage.List(ctx, "cel/roles")
+	if err != nil {
+		return err
+	}
+	if len(celRoleKeys) == 0 {
+		return nil
+	}
+	for _, key := range celRoleKeys {
+		celRole, err := b.getCelRole(ctx, req.Storage, key)
+		if err != nil {
+			return err
+		}
+		if err = b.applyCelRole(ctx, celRole, allClaims, auth); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *jwtAuthBackend) applyCelRole(ctx context.Context, celRole *celRoleEntry, allClaims map[string]any, auth *logical.Auth) error {
+	env, err := cel.NewEnv(
+		cel.Types(&logical.Auth{}, &CelRoleExecutionResult{}),
+		cel.Variable("auth", cel.ObjectType("logical.Auth")),
+		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
+	)
+	if err != nil {
+		return err
+	}
+	ast, iss := env.Compile(celRole.AuthProgram)
+	if iss.Err() != nil {
+		return fmt.Errorf("Cel role auth program failed to compile: %w", iss.Err())
+	}
+	prog, err := env.Program(ast)
+	if err != nil {
+		return fmt.Errorf("Cel role auth program failed: %w", err)
+	}
+	result, _, err := prog.Eval(map[string]any{
+		"auth":   auth,
+		"claims": allClaims,
+	})
+	switch v := result.Value().(type) {
+	case CelRoleExecutionResult:
+		if !v.Authorized {
+			return fmt.Errorf("Cel role '%s' blocked authorization", celRole.Name)
+		}
+		auth.Policies = append(auth.Policies, v.AddPolicies...)
+		auth.Policies = slices.DeleteFunc(auth.Policies, func(s string) bool {
+			return slices.Contains(v.RemovePolicies, s)
+		})
+	case bool:
+		if !v {
+			return fmt.Errorf("Cel role '%s' blocked authorization", celRole.Name)
+		}
+	}
+	return nil
 }
 
 func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

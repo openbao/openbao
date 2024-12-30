@@ -195,7 +195,7 @@
     "string.prototype.startswith": "^1.0.1",
     "swagger-ui-dist": "^5.18.2",
     "text-encoder-lite": "2.0.0",
-    "typescript": "^4.8.4",
+    "typescript": "^5.7.2",
     "walk-sync": "^3.0.0",
     "webpack": "^5.97.1",
     "xstate": "^3.3.3"

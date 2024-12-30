@@ -133,7 +133,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/sethvargo/go-limiter v1.0.0
 	github.com/shirou/gopsutil/v3 v3.22.6
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	go.etcd.io/bbolt v1.3.11
 	go.opentelemetry.io/otel v1.19.0

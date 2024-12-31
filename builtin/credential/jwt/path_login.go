@@ -10,12 +10,21 @@ import (
 	"slices"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/oauth2"
+)
+
+const (
+	CelResultAuthorizedKey     = "authorized"
+	CelResultAddPoliciesKey    = "add_policies"
+	CelResultRemovePoliciesKey = "remove_policies"
 )
 
 func pathLogin(b *jwtAuthBackend) *framework.Path {
@@ -227,8 +236,6 @@ func (b *jwtAuthBackend) applyCelRoles(ctx context.Context, req *logical.Request
 
 func (b *jwtAuthBackend) applyCelRole(ctx context.Context, celRole *celRoleEntry, allClaims map[string]any, auth *logical.Auth) error {
 	env, err := cel.NewEnv(
-		cel.Types(&logical.Auth{}, &CelRoleExecutionResult{}),
-		cel.Variable("auth", cel.ObjectType("logical.Auth")),
 		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
 	)
 	if err != nil {
@@ -243,22 +250,50 @@ func (b *jwtAuthBackend) applyCelRole(ctx context.Context, celRole *celRoleEntry
 		return fmt.Errorf("Cel role auth program failed: %w", err)
 	}
 	result, _, err := prog.Eval(map[string]any{
-		"auth":   auth,
 		"claims": allClaims,
 	})
+
+	if err != nil {
+		return fmt.Errorf("Cel role auth program failed to evaluate: %w", err)
+	}
+
+	// process result from CEL program
 	switch v := result.Value().(type) {
-	case CelRoleExecutionResult:
-		if !v.Authorized {
-			return fmt.Errorf("Cel role '%s' blocked authorization", celRole.Name)
+	// if map return value
+	case map[ref.Val]ref.Val:
+		for key, val := range v {
+			keyStr := fmt.Sprintf("%v", key)
+
+			switch {
+			case val.Type().TypeName() == "bool":
+				boolVal := val.Value().(bool)
+				if keyStr == CelResultAuthorizedKey && !boolVal {
+					return errors.New("Cel role auth program declined authorization")
+				}
+			case val.Type().TypeName() == "list":
+				list := val.(traits.Lister)
+				items := make([]string, list.Size().Value().(int64))
+				for i := int64(0); i < list.Size().Value().(int64); i++ {
+					item := list.Get(types.Int(i))
+					items[i] = fmt.Sprintf("%v", item)
+				}
+				if keyStr == CelResultAddPoliciesKey {
+					auth.Policies = append(auth.Policies, items...)
+				}
+				if keyStr == CelResultRemovePoliciesKey {
+					auth.Policies = slices.DeleteFunc(auth.Policies, func(policy string) bool {
+						return slices.Contains(items, policy)
+					})
+				}
+			}
 		}
-		auth.Policies = append(auth.Policies, v.AddPolicies...)
-		auth.Policies = slices.DeleteFunc(auth.Policies, func(s string) bool {
-			return slices.Contains(v.RemovePolicies, s)
-		})
+	// if boolean return value
 	case bool:
 		if !v {
-			return fmt.Errorf("Cel role '%s' blocked authorization", celRole.Name)
+			return fmt.Errorf("Cel role '%s' blocked authorization with boolean return", celRole.Name)
 		}
+	default:
+		return fmt.Errorf("Cel role '%s' returned unexpected type: %T", celRole.Name, result.Value())
 	}
 	return nil
 }

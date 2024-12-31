@@ -1663,6 +1663,127 @@ func TestResolveRole_RoleDoesNotExist(t *testing.T) {
 	}
 }
 
+func Test_applyCelRole(t *testing.T) {
+	tests := []struct {
+		name           string
+		celRole        celRoleEntry
+		claims         map[string]interface{}
+		auth           logical.Auth
+		validateResult func(t *testing.T, err error, rslt *logical.Auth)
+	}{
+		{
+			name: "Boolean expression, returns true",
+			celRole: celRoleEntry{
+				AuthProgram: "claims.sub == 'test@example.com'",
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+			},
+		},
+		{
+			name: "Boolean expression, returns false",
+			celRole: celRoleEntry{
+				AuthProgram: "claims.sub == 'test-admin@example.com'",
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.Error(t, err)
+				require.NotNil(t, rslt)
+			},
+		},
+		{
+			name: "Ojbect expression, returns 'authorized: false'",
+			celRole: celRoleEntry{
+				AuthProgram: `{"authorized": false}`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.Error(t, err)
+				require.Equal(t, "Cel role auth program declined authorization", err.Error())
+				require.NotNil(t, rslt)
+			},
+		},
+		{
+			name: "Ojbect expression, returns 'authorized: true'",
+			celRole: celRoleEntry{
+				AuthProgram: `{"authorized": true}`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+			},
+		},
+		{
+			name: "Ojbect expression, returns 'addPolicies: [\"test2\"]'",
+			celRole: celRoleEntry{
+				AuthProgram: `{"add_policies": ["test2"]}`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{
+				Policies: []string{"test1"},
+			},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, []string{"test1", "test2"}, rslt.Policies)
+			},
+		},
+		{
+			name: "Ojbect expression, returns 'removePolicies: [\"test1\"]'",
+			celRole: celRoleEntry{
+				AuthProgram: `{"add_policies": ["test2"], "remove_policies": ["test1"]}`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{
+				Policies: []string{"test1"},
+			},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, []string{"test2"}, rslt.Policies)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			logicalBackend, _ := getBackend(t)
+			b, ok := logicalBackend.(*jwtAuthBackend)
+			if !ok {
+				t.Fatalf("Expected jwtAuthBackend, got %T", logicalBackend)
+			}
+			err := b.applyCelRole(context.Background(), &tc.celRole, tc.claims, &tc.auth)
+			if tc.validateResult != nil {
+				tc.validateResult(t, err, &tc.auth)
+			}
+		})
+	}
+}
+
 const (
 	ecdsaPrivKey string = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIKfldwWLPYsHjRL9EVTsjSbzTtcGRu6icohNfIqcb6A+oAoGCCqGSM49

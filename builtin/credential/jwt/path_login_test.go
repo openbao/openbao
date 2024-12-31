@@ -1768,6 +1768,47 @@ func Test_applyCelRole(t *testing.T) {
 				require.Equal(t, []string{"test2"}, rslt.Policies)
 			},
 		},
+		{
+			name: "Ojbect expression, modify groups for 'addPolicies'",
+			celRole: celRoleEntry{
+				AuthProgram: `{"add_policies": claims.groups.map(g, "dev_" + g)}`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{
+				Policies: []string{"test1"},
+			},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, []string{"test1", "dev_group1", "dev_group2"}, rslt.Policies)
+			},
+		},
+		{
+			name: "Ojbect expression, using groups for 'addPolicies' or rejection",
+			celRole: celRoleEntry{
+				AuthProgram: `
+				{
+					"add_policies": "admin" in claims.groups ? ["admin-policy"] : [],
+					"authorized": "admin" in claims.groups
+				}
+				`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "admin"},
+			},
+			auth: logical.Auth{
+				Policies: []string{"test1"},
+			},
+			validateResult: func(t *testing.T, err error, rslt *logical.Auth) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, []string{"test1", "admin-policy"}, rslt.Policies)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

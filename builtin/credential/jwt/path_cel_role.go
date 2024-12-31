@@ -20,12 +20,6 @@ type celRoleEntry struct {
 	Message       string `json:"message,omitempty"`
 }
 
-type CelRoleExecutionResult struct {
-	Authorized     bool     `json:"authorized"`
-	AddPolicies    []string `json:"add_policies"`
-	RemovePolicies []string `json:"remove_policies"`
-}
-
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: "cel/roles/?",

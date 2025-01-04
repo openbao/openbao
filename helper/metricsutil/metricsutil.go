@@ -137,7 +137,7 @@ func (m *MetricsHelper) PrometheusResponse() *logical.Response {
 	buf := &bytes.Buffer{}
 	defer buf.Reset()
 
-	e := expfmt.NewEncoder(buf, expfmt.FmtText)
+	e := expfmt.NewEncoder(buf, expfmt.NewFormat(expfmt.TypeTextPlain))
 	for _, mf := range metricsFamilies {
 		err := e.Encode(mf)
 		if err != nil {
@@ -145,7 +145,7 @@ func (m *MetricsHelper) PrometheusResponse() *logical.Response {
 			return resp
 		}
 	}
-	resp.Data[logical.HTTPContentType] = string(expfmt.FmtText)
+	resp.Data[logical.HTTPContentType] = string(expfmt.NewFormat(expfmt.TypeTextPlain))
 	resp.Data[logical.HTTPRawBody] = buf.Bytes()
 	resp.Data[logical.HTTPStatusCode] = http.StatusOK
 	return resp

@@ -1,0 +1,3 @@
+```release-note:improvement
+core/policies: add `pagination_limit` to ACL policies for enforcing max pagination sizes.
+```

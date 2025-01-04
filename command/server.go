@@ -372,17 +372,23 @@ func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError,
 	// Load the configuration
 	var config *server.Config
 	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path)
+		current, err := server.LoadConfig(path, c.flagConfigs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
 		}
 
-		configErrors = append(configErrors, current.Validate(path)...)
+		// While current may be nil, we'll never get a nil configuration as a
+		// result of ignoring a configuration file present in a directory.
+		if current != nil {
+			configErrors = append(configErrors, current.Validate(path)...)
 
-		if config == nil {
-			config = current
+			if config == nil {
+				config = current
+			} else {
+				config = config.Merge(current)
+			}
 		} else {
-			config = config.Merge(current)
+			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
 		}
 	}
 
@@ -1464,18 +1470,22 @@ func (c *ServerCommand) Run(args []string) int {
 			var config *server.Config
 			var configErrors []configutil.ConfigError
 			for _, path := range c.flagConfigs {
-				current, err := server.LoadConfig(path)
+				current, err := server.LoadConfig(path, c.flagConfigs)
 				if err != nil {
 					c.logger.Error("could not reload config", "path", path, "error", err)
 					goto RUNRELOADFUNCS
 				}
 
-				configErrors = append(configErrors, current.Validate(path)...)
+				if current != nil {
+					configErrors = append(configErrors, current.Validate(path)...)
 
-				if config == nil {
-					config = current
+					if config == nil {
+						config = current
+					} else {
+						config = config.Merge(current)
+					}
 				} else {
-					config = config.Merge(current)
+					c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
 				}
 			}
 

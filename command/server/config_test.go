@@ -109,3 +109,55 @@ func Test_parseDevTLSConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadConfigFile_IgnoreDuplicates(t *testing.T) {
+	type testCase struct {
+		name     string
+		path     string
+		allPaths []string
+		empty    bool
+	}
+
+	tcs := []testCase{
+		{
+			"nil-paths",
+			"./test-fixtures/raft_retry_join.hcl",
+			nil,
+			false,
+		},
+		{
+			"just-path",
+			"./test-fixtures/raft_retry_join.hcl",
+			[]string{"./test-fixtures/raft_retry_join.hcl"},
+			false,
+		},
+		{
+			"not-in-directory",
+			"./test-fixtures/raft_retry_join.hcl",
+			[]string{"./test-fixtures/raft_retry_join.hcl", "../proxy/config/test-fixtures/"},
+			false,
+		},
+		{
+			"in-directory",
+			"./test-fixtures/raft_retry_join.hcl",
+			[]string{"./test-fixtures/raft_retry_join.hcl", "./test-fixtures/"},
+			true,
+		},
+		{
+			"in-directory-no-trailing-slash",
+			"./test-fixtures/raft_retry_join.hcl",
+			[]string{"./test-fixtures/raft_retry_join.hcl", "./test-fixtures"},
+			true,
+		},
+	}
+
+	for _, tc := range tcs {
+		config, err := LoadConfigFile(tc.path, tc.allPaths)
+		require.NoError(t, err)
+		if tc.empty {
+			require.Nil(t, config, "expected tc %v to have nil config", tc.name)
+		} else {
+			require.NotNil(t, config, "expected tc %v to yield non-nil config", tc.name)
+		}
+	}
+}

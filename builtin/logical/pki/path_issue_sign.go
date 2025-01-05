@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	celgo "github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -31,6 +33,76 @@ func pathIssue(b *backend) *framework.Path {
 	}
 
 	return buildPathIssue(b, pattern, displayAttrs)
+}
+
+func pathCelIssue(b *backend) *framework.Path {
+	return &framework.Path{
+		Pattern: "cel/issue/" + framework.GenericNameRegex("role"),
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixPKI,
+			OperationVerb:   "issue",
+			OperationSuffix: "with-cel-role",
+		},
+
+		Fields: getCsrSignVerbatimSchemaFields(),
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCelIssue,
+				Responses: map[int][]framework.Response{
+					http.StatusOK: {{
+						Description: "OK",
+						Fields: map[string]*framework.FieldSchema{
+							"certificate": {
+								Type:        framework.TypeString,
+								Description: `Certificate`,
+								Required:    true,
+							},
+							"issuing_ca": {
+								Type:        framework.TypeString,
+								Description: `Issuing Certificate Authority`,
+								Required:    true,
+							},
+							"ca_chain": {
+								Type:        framework.TypeCommaStringSlice,
+								Description: `Certificate Chain`,
+								Required:    false,
+							},
+							"serial_number": {
+								Type:        framework.TypeString,
+								Description: `Serial Number`,
+								Required:    true,
+							},
+							"not_before": {
+								Type:        framework.TypeInt64,
+								Description: `Starting time of validity`,
+								Required:    true,
+							},
+							"expiration": {
+								Type:        framework.TypeInt64,
+								Description: `Time of expiration`,
+								Required:    true,
+							},
+							"private_key": {
+								Type:        framework.TypeString,
+								Description: `Private key`,
+								Required:    false,
+							},
+							"private_key_type": {
+								Type:        framework.TypeString,
+								Description: `Private key type`,
+								Required:    false,
+							},
+						},
+					}},
+				},
+			},
+		},
+
+		HelpSynopsis:    pathCelIssueHelpSyn,
+		HelpDescription: pathCelIssueHelpDesc,
+	}
 }
 
 func pathIssuerIssue(b *backend) *framework.Path {
@@ -382,6 +454,94 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 	return resp, err
 }
 
+// pathCelIssue issues a certificate and private key from given parameters,
+// subject to cel role restrictions
+func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	keyTypeRaw, _ := data.GetOk("key_type")
+	keyBitsRaw, _ := data.GetOk("key_bits")
+
+	// Fetch the CEL role name from the request
+	roleName := data.Get("role").(string)
+	if roleName == "" {
+		return logical.ErrorResponse("missing CEL role name"), nil
+	}
+
+	// Retrieve the CEL role
+	celRole, err := b.getCelRole(ctx, req.Storage, roleName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch CEL role: %w", err)
+	}
+	if celRole == nil {
+		return logical.ErrorResponse("CEL role not found"), nil
+	}
+
+	// Prepare CEL environment
+	env, err := celgo.NewEnv(
+		celgo.Declarations(
+			decls.NewVar("request", decls.NewMapType(decls.String, decls.String)),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
+	}
+
+	// Compile CEL expressions
+	ast, issues := env.Compile(celRole.ValidationProgram.Expressions)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("CEL expression validation failed: %w", issues.Err())
+	}
+
+	// Create CEL program
+	prog, err := env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CEL program: %w", err)
+	}
+
+	// Evaluate CEL program with request data
+	evalResult, _, err := prog.Eval(map[string]interface{}{
+		"request": data.Raw,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+	}
+
+	// Ensure evaluation result is a boolean
+	if evalResult.Type() != celgo.BoolType {
+		return logical.ErrorResponse("CEL rule did not return a boolean value"), nil
+	}
+
+	// Check if CEL rules passed
+	if !evalResult.Value().(bool) {
+		return logical.ErrorResponse("CEL rules denied the certificate issuance request: %v", celRole.Message), nil
+	}
+
+	bu := true
+	// CEL rules passed; issue the certificate
+	role := &roleEntry{
+		KeyType: func() string {
+			if keyTypeRaw != nil {
+				return keyTypeRaw.(string)
+			}
+			return "rsa"
+		}(),
+		KeyBits: func() int {
+			if keyBitsRaw != nil {
+				return keyBitsRaw.(int)
+			}
+			return 2048
+		}(),
+		GenerateLease: &bu,
+	}
+
+	// Issue the certificate and private key
+	resp, err := b.pathIssue(ctx, req, data, role)
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue certificate: %w", err)
+	}
+
+	return resp, nil
+}
+
 // pathSign issues a certificate from a submitted CSR, subject to role
 // restrictions
 func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
@@ -414,7 +574,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	//    allows users with access to those paths to manually choose their
 	//    issuer in desired scenarios).
 	var issuerName string
-	if strings.HasPrefix(req.Path, "sign-verbatim/") || strings.HasPrefix(req.Path, "sign/") || strings.HasPrefix(req.Path, "issue/") {
+	if strings.HasPrefix(req.Path, "sign-verbatim/") || strings.HasPrefix(req.Path, "sign/") || strings.HasPrefix(req.Path, "issue/") || strings.HasPrefix(req.Path, "cel/issue/") {
 		issuerName = role.Issuer
 		if len(issuerName) == 0 {
 			issuerName = defaultRef
@@ -638,6 +798,20 @@ requested details are allowed by the role policy.
 This path returns a certificate and a private key. If you want a workflow
 that does not expose a private key, generate a CSR locally and use the
 sign path instead.
+`
+
+const pathCelIssueHelpSyn = `
+Request a certificate using a certain cel role with the provided details.
+`
+
+const pathCelIssueHelpDesc = `
+This path allows requesting a certificate to be issued according to the
+policy of the given cel role. The certificate will only be issued if the
+requested details are allowed by the cel role policy.
+
+This path returns a certificate and a private key. If you want a workflow
+that does not expose a private key, generate a CSR locally and use the
+cel/sign path instead.
 `
 
 const pathSignHelpSyn = `

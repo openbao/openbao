@@ -8,16 +8,21 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/cel-go/cel"
+	celgo "github.com/google/cel-go/cel"
+	"github.com/google/cel-go/checker/decls"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
+	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 type celRoleEntry struct {
 	Name              string            `json:"name"`                     // Required
 	ValidationProgram ValidationProgram `json:"validation_program"`       // Required
-	FailurePolicy     string            `json:"failure_policy,omitempty"` // Defaults to "Deny"
+	FailurePolicy     string            `json:"failure_policy,omitempty"` // Defaults to "deny"
 	Message           string            `json:"message,omitempty"`
 }
 
@@ -33,7 +38,7 @@ func pathListCelRoles(b *backend) *framework.Path {
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
-			OperationSuffix: "cel",
+			OperationSuffix: "cel-roles",
 		},
 
 		Fields: map[string]*framework.FieldSchema{
@@ -95,7 +100,7 @@ func pathCelRoles(b *backend) *framework.Path {
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixPKI,
-			OperationSuffix: "role",
+			OperationSuffix: "cel-role",
 		},
 
 		Fields: map[string]*framework.FieldSchema{
@@ -180,6 +185,7 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	validationProgram := ValidationProgram{}
 	if validationProgramRaw, ok := data.GetOk("validation_program"); !ok {
 		return logical.ErrorResponse("missing required field 'validation_program'"), nil
+
 		// Ensure "validation_program" is a map
 	} else if validationProgramMap, ok := validationProgramRaw.(map[string]interface{}); !ok {
 		return logical.ErrorResponse("'validation_program' must be a valid map"), nil
@@ -189,11 +195,11 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 	}
 
-	failurePolicy := "Deny" // Default value
+	failurePolicy := "deny" // Default value
 	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
 		failurePolicy = failurePolicyRaw.(string)
-		if failurePolicy != "Deny" && failurePolicy != "Modify" {
-			return logical.ErrorResponse("failure_policy must be 'Deny' or 'Modify'"), nil
+		if failurePolicy != "deny" && failurePolicy != "modify" {
+			return logical.ErrorResponse("failure_policy must be 'deny' or 'modify'"), nil
 		}
 	}
 
@@ -229,7 +235,7 @@ func (b *backend) pathCelList(ctx context.Context, req *logical.Request, data *f
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
 
-	entries, err := req.Storage.ListPage(ctx, "cel/roles/", after, limit)
+	entries, err := req.Storage.ListPage(ctx, "cel/role/", after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -260,6 +266,7 @@ func (b *backend) pathCelRoleRead(ctx context.Context, req *logical.Request, dat
 func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	roleName := data.Get("name").(string)
 
+	// Retrieve the existing entry
 	oldEntry, err := b.getCelRole(ctx, req.Storage, roleName)
 	if err != nil {
 		return nil, err
@@ -268,13 +275,34 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("Unable to fetch cel role entry to patch"), nil
 	}
 
+	// Initialize the new entry with existing values
 	entry := &celRoleEntry{
-		Name:              roleName,
-		ValidationProgram: data.Get("validation_program").(ValidationProgram),
-		FailurePolicy:     data.Get("failure_policy").(string),
-		Message:           data.Get("message").(string),
+		Name:              oldEntry.Name,
+		ValidationProgram: oldEntry.ValidationProgram,
+		FailurePolicy:     oldEntry.FailurePolicy,
+		Message:           oldEntry.Message,
 	}
 
+	// Update the fields only if provided
+	if validationProgramRaw, ok := data.GetOk("validation_program"); ok {
+		validationProgramMap, ok := validationProgramRaw.(map[string]interface{})
+		if !ok {
+			return logical.ErrorResponse("'validation_program' must be a valid map"), nil
+		}
+		if err := mapstructure.Decode(validationProgramMap, &entry.ValidationProgram); err != nil {
+			return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
+		}
+	}
+
+	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
+		entry.FailurePolicy = failurePolicyRaw.(string)
+	}
+
+	if messageRaw, ok := data.GetOk("message"); ok {
+		entry.Message = messageRaw.(string)
+	}
+
+	// Validate the patched entry
 	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -283,7 +311,7 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		return resp, nil
 	}
 
-	// Store it
+	// Store the updated entry
 	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+roleName, entry)
 	if err != nil {
 		return nil, err
@@ -335,25 +363,6 @@ func validateCelRoleCreation(b *backend, entry *celRoleEntry, ctx context.Contex
 	return resp, nil
 }
 
-func validateCelExpressions(rule string) (bool, error) {
-	env, err := cel.NewEnv()
-	if err != nil {
-		return false, fmt.Errorf("failed to create CEL environment: %w", err)
-	}
-
-	ast, issues := env.Compile(rule)
-	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("Invalid CEL syntax: %v", issues.Err())
-	}
-
-	// Check AST for errors
-	if ast == nil {
-		return false, fmt.Errorf("failed to compile CEL rule")
-	}
-
-	return true, nil
-}
-
 const (
 	pathListCelHelpSyn  = `List the existing CEL roles in this backend`
 	pathListCelHelpDesc = `CEL policies will be listed by the role name.`
@@ -368,4 +377,63 @@ func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 		"failure_policy":     r.FailurePolicy,
 		"message":            r.Message,
 	}
+}
+
+func validateCelExpressions(rule string) (bool, error) {
+	env, err := celgo.NewEnv(
+		celgo.Declarations(
+			decls.NewVar("request", decls.NewMapType(decls.String, decls.String)), // Define `request` as a map
+		),
+	)
+	if err != nil {
+		return false, fmt.Errorf("failed to create CEL environment: %w", err)
+	}
+
+	// Compile the CEL rule
+	ast, issues := env.Compile(rule)
+	if issues != nil && issues.Err() != nil {
+		return false, fmt.Errorf("invalid CEL syntax: %v", issues.Err())
+	}
+
+	// Ensure the AST is non-nil
+	if ast == nil {
+		return false, fmt.Errorf("failed to compile CEL rule: AST is nil")
+	}
+
+	// Create a CEL program to validate runtime behavior
+	_, err = env.Program(ast)
+	if err != nil {
+		return false, fmt.Errorf("failed to create CEL program: %w", err)
+	}
+
+	return true, nil
+}
+
+func validateWithK8sValidator(ctx context.Context, validationProgram ValidationProgram, schema *schema.Structural) error {
+	// Replace `config.DefaultPerCallLimit` with an actual limit, e.g., 1000
+	const perCallLimit = 1000
+
+	validator := cel.NewValidator(schema, true, perCallLimit)
+	if validator == nil {
+		return fmt.Errorf("failed to create CEL validator")
+	}
+
+	// Object to validate - replace with actual data
+	obj := map[string]interface{}{}
+
+	// Validate the object
+	errs, _ := validator.Validate(ctx, field.NewPath("root"), schema, obj, nil, perCallLimit)
+	if len(errs) > 0 {
+		return fmt.Errorf("validation errors: %v", errs)
+	}
+
+	return nil
+}
+
+func (b *backend) storeCelRole(ctx context.Context, storage logical.Storage, entry *celRoleEntry) error {
+	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+entry.Name, entry)
+	if err != nil {
+		return err
+	}
+	return storage.Put(ctx, jsonEntry)
 }

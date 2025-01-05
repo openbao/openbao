@@ -1576,6 +1576,49 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	return creation, warnings, nil
 }
 
+// CertificateParameters holds the parameters required for certificate generation.
+type CertificateParameters struct {
+	CommonName         string              // The common name (CN) for the certificate
+	KeyType            string              // Key type, e.g., "rsa", "ec", "ed25519"
+	KeyBits            int                 // Key size in bits
+	DNSNames           []string            // Subject Alternative Names (SANs) for DNS
+	EmailAddresses     []string            // Email SANs
+	IPAddresses        []net.IP            // IP address SANs
+	URIs               []*url.URL          // URI SANs
+	NotBefore          time.Time           // Start time of certificate validity
+	NotAfter           time.Time           // End time of certificate validity
+	UsePSS             bool                // Use PSS for RSA signatures
+	PolicyIdentifiers  []string            // Policy identifiers for the certificate
+	OtherSANs          map[string][]string // Custom SANs as OID mappings
+	ForceAppendCaChain bool                // Include CA chain in response
+}
+
+func generateCreationBundleFromParams(input *CertificateParameters, caSign *certutil.CAInfoBundle) (*certutil.CreationBundle, []string, error) {
+	params := &certutil.CreationParameters{
+		Subject: pkix.Name{
+			CommonName: input.CommonName,
+		},
+		KeyType:            input.KeyType,
+		KeyBits:            input.KeyBits,
+		DNSNames:           strutil.RemoveDuplicatesStable(input.DNSNames, false),
+		EmailAddresses:     strutil.RemoveDuplicates(input.EmailAddresses, false),
+		IPAddresses:        input.IPAddresses,
+		URIs:               input.URIs,
+		NotBefore:          input.NotBefore,
+		NotAfter:           input.NotAfter,
+		UsePSS:             input.UsePSS,
+		PolicyIdentifiers:  input.PolicyIdentifiers,
+		OtherSANs:          input.OtherSANs,
+		ForceAppendCaChain: caSign != nil,
+	}
+
+	if caSign != nil {
+		params.URLs = caSign.URLs
+	}
+
+	return &certutil.CreationBundle{Params: params, SigningBundle: caSign}, nil, nil
+}
+
 // compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
 func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time

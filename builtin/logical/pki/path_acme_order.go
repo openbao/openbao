@@ -568,7 +568,7 @@ func issueCertFromCsr(ac *acmeContext, csr *x509.CertificateRequest) (*certutil.
 	// unit, we have no way of validating this (via ACME here, without perhaps
 	// an external policy engine), and thus should not be setting it on our
 	// final issued certificate.
-	parsedBundle, _, err := signCert(ac.sc.Backend, input, signingBundle, false /* is_ca=false */, false /* use_csr_values */)
+	parsedBundle, _, err := signCert(ac.sc.Backend, input, signingBundle, false /* is_ca=false */, false /* use_csr_values */, false /* is_cel_role=false */)
 	if err != nil {
 		return nil, "", fmt.Errorf("%w: refusing to sign CSR: %s", ErrBadCSR, err.Error())
 	}

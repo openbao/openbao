@@ -188,7 +188,7 @@ func (b *backend) pathCAGenerateRoot(ctx context.Context, req *logical.Request, 
 		apiData: data,
 		role:    role,
 	}
-	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.Backend.GetRandomReader())
+	parsedBundle, warnings, err := generateCert(sc, input, nil, true, b.Backend.GetRandomReader() /* isCelRole = false*/, false)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:
@@ -426,7 +426,7 @@ func (b *backend) pathIssuerSignIntermediate(ctx context.Context, req *logical.R
 		apiData: data,
 		role:    role,
 	}
-	parsedBundle, warnings, err := signCert(b, input, signingBundle, true, useCSRValues)
+	parsedBundle, warnings, err := signCert(b, input, signingBundle, true, useCSRValues /* isCelRole = false*/, false)
 	if err != nil {
 		switch err.(type) {
 		case errutil.UserError:

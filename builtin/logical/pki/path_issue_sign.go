@@ -36,6 +36,8 @@ func pathIssue(b *backend) *framework.Path {
 }
 
 func pathCelIssue(b *backend) *framework.Path {
+	fields := getCsrSignVerbatimSchemaFields()
+
 	return &framework.Path{
 		Pattern: "cel/issue/" + framework.GenericNameRegex("role"),
 
@@ -45,7 +47,7 @@ func pathCelIssue(b *backend) *framework.Path {
 			OperationSuffix: "with-cel-role",
 		},
 
-		Fields: getCsrSignVerbatimSchemaFields(),
+		Fields: fields,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
@@ -124,7 +126,9 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("issue", roleRequired, b.pathIssue),
+				Callback: b.metricsWrap("issue", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+					return b.pathIssue(ctx, req, data, role, false)
+				}),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -239,7 +243,9 @@ func buildPathSign(b *backend, pattern string, displayAttrs *framework.DisplayAt
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("sign", roleRequired, b.pathSign),
+				Callback: b.metricsWrap("sign", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+					return b.pathSign(ctx, req, data, role, false)
+				}),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -337,7 +343,10 @@ func buildPathIssuerSignVerbatim(b *backend, pattern string, displayAttrs *frame
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.metricsWrap("sign-verbatim", roleOptional, b.pathSignVerbatim),
+				Callback: b.metricsWrap("sign-verbatim", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+					return b.pathSignVerbatim(ctx, req, data, role, false)
+				}),
+
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
 						Description: "OK",
@@ -417,7 +426,7 @@ See the API documentation for more information about required parameters.
 
 // pathIssue issues a certificate and private key from given parameters,
 // subject to role restrictions
-func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, isCelRole bool) (*logical.Response, error) {
 	keyTypeRaw, keyTypePresent := data.GetOk("key_type")
 	keyBitsRaw, keyBitsPresent := data.GetOk("key_bits")
 
@@ -447,7 +456,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 		addWarning = true
 	}
 
-	resp, err := b.pathIssueSignCert(ctx, req, data, role, false, false)
+	resp, err := b.pathIssueSignCert(ctx, req, data, role, false, false, isCelRole)
 	if addWarning && resp != nil {
 		resp.AddWarning("parameters key_type and key_bits ignored as role had specific values")
 	}
@@ -518,6 +527,7 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 	bu := true
 	// CEL rules passed; issue the certificate
 	role := &roleEntry{
+		CNValidations: []string{"hostname"},
 		KeyType: func() string {
 			if keyTypeRaw != nil {
 				return keyTypeRaw.(string)
@@ -534,7 +544,7 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 	}
 
 	// Issue the certificate and private key
-	resp, err := b.pathIssue(ctx, req, data, role)
+	resp, err := b.pathIssue(ctx, req, data, role, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to issue certificate: %w", err)
 	}
@@ -544,19 +554,19 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 
 // pathSign issues a certificate from a submitted CSR, subject to role
 // restrictions
-func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
-	return b.pathIssueSignCert(ctx, req, data, role, true, false)
+func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, isCelRole bool) (*logical.Response, error) {
+	return b.pathIssueSignCert(ctx, req, data, role, true, false, isCelRole)
 }
 
 // pathSignVerbatim issues a certificate from a submitted CSR, *not* subject to
 // role restrictions
-func (b *backend) pathSignVerbatim(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
+func (b *backend) pathSignVerbatim(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, isCelRole bool) (*logical.Response, error) {
 	entry := buildSignVerbatimRole(data, role)
 
-	return b.pathIssueSignCert(ctx, req, data, entry, true, true)
+	return b.pathIssueSignCert(ctx, req, data, entry, true, true, isCelRole)
 }
 
-func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, useCSR, useCSRValues bool) (*logical.Response, error) {
+func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, useCSR, useCSRValues bool, isCelRole bool) (*logical.Response, error) {
 	// If storing the certificate and on a performance standby, forward this request on to the primary
 	// Allow performance secondaries to generate and store certificates locally to them.
 	if !role.NoStore && b.System().ReplicationState().HasState(consts.ReplicationPerformanceStandby) {
@@ -617,9 +627,9 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	var err error
 	var warnings []string
 	if useCSR {
-		parsedBundle, warnings, err = signCert(b, input, signingBundle, false, useCSRValues)
+		parsedBundle, warnings, err = signCert(b, input, signingBundle, false, useCSRValues, isCelRole)
 	} else {
-		parsedBundle, warnings, err = generateCert(sc, input, signingBundle, false, rand.Reader)
+		parsedBundle, warnings, err = generateCert(sc, input, signingBundle, false, rand.Reader, isCelRole)
 	}
 	if err != nil {
 		switch err.(type) {

@@ -15,7 +15,7 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.5.2",
+    "@docusaurus/core": "^3.7.0",
     "@docusaurus/plugin-sitemap": "^3.6.1",
     "@docusaurus/preset-classic": "^3.6.3",
     "@hashicorp/remark-plugins": "^4.1.1",

@@ -157,3 +157,45 @@ func (mpd *MountPathDetails) GetRelativePath(currNs *Namespace) string {
 func (mpd *MountPathDetails) GetFullPath() string {
 	return mpd.Namespace.Path + mpd.MountPath
 }
+
+// fromContext retrieves the namespace from a context, or an error
+// if there is no namespace in the context.
+func fromContext(ctx context.Context) (*Namespace, error) {
+	if ctx == nil {
+		return nil, errors.New("context was nil")
+	}
+
+	nsRaw := ctx.Value(contextNamespace)
+	if nsRaw == nil {
+		return nil, nil
+	}
+
+	ns := nsRaw.(*Namespace)
+	if ns == nil {
+		return nil, ErrNoNamespace
+	}
+
+	return ns, nil
+}
+
+func WithNS(ctx context.Context, key string) (string, error) {
+	ns, err := fromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	if ns == nil || ns.Path == "" {
+		return key, nil
+	}
+	return ns.Path + key, nil
+}
+
+func WithoutNS(ctx context.Context, key string) (string, error) {
+	ns, err := fromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	if ns == nil || ns.Path == "" {
+		return key, nil
+	}
+	return ns.TrimmedPath(key), nil
+}

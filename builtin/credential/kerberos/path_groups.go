@@ -99,11 +99,12 @@ func (b *backend) Group(ctx context.Context, s logical.Storage, n string) (*Grou
 }
 
 func (b *backend) pathGroupDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "group/"+d.Get("name").(string))
-	if err != nil {
+
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Delete(ctx, "group/"+d.Get("name").(string))
+	}); err != nil {
 		return nil, err
 	}
-
 	return nil, nil
 }
 
@@ -131,10 +132,12 @@ func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *f
 	if err != nil {
 		return nil, err
 	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
+
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Put(ctx, entry)
+	}); err != nil {
 		return nil, err
 	}
-
 	return nil, nil
 }
 

@@ -110,7 +110,10 @@ func (b *backend) pathConfigLdapWrite(ctx context.Context, req *logical.Request,
 	if err != nil {
 		return nil, err
 	}
-	if err := req.Storage.Put(ctx, entry); err != nil {
+
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Put(ctx, entry)
+	}); err != nil {
 		return nil, err
 	}
 	return nil, nil

@@ -446,7 +446,9 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		if err != nil {
 			return nil, err
 		}
-		if err = req.Storage.Put(ctx, entry); err != nil {
+		if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+			return storage.Put(ctx, entry)
+		}); err != nil {
 			return nil, err
 		}
 	}
@@ -464,7 +466,9 @@ func (b *jwtAuthBackend) pathRoleDelete(ctx context.Context, req *logical.Reques
 	}
 
 	// Delete the role itself
-	if err := req.Storage.Delete(ctx, rolePrefix+roleName); err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Delete(ctx, rolePrefix+roleName)
+	}); err != nil {
 		return nil, err
 	}
 
@@ -715,7 +719,9 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	if err = req.Storage.Put(ctx, entry); err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Put(ctx, entry)
+	}); err != nil {
 		return nil, err
 	}
 

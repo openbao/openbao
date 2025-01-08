@@ -1,0 +1,3 @@
+```release-note:improvement
+credentials/jwt: Use transactions for config write / delete
+```

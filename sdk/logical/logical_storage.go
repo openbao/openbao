@@ -100,6 +100,25 @@ func (s *LogicalTransaction) Rollback(ctx context.Context) error {
 	return s.Underlying().(physical.Transaction).Rollback(ctx)
 }
 
+func WithTransaction(ctx context.Context, originalStorage Storage, callback func(Storage) error) error {
+	if txnStorage, ok := originalStorage.(TransactionalStorage); ok {
+		txn, err := txnStorage.BeginTx(ctx)
+		if err != nil {
+			return err
+		}
+		defer txn.Rollback(ctx)
+		if err := callback(txnStorage); err != nil {
+			return err
+		}
+		if err := txn.Commit(ctx); err != nil {
+			return err
+		}
+	} else {
+		return callback(originalStorage)
+	}
+	return nil
+}
+
 func NewLogicalStorage(underlying physical.Backend) Storage {
 	ls := &LogicalStorage{
 		underlying: underlying,

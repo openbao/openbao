@@ -246,10 +246,11 @@ func (b *kubeAuthBackend) pathRoleDelete(ctx context.Context, req *logical.Reque
 	defer b.l.Unlock()
 
 	// Delete the role itself
-	if err := req.Storage.Delete(ctx, "role/"+strings.ToLower(roleName)); err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Delete(ctx, "role/"+strings.ToLower(roleName))
+	}); err != nil {
 		return nil, err
 	}
-
 	return nil, nil
 }
 
@@ -393,10 +394,11 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	if entry == nil {
 		return nil, fmt.Errorf("failed to create storage entry for role %s", roleName)
 	}
-	if err = req.Storage.Put(ctx, entry); err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Put(ctx, entry)
+	}); err != nil {
 		return nil, err
 	}
-
 	return resp, nil
 }
 

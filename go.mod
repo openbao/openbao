@@ -94,7 +94,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.20
-	github.com/michaelklishin/rabbit-hole/v2 v2.12.0
+	github.com/michaelklishin/rabbit-hole/v3 v3.1.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	github.com/mitchellh/copystructure v1.2.0
 	github.com/mitchellh/go-homedir v1.1.0
@@ -149,7 +149,7 @@ require (
 	golang.org/x/sys v0.28.0
 	golang.org/x/term v0.27.0
 	golang.org/x/text v0.21.0
-	golang.org/x/tools v0.22.0
+	golang.org/x/tools v0.26.0
 	google.golang.org/api v0.149.0
 	google.golang.org/grpc v1.68.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
@@ -338,7 +338,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
 	go.opentelemetry.io/otel/metric v1.33.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240604190554-fc45aab8b7f8 // indirect
-	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/mod v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241118233622-e639e219e697 // indirect

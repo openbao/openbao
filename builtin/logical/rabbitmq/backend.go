@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
+	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )

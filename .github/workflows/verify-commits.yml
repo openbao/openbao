@@ -26,7 +26,8 @@ jobs:
                .author.login == "JanMa" or
                .author.login == "cipherboy" or
                .author.login == "DanGhita" or
-               .author.login == "naphelps"
+               .author.login == "naphelps" or
+               .author.login == "DrDaveD"
               ) |
               # select any unsigned commits
               select(.commit.verification.verified == false)

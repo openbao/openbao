@@ -1,8 +1,8 @@
 # Maintainers
 
-## Organization-Level Maintainers
-
 See the information about community membership roles to learn about the role of the maintainers and the process to become one.
+
+## Organization-Level Maintainers
 
 | Name          | Email                        | GitHub                                     |
 |---------------|------------------------------|--------------------------------------------|
@@ -11,9 +11,17 @@ See the information about community membership roles to learn about the role of 
 | Nathan Phelps | naphelps@us.ibm.com          | [@naphelps](https://github.com/naphelps)   |
 | Alex Scheel   | alexander.m.scheel@gmail.com | [@cipherboy](https://github.com/cipherboy) |
 
+## Repository-Level Committers
+
+| Name         | GitHub                                  | Projects                                                                                          |
+| ------------ | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Dave Dykstra | [@DrDaveD](https://github.com/DrDaveD/) | [`auth/jwt` and `auth/oidc`](https://github.com/openbao/openbao/tree/main/builtin/credential/jwt) |
+
 ## Organization-Level Moderators
 
-n/a
+| Name         | GitHub                                       |
+| ------------ | -------------------------------------------- |
+| Fatima Patel | [@fatima2003](https://github.com/fatima2003) |
 
 # OpenBao Community Roles
 

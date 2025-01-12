@@ -153,6 +153,11 @@ func HashResponse(
 	return &resp, nil
 }
 
+// Creates a deep copy of the data by marshalling to and unmarshalling from json.
+//
+//	This transformation inherently changes all structs to maps, which makes
+//	each of the structs fields addressable through reflection in the copy,
+//	(which is now a map).  This will allow us to write into all fields.
 func getUnmarshaledCopy(data interface{}) (interface{}, error) {
 	marshaledData, err := json.Marshal(data)
 	if err != nil {
@@ -192,7 +197,7 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 //
 // For the HashCallback, see the built-in HashCallbacks below.
 func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
-	walker := &hashWalker{NewMap: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
+	walker := &hashWalker{MarshalledCopy: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
 	return reflectwalk.Walk(original, walker)
 }
 
@@ -227,7 +232,7 @@ type hashWalker struct {
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
 	csKey                 []reflect.Value
-	NewMap                reflect.Value
+	MarshalledCopy        reflect.Value
 	ElideListResponseData bool
 }
 
@@ -271,24 +276,21 @@ func (w *hashWalker) Map(m reflect.Value) error {
 }
 
 func (w *hashWalker) MapElem(m, k, v reflect.Value) error {
-	w.lastValue = v
-	if _, ok := k.Interface().(string); ok {
-		w.csKey = append(w.csKey, k)
-		w.key = append(w.key, k.String())
-		return nil
-	}
+
+	// The json marshaling converts string keys to ints, so
+	//  we have to handle that here
 	if _, ok := k.Interface().(int); ok {
 		kString := strconv.FormatInt(k.Int(), 10)
 		w.csKey = append(w.csKey, reflect.ValueOf(kString))
 		w.key = append(w.key, kString)
+		w.lastValue = v
 		return nil
 	}
-	if _, ok := k.Interface().(time.Time); ok {
-		w.csKey = append(w.csKey, k)
-		w.key = append(w.key, k.String())
-		return nil
-	}
-	panic("bad type" + k.String())
+
+	w.csKey = append(w.csKey, k)
+	w.key = append(w.key, k.String())
+	w.lastValue = v
+	return nil
 }
 
 func (w *hashWalker) Slice(s reflect.Value) error {
@@ -302,7 +304,7 @@ func (w *hashWalker) SliceElem(i int, elem reflect.Value) error {
 }
 
 func (w *hashWalker) Struct(v reflect.Value) error {
-	// We are looking for time values. If it isn't one, ignore it.
+	// We are looking for time values. If it isn't one, handle it later.
 	if v.Type() != hashTimeType {
 		w.cs = append(w.cs, v)
 		return nil
@@ -325,7 +327,7 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		m := w.getValue()
+		m := w.getValueFromCopy()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, reflect.ValueOf(strVal))
 	case reflectwalk.SliceElem:
@@ -335,16 +337,19 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		s := w.getValue()
+		s := w.getValueFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(reflect.ValueOf(strVal))
 	}
 
+	// Skip this entry so that we don't walk the struct, but
+	//  append it to w.cs so that it gets properly handled on
+	//  Exit()
 	w.cs = append(w.cs, v)
-	// Skip this entry so that we don't walk the struct.
 	return reflectwalk.SkipEntry
 }
 
+// Update the name of the field if it has a json struct tag
 func (w *hashWalker) StructField(s reflect.StructField, v reflect.Value) error {
 	if !s.IsExported() {
 		return reflectwalk.SkipEntry
@@ -387,6 +392,8 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 		return nil
 	}
 
+	// The copy does not have elided fields so don't
+	//  try to overwrite them.
 	if w.elided() {
 		return nil
 	}
@@ -396,19 +403,16 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	resultVal := reflect.ValueOf(replaceVal)
 	switch w.loc[len(w.loc)-1] {
 	case reflectwalk.MapValue:
+	case reflectwalk.StructField:
 		// If we're in a map, then the only way to set a map value is
 		// to set it directly.
-		m := w.getValue()
+		m := w.getValueFromCopy()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, resultVal)
 	case reflectwalk.SliceElem:
-		s := w.getValue()
+		s := w.getValueFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(resultVal)
-	case reflectwalk.StructField:
-		m := w.getValue()
-		mk := w.csKey[len(w.cs)-1]
-		m.SetMapIndex(mk, resultVal)
 	default:
 		panic("Found unsupported value.")
 	}
@@ -417,23 +421,25 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 }
 
-func (w *hashWalker) getValue() reflect.Value {
+//	 Walk the copy to current location and get the value
+//		that should be written to.
+func (w *hashWalker) getValueFromCopy() reflect.Value {
 	size := len(w.cs)
-	newStruct := w.NewMap
+	currentValue := w.MarshalledCopy
 	for i := 0; i < size-1; i++ {
 		switch w.loc[2+2*i] {
 		case reflectwalk.MapValue:
-			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
 		case reflectwalk.SliceElem:
 			index := w.csKey[i].Int()
-			newStruct = newStruct.Index(int(index)).Elem()
+			currentValue = currentValue.Index(int(index)).Elem()
 		case reflectwalk.StructField:
-			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
 		default:
 			panic("invalid location")
 		}
 	}
-	return newStruct
+	return currentValue
 }
 
 func (w *hashWalker) elided() bool {

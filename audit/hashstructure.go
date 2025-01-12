@@ -153,6 +153,11 @@ func HashResponse(
 	return &resp, nil
 }
 
+// Creates a deep copy of the data by marshalling to and unmarshalling from json.
+//
+//	This transformation inherently changes all structs to maps, which makes
+//	each of the structs fields addressable through reflection in the copy,
+//	(which is now a map).  This will allow us to write into all fields.
 func getUnmarshaledCopy(data interface{}) (interface{}, error) {
 	marshaledData, err := json.Marshal(data)
 	if err != nil {
@@ -302,7 +307,7 @@ func (w *hashWalker) SliceElem(i int, elem reflect.Value) error {
 }
 
 func (w *hashWalker) Struct(v reflect.Value) error {
-	// We are looking for time values. If it isn't one, ignore it.
+	// We are looking for time values. If it isn't one, handle it later.
 	if v.Type() != hashTimeType {
 		w.cs = append(w.cs, v)
 		return nil
@@ -340,11 +345,14 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		s.Slice(si, si+1).Index(0).Set(reflect.ValueOf(strVal))
 	}
 
+	// Skip this entry so that we don't walk the struct, but
+	//  append it to w.cs so that it gets properly handled on
+	//  Exit()
 	w.cs = append(w.cs, v)
-	// Skip this entry so that we don't walk the struct.
 	return reflectwalk.SkipEntry
 }
 
+// Update the name of the field if it has a json struct tag
 func (w *hashWalker) StructField(s reflect.StructField, v reflect.Value) error {
 	if !s.IsExported() {
 		return reflectwalk.SkipEntry
@@ -387,6 +395,8 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 		return nil
 	}
 
+	// The copy does not have elided fields so don't
+	//  try to overwrite them.
 	if w.elided() {
 		return nil
 	}

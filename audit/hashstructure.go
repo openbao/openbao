@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -69,12 +71,12 @@ func HashRequest(salter *salt.Salt, in *logical.Request, HMACAccessor bool, nonH
 	}
 
 	if req.Data != nil {
-		copy, err := copystructure.Copy(req.Data)
+		copy, err := getUnmarshaledCopy(req.Data)
 		if err != nil {
 			return nil, err
 		}
 
-		err = hashMap(fn, copy.(map[string]interface{}), nonHMACDataKeys)
+		err = hashMap(fn, req.Data, copy.(map[string]interface{}), nonHMACDataKeys, false)
 		if err != nil {
 			return nil, err
 		}
@@ -84,20 +86,8 @@ func HashRequest(salter *salt.Salt, in *logical.Request, HMACAccessor bool, nonH
 	return &req, nil
 }
 
-func hashMap(fn func(string) string, data map[string]interface{}, nonHMACDataKeys []string) error {
-	for k, v := range data {
-		if o, ok := v.(logical.OptMarshaler); ok {
-			marshaled, err := o.MarshalJSONWithOptions(&logical.MarshalOptions{
-				ValueHasher: fn,
-			})
-			if err != nil {
-				return err
-			}
-			data[k] = json.RawMessage(marshaled)
-		}
-	}
-
-	return HashStructure(data, fn, nonHMACDataKeys)
+func hashMap(fn func(string) string, origData map[string]interface{}, data map[string]interface{}, nonHMACDataKeys []string, elideListResponseData bool) error {
+	return HashStructure(origData, data, fn, nonHMACDataKeys, elideListResponseData)
 }
 
 // HashResponse returns a hashed copy of the logical.Request input.
@@ -128,7 +118,7 @@ func HashResponse(
 	}
 
 	if resp.Data != nil {
-		copy, err := copystructure.Copy(resp.Data)
+		copy, err := getUnmarshaledCopy(resp.Data)
 		if err != nil {
 			return nil, err
 		}
@@ -142,10 +132,10 @@ func HashResponse(
 		// - take advantage of the deep copy of resp.Data that was going to be done anyway for hashing
 		// - but elide data before potentially spending time hashing it
 		if elideListResponseData {
-			doElideListResponseData(mapCopy)
+			doElideListResponseDataWithCopy(resp.Data, mapCopy)
 		}
 
-		err = hashMap(fn, mapCopy, nonHMACDataKeys)
+		err = hashMap(fn, resp.Data, mapCopy, nonHMACDataKeys, elideListResponseData)
 		if err != nil {
 			return nil, err
 		}
@@ -161,6 +151,18 @@ func HashResponse(
 	}
 
 	return &resp, nil
+}
+
+func getUnmarshaledCopy(data interface{}) (interface{}, error) {
+	marshaledData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	unmarshaledCopy := map[string]interface{}{}
+	if err := json.Unmarshal(marshaledData, &unmarshaledCopy); err != nil {
+		return nil, err
+	}
+	return unmarshaledCopy, nil
 }
 
 // HashWrapInfo returns a hashed copy of the wrapping.ResponseWrapInfo input.
@@ -189,9 +191,9 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 // the structure. Only _values_ are hashed: keys of objects are not.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
-func HashStructure(s interface{}, cb HashCallback, ignoredKeys []string) error {
-	walker := &hashWalker{Callback: cb, IgnoredKeys: ignoredKeys}
-	return reflectwalk.Walk(s, walker)
+func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
+	walker := &hashWalker{NewMap: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
+	return reflectwalk.Walk(original, walker)
 }
 
 // HashCallback is the callback called for HashStructure to hash
@@ -217,14 +219,16 @@ type hashWalker struct {
 	// Enter appends to loc and exit pops loc. The last element of loc is thus
 	// the current location.
 	loc []reflectwalk.Location
-	// Map and Slice append to cs, Exit pops the last element off cs.
+	// Map, Struct and Slice append to cs, Exit pops the last element off cs.
 	// The last element in cs is the most recently entered map or slice.
 	cs []reflect.Value
-	// MapElem and SliceElem append to csKey. The last element in csKey is the
-	// most recently entered map key or slice index. Since Exit pops the last
+	// MapElem, StructField and SliceElem append to csKey. The last element in csKey is the
+	// most recently entered key or slice index. Since Exit pops the last
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
-	csKey []reflect.Value
+	csKey                 []reflect.Value
+	NewMap                reflect.Value
+	ElideListResponseData bool
 }
 
 // hashTimeType stores a pre-computed reflect.Type for a time.Time so
@@ -247,6 +251,11 @@ func (w *hashWalker) Exit(loc reflectwalk.Location) error {
 	case reflectwalk.MapValue:
 		w.key = w.key[:len(w.key)-1]
 		w.csKey = w.csKey[:len(w.csKey)-1]
+	case reflectwalk.Struct:
+		w.cs = w.cs[:len(w.cs)-1]
+	case reflectwalk.StructField:
+		w.key = w.key[:len(w.key)-1]
+		w.csKey = w.csKey[:len(w.csKey)-1]
 	case reflectwalk.Slice:
 		w.cs = w.cs[:len(w.cs)-1]
 	case reflectwalk.SliceElem:
@@ -262,10 +271,24 @@ func (w *hashWalker) Map(m reflect.Value) error {
 }
 
 func (w *hashWalker) MapElem(m, k, v reflect.Value) error {
-	w.csKey = append(w.csKey, k)
-	w.key = append(w.key, k.String())
 	w.lastValue = v
-	return nil
+	if _, ok := k.Interface().(string); ok {
+		w.csKey = append(w.csKey, k)
+		w.key = append(w.key, k.String())
+		return nil
+	}
+	if _, ok := k.Interface().(int); ok {
+		kString := strconv.FormatInt(k.Int(), 10)
+		w.csKey = append(w.csKey, reflect.ValueOf(kString))
+		w.key = append(w.key, kString)
+		return nil
+	}
+	if _, ok := k.Interface().(time.Time); ok {
+		w.csKey = append(w.csKey, k)
+		w.key = append(w.key, k.String())
+		return nil
+	}
+	panic("bad type" + k.String())
 }
 
 func (w *hashWalker) Slice(s reflect.Value) error {
@@ -281,6 +304,7 @@ func (w *hashWalker) SliceElem(i int, elem reflect.Value) error {
 func (w *hashWalker) Struct(v reflect.Value) error {
 	// We are looking for time values. If it isn't one, ignore it.
 	if v.Type() != hashTimeType {
+		w.cs = append(w.cs, v)
 		return nil
 	}
 
@@ -301,7 +325,7 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		m := w.cs[len(w.cs)-1]
+		m := w.getValue()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, reflect.ValueOf(strVal))
 	case reflectwalk.SliceElem:
@@ -311,16 +335,29 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		s := w.cs[len(w.cs)-1]
+		s := w.getValue()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(reflect.ValueOf(strVal))
 	}
 
+	w.cs = append(w.cs, v)
 	// Skip this entry so that we don't walk the struct.
 	return reflectwalk.SkipEntry
 }
 
-func (w *hashWalker) StructField(reflect.StructField, reflect.Value) error {
+func (w *hashWalker) StructField(s reflect.StructField, v reflect.Value) error {
+	if !s.IsExported() {
+		return reflectwalk.SkipEntry
+	}
+	name := s.Name
+	if tag := s.Tag.Get("json"); tag != "" {
+		parts := strings.Split(tag, ",")
+		if parts[0] != "" {
+			name = parts[0]
+		}
+	}
+	w.csKey = append(w.csKey, reflect.ValueOf(name))
+	w.key = append(w.key, name)
 	return nil
 }
 
@@ -336,8 +373,6 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 		return nil
 	}
 
-	setV := v
-
 	// We only care about strings
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
@@ -352,6 +387,10 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 		return nil
 	}
 
+	if w.elided() {
+		return nil
+	}
+
 	replaceVal := w.Callback(v.String())
 
 	resultVal := reflect.ValueOf(replaceVal)
@@ -359,17 +398,84 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	case reflectwalk.MapValue:
 		// If we're in a map, then the only way to set a map value is
 		// to set it directly.
-		m := w.cs[len(w.cs)-1]
+		m := w.getValue()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, resultVal)
 	case reflectwalk.SliceElem:
-		s := w.cs[len(w.cs)-1]
+		s := w.getValue()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(resultVal)
+	case reflectwalk.StructField:
+		m := w.getValue()
+		mk := w.csKey[len(w.cs)-1]
+		m.SetMapIndex(mk, resultVal)
 	default:
-		// Otherwise, we should be addressable
-		setV.Set(resultVal)
+		panic("Found unsupported value.")
 	}
 
 	return nil
+
+}
+
+func (w *hashWalker) getValue() reflect.Value {
+	size := len(w.cs)
+	newStruct := w.NewMap
+	for i := 0; i < size-1; i++ {
+		switch w.loc[2+2*i] {
+		case reflectwalk.MapValue:
+			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+		case reflectwalk.SliceElem:
+			index := w.csKey[i].Int()
+			newStruct = newStruct.Index(int(index)).Elem()
+		case reflectwalk.StructField:
+			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+		default:
+			panic("invalid location")
+		}
+	}
+	return newStruct
+}
+
+func (w *hashWalker) elided() bool {
+	if !w.ElideListResponseData {
+		return false
+	}
+
+	currentLoc := len(w.loc) - 1
+	currentCs := len(w.cs) - 1
+	currentCsKey := len(w.csKey) - 1
+
+	if currentLoc <= 3 {
+		return false
+	}
+
+	if w.loc[currentLoc-3] != reflectwalk.Map ||
+		w.loc[currentLoc-2] != reflectwalk.MapValue {
+		return false
+	}
+
+	m := w.cs[currentCs-1]
+	mk := w.csKey[currentCsKey-1]
+	k := mk.String()
+	v := m.MapIndex(mk)
+
+	if w.loc[currentLoc-1] == reflectwalk.Slice &&
+		w.loc[currentLoc] == reflectwalk.SliceElem &&
+		k == "keys" {
+		_, vOk := v.Interface().([]string)
+		if vOk {
+			return true
+		}
+	}
+
+	if w.loc[currentLoc-1] == reflectwalk.Map &&
+		w.loc[currentLoc] == reflectwalk.MapValue &&
+		k == "key_info" {
+		_, vOk := v.Interface().(map[string]interface{})
+		if vOk {
+			return true
+		}
+	}
+
+	return false
 }

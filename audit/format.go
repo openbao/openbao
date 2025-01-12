@@ -576,14 +576,18 @@ func NewTemporaryFormatter(format, prefix string) *AuditFormatter {
 //
 // See the documentation of the controlling option in FormatterConfig for more information on the purpose.
 func doElideListResponseData(data map[string]interface{}) {
-	for k, v := range data {
+	doElideListResponseDataWithCopy(data, data)
+}
+
+func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputData map[string]interface{}) {
+	for k, v := range inputData {
 		if k == "keys" {
 			if vSlice, ok := v.([]string); ok {
-				data[k] = len(vSlice)
+				outputData[k] = float64(len(vSlice))
 			}
 		} else if k == "key_info" {
 			if vMap, ok := v.(map[string]interface{}); ok {
-				data[k] = len(vMap)
+				outputData[k] = float64(len(vMap))
 			}
 		}
 	}

@@ -201,36 +201,19 @@ func TestElideListResponses(t *testing.T) {
 	})
 
 	t.Run("When Operation is not list, eliding does not happen", func(t *testing.T) {
-		expectedData := map[string]interface{}{
-			"keys": []interface{}{"foo", "bar", "baz", "quux"},
-			"key_info": map[string]interface{}{
-				"foo":  "alpha",
-				"bar":  "beta",
-				"baz":  "gamma",
-				"quux": "delta",
-			},
-		}
-
 		config := FormatterConfig{ElideListResponses: true}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ReadOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(expectedData), tfw.lastResponse.Response.Data)
+		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+			tfw.lastResponse.Response.Data)
 	})
 
 	t.Run("When ElideListResponses is false, eliding does not happen", func(t *testing.T) {
-		expectedData := map[string]interface{}{
-			"keys": []interface{}{"foo", "bar", "baz", "quux"},
-			"key_info": map[string]interface{}{
-				"foo":  "alpha",
-				"bar":  "beta",
-				"baz":  "gamma",
-				"quux": "delta",
-			},
-		}
 		config := FormatterConfig{ElideListResponses: false}
 		tc := oneInterestingTestCase
 		formatResponse(t, config, logical.ListOperation, tc.inputData)
-		assert.Equal(t, tfw.hashExpectedValueForComparison(expectedData), tfw.lastResponse.Response.Data)
+		assert.Equal(t, tfw.hashExpectedValueForComparison(fixupInputData(tc.inputData)),
+			tfw.lastResponse.Response.Data)
 	})
 
 	t.Run("When Raw is true, eliding still happens", func(t *testing.T) {
@@ -239,4 +222,18 @@ func TestElideListResponses(t *testing.T) {
 		formatResponse(t, config, logical.ListOperation, tc.inputData)
 		assert.Equal(t, tc.expectedData, tfw.lastResponse.Response.Data)
 	})
+}
+
+func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
+	// json marshalling/unmarshalling converts []string's into []interface{}
+	//  this method returns a copy of the input data with that transformation
+	//  so it can be checked against the results
+	newSlice := make([]interface{}, len(inputData["keys"].([]string)))
+	for i, v := range inputData["keys"].([]string) {
+		newSlice[i] = v
+	}
+	return map[string]interface{}{
+		"keys":     newSlice,
+		"key_info": inputData["key_info"],
+	}
 }

@@ -350,19 +350,6 @@ func TestHashWalker_TimeStructs(t *testing.T) {
 		Input  map[string]interface{}
 		Output map[string]interface{}
 	}{
-		// Should not touch map keys of type time.Time.
-		// {
-		// 	map[string]interface{}{
-		// 		"hello": map[time.Time]struct{}{
-		// 			now: {},
-		// 		},
-		// 	},
-		// 	map[string]interface{}{
-		// 		"hello": map[time.Time]struct{}{
-		// 			now: {},
-		// 		},
-		// 	},
-		// },
 		// Should handle map values of type time.Time.
 		{
 			map[string]interface{}{

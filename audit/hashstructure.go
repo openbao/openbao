@@ -196,7 +196,7 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 //
 // For the HashCallback, see the built-in HashCallbacks below.
 func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
-	walker := &hashWalker{MarshalledCopy: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
+	walker := &hashWalker{UnmarshalledCopy: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
 	return reflectwalk.Walk(original, walker)
 }
 
@@ -231,7 +231,7 @@ type hashWalker struct {
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
 	csKey                 []reflect.Value
-	MarshalledCopy        reflect.Value
+	UnmarshalledCopy      reflect.Value
 	ElideListResponseData bool
 }
 
@@ -428,7 +428,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 func (w *hashWalker) getValue() reflect.Value {
 	size := len(w.cs)
-	newStruct := w.MarshalledCopy
+	newStruct := w.UnmarshalledCopy
 	for i := 0; i < size-1; i++ {
 		switch w.loc[2+2*i] {
 		case reflectwalk.MapValue:

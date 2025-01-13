@@ -426,23 +426,24 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 }
 
+// get current value from copy to be written to.
 func (w *hashWalker) getValueFromCopy() reflect.Value {
 	size := len(w.cs)
-	newStruct := w.UnmarshalledCopy
+	currentValue := w.UnmarshalledCopy
 	for i := 0; i < size-1; i++ {
 		switch w.loc[2+2*i] {
 		case reflectwalk.MapValue:
-			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
 		case reflectwalk.SliceElem:
 			index := w.csKey[i].Int()
-			newStruct = newStruct.Index(int(index)).Elem()
+			currentValue = currentValue.Index(int(index)).Elem()
 		case reflectwalk.StructField:
-			newStruct = newStruct.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
 		default:
 			panic("invalid location")
 		}
 	}
-	return newStruct
+	return currentValue
 }
 
 func (w *hashWalker) elided() bool {

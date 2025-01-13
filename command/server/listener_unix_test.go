@@ -15,7 +15,7 @@ import (
 func TestUnixListener(t *testing.T) {
 	ln, _, _, err := unixListenerFactory(&configutil.Listener{
 		Address: filepath.Join(t.TempDir(), "/vault.sock"),
-	}, nil, cli.NewMockUi())
+	}, nil, nil, cli.NewMockUi())
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}

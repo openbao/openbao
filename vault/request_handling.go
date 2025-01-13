@@ -29,6 +29,7 @@ import (
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -60,6 +61,7 @@ var (
 type HandlerProperties struct {
 	Core                  *Core
 	ListenerConfig        *configutil.Listener
+	AllListeners          []listenerutil.Listener
 	DisablePrintableCheck bool
 	RecoveryMode          bool
 	RecoveryToken         *uberAtomic.String

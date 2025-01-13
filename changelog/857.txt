@@ -1,0 +1,3 @@
+```release-note:feature
+**ACME TLS Listener Certificate Provisioning**: Automatically fetch TLS certificates for OpenBao Server's TCP listeners via an Automatic Certificate Management Environment (ACME - RFC 8555) capable certificate authority (CA). This allows OpenBao to be self-hosted, using a CA contained within the instance to sign the instance's own certificates.
+```

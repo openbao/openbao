@@ -30,6 +30,7 @@ import (
 	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -369,6 +370,19 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			r = newR
 
 		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
+			for _, ln := range props.AllListeners {
+				if ln.Config == nil || ln.Config.TLSDisable {
+					continue
+				}
+
+				if acg, ok := ln.Config.TLSCertGetter.(*listenerutil.ACMECertGetter); ok {
+					if acg.HandleHTTPChallenge(w, r) {
+						cancelFunc()
+						return
+					}
+				}
+			}
 		default:
 			respondError(nw, http.StatusNotFound, nil)
 			cancelFunc()

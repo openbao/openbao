@@ -381,6 +381,12 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("missing name"), nil
 	}
 
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	role, err := b.role(ctx, req.Storage, roleName)
 	if err != nil {
 		return nil, err
@@ -446,11 +452,13 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 		if err != nil {
 			return nil, err
 		}
-		if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
-			return storage.Put(ctx, entry)
-		}); err != nil {
+		if err := req.Storage.Put(ctx, entry); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{
@@ -482,6 +490,12 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	if roleName == "" {
 		return logical.ErrorResponse("missing role name"), nil
 	}
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
 
 	// Check if the role already exists
 	role, err := b.role(ctx, req.Storage, roleName)
@@ -719,9 +733,12 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
-		return storage.Put(ctx, entry)
-	}); err != nil {
+
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

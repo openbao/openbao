@@ -287,8 +287,9 @@ func (b *backend) Cert(ctx context.Context, s logical.Storage, n string) (*CertE
 }
 
 func (b *backend) pathCertDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "cert/"+strings.ToLower(d.Get("name").(string)))
-	if err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Delete(ctx, "cert/"+strings.ToLower(d.Get("name").(string)))
+	}); err != nil {
 		return nil, err
 	}
 	return nil, nil

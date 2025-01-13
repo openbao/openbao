@@ -265,6 +265,12 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	b.l.Lock()
 	defer b.l.Unlock()
 
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// Check if the role already exists
 	role, err := b.role(ctx, req.Storage, roleName)
 	if err != nil {
@@ -394,9 +400,10 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	if entry == nil {
 		return nil, fmt.Errorf("failed to create storage entry for role %s", roleName)
 	}
-	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
-		return storage.Put(ctx, entry)
-	}); err != nil {
+	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 	return resp, nil

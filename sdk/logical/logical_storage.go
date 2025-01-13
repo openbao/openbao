@@ -100,6 +100,7 @@ func (s *LogicalTransaction) Rollback(ctx context.Context) error {
 	return s.Underlying().(physical.Transaction).Rollback(ctx)
 }
 
+// WithTransaction will begin and end a transaction around the execution of the `callback` function.
 func WithTransaction(ctx context.Context, originalStorage Storage, callback func(Storage) error) error {
 	if txnStorage, ok := originalStorage.(TransactionalStorage); ok {
 		txn, err := txnStorage.BeginTx(ctx)
@@ -115,6 +116,35 @@ func WithTransaction(ctx context.Context, originalStorage Storage, callback func
 		}
 	} else {
 		return callback(originalStorage)
+	}
+	return nil
+}
+
+// StartTxStorage can begin a longer-running transaction by modifying the `Storage` field of the `req` param.
+// It returns a rollback function to defer in the calling context.
+func StartTxStorage(ctx context.Context, req *Request) (func(), error) {
+	if txnStorage, ok := req.Storage.(TransactionalStorage); ok {
+		txn, err := txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		req.OriginalStorage = req.Storage
+		req.Storage = txn
+		return func() { txn.Rollback(ctx) }, nil
+	}
+	return func() {}, nil
+}
+
+// EndTxStorage will commit a longer-running transaction and restore the `Storage` field of the `req` param.
+func EndTxStorage(ctx context.Context, req *Request) error {
+	if txn, ok := req.Storage.(Transaction); ok {
+		if err := txn.Commit(ctx); err != nil {
+			return err
+		}
+		if req.OriginalStorage != nil {
+			req.Storage = req.OriginalStorage
+			req.OriginalStorage = nil
+		}
 	}
 	return nil
 }

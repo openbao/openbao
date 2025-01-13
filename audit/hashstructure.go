@@ -435,14 +435,21 @@ func (w *hashWalker) getValueFromCopy() reflect.Value {
 	for i := 0; i < size-1; i++ {
 		switch w.loc[startKey+(keyFactor*i)] {
 		case reflectwalk.MapValue:
-			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i])
 		case reflectwalk.SliceElem:
 			index := w.csKey[i].Int()
-			currentValue = currentValue.Index(int(index)).Elem()
+			currentValue = currentValue.Index(int(index))
 		case reflectwalk.StructField:
-			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
+			currentValue = currentValue.MapIndex(w.csKey[i])
 		default:
 			panic("invalid location")
+		}
+		if !currentValue.IsValid() {
+			panic("bad field name: " + w.csKey[i].String())
+		}
+		for currentValue.Kind() == reflect.Ptr ||
+			currentValue.Kind() == reflect.Interface {
+			currentValue = currentValue.Elem()
 		}
 	}
 	return currentValue

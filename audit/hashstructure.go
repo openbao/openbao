@@ -193,6 +193,14 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 
 // HashStructure takes an interface and hashes all the values within
 // the structure. Only _values_ are hashed: keys of objects are not.
+// Note that the function takes both the original data structure and
+// an unmarshaled json copy.  The hashed values are written to the copy
+// but because the json transform has changed the type info the original
+// must also be walked to get that type info.
+//
+// The original is walked with the reflectwalk.Walk() method below.
+// That method leaves a trail in w.loc[]/w.csKey[] which is then used
+// by getValueFromCopy() to walk the copy.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
 func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
@@ -399,6 +407,8 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	resultVal := reflect.ValueOf(replaceVal)
 	switch w.loc[len(w.loc)-1] {
 	case reflectwalk.MapValue:
+		fallthrough
+	case reflectwalk.StructField:
 		// If we're in a map, then the only way to set a map value is
 		// to set it directly.
 		m := w.getValueFromCopy()
@@ -408,10 +418,6 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 		s := w.getValueFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(resultVal)
-	case reflectwalk.StructField:
-		m := w.getValueFromCopy()
-		mk := w.csKey[len(w.cs)-1]
-		m.SetMapIndex(mk, resultVal)
 	default:
 		panic("Found unsupported value.")
 	}
@@ -429,12 +435,12 @@ func (w *hashWalker) getValueFromCopy() reflect.Value {
 	for i := 0; i < size-1; i++ {
 		switch w.loc[startKey+(keyFactor*i)] {
 		case reflectwalk.MapValue:
+			fallthrough
+		case reflectwalk.StructField:
 			currentValue = currentValue.MapIndex(w.csKey[i])
 		case reflectwalk.SliceElem:
 			index := w.csKey[i].Int()
 			currentValue = currentValue.Index(int(index))
-		case reflectwalk.StructField:
-			currentValue = currentValue.MapIndex(w.csKey[i])
 		default:
 			panic("invalid location")
 		}

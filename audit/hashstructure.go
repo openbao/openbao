@@ -275,24 +275,18 @@ func (w *hashWalker) Map(m reflect.Value) error {
 }
 
 func (w *hashWalker) MapElem(m, k, v reflect.Value) error {
-	w.lastValue = v
-	if _, ok := k.Interface().(string); ok {
-		w.csKey = append(w.csKey, k)
-		w.key = append(w.key, k.String())
-		return nil
-	}
+	// Json marshalling converts int keys to strings, so
+	// we need to handle those here.
 	if _, ok := k.Interface().(int); ok {
 		kString := strconv.FormatInt(k.Int(), 10)
 		w.csKey = append(w.csKey, reflect.ValueOf(kString))
 		w.key = append(w.key, kString)
 		return nil
 	}
-	if _, ok := k.Interface().(time.Time); ok {
-		w.csKey = append(w.csKey, k)
-		w.key = append(w.key, k.String())
-		return nil
-	}
-	panic("bad type" + k.String())
+	w.csKey = append(w.csKey, k)
+	w.key = append(w.key, k.String())
+	w.lastValue = v
+	return nil
 }
 
 func (w *hashWalker) Slice(s reflect.Value) error {

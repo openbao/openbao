@@ -2738,18 +2738,24 @@ func TestProperAuthing(t *testing.T) {
 	// key := resp.Data["key"].(string)
 
 	paths := map[string]pathAuthChecker{
-		"config/ca":          shouldBeAuthed,
-		"config/zeroaddress": shouldBeAuthed,
-		"creds/test-otp":     shouldBeAuthed,
-		"issue/test-ca":      shouldBeAuthed,
-		"lookup":             shouldBeAuthed,
-		"public_key":         shouldBeUnauthedReadList,
-		"roles/test-ca":      shouldBeAuthed,
-		"roles/test-otp":     shouldBeAuthed,
-		"roles":              shouldBeAuthed,
-		"sign/test-ca":       shouldBeAuthed,
-		"tidy/dynamic-keys":  shouldBeAuthed,
-		"verify":             shouldBeUnauthedWriteOnly,
+		"config/ca":                 shouldBeAuthed,
+		"config/zeroaddress":        shouldBeAuthed,
+		"config/issuers":            shouldBeAuthed,
+		"creds/test-otp":            shouldBeAuthed,
+		"issue/test-ca":             shouldBeAuthed,
+		"lookup":                    shouldBeAuthed,
+		"public_key":                shouldBeUnauthedReadList,
+		"roles/test-ca":             shouldBeAuthed,
+		"roles/test-otp":            shouldBeAuthed,
+		"roles":                     shouldBeAuthed,
+		"sign/test-ca":              shouldBeAuthed,
+		"tidy/dynamic-keys":         shouldBeAuthed,
+		"verify":                    shouldBeUnauthedWriteOnly,
+		"issuer/default/public_key": shouldBeUnauthedReadList,
+		"issuer/default":            shouldBeAuthed,
+		"issuers/import/test":       shouldBeAuthed,
+		"issuers/import":            shouldBeAuthed,
+		"issuers":                   shouldBeAuthed,
 	}
 	for path, checkerType := range paths {
 		checker := pathAuthChckerMap[checkerType]
@@ -2787,6 +2793,12 @@ func TestProperAuthing(t *testing.T) {
 		if strings.Contains(raw_path, "{role}") && strings.Contains(raw_path, "creds") {
 			raw_path = strings.ReplaceAll(raw_path, "{role}", "test-otp")
 		}
+		if strings.Contains(raw_path, "{issuer_ref}") && (strings.Contains(raw_path, "issuer") || strings.Contains(raw_path, "issuers")) {
+			raw_path = strings.ReplaceAll(raw_path, "{issuer_ref}", "default")
+		}
+		if strings.Contains(raw_path, "{issuer_name}") && (strings.Contains(raw_path, "issuer") || strings.Contains(raw_path, "issuers")) {
+			raw_path = strings.ReplaceAll(raw_path, "{issuer_name}", "test")
+		}
 
 		handler, present := paths[raw_path]
 		if !present {
@@ -2818,5 +2830,161 @@ func TestProperAuthing(t *testing.T) {
 
 	if !validatedPath {
 		t.Fatalf("Expected to have validated at least one path.")
+	}
+}
+
+func submitCAIssuerStep(issuerName string, parameters map[string]interface{}) logicaltest.TestStep {
+	path := "issuers/import"
+	if issuerName != "" {
+		path += "/" + issuerName
+	}
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      path,
+		Data:      parameters,
+	}
+}
+
+func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      "config/issuers",
+		Data:      parameters,
+	}
+}
+
+func TestSSHBackend_MultiCAIssuance(t *testing.T) {
+	config := logical.TestBackendConfig()
+	b, err := Factory(context.Background(), config)
+	if err != nil {
+		t.Fatalf("Cannot create backend: %s", err)
+	}
+
+	testKeyToSignPrivate := `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAQEAwn1V2xd/EgJXIY53fBTtc20k/ajekqQngvkpFSwNHW63XNEQK8Ll
+FOCyGXoje9DUGxnYs3F/ohfsBBWkLNfU7fiENdSJL1pbkAgJ+2uhV9sLZjvYhikrXWoyJX
+LDKfY12LjpcBS2HeLMT04laZ/xSJrOBEJHGzHyr2wUO0NUQUQPUODAFhnHKgvvA4Uu79UY
+gcdThF4w83+EAnE4JzBZMKPMjzy4u1C0R/LoD8DuapHwX6NGWdEUvUZZ+XRcIWeCOvR0ne
+qGBRH35k1Mv7k65d7kkE0uvM5Z36erw3tdoszxPYf7AKnO1DpeU2uwMcym6xNwfwynKjhL
+qL/Mgi4uRwAAA8iAsY0zgLGNMwAAAAdzc2gtcnNhAAABAQDCfVXbF38SAlchjnd8FO1zbS
+T9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11Ikv
+WluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbB
+Q7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5q
+kfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/
+sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5HAAAAAwEAAQAAAQABns2yT5XNbpuPOgKg
+1APObGBchKWmDxwNKUpAVOefEScR7OP3mV4TOHQDZlMZWvoJZ8O4av+nOA/NUOjXPs0VVn
+azhBvIezY8EvUSVSk49Cg6J9F7/KfR1WqpiTU7CkQUlCXNuz5xLUyKdJo3MQ/vjOqeenbh
+MR9Wes4IWF1BVe4VOD6lxRsjwuIieIgmScW28FFh2rgsEfO2spzZ3AWOGExw+ih757hFz5
+4A2fhsQXP8m3r8m7iiqcjTLWXdxTUk4zot2kZEjbI4Avk0BL+wVeFq6f/y+G+g5edqSo7j
+uuSgzbUQtA9PMnGxhrhU2Ob7n3VGdya7WbGZkaKP8zJhAAAAgQC3bJurmOSLIi3KVhp7lD
+/FfxwXHwVBFALCgq7EyNlkTz6RDoMFM4eOTRMDvsgWxT+bSB8R8eg1sfgY8rkHOuvTAVI5
+3oEYco3H7NWE9X8Zt0lyhO1uaE49EENNSQ8hY7R3UIw5becyI+7ZZxs9HkBgCQCZzSjzA+
+SIyAoMKM261AAAAIEA+PCkcDRp3J0PaoiuetXSlWZ5WjP3CtwT2xrvEX9x+ZsDgXCDYQ5T
+osxvEKOGSfIrHUUhzZbFGvqWyfrziPe9ypJrtCM7RJT/fApBXnbWFcDZzWamkQvohst+0w
+XHYCmNoJ6/Y+roLv3pzyFUmqRNcrQaohex7TZmsvHJT513UakAAACBAMgBXxH8DyNYdniX
+mIXEto4GqMh4rXdNwCghfpyWdJE6vCyDt7g7bYMq7AQ2ynSKRtQDT/ZgQNfSbilUq3iXz7
+xNZn5U9ndwFs90VmEpBup/PmhfX+Gwt5hQZLbkKZcgQ9XrhSKdMxVm1yy/fk0U457enlz5
+cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
+-----END OPENSSH PRIVATE KEY-----
+`
+	testKeyToSignPublic := `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDCfVXbF38SAlchjnd8FO1zbST9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11IkvWluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbBQ7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5qkfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5H `
+
+	issuerRoles := []struct {
+		name            string
+		issuerIsDefault string
+	}{
+		{
+			name: "",
+		},
+	}
+
+	for _, issuerRoleConfig := range issuerRoles {
+		issuerName := issuerRoleConfig.name
+		roleName := "test-role-" + issuerName
+
+		// submit CA to be used by the role
+		submitCAIssuerParams := map[string]interface{}{
+			"is_default": issuerRoleConfig.issuerIsDefault,
+		}
+		submitCAIssuerReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import",
+			Data:      submitCAIssuerParams,
+			Storage:   config.StorageView,
+		}
+		resp, err := b.HandleRequest(context.Background(), submitCAIssuerReq)
+		if err != nil {
+			t.Fatalf("error submitting CA issuer: %v", err)
+		}
+
+		caPublicKey := resp.Data["public_key"].(string)
+		if caPublicKey == "" {
+			t.Fatalf("empty public key")
+		}
+
+		caId := resp.Data["issuer_id"].(string)
+		if caId == "" {
+			t.Fatalf("empty issuer id")
+		}
+
+		cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
+		defer cleanup()
+
+		roleOptions := map[string]interface{}{
+			"allow_user_certificates": true,
+			"allowed_users":           "*",
+			"key_type":                "ca",
+			"ttl":                     "30s",
+			"not_before_duration":     "2h",
+			"issuer_ref":              caId,
+		}
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data:      roleOptions,
+			Storage:   config.StorageView,
+		}
+		_, err = b.HandleRequest(context.Background(), roleReq)
+		if err != nil {
+			t.Fatalf("cannot create role to issue against: %s", err)
+		}
+
+		// sign key
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + roleName,
+			Data: map[string]interface{}{
+				"public_key": testKeyToSignPublic,
+			},
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		if err != nil {
+			t.Fatalf("cannot sign key: %s", err)
+		}
+
+		signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
+		if signedKey == "" {
+			t.Fatalf("no signed key in response")
+		}
+
+		privKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
+		if err != nil {
+			t.Fatalf("error parsing private key: %v", err)
+		}
+
+		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
+		if err != nil {
+			t.Fatalf("error parsing signed key: %v", err)
+		}
+		certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privKey)
+		if err != nil {
+			t.Fatalf("error creating cert signer: %v", err)
+		}
+
+		err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
+		if err == nil {
+			t.Fatalf("expected error but got none")
+		}
 	}
 }

@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -20,6 +21,8 @@ type backend struct {
 	view      logical.Storage
 	salt      *salt.Salt
 	saltMutex sync.RWMutex
+	// Write lock around issuers
+	issuersLock sync.RWMutex
 }
 
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
@@ -43,6 +46,7 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 			Unauthenticated: []string{
 				"verify",
 				"public_key",
+				"issuer/+/public_key",
 			},
 
 			LocalStorage: []string{
@@ -53,6 +57,8 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 				caPrivateKey,
 				caPrivateKeyStoragePath,
 				keysStoragePrefix,
+				fmt.Sprintf("%s+", issuerPrefix),
+				storageIssuerConfig,
 			},
 		},
 
@@ -68,6 +74,11 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 			pathIssue(&b),
 			pathFetchPublicKey(&b),
 			pathCleanupKeys(&b),
+			pathConfigIssuers(&b),
+			pathIssuers(&b),
+			pathSubmitIssuer(&b),
+			pathListIssuers(&b),
+			pathGetIssuerUnauthenticated(&b),
 		},
 
 		Secrets: []*framework.Secret{

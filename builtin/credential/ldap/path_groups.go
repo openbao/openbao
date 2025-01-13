@@ -135,6 +135,12 @@ func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *fr
 func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	groupname := d.Get("name").(string)
 
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, err
@@ -154,6 +160,10 @@ func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *f
 		return nil, err
 	}
 	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

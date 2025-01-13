@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var storage Storage
-var txStorage Storage
+var (
+	storage   Storage
+	txStorage Transaction
+)
 
 func Setup(t *testing.T) {
 	storage = makeStorage(t)
@@ -37,9 +39,9 @@ func TestStartTxStorage(t *testing.T) {
 			rollback, err := StartTxStorage(context.Background(), req)
 			assert.NoError(t, err)
 			assert.NotNil(t, rollback)
+			assert.IsType(t, func() {}, rollback)
 			assert.IsType(t, tt.finalStorage, req.Storage)
 			assert.IsType(t, tt.initialStorage, req.OriginalStorage)
-			assert.IsType(t, func() {}, rollback)
 		})
 	}
 }
@@ -81,7 +83,7 @@ func makeStorage(t *testing.T) Storage {
 	return NewLogicalStorage(b)
 }
 
-func makeTxStorage(t *testing.T) Storage {
+func makeTxStorage(t *testing.T) Transaction {
 	logicalStorage := makeStorage(t)
 	if txStorage, ok := logicalStorage.(TransactionalStorage); ok {
 		txn, err := txStorage.BeginTx(context.Background())

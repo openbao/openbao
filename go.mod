@@ -88,7 +88,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/jcmturner/gokrb5/v8 v8.4.4
 	github.com/jefferai/isbadcipher v0.0.0-20190226160619-51d2077c035f
-	github.com/jefferai/jsonx v1.0.0
+	github.com/jefferai/jsonx v1.0.1
 	github.com/klauspost/compress v1.17.9
 	github.com/kr/pretty v0.3.1
 	github.com/kr/text v0.2.0
@@ -193,7 +193,7 @@ require (
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/DataDog/datadog-go v3.2.0+incompatible // indirect
-	github.com/Jeffail/gabs v1.1.1 // indirect
+	github.com/Jeffail/gabs/v2 v2.1.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect

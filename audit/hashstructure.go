@@ -430,8 +430,10 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 func (w *hashWalker) getValueFromCopy() reflect.Value {
 	size := len(w.cs)
 	currentValue := w.UnmarshalledCopy
+	startKey := 2  // First key in w.csKey maps to w.loc[2]
+	keyFactor := 2 // Each key in w.csKey is every other entry in w.loc
 	for i := 0; i < size-1; i++ {
-		switch w.loc[2+2*i] {
+		switch w.loc[startKey+(keyFactor*i)] {
 		case reflectwalk.MapValue:
 			currentValue = currentValue.MapIndex(w.csKey[i]).Elem()
 		case reflectwalk.SliceElem:

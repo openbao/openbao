@@ -396,7 +396,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 	// The copy does not have elided fields so don't
 	//  try to overwrite them.
-	if w.elided() {
+	if w.isElided() {
 		return nil
 	}
 
@@ -455,7 +455,11 @@ func (w *hashWalker) getValueFromCopy() reflect.Value {
 	return currentValue
 }
 
-func (w *hashWalker) elided() bool {
+// Skip elided data because they don't exist in the
+// UnmarshalledCopy.  This code is based on:
+// audit.doElideListResponseDataWithCopy()
+// if that method changes, this one will have to as well
+func (w *hashWalker) isElided() bool {
 	if !w.ElideListResponseData {
 		return false
 	}
@@ -468,6 +472,10 @@ func (w *hashWalker) elided() bool {
 		return false
 	}
 
+	// Based on audit.doElideListResponseDataWithCopy
+	// we are lookinfor a map[string]interface{} which
+	// contains a "keys" field of type []string
+	// or a "key_info" field of type map[string]interface{}
 	if w.loc[currentLoc-3] != reflectwalk.Map ||
 		w.loc[currentLoc-2] != reflectwalk.MapValue {
 		return false
@@ -478,6 +486,7 @@ func (w *hashWalker) elided() bool {
 	k := mk.String()
 	v := m.MapIndex(mk)
 
+	// a "keys" field of type []string?
 	if w.loc[currentLoc-1] == reflectwalk.Slice &&
 		w.loc[currentLoc] == reflectwalk.SliceElem &&
 		k == "keys" {
@@ -487,6 +496,7 @@ func (w *hashWalker) elided() bool {
 		}
 	}
 
+	// a "key_info" field of type map[string]interface{} ?
 	if w.loc[currentLoc-1] == reflectwalk.Map &&
 		w.loc[currentLoc] == reflectwalk.MapValue &&
 		k == "key_info" {

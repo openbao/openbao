@@ -154,10 +154,9 @@ func HashResponse(
 }
 
 // Creates a deep copy of the data by marshalling to and unmarshalling from json.
-//
-//	This transformation inherently changes all structs to maps, which makes
-//	each of the structs fields addressable through reflection in the copy,
-//	(which is now a map).  This will allow us to write into all fields.
+// This transformation inherently changes all structs to maps, which makes
+// each of the structs fields addressable through reflection in the copy,
+// (which is now a map).  This will allow us to write into all fields.
 func getUnmarshaledCopy(data interface{}) (interface{}, error) {
 	marshaledData, err := json.Marshal(data)
 	if err != nil {
@@ -197,7 +196,7 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 //
 // For the HashCallback, see the built-in HashCallbacks below.
 func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
-	walker := &hashWalker{NewMap: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
+	walker := &hashWalker{MarshalledCopy: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
 	return reflectwalk.Walk(original, walker)
 }
 
@@ -232,7 +231,7 @@ type hashWalker struct {
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
 	csKey                 []reflect.Value
-	NewMap                reflect.Value
+	MarshalledCopy        reflect.Value
 	ElideListResponseData bool
 }
 
@@ -429,7 +428,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 func (w *hashWalker) getValue() reflect.Value {
 	size := len(w.cs)
-	newStruct := w.NewMap
+	newStruct := w.MarshalledCopy
 	for i := 0; i < size-1; i++ {
 		switch w.loc[2+2*i] {
 		case reflectwalk.MapValue:

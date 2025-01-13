@@ -246,10 +246,11 @@ func TestHashResponse(t *testing.T) {
 		NonHMACDataKeys []string
 		HMACAccessor    bool
 	}{
+		// Confirm nested struct doesn't generate panic
 		{
 			&logical.Response{
 				Data: map[string]interface{}{
-					"foo": testTopicPermission{Write: "abc", Read: "efg"},
+					"foo": testTopicPermission{Write: "bar", Read: "baz"},
 				},
 				WrapInfo: &wrapping.ResponseWrapInfo{
 					TTL:             60,
@@ -262,8 +263,8 @@ func TestHashResponse(t *testing.T) {
 			&logical.Response{
 				Data: map[string]interface{}{
 					"foo": map[string]interface{}{
-						"write_json": "hmac-sha256:2febde8cad3b3e67067bc8784b1bcf966529c89a999e6c430b9cd536e3a16b52",
-						"read_json":  "efg",
+						"write_json": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+						"read_json":  "baz",
 					},
 				},
 				WrapInfo: &wrapping.ResponseWrapInfo{
@@ -275,6 +276,39 @@ func TestHashResponse(t *testing.T) {
 				},
 			},
 			[]string{"read_json"},
+			true,
+		},
+		// Confirm int keys are converted to string keys
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": map[int]interface{}{
+						100: "bar",
+					},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": map[string]interface{}{
+						"100": "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					Accessor:        "hmac-sha256:7c9c6fe666d0af73b3ebcfbfabe6885015558213208e6635ba104047b22f6390",
+					CreationTime:    now,
+					WrappedAccessor: "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+				},
+			},
+			[]string{},
 			true,
 		},
 		{

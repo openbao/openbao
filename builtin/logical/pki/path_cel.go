@@ -20,16 +20,30 @@ import (
 )
 
 type celRoleEntry struct {
-	Name              string            `json:"name"`                     // Required
-	ValidationProgram ValidationProgram `json:"validation_program"`       // Required
-	FailurePolicy     string            `json:"failure_policy,omitempty"` // Defaults to "deny"
-	Message           string            `json:"message,omitempty"`
+	// Required, the name of the role
+	Name string `json:"name"`
+	// Required, defines validation logic
+	ValidationProgram ValidationProgram `json:"validation_program"`
+	// Defaults to "deny"
+	FailurePolicy string `json:"failure_policy,omitempty"`
+	// Optional, error message on validation failure
+	Message string `json:"message,omitempty"`
 }
 
 type ValidationProgram struct {
-	Variables         map[string]string `json:"variables,omitempty"`
-	Expressions       string            `json:"expressions"` // Required
-	MessageExpression string            `json:"message_expressions,omitempty"`
+	// List of variables with explicit order
+	Variables []Variable `json:"variables,omitempty"`
+	// Required, the main CEL expression
+	Expressions string `json:"expressions"`
+	// Optional, custom error message logic
+	MessageExpression string `json:"message_expressions,omitempty"`
+}
+
+type Variable struct {
+	// Name of the variable.
+	Name string
+	// CEL expression for the variable
+	Expression string
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -210,7 +224,7 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 		Message:           data.Get("message").(string),
 	}
 
-	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
+	resp, err := validateCelRoleCreation(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +317,7 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 	}
 
 	// Validate the patched entry
-	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
+	resp, err := validateCelRoleCreation(entry)
 	if err != nil {
 		return nil, err
 	}
@@ -351,10 +365,10 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 	return &result, nil
 }
 
-func validateCelRoleCreation(b *backend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
+func validateCelRoleCreation(entry *celRoleEntry) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelExpressions(entry.ValidationProgram.Expressions)
+	_, err := validateCelExpressions(entry.ValidationProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -372,38 +386,58 @@ const (
 
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
-		"name":               r.Name,
-		"validation_program": r.ValidationProgram,
-		"failure_policy":     r.FailurePolicy,
-		"message":            r.Message,
+		"name": r.Name,
+		"validation_program": map[string]interface{}{
+			"variables":          r.ValidationProgram.Variables,
+			"expressions":        r.ValidationProgram.Expressions,
+			"message_expression": r.ValidationProgram.MessageExpression,
+		},
+		"failure_policy": r.FailurePolicy,
+		"message":        r.Message,
 	}
 }
 
-func validateCelExpressions(rule string) (bool, error) {
-	env, err := celgo.NewEnv(
+func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
+	// Create a CEL environment and include the "request" object
+	envOptions := []celgo.EnvOption{
 		celgo.Declarations(
-			decls.NewVar("request", decls.NewMapType(decls.String, decls.String)), // Define `request` as a map
+			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)), // Define `request` as a map
 		),
-	)
+	}
+
+	// Add variables to the CEL environment
+	for _, variable := range validationProgram.Variables {
+		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	}
+
+	env, err := celgo.NewEnv(envOptions...)
 	if err != nil {
 		return false, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
 
-	// Compile the CEL rule
-	ast, issues := env.Compile(rule)
+	// Validate each variable's CEL syntax
+	for _, variable := range validationProgram.Variables {
+		_, issues := env.Parse(variable.Expression)
+		if issues != nil && issues.Err() != nil {
+			return false, fmt.Errorf("invalid CEL syntax for variable '%s': %v", variable.Name, issues.Err())
+		}
+	}
+
+	// Validate the main CEL expression
+	ast, issues := env.Parse(validationProgram.Expressions)
 	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("invalid CEL syntax: %v", issues.Err())
+		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
 	}
 
 	// Ensure the AST is non-nil
 	if ast == nil {
-		return false, fmt.Errorf("failed to compile CEL rule: AST is nil")
+		return false, fmt.Errorf("failed to compile CEL main expression: AST is nil")
 	}
 
 	// Create a CEL program to validate runtime behavior
 	_, err = env.Program(ast)
 	if err != nil {
-		return false, fmt.Errorf("failed to create CEL program: %w", err)
+		return false, fmt.Errorf("failed to create CEL program for main expression: %w", err)
 	}
 
 	return true, nil
@@ -436,4 +470,32 @@ func (b *backend) storeCelRole(ctx context.Context, storage logical.Storage, ent
 		return err
 	}
 	return storage.Put(ctx, jsonEntry)
+}
+
+func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {
+	var decls []celgo.EnvOption
+	for name := range variables {
+		decls = append(decls, celgo.Variable(name, celgo.StringType))
+	}
+	return celgo.NewEnv(decls...)
+}
+
+func compileExpression(env *celgo.Env, expression string) (celgo.Program, error) {
+	ast, issues := env.Parse(expression)
+	if issues.Err() != nil {
+		return nil, fmt.Errorf("error parsing expression: %v", issues.Err())
+	}
+	prog, err := env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("error compiling expression: %v", err)
+	}
+	return prog, nil
+}
+
+func evaluateExpression(prog celgo.Program, variables map[string]interface{}) (bool, error) {
+	evalResult, _, err := prog.Eval(variables)
+	if err != nil {
+		return false, fmt.Errorf("evaluation error: %v", err)
+	}
+	return evalResult.Value().(bool), nil
 }

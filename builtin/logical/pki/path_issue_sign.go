@@ -38,6 +38,31 @@ func pathIssue(b *backend) *framework.Path {
 func pathCelIssue(b *backend) *framework.Path {
 	fields := getCsrSignVerbatimSchemaFields()
 
+	// Add key_bits and key_type fields
+	fields["key_bits"] = &framework.FieldSchema{
+		Type:    framework.TypeInt,
+		Default: 0,
+		Description: `The number of bits to use. Allowed values are
+0 (universal default); with rsa key_type: 2048 (default), 3072, or
+4096; with ec key_type: 224, 256 (default), 384, or 521; ignored with
+ed25519.`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: 0,
+		},
+	}
+
+	fields["key_type"] = &framework.FieldSchema{
+		Type:    framework.TypeString,
+		Default: "",
+		Description: `The type of key to use; defaults to the empty string
+to use whatever is specified by the role. "rsa", "ec", and "ed25519" are the
+only valid values outside of the empty string.`,
+		AllowedValues: []interface{}{"", "rsa", "ec", "ed25519"},
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "",
+		},
+	}
+
 	return &framework.Path{
 		Pattern: "cel/issue/" + framework.GenericNameRegex("role"),
 
@@ -466,9 +491,6 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 // pathCelIssue issues a certificate and private key from given parameters,
 // subject to cel role restrictions
 func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	keyTypeRaw, _ := data.GetOk("key_type")
-	keyBitsRaw, _ := data.GetOk("key_bits")
-
 	// Fetch the CEL role name from the request
 	roleName := data.Get("role").(string)
 	if roleName == "" {
@@ -485,62 +507,125 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 	}
 
 	// Prepare CEL environment
-	env, err := celgo.NewEnv(
+	envOptions := []celgo.EnvOption{
 		celgo.Declarations(
-			decls.NewVar("request", decls.NewMapType(decls.String, decls.String)),
+			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
 		),
-	)
+	}
+
+	// Add all variable declarations to the CEL environment
+	for _, variable := range celRole.ValidationProgram.Variables {
+		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	}
+
+	env, err := celgo.NewEnv(envOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
 
-	// Compile CEL expressions
-	ast, issues := env.Compile(celRole.ValidationProgram.Expressions)
+	// Evaluate all variables
+	evaluationData := map[string]interface{}{
+		"request": data.Raw,
+	}
+
+	for _, variable := range celRole.ValidationProgram.Variables {
+
+		fmt.Printf("\n variable.Name %v\n\n", variable.Name)
+
+		// Parse and compile the variable expression
+		ast, issues := env.Parse(variable.Expression)
+		if issues != nil && issues.Err() != nil {
+			return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
+		}
+
+		prog, err := env.Program(ast)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
+		}
+
+		// Evaluate the variable expression using the cumulative context
+		result, _, err := prog.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
+		}
+
+		// Refresh the request data in evaluationData
+		evaluationData["request"] = data.Raw
+		evaluationData[variable.Name] = result.Value()
+
+		// if variable name matches field name
+		if _, exists := data.Schema[variable.Name]; exists {
+
+			// Add the evaluated result to the context
+			data.Raw[variable.Name] = result.Value().(string)
+			req.Data[variable.Name] = result.Value().(string)
+
+			// Parse and compile the variable expression
+			ast, issues = env.Parse(variable.Expression)
+			if issues != nil && issues.Err() != nil {
+				return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
+			}
+
+			prog, err = env.Program(ast)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
+			}
+
+			// Evaluate the variable expression using the cumulative context
+			result, _, err = prog.Eval(evaluationData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
+			}
+
+			// Add the evaluated result to the context
+			evaluationData[variable.Name] = result.Value()
+
+			// Refresh the request data in evaluationData
+			evaluationData["request"] = data.Raw
+		}
+	}
+
+	// Compile and evaluate the main CEL expression
+	ast, issues := env.Parse(celRole.ValidationProgram.Expressions)
 	if issues != nil && issues.Err() != nil {
 		return nil, fmt.Errorf("CEL expression validation failed: %w", issues.Err())
 	}
-
-	// Create CEL program
 	prog, err := env.Program(ast)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create CEL program: %w", err)
+		return nil, fmt.Errorf("failed to compile CEL expression: %w", err)
 	}
 
-	// Evaluate CEL program with request data
-	evalResult, _, err := prog.Eval(map[string]interface{}{
-		"request": data.Raw,
-	})
+	// Evaluate the main expression with the cumulative context
+	evalResult, _, err := prog.Eval(evaluationData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
 	}
 
-	// Ensure evaluation result is a boolean
+	// Ensure the evaluation result is a boolean
 	if evalResult.Type() != celgo.BoolType {
+		fmt.Printf("\n\nevalResult: %v\n", evalResult)
 		return logical.ErrorResponse("CEL rule did not return a boolean value"), nil
 	}
 
 	// Check if CEL rules passed
 	if !evalResult.Value().(bool) {
-		return logical.ErrorResponse("CEL rules denied the certificate issuance request: %v", celRole.Message), nil
+		return logical.ErrorResponse(celRole.Message), nil
 	}
 
-	bu := true
+	keyType, ok := data.GetOk("key_type")
+	if !ok {
+		keyType = "rsa" // Default to RSA
+	}
+	keyBits, ok := data.GetOk("key_bits")
+	if !ok {
+		keyBits = 2048 // Default to 2048 bits
+	}
+
 	// CEL rules passed; issue the certificate
 	role := &roleEntry{
-		CNValidations: []string{"hostname"},
-		KeyType: func() string {
-			if keyTypeRaw != nil {
-				return keyTypeRaw.(string)
-			}
-			return "rsa"
-		}(),
-		KeyBits: func() int {
-			if keyBitsRaw != nil {
-				return keyBitsRaw.(int)
-			}
-			return 2048
-		}(),
-		GenerateLease: &bu,
+		KeyType:       keyType.(string),
+		KeyBits:       keyBits.(int),
+		GenerateLease: new(bool),
 	}
 
 	// Issue the certificate and private key

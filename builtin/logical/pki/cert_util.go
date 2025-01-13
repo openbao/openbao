@@ -17,7 +17,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net"
 	"net/url"
@@ -1198,7 +1197,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		// If isCelRole is true, use values directly from the API data without role validations
 		if isCelRole {
 			cn = data.apiData.Get("common_name").(string)
-			log.Printf("\n iscelrole CN: %v", cn)
 			ridSerialNumber = data.apiData.Get("serial_number").(string)
 		} else {
 			if csr != nil && data.role.UseCSRCommonName {
@@ -1481,7 +1479,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		if locality, ok := data.apiData.GetOk("locality"); ok {
 			subject.Locality = strutil.RemoveDuplicatesStable(locality.([]string), false)
 		}
-		log.Printf("\n celrole locality: %v", subject.Locality)
 		if province, ok := data.apiData.GetOk("province"); ok {
 			subject.Province = strutil.RemoveDuplicatesStable(province.([]string), false)
 		}

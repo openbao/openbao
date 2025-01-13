@@ -235,6 +235,10 @@ func TestHashRequest(t *testing.T) {
 
 func TestHashResponse(t *testing.T) {
 	now := time.Now()
+	type testTopicPermission struct {
+		Write string `json:"write_json"`
+		Read  string `json:"read_json"`
+	}
 
 	cases := []struct {
 		Input           *logical.Response
@@ -242,6 +246,37 @@ func TestHashResponse(t *testing.T) {
 		NonHMACDataKeys []string
 		HMACAccessor    bool
 	}{
+		{
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": testTopicPermission{Write: "abc", Read: "efg"},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "bar",
+					Accessor:        "flimflam",
+					CreationTime:    now,
+					WrappedAccessor: "bar",
+				},
+			},
+			&logical.Response{
+				Data: map[string]interface{}{
+					"foo": map[string]interface{}{
+						"write_json": "hmac-sha256:2febde8cad3b3e67067bc8784b1bcf966529c89a999e6c430b9cd536e3a16b52",
+						"read_json":  "efg",
+					},
+				},
+				WrapInfo: &wrapping.ResponseWrapInfo{
+					TTL:             60,
+					Token:           "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+					Accessor:        "hmac-sha256:7c9c6fe666d0af73b3ebcfbfabe6885015558213208e6635ba104047b22f6390",
+					CreationTime:    now,
+					WrappedAccessor: "hmac-sha256:f9320baf0249169e73850cd6156ded0106e2bb6ad8cab01b7bbbebe6d1065317",
+				},
+			},
+			[]string{"read_json"},
+			true,
+		},
 		{
 			&logical.Response{
 				Data: map[string]interface{}{

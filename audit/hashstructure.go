@@ -329,7 +329,7 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		m := w.getValue()
+		m := w.getValueFromCopy()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, reflect.ValueOf(strVal))
 	case reflectwalk.SliceElem:
@@ -339,7 +339,7 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		s := w.getValue()
+		s := w.getValueFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(reflect.ValueOf(strVal))
 	}
@@ -407,15 +407,15 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 	case reflectwalk.MapValue:
 		// If we're in a map, then the only way to set a map value is
 		// to set it directly.
-		m := w.getValue()
+		m := w.getValueFromCopy()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, resultVal)
 	case reflectwalk.SliceElem:
-		s := w.getValue()
+		s := w.getValueFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
 		s.Slice(si, si+1).Index(0).Set(resultVal)
 	case reflectwalk.StructField:
-		m := w.getValue()
+		m := w.getValueFromCopy()
 		mk := w.csKey[len(w.cs)-1]
 		m.SetMapIndex(mk, resultVal)
 	default:
@@ -426,7 +426,7 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 }
 
-func (w *hashWalker) getValue() reflect.Value {
+func (w *hashWalker) getValueFromCopy() reflect.Value {
 	size := len(w.cs)
 	newStruct := w.UnmarshalledCopy
 	for i := 0; i < size-1; i++ {

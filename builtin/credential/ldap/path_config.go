@@ -164,6 +164,13 @@ func (b *backend) checkConfigUserFilter(cfg *ldapConfigEntry) []string {
 }
 
 func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, err
@@ -206,6 +213,10 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, d *
 		return &logical.Response{
 			Warnings: warnings,
 		}, nil
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return nil, nil

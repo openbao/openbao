@@ -57,6 +57,12 @@ func pathConfig(b *backend) *framework.Path {
 }
 
 func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	config, err := b.Config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -75,9 +81,15 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 		}
 		config.OcspCacheSize = cacheSize
 	}
+
 	if err := b.storeConfig(ctx, req.Storage, config); err != nil {
 		return nil, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

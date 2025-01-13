@@ -316,6 +316,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
 	}
 
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// Check if the config already exists, to determine if this is a create or
 	// an update, since req.Operation is always 'update' in this handler, and
 	// there's no existence check defined.
@@ -436,6 +442,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 	}
 
 	b.reset()
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }

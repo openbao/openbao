@@ -113,9 +113,7 @@ func (b *backend) pathConfigWrite(ctx context.Context, req *logical.Request, dat
 		return nil, err
 	}
 
-	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
-		return storage.Put(ctx, entry)
-	}); err != nil {
+	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
 	return nil, nil

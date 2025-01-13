@@ -474,9 +474,7 @@ func (b *jwtAuthBackend) pathRoleDelete(ctx context.Context, req *logical.Reques
 	}
 
 	// Delete the role itself
-	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
-		return storage.Delete(ctx, rolePrefix+roleName)
-	}); err != nil {
+	if err := req.Storage.Delete(ctx, rolePrefix+roleName); err != nil {
 		return nil, err
 	}
 

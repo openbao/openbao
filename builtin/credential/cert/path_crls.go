@@ -224,7 +224,9 @@ func (b *backend) pathCRLDelete(ctx context.Context, req *logical.Request, d *fr
 		)), nil
 	}
 
-	if err := req.Storage.Delete(ctx, "crls/"+name); err != nil {
+	if err := logical.WithTransaction(ctx, req.Storage, func(storage logical.Storage) error {
+		return storage.Delete(ctx, "crls/"+name)
+	}); err != nil {
 		return logical.ErrorResponse(fmt.Sprintf(
 			"error deleting crl %s: %v", name, err),
 		), nil
@@ -334,7 +336,10 @@ func (b *backend) setCRL(ctx context.Context, storage logical.Storage, certList 
 	if err != nil {
 		return err
 	}
-	if err = storage.Put(ctx, entry); err != nil {
+
+	if err := logical.WithTransaction(ctx, storage, func(storage logical.Storage) error {
+		return storage.Put(ctx, entry)
+	}); err != nil {
 		return err
 	}
 

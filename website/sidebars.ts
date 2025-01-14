@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/azurekeyvault",
                         "configuration/seal/gcpckms",
                         "configuration/seal/ocikms",
+                        "configuration/seal/pkcs11",
                         "configuration/seal/transit",
                     ],
                     service_registration: [

@@ -17,6 +17,10 @@ updates:
     directory: "/ui"
     schedule:
       interval: "weekly"
+    labels:
+      - dependencies
+      - javascript
+      - ui
   - package-ecosystem: "npm"
     directory: "/website"
     schedule:

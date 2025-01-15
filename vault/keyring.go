@@ -46,7 +46,7 @@ type Keyring struct {
 
 // EncodedKeyring is used for serialization of the keyring
 type EncodedKeyring struct {
-	MasterKey      []byte
+	RootKey        []byte `json:"MasterKey"`
 	Keys           []*Key
 	RotationConfig KeyRotationConfig
 }
@@ -191,7 +191,7 @@ func (k *Keyring) RootKey() []byte {
 func (k *Keyring) Serialize() ([]byte, error) {
 	// Create the encoded entry
 	enc := EncodedKeyring{
-		MasterKey:      k.rootKey,
+		RootKey:        k.rootKey,
 		RotationConfig: k.rotationConfig,
 	}
 	for _, key := range k.keys {
@@ -213,7 +213,7 @@ func DeserializeKeyring(buf []byte) (*Keyring, error) {
 
 	// Create a new keyring
 	k := NewKeyring()
-	k.rootKey = enc.MasterKey
+	k.rootKey = enc.RootKey
 	k.rotationConfig = enc.RotationConfig
 	k.rotationConfig.Sanitize()
 	for _, key := range enc.Keys {

@@ -23,11 +23,9 @@ import (
 	"github.com/openbao/openbao/vault/seal"
 )
 
-// barrierTypeUpgradeCheck checks for backwards compat on barrier type, not
-// applicable in the OSS side
 var (
-	barrierTypeUpgradeCheck     = func(_ wrapping.WrapperType, _ *SealConfig) {}
 	autoSealUnavailableDuration = []string{"seal", "unreachable", "time"}
+
 	// vars for unit testings
 	sealHealthTestIntervalNominal   = 10 * time.Minute
 	sealHealthTestIntervalUnhealthy = 1 * time.Minute
@@ -226,8 +224,6 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		d.logger.Error("invalid seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("%q seal validation failed: %w", sealType, err)
 	}
-
-	barrierTypeUpgradeCheck(d.BarrierType(), conf)
 
 	if conf.Type != d.BarrierType().String() {
 		d.logger.Error("barrier seal type does not match loaded type", "seal_type", conf.Type, "loaded_type", d.BarrierType())

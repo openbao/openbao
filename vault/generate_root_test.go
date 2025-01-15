@@ -14,8 +14,8 @@ import (
 )
 
 func TestCore_GenerateRoot_Lifecycle(t *testing.T) {
-	c, masterKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Lifecycle_Common(t, c, masterKeys)
+	c, rootKeys, _ := TestCoreUnsealed(t)
+	testCore_GenerateRoot_Lifecycle_Common(t, c, rootKeys)
 }
 
 func testCore_GenerateRoot_Lifecycle_Common(t *testing.T, c *Core, keys [][]byte) {
@@ -109,14 +109,14 @@ func testCore_GenerateRoot_Init_Common(t *testing.T, c *Core) {
 	}
 }
 
-func TestCore_GenerateRoot_InvalidMasterNonce(t *testing.T) {
-	c, masterKeys, _ := TestCoreUnsealed(t)
-	// Pass in master keys as they'll be invalid
-	masterKeys[0][0]++
-	testCore_GenerateRoot_InvalidMasterNonce_Common(t, c, masterKeys)
+func TestCore_GenerateRoot_InvalidRootNonce(t *testing.T) {
+	c, rootKeys, _ := TestCoreUnsealed(t)
+	// Pass in root keys as they'll be invalid
+	rootKeys[0][0]++
+	testCore_GenerateRoot_InvalidRootNonce_Common(t, c, rootKeys)
 }
 
-func testCore_GenerateRoot_InvalidMasterNonce_Common(t *testing.T, c *Core, keys [][]byte) {
+func testCore_GenerateRoot_InvalidRootNonce_Common(t *testing.T, c *Core, keys [][]byte) {
 	otp, err := base62.Random(TokenPrefixLength + TokenLength)
 	if err != nil {
 		t.Fatal(err)
@@ -142,7 +142,7 @@ func testCore_GenerateRoot_InvalidMasterNonce_Common(t *testing.T, c *Core, keys
 		t.Fatalf("expected error")
 	}
 
-	// Provide the master (invalid)
+	// Provide the root (invalid)
 	for _, key := range keys {
 		_, err = c.GenerateRootUpdate(namespace.RootContext(nil), key, rgconf.Nonce, GenerateStandardRootTokenStrategy)
 	}
@@ -152,8 +152,8 @@ func testCore_GenerateRoot_InvalidMasterNonce_Common(t *testing.T, c *Core, keys
 }
 
 func TestCore_GenerateRoot_Update_OTP(t *testing.T) {
-	c, masterKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Update_OTP_Common(t, c, masterKeys)
+	c, rootKeys, _ := TestCoreUnsealed(t)
+	testCore_GenerateRoot_Update_OTP_Common(t, c, rootKeys)
 }
 
 func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byte) {
@@ -239,8 +239,8 @@ func testCore_GenerateRoot_Update_OTP_Common(t *testing.T, c *Core, keys [][]byt
 }
 
 func TestCore_GenerateRoot_Update_PGP(t *testing.T) {
-	c, masterKeys, _ := TestCoreUnsealed(t)
-	testCore_GenerateRoot_Update_PGP_Common(t, c, masterKeys)
+	c, rootKeys, _ := TestCoreUnsealed(t)
+	testCore_GenerateRoot_Update_PGP_Common(t, c, rootKeys)
 }
 
 func testCore_GenerateRoot_Update_PGP_Common(t *testing.T, c *Core, keys [][]byte) {

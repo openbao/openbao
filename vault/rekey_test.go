@@ -24,9 +24,9 @@ func TestCore_Rekey_Lifecycle(t *testing.T) {
 		SecretThreshold: 1,
 		StoredShares:    1,
 	}
-	c, masterKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
-	if len(masterKeys) != 1 {
-		t.Fatalf("expected %d keys, got %d", bc.SecretShares-bc.StoredShares, len(masterKeys))
+	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
+	if len(rootKeys) != 1 {
+		t.Fatalf("expected %d secret shares and %v stored shares for a total of 1 root key, got %d", bc.SecretShares, bc.StoredShares, len(rootKeys))
 	}
 	testCore_Rekey_Lifecycle_Common(t, c, false)
 }
@@ -146,8 +146,8 @@ func TestCore_Rekey_Update(t *testing.T) {
 		SecretShares:    1,
 		SecretThreshold: 1,
 	}
-	c, masterKeys, _, root := TestCoreUnsealedWithConfigs(t, bc, nil)
-	testCore_Rekey_Update_Common(t, c, masterKeys, root, false)
+	c, rootKeys, _, root := TestCoreUnsealedWithConfigs(t, bc, nil)
+	testCore_Rekey_Update_Common(t, c, rootKeys, root, false)
 }
 
 func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root string, recovery bool) {
@@ -179,7 +179,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatalf("bad: no rekey config received")
 	}
 
-	// Provide the master/recovery keys
+	// Provide the root/recovery keys
 	var result *RekeyResult
 	for _, key := range keys {
 		result, err = c.RekeyUpdate(context.Background(), key, rkconf.Nonce, recovery)
@@ -272,7 +272,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatalf("bad: no rekey config received")
 	}
 
-	// Provide the parts master
+	// Provide the parts root
 	oldResult := result
 	for i := 0; i < 3; i++ {
 		result, err = c.RekeyUpdate(context.Background(), TestKeyCopy(oldResult.SecretShares[i]), rkconf.Nonce, recovery)
@@ -326,16 +326,6 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 	}
 }
 
-func TestCore_Rekey_Legacy(t *testing.T) {
-	bc := &SealConfig{
-		SecretShares:    1,
-		SecretThreshold: 1,
-	}
-	c, masterKeys, _, root := TestCoreUnsealedWithConfigSealOpts(t, bc, nil,
-		&seal.TestSealOpts{StoredKeys: seal.StoredKeysNotSupported})
-	testCore_Rekey_Update_Common(t, c, masterKeys, root, false)
-}
-
 func TestCore_Rekey_Invalid(t *testing.T) {
 	bc := &SealConfig{
 		SecretShares:    5,
@@ -344,8 +334,8 @@ func TestCore_Rekey_Invalid(t *testing.T) {
 	bc.StoredShares = 0
 	bc.SecretShares = 1
 	bc.SecretThreshold = 1
-	c, masterKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
-	testCore_Rekey_Invalid_Common(t, c, masterKeys, false)
+	c, rootKeys, _, _ := TestCoreUnsealedWithConfigs(t, bc, nil)
+	testCore_Rekey_Invalid_Common(t, c, rootKeys, false)
 }
 
 func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recovery bool) {
@@ -446,7 +436,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		}
 	}
 
-	// Rekey the master key
+	// Rekey the root key
 	newConf := &SealConfig{
 		SecretShares:    1,
 		SecretThreshold: 1,
@@ -483,7 +473,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 	// Wait for core2 to become active
 	TestWaitActive(t, core2)
 
-	// Rekey the master key again
+	// Rekey the root key again
 	err = core2.RekeyInit(newConf, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)

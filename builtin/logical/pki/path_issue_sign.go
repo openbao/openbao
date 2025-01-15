@@ -489,12 +489,12 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 }
 
 // pathCelIssue issues a certificate and private key from given parameters,
-// subject to cel role restrictions
+// subject to CEL role restrictions, and can modify the request based on CEL evaluations.
 func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	// Fetch the CEL role name from the request
 	roleName := data.Get("role").(string)
 	if roleName == "" {
-		return logical.ErrorResponse("missing CEL role name"), nil
+		return nil, fmt.Errorf("missing CEL role name")
 	}
 
 	// Retrieve the CEL role
@@ -503,85 +503,77 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 		return nil, fmt.Errorf("failed to fetch CEL role: %w", err)
 	}
 	if celRole == nil {
-		return logical.ErrorResponse("CEL role not found"), nil
+		return nil, fmt.Errorf("CEL role not found")
 	}
 
-	// Prepare CEL environment
+	// Declare a map variable named "request" to represent the incoming data.
 	envOptions := []celgo.EnvOption{
 		celgo.Declarations(
 			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
+			decls.NewVar("generate_lease", decls.Bool),
+			decls.NewVar("no_store", decls.Bool),
 		),
 	}
 
-	// Add all variable declarations to the CEL environment
+	// Add all variable declarations to the CEL environment.
 	for _, variable := range celRole.ValidationProgram.Variables {
 		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
+	// Create the CEL environment using the prepared declarations.
 	env, err := celgo.NewEnv(envOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
 
-	// Evaluate all variables
+	// Initialize the evaluation context for CEL expressions with the raw request data.
+	// The "request" key allows CEL expressions to access and evaluate against input fields.
+	// Additional variables and evaluated results will be added dynamically during processing.
 	evaluationData := map[string]interface{}{
 		"request": data.Raw,
 	}
 
+	// Evaluate all variables
 	for _, variable := range celRole.ValidationProgram.Variables {
-
-		fmt.Printf("\n variable.Name %v\n\n", variable.Name)
-
-		// Parse and compile the variable expression
-		ast, issues := env.Parse(variable.Expression)
-		if issues != nil && issues.Err() != nil {
-			return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
-		}
-
-		prog, err := env.Program(ast)
+		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
-		// Evaluate the variable expression using the cumulative context
-		result, _, err := prog.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
-		}
-
-		// Refresh the request data in evaluationData
-		evaluationData["request"] = data.Raw
+		// Add the evaluated result for subsequent CEL evaluations.
+		// This ensures variables can reference each other and build a cumulative evaluation context.
 		evaluationData[variable.Name] = result.Value()
 
-		// if variable name matches field name
-		if _, exists := data.Schema[variable.Name]; exists {
+		// If the request can be modified and the variable name matches a field name,
+		// evaluate the variable and modify the request if required.
+		if celRole.FailurePolicy == "modify" && data.Schema[variable.Name] != nil {
+			// If the field type is not bool and the result is not a bool,
+			// the variable expression has returned a modified field value.
+			if variable.Name != "remove_roots_from_chain" &&
+				variable.Name != "use_pss" &&
+				variable.Name != "basic_constraints_valid_for_non_ca" {
+				if _, ok := result.Value().(bool); !ok {
+					// Add the evaluated result to the request data and raw input.
+					data.Raw[variable.Name] = result.Value()
+					req.Data[variable.Name] = result.Value()
 
-			// Add the evaluated result to the context
-			data.Raw[variable.Name] = result.Value().(string)
-			req.Data[variable.Name] = result.Value().(string)
+					// Re-evaluate variable expression against the modified request data
+					result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
+					if err != nil {
+						return nil, fmt.Errorf("%w", err)
+					}
 
-			// Parse and compile the variable expression
-			ast, issues = env.Parse(variable.Expression)
-			if issues != nil && issues.Err() != nil {
-				return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
+					// Add the evaluated result to the context
+					evaluationData[variable.Name] = result.Value()
+
+					// Refresh the request data in evaluationData
+					// evaluationData["request"] = data.Raw
+				}
+			} else {
+				// If the field type is a bool, add it to the request data and raw input.
+				data.Raw[variable.Name] = result.Value().(bool)
+				req.Data[variable.Name] = result.Value().(bool)
 			}
-
-			prog, err = env.Program(ast)
-			if err != nil {
-				return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
-			}
-
-			// Evaluate the variable expression using the cumulative context
-			result, _, err = prog.Eval(evaluationData)
-			if err != nil {
-				return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
-			}
-
-			// Add the evaluated result to the context
-			evaluationData[variable.Name] = result.Value()
-
-			// Refresh the request data in evaluationData
-			evaluationData["request"] = data.Raw
 		}
 	}
 
@@ -603,13 +595,24 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 
 	// Ensure the evaluation result is a boolean
 	if evalResult.Type() != celgo.BoolType {
-		fmt.Printf("\n\nevalResult: %v\n", evalResult)
-		return logical.ErrorResponse("CEL rule did not return a boolean value"), nil
+		return nil, fmt.Errorf("CEL rule did not return a boolean value")
 	}
 
 	// Check if CEL rules passed
 	if !evalResult.Value().(bool) {
-		return logical.ErrorResponse(celRole.Message), nil
+		return nil, fmt.Errorf("%s", celRole.Message)
+	}
+
+	// Extract generate_lease and no_store from the evaluation data
+	generateLease, ok := evaluationData["generate_lease"].(bool)
+	// If it hasn't been set in the CEL program, default to false
+	if !ok {
+		generateLease = false
+	}
+
+	noStore, ok := evaluationData["no_store"].(bool)
+	if !ok {
+		noStore = false
 	}
 
 	keyType, ok := data.GetOk("key_type")
@@ -625,7 +628,8 @@ func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *
 	role := &roleEntry{
 		KeyType:       keyType.(string),
 		KeyBits:       keyBits.(int),
-		GenerateLease: new(bool),
+		GenerateLease: &generateLease,
+		NoStore:       noStore,
 	}
 
 	// Issue the certificate and private key
@@ -916,6 +920,19 @@ Request certificates using a certain role with the provided details.
 const pathSignHelpDesc = `
 This path allows requesting certificates to be issued according to the
 policy of the given role. The certificate will only be issued if the
+requested common name is allowed by the role policy.
+
+This path requires a CSR; if you want OpenBao to generate a private key
+for you, use the issue path instead.
+`
+
+const pathCelSignHelpSyn = `
+Request certificates using a certain CEL role with the provided details.
+`
+
+const pathCelSignHelpDesc = `
+This path allows requesting certificates to be issued according to the
+policy of the given CEL role. The certificate will only be issued if the
 requested common name is allowed by the role policy.
 
 This path requires a CSR; if you want OpenBao to generate a private key

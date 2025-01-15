@@ -10,6 +10,7 @@ import (
 
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/types/ref"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -483,11 +484,11 @@ func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {
 func compileExpression(env *celgo.Env, expression string) (celgo.Program, error) {
 	ast, issues := env.Parse(expression)
 	if issues.Err() != nil {
-		return nil, fmt.Errorf("error parsing expression: %v", issues.Err())
+		return nil, fmt.Errorf("invalid CEL syntax for expression: %v", issues.Err())
 	}
 	prog, err := env.Program(ast)
 	if err != nil {
-		return nil, fmt.Errorf("error compiling expression: %v", err)
+		return nil, fmt.Errorf("failed to compile expression: %v", err)
 	}
 	return prog, nil
 }
@@ -495,7 +496,31 @@ func compileExpression(env *celgo.Env, expression string) (celgo.Program, error)
 func evaluateExpression(prog celgo.Program, variables map[string]interface{}) (bool, error) {
 	evalResult, _, err := prog.Eval(variables)
 	if err != nil {
-		return false, fmt.Errorf("evaluation error: %v", err)
+		return false, fmt.Errorf("failed to evaluate expression: %v", err)
 	}
 	return evalResult.Value().(bool), nil
+}
+
+// Helper function to parse, compile, and evaluate a CEL expression
+func parseCompileAndEvaluateVariable(env *celgo.Env, variable Variable, evaluationData map[string]interface{}) (ref.Val, error) {
+	// Parse the expression
+	ast, issues := env.Parse(variable.Expression)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
+	}
+
+	// Compile the expression
+	prog, err := env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
+	}
+
+	// Evaluate the expression
+	result, _, err := prog.Eval(evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
+	}
+
+	// Return the evaluated result
+	return result, nil
 }

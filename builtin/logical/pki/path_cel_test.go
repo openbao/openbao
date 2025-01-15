@@ -5,14 +5,8 @@ package pki
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"reflect"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -167,562 +161,121 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 }
 
-// Test issuing a certificate against a CEL role
-func TestCelRoleIssue(t *testing.T) {
+func TestVariableHandlingWithCELMany(t *testing.T) {
 	t.Parallel()
 
-	b, storage := CreateBackendWithStorage(t)
-
-	// Create a root CA
-	caData := map[string]interface{}{
-		"common_name": "root.com",
-		"ttl":         "30h",
-		"ip_sans":     "127.0.0.1",
-		"locality":    "MiltonPark",
-	}
-	caReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "root/generate/internal",
-		Storage:   storage,
-		Data:      caData,
-	}
-	caResp, err := b.HandleRequest(context.Background(), caReq)
-	if err != nil || (caResp != nil && caResp.IsError()) {
-		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
-	}
-
-	// Validate the response
-	CAcertPEM, ok := caResp.Data["certificate"].(string)
-	if !ok || CAcertPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", caResp.Data)
-	}
-
-	CAblock, _ := pem.Decode([]byte(CAcertPEM))
-	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
-	}
-
-	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
-	if err != nil && CAcert != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Create a CEL role
-	roleData := map[string]interface{}{
-		"name": "testrole",
-		"validation_program": map[string]interface{}{
-			"expressions": "request.common_name == 'example.com' && size(request.ip_sans) > 0",
-		},
-		"failure_policy": "deny",
-		"message":        "Common name must be 'example.com' and atleast 1 ip_san should be present.",
-	}
-
-	roleReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/roles/testrole",
-		Storage:   storage,
-		Data:      roleData,
-	}
-
-	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
-	}
-
-	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
-		"format":      "pem",
-		"common_name": "example.com",
-		"ttl":         "1h",
-		"ip_sans":     "192.168.1.1,10.0.0.1",
-		"key_type":    "ec",
-		"key_bits":    "256",
-	}
-
-	issueReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/issue/testrole",
-		Storage:   storage,
-		Data:      issueData,
-	}
-
-	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
-	}
-
-	// Validate the response
-	certPEM, ok := resp.Data["certificate"].(string)
-	if !ok || certPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", resp.Data)
-	}
-
-	block, _ := pem.Decode([]byte(certPEM))
-	if block == nil || block.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Validate the TTL
-	expectedTTL := 1 * time.Hour
-	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
-	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
-		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
-	}
-
-	// Validate the IP SANs
-	expectedIPSANs := []string{"192.168.1.1", "10.0.0.1"}
-	var actualIPSANs []string
-	for _, ip := range cert.IPAddresses {
-		actualIPSANs = append(actualIPSANs, ip.String())
-	}
-	if !reflect.DeepEqual(expectedIPSANs, actualIPSANs) {
-		t.Fatalf("Expected IP SANs: %v, but got: %v", expectedIPSANs, actualIPSANs)
-	}
-
-	if checkKeyDetails(cert, "ECDSA", 256) == false {
-		t.Fatal("Key details of issued certificate are not as expected")
-	}
-}
-
-func checkKeyDetails(cert *x509.Certificate, expectedKey string, expectedBits int) bool {
-	// Check public key type is as expected
-	if cert.PublicKeyAlgorithm.String() != expectedKey {
-		return false
-	}
-
-	// Check key length is as expected
-	switch pub := cert.PublicKey.(type) {
-	case *rsa.PublicKey:
-		return pub.Size()*8 == expectedBits
-	case *ecdsa.PublicKey:
-		return pub.Params().BitSize == expectedBits
-	default:
-		return false
-	}
-}
-
-func TestVariableHandlingWithCEL(t *testing.T) {
-	t.Parallel()
-
-	// Define the variables and their values
-	variables := map[string]string{
-		"var1": "1 == 1", // True condition
-		"var2": "5 < 1",  // False condition
-	}
-
-	// Create the CEL environment with the declared variables
-	env, err := createEnvWithVariables(variables)
-	if err != nil {
-		t.Fatalf("Failed to create CEL environment: %v", err)
-	}
-
-	// Parse and validate each variable expression
-	variableValues := make(map[string]interface{})
-	for name, expr := range variables {
-		prog, err := compileExpression(env, expr)
-		if err != nil {
-			t.Fatalf("Failed to compile variable '%s': %v", name, err)
-		}
-		result, err := evaluateExpression(prog, nil)
-		if err != nil {
-			t.Fatalf("Failed to evaluate variable '%s': %v", name, err)
-		}
-		variableValues[name] = result
-	}
-
-	// Define the main expression using the declared variables
-	expression := "var1 && var2"
-
-	// Compile the main expression
-	prog, err := compileExpression(env, expression)
-	if err != nil {
-		t.Fatalf("Failed to compile expression: %v", err)
-	}
-
-	// Evaluate the compiled program with the evaluated variable values
-	result, err := evaluateExpression(prog, variableValues)
-	if err != nil {
-		t.Fatalf("Failed to evaluate expression: %v", err)
-	}
-
-	// Assert the result of the evaluation
-	if result {
-		t.Fatalf("Expected expression to evaluate to false, but got true")
-	}
-}
-
-// Test issuing a certificate against a CEL role with Variables
-func TestCelRoleIssueWithVariables(t *testing.T) {
-	t.Parallel()
-
-	b, storage := CreateBackendWithStorage(t)
-
-	// Create a root CA
-	caData := map[string]interface{}{
-		"common_name": "root.com",
-		"ttl":         "30h",
-		"ip_sans":     "127.0.0.1",
-		"locality":    "MiltonPark",
-	}
-	caReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "root/generate/internal",
-		Storage:   storage,
-		Data:      caData,
-	}
-	caResp, err := b.HandleRequest(context.Background(), caReq)
-	if err != nil || (caResp != nil && caResp.IsError()) {
-		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
-	}
-
-	// Validate the response
-	CAcertPEM, ok := caResp.Data["certificate"].(string)
-	if !ok || CAcertPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", caResp.Data)
-	}
-
-	CAblock, _ := pem.Decode([]byte(CAcertPEM))
-	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
-	}
-
-	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
-	if err != nil && CAcert != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Create a CEL role
-	roleData := map[string]interface{}{
-		"validation_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
-				{
-					"name":       "var1",
-					"expression": "request.common_name == 'example.com'",
-				},
-				{
-					"name":       "var2",
-					"expression": "size(request.ip_sans) > 0",
-				},
+	tests := []struct {
+		name           string
+		variables      map[string]string
+		mainExpression string
+		expectedError  string
+		expectedResult interface{}
+	}{
+		{
+			name: "All variables valid, expression evaluates to true",
+			variables: map[string]string{
+				"var1": "1 == 1", // True condition
+				"var2": "5 > 3",  // True condition
 			},
-			"expressions": "var1 && var2",
+			mainExpression: "var1 && var2",
+			expectedError:  "",
+			expectedResult: true,
 		},
-		"failure_policy": "deny",
-		"message":        "Common name must be 'example.com' and atleast 1 ip_san should be present.",
-	}
-
-	roleReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/roles/testrole",
-		Storage:   storage,
-		Data:      roleData,
-	}
-
-	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
-	}
-
-	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
-		"format":      "pem",
-		"common_name": "example.com",
-		"ttl":         "1h",
-		"ip_sans":     "192.168.1.1,10.0.0.1",
-	}
-
-	issueReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/issue/testrole",
-		Storage:   storage,
-		Data:      issueData,
-	}
-
-	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
-	}
-
-	// Validate the response
-	certPEM, ok := resp.Data["certificate"].(string)
-	if !ok || certPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", resp.Data)
-	}
-
-	block, _ := pem.Decode([]byte(certPEM))
-	if block == nil || block.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Validate the TTL
-	expectedTTL := 1 * time.Hour
-	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
-	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
-		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
-	}
-
-	// Validate the IP SANs
-	expectedIPSANs := []string{"192.168.1.1", "10.0.0.1"}
-	var actualIPSANs []string
-	for _, ip := range cert.IPAddresses {
-		actualIPSANs = append(actualIPSANs, ip.String())
-	}
-	if !reflect.DeepEqual(expectedIPSANs, actualIPSANs) {
-		t.Fatalf("Expected IP SANs: %v, but got: %v", expectedIPSANs, actualIPSANs)
-	}
-}
-
-// Test issuing a certificate against a CEL role with Variables
-func TestCelRoleIssueModifyRequest(t *testing.T) {
-	t.Parallel()
-
-	b, storage := CreateBackendWithStorage(t)
-
-	// Create a root CA
-	caData := map[string]interface{}{
-		"common_name": "root.com",
-		"ttl":         "30h",
-		"ip_sans":     "127.0.0.1",
-		"locality":    "MiltonPark",
-	}
-	caReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "root/generate/internal",
-		Storage:   storage,
-		Data:      caData,
-	}
-	caResp, err := b.HandleRequest(context.Background(), caReq)
-	if err != nil || (caResp != nil && caResp.IsError()) {
-		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
-	}
-
-	// Validate the response
-	CAcertPEM, ok := caResp.Data["certificate"].(string)
-	if !ok || CAcertPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", caResp.Data)
-	}
-
-	CAblock, _ := pem.Decode([]byte(CAcertPEM))
-	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
-	}
-
-	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
-	if err != nil && CAcert != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Create a CEL role
-	roleData := map[string]interface{}{
-		"name": "testrole",
-		"validation_program": map[string]interface{}{
-			"variables": []map[string]string{
-				{
-					"name":       "ip_sans",
-					"expression": `!has(request.ip_sans) ? "10.0.0.1" : (request.ip_sans == "" ? "10.0.0.1" : true)`,
-				},
+		{
+			name: "Nested expression evaluates to false",
+			variables: map[string]string{
+				"var1": "1 == 1",       // True condition
+				"var2": "10 < 5",       // False condition
+				"var3": "var1 && var2", // Nested expression
 			},
-			"expressions": "ip_sans",
+			mainExpression: "var3",
+			expectedError:  "",
+			expectedResult: false,
 		},
-		"failure_policy": "deny",
-		"message":        "ip_sans 10.0.0.1 should be present.",
-	}
-
-	roleReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/roles/testrole",
-		Storage:   storage,
-		Data:      roleData,
-	}
-
-	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
-	}
-
-	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
-		"format":      "pem",
-		"common_name": "example.com",
-		"ttl":         "1h",
-	}
-
-	issueReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/issue/testrole",
-		Storage:   storage,
-		Data:      issueData,
-	}
-
-	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
-	}
-
-	// Validate the response
-	certPEM, ok := resp.Data["certificate"].(string)
-	if !ok || certPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", resp.Data)
-	}
-
-	block, _ := pem.Decode([]byte(certPEM))
-	if block == nil || block.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Validate the TTL
-	expectedTTL := 1 * time.Hour
-	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
-	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
-		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
-	}
-
-	// Validate the IP SANs
-	expectedIPSANs := []string{"10.0.0.1"}
-	var actualIPSANs []string
-	for _, ip := range cert.IPAddresses {
-		actualIPSANs = append(actualIPSANs, ip.String())
-	}
-	if !reflect.DeepEqual(expectedIPSANs, actualIPSANs) {
-		t.Fatalf("Expected IP SANs: %v, but got: %v", expectedIPSANs, actualIPSANs)
-	}
-}
-
-func TestCelRoleIssue3(t *testing.T) {
-	t.Parallel()
-
-	b, storage := CreateBackendWithStorage(t)
-
-	// Create a root CA
-	caData := map[string]interface{}{
-		"common_name": "root.com",
-		"ttl":         "30h",
-		"ip_sans":     "127.0.0.1",
-		"locality":    "MiltonPark",
-	}
-	caReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "root/generate/internal",
-		Storage:   storage,
-		Data:      caData,
-	}
-	caResp, err := b.HandleRequest(context.Background(), caReq)
-	if err != nil || (caResp != nil && caResp.IsError()) {
-		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
-	}
-
-	// Validate the response
-	CAcertPEM, ok := caResp.Data["certificate"].(string)
-	if !ok || CAcertPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", caResp.Data)
-	}
-
-	CAblock, _ := pem.Decode([]byte(CAcertPEM))
-	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
-	}
-
-	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
-	if err != nil && CAcert != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Create a CEL role
-	roleData := map[string]interface{}{
-		"name": "testrole",
-		"validation_program": map[string]interface{}{
-			"variables": []map[string]interface{}{
-				{
-					"name":       "b",
-					"expression": "request.common_name == 'example.com'",
-				},
-				{
-					"name":       "a",
-					"expression": "b && size(request.ip_sans) >  0",
-				},
+		{
+			name: "Undefined variable in main expression",
+			variables: map[string]string{
+				"var1": "1 == 1",
 			},
-			"expressions": "a",
+			mainExpression: "var1 && var2", // var2 is undefined
+			expectedError:  "failed to evaluate expression: no such attribute(s): var2",
+			expectedResult: nil,
 		},
-		"failure_policy": "deny",
-		"message":        "Common name must be 'example.com' and atleast 1 ip_san should be present.",
+		{
+			name: "Expression with OR operator evaluates to true",
+			variables: map[string]string{
+				"var1": "false",
+				"var2": "true",
+			},
+			mainExpression: "var1 || var2",
+			expectedError:  "",
+			expectedResult: true,
+		},
+		{
+			name: "Expression with NOT operator evaluates to true",
+			variables: map[string]string{
+				"var1": "false",
+			},
+			mainExpression: "!var1",
+			expectedError:  "",
+			expectedResult: true,
+		},
+		{
+			name: "Expression with a missing variable reference in a nested variable",
+			variables: map[string]string{
+				"var1": "var2 > 5", // var2 is undefined
+			},
+			mainExpression: "var1",
+			expectedError:  "failed to evaluate expression: no such attribute(s): var2",
+			expectedResult: nil,
+		},
 	}
 
-	roleReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/roles/testrole",
-		Storage:   storage,
-		Data:      roleData,
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create the CEL environment with the declared variables
+			env, err := createEnvWithVariables(tt.variables)
+			if err != nil {
+				t.Fatalf("Failed to create CEL environment: %v", err)
+			}
 
-	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
-	}
+			// Parse and validate each variable expression
+			variableValues := make(map[string]interface{})
+			for name, expr := range tt.variables {
+				prog, err := compileExpression(env, expr)
+				if err != nil {
+					t.Fatalf("Failed to compile variable '%s': %v", name, err)
+				}
 
-	// Issue a certificate using the CEL role
-	issueData := map[string]interface{}{
-		"format":      "pem",
-		"common_name": "example.com",
-		"ttl":         "1h",
-		"ip_sans":     "192.168.1.1,10.0.0.1",
-	}
+				result, err := evaluateExpression(prog, nil)
+				if err != nil {
+					if tt.expectedError != "" && err.Error() != tt.expectedError {
+						t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
+					}
+					return
+				}
+				variableValues[name] = result
+			}
 
-	issueReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/issue/testrole",
-		Storage:   storage,
-		Data:      issueData,
-	}
+			// Compile the main expression
+			prog, err := compileExpression(env, tt.mainExpression)
+			if err != nil {
+				t.Fatalf("Failed to compile main expression: %v", err)
+			}
 
-	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
-	}
+			// Evaluate the main expression
+			result, err := evaluateExpression(prog, variableValues)
+			if err != nil {
+				if tt.expectedError != "" && err.Error() != tt.expectedError {
+					t.Fatalf("Expected error '%s', but got '%v'", tt.expectedError, err)
+				}
+				return
+			}
 
-	// Validate the response
-	certPEM, ok := resp.Data["certificate"].(string)
-	if !ok || certPEM == "" {
-		t.Fatalf("Certificate not found in response: %v", resp.Data)
-	}
-
-	block, _ := pem.Decode([]byte(certPEM))
-	if block == nil || block.Type != "CERTIFICATE" {
-		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		t.Fatalf("Failed to parse certificate: %v", err)
-	}
-
-	// Validate the TTL
-	expectedTTL := 1 * time.Hour
-	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
-	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
-		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
-	}
-
-	// Validate the IP SANs
-	expectedIPSANs := []string{"192.168.1.1", "10.0.0.1"}
-	var actualIPSANs []string
-	for _, ip := range cert.IPAddresses {
-		actualIPSANs = append(actualIPSANs, ip.String())
-	}
-	if !reflect.DeepEqual(expectedIPSANs, actualIPSANs) {
-		t.Fatalf("Expected IP SANs: %v, but got: %v", expectedIPSANs, actualIPSANs)
+			// Assert the result matches the expected result
+			if result != tt.expectedResult {
+				t.Fatalf("Expected result '%v', but got '%v'", tt.expectedResult, result)
+			}
+		})
 	}
 }

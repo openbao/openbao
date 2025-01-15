@@ -1,4 +1,4 @@
-package xfile
+package file
 
 import (
 	"context"
@@ -70,19 +70,8 @@ func TestInitialize(t *testing.T) {
 	if unsealResp.Sealed ||
 		unsealResp.Type != "shamir" ||
 		unsealResp.Progress != 0 ||
-		unsealResp.StorageType != "xfile" {
+		unsealResp.StorageType != "file" {
 		t.Errorf("Unseal response: %+v", unsealResp)
-	}
-
-	client.SetToken(token)
-	err = sys.RegisterPluginWithContext(ctx, &api.RegisterPluginInput{
-		Name:    "graph",
-		Type:    api.PluginTypeSecrets,
-		SHA256:  "a7dd5bb0e75733a680a7e1452885e2940334014e66ad1a9559bf3b69bc1ea375",
-		Command: "graph",
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 }
 

@@ -343,6 +343,18 @@ func (ps *NamespaceStore) invalidate(ctx context.Context, path string) error {
 	return nil
 }
 
+func (ps *NamespaceStore) getStorageView(ctx context.Context) (BarrierView, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	view := NewBarrierView(ps.aclView, ns.Path)
+	if view == nil {
+		return nil, fmt.Errorf("unable to get the barrier subview for namespace")
+	}
+	return view, nil
+}
+
 // SetNamespace is used to create or update a given namespace
 func (ps *NamespaceStore) SetNamespace(ctx context.Context, path string, meta map[string]string, init ...bool) error {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
@@ -361,9 +373,9 @@ func (ps *NamespaceStore) SetNamespace(ctx context.Context, path string, meta ma
 	defer ps.modifyLock.Unlock()
 
 	// Get the appropriate view
-	view := ps.aclView
-	if view == nil {
-		return fmt.Errorf("unable to get the barrier subview for namespace")
+	view, err := ps.getStorageView(ctx)
+	if err != nil || view == nil {
+		return fmt.Errorf("unable to get the barrier subview for namespace: %v", err)
 	}
 
 	if init == nil && path == namespace.RootNamespaceID {
@@ -398,9 +410,9 @@ func (ps *NamespaceStore) GetNamespace(ctx context.Context, name string) (*names
 	// Namespaces are normalized to lower-case
 	name = ps.sanitizeName(name)
 	// Get the appropriate view
-	view := ps.aclView
-	if view == nil {
-		return nil, fmt.Errorf("unable to get the barrier subview for namespace")
+	view, err := ps.getStorageView(ctx)
+	if err != nil || view == nil {
+		return nil, fmt.Errorf("unable to get the barrier subview for namespace: %v", err)
 	}
 
 	out, err := view.Get(ctx, name)
@@ -421,9 +433,9 @@ func (ps *NamespaceStore) ListNamespaces(ctx context.Context) ([]string, error) 
 	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
 
 	// Get the appropriate view
-	view := ps.aclView
-	if view == nil {
-		return []string{}, fmt.Errorf("unable to get the barrier subview for namespace")
+	view, err := ps.getStorageView(ctx)
+	if err != nil || view == nil {
+		return nil, fmt.Errorf("unable to get the barrier subview for namespace: %v", err)
 	}
 
 	return logical.CollectKeys(ctx, view)
@@ -438,9 +450,9 @@ func (ps *NamespaceStore) DeleteNamespace(ctx context.Context, path string) erro
 
 	// Namespaces are normalized to lower-case
 	path = ps.sanitizeName(path)
-	view := ps.aclView
-	if view == nil {
-		return fmt.Errorf("unable to get the barrier subview for namespace")
+	view, err := ps.getStorageView(ctx)
+	if err != nil || view == nil {
+		return fmt.Errorf("unable to get the barrier subview for namespace: %v", err)
 	}
 
 	if strutil.StrListContains(immutableNamespaces, path) || strings.Contains(path, "/") {

@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/openbao/openbao/api/v2"
-	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v4/mem"
 	"golang.org/x/sys/unix"
 )
 

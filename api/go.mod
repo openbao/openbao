@@ -20,8 +20,8 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/hcl v1.0.1-vault-5
 	github.com/mitchellh/mapstructure v1.5.0
-	golang.org/x/net v0.32.0
-	golang.org/x/time v0.7.0
+	golang.org/x/net v0.33.0
+	golang.org/x/time v0.8.0
 )
 
 require (

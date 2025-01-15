@@ -617,7 +617,7 @@ func joinAndStabilize(t *testing.T, core *vault.TestClusterCore, client *api.Cli
 		time.Sleep(1 * time.Second)
 	}
 	if !healthy {
-		t.Fatalf("cluster failed to stabilize")
+		t.Fatal("cluster failed to stabilize")
 	}
 }
 

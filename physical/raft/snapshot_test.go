@@ -906,7 +906,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 
 	_, err = NewBoltSnapshotStore(dir2, logger, nil)
 	if err == nil {
-		t.Fatalf("should fail to use dir with bad perms")
+		t.Fatal("should fail to use dir with bad perms")
 	}
 }
 
@@ -943,7 +943,7 @@ func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 	// Cancel the snapshot! Should delete
 	err = sink.Close()
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	// Ensure the snapshot file does not exist

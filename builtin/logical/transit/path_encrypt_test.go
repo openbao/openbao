@@ -596,7 +596,7 @@ func TestTransit_BatchEncryptionCase10(t *testing.T) {
 	}
 	_, err = b.HandleRequest(context.Background(), batchReq)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -647,7 +647,7 @@ func TestTransit_BatchEncryptionCase12(t *testing.T) {
 	}
 	_, err = b.HandleRequest(context.Background(), batchReq)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 

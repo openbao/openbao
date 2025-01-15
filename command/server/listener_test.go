@@ -52,7 +52,7 @@ func testListenerImpl(t *testing.T, ln net.Listener, connFn testListenerConnFn, 
 			t.Fatalf("expected version %d, got %d", expectedVersion, tlsConn.ConnectionState().Version)
 		}
 		if len(tlsConn.ConnectionState().PeerCertificates) != 1 {
-			t.Fatalf("err: number of certs too long")
+			t.Fatal("err: number of certs too long")
 		}
 		peerName := tlsConn.ConnectionState().PeerCertificates[0].Subject.CommonName
 		if peerName != certName {
@@ -98,6 +98,6 @@ func TestProfilingUnauthenticatedInFlightAccess(t *testing.T) {
 		t.Fatalf("Error encountered when loading config %+v", err)
 	}
 	if !config.Listeners[0].InFlightRequestLogging.UnauthenticatedInFlightAccess {
-		t.Fatalf("failed to read UnauthenticatedInFlightAccess")
+		t.Fatal("failed to read UnauthenticatedInFlightAccess")
 	}
 }

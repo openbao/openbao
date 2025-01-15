@@ -32,7 +32,7 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		factory := corehelpers.NoopAuditFactory(nil)
 		return factory(ctx, config)
@@ -64,7 +64,7 @@ func TestCore_EnableAudit(t *testing.T) {
 	}
 
 	if !c.auditBroker.IsRegistered("foo/") {
-		t.Fatalf("missing audit backend")
+		t.Fatal("missing audit backend")
 	}
 
 	conf := &CoreConfig{
@@ -83,7 +83,7 @@ func TestCore_EnableAudit(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -94,7 +94,7 @@ func TestCore_EnableAudit(t *testing.T) {
 
 	// Check for registration
 	if !c2.auditBroker.IsRegistered("foo/") {
-		t.Fatalf("missing audit backend")
+		t.Fatal("missing audit backend")
 	}
 }
 
@@ -259,7 +259,7 @@ func TestCore_DisableAudit(t *testing.T) {
 
 	// Check for registration
 	if c.auditBroker.IsRegistered("foo") {
-		t.Fatalf("audit backend present")
+		t.Fatal("audit backend present")
 	}
 
 	conf := &CoreConfig{
@@ -276,7 +276,7 @@ func TestCore_DisableAudit(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -292,7 +292,7 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 
 	// Verify we have an audit broker
 	if c.auditBroker == nil {
-		t.Fatalf("missing audit broker")
+		t.Fatal("missing audit broker")
 	}
 
 	// Start a second core with same physical
@@ -310,7 +310,7 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 

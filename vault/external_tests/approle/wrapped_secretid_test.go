@@ -114,6 +114,6 @@ func TestApproleSecretId_NotWrapped(t *testing.T) {
 	require.NoError(t, err)
 
 	if resp.WrapInfo != nil && resp.WrapInfo.WrappedAccessor != "" {
-		t.Fatalf("WrappedAccessor unexpectedly set")
+		t.Fatal("WrappedAccessor unexpectedly set")
 	}
 }

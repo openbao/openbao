@@ -281,14 +281,14 @@ func testTransit_Certificates_ImportCertChain(t *testing.T, apiClient *api.Clien
 	require.NotNil(t, resp)
 	keys, ok := resp.Data["keys"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("could not cast Keys value")
+		t.Fatal("could not cast Keys value")
 	}
 	keyData, ok := keys["1"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("could not cast key version 1 from keys")
+		t.Fatal("could not cast key version 1 from keys")
 	}
 	_, present := keyData["certificate_chain"]
 	if !present {
-		t.Fatalf("certificate chain not present in key version 1")
+		t.Fatal("certificate chain not present in key version 1")
 	}
 }

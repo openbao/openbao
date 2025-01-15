@@ -285,7 +285,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 			defer cancel()
 			actualPassword, err := dsv.GeneratePasswordFromPolicy(ctx, test.policyName)
 			if err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if actualPassword != "" {
 				t.Fatalf("no password expected, got %s", actualPassword)

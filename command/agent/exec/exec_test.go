@@ -321,7 +321,7 @@ func TestExecServer_Run(t *testing.T) {
 
 			case err := <-testAppStartedCh:
 				if testCase.expectedError == nil && err != nil {
-					t.Fatalf("test app could not be started")
+					t.Fatal("test app could not be started")
 				}
 
 				t.Log("test app started successfully")
@@ -348,7 +348,7 @@ func TestExecServer_Run(t *testing.T) {
 			}
 
 			// verify the environment variables
-			t.Logf("verifying test-app's environment variables")
+			t.Log("verifying test-app's environment variables")
 
 			resp, err := retryablehttp.Get(testAppAddr)
 			if err != nil {

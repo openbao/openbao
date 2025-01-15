@@ -28,10 +28,10 @@ func (t *testJob) OnFailure(err error) {
 func newTestJob(t *testing.T, id string, ex func(string) error, onFail func(error)) testJob {
 	t.Helper()
 	if ex == nil {
-		t.Errorf("ex cannot be nil")
+		t.Error("ex cannot be nil")
 	}
 	if onFail == nil {
-		t.Errorf("onFail cannot be nil")
+		t.Error("onFail cannot be nil")
 	}
 
 	return testJob{

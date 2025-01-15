@@ -32,7 +32,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 
 	b := Backend()
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 
 	err := b.Backend.Setup(context.Background(), config)

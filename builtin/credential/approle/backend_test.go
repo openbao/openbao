@@ -23,7 +23,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 		t.Fatal(err)
 	}
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 	err = b.Backend.Setup(context.Background(), config)
 	if err != nil {
@@ -151,7 +151,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if resp.Auth == nil {
-			t.Fatalf("failed to perform login")
+			t.Fatal("failed to perform login")
 		}
 
 		// Destroy secret ID accessor
@@ -181,7 +181,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error due to invalid secret ID")
+			t.Fatal("expected error due to invalid secret ID")
 		}
 
 		// Generate another secret ID
@@ -210,7 +210,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if resp.Auth == nil {
-			t.Fatalf("failed to perform login")
+			t.Fatal("failed to perform login")
 		}
 
 		// Destroy the secret ID
@@ -240,7 +240,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error due to invalid secret ID")
+			t.Fatal("expected error due to invalid secret ID")
 		}
 
 		// Generate another secret ID
@@ -269,7 +269,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if resp.Auth == nil {
-			t.Fatalf("failed to perform login")
+			t.Fatal("failed to perform login")
 		}
 
 		// Destroy the secret ID using lower cased role name
@@ -299,7 +299,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error due to invalid secret ID")
+			t.Fatal("expected error due to invalid secret ID")
 		}
 
 		// Generate another secret ID
@@ -328,7 +328,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if resp.Auth == nil {
-			t.Fatalf("failed to perform login")
+			t.Fatal("failed to perform login")
 		}
 
 		// Destroy the secret ID using upper cased role name
@@ -358,7 +358,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error due to invalid secret ID")
+			t.Fatal("expected error due to invalid secret ID")
 		}
 
 		// Generate another secret ID
@@ -387,7 +387,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 		}
 		if resp.Auth == nil {
-			t.Fatalf("failed to perform login")
+			t.Fatal("failed to perform login")
 		}
 
 		// Destroy the secret ID using mixed case name
@@ -417,7 +417,7 @@ func TestAppRole_RoleNameCaseSensitivity(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp == nil || !resp.IsError() {
-			t.Fatalf("expected error due to invalid secret ID")
+			t.Fatal("expected error due to invalid secret ID")
 		}
 	}
 

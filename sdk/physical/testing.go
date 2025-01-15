@@ -406,7 +406,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Fatalf("lock attempt 1: %v", err)
 	}
 	if leaderCh == nil {
-		t.Fatalf("missing leaderCh")
+		t.Fatal("missing leaderCh")
 	}
 
 	// Check the value
@@ -415,7 +415,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if !held {
-		t.Errorf("should be held")
+		t.Error("should be held")
 	}
 	if val != "bar" {
 		t.Errorf("expected value bar: %v", err)
@@ -464,7 +464,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Fatalf("lock 2 lock: %v", err)
 	}
 	if leaderCh2 == nil {
-		t.Errorf("should get leaderCh")
+		t.Error("should get leaderCh")
 	}
 
 	// Check if it's fencing that we can register the lock
@@ -478,7 +478,7 @@ func ExerciseHABackend(t testing.TB, b HABackend, b2 HABackend) {
 		t.Fatalf("value: %v", err)
 	}
 	if !held {
-		t.Errorf("should still be held")
+		t.Error("should still be held")
 	}
 	if val != "baz" {
 		t.Errorf("expected: baz, got: %v", val)
@@ -695,7 +695,7 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 			for {
 				switch {
 				case done.Load() == true:
-					t.Logf("shutting down reader")
+					t.Log("shutting down reader")
 					return
 				default:
 					ctx := context.Background()
@@ -787,7 +787,7 @@ func testTransactionalExclusiveWriters(t testing.TB, b TransactionalBackend) {
 			for {
 				switch {
 				case done.Load() == true:
-					t.Logf("shutting down lister")
+					t.Log("shutting down lister")
 					return
 				default:
 					ctx := context.Background()
@@ -943,7 +943,7 @@ func testTransactionalMixedWriters(t testing.TB, b TransactionalBackend) {
 			for {
 				switch {
 				case done.Load() == true:
-					t.Logf("shutting down reader")
+					t.Log("shutting down reader")
 					return
 				default:
 					ctx := context.Background()

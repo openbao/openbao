@@ -203,7 +203,7 @@ func TestUnitCheckOCSPResponseCache(t *testing.T) {
 	c.ocspResponseCache.Add(dummyKey, &ocspCachedResponse{time: float64(currentTime - 1000)})
 	ost, err = c.checkOCSPResponseCache(&dummyKey, subject, nil)
 	if err == nil && isValidOCSPStatus(ost.code) {
-		t.Fatalf("should have failed.")
+		t.Fatal("should have failed.")
 	}
 }
 
@@ -293,7 +293,7 @@ func TestUnitValidateOCSP(t *testing.T) {
 	ocspRes := &ocsp.Response{}
 	ost, err := validateOCSP(ocspRes)
 	if err == nil && isValidOCSPStatus(ost.code) {
-		t.Fatalf("should have failed.")
+		t.Fatal("should have failed.")
 	}
 
 	currentTime := time.Now()

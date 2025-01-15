@@ -390,34 +390,34 @@ func TestTLSConfig(t *testing.T) {
 			t.Fatalf("Error getting tls config: %s", err)
 		}
 		if tlsConfig == nil {
-			t.Fatalf("Got nil tls.Config")
+			t.Fatal("Got nil tls.Config")
 		}
 
 		if len(tlsConfig.Certificates) != 1 {
-			t.Fatalf("Unexpected length in config.Certificates")
+			t.Fatal("Unexpected length in config.Certificates")
 		}
 
 		// Length should be 2, since we passed in a CA
 		if len(tlsConfig.Certificates[0].Certificate) != 2 {
-			t.Fatalf("Did not find both certificates in config.Certificates.Certificate")
+			t.Fatal("Did not find both certificates in config.Certificates.Certificate")
 		}
 
 		if tlsConfig.Certificates[0].Leaf != pcbut.Certificate {
-			t.Fatalf("Leaf certificate does not match parsed bundle's certificate")
+			t.Fatal("Leaf certificate does not match parsed bundle's certificate")
 		}
 
 		if tlsConfig.Certificates[0].PrivateKey != pcbut.PrivateKey {
-			t.Fatalf("Config's private key does not match parsed bundle's private key")
+			t.Fatal("Config's private key does not match parsed bundle's private key")
 		}
 
 		switch usage {
 		case TLSServer | TLSClient:
 			if tlsConfig.ClientCAs == nil {
-				t.Fatalf("ClientCAs pool is nil, but expected a valid pool")
+				t.Fatal("ClientCAs pool is nil, but expected a valid pool")
 			}
 
 			if tlsConfig.RootCAs == nil {
-				t.Fatalf("RootCAs pool is nil, but expected a valid pool")
+				t.Fatal("RootCAs pool is nil, but expected a valid pool")
 			}
 
 			// Verify the leaf certificate against the RootCAs pool to ensure the
@@ -439,10 +439,10 @@ func TestTLSConfig(t *testing.T) {
 			}
 		case TLSServer:
 			if tlsConfig.ClientCAs == nil {
-				t.Fatalf("ClientCAs pool is nil, but expected a valid pool")
+				t.Fatal("ClientCAs pool is nil, but expected a valid pool")
 			}
 			if tlsConfig.RootCAs != nil {
-				t.Fatalf("Found root pools in config object when not expected")
+				t.Fatal("Found root pools in config object when not expected")
 			}
 			// Verify the leaf certificate against the ClientCAs pool to ensure the
 			// server can authenticate client certificates using the provided CA pool
@@ -454,10 +454,10 @@ func TestTLSConfig(t *testing.T) {
 			}
 		case TLSClient:
 			if tlsConfig.RootCAs == nil {
-				t.Fatalf("RootCAs pool is nil, but expected a valid pool")
+				t.Fatal("RootCAs pool is nil, but expected a valid pool")
 			}
 			if tlsConfig.ClientCAs != nil {
-				t.Fatalf("Found client pools in config object when not expected")
+				t.Fatal("Found client pools in config object when not expected")
 			}
 			// Verify the leaf certificate against the RootCAs pool to ensure the
 			// client can authenticate the server using the provided CA pool
@@ -469,7 +469,7 @@ func TestTLSConfig(t *testing.T) {
 			}
 		default:
 			if tlsConfig.RootCAs != nil || tlsConfig.ClientCAs != nil {
-				t.Fatalf("Found root pools in config object when not expected")
+				t.Fatal("Found root pools in config object when not expected")
 			}
 		}
 	}
@@ -1022,7 +1022,7 @@ func TestBasicConstraintExtension(t *testing.T) {
 		// Test invalid type errors out
 		_, _, err := ParseBasicConstraintExtension(pkix.Extension{})
 		if err == nil {
-			t.Fatalf("should have failed parsing non-basic constraint extension")
+			t.Fatal("should have failed parsing non-basic constraint extension")
 		}
 	})
 
@@ -1037,7 +1037,7 @@ func TestBasicConstraintExtension(t *testing.T) {
 		}
 		_, _, err = ParseBasicConstraintExtension(ext)
 		if err == nil {
-			t.Fatalf("should have failed parsing basic constraint with extra information")
+			t.Fatal("should have failed parsing basic constraint with extra information")
 		}
 	})
 }

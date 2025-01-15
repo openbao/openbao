@@ -24,7 +24,7 @@ func TestInitDatabase_missingDB(t *testing.T) {
 	req := v5.InitializeRequest{}
 	resp, err := dbw.Initialize(context.Background(), req)
 	if err == nil {
-		t.Fatalf("err expected, got nil")
+		t.Fatal("err expected, got nil")
 	}
 
 	expectedResp := v5.InitializeResponse{}
@@ -94,7 +94,7 @@ func TestInitDatabase_newDB(t *testing.T) {
 
 			resp, err := dbw.Initialize(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -165,7 +165,7 @@ func TestInitDatabase_legacyDB(t *testing.T) {
 
 			resp, err := dbw.Initialize(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -184,7 +184,7 @@ func TestNewUser_missingDB(t *testing.T) {
 	req := v5.NewUserRequest{}
 	resp, pass, err := dbw.NewUser(context.Background(), req)
 	if err == nil {
-		t.Fatalf("err expected, got nil")
+		t.Fatal("err expected, got nil")
 	}
 
 	expectedResp := v5.NewUserResponse{}
@@ -251,7 +251,7 @@ func TestNewUser_newDB(t *testing.T) {
 
 			resp, password, err := dbw.NewUser(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -324,7 +324,7 @@ func TestNewUser_legacyDB(t *testing.T) {
 
 			resp, password, err := dbw.NewUser(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -347,7 +347,7 @@ func TestUpdateUser_missingDB(t *testing.T) {
 	req := v5.UpdateUserRequest{}
 	resp, err := dbw.UpdateUser(context.Background(), req, false)
 	if err == nil {
-		t.Fatalf("err expected, got nil")
+		t.Fatal("err expected, got nil")
 	}
 
 	expectedConfig := map[string]interface{}(nil)
@@ -398,7 +398,7 @@ func TestUpdateUser_newDB(t *testing.T) {
 
 			_, err := dbw.UpdateUser(context.Background(), test.req, false)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -632,7 +632,7 @@ func TestUpdateUser_legacyDB(t *testing.T) {
 
 			newConfig, err := dbw.UpdateUser(context.Background(), test.req, test.isRootUser)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -651,7 +651,7 @@ func TestDeleteUser_missingDB(t *testing.T) {
 	req := v5.DeleteUserRequest{}
 	_, err := dbw.DeleteUser(context.Background(), req)
 	if err == nil {
-		t.Fatalf("err expected, got nil")
+		t.Fatal("err expected, got nil")
 	}
 }
 
@@ -701,7 +701,7 @@ func TestDeleteUser_newDB(t *testing.T) {
 
 			_, err := dbw.DeleteUser(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -756,7 +756,7 @@ func TestDeleteUser_legacyDB(t *testing.T) {
 
 			_, err := dbw.DeleteUser(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -847,7 +847,7 @@ func TestStoreConfig(t *testing.T) {
 			defer cancel()
 			err := storeConfig(ctx, storage, "testconfig", test.config)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

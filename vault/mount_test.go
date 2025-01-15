@@ -32,7 +32,7 @@ func TestMount_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		return &NoopBackend{}, nil
 	}
@@ -77,40 +77,40 @@ func TestLogicalMountMetrics(t *testing.T) {
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
 	if !ok || numEntriesMetric.Value != 4 {
-		t.Fatalf("mount metrics for num entries do not match true values")
+		t.Fatal("mount metrics for num entries do not match true values")
 	}
 	if len(numEntriesMetric.Key) != 3 ||
 		numEntriesMetric.Key[0] != "core" ||
 		numEntriesMetric.Key[1] != "mount_table" ||
 		numEntriesMetric.Key[2] != "num_entries" {
-		t.Fatalf("mount metrics for num entries have wrong key")
+		t.Fatal("mount metrics for num entries have wrong key")
 	}
 	if len(numEntriesMetric.Labels) != 2 ||
 		numEntriesMetric.Labels[0].Name != "type" ||
 		numEntriesMetric.Labels[0].Value != "logical" ||
 		numEntriesMetric.Labels[1].Name != "local" ||
 		numEntriesMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for num entries have wrong labels")
+		t.Fatal("mount metrics for num entries have wrong labels")
 	}
 	mountSizeKeyName := "core.mount_table.size.type|logical||local|false||"
 	loadMetric, ok = mountMetrics.Load(mountSizeKeyName)
 	sizeMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	if !ok {
-		t.Fatalf("mount metrics for size do not match exist")
+		t.Fatal("mount metrics for size do not match exist")
 	}
 	if len(sizeMetric.Key) != 3 ||
 		sizeMetric.Key[0] != "core" ||
 		sizeMetric.Key[1] != "mount_table" ||
 		sizeMetric.Key[2] != "size" {
-		t.Fatalf("mount metrics for size have wrong key")
+		t.Fatal("mount metrics for size have wrong key")
 	}
 	if len(sizeMetric.Labels) != 2 ||
 		sizeMetric.Labels[0].Name != "type" ||
 		sizeMetric.Labels[0].Value != "logical" ||
 		sizeMetric.Labels[1].Name != "local" ||
 		sizeMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for size have wrong labels")
+		t.Fatal("mount metrics for size have wrong labels")
 	}
 }
 
@@ -137,7 +137,7 @@ func TestCore_DefaultMountTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -160,7 +160,7 @@ func TestCore_Mount(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
 	if match != "foo/" {
-		t.Fatalf("missing mount")
+		t.Fatal("missing mount")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -181,7 +181,7 @@ func TestCore_Mount(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -205,7 +205,7 @@ func TestCore_Mount_secrets_builtin_RunningVersion(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
 	if match != "foo/" {
-		t.Fatalf("missing mount")
+		t.Fatal("missing mount")
 	}
 
 	raw, _ := c.router.root.Get(match)
@@ -231,7 +231,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
 	if match != "foo/" {
-		t.Fatalf("missing mount")
+		t.Fatal("missing mount")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -252,7 +252,7 @@ func TestCore_Mount_kv_generic(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -465,7 +465,7 @@ func TestCore_Unmount(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "secret/foo")
 	if match != "" {
-		t.Fatalf("backend present")
+		t.Fatal("backend present")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -486,7 +486,7 @@ func TestCore_Unmount(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -619,7 +619,7 @@ func TestCore_Remount(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
 	if match != "foo/" {
-		t.Fatalf("failed remount")
+		t.Fatal("failed remount")
 	}
 
 	c.sealInternal()
@@ -629,13 +629,13 @@ func TestCore_Remount(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
 	match = c.router.MatchingMount(namespace.RootContext(nil), "foo/bar")
 	if match != "foo/" {
-		t.Fatalf("failed remount")
+		t.Fatal("failed remount")
 	}
 }
 
@@ -826,7 +826,7 @@ func testCore_MountTable_UpgradeToTyped_Common(
 	}
 
 	if reflect.DeepEqual(raw, goodJson) {
-		t.Fatalf("bad: values here should be different")
+		t.Fatal("bad: values here should be different")
 	}
 
 	// Remove any transactional storage entries: we want to replace the mount

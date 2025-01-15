@@ -573,7 +573,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 				t.Fatalf("failed to read default issuer config: %v", err)
 			}
 			if resp == nil {
-				t.Fatalf("failed to read default issuer config: nil response")
+				t.Fatal("failed to read default issuer config: nil response")
 			}
 			defaultID := resp.Data["default"].(issuerID).String()
 			c.Issuer = defaultID
@@ -635,7 +635,7 @@ func (c CBIssueLeaf) Run(t testing.TB, b *backend, s logical.Storage, knownKeys 
 		t.Fatalf("failed to read default issuer config: %v", err)
 	}
 	if resp == nil {
-		t.Fatalf("failed to read default issuer config: nil response")
+		t.Fatal("failed to read default issuer config: nil response")
 	}
 	defaultID := resp.Data["default"].(issuerID).String()
 
@@ -1614,7 +1614,7 @@ func Test_CAChainBuilding(t *testing.T) {
 			testStep.Run(t, b, s, knownKeys, knownCerts)
 		}
 
-		t.Logf("Checking stable ordering of chains...")
+		t.Log("Checking stable ordering of chains...")
 		ensureStableOrderingOfChains(t, b, s, knownKeys, knownCerts)
 	}
 }

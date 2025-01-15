@@ -226,7 +226,7 @@ func TestCore_EnableExternalPlugin_Deregister_SealUnseal(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 
@@ -286,7 +286,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 
 	// Make sure this isn't the first mount for the current major version.
 	if c.isMajorVersionFirstMount(context.Background()) {
-		t.Fatalf("expected major version to register as mounted")
+		t.Fatal("expected major version to register as mounted")
 	}
 
 	if err := c.Seal(root); err != nil {
@@ -298,7 +298,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("err: should be unsealed")
+			t.Fatal("err: should be unsealed")
 		}
 	}
 
@@ -317,7 +317,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 	// Make sure this appears to be the first mount for the current major
 	// version.
 	if !c.isMajorVersionFirstMount(context.Background()) {
-		t.Fatalf("expected major version first mount")
+		t.Fatal("expected major version first mount")
 	}
 
 	// Seal again and check for unseal failure.
@@ -332,7 +332,7 @@ func TestCore_Unseal_isMajorVersionFirstMount_PendingRemoval_Plugin(t *testing.T
 			}
 
 			if unseal {
-				t.Fatalf("err: should not be unsealed")
+				t.Fatal("err: should not be unsealed")
 			}
 		}
 	}
@@ -362,7 +362,7 @@ func TestCore_EnableExternalPlugin_PendingRemoval(t *testing.T) {
 	// Create a new auth method with builtin pending-removal-test-plugin
 	resp, err := mountPluginWithResponse(t, c.systemBackend, pluginName, consts.PluginTypeCredential, "", "")
 	if err == nil {
-		t.Fatalf("expected error when mounting deprecated backend")
+		t.Fatal("expected error when mounting deprecated backend")
 	}
 	if resp == nil || resp.Data == nil || !strings.Contains(resp.Data["error"].(string), pendingRemovalString) {
 		t.Fatalf("expected error response to contain %q but got %+v", pendingRemovalString, resp)

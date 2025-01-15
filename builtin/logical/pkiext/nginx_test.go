@@ -406,7 +406,7 @@ func CheckWithGo(t *testing.T, rootCert string, clientCert string, clientChain [
 }
 
 func RunNginxRootTest(t *testing.T, caKeyType string, caKeyBits int, caUsePSS bool, roleKeyType string, roleKeyBits int, roleUsePSS bool) {
-	t.Skipf("flaky in CI")
+	t.Skip("flaky in CI")
 
 	b, s := pki.CreateBackendWithStorage(t)
 

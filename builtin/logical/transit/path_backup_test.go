@@ -137,7 +137,7 @@ func testBackupRestore(t *testing.T, keyType, feature string) {
 		t.Fatalf("resp: %#v\nerr: %v", resp, err)
 	}
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	plaintextB64 := "dGhlIHF1aWNrIGJyb3duIGZveA==" // "the quick brown fox"

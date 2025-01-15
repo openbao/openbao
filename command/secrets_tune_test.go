@@ -101,7 +101,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 		mountInfo, ok := mounts["kv/"]
 		if !ok {
-			t.Fatalf("expected mount to exist")
+			t.Fatal("expected mount to exist")
 		}
 		if exp := "kv"; mountInfo.Type != exp {
 			t.Errorf("expected %q to be %q", mountInfo.Type, exp)
@@ -136,7 +136,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 		mountInfo, ok = mounts["kv/"]
 		if !ok {
-			t.Fatalf("expected mount to exist")
+			t.Fatal("expected mount to exist")
 		}
 		if exp := "2"; mountInfo.Options["version"] != exp {
 			t.Errorf("expected %q to be %q", mountInfo.Options["version"], exp)
@@ -174,7 +174,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 			}
 			mountInfo, ok := mounts["mount_tune_integration/"]
 			if !ok {
-				t.Fatalf("expected mount to exist")
+				t.Fatal("expected mount to exist")
 			}
 
 			if exp := ""; mountInfo.PluginVersion != exp {
@@ -214,7 +214,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 			mountInfo, ok = mounts["mount_tune_integration/"]
 			if !ok {
-				t.Fatalf("expected mount to exist")
+				t.Fatal("expected mount to exist")
 			}
 			if exp := "new description"; mountInfo.Description != exp {
 				t.Errorf("expected %q to be %q", mountInfo.Description, exp)
@@ -286,7 +286,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 				mountInfo, ok := mounts["mount_tune_integration/"]
 				if !ok {
-					t.Fatalf("expected mount to exist")
+					t.Fatal("expected mount to exist")
 				}
 				if exp := "initial description"; mountInfo.Description != exp {
 					t.Errorf("expected %q to be %q", mountInfo.Description, exp)
@@ -329,7 +329,7 @@ func TestSecretsTuneCommand_Run(t *testing.T) {
 
 				mountInfo, ok := mounts["mount_tune_integration/"]
 				if !ok {
-					t.Fatalf("expected mount to exist")
+					t.Fatal("expected mount to exist")
 				}
 				if exp := ""; mountInfo.Description != exp {
 					t.Errorf("expected %q to be %q", mountInfo.Description, exp)

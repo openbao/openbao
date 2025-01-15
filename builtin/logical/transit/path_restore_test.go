@@ -210,7 +210,7 @@ func TestTransit_Restore(t *testing.T) {
 				t.Fatalf("resp: %#v\nerr: %v", resp, err)
 			}
 			if err == nil && tc.ExpectedErr != nil {
-				t.Fatalf("expected an error, but got none")
+				t.Fatal("expected an error, but got none")
 			}
 			if err != nil && tc.ExpectedErr == nil {
 				t.Fatalf("unexpected error:%s", err)

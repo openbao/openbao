@@ -1054,12 +1054,12 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 		return nil
 	})
 
-	t.Logf("Sealing active node")
+	t.Log("Sealing active node")
 	err = previousActiveNode.APIClient().Sys().Seal()
 	require.NoError(t, err, "failed stepping down node")
 
 	// Add our DNS records now
-	t.Logf("Adding DNS records")
+	t.Log("Adding DNS records")
 	for dnsHost, dnsValue := range dnsTxtRecordsToAdd {
 		err = pki.AddDNSRecord(dnsHost, "TXT", dnsValue)
 		require.NoError(t, err, "failed adding DNS record: %s:%s", dnsHost, dnsValue)

@@ -86,12 +86,12 @@ func TestPostgreSQLBackend(t *testing.T) {
 
 	ha1, ok := b1.(physical.HABackend)
 	if !ok {
-		t.Fatalf("PostgreSQLDB does not implement HABackend")
+		t.Fatal("PostgreSQLDB does not implement HABackend")
 	}
 
 	ha2, ok := b2.(physical.HABackend)
 	if !ok {
-		t.Fatalf("PostgreSQLDB does not implement HABackend")
+		t.Fatal("PostgreSQLDB does not implement HABackend")
 	}
 
 	if ha1.HAEnabled() && ha2.HAEnabled() {
@@ -222,7 +222,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 			t.Fatalf("err: %v", err)
 		}
 		if leaderCh == nil {
-			t.Fatalf("failed to get leader ch")
+			t.Fatal("failed to get leader ch")
 		}
 
 		if tries == 1 {
@@ -238,7 +238,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 				// Our test environment is slow enough that we failed this, retry
 				return false
 			}
-			t.Fatalf("should be held")
+			t.Fatal("should be held")
 		}
 		if val != "bar" {
 			t.Fatalf("bad value: %v", val)
@@ -270,7 +270,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 			t.Fatalf("err: %v", err)
 		}
 		if leaderCh2 == nil {
-			t.Fatalf("should get leader ch")
+			t.Fatal("should get leader ch")
 		}
 		defer lock2.Unlock()
 
@@ -284,7 +284,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 				// Our test environment is slow enough that we failed this, retry
 				return false
 			}
-			t.Fatalf("should be held")
+			t.Fatal("should be held")
 		}
 		if val != "baz" {
 			t.Fatalf("bad value: %v", val)
@@ -293,7 +293,7 @@ func attemptLockTTLTest(t *testing.T, ha physical.HABackend, tries int) bool {
 	// The first lock should have lost the leader channel
 	select {
 	case <-time.After(longRenewInterval * 2):
-		t.Fatalf("original lock did not have its leader channel closed.")
+		t.Fatal("original lock did not have its leader channel closed.")
 	case <-leaderCh:
 	}
 	return true
@@ -318,7 +318,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if leaderCh == nil {
-		t.Fatalf("failed to get leader ch")
+		t.Fatal("failed to get leader ch")
 	}
 
 	// Check the value
@@ -327,7 +327,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if !held {
-		t.Fatalf("should be held")
+		t.Fatal("should be held")
 	}
 	if val != "bar" {
 		t.Fatalf("bad value: %v", val)
@@ -371,7 +371,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if leaderCh2 == nil {
-		t.Fatalf("should get leader ch")
+		t.Fatal("should get leader ch")
 	}
 
 	// Check the value
@@ -380,7 +380,7 @@ func testPostgresSQLLockRenewal(t *testing.T, ha physical.HABackend) {
 		t.Fatalf("err: %v", err)
 	}
 	if !held {
-		t.Fatalf("should be held")
+		t.Fatal("should be held")
 	}
 	if val != "baz" {
 		t.Fatalf("bad value: %v", val)
@@ -435,7 +435,7 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 	entry := &physical.Entry{Key: "foo", Value: []byte("data")}
 	err = b.Put(context.Background(), entry)
 	if err == nil {
-		t.Fatalf("expected put to fail due to missing tables")
+		t.Fatal("expected put to fail due to missing tables")
 	}
 
 	pg := b.(*PostgreSQLBackend)

@@ -1160,7 +1160,7 @@ func TestAcmeWithCsrIncludingBasicConstraintExtension(t *testing.T) {
 	for _, ext := range acmeCert.Extensions {
 		if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) {
 			// We shouldn't have this extension in our cert
-			t.Fatalf("acme csr contained a basic constraints extension")
+			t.Fatal("acme csr contained a basic constraints extension")
 		}
 	}
 }
@@ -1223,14 +1223,14 @@ func markAuthorizationSuccess(t *testing.T, client *api.Client, acmeClient *acme
 				// Our order seems to be in the proper status, should be safe-ish to go ahead now
 				break
 			} else {
-				t.Logf("order status was not ready, retrying")
+				t.Log("order status was not ready, retrying")
 			}
 		} else {
-			t.Logf("new challenge entries appeared after deletion, retrying")
+			t.Log("new challenge entries appeared after deletion, retrying")
 		}
 
 		if i > 5 {
-			t.Fatalf("We are constantly deleting cv entries or order status is not changing, something is wrong")
+			t.Fatal("We are constantly deleting cv entries or order status is not changing, something is wrong")
 		}
 
 		i++

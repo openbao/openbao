@@ -175,10 +175,10 @@ func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if !authResults.RootPrivs {
-		t.Fatalf("expected root")
+		t.Fatal("expected root")
 	}
 	if !authResults.Allowed {
-		t.Fatalf("expected permissions")
+		t.Fatal("expected permissions")
 	}
 }
 
@@ -210,7 +210,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if authResults.RootPrivs {
-		t.Fatalf("unexpected root")
+		t.Fatal("unexpected root")
 	}
 
 	type tcase struct {
@@ -319,7 +319,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 
 	authResults := acl.AllowOperation(ctx, request, false)
 	if authResults.RootPrivs {
-		t.Fatalf("unexpected root")
+		t.Fatal("unexpected root")
 	}
 
 	type tcase struct {
@@ -382,7 +382,7 @@ func testLayeredACL(t *testing.T, acl *ACL, ns *namespace.Namespace) {
 func TestACL_ParseMalformedPolicy(t *testing.T) {
 	_, err := ParseACLPolicy(namespace.RootNamespace, `name{}`)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 

@@ -487,7 +487,7 @@ func TestSecretCredsRenew(t *testing.T) {
 
 			resp, err := b.secretCredsRenew()(ctx, test.req, data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -875,7 +875,7 @@ expirationTimeSeconds: ` + expSecondsStr,
 		t.Run(name, func(t *testing.T) {
 			actual, err := applyTemplate(test.template, test.data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -917,7 +917,7 @@ func getStringSlice(t *testing.T, m map[string]interface{}, key string) []string
 	for _, rawVal := range iSlice {
 		str, ok := rawVal.(string)
 		if !ok {
-			t.Fatalf("Unable to coerce value within slice to string")
+			t.Fatal("Unable to coerce value within slice to string")
 		}
 		strSlice = append(strSlice, str)
 	}

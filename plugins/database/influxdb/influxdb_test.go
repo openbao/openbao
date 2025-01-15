@@ -188,7 +188,7 @@ func TestInfluxdb_Initialize(t *testing.T) {
 
 			resp, err := db.Initialize(context.Background(), test.req)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -199,9 +199,9 @@ func TestInfluxdb_Initialize(t *testing.T) {
 			}
 
 			if test.expectInitialized && !db.Initialized {
-				t.Fatalf("Database should be initialized but wasn't")
+				t.Fatal("Database should be initialized but wasn't")
 			} else if !test.expectInitialized && db.Initialized {
-				t.Fatalf("Database was initiailized when it shouldn't")
+				t.Fatal("Database was initiailized when it shouldn't")
 			}
 		})
 	}
@@ -251,7 +251,7 @@ func TestInfluxdb_CreateUser_DefaultUsernameTemplate(t *testing.T) {
 	resp := dbtesting.AssertNewUser(t, db, newUserReq)
 
 	if resp.Username == "" {
-		t.Fatalf("Missing username")
+		t.Fatal("Missing username")
 	}
 
 	assertCredsExist(t, config.URL().String(), resp.Username, password)
@@ -289,7 +289,7 @@ func TestInfluxdb_CreateUser_CustomUsernameTemplate(t *testing.T) {
 	resp := dbtesting.AssertNewUser(t, db, newUserReq)
 
 	if resp.Username == "" {
-		t.Fatalf("Missing username")
+		t.Fatal("Missing username")
 	}
 
 	assertCredsExist(t, config.URL().String(), resp.Username, password)
@@ -403,7 +403,7 @@ func TestInfluxdb_RevokeDeletedUser(t *testing.T) {
 	defer cancel()
 	_, err := db.DeleteUser(ctx, delReq)
 	if err == nil {
-		t.Fatalf("Expected err, got nil")
+		t.Fatal("Expected err, got nil")
 	}
 }
 

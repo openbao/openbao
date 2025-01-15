@@ -221,7 +221,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 	doReq(t, req)
 	if p.MinEncryptionVersion != 10 {
-		t.Fatalf("failed to set min encryption version")
+		t.Fatal("failed to set min encryption version")
 	}
 
 	// Set min decryption version to 9
@@ -230,7 +230,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 	doReq(t, req)
 	if p.MinDecryptionVersion != 9 {
-		t.Fatalf("failed to set min encryption version")
+		t.Fatal("failed to set min encryption version")
 	}
 
 	// Reduce the min decryption version to 8
@@ -239,7 +239,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 	doReq(t, req)
 	if p.MinDecryptionVersion != 8 {
-		t.Fatalf("failed to set min encryption version")
+		t.Fatal("failed to set min encryption version")
 	}
 
 	// Reduce the min encryption version to 8
@@ -248,7 +248,7 @@ func TestTransit_Trim(t *testing.T) {
 	}
 	doReq(t, req)
 	if p.MinDecryptionVersion != 8 {
-		t.Fatalf("failed to set min decryption version")
+		t.Fatal("failed to set min decryption version")
 	}
 
 	// Read the key to ensure that the keys are properly copied from the

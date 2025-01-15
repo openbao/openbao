@@ -396,7 +396,7 @@ func TestLogin(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
-		t.Fatalf("Expected error")
+		t.Fatal("Expected error")
 	} else if !errors.Is(err, logical.ErrPermissionDenied) {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -700,7 +700,7 @@ func TestLoginSvcAcctAndNamespaceSplats(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), req)
 	if err == nil {
-		t.Fatalf("Expected error")
+		t.Fatal("Expected error")
 	} else if !errors.Is(logical.ErrPermissionDenied, err) {
 		t.Fatalf("unexpected error: %s", err)
 	}
@@ -824,7 +824,7 @@ func TestLoginSvcAcctNamespaceSelector(t *testing.T) {
 				} else if resp != nil && resp.IsError() {
 					actual = resp.Error()
 				} else {
-					t.Fatalf("expected error")
+					t.Fatal("expected error")
 				}
 
 				if tc.expectedErrCode != 0 {
@@ -931,7 +931,7 @@ func TestAliasLookAhead(t *testing.T) {
 				} else if resp != nil && resp.IsError() {
 					actual = resp.Error()
 				} else {
-					t.Fatalf("expected error")
+					t.Fatal("expected error")
 				}
 
 				if tc.wantErr.Error() != actual.Error() {

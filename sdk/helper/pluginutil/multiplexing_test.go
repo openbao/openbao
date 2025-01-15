@@ -120,7 +120,7 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 			resp, err := GetMultiplexIDFromContext(test.ctx)
 
 			if test.expectedErr != nil && test.expectedErr.Error() != "" && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			} else if !reflect.DeepEqual(err, test.expectedErr) {
 				t.Fatalf("Actual error: %#v\nExpected error: %#v", err, test.expectedErr)
 			}

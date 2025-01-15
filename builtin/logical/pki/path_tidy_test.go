@@ -639,11 +639,11 @@ func TestCertStorageMetrics(t *testing.T) {
 	mostRecentInterval := stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
 	}
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 	}
 
 	// Write the auto-tidy config.
@@ -680,11 +680,11 @@ func TestCertStorageMetrics(t *testing.T) {
 	mostRecentInterval = stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
 	}
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 	}
 
 	// But since certificate counting is on, the metrics should exist on tidyStatus endpoint:
@@ -696,14 +696,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok := tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("1") {
 		t.Fatalf("Only created one certificate, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok := tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("0") {
 		t.Fatalf("Have not yet revoked a certificate, but got a revoked cert store count of %v", revokedCertCount)
@@ -752,7 +752,7 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	for _, warning := range revokeResp.Warnings {
 		if strings.Contains(warning, "already expired; refusing to add to CRL") {
-			t.Skipf("Skipping test as we missed the revocation window of our leaf cert")
+			t.Skip("Skipping test as we missed the revocation window of our leaf cert")
 		}
 	}
 
@@ -767,14 +767,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("2") {
 		t.Fatalf("Created root and leaf certificate, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("1") {
 		t.Fatalf("Revoked one certificate, but got a revoked cert store count of %v\n:%v", revokedCertCount, tidyStatus)
@@ -823,14 +823,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("1") {
 		t.Fatalf("Created root and leaf certificate, deleted leaf, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("0") {
 		t.Fatalf("Revoked certificate has been tidied, but got a revoked cert store count of %v", revokedCertCount)
@@ -1139,7 +1139,7 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	require.NoError(t, err, "failed listing orders")
 
 	if ordersRaw == nil {
-		t.Logf("skipping backdating orders as there are none")
+		t.Log("skipping backdating orders as there are none")
 		return
 	}
 
@@ -1308,7 +1308,7 @@ func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]i
 	for {
 		select {
 		case <-timeoutChan:
-			t.Fatalf("expected manual tidy to run before timeout")
+			t.Fatal("expected manual tidy to run before timeout")
 		default:
 			time.Sleep(50 * time.Millisecond)
 

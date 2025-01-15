@@ -87,7 +87,7 @@ func TestCache_Purge(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out == nil {
-		t.Fatalf("should have key")
+		t.Fatal("should have key")
 	}
 
 	// Clear the cache
@@ -99,7 +99,7 @@ func TestCache_Purge(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out != nil {
-		t.Fatalf("should not have key")
+		t.Fatal("should not have key")
 	}
 }
 
@@ -128,7 +128,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(context.Background(), ent.Key)
@@ -142,7 +142,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out != nil {
-			t.Fatalf("should not have key")
+			t.Fatal("should not have key")
 		}
 
 		// Put through the cache and try again
@@ -157,14 +157,14 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 		out, err = cache.Get(context.Background(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(context.Background(), ent.Key)
@@ -178,7 +178,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out != nil {
-			t.Fatalf("should not have key")
+			t.Fatal("should not have key")
 		}
 	}
 
@@ -198,7 +198,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(context.Background(), ent.Key)
@@ -212,7 +212,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		// Put through the cache and try again
@@ -227,14 +227,14 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 		out, err = cache.Get(context.Background(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		err = inm.Delete(context.Background(), ent.Key)
@@ -248,7 +248,7 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		// Put through the cache
@@ -263,14 +263,14 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 		out, err = cache.Get(context.Background(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("should have key")
+			t.Fatal("should have key")
 		}
 
 		// Delete via cache
@@ -285,14 +285,14 @@ func TestCache_Disable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out != nil {
-			t.Fatalf("should not have key")
+			t.Fatal("should not have key")
 		}
 		out, err = cache.Get(context.Background(), "foo")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 		if out != nil {
-			t.Fatalf("should not have key")
+			t.Fatal("should not have key")
 		}
 	}
 

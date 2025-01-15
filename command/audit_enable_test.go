@@ -117,7 +117,7 @@ func TestAuditEnableCommand_Run(t *testing.T) {
 
 		auditInfo, ok := audits["audit_enable_integration/"]
 		if !ok {
-			t.Fatalf("expected audit to exist")
+			t.Fatal("expected audit to exist")
 		}
 		if exp := "file"; auditInfo.Type != exp {
 			t.Errorf("expected %q to be %q", auditInfo.Type, exp)

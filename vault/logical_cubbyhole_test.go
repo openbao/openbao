@@ -243,7 +243,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp != nil {
-		t.Fatalf("err: was able to read from other user's cubbyhole")
+		t.Fatal("err: was able to read from other user's cubbyhole")
 	}
 
 	req = logical.TestRequest(t, logical.ReadOperation, "bar")
@@ -254,7 +254,7 @@ func TestCubbyholeIsolation(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp != nil {
-		t.Fatalf("err: was able to read from other user's cubbyhole")
+		t.Fatal("err: was able to read from other user's cubbyhole")
 	}
 }
 

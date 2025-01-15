@@ -50,7 +50,7 @@ func TestInteg_PolicyMFADUO(t *testing.T) {
 
 	err = mfaGeneratePolicyDUOTest(client)
 	if err != nil {
-		t.Fatalf("DUO verification failed")
+		t.Fatal("DUO verification failed")
 	}
 }
 

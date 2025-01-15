@@ -435,7 +435,7 @@ func TestLoginMFA_ListAllMFAConfigsGlobally(t *testing.T) {
 	}
 
 	if len(resp.Data["keys"].([]interface{})) != len(methodIDs) {
-		t.Fatalf("global list request did not return all MFA method IDs")
+		t.Fatal("global list request did not return all MFA method IDs")
 	}
 	if len(resp.Data["key_info"].(map[string]interface{})) != len(methodIDs) {
 		t.Fatal("global list request did not return all MFA method configurations")

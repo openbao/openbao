@@ -139,7 +139,7 @@ func TestSecretsEnableCommand_Run(t *testing.T) {
 
 		mountInfo, ok := mounts["mount_integration/"]
 		if !ok {
-			t.Fatalf("expected mount to exist")
+			t.Fatal("expected mount to exist")
 		}
 		if exp := "pki"; mountInfo.Type != exp {
 			t.Errorf("expected %q to be %q", mountInfo.Type, exp)

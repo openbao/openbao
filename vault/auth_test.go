@@ -29,7 +29,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		return &NoopBackend{
 			BackendType: logical.TypeCredential,
@@ -77,40 +77,40 @@ func TestAuthMountMetrics(t *testing.T) {
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
 	if !ok || numEntriesMetric.Value != 2 {
-		t.Fatalf("mount metrics for num entries do not match true values")
+		t.Fatal("mount metrics for num entries do not match true values")
 	}
 	if len(numEntriesMetric.Key) != 3 ||
 		numEntriesMetric.Key[0] != "core" ||
 		numEntriesMetric.Key[1] != "mount_table" ||
 		numEntriesMetric.Key[2] != "num_entries" {
-		t.Fatalf("mount metrics for num entries have wrong key")
+		t.Fatal("mount metrics for num entries have wrong key")
 	}
 	if len(numEntriesMetric.Labels) != 2 ||
 		numEntriesMetric.Labels[0].Name != "type" ||
 		numEntriesMetric.Labels[0].Value != "auth" ||
 		numEntriesMetric.Labels[1].Name != "local" ||
 		numEntriesMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for num entries have wrong labels")
+		t.Fatal("mount metrics for num entries have wrong labels")
 	}
 	mountSizeKeyName := "core.mount_table.size.type|auth||local|false||"
 	loadMetric, ok = mountMetrics.Load(mountSizeKeyName)
 	sizeMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	if !ok {
-		t.Fatalf("mount metrics for size do not match exist")
+		t.Fatal("mount metrics for size do not match exist")
 	}
 	if len(sizeMetric.Key) != 3 ||
 		sizeMetric.Key[0] != "core" ||
 		sizeMetric.Key[1] != "mount_table" ||
 		sizeMetric.Key[2] != "size" {
-		t.Fatalf("mount metrics for size have wrong key")
+		t.Fatal("mount metrics for size have wrong key")
 	}
 	if len(sizeMetric.Labels) != 2 ||
 		sizeMetric.Labels[0].Name != "type" ||
 		sizeMetric.Labels[0].Value != "auth" ||
 		sizeMetric.Labels[1].Name != "local" ||
 		sizeMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for size have wrong labels")
+		t.Fatal("mount metrics for size have wrong labels")
 	}
 }
 
@@ -137,7 +137,7 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -223,7 +223,7 @@ func TestCore_EnableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -291,7 +291,7 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -432,10 +432,10 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 	switch err2.(type) {
 	case logical.HTTPCodedError:
 		if err2.(logical.HTTPCodedError).Code() != 409 {
-			t.Fatalf("invalid code given")
+			t.Fatal("invalid code given")
 		}
 	default:
-		t.Fatalf("expected a different error type")
+		t.Fatal("expected a different error type")
 	}
 }
 
@@ -482,7 +482,7 @@ func TestCore_DisableCredential(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
 	if match != "" {
-		t.Fatalf("backend present")
+		t.Fatal("backend present")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -503,7 +503,7 @@ func TestCore_DisableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -745,7 +745,7 @@ func TestCore_RemountCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 

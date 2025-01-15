@@ -771,7 +771,7 @@ func TestLogical_AuditPort(t *testing.T) {
 		resp, err := c.Logical().Write("kv/data/foo", writeData)
 		if err != nil {
 			if strings.Contains(err.Error(), "Upgrading from non-versioned to versioned data") {
-				t.Logf("Retrying fetch KV data due to upgrade error")
+				t.Log("Retrying fetch KV data due to upgrade error")
 				time.Sleep(100 * time.Millisecond)
 				numFailures += 1
 				return err

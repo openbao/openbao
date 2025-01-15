@@ -53,7 +53,7 @@ func TestParsePolicy(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual, err := ParsePolicy(test.rawConfig)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -321,7 +321,7 @@ func TestParser_ParsePolicy(t *testing.T) {
 
 			actual, err := parser.ParsePolicy(test.rawConfig)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -415,7 +415,7 @@ func TestParseRules(t *testing.T) {
 
 			actualRules, err := parseRules(registry, test.rawRules)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -487,7 +487,7 @@ func TestGetMapSlice(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actualSlice, err := getMapSlice(test.input, test.key)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -547,7 +547,7 @@ func TestGetRuleInfo(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actualInfo, err := getRuleInfo(test.rule)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

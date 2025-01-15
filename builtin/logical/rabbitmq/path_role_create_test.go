@@ -76,12 +76,12 @@ func TestBackend_RoleCreate_DefaultUsernameTemplate(t *testing.T) {
 		t.Fatal("missing creds response")
 	}
 	if resp.Data == nil {
-		t.Fatalf("missing creds data")
+		t.Fatal("missing creds data")
 	}
 
 	username, exists := resp.Data["username"]
 	if !exists {
-		t.Fatalf("missing username in response")
+		t.Fatal("missing username in response")
 	}
 
 	require.Regexp(t, `^token-[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$`, username)
@@ -152,12 +152,12 @@ func TestBackend_RoleCreate_CustomUsernameTemplate(t *testing.T) {
 		t.Fatal("missing creds response")
 	}
 	if resp.Data == nil {
-		t.Fatalf("missing creds data")
+		t.Fatal("missing creds data")
 	}
 
 	username, exists := resp.Data["username"]
 	if !exists {
-		t.Fatalf("missing username in response")
+		t.Fatal("missing username in response")
 	}
 
 	require.Regexp(t, `^foo-token$`, username)

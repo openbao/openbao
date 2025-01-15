@@ -1041,7 +1041,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 		t.Logf("Node: %v Raft AutoPilotState: %v\n", previousActiveNode.NodeID, state)
 
 		if !state.Healthy {
-			return fmt.Errorf("raft auto pilot state is not healthy")
+			return errors.New("raft auto pilot state is not healthy")
 		}
 
 		// Make sure that we have at least one node that can take over prior to sealing the current active node.

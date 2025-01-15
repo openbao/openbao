@@ -5,6 +5,7 @@ package kubeauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -280,7 +281,7 @@ func (b *kubeAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical
 	if role == nil && req.Operation == logical.CreateOperation {
 		role = &roleStorageEntry{}
 	} else if role == nil {
-		return nil, fmt.Errorf("role entry not found during update operation")
+		return nil, errors.New("role entry not found during update operation")
 	}
 
 	if err := role.ParseTokenFields(req, data); err != nil {

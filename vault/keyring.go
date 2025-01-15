@@ -6,6 +6,7 @@ package vault
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -144,7 +145,7 @@ func (k *Keyring) AddKey(key *Key) (*Keyring, error) {
 func (k *Keyring) RemoveKey(term uint32) (*Keyring, error) {
 	// Ensure this is not the active key
 	if term == k.activeTerm {
-		return nil, fmt.Errorf("cannot remove active key")
+		return nil, errors.New("cannot remove active key")
 	}
 
 	// Check if this term does not exist

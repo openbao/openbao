@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -143,7 +144,7 @@ func (dc *ExecDevCluster) setupExecDevCluster(ctx context.Context, opts *ExecDev
 	case opts.NumCores == 1:
 		args = append(args, "-dev-tls")
 	default:
-		return fmt.Errorf("NumCores=1 and NumCores=3 are the only supported options right now")
+		return errors.New("NumCores=1 and NumCores=3 are the only supported options right now")
 	}
 	if opts.BaseListenAddress != "" {
 		args = append(args, "-dev-listen-address", opts.BaseListenAddress)

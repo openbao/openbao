@@ -14,6 +14,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -1457,7 +1458,7 @@ func TestAcmeValidationError(t *testing.T) {
 		}
 
 		if challenge.Error == nil {
-			return fmt.Errorf("no error set in challenge yet")
+			return errors.New("no error set in challenge yet")
 		}
 
 		acmeError, ok := challenge.Error.(*acme.Error)

@@ -4,6 +4,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -44,7 +45,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		}
 
 		if nonInteractive {
-			return nil, fmt.Errorf("'token' not supplied and refusing to pull from stdin")
+			return nil, errors.New("'token' not supplied and refusing to pull from stdin")
 		}
 
 		// No arguments given, read the token from user input
@@ -55,7 +56,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 
 		if err != nil {
 			if err == password.ErrInterrupted {
-				return nil, fmt.Errorf("user interrupted")
+				return nil, errors.New("user interrupted")
 			}
 
 			return nil, fmt.Errorf("An error occurred attempting to "+
@@ -96,7 +97,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		return nil, fmt.Errorf("error looking up token: %w", err)
 	}
 	if secret == nil {
-		return nil, fmt.Errorf("empty response from lookup-self")
+		return nil, errors.New("empty response from lookup-self")
 	}
 
 	// Return an auth struct that "looks" like the response from an auth method.

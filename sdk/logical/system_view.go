@@ -6,7 +6,6 @@ package logical
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"time"
 
@@ -228,16 +227,16 @@ func (d StaticSystemView) VaultVersion(_ context.Context) (string, error) {
 func (d StaticSystemView) GeneratePasswordFromPolicy(ctx context.Context, policyName string) (password string, err error) {
 	select {
 	case <-ctx.Done():
-		return "", fmt.Errorf("context timed out")
+		return "", errors.New("context timed out")
 	default:
 	}
 
 	if d.PasswordPolicies == nil {
-		return "", fmt.Errorf("password policy not found")
+		return "", errors.New("password policy not found")
 	}
 	policy, exists := d.PasswordPolicies[policyName]
 	if !exists {
-		return "", fmt.Errorf("password policy not found")
+		return "", errors.New("password policy not found")
 	}
 	return policy()
 }

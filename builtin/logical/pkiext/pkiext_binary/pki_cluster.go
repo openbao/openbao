@@ -5,6 +5,7 @@ package pkiext_binary
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -145,7 +146,7 @@ func (vpc *VaultPkiCluster) AddNameToHostFiles(hostname, ip string) error {
 
 func (vpc *VaultPkiCluster) AddDNSRecord(hostname, recordType, ip string) error {
 	if vpc.Dns == nil {
-		return fmt.Errorf("no DNS server was provisioned on this cluster group; unable to provision custom records")
+		return errors.New("no DNS server was provisioned on this cluster group; unable to provision custom records")
 	}
 
 	vpc.Dns.AddRecord(hostname, recordType, ip)
@@ -155,7 +156,7 @@ func (vpc *VaultPkiCluster) AddDNSRecord(hostname, recordType, ip string) error 
 
 func (vpc *VaultPkiCluster) RemoveDNSRecord(domain string, record string, value string) error {
 	if vpc.Dns == nil {
-		return fmt.Errorf("no DNS server was provisioned on this cluster group; unable to remove specific record")
+		return errors.New("no DNS server was provisioned on this cluster group; unable to remove specific record")
 	}
 
 	vpc.Dns.RemoveRecord(domain, record, value)
@@ -164,7 +165,7 @@ func (vpc *VaultPkiCluster) RemoveDNSRecord(domain string, record string, value 
 
 func (vpc *VaultPkiCluster) RemoveDNSRecordsOfTypeForDomain(domain string, record string) error {
 	if vpc.Dns == nil {
-		return fmt.Errorf("no DNS server was provisioned on this cluster group; unable to remove all records of type")
+		return errors.New("no DNS server was provisioned on this cluster group; unable to remove all records of type")
 	}
 
 	vpc.Dns.RemoveRecordsOfTypeForDomain(domain, record)
@@ -173,7 +174,7 @@ func (vpc *VaultPkiCluster) RemoveDNSRecordsOfTypeForDomain(domain string, recor
 
 func (vpc *VaultPkiCluster) RemoveDNSRecordsForDomain(domain string) error {
 	if vpc.Dns == nil {
-		return fmt.Errorf("no DNS server was provisioned on this cluster group; unable to remove records for domain")
+		return errors.New("no DNS server was provisioned on this cluster group; unable to remove records for domain")
 	}
 
 	vpc.Dns.RemoveRecordsForDomain(domain)
@@ -182,7 +183,7 @@ func (vpc *VaultPkiCluster) RemoveDNSRecordsForDomain(domain string) error {
 
 func (vpc *VaultPkiCluster) RemoveAllDNSRecords() error {
 	if vpc.Dns == nil {
-		return fmt.Errorf("no DNS server was provisioned on this cluster group; unable to remove all records")
+		return errors.New("no DNS server was provisioned on this cluster group; unable to remove all records")
 	}
 
 	vpc.Dns.RemoveAllRecords()
@@ -249,7 +250,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, fmt.Errorf("failed generating root internal: %w", err)
 	}
 	if resp == nil || len(resp.Data) == 0 {
-		return nil, fmt.Errorf("failed generating root internal: nil or empty response but no error")
+		return nil, errors.New("failed generating root internal: nil or empty response but no error")
 	}
 
 	resp, err = pki.GenerateIntermediateInternal(map[string]interface{}{
@@ -265,7 +266,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, fmt.Errorf("failed generating int csr: %w", err)
 	}
 	if resp == nil || len(resp.Data) == 0 {
-		return nil, fmt.Errorf("failed generating int csr: nil or empty response but no error")
+		return nil, errors.New("failed generating int csr: nil or empty response but no error")
 	}
 
 	resp, err = pki.SignIntermediary("default", resp.Data["csr"], map[string]interface{}{
@@ -280,7 +281,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, fmt.Errorf("failed signing int csr: %w", err)
 	}
 	if resp == nil || len(resp.Data) == 0 {
-		return nil, fmt.Errorf("failed signing int csr: nil or empty response but no error")
+		return nil, errors.New("failed signing int csr: nil or empty response but no error")
 	}
 	intCert := resp.Data["certificate"].(string)
 
@@ -289,7 +290,7 @@ func (vpc *VaultPkiCluster) CreateAcmeMount(mountName string) (*VaultPkiMount, e
 		return nil, fmt.Errorf("failed importing signed cert: %w", err)
 	}
 	if resp == nil || len(resp.Data) == 0 {
-		return nil, fmt.Errorf("failed importing signed cert: nil or empty response but no error")
+		return nil, errors.New("failed importing signed cert: nil or empty response but no error")
 	}
 
 	err = pki.UpdateDefaultIssuer(resp.Data["imported_issuers"].([]interface{})[0].(string), nil)

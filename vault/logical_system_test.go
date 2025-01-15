@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -5110,10 +5111,10 @@ type walkFunc func(*logical.StorageEntry) error
 // - vault/helper/testhelpers/teststorage
 func WalkLogicalStorage(ctx context.Context, store logical.Storage, walker walkFunc) (err error) {
 	if store == nil {
-		return fmt.Errorf("no storage provided")
+		return errors.New("no storage provided")
 	}
 	if walker == nil {
-		return fmt.Errorf("no walk function provided")
+		return errors.New("no walk function provided")
 	}
 
 	keys, err := store.List(ctx, "")

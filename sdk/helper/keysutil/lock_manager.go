@@ -361,7 +361,7 @@ func (lm *LockManager) GetPolicy(ctx context.Context, req PolicyRequest, rand io
 		switch req.KeyType {
 		case KeyType_AES128_GCM96, KeyType_AES256_GCM96, KeyType_ChaCha20_Poly1305, KeyType_XChaCha20_Poly1305:
 			if req.Convergent && !req.Derived {
-				return nil, false, fmt.Errorf("convergent encryption requires derivation to be enabled")
+				return nil, false, errors.New("convergent encryption requires derivation to be enabled")
 			}
 
 		case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
@@ -532,12 +532,12 @@ func (lm *LockManager) DeletePolicy(ctx context.Context, storage logical.Storage
 			return err
 		}
 		if p == nil {
-			return fmt.Errorf("could not delete key; not found")
+			return errors.New("could not delete key; not found")
 		}
 	}
 
 	if !p.DeletionAllowed {
-		return fmt.Errorf("deletion is not allowed for this key")
+		return errors.New("deletion is not allowed for this key")
 	}
 
 	atomic.StoreUint32(&p.deleted, 1)

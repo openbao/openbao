@@ -333,7 +333,7 @@ func NewRaftBackend(conf map[string]string, logger log.Logger) (physical.Backend
 	if path == "" {
 		pathFromConfig, ok := conf["path"]
 		if !ok {
-			return nil, fmt.Errorf("'path' must be set")
+			return nil, errors.New("'path' must be set")
 		}
 		path = pathFromConfig
 	}
@@ -1698,7 +1698,7 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 		if len(fsmar.EntrySlice) == 1 {
 			fsmEntry := fsmar.EntrySlice[0]
 			if !fsmEntry.IsTxError() {
-				return fmt.Errorf("unknown FSMEntry response type")
+				return errors.New("unknown FSMEntry response type")
 			}
 
 			return fsmEntry.AsTxError()

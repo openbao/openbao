@@ -322,7 +322,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 	}
 
 	if fi.IsDir() {
-		return nil, fmt.Errorf("location is a directory, not a file")
+		return nil, errors.New("location is a directory, not a file")
 	}
 
 	d, err := os.ReadFile(path)
@@ -342,7 +342,7 @@ func (c *OperatorMigrateCommand) loadMigratorConfig(path string) (*migratorConfi
 
 	list, ok := obj.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+		return nil, errors.New("error parsing: file doesn't contain a root object")
 	}
 
 	// Look for storage_* stanzas

@@ -1264,7 +1264,7 @@ func TestAliasLookAheadProjectedToken(t *testing.T) {
 }
 
 func Test_kubeAuthBackend_getAliasName(t *testing.T) {
-	expectedErr := fmt.Errorf("service account namespace and name must be set")
+	expectedErr := errors.New("service account namespace and name must be set")
 	issuerDefault := "kubernetes/serviceaccount"
 	issuerProjected := "https://kubernetes.default.svc.cluster.local"
 

@@ -6,6 +6,7 @@ package postgresql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -101,7 +102,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	// Get the PostgreSQL credentials to perform read/write operations.
 	connURL := connectionURL(conf)
 	if connURL == "" {
-		return nil, fmt.Errorf("missing connection_url")
+		return nil, errors.New("missing connection_url")
 	}
 
 	unquoted_table, ok := conf["table"]
@@ -176,7 +177,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	}
 
 	if !upsertAvailable && conf["ha_enabled"] == "true" {
-		return nil, fmt.Errorf("ha_enabled=true in config but PG version doesn't support HA, must be at least 9.5")
+		return nil, errors.New("ha_enabled=true in config but PG version doesn't support HA, must be at least 9.5")
 	}
 
 	// Setup our put strategy based on the presence or absence of a native
@@ -588,7 +589,7 @@ func (l *PostgreSQLLock) writeItem() (bool, error) {
 		return false, err
 	}
 	if sqlResult == nil {
-		return false, fmt.Errorf("empty SQL response received")
+		return false, errors.New("empty SQL response received")
 	}
 
 	ar, err := sqlResult.RowsAffected()

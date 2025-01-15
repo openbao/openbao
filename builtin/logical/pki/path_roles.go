@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -1622,17 +1623,17 @@ func checkCNValidations(validations []string) ([]string, error) {
 		switch strings.ToLower(validation) {
 		case "disabled":
 			if haveDisabled {
-				return nil, fmt.Errorf("cn_validations value incorrect: `disabled` specified multiple times")
+				return nil, errors.New("cn_validations value incorrect: `disabled` specified multiple times")
 			}
 			haveDisabled = true
 		case "email":
 			if haveEmail {
-				return nil, fmt.Errorf("cn_validations value incorrect: `email` specified multiple times")
+				return nil, errors.New("cn_validations value incorrect: `email` specified multiple times")
 			}
 			haveEmail = true
 		case "hostname":
 			if haveHostname {
-				return nil, fmt.Errorf("cn_validations value incorrect: `hostname` specified multiple times")
+				return nil, errors.New("cn_validations value incorrect: `hostname` specified multiple times")
 			}
 			haveHostname = true
 		default:
@@ -1643,11 +1644,11 @@ func checkCNValidations(validations []string) ([]string, error) {
 	}
 
 	if !haveDisabled && !haveEmail && !haveHostname {
-		return nil, fmt.Errorf("cn_validations value incorrect: must specify a value (`email` and/or `hostname`) or `disabled`")
+		return nil, errors.New("cn_validations value incorrect: must specify a value (`email` and/or `hostname`) or `disabled`")
 	}
 
 	if haveDisabled && (haveEmail || haveHostname) {
-		return nil, fmt.Errorf("cn_validations value incorrect: cannot specify `disabled` along with `email` or `hostname`")
+		return nil, errors.New("cn_validations value incorrect: cannot specify `disabled` along with `email` or `hostname`")
 	}
 
 	return result, nil

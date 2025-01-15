@@ -5,6 +5,7 @@ package openldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"time"
@@ -44,7 +45,7 @@ func retrieveDynamicRole(ctx context.Context, s logical.Storage, roleName string
 
 func storeDynamicRole(ctx context.Context, s logical.Storage, role *dynamicRole) error {
 	if role.Name == "" {
-		return fmt.Errorf("missing role name")
+		return errors.New("missing role name")
 	}
 	entry, err := logical.StorageEntryJSON(path.Join(dynamicRolePath, role.Name), role)
 	if err != nil {
@@ -60,7 +61,7 @@ func storeDynamicRole(ctx context.Context, s logical.Storage, role *dynamicRole)
 
 func deleteDynamicRole(ctx context.Context, s logical.Storage, roleName string) error {
 	if roleName == "" {
-		return fmt.Errorf("missing role name")
+		return errors.New("missing role name")
 	}
 	return s.Delete(ctx, path.Join(dynamicRolePath, roleName))
 }

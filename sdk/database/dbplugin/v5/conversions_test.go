@@ -4,6 +4,7 @@
 package dbplugin
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -426,7 +427,7 @@ func TestAssertAllFieldsSet(t *testing.T) {
 
 func assertAllFieldsSet(name string, val interface{}) error {
 	if val == nil {
-		return fmt.Errorf("value is nil")
+		return errors.New("value is nil")
 	}
 
 	rVal := reflect.ValueOf(val)

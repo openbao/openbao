@@ -5,6 +5,7 @@ package integrationtest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -247,7 +248,7 @@ func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOpti
 			return false, err
 		}
 		if roles == nil {
-			return false, fmt.Errorf("roles list response was nil")
+			return false, errors.New("roles list response was nil")
 		}
 		return len(roles.Items) > 0, nil
 	case "clusterrole":
@@ -256,7 +257,7 @@ func checkRoleExists(k8sClient kubernetes.Interface, listOptions metav1.ListOpti
 			return false, err
 		}
 		if roles == nil {
-			return false, fmt.Errorf("cluster roles list response was nil")
+			return false, errors.New("cluster roles list response was nil")
 		}
 		return len(roles.Items) > 0, nil
 	}
@@ -271,7 +272,7 @@ func checkRoleBindingExists(k8sClient kubernetes.Interface, listOptions metav1.L
 			return false, err
 		}
 		if clusterBindings == nil {
-			return false, fmt.Errorf("cluster role bindings list response was nil")
+			return false, errors.New("cluster role bindings list response was nil")
 		}
 		return len(clusterBindings.Items) > 0, nil
 	} else {
@@ -280,7 +281,7 @@ func checkRoleBindingExists(k8sClient kubernetes.Interface, listOptions metav1.L
 			return false, err
 		}
 		if bindings == nil {
-			return false, fmt.Errorf("role bindings list response was nil")
+			return false, errors.New("role bindings list response was nil")
 		}
 		return len(bindings.Items) > 0, nil
 	}
@@ -292,7 +293,7 @@ func checkServiceAccountExists(k8sClient kubernetes.Interface, listOptions metav
 		return false, err
 	}
 	if acct == nil {
-		return false, fmt.Errorf("service account list response was nil")
+		return false, errors.New("service account list response was nil")
 	}
 	return len(acct.Items) > 0, nil
 }

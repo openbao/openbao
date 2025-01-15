@@ -6,6 +6,7 @@ package pki
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -261,7 +262,7 @@ func getBasePathFromClusterConfig(sc *storageContext) (*url.URL, error) {
 	}
 
 	if cfg.Path == "" {
-		return nil, fmt.Errorf("ACME feature requires local cluster 'path' field configuration to be set")
+		return nil, errors.New("ACME feature requires local cluster 'path' field configuration to be set")
 	}
 
 	baseUrl, err := url.Parse(cfg.Path)

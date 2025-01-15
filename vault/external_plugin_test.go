@@ -402,7 +402,7 @@ func TestCore_EnableExternalPlugin_ShadowBuiltin(t *testing.T) {
 		}
 		status := resp.Data["deprecation_status"]
 		if checkExists && status == nil {
-			return fmt.Errorf("expected deprecation status but found none")
+			return errors.New("expected deprecation status but found none")
 		} else if !checkExists && status != nil {
 			return fmt.Errorf("expected nil deprecation status but found %q", status)
 		}

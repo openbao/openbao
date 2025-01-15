@@ -8,6 +8,7 @@ import (
 	"crypto/elliptic"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -310,7 +311,7 @@ func (b *backend) pathPolicyWrite(ctx context.Context, req *logical.Request, d *
 		return nil, err
 	}
 	if p == nil {
-		return nil, fmt.Errorf("error generating key: returned policy was nil")
+		return nil, errors.New("error generating key: returned policy was nil")
 	}
 	if !b.System().CachingDisabled() {
 		p.Lock(false)

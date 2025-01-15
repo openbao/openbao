@@ -4,6 +4,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -208,7 +209,7 @@ func TestBadConstructorArguments(t *testing.T) {
 		st, err := NewTemplate(
 			Template("{{foo}}"),
 			Function("foo", func() (string, error) {
-				return "", fmt.Errorf("an error!")
+				return "", errors.New("an error!")
 			}),
 		)
 		require.NoError(t, err)

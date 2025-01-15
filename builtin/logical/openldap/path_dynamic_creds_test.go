@@ -5,7 +5,7 @@ package openldap
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"path"
 	"reflect"
 	"strconv"
@@ -26,7 +26,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 
 		storage := new(mockStorage)
 		storage.On("Get", mock.Anything, path.Join(dynamicRolePath, roleName)).
-			Return((*logical.StorageEntry)(nil), fmt.Errorf("test error")).Once()
+			Return((*logical.StorageEntry)(nil), errors.New("test error")).Once()
 		defer storage.AssertExpectations(t)
 
 		client := new(mockLDAPClient)
@@ -65,7 +65,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 			Return(roleStorageResp, nil).
 			Once()
 		storage.On("Get", mock.Anything, configPath).
-			Return((*logical.StorageEntry)(nil), fmt.Errorf("test error")).
+			Return((*logical.StorageEntry)(nil), errors.New("test error")).
 			Once()
 		defer storage.AssertExpectations(t)
 
@@ -155,7 +155,7 @@ func TestDynamicCredsRead_failures(t *testing.T) {
 
 		client := new(mockLDAPClient)
 		client.On("Execute", mock.Anything, mock.Anything, mock.Anything).
-			Return(fmt.Errorf("test error")).
+			Return(errors.New("test error")).
 			Once()
 
 		b := Backend(client)
@@ -394,7 +394,7 @@ func TestSecretCredsRenew(t *testing.T) {
 				},
 			},
 			storageResp:  nil,
-			storageErr:   fmt.Errorf("test error"),
+			storageErr:   errors.New("test error"),
 			expectedResp: nil,
 			expectErr:    true,
 		},
@@ -504,7 +504,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 		storage := new(mockStorage)
 
 		storage.On("Get", mock.Anything, configPath).
-			Return((*logical.StorageEntry)(nil), fmt.Errorf("test error")).
+			Return((*logical.StorageEntry)(nil), errors.New("test error")).
 			Once()
 		defer storage.AssertExpectations(t)
 
@@ -636,7 +636,7 @@ func TestSecretCredsRevoke(t *testing.T) {
 
 		client := new(mockLDAPClient)
 		client.On("Execute", mock.Anything, mock.Anything, mock.Anything).
-			Return(fmt.Errorf("test error")).
+			Return(errors.New("test error")).
 			Once()
 		defer client.AssertExpectations(t)
 

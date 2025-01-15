@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -113,7 +114,7 @@ func doesMountContainOnlyRootIssuers(e *Executor) (int, int, error) {
 func isAcmeEnabled(fetcher *PathFetch) (bool, error) {
 	isEnabledRaw, ok := fetcher.Secret.Data["enabled"]
 	if !ok {
-		return false, fmt.Errorf("enabled configuration field missing from acme config")
+		return false, errors.New("enabled configuration field missing from acme config")
 	}
 
 	parseBool, err := parseutil.ParseBool(isEnabledRaw)
@@ -127,7 +128,7 @@ func isAcmeEnabled(fetcher *PathFetch) (bool, error) {
 func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	localPathRaw, ok := h.ClusterConfigFetcher.Secret.Data["path"]
 	if !ok {
-		return fmt.Errorf("'path' field missing from config")
+		return errors.New("'path' field missing from config")
 	}
 
 	localPath, err := parseutil.ParseString(localPathRaw)
@@ -136,7 +137,7 @@ func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	}
 
 	if localPath == "" {
-		return fmt.Errorf("'path' field not configured within /{{mount}}/config/cluster")
+		return errors.New("'path' field not configured within /{{mount}}/config/cluster")
 	}
 
 	parsedUrl, err := url.Parse(localPath)
@@ -145,7 +146,7 @@ func verifyLocalPathUrl(h *EnableAcmeIssuance) error {
 	}
 
 	if parsedUrl.Scheme != "https" {
-		return fmt.Errorf("the configured 'path' field in /{{mount}}/config/cluster was not using an https scheme")
+		return errors.New("the configured 'path' field in /{{mount}}/config/cluster was not using an https scheme")
 	}
 
 	// Avoid issues with SSL certificates for this check, we just want to validate that we would

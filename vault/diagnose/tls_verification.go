@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -150,14 +151,14 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 	for len(rst) != 0 {
 		block, rest := pem.Decode(rst)
 		if block == nil {
-			return leafCerts, interCerts, rootCerts, fmt.Errorf("Could not decode certificate in certificate file.")
+			return leafCerts, interCerts, rootCerts, errors.New("Could not decode certificate in certificate file.")
 		}
 		certBlocks = append(certBlocks, block)
 		rst = rest
 	}
 
 	if len(certBlocks) == 0 {
-		return leafCerts, interCerts, rootCerts, fmt.Errorf("No certificates found in certificate file.")
+		return leafCerts, interCerts, rootCerts, errors.New("No certificates found in certificate file.")
 	}
 
 	for _, certBlock := range certBlocks {
@@ -186,7 +187,7 @@ func ParseTLSInformation(certFilePath string) ([]*x509.Certificate, []*x509.Cert
 func TLSErrorChecks(leafCerts, interCerts, rootCerts []*x509.Certificate) error {
 	// Make sure there's the proper number of leafCerts. If there are multiple, it's a bad pem file.
 	if len(leafCerts) == 0 {
-		return fmt.Errorf("No leaf certificates detected.")
+		return errors.New("No leaf certificates detected.")
 	}
 
 	// First, create root pools and interPools from the root and inter certs lists
@@ -316,7 +317,7 @@ func TLSCAFileCheck(CAFilePath string) ([]string, error) {
 	}
 
 	if len(rootCerts) == 0 {
-		return nil, fmt.Errorf("No root certificate found in CA certificate file.")
+		return nil, errors.New("No root certificate found in CA certificate file.")
 	}
 	if len(rootCerts) > 1 {
 		warningsSlc = append(warningsSlc, fmt.Sprintf("Found multiple root certificates in CA Certificate file instead of just one."))

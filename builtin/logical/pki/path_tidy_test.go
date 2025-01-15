@@ -1241,7 +1241,7 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 			return fmt.Errorf("failed reading path: %s: %w", tidyStatusPath, err)
 		}
 		if state, ok := statusResp.Data["state"]; !ok || state == "Running" {
-			return fmt.Errorf("tidy status state is still running")
+			return errors.New("tidy status state is still running")
 		}
 
 		if errorOccurred, ok := statusResp.Data["error"]; !ok || !(errorOccurred == nil || errorOccurred == "") {

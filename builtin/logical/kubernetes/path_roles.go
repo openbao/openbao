@@ -5,6 +5,7 @@ package kubesecrets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -350,7 +351,7 @@ func onlyOneSet(vars ...string) bool {
 
 func getRole(ctx context.Context, s logical.Storage, name string) (*roleEntry, error) {
 	if name == "" {
-		return nil, fmt.Errorf("missing role name")
+		return nil, errors.New("missing role name")
 	}
 
 	entry, err := s.Get(ctx, rolesPath+name)

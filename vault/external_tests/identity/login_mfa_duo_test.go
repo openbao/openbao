@@ -5,6 +5,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -65,7 +66,7 @@ path "secret/foo" {
 
 	auths, err := client.Sys().ListAuth()
 	if err != nil {
-		return fmt.Errorf("failed to list auth mount")
+		return errors.New("failed to list auth mount")
 	}
 	mountAccessor := auths["userpass/"].Accessor
 
@@ -139,7 +140,7 @@ path "secret/foo" {
 		defer resp.Body.Close()
 	}
 	if resp != nil && resp.StatusCode == 403 {
-		return fmt.Errorf("failed to read the secret")
+		return errors.New("failed to read the secret")
 	}
 	if err != nil {
 		return fmt.Errorf("failed to read the secret: %v", err)
@@ -185,7 +186,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 
 	auths, err := client.Sys().ListAuth()
 	if err != nil {
-		return fmt.Errorf("failed to list auth mount")
+		return errors.New("failed to list auth mount")
 	}
 	mountAccessor := auths["userpass/"].Accessor
 
@@ -199,7 +200,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 		"name": "test",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create an entity")
+		return errors.New("failed to create an entity")
 	}
 	entityID := secret.Data["id"].(string)
 
@@ -209,7 +210,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 		"mount_accessor": mountAccessor,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create an entity alias")
+		return errors.New("failed to create an entity alias")
 	}
 
 	var methodID string
@@ -230,7 +231,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 
 		methodID = resp.Data["method_id"].(string)
 		if methodID == "" {
-			return fmt.Errorf("method ID is empty")
+			return errors.New("method ID is empty")
 		}
 
 		// creating MFAEnforcementConfig
@@ -253,24 +254,24 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 	}
 
 	if secret.Auth == nil || secret.Auth.MFARequirement == nil {
-		return fmt.Errorf("two phase login returned nil MFARequirement")
+		return errors.New("two phase login returned nil MFARequirement")
 	}
 	if secret.Auth.MFARequirement.MFARequestID == "" {
-		return fmt.Errorf("MFARequirement contains empty MFARequestID")
+		return errors.New("MFARequirement contains empty MFARequestID")
 	}
 	if secret.Auth.MFARequirement.MFAConstraints == nil || len(secret.Auth.MFARequirement.MFAConstraints) == 0 {
-		return fmt.Errorf("MFAConstraints is nil or empty")
+		return errors.New("MFAConstraints is nil or empty")
 	}
 	mfaConstraints, ok := secret.Auth.MFARequirement.MFAConstraints["randomName"]
 	if !ok {
-		return fmt.Errorf("failed to find the mfaConstrains")
+		return errors.New("failed to find the mfaConstrains")
 	}
 	if mfaConstraints.Any == nil || len(mfaConstraints.Any) == 0 {
-		return fmt.Errorf("")
+		return errors.New("")
 	}
 	for _, mfaAny := range mfaConstraints.Any {
 		if mfaAny.ID != methodID || mfaAny.Type != "duo" {
-			return fmt.Errorf("invalid mfa constraints")
+			return errors.New("invalid mfa constraints")
 		}
 	}
 
@@ -285,7 +286,7 @@ func mfaGenerateLoginDUOTest(client *api.Client) error {
 	}
 
 	if secret.Auth.ClientToken == "" {
-		return fmt.Errorf("MFA was not enforced")
+		return errors.New("MFA was not enforced")
 	}
 
 	return nil

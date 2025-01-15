@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -314,7 +315,7 @@ func TestDefaulRetryPolicy(t *testing.T) {
 		expectErr error
 	}{
 		"retry on error": {
-			err:    fmt.Errorf("error"),
+			err:    errors.New("error"),
 			expect: true,
 		},
 		"don't retry on 200": {

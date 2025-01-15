@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -602,7 +603,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 
 		// If there is no entity tied to a valid alias, something is wrong
 		if entity == nil {
-			return nil, fmt.Errorf("alias not associated to an entity")
+			return nil, errors.New("alias not associated to an entity")
 		}
 
 		aliases := []*identity.Alias{

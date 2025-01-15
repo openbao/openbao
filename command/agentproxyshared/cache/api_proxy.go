@@ -5,7 +5,7 @@ package cache
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	gohttp "net/http"
 	"sync"
 
@@ -39,7 +39,7 @@ type APIProxyConfig struct {
 
 func NewAPIProxy(config *APIProxyConfig) (Proxier, error) {
 	if config.Client == nil {
-		return nil, fmt.Errorf("nil API client")
+		return nil, errors.New("nil API client")
 	}
 	return &APIProxy{
 		client:                  config.Client,

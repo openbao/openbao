@@ -551,7 +551,7 @@ func (p *Policy) handleArchiving(ctx context.Context, storage logical.Storage) e
 	case p.LatestVersion < 1:
 		return fmt.Errorf("latest version of %d is less than 1", p.LatestVersion)
 	case !keysContainsMinimum && p.ArchiveVersion != p.LatestVersion:
-		return fmt.Errorf("need to move keys from archive but archive version not up-to-date")
+		return errors.New("need to move keys from archive but archive version not up-to-date")
 	case p.ArchiveVersion > p.LatestVersion:
 		return fmt.Errorf("archive version of %d is greater than the latest version %d",
 			p.ArchiveVersion, p.LatestVersion)
@@ -1042,7 +1042,7 @@ func (p *Policy) HMACKey(version int) ([]byte, error) {
 
 	switch {
 	case version < 0:
-		return nil, fmt.Errorf("key version does not exist (cannot be negative)")
+		return nil, errors.New("key version does not exist (cannot be negative)")
 	case version > p.LatestVersion:
 		return nil, fmt.Errorf("key version does not exist; latest key version is %d", p.LatestVersion)
 	}
@@ -1055,7 +1055,7 @@ func (p *Policy) HMACKey(version int) ([]byte, error) {
 		return keyEntry.Key, nil
 	}
 	if keyEntry.HMACKey == nil {
-		return nil, fmt.Errorf("no HMAC key exists for that key version")
+		return nil, errors.New("no HMAC key exists for that key version")
 	}
 	return keyEntry.HMACKey, nil
 }
@@ -1472,7 +1472,7 @@ func (p *Policy) ImportPublicOrPrivate(ctx context.Context, storage logical.Stor
 	}
 
 	if p.Type == KeyType_ED25519 && p.Derived && !isPrivateKey {
-		return fmt.Errorf("unable to import only public key for derived Ed25519 key: imported key should not be an Ed25519 key pair but is instead an HKDF key")
+		return errors.New("unable to import only public key for derived Ed25519 key: imported key should not be an Ed25519 key pair but is instead an HKDF key")
 	}
 
 	if (p.Type == KeyType_AES128_GCM96 && len(key) != 16) ||
@@ -1517,7 +1517,7 @@ func (p *Policy) ImportPublicOrPrivate(ctx context.Context, storage logical.Stor
 		} else {
 			pemBlock, _ := pem.Decode(key)
 			if pemBlock == nil {
-				return fmt.Errorf("error parsing public key: not in PEM format")
+				return errors.New("error parsing public key: not in PEM format")
 			}
 
 			parsedKey, err = x509.ParsePKIXPublicKey(pemBlock.Bytes)
@@ -1659,7 +1659,7 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
 		if pemBytes == nil || len(pemBytes) == 0 {
-			return fmt.Errorf("error PEM-encoding public key")
+			return errors.New("error PEM-encoding public key")
 		}
 		entry.FormattedPublicKey = string(pemBytes)
 
@@ -1737,11 +1737,11 @@ func (p *Policy) Backup(ctx context.Context, storage logical.Storage) (out strin
 	}
 
 	if !p.Exportable {
-		return "", fmt.Errorf("exporting is disallowed on the policy")
+		return "", errors.New("exporting is disallowed on the policy")
 	}
 
 	if !p.AllowPlaintextBackup {
-		return "", fmt.Errorf("plaintext backup is disallowed on the policy")
+		return "", errors.New("plaintext backup is disallowed on the policy")
 	}
 
 	priorBackupInfo := p.BackupInfo
@@ -2166,19 +2166,19 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 		ecdsaKey := parsedPrivateKey.(*ecdsa.PrivateKey)
 		pemBlock, _ := pem.Decode([]byte(keyEntry.FormattedPublicKey))
 		if pemBlock == nil {
-			return fmt.Errorf("failed to parse key entry public key: invalid PEM blob")
+			return errors.New("failed to parse key entry public key: invalid PEM blob")
 		}
 		publicKey, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
 		if err != nil || publicKey == nil {
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
 		if !publicKey.(*ecdsa.PublicKey).Equal(&ecdsaKey.PublicKey) {
-			return fmt.Errorf("cannot import key, key pair does not match")
+			return errors.New("cannot import key, key pair does not match")
 		}
 	case *rsa.PrivateKey:
 		rsaKey := parsedPrivateKey.(*rsa.PrivateKey)
 		if !rsaKey.PublicKey.Equal(keyEntry.RSAPublicKey) {
-			return fmt.Errorf("cannot import key, key pair does not match")
+			return errors.New("cannot import key, key pair does not match")
 		}
 	case ed25519.PrivateKey:
 		ed25519Key := parsedPrivateKey.(ed25519.PrivateKey)
@@ -2187,7 +2187,7 @@ func (p *Policy) ImportPrivateKeyForVersion(ctx context.Context, storage logical
 			return fmt.Errorf("failed to parse key entry public key: %v", err)
 		}
 		if !ed25519.PublicKey(publicKey).Equal(ed25519Key.Public()) {
-			return fmt.Errorf("cannot import key, key pair does not match")
+			return errors.New("cannot import key, key pair does not match")
 		}
 	}
 
@@ -2254,7 +2254,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 		}
 		pemBytes := pem.EncodeToMemory(pemBlock)
 		if pemBytes == nil || len(pemBytes) == 0 {
-			return fmt.Errorf("error PEM-encoding public key")
+			return errors.New("error PEM-encoding public key")
 		}
 		ke.FormattedPublicKey = string(pemBytes)
 	case ed25519.PrivateKey, ed25519.PublicKey:
@@ -2336,7 +2336,7 @@ func (ke *KeyEntry) WrapKey(targetKey interface{}, targetKeyType KeyType, hash h
 	// Presently this method implements a CKM_RSA_AES_KEY_WRAP-compatible
 	// wrapping interface and only works on RSA keyEntries as a result.
 	if ke.RSAPublicKey == nil && ke.RSAKey == nil {
-		return "", fmt.Errorf("unsupported key type in use; must be a rsa key")
+		return "", errors.New("unsupported key type in use; must be a rsa key")
 	}
 	if !ke.IsPrivateKeyMissing() {
 		ke.RSAPublicKey = &ke.RSAKey.PublicKey

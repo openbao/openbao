@@ -4,7 +4,7 @@
 package random
 
 import (
-	"fmt"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -23,7 +23,7 @@ func newTestRule(data map[string]interface{}) (rule Rule, err error) {
 	tr := &testCharsetRule{}
 	err = mapstructure.Decode(data, tr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode test rule")
+		return nil, errors.New("unable to decode test rule")
 	}
 	return *tr, nil
 }

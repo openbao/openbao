@@ -231,14 +231,14 @@ func (c *aiaConfigEntry) toURLEntries(sc *storageContext, issuer issuerID) (*cer
 			templated := make([]string, len(*source))
 			for index, uri := range *source {
 				if strings.Contains(uri, "{{cluster_path}}") && len(cfg.Path) == 0 {
-					return nil, fmt.Errorf("unable to template AIA URLs as we lack local cluster address information (path)")
+					return nil, errors.New("unable to template AIA URLs as we lack local cluster address information (path)")
 				}
 				if strings.Contains(uri, "{{cluster_aia_path}}") && len(cfg.AIAPath) == 0 {
-					return nil, fmt.Errorf("unable to template AIA URLs as we lack local cluster address information (aia_path)")
+					return nil, errors.New("unable to template AIA URLs as we lack local cluster address information (aia_path)")
 				}
 				if strings.Contains(uri, "{{issuer_id}}") && len(issuer) == 0 {
 					// Elide issuer AIA info as we lack an issuer_id.
-					return nil, fmt.Errorf("unable to template AIA URLs as we lack an issuer_id for this operation")
+					return nil, errors.New("unable to template AIA URLs as we lack an issuer_id for this operation")
 				}
 
 				uri = strings.ReplaceAll(uri, "{{cluster_path}}", cfg.Path)
@@ -618,7 +618,7 @@ func (sc *storageContext) resolveKeyReference(reference string) (keyID, error) {
 			return keyID("config-error"), err
 		}
 		if len(config.DefaultKeyId) == 0 {
-			return KeyRefNotFound, fmt.Errorf("no default key currently configured")
+			return KeyRefNotFound, errors.New("no default key currently configured")
 		}
 
 		return config.DefaultKeyId, nil
@@ -1125,7 +1125,7 @@ func (sc *storageContext) resolveIssuerReference(reference string) (issuerID, er
 			return issuerID("config-error"), err
 		}
 		if len(config.DefaultIssuerId) == 0 {
-			return IssuerRefNotFound, fmt.Errorf("no default issuer currently configured")
+			return IssuerRefNotFound, errors.New("no default issuer currently configured")
 		}
 
 		return config.DefaultIssuerId, nil

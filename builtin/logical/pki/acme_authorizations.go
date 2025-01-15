@@ -4,7 +4,7 @@
 package pki
 
 import (
-	"fmt"
+	"errors"
 	"time"
 )
 
@@ -44,11 +44,11 @@ func (ai *ACMEIdentifier) MaybeParseWildcard() (bool, string, error) {
 		// > of a single asterisk character followed by a single full stop
 		// > character ("*.") followed by a domain name as defined for use in the
 		// > Subject Alternate Name Extension by [RFC5280].
-		return true, "", fmt.Errorf("wildcard must be entire left-most label")
+		return true, "", errors.New("wildcard must be entire left-most label")
 	}
 
 	if reducedName == "" {
-		return true, "", fmt.Errorf("wildcard must not be entire domain name; need at least two domain labels")
+		return true, "", errors.New("wildcard must not be entire domain name; need at least two domain labels")
 	}
 
 	// Parsing was indeed successful, so update our reduced name.

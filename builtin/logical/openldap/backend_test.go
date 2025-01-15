@@ -6,7 +6,6 @@ package openldap
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/go-ldap/ldif"
@@ -86,7 +85,7 @@ func (f *fakeLdapClient) UpdateDNPassword(_ *client.Config, _ string, _ string) 
 }
 
 func (f *fakeLdapClient) Execute(_ *client.Config, _ []*ldif.Entry, _ bool) (err error) {
-	return fmt.Errorf("not implemented")
+	return errors.New("not implemented")
 }
 
 const validCertificate = `

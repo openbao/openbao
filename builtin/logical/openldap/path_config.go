@@ -173,7 +173,7 @@ func (b *backend) configCreateUpdateOperation(ctx context.Context, req *logical.
 
 	if passPolicy != "" && hasPassLen {
 		// If both a password policy and a password length are set, we can't figure out what to do
-		return nil, fmt.Errorf("cannot set both 'password_policy' and 'length'")
+		return nil, errors.New("cannot set both 'password_policy' and 'length'")
 	}
 
 	staticSkip := fieldData.Get("skip_static_role_import_rotation").(bool)

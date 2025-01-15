@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -110,7 +111,7 @@ func (a *AuditBroker) LogRequest(ctx context.Context, in *logical.LogInput, head
 	defer func() {
 		if r := recover(); r != nil {
 			a.logger.Error("panic during logging", "request_path", in.Request.Path, "error", r, "stacktrace", string(debug.Stack()))
-			retErr = multierror.Append(retErr, fmt.Errorf("panic generating audit log"))
+			retErr = multierror.Append(retErr, errors.New("panic generating audit log"))
 		}
 
 		ret = retErr.ErrorOrNil()
@@ -154,7 +155,7 @@ func (a *AuditBroker) LogRequest(ctx context.Context, in *logical.LogInput, head
 		}
 	}
 	if !anyLogged && len(a.backends) > 0 {
-		retErr = multierror.Append(retErr, fmt.Errorf("no audit backend succeeded in logging the request"))
+		retErr = multierror.Append(retErr, errors.New("no audit backend succeeded in logging the request"))
 	}
 
 	return retErr.ErrorOrNil()
@@ -181,7 +182,7 @@ func (a *AuditBroker) LogResponse(ctx context.Context, in *logical.LogInput, hea
 	defer func() {
 		if r := recover(); r != nil {
 			a.logger.Error("panic during logging", "request_path", in.Request.Path, "error", r, "stacktrace", string(debug.Stack()))
-			retErr = multierror.Append(retErr, fmt.Errorf("panic generating audit log"))
+			retErr = multierror.Append(retErr, errors.New("panic generating audit log"))
 		}
 
 		ret = retErr.ErrorOrNil()
@@ -219,7 +220,7 @@ func (a *AuditBroker) LogResponse(ctx context.Context, in *logical.LogInput, hea
 		}
 	}
 	if !anyLogged && len(a.backends) > 0 {
-		retErr = multierror.Append(retErr, fmt.Errorf("no audit backend succeeded in logging the response"))
+		retErr = multierror.Append(retErr, errors.New("no audit backend succeeded in logging the response"))
 	}
 
 	return retErr.ErrorOrNil()

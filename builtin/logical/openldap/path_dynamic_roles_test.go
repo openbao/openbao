@@ -7,7 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"path"
 	"reflect"
 	"testing"
@@ -186,7 +186,7 @@ func TestDynamicRoleCreateUpdate(t *testing.T) {
 				"deletion_ldif": ldifDeleteTemplate,
 			}),
 
-			putErr:   fmt.Errorf("test error"),
+			putErr:   errors.New("test error"),
 			putTimes: 1,
 
 			expectErr: true,
@@ -867,7 +867,7 @@ func TestDynamicRoleRead(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:  nil,
-			storageErr:   fmt.Errorf("test error"),
+			storageErr:   errors.New("test error"),
 			expectedResp: nil,
 			expectErr:    true,
 		},
@@ -952,7 +952,7 @@ func TestDynamicRoleList(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:  nil,
-			storageErr:   fmt.Errorf("test error"),
+			storageErr:   errors.New("test error"),
 			expectedResp: nil,
 			expectErr:    true,
 		},
@@ -1023,7 +1023,7 @@ func TestDynamicRoleExistenceCheck(t *testing.T) {
 	tests := map[string]testCase{
 		"storage failure": {
 			storageResp:    nil,
-			storageErr:     fmt.Errorf("test error"),
+			storageErr:     errors.New("test error"),
 			expectedExists: false,
 			expectErr:      true,
 		},

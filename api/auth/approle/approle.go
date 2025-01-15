@@ -5,6 +5,7 @@ package approle
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -58,11 +59,11 @@ const (
 // Supported options: WithMountPath, WithWrappingToken
 func NewAppRoleAuth(roleID string, secretID *SecretID, opts ...LoginOption) (*AppRoleAuth, error) {
 	if roleID == "" {
-		return nil, fmt.Errorf("no role ID provided for login")
+		return nil, errors.New("no role ID provided for login")
 	}
 
 	if secretID == nil {
-		return nil, fmt.Errorf("no secret ID provided for login")
+		return nil, errors.New("no secret ID provided for login")
 	}
 
 	err := secretID.validate()
@@ -184,24 +185,24 @@ func (a *AppRoleAuth) readSecretIDFromFile() (string, error) {
 
 func (secretID *SecretID) validate() error {
 	if secretID.FromFile == "" && secretID.FromEnv == "" && secretID.FromString == "" {
-		return fmt.Errorf("secret ID for AppRole must be provided with a source file, environment variable, or plaintext string")
+		return errors.New("secret ID for AppRole must be provided with a source file, environment variable, or plaintext string")
 	}
 
 	if secretID.FromFile != "" {
 		if secretID.FromEnv != "" || secretID.FromString != "" {
-			return fmt.Errorf("only one source for the secret ID should be specified")
+			return errors.New("only one source for the secret ID should be specified")
 		}
 	}
 
 	if secretID.FromEnv != "" {
 		if secretID.FromFile != "" || secretID.FromString != "" {
-			return fmt.Errorf("only one source for the secret ID should be specified")
+			return errors.New("only one source for the secret ID should be specified")
 		}
 	}
 
 	if secretID.FromString != "" {
 		if secretID.FromFile != "" || secretID.FromEnv != "" {
-			return fmt.Errorf("only one source for the secret ID should be specified")
+			return errors.New("only one source for the secret ID should be specified")
 		}
 	}
 	return nil

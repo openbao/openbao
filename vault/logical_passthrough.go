@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -95,7 +96,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	}
 
 	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
+		return nil, errors.New("configuration passed into backend is nil")
 	}
 	b.Backend.Setup(ctx, conf)
 

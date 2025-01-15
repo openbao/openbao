@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -362,7 +363,7 @@ func (b *backend) pathHMACVerify(ctx context.Context, req *logical.Request, d *f
 		}
 		if key == nil {
 			response[i].Error = ""
-			response[i].err = fmt.Errorf("HMAC key value could not be computed")
+			response[i].err = errors.New("HMAC key value could not be computed")
 			continue
 		}
 

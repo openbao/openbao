@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -155,7 +156,7 @@ func ParseSSHHelperConfig(contents string) (*SSHHelperConfig, error) {
 
 	list, ok := root.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("error parsing config: file doesn't contain a root object")
+		return nil, errors.New("error parsing config: file doesn't contain a root object")
 	}
 
 	valid := []string{

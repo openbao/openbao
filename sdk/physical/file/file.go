@@ -50,7 +50,7 @@ type fileEntry struct {
 func NewFileBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
 	path, ok := conf["path"]
 	if !ok {
-		return nil, fmt.Errorf("'path' must be set")
+		return nil, errors.New("'path' must be set")
 	}
 
 	return &FileBackend{

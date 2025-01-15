@@ -126,7 +126,7 @@ func (cg *CertificateGetter) GetCertificate(clientHello *tls.ClientHelloInfo) (*
 	defer cg.RUnlock()
 
 	if cg.cert == nil {
-		return nil, fmt.Errorf("nil certificate")
+		return nil, errors.New("nil certificate")
 	}
 
 	return cg.cert, nil

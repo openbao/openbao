@@ -4,7 +4,7 @@
 package kubesecrets
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,12 +42,12 @@ func Test_makeRules(t *testing.T) {
 		"bad YAML": {
 			rules:    badYAMLRules,
 			expected: nil,
-			wantErr:  fmt.Errorf("error converting YAML to JSON: yaml: line 3: found character that cannot start any token"),
+			wantErr:  errors.New("error converting YAML to JSON: yaml: line 3: found character that cannot start any token"),
 		},
 		"bad JSON": {
 			rules:    badJSONRules,
 			expected: nil,
-			wantErr:  fmt.Errorf("error converting YAML to JSON: yaml: line 4: did not find expected ',' or '}'"),
+			wantErr:  errors.New("error converting YAML to JSON: yaml: line 4: did not find expected ',' or '}'"),
 		},
 	}
 	for name, tc := range testCases {

@@ -6,6 +6,7 @@ package command
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -911,7 +912,7 @@ func (c *ProxyCommand) handleMetrics() http.Handler {
 			w.WriteHeader(status)
 			w.Write(v)
 		default:
-			logical.RespondError(w, http.StatusInternalServerError, fmt.Errorf("wrong response returned"))
+			logical.RespondError(w, http.StatusInternalServerError, errors.New("wrong response returned"))
 		}
 	})
 }
@@ -938,7 +939,7 @@ func (c *ProxyCommand) handleQuit(enabled bool) http.Handler {
 // newLogger creates a logger based on parsed config field on the Proxy Command struct.
 func (c *ProxyCommand) newLogger() (log.InterceptLogger, error) {
 	if c.config == nil {
-		return nil, fmt.Errorf("cannot create logger, no config")
+		return nil, errors.New("cannot create logger, no config")
 	}
 
 	var errors error

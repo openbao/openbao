@@ -5,6 +5,7 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -40,7 +41,7 @@ const (
 // Supported options: WithMountPath, WithServiceAccountTokenPath, WithServiceAccountTokenEnv, WithServiceAccountToken
 func NewKubernetesAuth(roleName string, opts ...LoginOption) (*KubernetesAuth, error) {
 	if roleName == "" {
-		return nil, fmt.Errorf("no role name was provided")
+		return nil, errors.New("no role name was provided")
 	}
 
 	a := &KubernetesAuth{
@@ -120,7 +121,7 @@ func WithServiceAccountTokenEnv(envVar string) LoginOption {
 	return func(a *KubernetesAuth) error {
 		token := os.Getenv(envVar)
 		if token == "" {
-			return fmt.Errorf("service account token was specified with an environment variable with an empty value")
+			return errors.New("service account token was specified with an environment variable with an empty value")
 		}
 		a.serviceAccountToken = token
 		return nil

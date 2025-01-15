@@ -193,14 +193,14 @@ func AttemptUnsealCore(c *vault.TestCluster, core *vault.TestClusterCore) error 
 			}
 		}
 		if statusResp == nil {
-			return fmt.Errorf("nil status response during unseal")
+			return errors.New("nil status response during unseal")
 		}
 		if !statusResp.Sealed {
 			break
 		}
 	}
 	if core.Sealed() {
-		return fmt.Errorf("core is still sealed")
+		return errors.New("core is still sealed")
 	}
 	return nil
 }
@@ -601,7 +601,7 @@ func AwaitLeader(t testing.T, cluster *vault.TestCluster) (int, error) {
 		time.Sleep(time.Second)
 	}
 
-	return 0, fmt.Errorf("timeout waiting leader")
+	return 0, errors.New("timeout waiting leader")
 }
 
 func GenerateDebugLogs(t testing.T, client *api.Client) chan struct{} {
@@ -770,7 +770,7 @@ func SetNonRootToken(client *api.Client) error {
 	}
 
 	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
-		return fmt.Errorf("missing token auth data")
+		return errors.New("missing token auth data")
 	}
 
 	client.SetToken(secret.Auth.ClientToken)

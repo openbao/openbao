@@ -518,7 +518,7 @@ func (i *IdentityStore) upsertEntityInTxn(ctx context.Context, txn *memdb.Txn, e
 
 func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.Alias, entity *identity.Entity, updateDb bool) (*identity.Alias, error) {
 	if !lAlias.Local {
-		return nil, fmt.Errorf("alias is not local")
+		return nil, errors.New("alias is not local")
 	}
 
 	mountValidationResp := i.router.ValidateMountByAccessor(lAlias.MountAccessor)
@@ -685,11 +685,11 @@ func (i *IdentityStore) upsertEntity(ctx context.Context, entity *identity.Entit
 
 func (i *IdentityStore) MemDBUpsertAliasInTxn(txn *memdb.Txn, alias *identity.Alias, groupAlias bool) error {
 	if txn == nil {
-		return fmt.Errorf("nil txn")
+		return errors.New("nil txn")
 	}
 
 	if alias == nil {
-		return fmt.Errorf("alias is nil")
+		return errors.New("alias is nil")
 	}
 
 	if alias.NamespaceID == "" {
@@ -722,11 +722,11 @@ func (i *IdentityStore) MemDBUpsertAliasInTxn(txn *memdb.Txn, alias *identity.Al
 
 func (i *IdentityStore) MemDBAliasByIDInTxn(txn *memdb.Txn, aliasID string, clone bool, groupAlias bool) (*identity.Alias, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	tableName := entityAliasesTable
@@ -745,7 +745,7 @@ func (i *IdentityStore) MemDBAliasByIDInTxn(txn *memdb.Txn, aliasID string, clon
 
 	alias, ok := aliasRaw.(*identity.Alias)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched alias")
+		return nil, errors.New("failed to declare the type of fetched alias")
 	}
 
 	if clone {
@@ -757,7 +757,7 @@ func (i *IdentityStore) MemDBAliasByIDInTxn(txn *memdb.Txn, aliasID string, clon
 
 func (i *IdentityStore) MemDBAliasByID(aliasID string, clone bool, groupAlias bool) (*identity.Alias, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	txn := i.db.Txn(false)
@@ -767,11 +767,11 @@ func (i *IdentityStore) MemDBAliasByID(aliasID string, clone bool, groupAlias bo
 
 func (i *IdentityStore) MemDBAliasByFactors(mountAccessor, aliasName string, clone bool, groupAlias bool) (*identity.Alias, error) {
 	if aliasName == "" {
-		return nil, fmt.Errorf("missing alias name")
+		return nil, errors.New("missing alias name")
 	}
 
 	if mountAccessor == "" {
-		return nil, fmt.Errorf("missing mount accessor")
+		return nil, errors.New("missing mount accessor")
 	}
 
 	txn := i.db.Txn(false)
@@ -781,15 +781,15 @@ func (i *IdentityStore) MemDBAliasByFactors(mountAccessor, aliasName string, clo
 
 func (i *IdentityStore) MemDBAliasByFactorsInTxn(txn *memdb.Txn, mountAccessor, aliasName string, clone bool, groupAlias bool) (*identity.Alias, error) {
 	if txn == nil {
-		return nil, fmt.Errorf("nil txn")
+		return nil, errors.New("nil txn")
 	}
 
 	if aliasName == "" {
-		return nil, fmt.Errorf("missing alias name")
+		return nil, errors.New("missing alias name")
 	}
 
 	if mountAccessor == "" {
-		return nil, fmt.Errorf("missing mount accessor")
+		return nil, errors.New("missing mount accessor")
 	}
 
 	tableName := entityAliasesTable
@@ -808,7 +808,7 @@ func (i *IdentityStore) MemDBAliasByFactorsInTxn(txn *memdb.Txn, mountAccessor, 
 
 	alias, ok := aliasRaw.(*identity.Alias)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched alias")
+		return nil, errors.New("failed to declare the type of fetched alias")
 	}
 
 	if clone {
@@ -824,7 +824,7 @@ func (i *IdentityStore) MemDBDeleteAliasByIDInTxn(txn *memdb.Txn, aliasID string
 	}
 
 	if txn == nil {
-		return fmt.Errorf("txn is nil")
+		return errors.New("txn is nil")
 	}
 
 	alias, err := i.MemDBAliasByIDInTxn(txn, aliasID, false, groupAlias)
@@ -869,11 +869,11 @@ func (i *IdentityStore) MemDBAliases(ws memdb.WatchSet, groupAlias bool) (memdb.
 
 func (i *IdentityStore) MemDBUpsertEntityInTxn(txn *memdb.Txn, entity *identity.Entity) error {
 	if txn == nil {
-		return fmt.Errorf("nil txn")
+		return errors.New("nil txn")
 	}
 
 	if entity == nil {
-		return fmt.Errorf("entity is nil")
+		return errors.New("entity is nil")
 	}
 
 	if entity.NamespaceID == "" {
@@ -901,11 +901,11 @@ func (i *IdentityStore) MemDBUpsertEntityInTxn(txn *memdb.Txn, entity *identity.
 
 func (i *IdentityStore) MemDBEntityByIDInTxn(txn *memdb.Txn, entityID string, clone bool) (*identity.Entity, error) {
 	if entityID == "" {
-		return nil, fmt.Errorf("missing entity id")
+		return nil, errors.New("missing entity id")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	entityRaw, err := txn.First(entitiesTable, "id", entityID)
@@ -919,7 +919,7 @@ func (i *IdentityStore) MemDBEntityByIDInTxn(txn *memdb.Txn, entityID string, cl
 
 	entity, ok := entityRaw.(*identity.Entity)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched entity")
+		return nil, errors.New("failed to declare the type of fetched entity")
 	}
 
 	if clone {
@@ -931,7 +931,7 @@ func (i *IdentityStore) MemDBEntityByIDInTxn(txn *memdb.Txn, entityID string, cl
 
 func (i *IdentityStore) MemDBEntityByID(entityID string, clone bool) (*identity.Entity, error) {
 	if entityID == "" {
-		return nil, fmt.Errorf("missing entity id")
+		return nil, errors.New("missing entity id")
 	}
 
 	txn := i.db.Txn(false)
@@ -941,7 +941,7 @@ func (i *IdentityStore) MemDBEntityByID(entityID string, clone bool) (*identity.
 
 func (i *IdentityStore) MemDBEntityByName(ctx context.Context, entityName string, clone bool) (*identity.Entity, error) {
 	if entityName == "" {
-		return nil, fmt.Errorf("missing entity name")
+		return nil, errors.New("missing entity name")
 	}
 
 	txn := i.db.Txn(false)
@@ -951,7 +951,7 @@ func (i *IdentityStore) MemDBEntityByName(ctx context.Context, entityName string
 
 func (i *IdentityStore) MemDBEntityByNameInTxn(ctx context.Context, txn *memdb.Txn, entityName string, clone bool) (*identity.Entity, error) {
 	if entityName == "" {
-		return nil, fmt.Errorf("missing entity name")
+		return nil, errors.New("missing entity name")
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -970,7 +970,7 @@ func (i *IdentityStore) MemDBEntityByNameInTxn(ctx context.Context, txn *memdb.T
 
 	entity, ok := entityRaw.(*identity.Entity)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched entity")
+		return nil, errors.New("failed to declare the type of fetched entity")
 	}
 
 	if clone {
@@ -982,11 +982,11 @@ func (i *IdentityStore) MemDBEntityByNameInTxn(ctx context.Context, txn *memdb.T
 
 func (i *IdentityStore) MemDBLocalAliasesByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Alias, error) {
 	if txn == nil {
-		return nil, fmt.Errorf("nil txn")
+		return nil, errors.New("nil txn")
 	}
 
 	if bucketKey == "" {
-		return nil, fmt.Errorf("empty bucket key")
+		return nil, errors.New("empty bucket key")
 	}
 
 	iter, err := txn.Get(entityAliasesTable, "local_bucket_key", bucketKey)
@@ -1007,11 +1007,11 @@ func (i *IdentityStore) MemDBLocalAliasesByBucketKeyInTxn(txn *memdb.Txn, bucket
 
 func (i *IdentityStore) MemDBEntitiesByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Entity, error) {
 	if txn == nil {
-		return nil, fmt.Errorf("nil txn")
+		return nil, errors.New("nil txn")
 	}
 
 	if bucketKey == "" {
-		return nil, fmt.Errorf("empty bucket key")
+		return nil, errors.New("empty bucket key")
 	}
 
 	entitiesIter, err := txn.Get(entitiesTable, "bucket_key", bucketKey)
@@ -1033,7 +1033,7 @@ func (i *IdentityStore) MemDBEntitiesByBucketKeyInTxn(txn *memdb.Txn, bucketKey 
 
 func (i *IdentityStore) MemDBEntityByMergedEntityID(mergedEntityID string, clone bool) (*identity.Entity, error) {
 	if mergedEntityID == "" {
-		return nil, fmt.Errorf("missing merged entity id")
+		return nil, errors.New("missing merged entity id")
 	}
 
 	txn := i.db.Txn(false)
@@ -1049,7 +1049,7 @@ func (i *IdentityStore) MemDBEntityByMergedEntityID(mergedEntityID string, clone
 
 	entity, ok := entityRaw.(*identity.Entity)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched entity")
+		return nil, errors.New("failed to declare the type of fetched entity")
 	}
 
 	if clone {
@@ -1061,11 +1061,11 @@ func (i *IdentityStore) MemDBEntityByMergedEntityID(mergedEntityID string, clone
 
 func (i *IdentityStore) MemDBEntityByAliasIDInTxn(txn *memdb.Txn, aliasID string, clone bool) (*identity.Entity, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	alias, err := i.MemDBAliasByIDInTxn(txn, aliasID, false, false)
@@ -1082,7 +1082,7 @@ func (i *IdentityStore) MemDBEntityByAliasIDInTxn(txn *memdb.Txn, aliasID string
 
 func (i *IdentityStore) MemDBEntityByAliasID(aliasID string, clone bool) (*identity.Entity, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	txn := i.db.Txn(false)
@@ -1114,7 +1114,7 @@ func (i *IdentityStore) MemDBDeleteEntityByIDInTxn(txn *memdb.Txn, entityID stri
 	}
 
 	if txn == nil {
-		return fmt.Errorf("txn is nil")
+		return errors.New("txn is nil")
 	}
 
 	entity, err := i.MemDBEntityByIDInTxn(txn, entityID, false)
@@ -1138,12 +1138,12 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 	var err error
 
 	if alias == nil {
-		return fmt.Errorf("alias is nil")
+		return errors.New("alias is nil")
 	}
 
 	// Alias must always be tied to a canonical object
 	if alias.CanonicalID == "" {
-		return fmt.Errorf("missing canonical ID")
+		return errors.New("missing canonical ID")
 	}
 
 	// Alias must have a name
@@ -1161,7 +1161,7 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 	if alias.ID == "" {
 		alias.ID, err = uuid.GenerateUUID()
 		if err != nil {
-			return fmt.Errorf("failed to generate alias ID")
+			return errors.New("failed to generate alias ID")
 		}
 
 		alias.LocalBucketKey = i.localAliasPacker.BucketKey(alias.CanonicalID)
@@ -1198,14 +1198,14 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 	var err error
 
 	if entity == nil {
-		return fmt.Errorf("entity is nil")
+		return errors.New("entity is nil")
 	}
 
 	// Create an ID if there isn't one already
 	if entity.ID == "" {
 		entity.ID, err = uuid.GenerateUUID()
 		if err != nil {
-			return fmt.Errorf("failed to generate entity id")
+			return errors.New("failed to generate entity id")
 		}
 
 		// Set the storage bucket key in entity
@@ -1227,7 +1227,7 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 	if entity.Name == "" {
 		entity.Name, err = i.generateName(ctx, "entity")
 		if err != nil {
-			return fmt.Errorf("failed to generate entity name")
+			return errors.New("failed to generate entity name")
 		}
 	}
 
@@ -1258,14 +1258,14 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 	var err error
 
 	if group == nil {
-		return fmt.Errorf("group is nil")
+		return errors.New("group is nil")
 	}
 
 	// Create an ID if there isn't one already
 	if group.ID == "" {
 		group.ID, err = uuid.GenerateUUID()
 		if err != nil {
-			return fmt.Errorf("failed to generate group id")
+			return errors.New("failed to generate group id")
 		}
 
 		// Set the hash value of the storage bucket key in group
@@ -1291,7 +1291,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 	if group.Name == "" {
 		group.Name, err = i.generateName(ctx, "group")
 		if err != nil {
-			return fmt.Errorf("failed to generate group name")
+			return errors.New("failed to generate group name")
 		}
 	}
 
@@ -1470,11 +1470,11 @@ ALIAS:
 
 func (i *IdentityStore) deleteAliasesInEntityInTxn(txn *memdb.Txn, entity *identity.Entity, aliases []*identity.Alias) error {
 	if entity == nil {
-		return fmt.Errorf("entity is nil")
+		return errors.New("entity is nil")
 	}
 
 	if txn == nil {
-		return fmt.Errorf("txn is nil")
+		return errors.New("txn is nil")
 	}
 
 	var remainList []*identity.Alias
@@ -1526,10 +1526,10 @@ func validateMetadata(meta map[string]string) error {
 // validateMetaPair checks that the given key/value pair is in a valid format
 func validateMetaPair(key, value string) error {
 	if key == "" {
-		return fmt.Errorf("key cannot be blank")
+		return errors.New("key cannot be blank")
 	}
 	if !metaKeyFormatRegEx(key) {
-		return fmt.Errorf("key contains invalid characters")
+		return errors.New("key contains invalid characters")
 	}
 	if len(key) > metaKeyMaxLength {
 		return fmt.Errorf("key is too long (limit: %d characters)", metaKeyMaxLength)
@@ -1545,11 +1545,11 @@ func validateMetaPair(key, value string) error {
 
 func (i *IdentityStore) MemDBGroupByNameInTxn(ctx context.Context, txn *memdb.Txn, groupName string, clone bool) (*identity.Group, error) {
 	if groupName == "" {
-		return nil, fmt.Errorf("missing group name")
+		return nil, errors.New("missing group name")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -1568,7 +1568,7 @@ func (i *IdentityStore) MemDBGroupByNameInTxn(ctx context.Context, txn *memdb.Tx
 
 	group, ok := groupRaw.(*identity.Group)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched group")
+		return nil, errors.New("failed to declare the type of fetched group")
 	}
 
 	if clone {
@@ -1580,7 +1580,7 @@ func (i *IdentityStore) MemDBGroupByNameInTxn(ctx context.Context, txn *memdb.Tx
 
 func (i *IdentityStore) MemDBGroupByName(ctx context.Context, groupName string, clone bool) (*identity.Group, error) {
 	if groupName == "" {
-		return nil, fmt.Errorf("missing group name")
+		return nil, errors.New("missing group name")
 	}
 
 	txn := i.db.Txn(false)
@@ -1610,11 +1610,11 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 	var err error
 
 	if txn == nil {
-		return fmt.Errorf("txn is nil")
+		return errors.New("txn is nil")
 	}
 
 	if group == nil {
-		return fmt.Errorf("group is nil")
+		return errors.New("group is nil")
 	}
 
 	// Increment the modify index of the group
@@ -1673,11 +1673,11 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 
 func (i *IdentityStore) MemDBUpsertGroupInTxn(txn *memdb.Txn, group *identity.Group) error {
 	if txn == nil {
-		return fmt.Errorf("nil txn")
+		return errors.New("nil txn")
 	}
 
 	if group == nil {
-		return fmt.Errorf("group is nil")
+		return errors.New("group is nil")
 	}
 
 	if group.NamespaceID == "" {
@@ -1709,7 +1709,7 @@ func (i *IdentityStore) MemDBDeleteGroupByIDInTxn(txn *memdb.Txn, groupID string
 	}
 
 	if txn == nil {
-		return fmt.Errorf("txn is nil")
+		return errors.New("txn is nil")
 	}
 
 	group, err := i.MemDBGroupByIDInTxn(txn, groupID, false)
@@ -1731,11 +1731,11 @@ func (i *IdentityStore) MemDBDeleteGroupByIDInTxn(txn *memdb.Txn, groupID string
 
 func (i *IdentityStore) MemDBGroupByIDInTxn(txn *memdb.Txn, groupID string, clone bool) (*identity.Group, error) {
 	if groupID == "" {
-		return nil, fmt.Errorf("missing group ID")
+		return nil, errors.New("missing group ID")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	groupRaw, err := txn.First(groupsTable, "id", groupID)
@@ -1749,7 +1749,7 @@ func (i *IdentityStore) MemDBGroupByIDInTxn(txn *memdb.Txn, groupID string, clon
 
 	group, ok := groupRaw.(*identity.Group)
 	if !ok {
-		return nil, fmt.Errorf("failed to declare the type of fetched group")
+		return nil, errors.New("failed to declare the type of fetched group")
 	}
 
 	if clone {
@@ -1761,7 +1761,7 @@ func (i *IdentityStore) MemDBGroupByIDInTxn(txn *memdb.Txn, groupID string, clon
 
 func (i *IdentityStore) MemDBGroupByID(groupID string, clone bool) (*identity.Group, error) {
 	if groupID == "" {
-		return nil, fmt.Errorf("missing group ID")
+		return nil, errors.New("missing group ID")
 	}
 
 	txn := i.db.Txn(false)
@@ -1771,7 +1771,7 @@ func (i *IdentityStore) MemDBGroupByID(groupID string, clone bool) (*identity.Gr
 
 func (i *IdentityStore) MemDBGroupsByParentGroupIDInTxn(txn *memdb.Txn, memberGroupID string, clone bool) ([]*identity.Group, error) {
 	if memberGroupID == "" {
-		return nil, fmt.Errorf("missing member group ID")
+		return nil, errors.New("missing member group ID")
 	}
 
 	groupsIter, err := txn.Get(groupsTable, "parent_group_ids", memberGroupID)
@@ -1796,7 +1796,7 @@ func (i *IdentityStore) MemDBGroupsByParentGroupIDInTxn(txn *memdb.Txn, memberGr
 
 func (i *IdentityStore) MemDBGroupsByParentGroupID(memberGroupID string, clone bool) ([]*identity.Group, error) {
 	if memberGroupID == "" {
-		return nil, fmt.Errorf("missing member group ID")
+		return nil, errors.New("missing member group ID")
 	}
 
 	txn := i.db.Txn(false)
@@ -1813,7 +1813,7 @@ func (i *IdentityStore) MemDBGroupsByMemberEntityID(entityID string, clone bool,
 
 func (i *IdentityStore) MemDBGroupsByMemberEntityIDInTxn(txn *memdb.Txn, entityID string, clone bool, externalOnly bool) ([]*identity.Group, error) {
 	if entityID == "" {
-		return nil, fmt.Errorf("missing entity ID")
+		return nil, errors.New("missing entity ID")
 	}
 
 	groupsIter, err := txn.Get(groupsTable, "member_entity_ids", entityID)
@@ -1841,7 +1841,7 @@ func (i *IdentityStore) MemDBGroupsByMemberEntityIDInTxn(txn *memdb.Txn, entityI
 
 func (i *IdentityStore) groupPoliciesByEntityID(entityID string) (map[string][]string, error) {
 	if entityID == "" {
-		return nil, fmt.Errorf("empty entity ID")
+		return nil, errors.New("empty entity ID")
 	}
 
 	groups, err := i.MemDBGroupsByMemberEntityID(entityID, false, false)
@@ -1863,7 +1863,7 @@ func (i *IdentityStore) groupPoliciesByEntityID(entityID string) (map[string][]s
 
 func (i *IdentityStore) groupsByEntityID(entityID string) ([]*identity.Group, []*identity.Group, error) {
 	if entityID == "" {
-		return nil, nil, fmt.Errorf("empty entity ID")
+		return nil, nil, errors.New("empty entity ID")
 	}
 
 	groups, err := i.MemDBGroupsByMemberEntityID(entityID, true, false)
@@ -1897,7 +1897,7 @@ func (i *IdentityStore) groupsByEntityID(entityID string) ([]*identity.Group, []
 	// For sanity
 	// There should not be any group that gets deleted
 	if len(diff.Deleted) != 0 {
-		return nil, nil, fmt.Errorf("failed to diff group memberships")
+		return nil, nil, errors.New("failed to diff group memberships")
 	}
 
 	return diff.Unmodified, diff.New, nil
@@ -1905,7 +1905,7 @@ func (i *IdentityStore) groupsByEntityID(entityID string) ([]*identity.Group, []
 
 func (i *IdentityStore) collectGroupsReverseDFS(group *identity.Group, visited map[string]bool, groups []*identity.Group) ([]*identity.Group, error) {
 	if group == nil {
-		return nil, fmt.Errorf("nil group")
+		return nil, errors.New("nil group")
 	}
 
 	// If traversal for a groupID is performed before, skip it
@@ -1936,7 +1936,7 @@ func (i *IdentityStore) collectGroupsReverseDFS(group *identity.Group, visited m
 
 func (i *IdentityStore) collectPoliciesReverseDFS(group *identity.Group, visited map[string]bool, policies map[string][]string) error {
 	if group == nil {
-		return fmt.Errorf("nil group")
+		return errors.New("nil group")
 	}
 
 	// If traversal for a groupID is performed before, skip it
@@ -2055,11 +2055,11 @@ OUTER:
 
 func (i *IdentityStore) MemDBGroupsByBucketKeyInTxn(txn *memdb.Txn, bucketKey string) ([]*identity.Group, error) {
 	if txn == nil {
-		return nil, fmt.Errorf("nil txn")
+		return nil, errors.New("nil txn")
 	}
 
 	if bucketKey == "" {
-		return nil, fmt.Errorf("empty bucket key")
+		return nil, errors.New("empty bucket key")
 	}
 
 	groupsIter, err := txn.Get(groupsTable, "bucket_key", bucketKey)
@@ -2077,11 +2077,11 @@ func (i *IdentityStore) MemDBGroupsByBucketKeyInTxn(txn *memdb.Txn, bucketKey st
 
 func (i *IdentityStore) MemDBGroupByAliasIDInTxn(txn *memdb.Txn, aliasID string, clone bool) (*identity.Group, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	if txn == nil {
-		return nil, fmt.Errorf("txn is nil")
+		return nil, errors.New("txn is nil")
 	}
 
 	alias, err := i.MemDBAliasByIDInTxn(txn, aliasID, false, true)
@@ -2098,7 +2098,7 @@ func (i *IdentityStore) MemDBGroupByAliasIDInTxn(txn *memdb.Txn, aliasID string,
 
 func (i *IdentityStore) MemDBGroupByAliasID(aliasID string, clone bool) (*identity.Group, error) {
 	if aliasID == "" {
-		return nil, fmt.Errorf("missing alias ID")
+		return nil, errors.New("missing alias ID")
 	}
 
 	txn := i.db.Txn(false)
@@ -2110,7 +2110,7 @@ func (i *IdentityStore) refreshExternalGroupMembershipsByEntityID(ctx context.Co
 	defer metrics.MeasureSince([]string{"identity", "refresh_external_groups"}, time.Now())
 
 	if entityID == "" {
-		return nil, fmt.Errorf("empty entity ID")
+		return nil, errors.New("empty entity ID")
 	}
 
 	refreshFunc := func(dryRun bool) (bool, []*logical.Alias, error) {

@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -732,7 +733,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
 		}
 	case KeyTypeDynamic:
-		return nil, fmt.Errorf("dynamic key type roles are no longer supported")
+		return nil, errors.New("dynamic key type roles are no longer supported")
 	default:
 		return nil, fmt.Errorf("invalid key type: %v", role.KeyType)
 	}

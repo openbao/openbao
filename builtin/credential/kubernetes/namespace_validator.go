@@ -110,7 +110,7 @@ func makeLabelSelector(selector string) (*metav1.LabelSelector, error) {
 
 func makeNsLabelSelector(namespaceSelector string) (*metav1.LabelSelector, error) {
 	if namespaceSelector == "" {
-		return nil, fmt.Errorf("namespace selector is empty")
+		return nil, errors.New("namespace selector is empty")
 	}
 
 	labelSelector, err := makeLabelSelector(namespaceSelector)
@@ -119,7 +119,7 @@ func makeNsLabelSelector(namespaceSelector string) (*metav1.LabelSelector, error
 	}
 
 	if labelSelector.MatchExpressions != nil {
-		return nil, fmt.Errorf("label selector match expressions are not supported")
+		return nil, errors.New("label selector match expressions are not supported")
 	}
 
 	return labelSelector, nil

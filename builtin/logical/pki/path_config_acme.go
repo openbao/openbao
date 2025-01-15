@@ -5,6 +5,7 @@ package pki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -198,7 +199,7 @@ func (b *backend) pathAcmeWrite(ctx context.Context, req *logical.Request, d *fr
 	if allowedRolesRaw, ok := d.GetOk("allowed_roles"); ok {
 		config.AllowedRoles = allowedRolesRaw.([]string)
 		if len(config.AllowedRoles) == 0 {
-			return nil, fmt.Errorf("allowed_roles must take a non-zero length value; specify '*' as the value to allow anything or specify enabled=false to disable ACME entirely")
+			return nil, errors.New("allowed_roles must take a non-zero length value; specify '*' as the value to allow anything or specify enabled=false to disable ACME entirely")
 		}
 	}
 
@@ -213,7 +214,7 @@ func (b *backend) pathAcmeWrite(ctx context.Context, req *logical.Request, d *fr
 	if allowedIssuersRaw, ok := d.GetOk("allowed_issuers"); ok {
 		config.AllowedIssuers = allowedIssuersRaw.([]string)
 		if len(config.AllowedIssuers) == 0 {
-			return nil, fmt.Errorf("allowed_issuers must take a non-zero length value; specify '*' as the value to allow anything or specify enabled=false to disable ACME entirely")
+			return nil, errors.New("allowed_issuers must take a non-zero length value; specify '*' as the value to allow anything or specify enabled=false to disable ACME entirely")
 		}
 	}
 
@@ -225,10 +226,10 @@ func (b *backend) pathAcmeWrite(ctx context.Context, req *logical.Request, d *fr
 				return nil, fmt.Errorf("failed to parse DNS resolver address: %w", err)
 			}
 			if addr == "" {
-				return nil, fmt.Errorf("failed to parse DNS resolver address: got empty address")
+				return nil, errors.New("failed to parse DNS resolver address: got empty address")
 			}
 			if net.ParseIP(addr) == nil {
-				return nil, fmt.Errorf("failed to parse DNS resolver address: expected IPv4/IPv6 address, likely got hostname")
+				return nil, errors.New("failed to parse DNS resolver address: expected IPv4/IPv6 address, likely got hostname")
 			}
 		}
 	}

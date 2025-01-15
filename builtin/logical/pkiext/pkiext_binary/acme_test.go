@@ -1106,7 +1106,7 @@ func SubtestACMEStepDownNode(t *testing.T, cluster *VaultPkiCluster) {
 
 func getDockerLog(t *testing.T) (func(s string), *pkiext.LogConsumerWriter, *pkiext.LogConsumerWriter) {
 	logConsumer := func(s string) {
-		t.Logf(s)
+		t.Log(s)
 	}
 
 	logStdout := &pkiext.LogConsumerWriter{logConsumer}

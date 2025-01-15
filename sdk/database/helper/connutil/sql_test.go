@@ -89,11 +89,11 @@ func TestSQLDisableEscaping(t *testing.T) {
 		} else {
 			if tc.DisableEscaping {
 				if !strings.Contains(sql.ConnectionURL, tc.Username) || !strings.Contains(sql.ConnectionURL, tc.Password) {
-					t.Errorf("Raw username and/or password missing from ConnectionURL")
+					t.Error("Raw username and/or password missing from ConnectionURL")
 				}
 			} else {
 				if strings.Contains(sql.ConnectionURL, tc.Username) || strings.Contains(sql.ConnectionURL, tc.Password) {
-					t.Errorf("Raw username and/or password was present in ConnectionURL")
+					t.Error("Raw username and/or password was present in ConnectionURL")
 				}
 			}
 		}

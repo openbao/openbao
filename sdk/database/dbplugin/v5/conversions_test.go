@@ -36,7 +36,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
 			// Probably a test failure - the protos used in these tests should have Get functions on them
-			t.Fatalf("No values found from Get functions!")
+			t.Fatal("No values found from Get functions!")
 		}
 
 		for _, gtr := range values {
@@ -78,7 +78,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
 			// Probably a test failure - the protos used in these tests should have Get functions on them
-			t.Fatalf("No values found from Get functions!")
+			t.Fatal("No values found from Get functions!")
 		}
 
 		for _, gtr := range values {
@@ -127,7 +127,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
 			// Probably a test failure - the protos used in these tests should have Get functions on them
-			t.Fatalf("No values found from Get functions!")
+			t.Fatal("No values found from Get functions!")
 		}
 
 		for _, gtr := range values {
@@ -156,7 +156,7 @@ func TestConversionsHaveAllFields(t *testing.T) {
 		values := getAllGetterValues(protoReq)
 		if len(values) == 0 {
 			// Probably a test failure - the protos used in these tests should have Get functions on them
-			t.Fatalf("No values found from Get functions!")
+			t.Fatal("No values found from Get functions!")
 		}
 
 		for _, gtr := range values {
@@ -416,7 +416,7 @@ func TestAssertAllFieldsSet(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			err := assertAllFieldsSet("", test.value)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

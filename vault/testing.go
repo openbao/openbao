@@ -850,7 +850,7 @@ WAITACTIVE:
 		time.Sleep(time.Second)
 	}
 	if activeCore == -1 {
-		t.Fatalf("no core became active")
+		t.Fatal("no core became active")
 	}
 
 	switch {
@@ -1629,7 +1629,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 	if opts != nil && opts.InmemClusterLayers {
 		if opts.ClusterLayers != nil {
-			t.Fatalf("cannot specify ClusterLayers when InmemClusterLayers is true")
+			t.Fatal("cannot specify ClusterLayers when InmemClusterLayers is true")
 		}
 		inmemCluster, err := cluster.NewInmemLayerCluster("inmem-cluster", numCores, testCluster.Logger.Named("inmem-cluster"))
 		if err != nil {

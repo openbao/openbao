@@ -166,7 +166,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp == nil || resp.Data["id"].(string) != userpassGroupAliasID {
-		t.Fatalf("failed to read userpass group alias")
+		t.Fatal("failed to read userpass group alias")
 	}
 
 	// Attach a different alias to the same group, overriding the previous one
@@ -193,7 +193,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp == nil || resp.Data["id"].(string) != ldapGroupAliasID {
-		t.Fatalf("failed to read ldap group alias")
+		t.Fatal("failed to read ldap group alias")
 	}
 
 	// Ensure previous alias is gone
@@ -205,7 +205,7 @@ func TestIdentityStore_EnsureNoDanglingGroupAlias(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -258,7 +258,7 @@ func TestIdentityStore_GroupAliasDeletionOnGroupDeletion(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -338,7 +338,7 @@ func TestIdentityStore_GroupAliases_CRUD(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("failed to delete group alias")
+		t.Fatal("failed to delete group alias")
 	}
 }
 
@@ -435,7 +435,7 @@ func TestIdentityStore_GroupAliases_AliasOnInternalGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 

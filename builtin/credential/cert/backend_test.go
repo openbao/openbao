@@ -461,7 +461,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
-		t.Fatalf("expected a successful authentication")
+		t.Fatal("expected a successful authentication")
 	}
 
 	// testing pathLoginRenew for cert auth
@@ -476,7 +476,7 @@ func TestBackend_PermittedDNSDomainsIntermediateCA(t *testing.T) {
 	}
 
 	if secret.Auth == nil || secret.Auth.ClientToken != "" || secret.Auth.LeaseDuration != 3600 || secret.Auth.Accessor != oldAccessor {
-		t.Fatalf("unexpected accessor renewal")
+		t.Fatal("unexpected accessor renewal")
 	}
 }
 
@@ -612,7 +612,7 @@ path "kv/ext/{{identity.entity.aliases.%s.metadata.2-1-1-1}}" {
 		t.Fatal(err)
 	}
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
-		t.Fatalf("expected a successful authentication")
+		t.Fatal("expected a successful authentication")
 	}
 
 	// Check paths guarded by ACL policy
@@ -662,7 +662,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	// Set IP SAN
 	parsedIP := net.ParseIP("127.0.0.1")
 	if parsedIP == nil {
-		t.Fatalf("failed to create parsed IP")
+		t.Fatal("failed to create parsed IP")
 	}
 	template.IPAddresses = []net.IP{parsedIP}
 
@@ -854,7 +854,7 @@ func TestBackend_NonCAExpiry(t *testing.T) {
 	// Login attempt after certificate expiry should fail
 	resp, err = b.HandleRequest(context.Background(), loginReq)
 	if err == nil {
-		t.Fatalf("expected error due to expired certificate")
+		t.Fatal("expected error due to expired certificate")
 	}
 }
 
@@ -952,7 +952,7 @@ func TestBackend_RegisteredNonCA_CRL(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected failure due to revoked certificate")
+		t.Fatal("expected failure due to revoked certificate")
 	}
 }
 
@@ -1049,7 +1049,7 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected failure due to revoked certificate")
+		t.Fatal("expected failure due to revoked certificate")
 	}
 
 	// Register a different client CA certificate.
@@ -1093,7 +1093,7 @@ func TestBackend_CRLs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected failure due to revoked certificate")
+		t.Fatal("expected failure due to revoked certificate")
 	}
 }
 
@@ -1709,7 +1709,7 @@ func testAccStepReadCRL(t *testing.T, connState tls.ConnectionState) logicaltest
 				t.Fatalf("bad: expected CRL with length 1, got %d", len(crlInfo.Serials))
 			}
 			if _, ok := crlInfo.Serials["637101449987587619778072672905061040630001617053"]; !ok {
-				t.Fatalf("bad: expected serial number not found in CRL")
+				t.Fatal("bad: expected serial number not found in CRL")
 			}
 			return nil
 		},
@@ -1743,12 +1743,12 @@ func testAccStepReadConfig(t *testing.T, conf config, connState tls.ConnectionSt
 		Check: func(resp *logical.Response) error {
 			value, ok := resp.Data["enable_identity_alias_metadata"]
 			if !ok {
-				t.Fatalf("enable_identity_alias_metadata not found in response")
+				t.Fatal("enable_identity_alias_metadata not found in response")
 			}
 
 			b, ok := value.(bool)
 			if !ok {
-				t.Fatalf("bad: expected enable_identity_alias_metadata to be a bool")
+				t.Fatal("bad: expected enable_identity_alias_metadata to be a bool")
 			}
 
 			if b != conf.EnableIdentityAliasMetadata {
@@ -2303,7 +2303,7 @@ func TestBackend_CertUpgrade(t *testing.T) {
 
 	b := Backend()
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 	if err := b.Setup(ctx, config); err != nil {
 		t.Fatal(err)
@@ -2685,6 +2685,6 @@ func TestBackend_RegressionDifferentTrustedLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Auth == nil || secret.Auth.ClientToken == "" {
-		t.Fatalf("expected a successful authentication")
+		t.Fatal("expected a successful authentication")
 	}
 }

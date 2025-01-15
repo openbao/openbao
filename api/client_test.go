@@ -203,7 +203,7 @@ func TestClientBadToken(t *testing.T) {
 	client.SetToken("foo\u007f")
 	_, err = client.RawRequest(client.NewRequest(http.MethodPut, "/"))
 	if err == nil || !strings.Contains(err.Error(), "printable") {
-		t.Fatalf("expected error due to bad token")
+		t.Fatal("expected error due to bad token")
 	}
 }
 
@@ -404,10 +404,10 @@ func TestClientEnvSettings(t *testing.T) {
 
 	tlsConfig := config.HttpClient.Transport.(*http.Transport).TLSClientConfig
 	if x509.NewCertPool().Equal(tlsConfig.RootCAs) {
-		t.Fatalf("bad: expected a cert pool with at least one subject")
+		t.Fatal("bad: expected a cert pool with at least one subject")
 	}
 	if tlsConfig.GetClientCertificate == nil {
-		t.Fatalf("bad: expected client tls config to have a certificate getter")
+		t.Fatal("bad: expected client tls config to have a certificate getter")
 	}
 	if tlsConfig.InsecureSkipVerify != true {
 		t.Fatalf("bad: %v", tlsConfig.InsecureSkipVerify)
@@ -662,7 +662,7 @@ func TestClone(t *testing.T) {
 			}
 			if tt.config.CloneToken {
 				if tt.token == "" {
-					t.Fatalf("test requires a non-empty token")
+					t.Fatal("test requires a non-empty token")
 				}
 				if parent.config.CloneToken != clone.config.CloneToken {
 					t.Fatalf("config.CloneToken doesn't match: %v vs %v", parent.config.CloneToken, clone.config.CloneToken)
@@ -911,7 +911,7 @@ func TestVaultProxy(t *testing.T) {
 				t.Fatalf("Expected no error resolving proxy, found error %v", err)
 			}
 			if proxyUrl == nil || proxyUrl.String() == "" {
-				t.Fatalf("Expected proxy to be resolved but no proxy returned")
+				t.Fatal("Expected proxy to be resolved but no proxy returned")
 			}
 			if tc.expectedResolvedProxyUrl != "" && proxyUrl.String() != tc.expectedResolvedProxyUrl {
 				t.Fatalf("Expected resolved proxy URL to be %v but was %v", tc.expectedResolvedProxyUrl, proxyUrl.String())

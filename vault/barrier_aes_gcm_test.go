@@ -88,7 +88,7 @@ func TestAESGCMBarrier_MissingRotateConfig(t *testing.T) {
 
 	// At this point, the rotation config should match the default
 	if !defaultRotationConfig.Equals(b.keyring.rotationConfig) {
-		t.Fatalf("expected empty rotation config to recover as default config")
+		t.Fatal("expected empty rotation config to recover as default config")
 	}
 }
 
@@ -166,7 +166,7 @@ func TestAESGCMBarrier_Confidential(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if pe == nil {
-		t.Fatalf("missing physical entry")
+		t.Fatal("missing physical entry")
 	}
 
 	if pe.Key != "test" {
@@ -212,7 +212,7 @@ func TestAESGCMBarrier_Integrity(t *testing.T) {
 	// Read from the barrier
 	_, err = b.Get(context.Background(), "test")
 	if err == nil {
-		t.Fatalf("should fail!")
+		t.Fatal("should fail!")
 	}
 }
 
@@ -258,7 +258,7 @@ func TestAESGCMBarrier_MoveIntegrityV1(t *testing.T) {
 	// Read from the barrier
 	_, err = b.Get(context.Background(), "moved")
 	if err != nil {
-		t.Fatalf("should succeed with version 1!")
+		t.Fatal("should succeed with version 1!")
 	}
 }
 
@@ -303,7 +303,7 @@ func TestAESGCMBarrier_MoveIntegrityV2(t *testing.T) {
 	// Read from the barrier
 	_, err = b.Get(context.Background(), "moved")
 	if err == nil {
-		t.Fatalf("should fail with version 2!")
+		t.Fatal("should fail with version 2!")
 	}
 }
 
@@ -360,7 +360,7 @@ func TestAESGCMBarrier_UpgradeV1toV2(t *testing.T) {
 	// Check successful decryption
 	_, err = b.Get(context.Background(), "test")
 	if err != nil {
-		t.Fatalf("Upgrade unsuccessful")
+		t.Fatal("Upgrade unsuccessful")
 	}
 }
 
@@ -380,7 +380,7 @@ func TestEncrypt_Unique(t *testing.T) {
 	b.Unseal(context.Background(), key)
 
 	if b.keyring == nil {
-		t.Fatalf("barrier is sealed")
+		t.Fatal("barrier is sealed")
 	}
 
 	entry := &logical.StorageEntry{Key: "test", Value: []byte("test")}
@@ -397,7 +397,7 @@ func TestEncrypt_Unique(t *testing.T) {
 	}
 
 	if bytes.Equal(first, second) {
-		t.Fatalf("improper random seeding detected")
+		t.Fatal("improper random seeding detected")
 	}
 }
 
@@ -419,19 +419,19 @@ func TestInitialize_KeyLength(t *testing.T) {
 	err = b.Initialize(context.Background(), long, nil, rand.Reader)
 
 	if err == nil {
-		t.Fatalf("key length protection failed")
+		t.Fatal("key length protection failed")
 	}
 
 	err = b.Initialize(context.Background(), middle, nil, rand.Reader)
 
 	if err == nil {
-		t.Fatalf("key length protection failed")
+		t.Fatal("key length protection failed")
 	}
 
 	err = b.Initialize(context.Background(), short, nil, rand.Reader)
 
 	if err == nil {
-		t.Fatalf("key length protection failed")
+		t.Fatal("key length protection failed")
 	}
 }
 

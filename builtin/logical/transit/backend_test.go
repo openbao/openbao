@@ -50,7 +50,7 @@ func createBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 
 	b, _ := Backend(context.Background(), config)
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 	err := b.Backend.Setup(context.Background(), config)
 	if err != nil {
@@ -206,7 +206,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 	ciphertext2 := resp.Data["ciphertext"].(string)
 
 	if ciphertext1 == ciphertext2 {
-		t.Fatalf("expected different ciphertexts")
+		t.Fatal("expected different ciphertexts")
 	}
 
 	// See if the older ciphertext can still be decrypted
@@ -259,7 +259,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
 	}
 	if !resp.Data["valid"].(bool) {
-		t.Fatalf("failed to verify the RSA signature")
+		t.Fatal("failed to verify the RSA signature")
 	}
 
 	signReq.Data = map[string]interface{}{
@@ -290,7 +290,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
 	}
 	if resp.Data["valid"].(bool) {
-		t.Fatalf("expected validation to fail")
+		t.Fatal("expected validation to fail")
 	}
 
 	verifyReq.Data = map[string]interface{}{
@@ -303,7 +303,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
 	}
 	if !resp.Data["valid"].(bool) {
-		t.Fatalf("failed to verify the RSA signature")
+		t.Fatal("failed to verify the RSA signature")
 	}
 
 	// Take a random hash and sign it using PKCSv1_5_NoOID.
@@ -332,7 +332,7 @@ func testTransit_RSA(t *testing.T, keyType string) {
 		t.Fatalf("bad: err: %v\nresp: %#v", err, resp)
 	}
 	if !resp.Data["valid"].(bool) {
-		t.Fatalf("failed to verify the RSA signature")
+		t.Fatal("failed to verify the RSA signature")
 	}
 }
 
@@ -1225,7 +1225,7 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 		t.Fatalf("expected the same ciphertext but got %s and %s", ciphertext3, ciphertext4)
 	}
 	if ciphertext1 == ciphertext3 {
-		t.Fatalf("expected different ciphertexts")
+		t.Fatal("expected different ciphertexts")
 	}
 
 	// ...and a different context value
@@ -1264,10 +1264,10 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 		t.Fatalf("expected the same ciphertext but got %s and %s", ciphertext5, ciphertext6)
 	}
 	if ciphertext1 == ciphertext5 {
-		t.Fatalf("expected different ciphertexts")
+		t.Fatal("expected different ciphertexts")
 	}
 	if ciphertext3 == ciphertext5 {
-		t.Fatalf("expected different ciphertexts")
+		t.Fatal("expected different ciphertexts")
 	}
 
 	// If running version 2, check upgrade handling
@@ -1337,10 +1337,10 @@ func testConvergentEncryptionCommon(t *testing.T, ver int, keyType keysutil.KeyT
 			t.Fatalf("expected the same ciphertext but got %s and %s", ciphertext7, ciphertext8)
 		}
 		if ciphertext6 == ciphertext7 {
-			t.Fatalf("expected different ciphertexts")
+			t.Fatal("expected different ciphertexts")
 		}
 		if ciphertext3 == ciphertext7 {
-			t.Fatalf("expected different ciphertexts")
+			t.Fatal("expected different ciphertexts")
 		}
 	}
 
@@ -2120,7 +2120,7 @@ func testTransit_SignWithImportedPublicKey(t *testing.T, keyType string) {
 
 	_, err = b.HandleRequest(context.Background(), signReq)
 	if err == nil {
-		t.Fatalf("expected error, should have failed to sign input")
+		t.Fatal("expected error, should have failed to sign input")
 	}
 }
 

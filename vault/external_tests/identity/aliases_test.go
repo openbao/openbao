@@ -66,7 +66,7 @@ func TestIdentityStore_ListAlias(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	entityID := resp.Data["id"].(string)
@@ -241,7 +241,7 @@ func TestIdentityStore_RenameAlias_CannotMergeEntity(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, entityResp)
 	}
 	if entityResp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	aliasResp, err := client.Logical().Write("identity/entity-alias", map[string]interface{}{

@@ -449,7 +449,7 @@ func TestSystemBackend_mount_force_no_cache(t *testing.T) {
 
 	mountEntry := core.router.MatchingMountEntry(namespace.RootContext(nil), "prod/secret/")
 	if mountEntry == nil {
-		t.Fatalf("missing mount entry")
+		t.Fatal("missing mount entry")
 	}
 	if !mountEntry.Config.ForceNoCache {
 		t.Fatalf("bad config %#v", mountEntry)
@@ -1480,7 +1480,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -1497,7 +1497,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -1514,7 +1514,7 @@ func TestSystemBackend_renew(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp2.IsError() {
-		t.Fatalf("got an error")
+		t.Fatal("got an error")
 	}
 	if resp2.Data == nil {
 		t.Fatal("nil data")
@@ -2554,7 +2554,7 @@ func TestSystemBackend_decodeToken(t *testing.T) {
 		req.Data = data
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error despite missing payload")
+			t.Fatal("no error despite missing payload")
 		}
 		schema.ValidateResponse(
 			t,
@@ -2595,7 +2595,7 @@ func TestSystemBackend_auditHash(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if resp == nil || resp.Data == nil {
-		t.Fatalf("response or its data was nil")
+		t.Fatal("response or its data was nil")
 	}
 
 	schema.ValidateResponse(
@@ -2814,7 +2814,7 @@ func TestSystemBackend_rawRead_Compressed(t *testing.T) {
 		req = logical.TestRequest(t, logical.ReadOperation, "raw/test_raw")
 		resp, err = b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("expected error if trying to read uncompressed entry with prefix byte")
+			t.Fatal("expected error if trying to read uncompressed entry with prefix byte")
 		}
 		if !resp.IsError() {
 			t.Fatalf("bad: %v", resp)
@@ -2890,19 +2890,19 @@ func TestSystemBackend_rawWrite_ExistanceCheck(t *testing.T) {
 	req := logical.TestRequest(t, logical.CreateOperation, "raw/core/audit")
 	_, exist, err := b.HandleExistenceCheck(namespace.RootContext(nil), req)
 	if err != nil {
-		t.Fatalf("err: #{err}")
+		t.Fatal("err: #{err}")
 	}
 	if !exist {
-		t.Fatalf("raw existence check failed for actual key")
+		t.Fatal("raw existence check failed for actual key")
 	}
 
 	req = logical.TestRequest(t, logical.CreateOperation, "raw/non_existent")
 	_, exist, err = b.HandleExistenceCheck(namespace.RootContext(nil), req)
 	if err != nil {
-		t.Fatalf("err: #{err}")
+		t.Fatal("err: #{err}")
 	}
 	if exist {
-		t.Fatalf("raw existence check failed for non-existent key")
+		t.Fatal("raw existence check failed for non-existent key")
 	}
 }
 
@@ -2944,7 +2944,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error")
+			t.Fatal("no error")
 		}
 
 		if err != logical.ErrInvalidRequest {
@@ -2966,7 +2966,7 @@ func TestSystemBackend_rawReadWrite_base64(t *testing.T) {
 		}
 		resp, err := b.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("no error")
+			t.Fatal("no error")
 		}
 
 		if err != logical.ErrInvalidRequest {
@@ -3262,7 +3262,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out != nil {
-		t.Fatalf("policy should be gone")
+		t.Fatal("policy should be gone")
 	}
 }
 
@@ -4243,7 +4243,7 @@ func TestSystemBackend_OpenAPI(t *testing.T) {
 		}
 
 		if doc.Paths["/rotate"] == nil {
-			t.Fatalf("expected to find path '/rotate'")
+			t.Fatal("expected to find path '/rotate'")
 		}
 	}
 }
@@ -4478,7 +4478,7 @@ func TestHandlePoliciesPasswordSet(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordSet(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4579,7 +4579,7 @@ func TestHandlePoliciesPasswordGet(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordGet(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4679,7 +4679,7 @@ func TestHandlePoliciesPasswordDelete(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordDelete(ctx, req, test.inputData)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4845,7 +4845,7 @@ func TestHandlePoliciesPasswordList(t *testing.T) {
 
 			actualResp, err := b.handlePoliciesPasswordList(ctx, req, nil)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -4938,7 +4938,7 @@ func TestHandlePoliciesPasswordGenerate(t *testing.T) {
 
 				actualResp, err := b.handlePoliciesPasswordGenerate(ctx, req, test.inputData)
 				if test.expectErr && err == nil {
-					t.Fatalf("err expected, got nil")
+					t.Fatal("err expected, got nil")
 				}
 				if !test.expectErr && err != nil {
 					t.Fatalf("no error expected, got: %s", err)

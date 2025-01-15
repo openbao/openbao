@@ -107,7 +107,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Data["id"] != nil || secret.Data["accessor"] != nil || secret.Data["request"].(string) != "lookup-self" {
-		t.Fatalf("failed to strip off auto-auth token on lookup-self")
+		t.Fatal("failed to strip off auto-auth token on lookup-self")
 	}
 
 	secret, err = testClient.Auth().Token().Lookup("")
@@ -115,7 +115,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 	if secret.Data["id"] != nil || secret.Data["accessor"] != nil || secret.Data["request"].(string) != "lookup" {
-		t.Fatalf("failed to strip off auto-auth token on lookup")
+		t.Fatal("failed to strip off auto-auth token on lookup")
 	}
 
 	secret, err = testClient.Auth().Token().RenewSelf(1)
@@ -127,7 +127,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatalf("Expected secret to have Auth but was %s", secretJson)
 	}
 	if secret.Auth.ClientToken != "" || secret.Auth.Accessor != "" {
-		t.Fatalf("failed to strip off auto-auth token on renew-self")
+		t.Fatal("failed to strip off auto-auth token on renew-self")
 	}
 
 	secret, err = testClient.Auth().Token().Renew("testid", 1)
@@ -139,7 +139,7 @@ func TestCache_AutoAuthTokenStripping(t *testing.T) {
 		t.Fatalf("Expected secret to have Auth but was %s", secretJson)
 	}
 	if secret.Auth.ClientToken != "" || secret.Auth.Accessor != "" {
-		t.Fatalf("failed to strip off auto-auth token on renew")
+		t.Fatal("failed to strip off auto-auth token on renew")
 	}
 }
 
@@ -196,7 +196,7 @@ func TestCache_AutoAuthClientTokenProxyStripping(t *testing.T) {
 		t.Fatal(err)
 	}
 	if leaseCache.currentToken != realToken {
-		t.Fatalf("failed to use real token from auto-auth")
+		t.Fatal("failed to use real token from auto-auth")
 	}
 }
 

@@ -97,7 +97,7 @@ Some string 6841cf80`,
 
 			actual, err := st.Generate(test.data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

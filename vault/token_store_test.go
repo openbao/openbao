@@ -50,7 +50,7 @@ func TestTokenStore_CreateOrphanResponse(t *testing.T) {
 		t.Fatalf("bad: err: %v, resp: %#v", err, resp)
 	}
 	if !resp.Auth.Orphan {
-		t.Fatalf("failed to set orphan as true in the response")
+		t.Fatal("failed to set orphan as true in the response")
 	}
 }
 
@@ -242,7 +242,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.HasPrefix(saltedID, "h") {
-		t.Fatalf("expected sha1 hash; got sha2-256 hmac")
+		t.Fatal("expected sha1 hash; got sha2-256 hmac")
 	}
 
 	saltedID, err = ts.SaltID(namespace.RootContext(nil), "hvs.foo")
@@ -250,7 +250,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.HasPrefix(saltedID, "h") {
-		t.Fatalf("expected sha2-256 hmac; got sha1 hash")
+		t.Fatal("expected sha2-256 hmac; got sha1 hash")
 	}
 
 	nsCtx := namespace.ContextWithNamespace(context.Background(), &namespace.Namespace{ID: "testid", Path: "ns1"})
@@ -259,7 +259,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.HasPrefix(saltedID, "h") {
-		t.Fatalf("expected sha2-256 hmac; got sha1 hash")
+		t.Fatal("expected sha2-256 hmac; got sha1 hash")
 	}
 
 	saltedID, err = ts.SaltID(nsCtx, "hvs.foo")
@@ -267,7 +267,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !strings.HasPrefix(saltedID, "h") {
-		t.Fatalf("expected sha2-256 hmac; got sha1 hash")
+		t.Fatal("expected sha2-256 hmac; got sha1 hash")
 	}
 }
 
@@ -572,7 +572,7 @@ func testMakeTokenViaRequestContext(t testing.TB, ctx context.Context, ts *Token
 		t.Fatal(err)
 	}
 	if resp == nil {
-		t.Fatalf("got nil token from create call")
+		t.Fatal("got nil token from create call")
 	}
 	// Let the caller handle the error
 	if resp.IsError() {
@@ -752,16 +752,16 @@ func TestTokenStore_HandleRequest_LookupAccessor(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	if resp.Data == nil {
-		t.Fatalf("response should contain data")
+		t.Fatal("response should contain data")
 	}
 
 	if resp.Data["accessor"].(string) == "" {
-		t.Fatalf("accessor should not be empty")
+		t.Fatal("accessor should not be empty")
 	}
 
 	// Verify that the lookup-accessor operation does not return the token ID
 	if resp.Data["id"].(string) != "" {
-		t.Fatalf("token ID should not be returned")
+		t.Fatal("token ID should not be returned")
 	}
 }
 
@@ -789,14 +789,14 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	if resp.Data == nil {
-		t.Fatalf("response should contain data")
+		t.Fatal("response should contain data")
 	}
 	if resp.Data["keys"] == nil {
-		t.Fatalf("keys should not be empty")
+		t.Fatal("keys should not be empty")
 	}
 	keys := resp.Data["keys"].([]string)
 	if len(keys) != len(testKeys) {
-		t.Fatalf("wrong number of accessors found")
+		t.Fatal("wrong number of accessors found")
 	}
 	if len(resp.Warnings) != 0 {
 		t.Fatalf("got warnings:\n%#v", resp.Warnings)
@@ -809,7 +809,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 			t.Fatal(err)
 		}
 		if aEntry.TokenID == "" || aEntry.AccessorID == "" {
-			t.Fatalf("error, accessor entry looked up is empty, but no error thrown")
+			t.Fatal("error, accessor entry looked up is empty, but no error thrown")
 		}
 		saltID, err := ts.SaltID(namespace.RootContext(nil), accessor)
 		if err != nil {
@@ -827,14 +827,14 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 	if resp.Data == nil {
-		t.Fatalf("response should contain data")
+		t.Fatal("response should contain data")
 	}
 	if resp.Data["keys"] == nil {
-		t.Fatalf("keys should not be empty")
+		t.Fatal("keys should not be empty")
 	}
 	keys2 := resp.Data["keys"].([]string)
 	if len(keys) != len(testKeys) {
-		t.Fatalf("wrong number of accessors found")
+		t.Fatal("wrong number of accessors found")
 	}
 	if len(resp.Warnings) != 0 {
 		t.Fatalf("got warnings:\n%#v", resp.Warnings)
@@ -846,7 +846,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 			t.Fatal(err)
 		}
 		if aEntry.TokenID == "" || aEntry.AccessorID == "" {
-			t.Fatalf("error, accessor entry looked up is empty, but no error thrown")
+			t.Fatal("error, accessor entry looked up is empty, but no error thrown")
 		}
 	}
 }
@@ -1016,7 +1016,7 @@ func TestTokenStore_RootToken(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if te.ID == "" {
-		t.Fatalf("missing ID")
+		t.Fatal("missing ID")
 	}
 
 	out, err := ts.Lookup(namespace.RootContext(nil), te.ID)
@@ -1059,7 +1059,7 @@ func TestTokenStore_CreateLookup(t *testing.T) {
 	}
 	testMakeTokenDirectly(t, ts, ent)
 	if ent.ID == "" {
-		t.Fatalf("missing ID")
+		t.Fatal("missing ID")
 	}
 
 	out, err := ts.Lookup(namespace.RootContext(nil), ent.ID)
@@ -1136,7 +1136,7 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if ent.ID == "" {
-		t.Fatalf("missing ID")
+		t.Fatal("missing ID")
 	}
 
 	// Replace the lease with a lease with an expire time in the past
@@ -1209,7 +1209,7 @@ func TestTokenStore_UseToken(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if te == nil {
-		t.Fatalf("token entry after use was nil")
+		t.Fatal("token entry after use was nil")
 	}
 
 	// Lookup the root token again
@@ -1238,7 +1238,7 @@ func TestTokenStore_UseToken(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if te == nil {
-		t.Fatalf("token entry for use #1 was nil")
+		t.Fatal("token entry for use #1 was nil")
 	}
 
 	// Lookup the token
@@ -1258,10 +1258,10 @@ func TestTokenStore_UseToken(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if te == nil {
-		t.Fatalf("token entry for use #2 was nil")
+		t.Fatal("token entry for use #2 was nil")
 	}
 	if te.NumUses != tokenRevocationPending {
-		t.Fatalf("token entry after use #2 did not have revoke flag")
+		t.Fatal("token entry after use #2 did not have revoke flag")
 	}
 	ts.revokeOrphan(namespace.RootContext(nil), te.ID)
 
@@ -1972,7 +1972,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonRoot_RootChild(t *testing.T) {
 		t.Fatalf("err: %v; resp: %#v", err, resp)
 	}
 	if resp == nil || resp.Data == nil {
-		t.Fatalf("expected a response")
+		t.Fatal("expected a response")
 	}
 	if resp.Data["error"].(string) != "root tokens may not be created without parent token being root" {
 		t.Fatalf("bad: %#v", resp)
@@ -2004,7 +2004,7 @@ func TestTokenStore_HandleRequest_CreateToken_Root_RootChild_NoExpiry_Expiry(t *
 	}
 	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 	expectedErr := "expiring root tokens cannot create non-expiring root tokens"
 	if resp.Data["error"].(string) != expectedErr {
@@ -2024,7 +2024,7 @@ func TestTokenStore_HandleRequest_CreateToken_Root_RootChild(t *testing.T) {
 		t.Fatalf("err: %v; resp: %#v", err, resp)
 	}
 	if resp == nil || resp.Auth == nil {
-		t.Fatalf("failed to create a root token using another root token")
+		t.Fatal("failed to create a root token using another root token")
 	}
 	if !reflect.DeepEqual(resp.Auth.Policies, []string{"root"}) {
 		t.Fatalf("bad: policies: expected: root; actual: %s", resp.Auth.Policies)
@@ -2456,7 +2456,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 	}
 
 	if resp.Data["creation_time"].(int64) == 0 {
-		t.Fatalf("creation time was zero")
+		t.Fatal("creation time was zero")
 	}
 	delete(resp.Data, "creation_time")
 
@@ -2513,7 +2513,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 	}
 
 	if resp.Data["creation_time"].(int64) == 0 {
-		t.Fatalf("creation time was zero")
+		t.Fatal("creation time was zero")
 	}
 	delete(resp.Data, "creation_time")
 	if resp.Data["issue_time"].(time.Time).IsZero() {
@@ -2561,7 +2561,7 @@ func testTokenStoreHandleRequestLookup(t *testing.T, batch, periodic bool) {
 
 	if !batch {
 		if resp.Data["last_renewal_time"].(int64) == 0 {
-			t.Fatalf("last_renewal_time was zero")
+			t.Fatal("last_renewal_time was zero")
 		}
 	} else if _, ok := resp.Data["last_renewal_time"]; ok {
 		t.Fatal("expected zero last renewal time")
@@ -2601,15 +2601,15 @@ func TestTokenStore_HandleRequest_LookupSelf(t *testing.T) {
 	}
 
 	if resp.Data["creation_time"].(int64) == 0 {
-		t.Fatalf("creation time was zero")
+		t.Fatal("creation time was zero")
 	}
 	delete(resp.Data, "creation_time")
 	if resp.Data["issue_time"].(time.Time).IsZero() {
-		t.Fatalf("creation time was zero")
+		t.Fatal("creation time was zero")
 	}
 	delete(resp.Data, "issue_time")
 	if resp.Data["expire_time"].(time.Time).IsZero() {
-		t.Fatalf("expire time was zero")
+		t.Fatal("expire time was zero")
 	}
 	delete(resp.Data, "expire_time")
 
@@ -3169,7 +3169,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("should not see a role")
+		t.Fatal("should not see a role")
 	}
 
 	// First test creation
@@ -3190,7 +3190,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Operation = logical.ReadOperation
@@ -3202,7 +3202,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	if resp == nil {
-		t.Fatalf("got a nil response")
+		t.Fatal("got a nil response")
 	}
 
 	expected := map[string]interface{}{
@@ -3256,7 +3256,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Operation = logical.ReadOperation
@@ -3267,7 +3267,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("got a nil response")
+		t.Fatal("got a nil response")
 	}
 
 	expected = map[string]interface{}{
@@ -3320,7 +3320,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("got a nil response")
+		t.Fatal("got a nil response")
 	}
 
 	expected = map[string]interface{}{
@@ -3374,7 +3374,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("got a nil response")
+		t.Fatal("got a nil response")
 	}
 
 	expected = map[string]interface{}{
@@ -3407,15 +3407,15 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("got a nil response")
+		t.Fatal("got a nil response")
 	}
 	keysInt, ok := resp.Data["keys"]
 	if !ok {
-		t.Fatalf("did not find keys in response")
+		t.Fatal("did not find keys in response")
 	}
 	keys, ok := keysInt.([]string)
 	if !ok {
-		t.Fatalf("could not convert keys interface to key list")
+		t.Fatal("could not convert keys interface to key list")
 	}
 	if len(keys) != 1 {
 		t.Fatalf("unexpected number of keys: %d", len(keys))
@@ -3431,7 +3431,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Operation = logical.ReadOperation
@@ -3440,7 +3440,7 @@ func TestTokenStore_RoleCRUD(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -3638,7 +3638,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Data = map[string]interface{}{}
@@ -3647,7 +3647,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	req.Data["policies"] = []string{"foo"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"test2"}
@@ -3668,20 +3668,20 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Path = "create/testnoglob"
 	req.Data["policies"] = []string{"test"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"testfoo"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"test*"}
@@ -3701,7 +3701,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req = logical.TestRequest(t, logical.UpdateOperation, "create")
@@ -3726,7 +3726,7 @@ func TestTokenStore_RoleAllowedPolicies(t *testing.T) {
 	req.Data["policies"] = []string{"foo"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"test2"}
@@ -3893,7 +3893,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Data = map[string]interface{}{}
@@ -3902,7 +3902,7 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 	req.Data["policies"] = []string{"foo"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"test2"}
@@ -3923,14 +3923,14 @@ func TestTokenStore_RoleAllowedPoliciesGlob(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Path = "create/test"
 	req.Data["policies"] = []string{"footest"}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	req.Data["policies"] = []string{"testfoo", "test2", "test"}
@@ -3955,7 +3955,7 @@ func TestTokenStore_RoleOrphan(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Path = "create/test"
@@ -3973,11 +3973,11 @@ func TestTokenStore_RoleOrphan(t *testing.T) {
 	}
 
 	if out.Parent != "" {
-		t.Fatalf("expected orphan token, but found a parent")
+		t.Fatal("expected orphan token, but found a parent")
 	}
 
 	if !strings.HasPrefix(out.Path, "auth/token/create/test") {
-		t.Fatalf("expected role in path but did not find it")
+		t.Fatal("expected role in path but did not find it")
 	}
 }
 
@@ -3996,7 +3996,7 @@ func TestTokenStore_RolePathSuffix(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	req.Path = "create/test"
@@ -4015,7 +4015,7 @@ func TestTokenStore_RolePathSuffix(t *testing.T) {
 	}
 
 	if out.Path != "auth/token/create/test/happenin" {
-		t.Fatalf("expected role in path but did not find it")
+		t.Fatal("expected role in path but did not find it")
 	}
 }
 
@@ -4039,7 +4039,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// This first set of logic is to verify that a normal non-root token will
@@ -4068,7 +4068,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 		}
 		ttl := resp.Data["ttl"].(int64)
 		if ttl > 10 {
-			t.Fatalf("TTL too large")
+			t.Fatal("TTL too large")
 		}
 
 		// Let the TTL go down a bit to 8 seconds
@@ -4112,7 +4112,7 @@ func TestTokenStore_RolePeriod(t *testing.T) {
 		}
 		ttl = resp.Data["ttl"].(int64)
 		if ttl > 8 {
-			t.Fatalf("TTL too large")
+			t.Fatal("TTL too large")
 		}
 	}
 
@@ -4195,17 +4195,17 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("expected a warning")
+		t.Fatal("expected a warning")
 	}
 
 	req.Operation = logical.UpdateOperation
 	req.Path = "auth/token/create/test"
 	resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 	if len(resp.Warnings) == 0 {
-		t.Fatalf("expected a warning")
+		t.Fatal("expected a warning")
 	}
 
 	// Reset to a good explicit max
@@ -4220,7 +4220,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// This first set of logic is to verify that a normal non-root token will
@@ -4248,7 +4248,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		}
 		ttl := resp.Data["ttl"].(int64)
 		if ttl > 5 {
-			t.Fatalf("TTL too large")
+			t.Fatal("TTL too large")
 		}
 
 		// Let the TTL go down a bit to 3 seconds
@@ -4269,7 +4269,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		}
 		ttl = resp.Data["ttl"].(int64)
 		if ttl < 4 {
-			t.Fatalf("TTL too small after renewal")
+			t.Fatal("TTL too small after renewal")
 		}
 	}
 
@@ -4302,7 +4302,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		}
 		ttl := resp.Data["ttl"].(int64)
 		if ttl > 10 {
-			t.Fatalf("TTL too big")
+			t.Fatal("TTL too big")
 		}
 		// explicit max ttl is stored in the role so not returned here
 		maxTTL := resp.Data["explicit_max_ttl"].(int64)
@@ -4355,7 +4355,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		}
 		ttl = resp.Data["ttl"].(int64)
 		if ttl > 6 {
-			t.Fatalf("TTL too big")
+			t.Fatal("TTL too big")
 		}
 
 		// It should expire
@@ -4368,7 +4368,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 		}
 		resp, err = core.HandleRequest(namespace.RootContext(nil), req)
 		if err == nil {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 
 		time.Sleep(2 * time.Second)
@@ -4380,7 +4380,7 @@ func TestTokenStore_RoleExplicitMaxTTL(t *testing.T) {
 			t.Fatalf("expected error, response is %#v", *resp)
 		}
 		if err == nil {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 	}
 }
@@ -4493,7 +4493,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v\nresp: %#v", err, resp)
 		}
 		if resp != nil {
-			t.Fatalf("expected a nil response")
+			t.Fatal("expected a nil response")
 		}
 
 		req = logical.TestRequest(t, logical.ReadOperation, "roles/test")
@@ -4548,7 +4548,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v\nresp: %#v", err, resp)
 		}
 		if resp != nil {
-			t.Fatalf("expected a nil response")
+			t.Fatal("expected a nil response")
 		}
 
 		req = logical.TestRequest(t, logical.ReadOperation, "roles/test")
@@ -4602,7 +4602,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatalf("err: %v\nresp: %#v", err, resp)
 		}
 		if resp == nil {
-			t.Fatalf("expected a non-nil response")
+			t.Fatal("expected a non-nil response")
 		}
 		if len(resp.Warnings) != 3 {
 			t.Fatalf("expected 3 warnings, got %#v", resp.Warnings)
@@ -4663,7 +4663,7 @@ func TestTokenStore_Periodic(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// First make one directly and verify on renew it uses the period.
@@ -4832,7 +4832,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Create a test role with unlimited token_num_uses
@@ -4843,7 +4843,7 @@ func TestTokenStore_NumUses(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Generate some tokens from the test roles
@@ -4919,7 +4919,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// First make one directly and verify on renew it uses the period.
@@ -4999,7 +4999,7 @@ func TestTokenStore_Periodic_ExplicitMax(t *testing.T) {
 			t.Fatalf("err: %v\nresp: %#v", err, resp)
 		}
 		if resp != nil {
-			t.Fatalf("expected a nil response")
+			t.Fatal("expected a nil response")
 		}
 
 		req.ClientToken = root
@@ -5299,7 +5299,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), tokenReq)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	roleReq.Operation = logical.UpdateOperation
@@ -5317,7 +5317,7 @@ func TestTokenStore_AllowedDisallowedPolicies(t *testing.T) {
 	}
 	resp, err = ts.HandleRequest(namespace.RootContext(nil), tokenReq)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -5418,7 +5418,7 @@ func TestTokenStore_RevokeUseCountToken(t *testing.T) {
 
 	err = ts.revokeInternal(namespace.RootContext(nil), saltTut, false)
 	if err == nil {
-		t.Fatalf("expected err")
+		t.Fatal("expected err")
 	}
 
 	// Since revocation failed we should still be able to get a token
@@ -5751,11 +5751,11 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 			t.Fatalf("err: %s", err)
 		}
 		if resp.Data == nil {
-			t.Fatalf("response should contain data")
+			t.Fatal("response should contain data")
 		}
 		// These tokens should now be orphaned
 		if resp.Data["orphan"] != true {
-			t.Fatalf("token should be orphan")
+			t.Fatal("token should be orphan")
 		}
 	}
 }
@@ -6050,7 +6050,7 @@ func TestTokenStore_TokenID(t *testing.T) {
 		// Ensure that using a custom token ID results in a warning
 		expectedWarning := "Supplying a custom ID for the token uses the weaker SHA1 hashing instead of the more secure SHA2-256 HMAC for token obfuscation. SHA1 hashed tokens on the wire leads to less secure lookups."
 		if resp.Warnings[0] != expectedWarning {
-			t.Fatalf("expected warning not present")
+			t.Fatal("expected warning not present")
 		}
 	})
 
@@ -6068,10 +6068,10 @@ func TestTokenStore_TokenID(t *testing.T) {
 			},
 		})
 		if err == nil {
-			t.Fatalf("expected an error")
+			t.Fatal("expected an error")
 		}
 		if resp.Error().Error() != "custom token ID cannot have the 'hvs.' prefix" {
-			t.Fatalf("expected input error not present in error response")
+			t.Fatal("expected input error not present in error response")
 		}
 	})
 
@@ -6088,10 +6088,10 @@ func TestTokenStore_TokenID(t *testing.T) {
 			},
 		})
 		if err == nil {
-			t.Fatalf("expected an error")
+			t.Fatal("expected an error")
 		}
 		if resp.Error().Error() != "custom token ID cannot have a '.' in the value" {
-			t.Fatalf("expected input error not present in error response")
+			t.Fatal("expected input error not present in error response")
 		}
 	})
 }

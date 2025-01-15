@@ -203,7 +203,7 @@ func TestLifetimeWatcher(t *testing.T) {
 			for {
 				select {
 				case <-time.After(tc.maxTestTime):
-					t.Fatalf("renewal didn't happen")
+					t.Fatal("renewal didn't happen")
 				case r := <-v.RenewCh():
 					if !tc.expectRenewal {
 						t.Fatal("expected no renewals")
@@ -233,7 +233,7 @@ func TestLifetimeWatcher(t *testing.T) {
 			}
 
 			if tc.expectRenewal && !receivedRenewal {
-				t.Fatalf("expected at least one renewal, got none.")
+				t.Fatal("expected at least one renewal, got none.")
 			}
 		})
 	}

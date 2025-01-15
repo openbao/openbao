@@ -149,7 +149,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	// common name. It should error out.
 	_, err = CBWrite(b, s, "issue/example", map[string]interface{}{})
 	if err == nil {
-		t.Fatalf("expected an error due to missing common_name")
+		t.Fatal("expected an error due to missing common_name")
 	}
 
 	// Modify the role to make the common name optional
@@ -172,7 +172,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	}
 
 	if resp.Data["certificate"] == "" {
-		t.Fatalf("expected a cert to be generated")
+		t.Fatal("expected a cert to be generated")
 	}
 
 	// Issue a cert with require_cn set to false and with a common name. It
@@ -183,7 +183,7 @@ func TestPKI_RequireCN(t *testing.T) {
 	}
 
 	if resp.Data["certificate"] == "" {
-		t.Fatalf("expected a cert to be generated")
+		t.Fatal("expected a cert to be generated")
 	}
 }
 
@@ -1920,7 +1920,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 		t.Fatalf("failed read ca_chain, %#v", resp)
 	}
 	if strings.Count(string(resp.Data[logical.HTTPRawBody].([]byte)), rootCaAsPem) != 1 {
-		t.Fatalf("expected raw chain to contain the root cert")
+		t.Fatal("expected raw chain to contain the root cert")
 	}
 
 	// The ca/pem should return us the actual CA...
@@ -1938,7 +1938,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 	}
 	// check the raw cert matches the response body
 	if !bytes.Equal(resp.Data[logical.HTTPRawBody].([]byte), []byte(rootCaAsPem)) {
-		t.Fatalf("failed to get raw cert")
+		t.Fatal("failed to get raw cert")
 	}
 
 	_, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -1994,7 +1994,7 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 		t.Fatalf("failed to get raw cert for serial number: %s", expectedSerial)
 	}
 	if resp.Data[logical.HTTPContentType] != "application/pkix-cert" {
-		t.Fatalf("failed to get raw cert content-type")
+		t.Fatal("failed to get raw cert content-type")
 	}
 
 	// get pem
@@ -2012,10 +2012,10 @@ func TestBackend_PathFetchValidRaw(t *testing.T) {
 
 	// check the pem cert matches the response body
 	if !bytes.Equal(resp.Data[logical.HTTPRawBody].([]byte), expectedCert) {
-		t.Fatalf("failed to get pem cert")
+		t.Fatal("failed to get pem cert")
 	}
 	if resp.Data[logical.HTTPContentType] != "application/pem-certificate-chain" {
-		t.Fatalf("failed to get raw cert content-type")
+		t.Fatal("failed to get raw cert content-type")
 	}
 }
 
@@ -2135,7 +2135,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	}
 	// check that the root and 9 additional certs are all listed
 	if len(resp.Data["keys"].([]string)) != 10 {
-		t.Fatalf("failed to list all 10 certs")
+		t.Fatal("failed to list all 10 certs")
 	}
 
 	// list certs/
@@ -2153,7 +2153,7 @@ func TestBackend_PathFetchCertList(t *testing.T) {
 	}
 	// check that the root and 9 additional certs are all listed
 	if len(resp.Data["keys"].([]string)) != 10 {
-		t.Fatalf("failed to list all 10 certs")
+		t.Fatal("failed to list all 10 certs")
 	}
 }
 
@@ -2339,7 +2339,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	}
 
 	if cert.BasicConstraintsValid {
-		t.Fatalf("By default, sign-verbatim must not issue certificates containing the x509 Basic Constraints extension")
+		t.Fatal("By default, sign-verbatim must not issue certificates containing the x509 Basic Constraints extension")
 	}
 
 	// Test the Basic Constraints extension: when the option is explicitly specified (as an explicit option or in a role), the issued certificate must be generated with the Basic Constraints extension.
@@ -2383,7 +2383,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	}
 
 	if cert.IsCA {
-		t.Fatalf("The certificate issued with sign-verbatim cannot be a CA certificate")
+		t.Fatal("The certificate issued with sign-verbatim cannot be a CA certificate")
 	}
 
 	// Test the Basic Constraints extension with a role: when the option is explicitly specified in a role, the issued certificate must be generated with the Basic Constraints extension.
@@ -2446,7 +2446,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	}
 
 	if cert.IsCA {
-		t.Fatalf("The certificate issued with sign-verbatim cannot be a CA certificate")
+		t.Fatal("The certificate issued with sign-verbatim cannot be a CA certificate")
 	}
 
 	// Test the Basic Constraints parameter specified in the API call takes priority and overwrites the value set in the role.
@@ -2485,7 +2485,7 @@ func runTestSignVerbatim(t *testing.T, keyType string) {
 	cert = certs[0]
 
 	if cert.BasicConstraintsValid {
-		t.Fatalf("The Basic Constraints parameter specified in the sign-verbatim API call must take priority and overwrite the value set in the role")
+		t.Fatal("The Basic Constraints parameter specified in the sign-verbatim API call must take priority and overwrite the value set in the role")
 	}
 
 	// Now check signing a certificate using the not_after input using the Y10K value
@@ -7423,7 +7423,7 @@ func TestProperAuthing(t *testing.T) {
 	}
 
 	if !validatedPath {
-		t.Fatalf("Expected to have validated at least one path.")
+		t.Fatal("Expected to have validated at least one path.")
 	}
 }
 

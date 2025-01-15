@@ -1052,7 +1052,7 @@ func testAccStepCreateKey(t *testing.T, name string, keyData map[string]interfac
 			// Check to see if barcode and url were returned if exported is false
 			if !keyData["exported"].(bool) {
 				if resp != nil {
-					t.Fatalf("data was returned when exported was set to false")
+					t.Fatal("data was returned when exported was set to false")
 				}
 				return nil
 			}
@@ -1060,7 +1060,7 @@ func testAccStepCreateKey(t *testing.T, name string, keyData map[string]interfac
 			// Check to see if a barcode was returned when qr_size is zero
 			if keyData["qr_size"].(int) == 0 {
 				if _, exists := resp.Data["barcode"]; exists {
-					t.Fatalf("a barcode was returned when qr_size was set to zero")
+					t.Fatal("a barcode was returned when qr_size was set to zero")
 				}
 				return nil
 			}
@@ -1076,11 +1076,11 @@ func testAccStepCreateKey(t *testing.T, name string, keyData map[string]interfac
 
 			// Check to see if barcode and url are returned
 			if d.Barcode == "" {
-				t.Fatalf("a barcode was not returned for a generated key")
+				t.Fatal("a barcode was not returned for a generated key")
 			}
 
 			if d.Url == "" {
-				t.Fatalf("a url was not returned for a generated key")
+				t.Fatal("a url was not returned for a generated key")
 			}
 
 			// Parse url
@@ -1144,7 +1144,7 @@ func testAccStepReadCreds(t *testing.T, b logical.Backend, s logical.Storage, na
 			})
 
 			if !valid {
-				t.Fatalf("generated code isn't valid")
+				t.Fatal("generated code isn't valid")
 			}
 
 			return nil

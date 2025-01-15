@@ -184,7 +184,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 			t.Fatal(err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("failed to unseal")
+			t.Fatal("failed to unseal")
 		}
 	}
 
@@ -352,7 +352,7 @@ func TestIdentityStore_GroupByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// Test the read by name endpoint
@@ -412,7 +412,7 @@ func TestIdentityStore_GroupByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Create 2 entities
@@ -424,7 +424,7 @@ func TestIdentityStore_GroupByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "group/name/testgroupname2",
@@ -434,7 +434,7 @@ func TestIdentityStore_GroupByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// List the entities by name
@@ -475,7 +475,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	groupReq.Data = map[string]interface{}{
@@ -488,7 +488,7 @@ func TestIdentityStore_Groups_TypeMembershipAdditions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -528,7 +528,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Try to mark internal group as external
@@ -541,7 +541,7 @@ func TestIdentityStore_Groups_TypeImmutability(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -605,7 +605,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if fetchedGroup == nil || fetchedGroup.Name != "testgroupname" {
-		t.Fatalf("failed to fetch an indexed group")
+		t.Fatal("failed to fetch an indexed group")
 	}
 
 	// Fetch group given the ID
@@ -614,7 +614,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if fetchedGroup == nil || fetchedGroup.Name != "testgroupname" {
-		t.Fatalf("failed to fetch an indexed group")
+		t.Fatal("failed to fetch an indexed group")
 	}
 
 	var fetchedGroups []*identity.Group
@@ -624,7 +624,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(fetchedGroups) != 1 || fetchedGroups[0].Name != "testgroupname" {
-		t.Fatalf("failed to fetch an indexed group")
+		t.Fatal("failed to fetch an indexed group")
 	}
 
 	fetchedGroups, err = i.MemDBGroupsByParentGroupID("testparentgroupid2", false)
@@ -632,7 +632,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(fetchedGroups) != 2 {
-		t.Fatalf("failed to fetch a indexed groups")
+		t.Fatal("failed to fetch a indexed groups")
 	}
 
 	// Fetch groups based on member entity ID
@@ -641,7 +641,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(fetchedGroups) != 1 || fetchedGroups[0].Name != "testgroupname" {
-		t.Fatalf("failed to fetch an indexed group")
+		t.Fatal("failed to fetch an indexed group")
 	}
 
 	fetchedGroups, err = i.MemDBGroupsByMemberEntityID("testentityid2", false, false)
@@ -650,7 +650,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	}
 
 	if len(fetchedGroups) != 2 {
-		t.Fatalf("failed to fetch groups by entity ID")
+		t.Fatal("failed to fetch groups by entity ID")
 	}
 }
 
@@ -998,7 +998,7 @@ func TestIdentityStore_GroupsCRUD_ByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -1258,7 +1258,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 	kubeGroupData["member_group_ids"] = []string{engGroupID}
 	resp, err = is.HandleRequest(ctx, groupUpdateReq)
 	if err != nil || resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error response")
+		t.Fatal("expected an error response")
 	}
 
 	// Create an entity ID

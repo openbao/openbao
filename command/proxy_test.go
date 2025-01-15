@@ -372,7 +372,7 @@ api_proxy {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// Validate that the auto-auth token has been correctly attained
@@ -463,7 +463,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
@@ -555,7 +555,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
@@ -633,7 +633,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	proxyClient, err := api.NewClient(api.DefaultConfig())
@@ -679,7 +679,7 @@ vault {
 	token2 := secret.Auth.ClientToken
 
 	if token != token2 {
-		t.Fatalf("token create response not cached when it should have been, as tokens differ")
+		t.Fatal("token create response not cached when it should have been, as tokens differ")
 	}
 
 	close(cmd.ShutdownCh)
@@ -805,7 +805,7 @@ vault {
 			select {
 			case <-cmd.startedCh:
 			case <-time.After(5 * time.Second):
-				t.Errorf("timeout")
+				t.Error("timeout")
 			}
 
 			client, err := api.NewClient(api.DefaultConfig())
@@ -887,7 +887,7 @@ listener "tcp" {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// defer proxy shutdown
@@ -988,7 +988,7 @@ cache {}
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
@@ -1004,7 +1004,7 @@ cache {}
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/proxy/v1/quit"))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 	if resp != nil && resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected %d but got: %d", http.StatusNotFound, resp.StatusCode)
@@ -1024,7 +1024,7 @@ cache {}
 	select {
 	case <-cmd.ShutdownCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	wg.Wait()
@@ -1226,7 +1226,7 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("foo.example.com"); err != nil {
@@ -1257,7 +1257,7 @@ func TestProxy_Config_ReloadTls(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("bar.example.com"); err != nil {

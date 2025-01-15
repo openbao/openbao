@@ -439,7 +439,7 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateTrue(t *testing.T)
 		"public_key": testCAPublicKey,
 	})
 	if err == nil {
-		t.Errorf("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
+		t.Error("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
 	}
 
 	expectedErrStr := "{{identity.entity.metadata.ssh_username}} is not a valid value for valid_principals"
@@ -2763,7 +2763,7 @@ func TestProperAuthing(t *testing.T) {
 	}
 
 	if len(openAPIResp.Data["paths"].(map[string]interface{})) == 0 {
-		t.Fatalf("expected to get response from OpenAPI; got empty path list")
+		t.Fatal("expected to get response from OpenAPI; got empty path list")
 	}
 
 	validatedPath := false
@@ -2811,12 +2811,12 @@ func TestProperAuthing(t *testing.T) {
 
 		if handler == shouldBeUnauthedReadList {
 			if hasPost || hasDelete {
-				t.Fatalf("Unauthed read-only endpoints should not have POST/DELETE capabilities")
+				t.Fatal("Unauthed read-only endpoints should not have POST/DELETE capabilities")
 			}
 		}
 	}
 
 	if !validatedPath {
-		t.Fatalf("Expected to have validated at least one path.")
+		t.Fatal("Expected to have validated at least one path.")
 	}
 }

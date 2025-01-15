@@ -824,11 +824,11 @@ listener "tcp" {
 	configutil.ParseListeners(config.SharedConfig, objList)
 	listeners := config.Listeners
 	if len(listeners) == 0 {
-		t.Fatalf("expected at least one listener in the config")
+		t.Fatal("expected at least one listener in the config")
 	}
 	listener := listeners[0]
 	if listener.Type != "tcp" {
-		t.Fatalf("expected tcp listener in the config")
+		t.Fatal("expected tcp listener in the config")
 	}
 
 	expected := &Config{

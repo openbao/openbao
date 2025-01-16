@@ -1,0 +1,3 @@
+```release-note:improvement
+auth: Use transactions for write and delete config for various auth methods.
+```

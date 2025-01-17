@@ -528,8 +528,8 @@ github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c h1:oiKun9
 github.com/hashicorp/raft-boltdb/v2 v2.0.0-20210421194847-a7e34179d62c/go.mod h1:kiPs9g148eLShc2TYagUAyKDnD+dH9U+CQKsXzlY9xo=
 github.com/hashicorp/raft-snapshot v1.0.4 h1:EuDuayAJPdiDmVk1ygTDnG2zDzrs0/6/yBuma1IYSow=
 github.com/hashicorp/raft-snapshot v1.0.4/go.mod h1:5sL9eUn72lH5DzsFIJ9jaysITbHksSSszImWSOTC8Ic=
-github.com/hashicorp/vault-plugin-mock v0.16.1 h1:5QQvSUHxDjEEbrd2REOeacqyJnCLPD51IQzy71hx8P0=
-github.com/hashicorp/vault-plugin-mock v0.16.1/go.mod h1:83G4JKlOwUtxVourn5euQfze3ZWyXcUiLj2wqrKSDIM=
+github.com/hashicorp/vault-plugin-mock v0.19.13 h1:I9O6h/LG5/mP6jTLb7yijRFdVPqJqbiVi9v2AF2i+Vc=
+github.com/hashicorp/vault-plugin-mock v0.19.13/go.mod h1:83G4JKlOwUtxVourn5euQfze3ZWyXcUiLj2wqrKSDIM=
 github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 h1:O/pT5C1Q3mVXMyuqg7yuAWUg/jMZR1/0QTzTRdNR6Uw=
 github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443/go.mod h1:bEpDU35nTu0ey1EXjwNwPjI9xErAsoOCmcMb9GKvyxo=
 github.com/hashicorp/yamux v0.1.1 h1:yrQxtgseBDrq9Y652vSRDvsKCJKOUD+GzTS4Y0Y8pvE=

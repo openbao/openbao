@@ -239,20 +239,19 @@ func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
 	}
 }
 
-// Because the elided real data doesn't get unmarshaled, it doesn't get converted to floats.
-// But when the elided test-data is hashed, it doesn't handle elision and
-// the elided ints get converted to floats. This func corrects the test data, by
-// converting the floats back to ints.
+// Because the elided real data doesn't get unmarshaled, it doesn't
+// get converted to floats.  But when the elided test-data is hashed
+// by the tfw.hashExpectedValueForComparison() method, that method
+// doesn't handle elision and the elided ints get converted to floats.
+//
+// This func corrects the issue with
+// tfw.hashExpectedValueForComparison(), by converting the floats back
+// to ints.
 func fixupElidedTestData(inputData map[string]interface{}) map[string]interface{} {
 	for k, v := range inputData {
-		if k == "keys" {
+		if k == "keys" || k == "key_info" {
 			if f, ok := v.(float64); ok {
-				inputData["keys"] = int(f)
-			}
-		}
-		if k == "key_info" {
-			if f, ok := v.(float64); ok {
-				inputData["key_info"] = int(f)
+				inputData[k] = int(f)
 			}
 		}
 	}

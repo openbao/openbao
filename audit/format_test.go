@@ -125,7 +125,7 @@ func TestElideListResponses(t *testing.T) {
 				"keys": []string{"foo", "bar", "baz"},
 			},
 			map[string]interface{}{
-				"keys": float64(3),
+				"keys": 3,
 			},
 		},
 		{
@@ -140,8 +140,8 @@ func TestElideListResponses(t *testing.T) {
 				},
 			},
 			map[string]interface{}{
-				"keys":     float64(4),
-				"key_info": float64(4),
+				"keys":     4,
+				"key_info": 4,
 			},
 		},
 		{
@@ -195,7 +195,8 @@ func TestElideListResponses(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				formatResponse(t, config, logical.ListOperation, tc.inputData)
-				assert.Equal(t, tfw.hashExpectedValueForComparison(tc.expectedData), tfw.lastResponse.Response.Data)
+				assert.Equal(t, fixupElidedTestData(tfw.hashExpectedValueForComparison(tc.expectedData)),
+					tfw.lastResponse.Response.Data)
 			})
 		}
 	})
@@ -236,4 +237,24 @@ func fixupInputData(inputData map[string]interface{}) map[string]interface{} {
 		"keys":     newSlice,
 		"key_info": inputData["key_info"],
 	}
+}
+
+// Because the elided real data doesn't get unmarshaled, it doesn't get converted to floats.
+// But when the elided test-data is hashed, it doesn't handle elision and
+// the elided ints get converted to floats. This func corrects the test data, by
+// converting the floats back to ints.
+func fixupElidedTestData(inputData map[string]interface{}) map[string]interface{} {
+	for k, v := range inputData {
+		if k == "keys" {
+			if f, ok := v.(float64); ok {
+				inputData["keys"] = int(f)
+			}
+		}
+		if k == "key_info" {
+			if f, ok := v.(float64); ok {
+				inputData["key_info"] = int(f)
+			}
+		}
+	}
+	return inputData
 }

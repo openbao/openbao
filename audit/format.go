@@ -583,11 +583,11 @@ func doElideListResponseDataWithCopy(inputData map[string]interface{}, outputDat
 	for k, v := range inputData {
 		if k == "keys" {
 			if vSlice, ok := v.([]string); ok {
-				outputData[k] = float64(len(vSlice))
+				outputData[k] = len(vSlice)
 			}
 		} else if k == "key_info" {
 			if vMap, ok := v.(map[string]interface{}); ok {
-				outputData[k] = float64(len(vMap))
+				outputData[k] = len(vMap)
 			}
 		}
 	}

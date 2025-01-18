@@ -63,7 +63,7 @@ func (fw *testingFormatWriter) hashExpectedValueForComparison(input map[string]i
 		panic(err)
 	}
 
-	return copiedAsMap
+	return fixupElidedTestData(copiedAsMap)
 }
 
 func TestFormatRequestErrors(t *testing.T) {
@@ -195,8 +195,7 @@ func TestElideListResponses(t *testing.T) {
 		for _, tc := range tests {
 			t.Run(tc.name, func(t *testing.T) {
 				formatResponse(t, config, logical.ListOperation, tc.inputData)
-				assert.Equal(t, fixupElidedTestData(tfw.hashExpectedValueForComparison(tc.expectedData)),
-					tfw.lastResponse.Response.Data)
+				assert.Equal(t, tfw.hashExpectedValueForComparison(tc.expectedData), tfw.lastResponse.Response.Data)
 			})
 		}
 	})

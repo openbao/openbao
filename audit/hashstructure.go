@@ -203,8 +203,13 @@ func HashWrapInfo(salter *salt.Salt, in *wrapping.ResponseWrapInfo, HMACAccessor
 // by getValueFromCopy() to walk the copy.
 //
 // For the HashCallback, see the built-in HashCallbacks below.
-func HashStructure(original interface{}, copy interface{}, cb HashCallback, ignoredKeys []string, elideListResponseData bool) error {
-	walker := &hashWalker{UnmarshalledCopy: reflect.ValueOf(copy), Callback: cb, IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData}
+func HashStructure(original interface{}, copy interface{}, cb HashCallback,
+	ignoredKeys []string, elideListResponseData bool,
+) error {
+	walker := &hashWalker{
+		UnmarshalledCopy: copy, Callback: cb,
+		IgnoredKeys: ignoredKeys, ElideListResponseData: elideListResponseData,
+	}
 	return reflectwalk.Walk(original, walker)
 }
 
@@ -239,7 +244,7 @@ type hashWalker struct {
 	// element of csKey, only nesting to another structure increases the size of
 	// this slice.
 	csKey                 []reflect.Value
-	UnmarshalledCopy      reflect.Value
+	UnmarshalledCopy      interface{}
 	ElideListResponseData bool
 }
 
@@ -331,9 +336,9 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		m := w.getValueFromCopy()
-		mk := w.csKey[len(w.cs)-1]
-		m.SetMapIndex(mk, reflect.ValueOf(strVal))
+		m := w.getMapFromCopy()
+		mk := w.csKey[len(w.cs)-1].String()
+		m[mk] = strVal
 	case reflectwalk.SliceElem:
 		// Create a string value of the time. IMPORTANT: this must never change
 		// across Vault versions or the hash value of equivalent time.Time will
@@ -341,9 +346,9 @@ func (w *hashWalker) Struct(v reflect.Value) error {
 		strVal := v.Interface().(time.Time).Format(time.RFC3339Nano)
 
 		// Set the map value to the string instead of the time.Time object
-		s := w.getValueFromCopy()
+		s := w.getSliceFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
-		s.Slice(si, si+1).Index(0).Set(reflect.ValueOf(strVal))
+		s[si] = strVal
 	}
 
 	// Skip this entry so that we don't walk the struct, but
@@ -404,30 +409,29 @@ func (w *hashWalker) Primitive(v reflect.Value) error {
 
 	replaceVal := w.Callback(v.String())
 
-	resultVal := reflect.ValueOf(replaceVal)
 	switch w.loc[len(w.loc)-1] {
 	case reflectwalk.MapValue:
 		fallthrough
 	case reflectwalk.StructField:
 		// If we're in a map, then the only way to set a map value is
 		// to set it directly.
-		m := w.getValueFromCopy()
-		mk := w.csKey[len(w.cs)-1]
-		m.SetMapIndex(mk, resultVal)
+		m := w.getMapFromCopy()
+		mk := w.csKey[len(w.cs)-1].String()
+		m[mk] = replaceVal
 	case reflectwalk.SliceElem:
-		s := w.getValueFromCopy()
+		s := w.getSliceFromCopy()
 		si := int(w.csKey[len(w.cs)-1].Int())
-		s.Slice(si, si+1).Index(0).Set(resultVal)
+		s[si] = replaceVal
+
 	default:
 		panic("Found unsupported value.")
 	}
 
 	return nil
-
 }
 
 // get current value from copy to be written to.
-func (w *hashWalker) getValueFromCopy() reflect.Value {
+func (w *hashWalker) getValueFromCopy() interface{} {
 	size := len(w.cs)
 	currentValue := w.UnmarshalledCopy
 	startKey := 2  // First key in w.csKey maps to w.loc[2]
@@ -437,22 +441,43 @@ func (w *hashWalker) getValueFromCopy() reflect.Value {
 		case reflectwalk.MapValue:
 			fallthrough
 		case reflectwalk.StructField:
-			currentValue = currentValue.MapIndex(w.csKey[i])
+			currentValue = getMap(currentValue)[w.csKey[i].String()]
 		case reflectwalk.SliceElem:
 			index := w.csKey[i].Int()
-			currentValue = currentValue.Index(int(index))
+			currentValue = getSlice(currentValue)[int(index)]
 		default:
 			panic("invalid location")
 		}
-		if !currentValue.IsValid() {
-			panic("bad field name: " + w.csKey[i].String())
-		}
-		for currentValue.Kind() == reflect.Ptr ||
-			currentValue.Kind() == reflect.Interface {
-			currentValue = currentValue.Elem()
-		}
 	}
 	return currentValue
+}
+
+func (w *hashWalker) getMapFromCopy() map[string]interface{} {
+	return getMap(w.getValueFromCopy())
+}
+
+func getMap(inputData interface{}) map[string]interface{} {
+	var value map[string]interface{}
+	if v, ok := inputData.(map[string]interface{}); ok {
+		value = v
+	} else {
+		panic("bad map")
+	}
+	return value
+}
+
+func (w *hashWalker) getSliceFromCopy() []interface{} {
+	return getSlice(w.getValueFromCopy())
+}
+
+func getSlice(inputData interface{}) []interface{} {
+	var value []interface{}
+	if v, ok := inputData.([]interface{}); ok {
+		value = v
+	} else {
+		panic("bad slice")
+	}
+	return value
 }
 
 // Skip elided data because they don't exist in the

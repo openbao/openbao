@@ -175,7 +175,7 @@ export default class StoreService extends Store {
       dataset,
     };
     this.setLazyCacheForModel(modelName, query, value);
-  },
+  }
 
   clearDataset(modelName) {
     if (!this.lazyCaches.size) return;

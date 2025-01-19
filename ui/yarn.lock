@@ -12470,18 +12470,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-cli-dependency-checker@npm:^3.3.1":
-  version: 3.3.1
-  resolution: "ember-cli-dependency-checker@npm:3.3.1"
+"ember-cli-dependency-checker@npm:^3.3.3":
+  version: 3.3.3
+  resolution: "ember-cli-dependency-checker@npm:3.3.3"
   dependencies:
-    chalk: ^2.3.0
-    find-yarn-workspace-root: ^1.1.0
+    chalk: ^2.4.2
+    find-yarn-workspace-root: ^2.0.0
     is-git-url: ^1.0.0
-    resolve: ^1.5.0
-    semver: ^5.3.0
+    resolve: ^1.22.0
+    semver: ^5.7.1
   peerDependencies:
-    ember-cli: ^3.2.0 || ^4.0.0
-  checksum: 41d27cb4ccd056b9013ef00fa0f4e9133a5769b82bef8427ceaca3d9b773f901a4fbea6ad87748a6ae456d0051ed12f4e664212ca3c290d14704c3a2d710ad72
+    ember-cli: ^3.2.0 || >=4.0.0
+  checksum: cd14ef579efeba3fcfdc6639069f8492a35469e75148f86b9f462112922d2c063f7af8608d9d35b3d8936758edb2e21fb2485cf833c55644f767ab7fbea7b9e5
   languageName: node
   linkType: hard
 
@@ -15377,16 +15377,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"find-yarn-workspace-root@npm:^1.1.0":
-  version: 1.2.1
-  resolution: "find-yarn-workspace-root@npm:1.2.1"
-  dependencies:
-    fs-extra: ^4.0.3
-    micromatch: ^3.1.4
-  checksum: a8f4565fb1ead6122acc0d324fa3257c20f7b0c91b7b266dab9eee7251fb5558fcff5b35dbfd301bfd1cbb91c1cdd1799b28ffa5b9a92efd8c7ded3663652bbe
-  languageName: node
-  linkType: hard
-
 "find-yarn-workspace-root@npm:^2.0.0":
   version: 2.0.0
   resolution: "find-yarn-workspace-root@npm:2.0.0"
@@ -15665,7 +15655,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fs-extra@npm:^4.0.2, fs-extra@npm:^4.0.3":
+"fs-extra@npm:^4.0.2":
   version: 4.0.3
   resolution: "fs-extra@npm:4.0.3"
   dependencies:
@@ -22668,6 +22658,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"semver@npm:^5.7.1":
+  version: 5.7.2
+  resolution: "semver@npm:5.7.2"
+  bin:
+    semver: bin/semver
+  checksum: fb4ab5e0dd1c22ce0c937ea390b4a822147a9c53dbd2a9a0132f12fe382902beef4fbf12cf51bb955248d8d15874ce8cd89532569756384f994309825f10b686
+  languageName: node
+  linkType: hard
+
 "semver@npm:^6.0.0, semver@npm:^6.1.0, semver@npm:^6.1.1, semver@npm:^6.1.2, semver@npm:^6.3.0":
   version: 6.3.0
   resolution: "semver@npm:6.3.0"
@@ -25046,7 +25045,7 @@ __metadata:
     ember-cli-babel: ^7.26.11
     ember-cli-clipboard: 0.16.0
     ember-cli-content-security-policy: 2.0.3
-    ember-cli-dependency-checker: ^3.3.1
+    ember-cli-dependency-checker: ^3.3.3
     ember-cli-deprecation-workflow: ^2.1.0
     ember-cli-flash: 4.0.0
     ember-cli-htmlbars: ^6.0.1

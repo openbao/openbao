@@ -56,7 +56,7 @@ require (
 	github.com/hashicorp/go-discover v0.0.0-20210818145131-c573d69da192
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-memdb v1.3.4
-	github.com/hashicorp/go-metrics v0.5.3
+	github.com/hashicorp/go-metrics v0.5.4
 	github.com/hashicorp/go-msgpack v1.1.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-plugin v1.6.2

@@ -61,7 +61,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			// Create the CEL role
 			roleReq := &logical.Request{
 				Operation: logical.UpdateOperation,
-				Path:      "cel/roles/" + tc.Name,
+				Path:      "cel/role/" + tc.Name,
 				Storage:   storage,
 				Data:      roleData,
 			}
@@ -103,7 +103,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 			}
 
 			// List roles to verify
-			roleReq.Path = "cel/roles"
+			roleReq.Path = "cel/role"
 			roleReq.Operation = logical.ListOperation
 			roleListResp, err := b.HandleRequest(context.Background(), roleReq)
 			foundRoleInList := roleListResp != nil && slices.Contains(roleListResp.Data["keys"].([]string), tc.Name)

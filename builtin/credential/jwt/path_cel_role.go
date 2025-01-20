@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -20,9 +21,13 @@ type celRoleEntry struct {
 	Message       string `json:"message,omitempty"`
 }
 
+type celRole struct {
+	tokenutil.TokenParams
+}
+
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: "cel/roles/?",
+		Pattern: "cel/role/?",
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixJWT,
@@ -50,7 +55,7 @@ func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
 						Fields: map[string]*framework.FieldSchema{
 							"keys": {
 								Type:        framework.TypeStringSlice,
-								Description: "List of cel roles",
+								Description: "List of CEL roles",
 								Required:    true,
 							},
 						},
@@ -85,7 +90,7 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 	}
 
 	return &framework.Path{
-		Pattern: "cel/roles/" + framework.GenericNameRegex("name"),
+		Pattern: "cel/role/" + framework.GenericNameRegex("name"),
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixJWT,
@@ -203,7 +208,7 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 
 	// Store it
-	jsonEntry, err := logical.StorageEntryJSON("cel/roles/"+name, entry)
+	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+name, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +223,7 @@ func (b *jwtAuthBackend) pathCelRoleList(ctx context.Context, req *logical.Reque
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
 
-	entries, err := req.Storage.ListPage(ctx, "cel/roles/", after, limit)
+	entries, err := req.Storage.ListPage(ctx, "cel/role/", after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +278,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 	}
 
 	// Store it
-	jsonEntry, err := logical.StorageEntryJSON("cel/roles/"+roleName, entry)
+	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+roleName, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -285,7 +290,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 }
 
 func (b *jwtAuthBackend) pathCelRoleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "cel/roles/"+data.Get("name").(string))
+	err := req.Storage.Delete(ctx, "cel/role/"+data.Get("name").(string))
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +299,7 @@ func (b *jwtAuthBackend) pathCelRoleDelete(ctx context.Context, req *logical.Req
 }
 
 func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*celRoleEntry, error) {
-	entry, err := s.Get(ctx, "cel/roles/"+roleName)
+	entry, err := s.Get(ctx, "cel/role/"+roleName)
 	if err != nil {
 		return nil, err
 	}

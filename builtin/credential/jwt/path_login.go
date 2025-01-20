@@ -7,24 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
-	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/errwrap"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/oauth2"
-)
-
-const (
-	CelResultAuthorizedKey     = "authorized"
-	CelResultAddPoliciesKey    = "add_policies"
-	CelResultRemovePoliciesKey = "remove_policies"
 )
 
 func pathLogin(b *jwtAuthBackend) *framework.Path {
@@ -205,97 +194,9 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return nil, err
 	}
 
-	if err := b.applyCelRoles(ctx, req, allClaims, auth); err != nil {
-		return nil, fmt.Errorf("error applying cel roles: %w", err)
-	}
-
 	return &logical.Response{
 		Auth: auth,
 	}, nil
-}
-
-func (b *jwtAuthBackend) applyCelRoles(ctx context.Context, req *logical.Request, allClaims map[string]any, auth *logical.Auth) error {
-	celRoleKeys, err := req.Storage.List(ctx, "cel/roles")
-	if err != nil {
-		return err
-	}
-	if len(celRoleKeys) == 0 {
-		return nil
-	}
-	for _, key := range celRoleKeys {
-		celRole, err := b.getCelRole(ctx, req.Storage, key)
-		if err != nil {
-			return err
-		}
-		if err = b.applyCelRole(ctx, celRole, allClaims, auth); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (b *jwtAuthBackend) applyCelRole(ctx context.Context, celRole *celRoleEntry, allClaims map[string]any, auth *logical.Auth) error {
-	env, err := cel.NewEnv(
-		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
-	)
-	if err != nil {
-		return err
-	}
-	ast, iss := env.Compile(celRole.AuthProgram)
-	if iss.Err() != nil {
-		return fmt.Errorf("Cel role auth program failed to compile: %w", iss.Err())
-	}
-	prog, err := env.Program(ast)
-	if err != nil {
-		return fmt.Errorf("Cel role auth program failed: %w", err)
-	}
-	result, _, err := prog.Eval(map[string]any{
-		"claims": allClaims,
-	})
-
-	if err != nil {
-		return fmt.Errorf("Cel role auth program failed to evaluate: %w", err)
-	}
-
-	// process result from CEL program
-	switch v := result.Value().(type) {
-	// if map return value
-	case map[ref.Val]ref.Val:
-		for key, val := range v {
-			keyStr := fmt.Sprintf("%v", key)
-
-			switch {
-			case val.Type().TypeName() == "bool":
-				boolVal := val.Value().(bool)
-				if keyStr == CelResultAuthorizedKey && !boolVal {
-					return errors.New("Cel role auth program declined authorization")
-				}
-			case val.Type().TypeName() == "list":
-				list := val.(traits.Lister)
-				items := make([]string, list.Size().Value().(int64))
-				for i := int64(0); i < list.Size().Value().(int64); i++ {
-					item := list.Get(types.Int(i))
-					items[i] = fmt.Sprintf("%v", item)
-				}
-				if keyStr == CelResultAddPoliciesKey {
-					auth.Policies = append(auth.Policies, items...)
-				}
-				if keyStr == CelResultRemovePoliciesKey {
-					auth.Policies = slices.DeleteFunc(auth.Policies, func(policy string) bool {
-						return slices.Contains(items, policy)
-					})
-				}
-			}
-		}
-	// if boolean return value
-	case bool:
-		if !v {
-			return fmt.Errorf("Cel role '%s' blocked authorization with boolean return", celRole.Name)
-		}
-	default:
-		return fmt.Errorf("Cel role '%s' returned unexpected type: %T", celRole.Name, result.Value())
-	}
-	return nil
 }
 
 func (b *jwtAuthBackend) pathLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

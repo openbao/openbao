@@ -2479,6 +2479,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@scarf/scarf@npm:=1.4.0":
+  version: 1.4.0
+  resolution: "@scarf/scarf@npm:1.4.0"
+  checksum: def62aa403f7e63165ccb219efd2c420fc0b7357b0ba43397f635e4aa813ace1cdf3855a93fc559b4619bcc0469ae4767b8cb72af30ea5c0522bf4a2ecb18198
+  languageName: node
+  linkType: hard
+
 "@simple-dom/interface@npm:^1.4.0":
   version: 1.4.0
   resolution: "@simple-dom/interface@npm:1.4.0"
@@ -6942,7 +6949,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cheerio@npm:^1.0.0-rc.12":
+"cheerio@npm:^1.0.0":
   version: 1.0.0
   resolution: "cheerio@npm:1.0.0"
   dependencies:
@@ -10364,10 +10371,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-svg-jar@npm:2.4.0":
-  version: 2.4.0
-  resolution: "ember-svg-jar@npm:2.4.0"
+"ember-svg-jar@npm:^2.6.0":
+  version: 2.6.0
+  resolution: "ember-svg-jar@npm:2.6.0"
   dependencies:
+    "@embroider/macros": ^1.12.2
     broccoli-caching-writer: ^3.0.3
     broccoli-concat: ^4.2.5
     broccoli-funnel: ^3.0.8
@@ -10376,13 +10384,13 @@ __metadata:
     broccoli-plugin: ^4.0.7
     broccoli-string-replace: ^0.1.2
     broccoli-svg-optimizer: ^2.1.0
-    cheerio: ^1.0.0-rc.12
+    cheerio: ^1.0.0
     console-ui: ^3.1.1
     ember-cli-babel: ^7.26.6
     ember-cli-htmlbars: ^5.7.1
     lodash: ^4.17.15
     safe-stable-stringify: ^2.2.0
-  checksum: d2c7eb54c3aab45fe80775470e52d5db93e4fe60c9ecd95d614897cb2275bce92a0b5389914b40ad84509dcf400e1ec384ea192a25a325f30f6b848d8637d145
+  checksum: 2848b112898d37f72593ef4d1319d2a4f883f7a6fc9c4115d13669fb2ff5b42d9b954339ab666cb6bf8f71de71ab5f59df1789ebbb53046e0a5705df744ad3fb
   languageName: node
   linkType: hard
 
@@ -18775,10 +18783,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sass-svg-uri@npm:^1.0.0":
-  version: 1.0.2
-  resolution: "sass-svg-uri@npm:1.0.2"
-  checksum: 528227f76b56966bbde03b9c08b3dd337a2194bd0e76520d8405a576d5ac499fd412265373279c3b901b5e786f76f9eecdf5ba4ab38cdcb3370598bf43e652bd
+"sass-svg-uri@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "sass-svg-uri@npm:2.0.0"
+  checksum: 5357875b889310e13a78007ceec8ac5bdd28ac48bbba33f3e912e0dfee2f28e065229e4e0c6da9774f9f3c1f35b0fa8d1a6c44ab638b5c7c2b46c8ae2d846430
   languageName: node
   linkType: hard
 
@@ -20090,10 +20098,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^3.36.2":
-  version: 3.52.5
-  resolution: "swagger-ui-dist@npm:3.52.5"
-  checksum: a8bd28bf475c67ad8445a2bb864c4130415d001caeb5db54f0a561785ac9f7df77230a7634520e9c10f25b568035a8f924ecc059945d4caed00a3f2a39ca243c
+"swagger-ui-dist@npm:^5.18.2":
+  version: 5.18.2
+  resolution: "swagger-ui-dist@npm:5.18.2"
+  dependencies:
+    "@scarf/scarf": =1.4.0
+  checksum: 4e8f3e4669276f421f91ce6214f9df09a5b0f9aa1b636e9044076af4f3a02b093d1eb43ed1b3962aba08be803692e71dfc1ce0c28c2057b9eb0c35b166d7ef42
   languageName: node
   linkType: hard
 
@@ -21367,7 +21377,7 @@ __metadata:
     ember-service-worker: "meirish/ember-service-worker#configurable-scope"
     ember-sinon: ^4.0.0
     ember-source: ~4.12.0
-    ember-svg-jar: 2.4.0
+    ember-svg-jar: ^2.6.0
     ember-template-lint: 5.7.2
     ember-template-lint-plugin-prettier: 4.0.0
     ember-test-selectors: 6.0.0
@@ -21401,14 +21411,14 @@ __metadata:
     qunit: ^2.19.4
     qunit-dom: ^2.0.0
     sass: ^1.58.3
-    sass-svg-uri: ^1.0.0
+    sass-svg-uri: ^2.0.0
     shell-quote: ^1.6.1
     string.prototype.endswith: ^0.2.0
     string.prototype.startswith: ^0.2.0
     stylelint: ^15.4.0
     stylelint-config-standard: ^32.0.0
     stylelint-prettier: ^3.0.0
-    swagger-ui-dist: ^3.36.2
+    swagger-ui-dist: ^5.18.2
     text-encoder-lite: 2.0.0
     tracked-built-ins: ^3.1.1
     typescript: ^5.7.3

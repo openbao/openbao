@@ -56,7 +56,6 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/cluster"
-	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/net/http2"
 )
@@ -329,12 +328,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		SecretThreshold: 3,
 	}
 
-	switch core.seal.StoredKeysSupported() {
-	case seal.StoredKeysNotSupported:
-		barrierConfig.StoredShares = 0
-	default:
-		barrierConfig.StoredShares = 1
-	}
+	barrierConfig.StoredShares = 1
 
 	recoveryConfig := &SealConfig{
 		SecretShares:    3,
@@ -344,9 +338,6 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	initParams := &InitParams{
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
-	}
-	if core.seal.StoredKeysSupported() == seal.StoredKeysNotSupported {
-		initParams.LegacyShamirSeal = true
 	}
 	result, err := core.Initialize(context.Background(), initParams)
 	if err != nil {

@@ -27,9 +27,6 @@ type InitParams struct {
 	BarrierConfig   *SealConfig
 	RecoveryConfig  *SealConfig
 	RootTokenPGPKey string
-	// LegacyShamirSeal should only be used in test code, we don't want to
-	// give the user a way to create legacy shamir seals.
-	LegacyShamirSeal bool
 }
 
 // InitResult is used to provide the key parts back after
@@ -68,7 +65,7 @@ func (c *Core) InitializeRecovery(ctx context.Context) error {
 }
 
 // Initialized checks if the Vault is already initialized.  This means one of
-// two things: either the barrier has been created (with keyring and master key)
+// two things: either the barrier has been created (with keyring and root key)
 // and the seal config written to storage, or Raft is forming a cluster and a
 // join/bootstrap is in progress.
 func (c *Core) Initialized(ctx context.Context) (bool, error) {
@@ -182,11 +179,7 @@ func (c *Core) Initialize(ctx context.Context, initParams *InitParams) (*InitRes
 		}
 	}
 
-	if initParams.LegacyShamirSeal {
-		barrierConfig.StoredShares = 0
-	} else {
-		barrierConfig.StoredShares = 1
-	}
+	barrierConfig.StoredShares = 1
 
 	if len(barrierConfig.PGPKeys) > 0 && len(barrierConfig.PGPKeys) != barrierConfig.SecretShares {
 		return nil, fmt.Errorf("incorrect number of PGP keys")

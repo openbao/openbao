@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -22,7 +21,7 @@ import (
 
 var logger = logging.NewVaultLogger(log.Trace)
 
-// mockBarrier returns a physical backend, security barrier, and master key
+// mockBarrier returns a physical backend, security barrier, and root key
 func mockBarrier(t testing.TB) (physical.Backend, SecurityBarrier, []byte) {
 	inm, err := inmem.NewInmem(nil, logger)
 	if err != nil {
@@ -135,97 +134,6 @@ func TestAESGCMBarrier_Rekey(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	testBarrier_Rekey(t, b.(*TransactionalAESGCMBarrier))
-}
-
-// Test an upgrade from the old (0.1) barrier/init to the new
-// core/keyring style
-func TestAESGCMBarrier_BackwardsCompatible(t *testing.T) {
-	inm, err := inmem.NewInmem(nil, logger)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	sb, err := NewAESGCMBarrier(inm)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	b := sb.(*TransactionalAESGCMBarrier)
-
-	// Generate a barrier/init entry
-	encrypt, _ := b.GenerateKey(rand.Reader)
-	init := &barrierInit{
-		Version: 1,
-		Key:     encrypt,
-	}
-	buf, _ := json.Marshal(init)
-
-	// Protect with master key
-	master, _ := b.GenerateKey(rand.Reader)
-	gcm, _ := b.aeadFromKey(master)
-	value, err := b.encrypt(barrierInitPath, initialKeyTerm, gcm, buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Write to the physical backend
-	pe := &physical.Entry{
-		Key:   barrierInitPath,
-		Value: value,
-	}
-	inm.Put(context.Background(), pe)
-
-	// Create a fake key
-	gcm, _ = b.aeadFromKey(encrypt)
-	value, err = b.encrypt("test/foo", initialKeyTerm, gcm, []byte("test"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	pe = &physical.Entry{
-		Key:   "test/foo",
-		Value: value,
-	}
-	inm.Put(context.Background(), pe)
-
-	// Should still be initialized
-	isInit, err := b.Initialized(context.Background())
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if !isInit {
-		t.Fatalf("should be initialized")
-	}
-
-	// Unseal should work and migrate online
-	err = b.Unseal(context.Background(), master)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	// Check for migration
-	out, err := inm.Get(context.Background(), barrierInitPath)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out != nil {
-		t.Fatalf("should delete old barrier init")
-	}
-
-	// Should have keyring
-	out, err = inm.Get(context.Background(), keyringPath)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if out == nil {
-		t.Fatalf("should have keyring file")
-	}
-
-	// Attempt to read encrypted key
-	entry, err := b.Get(context.Background(), "test/foo")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if string(entry.Value) != "test" {
-		t.Fatalf("bad: %#v", entry)
-	}
 }
 
 // Verify data sent through is encrypted

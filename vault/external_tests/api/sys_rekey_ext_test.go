@@ -20,41 +20,29 @@ import (
 
 func TestSysRekey_Verification(t *testing.T) {
 	testcases := []struct {
-		recovery     bool
-		legacyShamir bool
+		recovery bool
 	}{
-		{recovery: true, legacyShamir: false},
-		{recovery: false, legacyShamir: false},
-		{recovery: false, legacyShamir: true},
+		{recovery: true},
+		{recovery: false},
 	}
 
 	for _, tc := range testcases {
-		recovery, legacy := tc.recovery, tc.legacyShamir
-		t.Run(fmt.Sprintf("recovery=%v,legacyShamir=%v", recovery, legacy), func(t *testing.T) {
+		t.Run(fmt.Sprintf("recovery=%v", tc.recovery), func(t *testing.T) {
 			t.Parallel()
-			testSysRekey_Verification(t, recovery, legacy)
+			testSysRekey_Verification(t, tc.recovery)
 		})
 	}
 }
 
-func testSysRekey_Verification(t *testing.T, recovery bool, legacyShamir bool) {
+func testSysRekey_Verification(t *testing.T, recovery bool) {
 	opts := &vault.TestClusterOptions{
 		HandlerFunc: vaulthttp.Handler,
 	}
 	switch {
 	case recovery:
-		if legacyShamir {
-			panic("invalid case")
-		}
 		opts.SealFunc = func() vault.Seal {
 			return vault.NewTestSeal(t, &seal.TestSealOpts{
 				StoredKeys: seal.StoredKeysSupportedGeneric,
-			})
-		}
-	case legacyShamir:
-		opts.SealFunc = func() vault.Seal {
-			return vault.NewTestSeal(t, &seal.TestSealOpts{
-				StoredKeys: seal.StoredKeysNotSupported,
 			})
 		}
 	}

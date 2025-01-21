@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-secure-stdlib/base62"
-	rabbithole "github.com/michaelklishin/rabbit-hole/v2"
+	rabbithole "github.com/michaelklishin/rabbit-hole/v3"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	logicaltest "github.com/openbao/openbao/helper/testhelpers/logical"

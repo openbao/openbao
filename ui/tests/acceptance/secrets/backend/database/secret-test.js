@@ -27,18 +27,6 @@ import {
 const searchSelectComponent = create(searchSelect);
 const consoleComponent = create(consoleClass);
 
-const MODEL = {
-  engineType: 'database',
-  id: 'database-name',
-};
-
-const mount = async () => {
-  const path = `database-${Date.now()}`;
-  await mountSecrets.enable('database', path);
-  await settled();
-  return path;
-};
-
 const newConnection = async (backend, plugin = 'mysql-database-plugin') => {
   const name = `connection-${Date.now()}`;
   await connectionPage.visitCreate({ backend });

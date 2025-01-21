@@ -428,7 +428,6 @@ func TestTLSLeafCertInClientCAFile(t *testing.T) {
 		},
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
-	fmt.Println(warnings)
 	if errs == nil || len(errs) != 1 {
 		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail once")
 	}

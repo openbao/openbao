@@ -52,7 +52,9 @@ func Test_applyCelRole(t *testing.T) {
 		{
 			name: "SetPolicies will add some policies",
 			celRole: celRoleEntry{
-				AuthProgram: `SetPolicies(["policy1", "policy2"])`,
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetPolicies(["policy1", "policy2"])
+					: false`,
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
@@ -63,6 +65,25 @@ func Test_applyCelRole(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
 				require.Equal(t, []string{"policy1", "policy2"}, rslt.TokenPolicies)
+			},
+		},
+		{
+			name: "SetBoundCIDRs will add some CIDRs",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetBoundCIDRs(["192.168.1.0/24", "10.0.1.1/31"])
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "192.168.1.0/24", rslt.TokenBoundCIDRs[0].String())
+				require.Equal(t, "10.0.1.1/31", rslt.TokenBoundCIDRs[1].String())
 			},
 		},
 	}

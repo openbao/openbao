@@ -14,6 +14,7 @@ import (
 	"github.com/google/cel-go/common/types/traits"
 	"github.com/hashicorp/cap/jwt"
 	"github.com/hashicorp/errwrap"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -211,12 +212,13 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*jwtRole, error) {
 	role := jwtRole{}
+	// these functions are closures around a temporary `role` and will affect it
 	env, err := cel.NewEnv(
 		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
 		cel.Function("SetPolicies",
 			cel.Overload("SetPolicies",
 				[]*cel.Type{cel.ListType(types.StringType)},
-				cel.NullType,
+				cel.BoolType,
 				cel.UnaryBinding(func(arg ref.Val) ref.Val {
 					list, ok := arg.(traits.Lister)
 					if !ok {
@@ -229,8 +231,34 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 						role.TokenPolicies = append(role.TokenPolicies, elem)
 					}
 
-					// Return nil
-					return types.NullValue
+					// Return true
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetBoundCIDRs",
+			cel.Overload("SetBoundCIDRs",
+				[]*cel.Type{cel.ListType(types.StringType)},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					list, ok := arg.(traits.Lister)
+					if !ok {
+						return types.NewErr("expected a list of strings")
+					}
+
+					// Iterate over the list
+					for i := int64(0); i < int64(list.Size().(types.Int)); i++ {
+						elem := fmt.Sprintf("%v", list.Get(types.Int(i)))
+						sockAddr, err := sockaddr.NewSockAddr(elem)
+						if err != nil {
+							return types.NewErr("expected a list of CIDRs")
+						}
+						role.TokenBoundCIDRs = append(role.TokenBoundCIDRs,
+							&sockaddr.SockAddrMarshaler{SockAddr: sockAddr})
+					}
+
+					// Return true
+					return types.True
 				}),
 			),
 		),

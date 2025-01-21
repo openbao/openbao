@@ -1,3 +1,10 @@
+## 2.1.1
+## January 21, 2025
+
+IMPROVEMENTS:
+
+* core: Bump to latest Go toolchain 1.23.5. [[GH-912](https://github.com/openbao/openbao/pull/912)]
+
 ## 2.1.0
 ## November 29, 2024
 

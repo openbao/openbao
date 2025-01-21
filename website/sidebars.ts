@@ -396,6 +396,7 @@ const sidebars: SidebarsConfig = {
                 "plugins/index",
                 "plugins/plugin-architecture",
                 "plugins/plugin-development",
+                "plugins/plugin-authors-guide",
                 "plugins/plugin-management",
             ],
             Platforms: [

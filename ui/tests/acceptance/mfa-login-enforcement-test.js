@@ -38,7 +38,7 @@ module('Acceptance | mfa-login-enforcement', function (hooks) {
     });
 
     await visit('/ui/vault/access');
-    await click('[data-test-sidebar-nav-link="Multi-Factor Authentication"]');
+    await click('[data-test-sidebar-nav-link="Multi-factor authentication"]');
     await click('[data-test-tab="enforcements"]');
     await click('[data-test-enforcement-create]');
     // Fill out form

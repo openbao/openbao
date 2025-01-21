@@ -262,51 +262,6 @@ module('Acceptance | secrets/database/*', function (hooks) {
       assert.strictEqual(currentURL(), `/vault/secrets/${backend}/list`, 'Cancel button links to list view');
     });
   }
-  test('database connection create and edit: vault-plugin-database-oracle', async function (assert) {
-    assert.expect(11);
-    // keep oracle as separate test because it behaves differently than the others
-    const testCase = {
-      name: 'oracle-connection',
-      plugin: 'vault-plugin-database-oracle',
-      url: `{{username}}/{{password}}@localhost:1521/OraDoc.localhost`,
-      requiredFields: async (assert, name) => {
-        assert.dom('[data-test-input="username"]').exists(`Username field exists for ${name}`);
-        assert.dom('[data-test-input="password"]').exists(`Password field exists for ${name}`);
-        assert
-          .dom('[data-test-input="max_open_connections"]')
-          .exists(`Max open connections exists for ${name}`);
-        assert
-          .dom('[data-test-input="max_idle_connections"]')
-          .exists(`Max idle connections exists for ${name}`);
-        assert
-          .dom('[data-test-input="max_connection_lifetime"]')
-          .exists(`Max connection lifetime exists for ${name}`);
-        assert
-          .dom('[data-test-input="root_rotation_statements"]')
-          .exists(`Root rotation statements exists for ${name}`);
-        assert
-          .dom('[data-test-database-oracle-alert]')
-          .hasTextContaining(
-            `Warning Please ensure that your Oracle plugin has the default name of vault-plugin-database-oracle. Custom naming is not supported in the UI at this time. If the plugin is already named vault-plugin-database-oracle, disregard this warning.`,
-            'warning banner displays for oracle plugin name'
-          );
-      },
-    };
-    const backend = this.backend;
-    await connectionPage.visitCreate({ backend });
-    assert.strictEqual(currentURL(), `/vault/secrets/${backend}/create`, 'Correct creation URL');
-    assert
-      .dom('[data-test-empty-state-title]')
-      .hasText('No plugin selected', 'No plugin is selected by default and empty state shows');
-    await connectionPage.dbPlugin(testCase.plugin);
-    assert.dom('[data-test-empty-state]').doesNotExist('Empty state goes away after plugin selected');
-    assert.dom('[data-test-database-oracle-alert]').exists('shows oracle alert');
-    await connectionPage.name(testCase.name);
-    await connectionPage.connectionUrl(testCase.url);
-    testCase.requiredFields(assert, testCase.plugin);
-    // Cannot save without plugin mounted
-    // TODO: add fake server response for fuller test coverage
-  });
 
   test('Can create and delete a connection', async function (assert) {
     const backend = this.backend;

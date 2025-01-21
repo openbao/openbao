@@ -13,7 +13,7 @@
                 <FormFieldLabel
                   for={{attr.name}}
                   @label="Issuer ref"
-                  @helpText={{(if this.showHelpText attr.options.helpText)}}
+                  @helpText={{if this.showHelpText attr.options.helpText}}
                   @subText={{attr.options.subText}}
                 />
                 <Toggle
@@ -32,8 +32,8 @@
                     <Select
                       @name={{attr.name}}
                       @options={{this.issuers}}
-                      @valueAttribute={{"issuerDisplayName"}}
-                      @labelAttribute={{"issuerDisplayName"}}
+                      @valueAttribute="issuerDisplayName"
+                      @labelAttribute="issuerDisplayName"
                       @isFullwidth={{true}}
                       @selectedValue={{@role.issuerRef}}
                       @onChange={{action (mut @role.issuerRef)}}

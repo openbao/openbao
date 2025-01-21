@@ -78,6 +78,7 @@ func backend() *jwtAuthBackend {
 				pathRole(b),
 				pathCelRoleList(b),
 				pathCelRole(b),
+				pathCelLogin(b),
 				pathConfig(b),
 
 				// Uncomment to mount simple UI handler for local development

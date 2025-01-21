@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Bump to latest Go toolchain 1.23.5.
+```

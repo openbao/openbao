@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
@@ -114,9 +115,6 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 		return resp, err
 	}
 
-	// virtual role produced by the CEL program
-	role := &jwtRole{}
-
 	token := d.Get("jwt").(string)
 	if len(token) == 0 {
 		return logical.ErrorResponse("missing token"), nil
@@ -151,17 +149,17 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}
 
 	// execute celRoleEntry.AuthProgram
-	role, err = b.runCelProgram(ctx, celRoleEntry, allClaims)
+	jwtRole, err := b.runCelProgram(ctx, celRoleEntry, allClaims)
 	if err != nil {
 		return logical.ErrorResponse("error executing cel program: %s", err.Error()), nil
 	}
 
-	if len(role.TokenBoundCIDRs) > 0 {
+	if len(jwtRole.TokenBoundCIDRs) > 0 {
 		if req.Connection == nil {
 			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
 			return nil, logical.ErrPermissionDenied
 		}
-		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, role.TokenBoundCIDRs) {
+		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, jwtRole.TokenBoundCIDRs) {
 			return nil, logical.ErrPermissionDenied
 		}
 	}
@@ -169,17 +167,13 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	// If there are no bound audiences for the role, then the existence of any audience
 	// in the audience claim should result in an error.
 	aud, ok := getClaim(b.Logger(), allClaims, "aud").([]interface{})
-	if ok && len(aud) > 0 && len(role.BoundAudiences) == 0 {
+	if ok && len(aud) > 0 && len(jwtRole.BoundAudiences) == 0 {
 		return logical.ErrorResponse("audience claim found in JWT but no audiences bound to the role"), nil
 	}
 
-	alias, groupAliases, err := b.createIdentity(ctx, allClaims, celRoleEntry.Name, role, nil)
+	alias, groupAliases, err := b.createIdentity(ctx, allClaims, celRoleEntry.Name, jwtRole, nil)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
-	}
-
-	if err := validateBoundClaims(b.Logger(), role.BoundClaimsType, role.BoundClaims, allClaims); err != nil {
-		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
 	tokenMetadata := make(map[string]string)
@@ -197,11 +191,11 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 		Metadata: tokenMetadata,
 	}
 
-	if err := role.PopulateTokenAuth(auth, req); err != nil {
+	if err := jwtRole.PopulateTokenAuth(auth, req); err != nil {
 		return nil, fmt.Errorf("failed to populate auth information: %w", err)
 	}
 
-	if err := role.maybeTemplatePolicies(auth, allClaims); err != nil {
+	if err := jwtRole.maybeTemplatePolicies(auth, allClaims); err != nil {
 		return nil, err
 	}
 
@@ -210,10 +204,11 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}, nil
 }
 
+// runCelProgram executes the AuthProgram for the celRoleEntry and returns a transient jwtRole
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*jwtRole, error) {
 	role := jwtRole{}
-	// these functions are closures around a temporary `role` and will affect it
 	env, err := cel.NewEnv(
+		// these functions are closures around `role` and can alter it
 		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
 		cel.Function("SetPolicies",
 			cel.Overload("SetPolicies",
@@ -262,7 +257,62 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 				}),
 			),
 		),
+		cel.Function("SetTTL",
+			cel.Overload("SetTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenTTL = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetMaxTTL",
+			cel.Overload("SetMaxTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenMaxTTL = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetExplicitMaxTTL",
+			cel.Overload("SetExplicitMaxTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenExplicitMaxTTL = duration
+					return types.True
+				}),
+			),
+		),
 	)
+
 	if err != nil {
 		return nil, err
 	}

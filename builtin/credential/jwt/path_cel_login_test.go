@@ -20,7 +20,7 @@ func Test_applyCelRole(t *testing.T) {
 		validateResult func(t *testing.T, err error, role *jwtRole)
 	}{
 		{
-			name: "Boolean expression, returns true",
+			name: "Boolean expression true, returns role with no error",
 			celRole: celRoleEntry{
 				AuthProgram: "claims.sub == 'test@example.com'",
 			},
@@ -35,7 +35,7 @@ func Test_applyCelRole(t *testing.T) {
 			},
 		},
 		{
-			name: "Boolean expression, returns false",
+			name: "Boolean expression false, returns error",
 			celRole: celRoleEntry{
 				AuthProgram: "claims.sub == 'test-admin@example.com'",
 			},
@@ -50,7 +50,7 @@ func Test_applyCelRole(t *testing.T) {
 			},
 		},
 		{
-			name: "SetPolicies will add some policies",
+			name: "SetPolicies will add some policies to the resulting role",
 			celRole: celRoleEntry{
 				AuthProgram: `claims.sub == 'test@example.com'
 					? SetPolicies(["policy1", "policy2"])
@@ -68,7 +68,7 @@ func Test_applyCelRole(t *testing.T) {
 			},
 		},
 		{
-			name: "SetBoundCIDRs will add some CIDRs",
+			name: "SetBoundCIDRs will add some CIDRs to the resulting role",
 			celRole: celRoleEntry{
 				AuthProgram: `claims.sub == 'test@example.com'
 					? SetBoundCIDRs(["192.168.1.0/24", "10.0.1.1/31"])
@@ -84,6 +84,60 @@ func Test_applyCelRole(t *testing.T) {
 				require.NotNil(t, rslt)
 				require.Equal(t, "192.168.1.0/24", rslt.TokenBoundCIDRs[0].String())
 				require.Equal(t, "10.0.1.1/31", rslt.TokenBoundCIDRs[1].String())
+			},
+		},
+		{
+			name: "SetTTL will add TTL duration to the resulting role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetTTL("5m")
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "5m0s", rslt.TokenTTL.String())
+			},
+		},
+		{
+			name: "SetMaxTTL will add TTL duration to the resulting role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetMaxTTL("5m")
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "5m0s", rslt.TokenMaxTTL.String())
+			},
+		},
+		{
+			name: "SetExplicitMaxTTL will add TTL duration to the resulting role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetExplicitMaxTTL("5m")
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "5m0s", rslt.TokenExplicitMaxTTL.String())
 			},
 		},
 	}

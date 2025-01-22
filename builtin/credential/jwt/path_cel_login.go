@@ -311,6 +311,34 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 				}),
 			),
 		),
+		cel.Function("SetNoDefaultPolicy",
+			cel.Overload("SetNoDefaultPolicy",
+				[]*cel.Type{cel.BoolType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					boolSetting, ok := arg.(types.Bool)
+					if !ok {
+						return types.NewErr("expected a boolean")
+					}
+					role.TokenNoDefaultPolicy = boolSetting.Value().(bool)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetStrictlyBindIP",
+			cel.Overload("SetStrictlyBindIP",
+				[]*cel.Type{cel.BoolType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					boolSetting, ok := arg.(types.Bool)
+					if !ok {
+						return types.NewErr("expected a boolean")
+					}
+					role.TokenStrictlyBindIP = boolSetting.Value().(bool)
+					return types.True
+				}),
+			),
+		),
 	)
 
 	if err != nil {

@@ -140,6 +140,42 @@ func Test_applyCelRole(t *testing.T) {
 				require.Equal(t, "5m0s", rslt.TokenExplicitMaxTTL.String())
 			},
 		},
+		{
+			name: "SetNoDefaultPolicy will configure the role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetNoDefaultPolicy(true)
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.True(t, rslt.TokenNoDefaultPolicy)
+			},
+		},
+		{
+			name: "SetStrictlyBindIP will configure the role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetStrictlyBindIP(true)
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.True(t, rslt.TokenStrictlyBindIP)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

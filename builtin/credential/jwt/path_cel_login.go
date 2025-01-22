@@ -311,6 +311,24 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 				}),
 			),
 		),
+		cel.Function("SetPeriod",
+			cel.Overload("SetPeriod",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenPeriod = duration
+					return types.True
+				}),
+			),
+		),
 		cel.Function("SetNoDefaultPolicy",
 			cel.Overload("SetNoDefaultPolicy",
 				[]*cel.Type{cel.BoolType},
@@ -335,6 +353,38 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 						return types.NewErr("expected a boolean")
 					}
 					role.TokenStrictlyBindIP = boolSetting.Value().(bool)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetTokenNumUses",
+			cel.Overload("SetTokenNumUses",
+				[]*cel.Type{cel.IntType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					intSetting, ok := arg.(types.Int)
+					if !ok {
+						return types.NewErr("expected an integer")
+					}
+					role.TokenNumUses = int(intSetting)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetTokenType",
+			cel.Overload("SetTokenType",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					strSetting, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a string")
+					}
+					ttype, err := logical.NewTokenType(fmt.Sprintf("%v", strSetting))
+					if err != nil {
+						return types.NewErr("expected a token type string")
+					}
+					role.TokenType = ttype
 					return types.True
 				}),
 			),

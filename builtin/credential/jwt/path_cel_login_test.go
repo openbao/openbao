@@ -141,6 +141,24 @@ func Test_applyCelRole(t *testing.T) {
 			},
 		},
 		{
+			name: "SetPeriod will add token period duration to the resulting role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetPeriod("5m")
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "5m0s", rslt.TokenPeriod.String())
+			},
+		},
+		{
 			name: "SetNoDefaultPolicy will configure the role",
 			celRole: celRoleEntry{
 				AuthProgram: `claims.sub == 'test@example.com'
@@ -174,6 +192,42 @@ func Test_applyCelRole(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
 				require.True(t, rslt.TokenStrictlyBindIP)
+			},
+		},
+		{
+			name: "SetTokenNumUses will configure the role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetTokenNumUses(5)
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, 5, rslt.TokenNumUses)
+			},
+		},
+		{
+			name: "SetTokenType will configure the role",
+			celRole: celRoleEntry{
+				AuthProgram: `claims.sub == 'test@example.com'
+					? SetTokenType("default-batch")
+					: false`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, logical.TokenTypeDefaultBatch, rslt.TokenType)
 			},
 		},
 	}

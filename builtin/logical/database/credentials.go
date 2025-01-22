@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -46,7 +47,7 @@ func newPasswordGenerator(config map[string]interface{}) (passwordGenerator, err
 // Returns the generated password or an error.
 func (pg passwordGenerator) generate(ctx context.Context, b *databaseBackend, wrapper databaseVersionWrapper) (string, error) {
 	if !wrapper.isV5() && !wrapper.isV4() {
-		return "", fmt.Errorf("no underlying database specified")
+		return "", errors.New("no underlying database specified")
 	}
 
 	// The database plugin generates the password if its interface is v4
@@ -220,7 +221,7 @@ func newClientCertificateGenerator(config map[string]interface{}) (ClientCertifi
 			cg.KeyBits = 2048
 		case 2048, 3072, 4096:
 		default:
-			return cg, fmt.Errorf("invalid key_bits")
+			return cg, errors.New("invalid key_bits")
 		}
 	case "ec":
 		switch cg.KeyBits {
@@ -228,12 +229,12 @@ func newClientCertificateGenerator(config map[string]interface{}) (ClientCertifi
 			cg.KeyBits = 256
 		case 224, 256, 384, 521:
 		default:
-			return cg, fmt.Errorf("invalid key_bits")
+			return cg, errors.New("invalid key_bits")
 		}
 	case "ed25519":
 	// key_bits ignored
 	default:
-		return cg, fmt.Errorf("invalid key_type")
+		return cg, errors.New("invalid key_type")
 	}
 
 	switch cg.SignatureBits {
@@ -241,11 +242,11 @@ func newClientCertificateGenerator(config map[string]interface{}) (ClientCertifi
 		cg.SignatureBits = 256
 	case 256, 384, 512:
 	default:
-		return cg, fmt.Errorf("invalid signature_bits")
+		return cg, errors.New("invalid signature_bits")
 	}
 
 	if cg.CommonNameTemplate == "" {
-		return cg, fmt.Errorf("missing required common_name_template")
+		return cg, errors.New("missing required common_name_template")
 	}
 
 	// Validate the common name template
@@ -261,29 +262,29 @@ func newClientCertificateGenerator(config map[string]interface{}) (ClientCertifi
 	cg.cnProducer = t
 
 	if cg.CACert == "" {
-		return cg, fmt.Errorf("missing required ca_cert")
+		return cg, errors.New("missing required ca_cert")
 	}
 	if cg.CAPrivateKey == "" {
-		return cg, fmt.Errorf("missing required ca_private_key")
+		return cg, errors.New("missing required ca_private_key")
 	}
 	parsedBundle, err := certutil.ParsePEMBundle(strings.Join([]string{cg.CACert, cg.CAPrivateKey}, "\n"))
 	if err != nil {
 		return cg, err
 	}
 	if parsedBundle.PrivateKey == nil {
-		return cg, fmt.Errorf("private key not found in the PEM bundle")
+		return cg, errors.New("private key not found in the PEM bundle")
 	}
 	if parsedBundle.PrivateKeyType == certutil.UnknownPrivateKey {
-		return cg, fmt.Errorf("unknown private key found in the PEM bundle")
+		return cg, errors.New("unknown private key found in the PEM bundle")
 	}
 	if parsedBundle.Certificate == nil {
-		return cg, fmt.Errorf("certificate not found in the PEM bundle")
+		return cg, errors.New("certificate not found in the PEM bundle")
 	}
 	if !parsedBundle.Certificate.IsCA {
-		return cg, fmt.Errorf("the given certificate is not marked for CA use")
+		return cg, errors.New("the given certificate is not marked for CA use")
 	}
 	if !parsedBundle.Certificate.BasicConstraintsValid {
-		return cg, fmt.Errorf("the given certificate does not meet basic constraints for CA use")
+		return cg, errors.New("the given certificate does not meet basic constraints for CA use")
 	}
 
 	certBundle, err := parsedBundle.ToCertBundle()

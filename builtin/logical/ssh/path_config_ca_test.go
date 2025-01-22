@@ -42,7 +42,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if privateKeyEntry == nil || privateKeyEntry.Key == "" {
-		t.Fatalf("failed to read the stored private key")
+		t.Fatal("failed to read the stored private key")
 	}
 
 	entry, err := config.StorageView.Get(context.Background(), caPrivateKeyStoragePathDeprecated)
@@ -50,7 +50,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entry != nil {
-		t.Fatalf("bad: expected a nil entry after upgrade")
+		t.Fatal("bad: expected a nil entry after upgrade")
 	}
 
 	entry, err = config.StorageView.Get(context.Background(), caPrivateKeyStoragePath)
@@ -58,7 +58,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entry == nil {
-		t.Fatalf("bad: expected a non-nil entry after upgrade")
+		t.Fatal("bad: expected a non-nil entry after upgrade")
 	}
 
 	// Store at an older path
@@ -76,7 +76,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if publicKeyEntry == nil || publicKeyEntry.Key == "" {
-		t.Fatalf("failed to read the stored public key")
+		t.Fatal("failed to read the stored public key")
 	}
 
 	entry, err = config.StorageView.Get(context.Background(), caPublicKeyStoragePathDeprecated)
@@ -84,7 +84,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entry != nil {
-		t.Fatalf("bad: expected a nil entry after upgrade")
+		t.Fatal("bad: expected a nil entry after upgrade")
 	}
 
 	entry, err = config.StorageView.Get(context.Background(), caPublicKeyStoragePath)
@@ -92,7 +92,7 @@ func TestSSH_ConfigCAStorageUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entry == nil {
-		t.Fatalf("bad: expected a non-nil entry after upgrade")
+		t.Fatal("bad: expected a non-nil entry after upgrade")
 	}
 }
 

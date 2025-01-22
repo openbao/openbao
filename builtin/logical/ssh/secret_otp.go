@@ -5,7 +5,7 @@ package ssh
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -30,11 +30,11 @@ func secretOTP(b *backend) *framework.Secret {
 func (b *backend) secretOTPRevoke(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	otpRaw, ok := req.Secret.InternalData["otp"]
 	if !ok {
-		return nil, fmt.Errorf("secret is missing internal data")
+		return nil, errors.New("secret is missing internal data")
 	}
 	otp, ok := otpRaw.(string)
 	if !ok {
-		return nil, fmt.Errorf("secret is missing internal data")
+		return nil, errors.New("secret is missing internal data")
 	}
 
 	salt, err := b.Salt(ctx)

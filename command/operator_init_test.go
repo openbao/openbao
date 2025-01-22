@@ -331,7 +331,7 @@ func TestOperatorInitCommand_Run(t *testing.T) {
 		reToken := regexp.MustCompile(`Root Token: (.+)`)
 		match = reToken.FindAllStringSubmatch(output, -1)
 		if len(match) < 1 || len(match[0]) < 2 {
-			t.Fatalf("no match")
+			t.Fatal("no match")
 		}
 		root := match[0][1]
 		decryptedRoot := testPGPDecrypt(t, pgpkeys.TestPrivKey1, root)

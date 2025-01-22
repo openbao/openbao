@@ -77,7 +77,7 @@ func (e *environment) TestInitialFieldsAreDefault(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || resp.Auth == nil || resp.Auth.Alias == nil || resp.Auth.Alias.Metadata == nil {
-		t.Fatalf("expected alias metadata")
+		t.Fatal("expected alias metadata")
 	}
 	if len(resp.Auth.Alias.Metadata) != 1 {
 		t.Fatal("expected only 1 field")

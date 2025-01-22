@@ -5,7 +5,7 @@ package pluginutil
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -96,17 +96,17 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 		"missing plugin multiplexing metadata": {
 			ctx:          context.Background(),
 			expectedResp: "",
-			expectedErr:  fmt.Errorf("missing plugin multiplexing metadata"),
+			expectedErr:  errors.New("missing plugin multiplexing metadata"),
 		},
 		"unexpected number of IDs in metadata": {
 			ctx:          idCtx(t, "12345", "67891"),
 			expectedResp: "",
-			expectedErr:  fmt.Errorf("unexpected number of IDs in metadata: (2)"),
+			expectedErr:  errors.New("unexpected number of IDs in metadata: (2)"),
 		},
 		"empty multiplex ID in metadata": {
 			ctx:          idCtx(t, ""),
 			expectedResp: "",
-			expectedErr:  fmt.Errorf("empty multiplex ID in metadata"),
+			expectedErr:  errors.New("empty multiplex ID in metadata"),
 		},
 		"happy path, id is returned from metadata": {
 			ctx:          idCtx(t, "12345"),
@@ -120,7 +120,7 @@ func TestGetMultiplexIDFromContext(t *testing.T) {
 			resp, err := GetMultiplexIDFromContext(test.ctx)
 
 			if test.expectedErr != nil && test.expectedErr.Error() != "" && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			} else if !reflect.DeepEqual(err, test.expectedErr) {
 				t.Fatalf("Actual error: %#v\nExpected error: %#v", err, test.expectedErr)
 			}

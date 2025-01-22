@@ -80,7 +80,7 @@ func TestSysGenerateRootAttempt_Setup_OTP(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["nonce"].(string) == "" {
-		t.Fatalf("nonce was empty")
+		t.Fatal("nonce was empty")
 	}
 	expected["nonce"] = actual["nonce"]
 	expected["otp"] = actual["otp"]
@@ -105,7 +105,7 @@ func TestSysGenerateRootAttempt_Setup_OTP(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["nonce"].(string) == "" {
-		t.Fatalf("nonce was empty")
+		t.Fatal("nonce was empty")
 	}
 	expected["nonce"] = actual["nonce"]
 	if !reflect.DeepEqual(actual, expected) {
@@ -141,7 +141,7 @@ func TestSysGenerateRootAttempt_Setup_PGP(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["nonce"].(string) == "" {
-		t.Fatalf("nonce was empty")
+		t.Fatal("nonce was empty")
 	}
 	expected["nonce"] = actual["nonce"]
 	if diff := deep.Equal(actual, expected); diff != nil {
@@ -171,7 +171,7 @@ func TestSysGenerateRootAttempt_Cancel(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["nonce"].(string) == "" {
-		t.Fatalf("nonce was empty")
+		t.Fatal("nonce was empty")
 	}
 	expected["nonce"] = actual["nonce"]
 	expected["otp"] = actual["otp"]
@@ -320,10 +320,10 @@ func TestSysGenerateRoot_Update_OTP(t *testing.T) {
 	}
 
 	if actual["encoded_token"] == nil || actual["encoded_token"] == "" {
-		t.Fatalf("no encoded token found in response")
+		t.Fatal("no encoded token found in response")
 	}
 	if actual["encoded_root_token"] == nil || actual["encoded_root-token"] == "" {
-		t.Fatalf("no encoded root token found in response")
+		t.Fatal("no encoded root token found in response")
 	}
 	expected["encoded_token"] = actual["encoded_token"]
 	expected["encoded_root_token"] = actual["encoded_root_token"]
@@ -424,10 +424,10 @@ func TestSysGenerateRoot_Update_PGP(t *testing.T) {
 	}
 
 	if actual["encoded_token"] == nil || actual["encoded_token"] == "" {
-		t.Fatalf("no encoded token found in response")
+		t.Fatal("no encoded token found in response")
 	}
 	if actual["encoded_root_token"] == nil || actual["encoded_root-token"] == "" {
-		t.Fatalf("no encoded root token found in response")
+		t.Fatal("no encoded root token found in response")
 	}
 	expected["encoded_token"] = actual["encoded_token"]
 	expected["encoded_root_token"] = actual["encoded_root_token"]

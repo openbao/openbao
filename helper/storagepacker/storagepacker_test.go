@@ -91,7 +91,7 @@ func TestStoragePacker(t *testing.T) {
 		t.Fatal(err)
 	}
 	if fetchedItem == nil {
-		t.Fatalf("failed to read the stored item")
+		t.Fatal("failed to read the stored item")
 	}
 
 	if item1.ID != fetchedItem.ID {
@@ -111,7 +111,7 @@ func TestStoragePacker(t *testing.T) {
 	}
 
 	if fetchedItem != nil {
-		t.Fatalf("failed to delete item")
+		t.Fatal("failed to delete item")
 	}
 }
 
@@ -207,7 +207,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 			t.Fatal(err)
 		}
 		if fetchedItem == nil {
-			t.Fatalf("failed to read the stored item")
+			t.Fatal("failed to read the stored item")
 		}
 
 		if item.ID != fetchedItem.ID {
@@ -236,7 +236,7 @@ func TestStoragePacker_DeleteMultiple(t *testing.T) {
 			t.Fatal("expected item not found")
 		}
 		if i%2 == 1 && fetchedItem != nil {
-			t.Fatalf("failed to delete item")
+			t.Fatal("failed to delete item")
 		}
 	}
 }
@@ -267,7 +267,7 @@ func TestStoragePacker_DeleteMultiple_ALL(t *testing.T) {
 			t.Fatal(err)
 		}
 		if fetchedItem == nil {
-			t.Fatalf("failed to read the stored item")
+			t.Fatal("failed to read the stored item")
 		}
 
 		if item.ID != fetchedItem.ID {

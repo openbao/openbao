@@ -6,6 +6,7 @@ package pki
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -41,12 +42,12 @@ reference`,
 
 func (b *backend) secretCredsRevoke(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 	if req.Secret == nil {
-		return nil, fmt.Errorf("secret is nil in request")
+		return nil, errors.New("secret is nil in request")
 	}
 
 	serialInt, ok := req.Secret.InternalData["serial_number"]
 	if !ok {
-		return nil, fmt.Errorf("could not find serial in internal secret data")
+		return nil, errors.New("could not find serial in internal secret data")
 	}
 
 	b.revokeStorageLock.Lock()

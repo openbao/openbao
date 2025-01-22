@@ -5,6 +5,7 @@ package pki
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -201,7 +202,7 @@ func writeURLs(ctx context.Context, storage logical.Storage, entries *aiaConfigE
 		return err
 	}
 	if entry == nil {
-		return fmt.Errorf("unable to marshal entry into JSON")
+		return errors.New("unable to marshal entry into JSON")
 	}
 
 	err = storage.Put(ctx, entry)

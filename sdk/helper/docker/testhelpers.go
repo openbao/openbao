@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -95,7 +96,7 @@ func NewServiceRunner(opts RunOptions) (*Runner, error) {
 	}
 	if opts.ContainerName == "" {
 		if strings.Contains(opts.ImageRepo, "/") {
-			return nil, fmt.Errorf("ContainerName is required for non-library images")
+			return nil, errors.New("ContainerName is required for non-library images")
 		}
 		// If there's no slash in the repo it's almost certainly going to be
 		// a good container name.
@@ -315,7 +316,7 @@ func (d *Runner) StartNewService(ctx context.Context, addSuffix, forceLocalAddr 
 			return err
 		}
 		if c == nil {
-			return fmt.Errorf("service adapter returned nil error and config")
+			return errors.New("service adapter returned nil error and config")
 		}
 		config = c
 		return nil

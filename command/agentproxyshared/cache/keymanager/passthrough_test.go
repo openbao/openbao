@@ -45,7 +45,7 @@ func TestKeyManager_PassthrougKeyManager(t *testing.T) {
 			require.NoError(t, err)
 
 			if w := m.Wrapper(); w == nil {
-				t.Fatalf("expected non-nil wrapper from the key manager")
+				t.Fatal("expected non-nil wrapper from the key manager")
 			}
 
 			token, err := m.RetrievalToken(ctx)

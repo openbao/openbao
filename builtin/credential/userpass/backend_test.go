@@ -41,7 +41,7 @@ func TestBackend_CRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 
 	localhostSockAddr, err := sockaddr.NewSockAddr("127.0.0.1")
@@ -75,7 +75,7 @@ func TestBackend_CRUD(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp.Data["token_ttl"].(int64) != 5 && resp.Data["token_max_ttl"].(int64) != 10 {
-		t.Fatalf("bad: token_ttl and token_max_ttl are not set correctly")
+		t.Fatal("bad: token_ttl and token_max_ttl are not set correctly")
 	}
 	if diff := deep.Equal(resp.Data["token_policies"], []string{"foo"}); diff != nil {
 		t.Fatal(diff)
@@ -115,10 +115,10 @@ func TestBackend_CRUD(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v\n", resp, err)
 	}
 	if resp.Data["ttl"].(int64) != 300 && resp.Data["max_ttl"].(int64) != 600 {
-		t.Fatalf("bad: ttl and max_ttl are not set correctly")
+		t.Fatal("bad: ttl and max_ttl are not set correctly")
 	}
 	if resp.Data["token_ttl"].(int64) != 300 && resp.Data["token_max_ttl"].(int64) != 600 {
-		t.Fatalf("bad: token_ttl and token_max_ttl are not set correctly")
+		t.Fatal("bad: token_ttl and token_max_ttl are not set correctly")
 	}
 	if diff := deep.Equal(resp.Data["policies"], []string{"bar"}); diff != nil {
 		t.Fatal(diff)
@@ -374,7 +374,7 @@ func TestBackend_UserUpgrade(t *testing.T) {
 
 	b := Backend()
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 	if err := b.Setup(ctx, config); err != nil {
 		t.Fatal(err)

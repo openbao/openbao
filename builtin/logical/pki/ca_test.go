@@ -309,11 +309,11 @@ func runSteps(t *testing.T, rootB, intB *backend, client *api.Client, rootName, 
 				expected += "\n"
 				_, present := resp.Data["issuer_id"]
 				if !present {
-					t.Fatalf("expected issuer/default/json to include issuer_id")
+					t.Fatal("expected issuer/default/json to include issuer_id")
 				}
 				_, present = resp.Data["issuer_name"]
 				if !present {
-					t.Fatalf("expected issuer/default/json to include issuer_name")
+					t.Fatal("expected issuer/default/json to include issuer_name")
 				}
 			}
 			if diff := deep.Equal(resp.Data["certificate"].(string), expected); diff != nil {

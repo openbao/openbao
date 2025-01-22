@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -141,7 +142,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 			if err != nil && err != bufio.ErrBufferFull && err != io.EOF {
 				status := http.StatusBadRequest
 				logical.AdjustErrorStatusCode(&status, err)
-				return nil, nil, status, fmt.Errorf("error reading data")
+				return nil, nil, status, errors.New("error reading data")
 			}
 
 			if isForm(head, contentType) {
@@ -149,7 +150,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, fmt.Errorf("error parsing form data")
+					return nil, nil, status, errors.New("error parsing form data")
 				}
 
 				data = formData
@@ -162,7 +163,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 				if err != nil {
 					status := http.StatusBadRequest
 					logical.AdjustErrorStatusCode(&status, err)
-					return nil, nil, status, fmt.Errorf("error parsing JSON")
+					return nil, nil, status, errors.New("error parsing JSON")
 				}
 			}
 		}
@@ -192,7 +193,7 @@ func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical
 		if err != nil {
 			status := http.StatusBadRequest
 			logical.AdjustErrorStatusCode(&status, err)
-			return nil, nil, status, fmt.Errorf("error parsing JSON")
+			return nil, nil, status, errors.New("error parsing JSON")
 		}
 
 	case "LIST":

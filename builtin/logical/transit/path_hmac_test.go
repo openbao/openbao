@@ -198,7 +198,7 @@ func TestTransit_HMAC(t *testing.T) {
 			t.Fatal("expected non-nil response")
 		}
 		if resp.Data["valid"].(bool) {
-			t.Fatalf("expected error validating hmac")
+			t.Fatal("expected error validating hmac")
 		}
 
 		// Set min decryption version, attempt to verify

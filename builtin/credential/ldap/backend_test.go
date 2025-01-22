@@ -5,6 +5,7 @@ package ldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -31,7 +32,7 @@ func createBackendWithStorage(t *testing.T) (*backend, logical.Storage) {
 
 	b := Backend()
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 
 	err := b.Backend.Setup(context.Background(), config)
@@ -919,7 +920,7 @@ func testAccStepConfigUrlWarningCheck(t *testing.T, cfg *ldaputil.ConfigEntry, o
 		},
 		Check: func(response *logical.Response) error {
 			if len(response.Warnings) == 0 {
-				return fmt.Errorf("expected warnings, got none")
+				return errors.New("expected warnings, got none")
 			}
 
 			if !strutil.StrListSubset(response.Warnings, warnings) {

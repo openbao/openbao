@@ -4,6 +4,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -96,7 +97,7 @@ Some string 6841cf80`,
 
 			actual, err := st.Generate(test.data)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -208,7 +209,7 @@ func TestBadConstructorArguments(t *testing.T) {
 		st, err := NewTemplate(
 			Template("{{foo}}"),
 			Function("foo", func() (string, error) {
-				return "", fmt.Errorf("an error!")
+				return "", errors.New("an error!")
 			}),
 		)
 		require.NoError(t, err)

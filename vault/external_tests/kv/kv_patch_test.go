@@ -292,6 +292,6 @@ func TestKV_Patch_RootToken(t *testing.T) {
 	}
 
 	if _, ok := secret.Data["data"].(map[string]interface{})["foo"]; ok {
-		t.Fatalf("expected data not to include foo")
+		t.Fatal("expected data not to include foo")
 	}
 }

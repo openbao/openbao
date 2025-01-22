@@ -6,6 +6,7 @@ package vault
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -256,7 +257,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 		"error retrieving policy": {
 			policyName: "testpolicy",
 			getEntry:   nil,
-			getErr:     fmt.Errorf("a test error"),
+			getErr:     errors.New("a test error"),
 		},
 		"saved policy is malformed": {
 			policyName: "testpolicy",
@@ -284,7 +285,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 			defer cancel()
 			actualPassword, err := dsv.GeneratePasswordFromPolicy(ctx, test.policyName)
 			if err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if actualPassword != "" {
 				t.Fatalf("no password expected, got %s", actualPassword)
@@ -309,17 +310,17 @@ func (b fakeBarrier) Get(context.Context, string) (*logical.StorageEntry, error)
 }
 
 func (b fakeBarrier) List(context.Context, string) ([]string, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (b fakeBarrier) ListPage(context.Context, string, string, int) ([]string, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, errors.New("not implemented")
 }
 
 func (b fakeBarrier) Put(context.Context, *logical.StorageEntry) error {
-	return fmt.Errorf("not implemented")
+	return errors.New("not implemented")
 }
 
 func (b fakeBarrier) Delete(context.Context, string) error {
-	return fmt.Errorf("not implemented")
+	return errors.New("not implemented")
 }

@@ -180,7 +180,7 @@ func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *pkix.Cer
 		t.Fatalf("err: %s", err)
 	}
 	if len(crlBytes) == 0 {
-		t.Fatalf("expected CRL in response body")
+		t.Fatal("expected CRL in response body")
 	}
 
 	crl, err := x509.ParseDERCRL(crlBytes)
@@ -313,7 +313,7 @@ func getCRLNumber(t *testing.T, crl pkix.TBSCertificateList) int {
 		}
 	}
 
-	t.Fatalf("failed to find crl number extension")
+	t.Fatal("failed to find crl number extension")
 	return 0
 }
 
@@ -332,7 +332,7 @@ func getCrlReferenceFromDelta(t *testing.T, crl pkix.TBSCertificateList) int {
 		}
 	}
 
-	t.Fatalf("failed to find delta crl indicator extension")
+	t.Fatal("failed to find delta crl indicator extension")
 	return 0
 }
 

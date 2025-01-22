@@ -4,6 +4,7 @@
 package ldap
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -24,7 +25,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 	if !ok {
 		username = usernameFromEnv()
 		if username == "" {
-			return nil, fmt.Errorf("'username' not supplied and neither 'LOGNAME' nor 'USER' env vars set")
+			return nil, errors.New("'username' not supplied and neither 'LOGNAME' nor 'USER' env vars set")
 		}
 	}
 	password, ok := m["password"]
@@ -32,7 +33,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		password = passwordFromEnv()
 		if password == "" {
 			if nonInteractive {
-				return nil, fmt.Errorf("'password' not supplied and refusing to pull from stdin")
+				return nil, errors.New("'password' not supplied and refusing to pull from stdin")
 			}
 
 			fmt.Fprintf(os.Stderr, "Password (will be hidden): ")
@@ -55,7 +56,7 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string, nonInteractive boo
 		return nil, err
 	}
 	if secret == nil {
-		return nil, fmt.Errorf("empty response from credential provider")
+		return nil, errors.New("empty response from credential provider")
 	}
 
 	return secret, nil

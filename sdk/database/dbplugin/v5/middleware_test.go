@@ -238,7 +238,7 @@ func TestDatabaseErrorSanitizerMiddleware(t *testing.T) {
 func secretFunc(t *testing.T, vals ...string) func() map[string]string {
 	t.Helper()
 	if len(vals)%2 != 0 {
-		t.Fatalf("Test configuration error: secretFunc must be called with an even number of values")
+		t.Fatal("Test configuration error: secretFunc must be called with an even number of values")
 	}
 
 	m := map[string]string{}

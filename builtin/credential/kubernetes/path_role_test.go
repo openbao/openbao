@@ -288,7 +288,7 @@ func TestPath_Create(t *testing.T) {
 				} else if resp != nil && resp.IsError() {
 					actual = resp.Error()
 				} else {
-					t.Fatalf("expected error")
+					t.Fatal("expected error")
 				}
 
 				if tc.wantErr.Error() != actual.Error() {
@@ -581,7 +581,7 @@ func TestPath_Update(t *testing.T) {
 				} else if resp != nil && resp.IsError() {
 					actual = resp.Error()
 				} else {
-					t.Fatalf("expected error")
+					t.Fatal("expected error")
 				}
 
 				if tc.wantErr.Error() != actual.Error() {

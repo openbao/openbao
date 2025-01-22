@@ -5,6 +5,7 @@ package rabbitmq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
@@ -54,7 +55,7 @@ func (b *backend) secretCredsRevoke(ctx context.Context, req *logical.Request, d
 	// Get the username from the internal data
 	usernameRaw, ok := req.Secret.InternalData["username"]
 	if !ok {
-		return nil, fmt.Errorf("secret is missing username internal data")
+		return nil, errors.New("secret is missing username internal data")
 	}
 	username := usernameRaw.(string)
 

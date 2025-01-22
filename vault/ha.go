@@ -974,7 +974,7 @@ func (c *Core) reloadShamirKey(ctx context.Context) error {
 		}
 		shamirKey = entry.Value
 	case seal.StoredKeysNotSupported:
-		return fmt.Errorf("legacy shamir seals are not supported by OpenBao")
+		return errors.New("legacy shamir seals are not supported by OpenBao")
 	}
 	shamirWrapper, err := c.seal.GetShamirWrapper()
 	if err != nil {

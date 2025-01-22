@@ -109,12 +109,12 @@ func parseFullPath(fullPath string) (directory, fileName string, err error) {
 
 	globChars := "*?["
 	if strings.ContainsAny(directory, globChars) {
-		err = multierror.Append(err, fmt.Errorf("directory contains glob character"))
+		err = multierror.Append(err, errors.New("directory contains glob character"))
 	}
 	if fileName == "" {
 		fileName = "bao.log"
 	} else if strings.ContainsAny(fileName, globChars) {
-		err = multierror.Append(err, fmt.Errorf("file name contains globbing character"))
+		err = multierror.Append(err, errors.New("file name contains globbing character"))
 	}
 
 	return directory, fileName, err
@@ -218,6 +218,6 @@ func TranslateLoggerLevel(logger hclog.Logger) (string, error) {
 	case hclog.Trace, hclog.Debug, hclog.Info, hclog.Warn, hclog.Error:
 		return logLevel.String(), nil
 	default:
-		return "", fmt.Errorf("unknown log level")
+		return "", errors.New("unknown log level")
 	}
 }

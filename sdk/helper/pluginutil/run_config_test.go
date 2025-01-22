@@ -322,12 +322,12 @@ func TestMakeConfig(t *testing.T) {
 			// The value must be nilled out before performing a DeepEqual check
 			hsh := config.SecureConfig.Hash
 			if hsh == nil {
-				t.Fatalf("Missing SecureConfig.Hash")
+				t.Fatal("Missing SecureConfig.Hash")
 			}
 			config.SecureConfig.Hash = nil
 
 			if test.expectTLSConfig && config.TLSConfig == nil {
-				t.Fatalf("TLS config expected, got nil")
+				t.Fatal("TLS config expected, got nil")
 			}
 			if !test.expectTLSConfig && config.TLSConfig != nil {
 				t.Fatalf("no TLS config expected, got: %#v", config.TLSConfig)

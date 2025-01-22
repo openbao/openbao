@@ -351,7 +351,7 @@ func TestBackend_StaticRole_Config(t *testing.T) {
 			if len(tc.expected) > 0 {
 				// verify a password is returned, but we don't care what it's value is
 				if actual["password"] == "" {
-					t.Fatalf("expected result to contain password, but none found")
+					t.Fatal("expected result to contain password, but none found")
 				}
 				if v, ok := actual["last_vault_rotation"].(time.Time); !ok {
 					t.Fatalf("expected last_vault_rotation to be set to time.Time type, got: %#v", v)
@@ -670,7 +670,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected error, got none")
+		t.Fatal("expected error, got none")
 	}
 
 	// repeat, with a static role first
@@ -716,7 +716,7 @@ func TestBackend_StaticRole_Role_name_check(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected error, got none")
+		t.Fatal("expected error, got none")
 	}
 }
 

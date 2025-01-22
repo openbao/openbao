@@ -807,7 +807,7 @@ func (c *CoreConfig) GetServiceRegistration() sr.ServiceRegistration {
 func CreateCore(conf *CoreConfig) (*Core, error) {
 	if conf.HAPhysical != nil && conf.HAPhysical.HAEnabled() {
 		if conf.RedirectAddr == "" {
-			return nil, fmt.Errorf("missing API address, please set in configuration or via environment")
+			return nil, errors.New("missing API address, please set in configuration or via environment")
 		}
 	}
 
@@ -818,7 +818,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		conf.MaxLeaseTTL = maxLeaseTTL
 	}
 	if conf.DefaultLeaseTTL > conf.MaxLeaseTTL {
-		return nil, fmt.Errorf("cannot have DefaultLeaseTTL larger than MaxLeaseTTL")
+		return nil, errors.New("cannot have DefaultLeaseTTL larger than MaxLeaseTTL")
 	}
 
 	// Validate the advertise addr if its given to us
@@ -829,7 +829,7 @@ func CreateCore(conf *CoreConfig) (*Core, error) {
 		}
 
 		if u.Scheme == "" {
-			return nil, fmt.Errorf("redirect address must include scheme (ex. 'http')")
+			return nil, errors.New("redirect address must include scheme (ex. 'http')")
 		}
 	}
 
@@ -1427,10 +1427,10 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 	ctx := context.Background()
 
 	if migrate && c.migrationInfo == nil {
-		return fmt.Errorf("can't perform a seal migration, no migration seal found")
+		return errors.New("can't perform a seal migration, no migration seal found")
 	}
 	if migrate && c.isRaftUnseal() {
-		return fmt.Errorf("can't perform a seal migration while joining a raft cluster")
+		return errors.New("can't perform a seal migration while joining a raft cluster")
 	}
 	if !migrate && c.migrationInfo != nil {
 		done, err := c.sealMigrated(ctx)
@@ -1438,7 +1438,7 @@ func (c *Core) unsealFragment(key []byte, migrate bool) error {
 			return fmt.Errorf("error checking to see if seal is migrated: %w", err)
 		}
 		if !done {
-			return fmt.Errorf("migrate option not provided and seal migration is pending")
+			return errors.New("migrate option not provided and seal migration is pending")
 		}
 	}
 
@@ -1623,7 +1623,7 @@ func (c *Core) getUnsealKey(ctx context.Context, seal Seal) ([]byte, error) {
 		return nil, err
 	}
 	if config == nil {
-		return nil, fmt.Errorf("failed to obtain seal/recovery configuration")
+		return nil, errors.New("failed to obtain seal/recovery configuration")
 	}
 
 	// Check if we don't have enough keys to unlock, proceed through the rest of
@@ -2139,7 +2139,7 @@ func (c *Core) sealInternalWithOptions(grabStateLock, keepHALock, performCleanup
 
 		if err := c.preSeal(); err != nil {
 			c.logger.Error("pre-seal teardown failed", "error", err)
-			return fmt.Errorf("internal error")
+			return errors.New("internal error")
 		}
 	} else {
 		// If we are keeping the lock we already have the state write lock
@@ -2810,7 +2810,7 @@ func (c *Core) unsealKeyToRootKey(ctx context.Context, seal Seal, combinedKey []
 		}
 		return storedKeys[0], nil
 	}
-	return nil, fmt.Errorf("invalid seal")
+	return nil, errors.New("invalid seal")
 }
 
 // IsInSealMigrationMode returns true if we're configured to perform a seal migration,
@@ -2948,11 +2948,11 @@ func (c *Core) ExistCustomResponseHeader(header string) bool {
 func (c *Core) ReloadCustomResponseHeaders() error {
 	conf := c.rawConfig.Load()
 	if conf == nil {
-		return fmt.Errorf("failed to load core raw config")
+		return errors.New("failed to load core raw config")
 	}
 	lns := conf.(*server.Config).Listeners
 	if lns == nil {
-		return fmt.Errorf("no listener configured")
+		return errors.New("no listener configured")
 	}
 
 	uiHeaders, err := c.UIHeaders()
@@ -3700,7 +3700,7 @@ func (c *Core) aliasNameFromLoginRequest(ctx context.Context, req *logical.Reque
 // ListMounts will provide a slice containing a deep copy each mount entry
 func (c *Core) ListMounts() ([]*MountEntry, error) {
 	if c.Sealed() {
-		return nil, fmt.Errorf("vault is sealed")
+		return nil, errors.New("vault is sealed")
 	}
 
 	c.mountsLock.RLock()
@@ -3723,7 +3723,7 @@ func (c *Core) ListMounts() ([]*MountEntry, error) {
 // ListAuths will provide a slice containing a deep copy each auth entry
 func (c *Core) ListAuths() ([]*MountEntry, error) {
 	if c.Sealed() {
-		return nil, fmt.Errorf("vault is sealed")
+		return nil, errors.New("vault is sealed")
 	}
 
 	c.authLock.RLock()
@@ -3787,12 +3787,12 @@ func (c *Core) ListenerAddresses() ([]string, error) {
 
 	conf := c.rawConfig.Load()
 	if conf == nil {
-		return nil, fmt.Errorf("failed to load core raw config")
+		return nil, errors.New("failed to load core raw config")
 	}
 
 	listeners := conf.(*server.Config).Listeners
 	if listeners == nil {
-		return nil, fmt.Errorf("no listener configured")
+		return nil, errors.New("no listener configured")
 	}
 
 	for _, listener := range listeners {

@@ -30,17 +30,17 @@ func TestPhysicalView_BadKeysKeys(t *testing.T) {
 
 	_, err = view.List(context.Background(), "../")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	_, err = view.Get(context.Background(), "../")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	err = view.Delete(context.Background(), "../foo")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	le := &physical.Entry{
@@ -49,7 +49,7 @@ func TestPhysicalView_BadKeysKeys(t *testing.T) {
 	}
 	err = view.Put(context.Background(), le)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 
@@ -96,7 +96,7 @@ func TestPhysicalView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("missing nested foo/test")
+		t.Fatal("missing nested foo/test")
 	}
 
 	// Delete nested
@@ -110,7 +110,7 @@ func TestPhysicalView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry != nil {
-		t.Fatalf("nested foo/test should be gone")
+		t.Fatal("nested foo/test should be gone")
 	}
 
 	// Check the non-nested key
@@ -119,6 +119,6 @@ func TestPhysicalView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("root test missing")
+		t.Fatal("root test missing")
 	}
 }

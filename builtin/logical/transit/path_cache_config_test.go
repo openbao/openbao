@@ -38,7 +38,7 @@ func TestTransit_CacheConfig(t *testing.T) {
 	validateResponse := func(resp *logical.Response, expectedCacheSize int, expectedWarning bool) {
 		actualCacheSize, ok := resp.Data["size"].(int)
 		if !ok {
-			t.Fatalf("No size returned")
+			t.Fatal("No size returned")
 		}
 		if expectedCacheSize != actualCacheSize {
 			t.Fatalf("testAccReadCacheConfig expected: %d got: %d", expectedCacheSize, actualCacheSize)

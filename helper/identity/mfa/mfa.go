@@ -4,6 +4,7 @@
 package mfa
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/golang/protobuf/proto"
@@ -11,7 +12,7 @@ import (
 
 func (c *Config) Clone() (*Config, error) {
 	if c == nil {
-		return nil, fmt.Errorf("nil config")
+		return nil, errors.New("nil config")
 	}
 
 	marshaledConfig, err := proto.Marshal(c)
@@ -30,7 +31,7 @@ func (c *Config) Clone() (*Config, error) {
 
 func (c *MFAEnforcementConfig) Clone() (*MFAEnforcementConfig, error) {
 	if c == nil {
-		return nil, fmt.Errorf("nil config")
+		return nil, errors.New("nil config")
 	}
 
 	marshaledConfig, err := proto.Marshal(c)

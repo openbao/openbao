@@ -115,7 +115,7 @@ func TestAuthEnableCommand_Run(t *testing.T) {
 
 		authInfo, ok := auths["auth_integration/"]
 		if !ok {
-			t.Fatalf("expected mount to exist")
+			t.Fatal("expected mount to exist")
 		}
 		if exp := "userpass"; authInfo.Type != exp {
 			t.Errorf("expected %q to be %q", authInfo.Type, exp)

@@ -5,7 +5,7 @@ package kubesecrets
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -65,7 +65,7 @@ func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend,
 	}
 
 	if conf == nil {
-		return nil, fmt.Errorf("configuration passed into backend is nil")
+		return nil, errors.New("configuration passed into backend is nil")
 	}
 
 	if err := b.Setup(ctx, conf); err != nil {

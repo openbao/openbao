@@ -151,7 +151,7 @@ func TestRenewer_Renew(t *testing.T) {
 					renewed = true
 				case <-timeout:
 					if !renewed {
-						t.Errorf("no renewal")
+						t.Error("no renewal")
 					}
 					done = true
 				}

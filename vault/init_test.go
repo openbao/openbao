@@ -61,7 +61,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	if init {
-		t.Fatalf("should not be init")
+		t.Fatal("should not be init")
 	}
 
 	// Check the seal configuration
@@ -117,7 +117,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	if !init {
-		t.Fatalf("should be init")
+		t.Fatal("should be init")
 	}
 
 	// Check the seal configuration
@@ -158,7 +158,7 @@ func testCore_Init_Common(t *testing.T, c *Core, conf *CoreConfig, barrierConf, 
 	}
 
 	if !init {
-		t.Fatalf("should be init")
+		t.Fatal("should be init")
 	}
 
 	// Check the seal configuration

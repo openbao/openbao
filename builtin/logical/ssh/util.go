@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -44,11 +45,11 @@ func generateRSAKeys(keyBits int) (publicKeyRsa string, privateKeyRsa string, er
 // of CIDR blocks belonging to the role.
 func roleContainsIP(ctx context.Context, s logical.Storage, roleName string, ip string) (bool, error) {
 	if roleName == "" {
-		return false, fmt.Errorf("missing role name")
+		return false, errors.New("missing role name")
 	}
 
 	if ip == "" {
-		return false, fmt.Errorf("missing ip")
+		return false, errors.New("missing ip")
 	}
 
 	roleEntry, err := s.Get(ctx, fmt.Sprintf("roles/%s", roleName))
@@ -75,7 +76,7 @@ func roleContainsIP(ctx context.Context, s logical.Storage, roleName string, ip 
 // separated CIDR blocks
 func cidrListContainsIP(ip, cidrList string) (bool, error) {
 	if len(cidrList) == 0 {
-		return false, fmt.Errorf("IP does not belong to role")
+		return false, errors.New("IP does not belong to role")
 	}
 	for _, item := range strings.Split(cidrList, ",") {
 		_, cidrIPNet, err := net.ParseCIDR(item)

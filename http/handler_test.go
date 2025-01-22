@@ -283,13 +283,13 @@ func TestHandler_CacheControlNoStore(t *testing.T) {
 	}
 
 	if resp == nil {
-		t.Fatalf("nil response")
+		t.Fatal("nil response")
 	}
 
 	actual := resp.Header.Get("Cache-Control")
 
 	if actual == "" {
-		t.Fatalf("missing 'Cache-Control' header entry in response writer")
+		t.Fatal("missing 'Cache-Control' header entry in response writer")
 	}
 
 	if actual != "no-store" {
@@ -316,7 +316,7 @@ func TestHandler_InFlightRequest(t *testing.T) {
 	}
 
 	if resp == nil {
-		t.Fatalf("nil response")
+		t.Fatal("nil response")
 	}
 
 	var actual map[string]interface{}
@@ -738,7 +738,7 @@ func TestHandler_requestAuth(t *testing.T) {
 			t.Fatal("token entry should not be nil")
 		}
 		if !reflect.DeepEqual(req.TokenEntry(), te) {
-			t.Fatalf("token entry should be the same as the core")
+			t.Fatal("token entry should be the same as the core")
 		}
 		if req.ClientTokenAccessor == "" {
 			t.Fatal("token accessor should not be empty")

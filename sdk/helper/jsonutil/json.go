@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 
 	"github.com/hashicorp/errwrap"
@@ -17,7 +17,7 @@ import (
 // Encodes/Marshals the given object into JSON
 func EncodeJSON(in interface{}) ([]byte, error) {
 	if in == nil {
-		return nil, fmt.Errorf("input for encoding is nil")
+		return nil, errors.New("input for encoding is nil")
 	}
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -33,7 +33,7 @@ func EncodeJSON(in interface{}) ([]byte, error) {
 // in decompression method to identify compressed input.
 func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfig) ([]byte, error) {
 	if in == nil {
-		return nil, fmt.Errorf("input for encoding is nil")
+		return nil, errors.New("input for encoding is nil")
 	}
 
 	// First JSON encode the given input
@@ -59,10 +59,10 @@ func EncodeJSONAndCompress(in interface{}, config *compressutil.CompressionConfi
 // decoded.
 func DecodeJSON(data []byte, out interface{}) error {
 	if data == nil || len(data) == 0 {
-		return fmt.Errorf("'data' being decoded is nil")
+		return errors.New("'data' being decoded is nil")
 	}
 	if out == nil {
-		return fmt.Errorf("output parameter 'out' is nil")
+		return errors.New("output parameter 'out' is nil")
 	}
 
 	// Decompress the data if it was compressed in the first place
@@ -71,7 +71,7 @@ func DecodeJSON(data []byte, out interface{}) error {
 		return errwrap.Wrapf("failed to decompress JSON: {{err}}", err)
 	}
 	if !uncompressed && (decompressedBytes == nil || len(decompressedBytes) == 0) {
-		return fmt.Errorf("decompressed data being decoded is invalid")
+		return errors.New("decompressed data being decoded is invalid")
 	}
 
 	// If the input supplied failed to contain the compression canary, it
@@ -87,10 +87,10 @@ func DecodeJSON(data []byte, out interface{}) error {
 // Decodes/Unmarshals the given io.Reader pointing to a JSON, into a desired object
 func DecodeJSONFromReader(r io.Reader, out interface{}) error {
 	if r == nil {
-		return fmt.Errorf("'io.Reader' being decoded is nil")
+		return errors.New("'io.Reader' being decoded is nil")
 	}
 	if out == nil {
-		return fmt.Errorf("output parameter 'out' is nil")
+		return errors.New("output parameter 'out' is nil")
 	}
 
 	dec := json.NewDecoder(r)

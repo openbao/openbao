@@ -115,7 +115,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Supply alias name and skip accessor
@@ -128,7 +128,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Supply alias accessor and skip name
@@ -141,7 +141,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Don't supply any criteria
@@ -152,7 +152,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Delete the alias in the entity
@@ -172,7 +172,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 		t.Fatalf("bad: err: %#v\nresp: %v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -207,7 +207,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\n err: %#v\n", resp, err)
 	}
 	if resp.Data["id"].(string) != groupID {
-		t.Fatalf("failed to lookup group")
+		t.Fatal("failed to lookup group")
 	}
 
 	lookupReq.Data = map[string]interface{}{
@@ -219,7 +219,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\n err: %#v\n", resp, err)
 	}
 	if resp.Data["id"].(string) != groupID {
-		t.Fatalf("failed to lookup group")
+		t.Fatal("failed to lookup group")
 	}
 
 	// Query using an invalid alias_id
@@ -231,7 +231,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\n err: %#v\n", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	groupReq.Data = map[string]interface{}{
@@ -267,7 +267,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\n err: %#v\n", resp, err)
 	}
 	if resp.Data["id"].(string) != groupID {
-		t.Fatalf("failed to lookup group")
+		t.Fatal("failed to lookup group")
 	}
 
 	lookupReq.Data = map[string]interface{}{
@@ -280,7 +280,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\n err: %#v\n", resp, err)
 	}
 	if resp.Data["id"].(string) != groupID {
-		t.Fatalf("failed to lookup group")
+		t.Fatal("failed to lookup group")
 	}
 
 	// Supply 2 query criteria
@@ -294,7 +294,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Supply alias name and skip accessor
@@ -307,7 +307,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Supply alias accessor and skip name
@@ -320,7 +320,7 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Don't supply any criteria
@@ -331,6 +331,6 @@ func TestIdentityStore_Lookup_Group(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }

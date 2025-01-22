@@ -134,7 +134,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "a user claim must be defined on the role" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -161,7 +161,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.HasPrefix(resp.Error().Error(), "must have at least one bound constraint") {
 			t.Fatalf("unexpected err: %v", resp)
@@ -189,7 +189,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -215,7 +215,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -241,7 +241,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -269,7 +269,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -442,7 +442,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "invalid 'bound_claims_type': invalid" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -477,7 +477,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "claim is not a string or list: 25" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -511,7 +511,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "claim is not a string: 10" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -644,7 +644,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.Contains(resp.Error().Error(), `metadata key "role" is reserved`) {
 			t.Fatalf("unexpected err: %v", resp)
@@ -690,7 +690,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
 			t.Fatalf("unexpected err: %v", resp)

@@ -31,7 +31,7 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 
 	// Check if canary is present in the compressed data
 	if compressedBytes[0] != compressutil.CompressionCanaryGzip {
-		t.Fatalf("canary missing in compressed data")
+		t.Fatal("canary missing in compressed data")
 	}
 
 	// Decompress and decode the compressed information and verify the functional
@@ -49,14 +49,14 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 
 	// Test invalid data
 	if err = DecodeJSON([]byte{}, &actual); err == nil {
-		t.Fatalf("expected a failure")
+		t.Fatal("expected a failure")
 	}
 
 	// Test invalid data after the canary byte
 	var buf bytes.Buffer
 	buf.Write([]byte{compressutil.CompressionCanaryGzip})
 	if err = DecodeJSON(buf.Bytes(), &actual); err == nil {
-		t.Fatalf("expected a failure")
+		t.Fatal("expected a failure")
 	}
 
 	// Compress an object
@@ -73,7 +73,7 @@ func TestJSONUtil_CompressDecompressJSON(t *testing.T) {
 
 	// Check if canary is present in the compressed data
 	if compressedBytes[0] != compressutil.CompressionCanaryGzip {
-		t.Fatalf("canary missing in compressed data")
+		t.Fatal("canary missing in compressed data")
 	}
 
 	// Decompress and decode the compressed information and verify the functional

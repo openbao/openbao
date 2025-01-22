@@ -1016,7 +1016,7 @@ func TestVersionedKV_Metadata_Patch_CasRequiredWarning(t *testing.T) {
 	}
 
 	if resp.Data["cas_required"] != false {
-		t.Fatalf("expected cas_required to be set to false despite warning")
+		t.Fatal("expected cas_required to be set to false despite warning")
 	}
 }
 
@@ -1312,7 +1312,7 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 	}
 
 	if maxVersions := resp.Data["max_versions"].(uint32); maxVersions != 10 {
-		t.Fatalf("expected max_versions to be 10")
+		t.Fatal("expected max_versions to be 10")
 	}
 
 	req = &logical.Request{
@@ -1343,6 +1343,6 @@ func TestVersionedKV_Metadata_Patch_NilsUnset(t *testing.T) {
 	}
 
 	if maxVersions := resp.Data["max_versions"].(uint32); maxVersions != 0 {
-		t.Fatalf("expected max_versions to be unset to zero value")
+		t.Fatal("expected max_versions to be unset to zero value")
 	}
 }

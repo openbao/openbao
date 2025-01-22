@@ -498,7 +498,7 @@ type errorAssertion func(*testing.T, error)
 func assertErrNotNil(t *testing.T, err error) {
 	t.Helper()
 	if err == nil {
-		t.Fatalf("err expected, got nil")
+		t.Fatal("err expected, got nil")
 	}
 }
 

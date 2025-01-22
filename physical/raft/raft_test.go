@@ -385,7 +385,7 @@ func TestRaft_GetOfflineConfig(t *testing.T) {
 	}
 	for _, s := range conf.Servers {
 		if s.Voter != true {
-			t.Fatalf("one of the nodes is not a voter")
+			t.Fatal("one of the nodes is not a voter")
 		}
 	}
 }
@@ -469,7 +469,7 @@ func TestRaft_Recovery(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(peers) != 3 {
-		t.Fatalf("failed to recover the cluster")
+		t.Fatal("failed to recover the cluster")
 	}
 
 	time.Sleep(10 * time.Second)

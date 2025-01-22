@@ -5,6 +5,7 @@ package openldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,11 +28,11 @@ type librarySet struct {
 // a way that makes sense, and that there's at least one service account.
 func (l *librarySet) Validate() error {
 	if len(l.ServiceAccountNames) < 1 {
-		return fmt.Errorf("at least one service account must be configured")
+		return errors.New("at least one service account must be configured")
 	}
 	for _, name := range l.ServiceAccountNames {
 		if name == "" {
-			return fmt.Errorf("service account name must not be empty")
+			return errors.New("service account name must not be empty")
 		}
 	}
 	if l.MaxTTL > 0 {

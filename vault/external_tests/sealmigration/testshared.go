@@ -6,6 +6,7 @@ package sealmigration
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -401,7 +402,7 @@ func migratePost14(t *testing.T, storage teststorage.ReusableStorage, cluster *v
 		time.Sleep(1 * time.Second)
 	}
 	if leaderIdx == 0 {
-		t.Fatalf("Core 0 cannot be the leader right now")
+		t.Fatal("Core 0 cannot be the leader right now")
 	}
 	leader := cluster.Cores[leaderIdx]
 
@@ -471,7 +472,7 @@ func attemptUnsealMigrate(client *api.Client, keys [][]byte, transitServerAvaila
 			} else {
 				// The transit server is stopped.
 				if err == nil {
-					return fmt.Errorf("expected error due to transit server being stopped.")
+					return errors.New("expected error due to transit server being stopped.")
 				}
 			}
 			break
@@ -499,7 +500,7 @@ func awaitMigration(t *testing.T, client *api.Client) {
 		time.Sleep(time.Second)
 	}
 
-	t.Fatalf("migration did not complete.")
+	t.Fatal("migration did not complete.")
 }
 
 func unseal(t *testing.T, client *api.Client, keys [][]byte) {

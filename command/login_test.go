@@ -608,7 +608,7 @@ func TestLoginMFATwoPhaseNonInteractiveMethodName(t *testing.T) {
 		}
 
 		if secret.Auth == nil || secret.Auth.ClientToken == "" {
-			t.Fatalf("mfa validation did not return a client token")
+			t.Fatal("mfa validation did not return a client token")
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -274,7 +275,7 @@ func (b *backend) pathAcmeDeleteEab(ctx context.Context, r *logical.Request, d *
 
 	_, err := uuid.ParseUUID(keyId)
 	if err != nil {
-		return nil, fmt.Errorf("badly formatted key_id field")
+		return nil, errors.New("badly formatted key_id field")
 	}
 
 	deleted, err := b.acmeState.DeleteEab(sc, keyId)

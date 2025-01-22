@@ -52,7 +52,7 @@ func TestUnixSocketListener(t *testing.T) {
 			t.Fatal(err)
 		}
 		if fi.Mode().Perm() != os.FileMode(mode) {
-			t.Fatalf("failed to set permissions on the socket file")
+			t.Fatal("failed to set permissions on the socket file")
 		}
 	})
 	t.Run("names", func(t *testing.T) {
@@ -83,7 +83,7 @@ func TestUnixSocketListener(t *testing.T) {
 			t.Fatal(err)
 		}
 		if fi.Mode().Perm() != os.FileMode(mode) {
-			t.Fatalf("failed to set permissions on the socket file")
+			t.Fatal("failed to set permissions on the socket file")
 		}
 	})
 }

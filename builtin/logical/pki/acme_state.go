@@ -352,7 +352,7 @@ func (a *acmeState) LoadJWK(ac *acmeContext, keyId string) ([]byte, error) {
 	}
 
 	if len(key.Jwk) == 0 {
-		return nil, fmt.Errorf("malformed key entry lacks JWK")
+		return nil, errors.New("malformed key entry lacks JWK")
 	}
 
 	return key.Jwk, nil
@@ -360,7 +360,7 @@ func (a *acmeState) LoadJWK(ac *acmeContext, keyId string) ([]byte, error) {
 
 func (a *acmeState) LoadAuthorization(ac *acmeContext, userCtx *jwsCtx, authId string) (*ACMEAuthorization, error) {
 	if authId == "" {
-		return nil, fmt.Errorf("malformed authorization identifier")
+		return nil, errors.New("malformed authorization identifier")
 	}
 
 	authorizationPath := getAuthorizationPath(userCtx.Kid, authId)
@@ -403,11 +403,11 @@ func (a *acmeState) SaveAuthorization(ac *acmeContext, authz *ACMEAuthorization)
 
 func saveAuthorizationAtPath(sc *storageContext, path string, authz *ACMEAuthorization) error {
 	if authz.Id == "" {
-		return fmt.Errorf("invalid authorization, missing id")
+		return errors.New("invalid authorization, missing id")
 	}
 
 	if authz.AccountId == "" {
-		return fmt.Errorf("invalid authorization, missing account id")
+		return errors.New("invalid authorization, missing account id")
 	}
 
 	json, err := logical.StorageEntryJSON(path, authz)
@@ -514,11 +514,11 @@ func (a *acmeState) LoadOrder(ac *acmeContext, userCtx *jwsCtx, orderId string) 
 
 func (a *acmeState) SaveOrder(ac *acmeContext, order *acmeOrder) error {
 	if order.OrderId == "" {
-		return fmt.Errorf("invalid order, missing order id")
+		return errors.New("invalid order, missing order id")
 	}
 
 	if order.AccountId == "" {
-		return fmt.Errorf("invalid order, missing account id")
+		return errors.New("invalid order, missing account id")
 	}
 	path := getOrderPath(order.AccountId, order.OrderId)
 	json, err := logical.StorageEntryJSON(path, order)
@@ -585,7 +585,7 @@ func (a *acmeState) GetIssuedCert(ac *acmeContext, accountId string, serial stri
 	}
 
 	if entry == nil {
-		return nil, fmt.Errorf("no certificate with this serial was issued for this account")
+		return nil, errors.New("no certificate with this serial was issued for this account")
 	}
 
 	var cert acmeCertEntry

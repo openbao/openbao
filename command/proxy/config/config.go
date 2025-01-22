@@ -220,21 +220,21 @@ func (c *Config) Merge(c2 *Config) *Config {
 func (c *Config) ValidateConfig() error {
 	if c.Cache != nil {
 		if len(c.Listeners) < 1 {
-			return fmt.Errorf("enabling the cache requires at least 1 listener to be defined")
+			return errors.New("enabling the cache requires at least 1 listener to be defined")
 		}
 	}
 
 	if c.APIProxy != nil {
 		if len(c.Listeners) < 1 {
-			return fmt.Errorf("configuring the api_proxy requires at least 1 listener to be defined")
+			return errors.New("configuring the api_proxy requires at least 1 listener to be defined")
 		}
 
 		if c.APIProxy.UseAutoAuthToken {
 			if c.AutoAuth == nil {
-				return fmt.Errorf("api_proxy.use_auto_auth_token is true but auto_auth not configured")
+				return errors.New("api_proxy.use_auto_auth_token is true but auto_auth not configured")
 			}
 			if c.AutoAuth != nil && c.AutoAuth.Method != nil && c.AutoAuth.Method.WrapTTL > 0 {
-				return fmt.Errorf("api_proxy.use_auto_auth_token is true and auto_auth uses wrapping")
+				return errors.New("api_proxy.use_auto_auth_token is true and auto_auth uses wrapping")
 			}
 		}
 	}
@@ -242,12 +242,12 @@ func (c *Config) ValidateConfig() error {
 	if c.AutoAuth != nil {
 		if len(c.AutoAuth.Sinks) == 0 &&
 			(c.APIProxy == nil || !c.APIProxy.UseAutoAuthToken) {
-			return fmt.Errorf("auto_auth requires at least one sink or api_proxy.use_auto_auth_token=true")
+			return errors.New("auto_auth requires at least one sink or api_proxy.use_auto_auth_token=true")
 		}
 	}
 
 	if c.AutoAuth == nil && c.Cache == nil && len(c.Listeners) == 0 {
-		return fmt.Errorf("no auto_auth, cache, or listener block found in config")
+		return errors.New("no auto_auth, cache, or listener block found in config")
 	}
 
 	return nil
@@ -349,7 +349,7 @@ func LoadConfigFile(path string) (*Config, error) {
 	}
 
 	if fi.IsDir() {
-		return nil, fmt.Errorf("location is a directory, not a file")
+		return nil, errors.New("location is a directory, not a file")
 	}
 
 	// Read the file
@@ -392,7 +392,7 @@ func LoadConfigFile(path string) (*Config, error) {
 
 	list, ok := obj.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+		return nil, errors.New("error parsing: file doesn't contain a root object")
 	}
 
 	if err := parseAutoAuth(result, list); err != nil {
@@ -677,7 +677,7 @@ func parseAutoAuth(result *Config, list *ast.ObjectList) error {
 		return fmt.Errorf("error parsing 'method': %w", err)
 	}
 	if a.Method == nil {
-		return fmt.Errorf("no 'method' block found")
+		return errors.New("no 'method' block found")
 	}
 
 	if err := parseSinks(result, subList); err != nil {
@@ -686,11 +686,11 @@ func parseAutoAuth(result *Config, list *ast.ObjectList) error {
 
 	if result.AutoAuth.Method.WrapTTL > 0 {
 		if len(result.AutoAuth.Sinks) != 1 {
-			return fmt.Errorf("error parsing auto_auth: wrapping enabled on auth method and 0 or many sinks defined")
+			return errors.New("error parsing auto_auth: wrapping enabled on auth method and 0 or many sinks defined")
 		}
 
 		if result.AutoAuth.Sinks[0].WrapTTL > 0 {
-			return fmt.Errorf("error parsing auto_auth: wrapping enabled both on auth method and sink")
+			return errors.New("error parsing auto_auth: wrapping enabled both on auth method and sink")
 		}
 	}
 

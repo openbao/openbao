@@ -163,18 +163,18 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		if gauge.Name == "core.active" {
 			coreLeaderMetric = true
 			if gauge.Value != 1 {
-				t.Errorf("metric incorrectly reports active status")
+				t.Error("metric incorrectly reports active status")
 			}
 		}
 		if gauge.Name == "core.unsealed" {
 			coreUnsealMetric = true
 			if gauge.Value != 1 {
-				t.Errorf("metric incorrectly reports unseal status of leader")
+				t.Error("metric incorrectly reports unseal status of leader")
 			}
 		}
 	}
 	if !coreLeaderMetric || !coreUnsealMetric {
-		t.Errorf("unseal metric or leader metric are missing")
+		t.Error("unseal metric or leader metric are missing")
 	}
 
 	err = client.Sys().StepDown()
@@ -203,18 +203,18 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 			if gauge.Name == "core.active" {
 				coreLeaderMetric = true
 				if gauge.Value != 1 {
-					t.Errorf("metric incorrectly reports active status")
+					t.Error("metric incorrectly reports active status")
 				}
 			}
 			if gauge.Name == "core.unsealed" {
 				coreUnsealMetric = true
 				if gauge.Value != 1 {
-					t.Errorf("metric incorrectly reports unseal status of leader")
+					t.Error("metric incorrectly reports unseal status of leader")
 				}
 			}
 		}
 		if !coreLeaderMetric || !coreUnsealMetric {
-			t.Errorf("unseal metric or leader metric are missing")
+			t.Error("unseal metric or leader metric are missing")
 		}
 	}
 	if respo != nil {

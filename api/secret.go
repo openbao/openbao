@@ -6,6 +6,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -60,7 +61,7 @@ func (s *Secret) TokenID() (string, error) {
 
 	id, ok := s.Data["id"].(string)
 	if !ok {
-		return "", fmt.Errorf("token found but in the wrong format")
+		return "", errors.New("token found but in the wrong format")
 	}
 
 	return id, nil
@@ -84,7 +85,7 @@ func (s *Secret) TokenAccessor() (string, error) {
 
 	accessor, ok := s.Data["accessor"].(string)
 	if !ok {
-		return "", fmt.Errorf("token found but in the wrong format")
+		return "", errors.New("token found but in the wrong format")
 	}
 
 	return accessor, nil
@@ -134,7 +135,7 @@ func (s *Secret) TokenPolicies() ([]string, error) {
 
 		list, ok := s.Data["policies"].([]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unable to convert token policies to expected format")
+			return nil, errors.New("unable to convert token policies to expected format")
 		}
 		for _, v := range list {
 			p, ok := v.(string)
@@ -163,7 +164,7 @@ TOKEN_DONE:
 
 		list, ok := s.Data["identity_policies"].([]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unable to convert identity policies to expected format")
+			return nil, errors.New("unable to convert identity policies to expected format")
 		}
 		for _, v := range list {
 			p, ok := v.(string)
@@ -209,7 +210,7 @@ func (s *Secret) TokenMetadata() (map[string]string, error) {
 	if !ok {
 		data, ok = s.Data["meta"].(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("unable to convert metadata field to expected format")
+			return nil, errors.New("unable to convert metadata field to expected format")
 		}
 	}
 

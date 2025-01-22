@@ -62,6 +62,6 @@ func TestIdentityStore_GroupAliasLocalMount(t *testing.T) {
 		"canonical_id":   groupID,
 	})
 	if err == nil {
-		t.Fatalf("expected error since mount is local")
+		t.Fatal("expected error since mount is local")
 	}
 }

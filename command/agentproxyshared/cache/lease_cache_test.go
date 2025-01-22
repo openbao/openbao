@@ -106,7 +106,7 @@ func TestLeaseCache_EmptyToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non empty response")
+		t.Fatal("expected a non empty response")
 	}
 }
 
@@ -156,7 +156,7 @@ func TestLeaseCache_SendCacheable(t *testing.T) {
 		t.Fatal(err)
 	}
 	if cachedItem == nil {
-		t.Fatalf("expected token entry from cache")
+		t.Fatal("expected token entry from cache")
 	}
 	if cachedItem.TokenParent != "autoauthtoken" {
 		t.Fatalf("unexpected value for tokenparent: %s", cachedItem.TokenParent)

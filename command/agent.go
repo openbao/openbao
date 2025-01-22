@@ -1014,7 +1014,7 @@ func (c *AgentCommand) handleMetrics() http.Handler {
 			w.WriteHeader(status)
 			w.Write(v)
 		default:
-			logical.RespondError(w, http.StatusInternalServerError, fmt.Errorf("wrong response returned"))
+			logical.RespondError(w, http.StatusInternalServerError, errors.New("wrong response returned"))
 		}
 	})
 }
@@ -1041,7 +1041,7 @@ func (c *AgentCommand) handleQuit(enabled bool) http.Handler {
 // newLogger creates a logger based on parsed config field on the Agent Command struct.
 func (c *AgentCommand) newLogger() (hclog.InterceptLogger, error) {
 	if c.config == nil {
-		return nil, fmt.Errorf("cannot create logger, no config")
+		return nil, errors.New("cannot create logger, no config")
 	}
 
 	var errs *multierror.Error

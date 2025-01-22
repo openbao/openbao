@@ -101,7 +101,7 @@ func TestTransit_BatchRewrapCase1(t *testing.T) {
 	}
 
 	if ciphertext.(string) == resp.Data["ciphertext"].(string) {
-		t.Fatalf("bad: ciphertexts are same before and after rewrap")
+		t.Fatal("bad: ciphertexts are same before and after rewrap")
 	}
 
 	if !strings.HasPrefix(resp.Data["ciphertext"].(string), "vault:v2") {
@@ -206,7 +206,7 @@ func TestTransit_BatchRewrapCase2(t *testing.T) {
 	}
 
 	if ciphertext.(string) == resp.Data["ciphertext"].(string) {
-		t.Fatalf("bad: ciphertexts are same before and after rewrap")
+		t.Fatal("bad: ciphertexts are same before and after rewrap")
 	}
 
 	if !strings.HasPrefix(resp.Data["ciphertext"].(string), "vault:v2") {
@@ -298,7 +298,7 @@ func TestTransit_BatchRewrapCase3(t *testing.T) {
 		}
 
 		if eItem.Ciphertext == rItem.Ciphertext {
-			t.Fatalf("bad: rewrap input and output are the same")
+			t.Fatal("bad: rewrap input and output are the same")
 		}
 
 		if !strings.HasPrefix(rItem.Ciphertext, "vault:v2") {

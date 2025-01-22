@@ -5,6 +5,7 @@ package jwtauth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"golang.org/x/oauth2"
@@ -45,7 +46,7 @@ func NewProviderConfig(ctx context.Context, jc *jwtConfig, providerMap map[strin
 	}
 	provider, ok := jc.ProviderConfig["provider"].(string)
 	if !ok {
-		return nil, fmt.Errorf("'provider' field not found in provider_config")
+		return nil, errors.New("'provider' field not found in provider_config")
 	}
 	newCustomProvider, ok := providerMap[provider]
 	if !ok {

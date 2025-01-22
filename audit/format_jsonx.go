@@ -6,7 +6,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 
 	"github.com/jefferai/jsonx"
@@ -22,7 +22,7 @@ type JSONxFormatWriter struct {
 
 func (f *JSONxFormatWriter) WriteRequest(w io.Writer, req *AuditRequestEntry) error {
 	if req == nil {
-		return fmt.Errorf("request entry was nil, cannot encode")
+		return errors.New("request entry was nil, cannot encode")
 	}
 
 	if len(f.Prefix) > 0 {
@@ -48,7 +48,7 @@ func (f *JSONxFormatWriter) WriteRequest(w io.Writer, req *AuditRequestEntry) er
 
 func (f *JSONxFormatWriter) WriteResponse(w io.Writer, resp *AuditResponseEntry) error {
 	if resp == nil {
-		return fmt.Errorf("response entry was nil, cannot encode")
+		return errors.New("response entry was nil, cannot encode")
 	}
 
 	if len(f.Prefix) > 0 {

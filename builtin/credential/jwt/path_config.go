@@ -219,7 +219,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 
 	if config.OIDCDeviceAuthURL != "" {
 		if config.OIDCDeviceAuthURL == "N/A" {
-			return fmt.Errorf("no device auth endpoint url discovered")
+			return errors.New("no device auth endpoint url discovered")
 		}
 		return nil
 	}
@@ -244,7 +244,7 @@ func (b *jwtAuthBackend) configDeviceAuthURL(ctx context.Context, s logical.Stor
 	err = json.Unmarshal(body, &daj)
 	if err != nil || daj.DeviceAuthURL == "" {
 		b.cachedConfig.OIDCDeviceAuthURL = "N/A"
-		return fmt.Errorf("no device auth endpoint url discovered")
+		return errors.New("no device auth endpoint url discovered")
 	}
 
 	b.cachedConfig.OIDCDeviceAuthURL = daj.DeviceAuthURL

@@ -49,7 +49,7 @@ func TestSysSealStatus(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["version"] == nil {
-		t.Fatalf("expected version information")
+		t.Fatal("expected version information")
 	}
 	expected["version"] = actual["version"]
 	if actual["cluster_name"] == nil {
@@ -143,7 +143,7 @@ func TestSysUnseal(t *testing.T) {
 			expected["nonce"] = actual["nonce"]
 		}
 		if actual["version"] == nil {
-			t.Fatalf("expected version information")
+			t.Fatal("expected version information")
 		}
 		expected["version"] = actual["version"]
 		if actual["cluster_name"] == nil {
@@ -373,11 +373,11 @@ func TestSysUnseal_Reset(t *testing.T) {
 		testResponseStatus(t, resp, 200)
 		testResponseBody(t, resp, &actual)
 		if actual["version"] == nil {
-			t.Fatalf("expected version information")
+			t.Fatal("expected version information")
 		}
 		expected["version"] = actual["version"]
 		if actual["nonce"] == "" && expected["sealed"].(bool) {
-			t.Fatalf("expected a nonce")
+			t.Fatal("expected a nonce")
 		}
 		expected["nonce"] = actual["nonce"]
 		if actual["cluster_name"] == nil {
@@ -414,7 +414,7 @@ func TestSysUnseal_Reset(t *testing.T) {
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	if actual["version"] == nil {
-		t.Fatalf("expected version information")
+		t.Fatal("expected version information")
 	}
 	expected["version"] = actual["version"]
 	expected["nonce"] = actual["nonce"]

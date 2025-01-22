@@ -5,6 +5,7 @@ package openldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -258,7 +259,7 @@ func (b *backend) operationCheckIn(overrideCheckInEnforcement bool) framework.Op
 			return nil, err
 		}
 		if config == nil {
-			return nil, fmt.Errorf("missing LDAP configuration")
+			return nil, errors.New("missing LDAP configuration")
 		}
 
 		set, err := readSet(ctx, req.Storage, setName)

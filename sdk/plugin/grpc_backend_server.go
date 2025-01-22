@@ -6,7 +6,6 @@ package plugin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
@@ -62,7 +61,7 @@ func (b *backendGRPCPluginServer) getBackendAndBrokeredClientInternal(ctx contex
 		return singleImpl.backend, singleImpl.brokeredClient, nil
 	}
 
-	return nil, nil, fmt.Errorf("no backend instance found")
+	return nil, nil, errors.New("no backend instance found")
 }
 
 // getBackendAndBrokeredClient holds a read lock and returns the backend and

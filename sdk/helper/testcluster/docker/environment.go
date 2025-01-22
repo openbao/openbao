@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -179,7 +180,7 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 		return err
 	}
 	if resp == nil {
-		return fmt.Errorf("nil response to init request")
+		return errors.New("nil response to init request")
 	}
 
 	for _, k := range resp.Keys {
@@ -515,7 +516,7 @@ func (n *DockerClusterNode) apiConfig() (*api.Config, error) {
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			// This can of course be overridden per-test by using its own client
-			return fmt.Errorf("redirects not allowed in these tests")
+			return errors.New("redirects not allowed in these tests")
 		},
 	}
 	config := api.DefaultConfig()
@@ -930,7 +931,7 @@ func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(res
 		switch {
 		case err != nil:
 		case leader == nil:
-			err = fmt.Errorf("nil response to leader check")
+			err = errors.New("nil response to leader check")
 		default:
 			err = ready(leader)
 			if err == nil {

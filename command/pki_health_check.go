@@ -206,6 +206,14 @@ func (c *PKIHealthCheckCommand) Run(args []string) int {
 		pkiPath = args[0]
 	}
 
+	// Validate the mount type before executing tests
+	err = healthcheck.ValidateMountType(client, pkiPath, "pki")
+	if err != nil {
+		c.UI.Error(err.Error())
+		return pkiRetUsage
+	}
+
+	// Build health check executor
 	mount := sanitizePath(pkiPath)
 	executor := healthcheck.NewExecutor(client, mount)
 	executor.AddCheck(healthcheck.NewCAValidityPeriodCheck())

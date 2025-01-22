@@ -432,7 +432,7 @@ func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Req
 	}
 
 	// Ensure that the Role still exists.
-	role, err := b.role(ctx, req.Storage, roleName)
+	role, err := b.getCelRole(ctx, req.Storage, roleName)
 	if err != nil {
 		return nil, errwrap.Wrapf(fmt.Sprintf("failed to validate role %s during renewal: {{err}}", roleName), err)
 	}
@@ -441,9 +441,7 @@ func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Req
 	}
 
 	resp := &logical.Response{Auth: req.Auth}
-	resp.Auth.TTL = role.TokenTTL
-	resp.Auth.MaxTTL = role.TokenMaxTTL
-	resp.Auth.Period = role.TokenPeriod
+	// on renew, keep the previous TTLs -- not available without running against JWT
 	return resp, nil
 }
 

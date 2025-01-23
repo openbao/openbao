@@ -7,8 +7,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -320,7 +325,7 @@ func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, role
 func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := validateCelExpressions(entry.AuthProgram)
+	_, err := b.validateCelExpressions(entry.AuthProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -329,8 +334,9 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 	return resp, nil
 }
 
-func validateCelExpressions(rule string) (bool, error) {
-	env, err := cel.NewEnv()
+func (b *jwtAuthBackend) validateCelExpressions(rule string) (bool, error) {
+	role := jwtRole{}
+	env, err := b.celEnv(&role)
 	if err != nil {
 		return false, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
@@ -346,6 +352,206 @@ func validateCelExpressions(rule string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
+	return cel.NewEnv(
+		// these functions are closures around `role` and can alter it
+		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
+		cel.Function("SetPolicies",
+			cel.Overload("SetPolicies",
+				[]*cel.Type{cel.ListType(types.StringType)},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					list, ok := arg.(traits.Lister)
+					if !ok {
+						return types.NewErr("expected a list of strings")
+					}
+
+					// Iterate over the list
+					for i := int64(0); i < int64(list.Size().(types.Int)); i++ {
+						elem := fmt.Sprintf("%v", list.Get(types.Int(i)))
+						role.TokenPolicies = append(role.TokenPolicies, elem)
+					}
+
+					// Return true
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetBoundCIDRs",
+			cel.Overload("SetBoundCIDRs",
+				[]*cel.Type{cel.ListType(types.StringType)},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					list, ok := arg.(traits.Lister)
+					if !ok {
+						return types.NewErr("expected a list of strings")
+					}
+
+					// Iterate over the list
+					for i := int64(0); i < int64(list.Size().(types.Int)); i++ {
+						elem := fmt.Sprintf("%v", list.Get(types.Int(i)))
+						sockAddr, err := sockaddr.NewSockAddr(elem)
+						if err != nil {
+							return types.NewErr("expected a list of CIDRs")
+						}
+						role.TokenBoundCIDRs = append(role.TokenBoundCIDRs,
+							&sockaddr.SockAddrMarshaler{SockAddr: sockAddr})
+					}
+
+					// Return true
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetTTL",
+			cel.Overload("SetTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenTTL = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetMaxTTL",
+			cel.Overload("SetMaxTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenMaxTTL = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetExplicitMaxTTL",
+			cel.Overload("SetExplicitMaxTTL",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenExplicitMaxTTL = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetPeriod",
+			cel.Overload("SetPeriod",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					ttl, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a duration string")
+					}
+					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					if err != nil {
+						return types.NewErr("expected a duration string")
+					}
+					role.TokenPeriod = duration
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetNoDefaultPolicy",
+			cel.Overload("SetNoDefaultPolicy",
+				[]*cel.Type{cel.BoolType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					boolSetting, ok := arg.(types.Bool)
+					if !ok {
+						return types.NewErr("expected a boolean")
+					}
+					role.TokenNoDefaultPolicy = boolSetting.Value().(bool)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetStrictlyBindIP",
+			cel.Overload("SetStrictlyBindIP",
+				[]*cel.Type{cel.BoolType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					boolSetting, ok := arg.(types.Bool)
+					if !ok {
+						return types.NewErr("expected a boolean")
+					}
+					role.TokenStrictlyBindIP = boolSetting.Value().(bool)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetTokenNumUses",
+			cel.Overload("SetTokenNumUses",
+				[]*cel.Type{cel.IntType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					intSetting, ok := arg.(types.Int)
+					if !ok {
+						return types.NewErr("expected an integer")
+					}
+					role.TokenNumUses = int(intSetting)
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetTokenType",
+			cel.Overload("SetTokenType",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					strSetting, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected a string")
+					}
+					ttype, err := logical.NewTokenType(fmt.Sprintf("%v", strSetting))
+					if err != nil {
+						return types.NewErr("expected a token type string")
+					}
+					role.TokenType = ttype
+					return types.True
+				}),
+			),
+		),
+		cel.Function("SetUserClaim",
+			cel.Overload("SetUserClaim",
+				[]*cel.Type{cel.StringType},
+				cel.BoolType,
+				cel.UnaryBinding(func(arg ref.Val) ref.Val {
+					strSetting, ok := arg.(types.String)
+					if !ok {
+						return types.NewErr("expected the user claim field name")
+					}
+					role.UserClaim = fmt.Sprintf("%v", strSetting)
+					return types.True
+				}),
+			),
+		),
+	)
 }
 
 const (

@@ -123,7 +123,7 @@
     "ember-cli-babel": "^7.26.11",
     "ember-cli-clipboard": "0.16.0",
     "ember-cli-content-security-policy": "2.0.3",
-    "ember-cli-dependency-checker": "^3.3.1",
+    "ember-cli-dependency-checker": "^3.3.3",
     "ember-cli-deprecation-workflow": "^2.1.0",
     "ember-cli-flash": "4.0.0",
     "ember-cli-htmlbars": "^6.0.1",

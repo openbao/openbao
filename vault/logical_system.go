@@ -1563,10 +1563,34 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	path = sanitizePath(path)
 
 	// Prevent protected paths from being changed
+	isUntunable := false
 	for _, p := range untunableMounts {
 		if strings.HasPrefix(path, p) {
-			b.Backend.Logger().Error("cannot tune this mount", "path", path)
-			return handleError(fmt.Errorf("cannot tune %q", path))
+			allowedField := []string{"path", "audit_non_hmac_request_keys", "audit_non_hmac_response_keys"}
+			for field := range data.Raw {
+				// Ignore unknown fields
+				if _, ok := data.Schema[field]; !ok {
+					continue
+				}
+
+				// Check if this field is allowed to be tuned on this untunable path
+				found := false
+				for _, match := range allowedField {
+					if match == field {
+						found = true
+						break
+					}
+				}
+
+				// Err if so.
+				if !found {
+					b.Backend.Logger().Error("cannot tune this mount", "path", path, "field", field)
+					return handleError(fmt.Errorf("cannot tune parameter %v of %v", field, path))
+				}
+			}
+
+			isUntunable = true
+			break
 		}
 	}
 
@@ -1595,7 +1619,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	// Timing configuration parameters
-	{
+	if !isUntunable {
 		var newDefault, newMax time.Duration
 		defTTL := data.Get("default_lease_ttl").(string)
 		switch defTTL {
@@ -1636,7 +1660,7 @@ func (b *SystemBackend) handleTuneWriteCommon(ctx context.Context, path string, 
 	}
 
 	// user-lockout config
-	{
+	if !isUntunable {
 		var apiuserLockoutConfig APIUserLockoutConfig
 
 		userLockoutConfigMap := data.Get("user_lockout_config").(map[string]interface{})

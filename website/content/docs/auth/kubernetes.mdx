@@ -360,9 +360,11 @@ import (
 
 // Fetches a key-value secret (kv-v2) after authenticating to OpenBao with a Kubernetes service account.
 // For a more in-depth setup explanation, please see the relevant readme in the hashicorp/vault-examples repo.
+
 func getSecretWithKubernetesAuth() (string, error) {
 	// If set, the VAULT_ADDR environment variable will be the address that
 	// your pod uses to communicate with OpenBao.
+
 	config := openbao.DefaultConfig() // modify for more granular configuration
 
 	client, err := openbao.NewClient(config)
@@ -376,6 +378,7 @@ func getSecretWithKubernetesAuth() (string, error) {
 	// may have configured it to be mounted elsewhere.
 	// In that case, we'll use the option WithServiceAccountTokenPath to look
 	// for the token there.
+
 	k8sAuth, err := auth.NewKubernetesAuth(
 		"dev-role-k8s",
 		auth.WithServiceAccountTokenPath("path/to/service-account-token"),
@@ -393,6 +396,7 @@ func getSecretWithKubernetesAuth() (string, error) {
 	}
 
 	// get secret from OpenBao, from the default mount path for KV v2 in dev mode, "secret"
+
 	secret, err := client.KVv2("secret").Get(context.Background(), "creds")
 	if err != nil {
 		return "", fmt.Errorf("unable to read secret: %w", err)
@@ -400,6 +404,7 @@ func getSecretWithKubernetesAuth() (string, error) {
 
 	// data map can contain more than one key-value pair,
 	// in this case we're just grabbing one of them
+  
 	value, ok := secret.Data["password"].(string)
 	if !ok {
 		return "", fmt.Errorf("value type assertion failed: %T %#v", secret.Data["password"], secret.Data["password"])

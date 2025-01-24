@@ -2,10 +2,10 @@
 description: Learn about the integrated Raft storage in OpenBao.
 ---
 
-# Integrated storage
+# Integrated Storage
 
 OpenBao comes integrated with a native storage backend system. This storage backend
-does not rely on any third party systems; it implements high availability and
+does not rely on any third party systems; it implements High Availability and
 provides backup/restore workflows.
 
 ## Consensus protocol
@@ -136,7 +136,7 @@ will be encrypted by OpenBao's barrier.
 #### Autopilot
 
 An [Autopilot feature](/docs/concepts/integrated-storage/autopilot) 
-is available since 1.7.x & later versions that include configurable parameters 
+is available in 1.7.x & later versions that includes configurable parameters 
 for when a node is treated as healthy before it's considered an eligible voter in the 
 quorum list. Other features which may be enabled include the ability to remove nodes 
 considered as dead from the quorum list after a certain period.
@@ -146,8 +146,8 @@ should work well for most OpenBao deployments, but they can be changed if needed
 
 Autopilot includes stabilization logic for nodes joining the cluster.
 Recently joined nodes are 
-accepted as non-voter initially until they are in sync with matching Raft index 
-and only after a stability thresholds are they then full voting members.
+accepted as non-voters initially until they are in sync with matching Raft index 
+and only after reaching a stability threshold are they then full voting members.
 Setting the stability threshold too low can result in cluster instability as nodes will be
 counted as voters before they are capable of voting.
 
@@ -252,7 +252,7 @@ may be one way to ensure sufficient failure tolerance is maintained and that
 changes are made progressively in proportion to the cluster failure tolerance and 
 never exceeding the available failure tolerance in any given time.
 
-The intent with any change or scaling ought to be with the lose of quorum and 
+The intent with any change or scaling ought to be with the loss of quorum and 
 reduction of the quorum failure tolerances at the forefront and discouraging 
 any practises that compromise that.
 

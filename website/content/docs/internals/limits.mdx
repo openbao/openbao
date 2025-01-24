@@ -1,5 +1,5 @@
 ---
-sidebar_label: Limits and Maximums
+sidebar_label: Limits and maximums
 description: Learn about the maximum number of objects within OpenBao.
 ---
 
@@ -21,7 +21,7 @@ the absolute limits being reached.
 The maximum size of an object written to a storage backend is determined
 by that backend.
 
-For the integrated storage backend, the default limit is 1 MiB. This may be
+For the integrated Storage backend, the default limit is 1 MiB. This may be
 configured via `max_entry_size` in the [storage
 stanza](/docs/configuration/storage/raft#max_entry_size).
 
@@ -43,7 +43,7 @@ about 75 bytes. Each of (1) auth mounts, (2) secret engine mount points,
 (3) local-only auth methods, and (4) local-only secret engine mounts are
 stored separately, so the limit applies to each independently.
 
-|                                              | Integrated storage default (1 MiB) |
+|                                              | Integrated Storage default (1 MiB) |
 | -------------------------------------------- | ---------------------------------- |
 | Maximum number of secret engine mount points | ~14000                             |
 | Maximum number of enabled auth methods       | ~14000                             |
@@ -101,11 +101,11 @@ has the following constraints:
 | Metadata value size                   | 512 bytes |
 
 OpenBao shards the entities across 256 storage entries. This creates a hard
-limit of  256MiB on integrated storage with its default settings. Entity aliases
+limit of  256MiB on integrated Storage with its default settings. Entity aliases
 are stored inline in the Entity objects and so consume the same pool of storage.
 Entity definitions are compressed within each storage entry, and the
 pre-compression size varies with the number of entity aliases and the amount of
-metadata. Minimally-populated entities about 200 bytes after compression.
+metadata. Minimally-populated entities are about 200 bytes after compression.
 
 Group definitions are stored separately, in their own pool of 256
 storage entries. The size of each group object depends on the number
@@ -162,7 +162,7 @@ The maximum size of a policy is limited by the storage
 entry size. Policy lists that appear in tokens or entities must fit
 within a single storage entry.
 
-|                                                | Integrated storage default (1 MiB) |
+|                                                | Integrated Storage default (1 MiB) |
 | ---------------------------------------------- | ---------------------------------- |
 | Maximum policy size                            | 1 MiB                              |
 | Maximum number of policies per namespace       | no limit                           |
@@ -210,7 +210,7 @@ maximum request size, as described [below](#request-size).
 All archived versions of a single key must fit in a single storage entry.
 This limit depends on the key size.
 
-| Key length           | Integrated storage default (1 MiB) |
+| Key length           | Integrated Storage default (1 MiB) |
 | -------------------- | ---------------------------------- |
 | aes128-gcm96 keys    | 4017                               |
 | aes256-gcm96 keys    | 3731                               |

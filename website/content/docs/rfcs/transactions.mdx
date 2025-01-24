@@ -188,16 +188,19 @@ The interface for Physical storage will need to be updated to include new transa
 // style as Go's Database paradigm. This differs from Transactional above:
 // that one is a one-shot (list of transactions to execute) transaction
 // interface.
+
 type InteractiveTransactional interface {
     // This function allows the creation of a new interactive transaction
     // handle, only supporting read operations. Attempts to perform write
     // operations (PUT or DELETE) will result in immediate errors.
+
     BeginReadOnlyTx(context.Context) (Transaction, error)
 
     // This function allows the creation of a new interactive transaction
     // handle, supporting read/write transactions. In some cases, the
     // underlying physical storage backend cannot handle parallel read/write
     // transactions.
+
     BeginTx(context.Context) (Transaction, error)
 }
 
@@ -205,19 +208,23 @@ type InteractiveTransactional interface {
 // operations can be performed, and when finished, Commit or Rollback can
 // be called. When a read-only transaction is created, write calls (Put(...)
 // and Delete(...)) will err out.
+
 type Transaction interface {
     Backend
 
     // Commit a transaction; this is equivalent to Rollback on a read-only
     // transaction.
+
     Commit(context.Context) error
 
     // Rollback a transaction, preventing any changes from being persisted.
+
     Rollback(context.Context) error
 }
 
 // InteractiveTransactionalBackend is implemented if a storage backend
 // implements interactive transactions as well.
+
 type InteractiveTransactionalBackend interface {
     Backend
     InteractiveTransactional
@@ -232,16 +239,19 @@ When a `physical.Backend` supports transactions (being a `physical.InteractiveTr
 // style as Go's Database paradigm. This is equivalent to
 // physical.InteractiveTransactional, not the earlier, one-shot
 // physical.Transactional interface.
+
 type Transactional interface {
     // This function allows the creation of a new interactive transaction
     // handle, only supporting read operations. Attempts to perform write
     // operations (
+
     BeginReadOnlyTx(context.Context) (Transaction, error)
 
     // This function allows the creation of a new interactive transaction
     // handle, supporting read/write transactions. In some cases, the
     // underlying physical storage backend cannot handle parallel read/write
     // transactions.
+
     BeginTx(context.Context) (Transaction, error)
 }
 
@@ -249,19 +259,23 @@ type Transactional interface {
 // operations can be performed, and when finished, Commit or Rollback can
 // be called. When a read-only transaction is created, write calls (Put(...)
 // and Delete(...)) will err out.
+
 type Transaction interface {
     Storage
 
     // Commit a transaction; this is equivalent to Rollback on a read-only
     // transaction.
+
     Commit(context.Context) error
 
     // Rollback a transaction, preventing any changes from being persisted.
+
     Rollback(context.Context) error
 }
 
 // TransactionalStorage is implemented if a storage backend implements
 // Transactional as well.
+
 type TransactionalStorage interface {
     Storage
     Transactional
@@ -323,6 +337,7 @@ if haveTransaction {
 // ... rest of handler ...
 
 // If all is ok, commit the transaction
+
 if haveTransaction {
     txn = req.Storage.(logical.Transaction)
     if err := txn.Commit(ctx); err != nil {

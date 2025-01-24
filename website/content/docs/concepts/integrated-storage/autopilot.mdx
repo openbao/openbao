@@ -5,14 +5,14 @@ description: Learn about the autopilot subsystem of integrated raft storage in O
 # Autopilot
 
 Autopilot enables automated workflows for managing Raft clusters. The current
-feature set includes 3 main features: Server Stabilization, Dead Server Cleanup
-and State API.
+feature set includes 3 main features: server stabilization, dead server cleanup
+and state API.
 
 ## Server stabilization
 
 Server stabilization helps to retain the stability of the Raft cluster by safely
 joining new voting nodes to the cluster. When a new voter node is joined to an
-existing cluster, autopilot adds it as a non-voter instead, and waits for a
+existing cluster, Autopilot adds it as a non-voter instead, and waits for a
 pre-configured amount of time to monitor it's health. If the node remains to be
 healthy for the entire duration of stabilization, then that node will be
 promoted as a voter. The server stabilization period can be tuned using
@@ -28,13 +28,13 @@ and `min_quorum` (see below).
 ## State API
 
 State API provides detailed information about all the nodes in the Raft cluster
-in a single call. This API can be used for monitoring for cluster health.
+in a single call. This API can be used for monitoring cluster health.
 
 ### Follower health
 
 Follower node health is determined by 2 factors.
 
-- Its ability to heartbeat to leader node at regular intervals. Tuned using
+- Its ability to heartbeat to the leader node at regular intervals. Tuned using
   `last_contact_threshold` (see below).
 - Its ability to keep up with data replication from the leader node. Tuned using
   `max_trailing_logs` (see below).
@@ -47,18 +47,18 @@ enabled by default.
 Autopilot exposes a [configuration
 API](/api-docs/system/storage/raftautopilot#set-configuration) to manage its
 behavior. Autopilot gets initialized with the following default values. If these
-default values do not meet your expected autopilot behavior, don't forget to set
+default values do not meet your expected Autopilot behavior, don't forget to set
 them to your desired values.
 
 - `cleanup_dead_servers` - `false`
-  - This controls whether to remove dead servers from
+  - This controls whether dead servers are removed from
     the Raft peer list periodically or when a new server joins. This requires that
     `min-quorum` is also set.
 
 - `dead_server_last_contact_threshold` - `24h`
   - Limit on the amount of time
     a server can go without leader contact before being considered failed. This
-    takes effect only when `cleanup_dead_servers` is set.
+    takes effect only when `cleanup_dead_servers` is set to `true`.
 
 - `min_quorum` - This doesn't default to anything and should be set to the expected
   number of voters in your cluster when `cleanup_dead_servers` is set as `true`.

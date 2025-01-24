@@ -3,11 +3,11 @@ sidebar_label: Overview
 description: Learn about the integrated raft storage in OpenBao.
 ---
 
-# Integrated storage
+# Integrated Storage
 
 OpenBao supports a number of storage options for the durable storage of OpenBao's
 information. This Integrated Storage backend does not rely on any third party
-systems, implements high availability semantics and provides backup/restore
+systems, implements High Availability semantics and provides backup/restore
 workflows.
 
 The option stores OpenBao's data on the server's filesystem and
@@ -62,7 +62,7 @@ option on all nodes to make joining simpler.
 This method enables setting one, or more, target leader nodes in the config file.
 When an uninitialized OpenBao server starts up it will attempt to join each potential
 leader that is defined, retrying until successful. When one of the specified
-leaders become active this node will successfully join. When using Shamir seal,
+leaders becomes active this node will successfully join. When using Shamir seal,
 the joined nodes will still need to be unsealed manually. When using Auto Unseal
 the node will be able to join and unseal automatically.
 
@@ -179,7 +179,7 @@ node2    node2.openbao.local:8201    follower    true
 node3    node3.openbao.local:8201    leader      true
 ```
 
-## Integrated storage and TLS
+## Integrated Storage and TLS
 
 We've glossed over some details in the above sections on bootstrapping clusters.
 The instructions are sufficient for most cases, but some users have run into

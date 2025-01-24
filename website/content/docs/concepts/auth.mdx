@@ -137,6 +137,7 @@ import (
 //
 // Production applications may also wish to be more tolerant of failures and
 // retry rather than exiting.
+
 func renewToken(client *openbao.Client) {
 	for {
 		openbaoLoginResp, err := login(client)
@@ -152,6 +153,7 @@ func renewToken(client *openbao.Client) {
 
 // Starts token lifecycle management. Returns only fatal errors as errors,
 // otherwise returns nil so we can attempt login again.
+
 func manageTokenLifecycle(client *openbao.Client, token *openbao.Secret) error {
 	renew := token.Auth.Renewable // You may notice a different top-level field called Renewable. That one is used for dynamic secrets renewal, not token renewal.
 	if !renew {
@@ -176,16 +178,19 @@ func manageTokenLifecycle(client *openbao.Client, token *openbao.Secret) error {
 		// duration is under a built-in threshold and either renewing is not
 		// extending it or renewing is disabled. In any case, the caller
 		// needs to attempt to log in again.
+
 		case err := <-watcher.DoneCh():
 			if err != nil {
 				log.Printf("Failed to renew token: %v. Re-attempting login.", err)
 				return nil
 			}
 			// This occurs once the token has reached max TTL.
+
 			log.Printf("Token can no longer be renewed. Re-attempting login.")
 			return nil
 
 		// Successfully completed renewal
+
 		case renewal := <-watcher.RenewCh():
 			log.Printf("Successfully renewed: %#v", renewal)
 		}
@@ -198,6 +203,7 @@ func login(client *openbao.Client) (*openbao.Secret, error) {
 	// log in to OpenBao using various auth methods. This function is just
 	// demonstrating the basic idea that a *openbao.Secret is returned by
 	// the login call.
+	
 	userpassAuth, err := auth.NewUserpassAuth("my-user", &auth.Password{FromString: "my-password"})
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize userpass auth method: %w", err)

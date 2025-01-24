@@ -256,6 +256,13 @@ func (s *FollowerStates) MinIndex() uint64 {
 	return min
 }
 
+func (s *FollowerStates) HaveFollower() bool {
+	s.l.RLock()
+	defer s.l.RUnlock()
+
+	return len(s.followers) > 0
+}
+
 // SetFollowerStates sets the followerStates field in the backend to track peers
 // in the raft cluster.
 func (b *RaftBackend) SetFollowerStates(states *FollowerStates) {

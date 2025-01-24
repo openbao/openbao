@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_applyCelRole(t *testing.T) {
+func Test_runCelProgram(t *testing.T) {
 	tests := []struct {
 		name           string
 		celRole        celRoleEntry
@@ -231,6 +231,31 @@ func Test_applyCelRole(t *testing.T) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
 				require.Equal(t, logical.TokenTypeDefaultBatch, rslt.TokenType)
+			},
+		},
+		{
+			name: "Multiple functions can be called in the same program",
+			celRole: celRoleEntry{
+				AuthProgram: `
+                                        claims.sub == 'test@example.com'
+                                        ?
+                                          SetUserClaim("sub") &&
+                                          SetTTL("5m") &&
+                                          SetPolicies(["policy1", "policy2"])
+                                        :
+                                          false
+				`,
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+				require.NoError(t, err)
+				require.NotNil(t, rslt)
+				require.Equal(t, "5m0s", rslt.TokenTTL.String())
+				require.Equal(t, []string{"policy1", "policy2"}, rslt.TokenPolicies)
 			},
 		},
 	}

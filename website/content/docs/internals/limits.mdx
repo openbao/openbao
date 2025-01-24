@@ -21,7 +21,7 @@ the absolute limits being reached.
 The maximum size of an object written to a storage backend is determined
 by that backend.
 
-For the integrated Storage backend, the default limit is 1 MiB. This may be
+For the Integrated Storage backend, the default limit is 1 MiB. This may be
 configured via `max_entry_size` in the [storage
 stanza](/docs/configuration/storage/raft#max_entry_size).
 
@@ -101,7 +101,7 @@ has the following constraints:
 | Metadata value size                   | 512 bytes |
 
 OpenBao shards the entities across 256 storage entries. This creates a hard
-limit of  256MiB on integrated Storage with its default settings. Entity aliases
+limit of  256MiB on Integrated Storage with its default settings. Entity aliases
 are stored inline in the Entity objects and so consume the same pool of storage.
 Entity definitions are compressed within each storage entry, and the
 pre-compression size varies with the number of entity aliases and the amount of

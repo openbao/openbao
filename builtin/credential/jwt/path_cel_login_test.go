@@ -254,6 +254,7 @@ func Test_runCelProgram(t *testing.T) {
 			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
+				require.Equal(t, "sub", rslt.UserClaim)
 				require.Equal(t, "5m0s", rslt.TokenTTL.String())
 				require.Equal(t, []string{"policy1", "policy2"}, rslt.TokenPolicies)
 			},
@@ -351,9 +352,13 @@ func TestCelRolePermitsAuth(t *testing.T) {
 
 	celRoleData := map[string]interface{}{
 		"name": "testrole",
-		"auth_program": `claims.sub == 'joe.public@example.com'
-			? SetUserClaim("sub")
-			: false
+		"auth_program": `
+                        claims.sub == 'joe.public@example.com'
+			?
+			  SetUserClaim("sub") &&
+			  SetPolicies(["foo-policy", "bar-policy"])
+			:
+			  false
 		`,
 	}
 
@@ -408,4 +413,6 @@ func TestCelRolePermitsAuth(t *testing.T) {
 	if auth.InternalData["role"] != role {
 		t.Fatalf("Role was not as expected. Expected %s, received %s", role, resp.Data["role"])
 	}
+	require.Equal(t, "joe.public@example.com", auth.Alias.Name)
+	require.Contains(t, auth.Policies, "foo-policy", "bar-policy")
 }

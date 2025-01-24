@@ -85,7 +85,7 @@ func TestPKIHC_AllGood(t *testing.T) {
 		t.Fatalf("failed to update acme config: %v", err)
 	}
 
-	_, _, results := execPKIHC(t, client, true)
+	_, _, results := execPKIHC(t, client, "pki", true)
 
 	validateExpectedPKIHC(t, expectedAllGood, results)
 }
@@ -147,7 +147,7 @@ func TestPKIHC_AllBad(t *testing.T) {
 		t.Fatalf("failed to write auto-tidy config: %v", err)
 	}
 
-	_, _, results := execPKIHC(t, client, true)
+	_, _, results := execPKIHC(t, client, "pki", true)
 
 	validateExpectedPKIHC(t, expectedAllBad, results)
 }
@@ -172,7 +172,7 @@ func TestPKIHC_OnlyIssuer(t *testing.T) {
 		t.Fatalf("failed to prime CA: %v", err)
 	}
 
-	_, _, results := execPKIHC(t, client, true)
+	_, _, results := execPKIHC(t, client, "pki", true)
 	validateExpectedPKIHC(t, expectedEmptyWithIssuer, results)
 }
 
@@ -182,7 +182,7 @@ func TestPKIHC_NoMount(t *testing.T) {
 	client, closer := testVaultServer(t)
 	defer closer()
 
-	code, message, _ := execPKIHC(t, client, false)
+	code, message, _ := execPKIHC(t, client, "pki", false)
 	if code != 1 {
 		t.Fatalf("Expected return code 1 from invocation on non-existent mount, got %v\nOutput: %v", code, message)
 	}
@@ -204,7 +204,7 @@ func TestPKIHC_ExpectedEmptyMount(t *testing.T) {
 		t.Fatalf("pki mount error: %#v", err)
 	}
 
-	code, message, _ := execPKIHC(t, client, false)
+	code, message, _ := execPKIHC(t, client, "pki", false)
 	if code != 1 {
 		t.Fatalf("Expected return code 1 from invocation on empty mount, got %v\nOutput: %v", code, message)
 	}
@@ -274,8 +274,37 @@ func TestPKIHC_NoPerm(t *testing.T) {
 	// Remove client token.
 	client.ClearToken()
 
-	_, _, results := execPKIHC(t, client, true)
+	_, _, results := execPKIHC(t, client, "pki", true)
 	validateExpectedPKIHC(t, expectedNoPerm, results)
+}
+
+func TestPKIHC_InvalidMounts(t *testing.T) {
+	t.Parallel()
+
+	client, closer := testVaultServer(t)
+	defer closer()
+
+	code, message, _ := execPKIHC(t, client, "secret", false)
+	if code != 1 {
+		t.Fatalf("Expected return code 1 from invocation on kv mount, got %v\nOutput: %v", code, message)
+	}
+
+	if !strings.Contains(message, "Refusing to run") {
+		t.Fatalf("Expected failure to talk about no issuers, got exit code %v\nOutput: %v", code, message)
+	}
+
+	if err := client.Sys().EnableAuth("userpass", "userpass", ""); err != nil {
+		t.Fatalf("kv mount error: %#v", err)
+	}
+
+	code, message, _ = execPKIHC(t, client, "auth/userpass", false)
+	if code != 1 {
+		t.Fatalf("Expected return code 1 from invocation on userpass mount, got %v\nOutput: %v", code, message)
+	}
+
+	if !strings.Contains(message, "Refusing to run") {
+		t.Fatalf("Expected failure to talk about no issuers, got exit code %v\nOutput: %v", code, message)
+	}
 }
 
 func testPKIHealthCheckCommand(tb testing.TB) (*cli.MockUi, *PKIHealthCheckCommand) {
@@ -289,7 +318,7 @@ func testPKIHealthCheckCommand(tb testing.TB) (*cli.MockUi, *PKIHealthCheckComma
 	}
 }
 
-func execPKIHC(t *testing.T, client *api.Client, ok bool) (int, string, map[string][]map[string]interface{}) {
+func execPKIHC(t *testing.T, client *api.Client, path string, ok bool) (int, string, map[string][]map[string]interface{}) {
 	t.Helper()
 
 	stdout := bytes.NewBuffer(nil)
@@ -300,7 +329,7 @@ func execPKIHC(t *testing.T, client *api.Client, ok bool) (int, string, map[stri
 		Client: client,
 	}
 
-	code := RunCustom([]string{"pki", "health-check", "-format=json", "pki"}, runOpts)
+	code := RunCustom([]string{"pki", "health-check", "-format=json", path}, runOpts)
 	combined := stdout.String() + stderr.String()
 
 	var results map[string][]map[string]interface{}

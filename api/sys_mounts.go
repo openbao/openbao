@@ -242,6 +242,39 @@ func (c *Sys) MountConfigWithContext(ctx context.Context, path string) (*MountCo
 	return &result, err
 }
 
+func (c *Sys) MountInfo(path string) (*MountOutput, error) {
+	return c.MountInfoWithContext(context.Background(), path)
+}
+
+func (c *Sys) MountInfoWithContext(ctx context.Context, path string) (*MountOutput, error) {
+	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
+	defer cancelFunc()
+
+	r := c.c.NewRequest(http.MethodGet, fmt.Sprintf("/v1/sys/mounts/%s", path))
+
+	resp, err := c.c.rawRequestWithContext(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	secret, err := ParseSecret(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if secret == nil || secret.Data == nil {
+		return nil, errors.New("data from server response is empty")
+	}
+
+	var result MountOutput
+	err = mapstructure.Decode(secret.Data, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, err
+}
+
 type MountInput struct {
 	Type                  string            `json:"type"`
 	Description           string            `json:"description"`

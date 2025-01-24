@@ -1,0 +1,3 @@
+```release-note:feature
+**PKCS#11 Auto-Unseal**: Add support for automatic unsealing of OpenBao using a PKCS#11-enabled Hardware Security Module (HSM) or Key Management System (KMS).
+```

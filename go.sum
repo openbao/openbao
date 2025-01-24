@@ -712,6 +712,8 @@ github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3N
 github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJysuI=
 github.com/miekg/dns v1.1.43 h1:JKfpVSCB84vrAmHzyrsxB5NAr5kLoMXZArPSw7Qlgyg=
 github.com/miekg/dns v1.1.43/go.mod h1:+evo5L0630/F6ca/Z9+GAqzhjGyn8/c+TBaOyfEl0V4=
+github.com/miekg/pkcs11 v1.1.2-0.20231115102856-9078ad6b9d4b h1:J/AzCvg5z0Hn1rqZUJjpbzALUmkKX0Zwbc/i4fw7Sfk=
+github.com/miekg/pkcs11 v1.1.2-0.20231115102856-9078ad6b9d4b/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
 github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a h1:eU8j/ClY2Ty3qdHnn0TyW3ivFoPC/0F1gQZz8yTxbbE=
 github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a/go.mod h1:v8eSC2SMp9/7FTKUncp7fH9IwPfw+ysMObcEz5FWheQ=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
@@ -802,6 +804,8 @@ github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.1.0 h1:ETDD0FbpAMDsUoa
 github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.1.0/go.mod h1:4sJLy2LJyXz2vNQ37Re7ox2kTBY4A3Umt4gGIKDO7d4=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.1.0 h1:SUb6MNKKp3deEgwj5dfoelUMjKneSat0H+i8S+IgfFs=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.1.0/go.mod h1:PkhBgU1gKDF0Bt7Qly4xS27iIJQhANJFtYZJY16OuDs=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250114185509-3fa7a3d31521 h1:ipm2r9l0pOVWqLAfgvPJ6V5/BxMUimlmd6wNDqXdKDg=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250114185509-3fa7a3d31521/go.mod h1:9XKIJXeQA+zgPQcH2Vwt6iGDrfYmq8IBm6Kw0+zcvSY=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.3.0 h1:VjAolJF77X0R8/ZnInG7I2RkDz0M0wP96YjDvG/8Dv4=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.3.0/go.mod h1:ZWMFlobJOuPoIfLnh2ZrcDajCfvjNwlPE06wmY6NIYw=
 github.com/openbao/openbao-template v1.0.1 h1:p3K6HWA19H8oJFgK2sSMMpaWWB3dq010oxlvkvRzEcU=

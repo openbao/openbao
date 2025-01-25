@@ -1,4 +1,4 @@
-//go:build cgo && linux
+//go:build hsm && linux
 
 package configutil
 

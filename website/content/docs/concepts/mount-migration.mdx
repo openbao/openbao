@@ -15,7 +15,7 @@ renaming mounts to align with org standards.
 ## Async behavior
 
 The first thing to note about the `sys/remount` endpoint is that it is an asynchronous endpoint. An invocation
-will start the migration process, and the API will return a migration ID. This ID, in turn, be used to monitor
+will start the migration process, and the API will return a migration ID. This ID, in turn, will be used to monitor
 the migration status using the `sys/remount/status` endpoint.
 
 ## Namespaces
@@ -23,10 +23,10 @@ the migration status using the `sys/remount/status` endpoint.
 The `sys/remount` endpoint can move mounts across namespaces with the namespaces supplied as prefixes
 on the path arguments. In this case, namespaces, for both the source and destination mounts, must be 
 either the namespace in which the `/sys/remount` endpoint is called or the children of that namespace. Let us assume that 
-we have three namespaces ns1/, ns1/ns2/, and ns1/ns3. We want to move the mount `my-secret` from ns1/ns2/my-secret to ns1/ns3/my-secret. 
-Moving the mount can be accomplished in two ways. The first way is to invoke `/sys/remount` from the root namespace with the `from` argument as ns1/ns2/my-secret 
-and `to` argument as ns1/ns3/my-secret. The second way is to invoke `/sys/remount` from the namespace ns1/, with `from` as ns2/my-secret and `to` 
-as ns3/my-secret.
+we have three namespaces `ns1/`, `ns1/ns2/`, and `ns1/ns3`. We want to move the mount `my-secret` from `ns1/ns2/my-secret` to `ns1/ns3/my-secret`. 
+Moving the mount can be accomplished in two ways. The first way is to invoke `/sys/remount` from the root namespace with the `from` argument as `ns1/ns2/my-secret` 
+and `to` argument as `ns1/ns3/my-secret`. The second way is to invoke `/sys/remount` from the namespace `ns1/`, with `from` as `ns2/my-secret` and `to` 
+as `ns3/my-secret`.
 
 ## Leases
 
@@ -58,20 +58,19 @@ Remounting can also result in policies referring to invalid paths. Any policy th
 would need to be updated to point to the new location of the engine, assuming that the policy is in the target namespace 
 or a parent of the target namespace, or updated to remove the original mount path if not. 
 Any policies associated with roles on a moved auth mount need to be inspected
-to see if they still refer to valid paths after the remount operation. Say in namespace ns1/, a child of the root namespace, a role on the mount approle/
-has policies granting access to /my-secret. If the mount is moved to another child of the root namespace, say ns2/,
-which does not have a secrets engine called my-secret/, the OpenBao operator would either create an equivalent my-secret/
-mount in ns2/, or update the policy to refer to paths valid from the ns2/ namespace.
+to see if they still refer to valid paths after the remount operation. Say in namespace `ns1/`, a child of the root namespace, a role on the mount `approle/`
+has policies granting access to `/my-secret`. If the mount is moved to another child of the root namespace, say `ns2/`,
+which does not have a secrets engine called `my-secret/`, the OpenBao operator would either create an equivalent `my-secret/`
+mount in `ns2/`, or update the policy to refer to paths valid from the `ns2/` namespace.
 
 ## Quotas
 
-The mount being moved may have rate limit or lease count quotas.. The remount process
+The mount being moved may have rate limit or lease count quotas. The remount process
 will update these quotas to refer to the new path of the mount.
 
 ## Path filters
 
 The remount operation will respect any existing path filters. Three uses cases, in particular, are shown below.
-here. 
 * If a mount is moved into a namespace denylisted on a secondary cluster, it will not be available on that cluster.
 * If a mount is moved from a namespace denylisted on a secondary cluster to one that is not, it will now be available
 on the cluster.

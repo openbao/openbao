@@ -374,6 +374,11 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 			return time.Time{}, fmt.Errorf("failed to read raft TLS keyring: %w", err)
 		}
 
+		// Note that we explicitly do not skip rotation on follower-less
+		// nodes: we'd be unable to load the TLS certificates or validate
+		// the initial connection from a new peer if they expire; keep
+		// rotating in the event we run for sufficiently long period of
+		// time and later add a node.
 		switch {
 		case len(keyring.Keys) == 2 && keyring.Keys[1].AppliedIndex == 0:
 			// If this case is hit then the second write to add the applied
@@ -450,7 +455,7 @@ func (c *Core) raftTLSRotatePhased(ctx context.Context, logger hclog.Logger, raf
 		case keyring.Keys[1].AppliedIndex != keyring.AppliedIndex:
 			// We haven't fully committed the new key, continue here
 			return nil
-		case followerStates.MinIndex() < keyring.AppliedIndex:
+		case followerStates.HaveFollower() && followerStates.MinIndex() < keyring.AppliedIndex:
 			// Not all the followers have applied the latest key
 			return nil
 		}

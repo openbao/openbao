@@ -5,6 +5,7 @@
 
 import { module, test } from 'qunit';
 import { setupApplicationTest } from 'ember-qunit';
+import { settled } from '@ember/test-helpers';
 
 import initPage from 'vault/tests/pages/init';
 import Pretender from 'pretender';
@@ -110,6 +111,7 @@ module('Acceptance | init', function (hooks) {
     setStatusResponse(this.server, CLOUD_SEAL_STATUS_RESPONSE);
 
     await initPage.init(5, 3);
+    await settled();
 
     assert.strictEqual(
       initPage.keys.length,
@@ -127,6 +129,7 @@ module('Acceptance | init', function (hooks) {
     setStatusResponse(this.server, SEAL_STATUS_RESPONSE);
 
     await initPage.init(3, 2);
+    await settled();
 
     assert.strictEqual(initPage.keys.length, SEAL_RESPONSE.keys.length, 'shows all of the recovery keys');
     assert.strictEqual(initPage.buttonText, 'Continue to Unseal', 'links to unseal');

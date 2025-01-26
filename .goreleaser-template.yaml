@@ -27,6 +27,8 @@ before:
 
 builds:
   - id: builds-linux
+    tags:
+      - ui
     ldflags:
       - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
     env:
@@ -54,6 +56,8 @@ builds:
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
   - id: builds-other
+    tags:
+      - ui
     ldflags:
       - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
     env:
@@ -770,7 +774,8 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi:{{ .Version }}-s390x
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
@@ -781,7 +786,8 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
     files:
       - 'LICENSE'
       - 'README.md'

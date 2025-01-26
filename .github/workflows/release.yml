@@ -54,6 +54,16 @@ jobs:
       - name: go-check
         run: go version
 
+      - name: Node setup
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: "./ui/package.json"
+
+      - name: Yarn setup
+        id: install-yarn
+        run: |
+          npm install -g yarn
+
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@v0
 
@@ -120,6 +130,20 @@ jobs:
         env:
           GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
+      # Before executing binary builds, build the UI.
+      - name: Install UI dependencies
+        id: ui-dependencies
+        working-directory: ./ui
+        run: |
+          yarn install --frozen-lockfile
+          npm rebuild node-sass
+
+      - name: Build UI
+        id: ui-build
+        run: |
+          make static-dist
+
+      # Execute Go binary builds
       - name: "Template GoRelaser configuration"
         if: startsWith(github.ref, 'refs/tags/')
         run: |

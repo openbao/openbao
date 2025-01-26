@@ -1,0 +1,130 @@
+---
+description: |-
+  Packaging OpenBao for distribution
+displayed_sidebar: docs
+---
+
+# Packaging guide
+
+The ultimate reference for packaging is our
+[`.goreleaser-template.yaml`](https://github.com/openbao/openbao/blob/main/.goreleaser-template.yaml).
+
+This document serves as a reference to some options available there.
+
+:::warning
+
+The scripts in the `Makefile` are for development only. They do not constitute
+a stable or supported interface for release builds. They often make
+assumptions true in development environments (such as having a full Git tree
+available) that may not be true in release build environments.
+
+If you use those interfaces for release builds, you do so at your own risk.
+
+:::
+
+:::info
+
+While `goreleaser` is used for our upstream release binaries, it may not be a
+suitable tool for your builds. This document does not contain instructions on
+invoking `goreleaser` as performed upstream, but serves as a reference for
+building a stable downstream release build process for packaging environments.
+
+It may not be complete; feel free to extend it via GitHub pull request.
+
+:::
+
+## Suggested dependencies
+
+ - NodeJS, npm, and Yarn for building the UI.
+ - Go toolchain for building.
+
+For version information, refer to our release process. The Go toolchain
+version used by this project is documented in the `/.go-version` file.
+
+## UI Release
+
+To build a release version of the UI:
+
+```
+# UI must be built from the UI directory.
+cd ui/
+
+# Install dependencies via yarn.
+yarn
+
+# Rebuild the node-sass dependency.
+npm rebuild node-sass
+
+# Perform the release build via yarn.
+yarn run build
+```
+
+This creates a directory, `/http/web_ui`, which contains the output of the
+build.
+
+## Go binary
+
+### Required ldflags
+
+To build a release binary, define the following variables via [linker flag variable
+definitions](https://pkg.go.dev/cmd/link) as appropriate:
+
+| Parameter | Value |
+| :-------- | :---- |
+| `github.com/openbao/openbao/version.fullVersion` | Version number of OpenBao; typically this matches the upstream version. Must be semver (`<major>.<minor>.<patch>`). Required. |
+| `github.com/openbao/openbao/version.GitCommit` | Git commit for reference; string. Required. |
+| `github.com/openbao/openbao/version.BuildDate` | Build timestamp string in the format `%Y-%m-%dT%H:%M:%SZ` (UTC). Usually this is the date of the commit. Required. |
+| `github.com/openbao/openbao/version.VersionMetadata` | Custom version information; string. Optional. |
+
+### Known tags
+
+The following tags are known:
+
+| Tag   | Effect |
+| :---- | :----- |
+| `ui`  | Enables bundling of the WebUI into the release. |
+| `hsm` | Enables PKCS#11 HSM support. Requires [CGo](#cgo) to be enabled. |
+
+:::warning
+
+The following flags **SHOULD NOT** be used in a release version:
+
+| Tag | Effect |
+| :-- | :----- |
+| `memprofiler` | Includes a memory profiler in the release binary for debugging purposes only. |
+| `testonly`    | Includes insecure custom hooks only for testing purposes.                     |
+| `deadlock`    | Includes deadlock detection during testing.                                   |
+| `race`        | Enabled for race testing.                                                     |
+
+:::
+
+### CGo
+
+CGo can be enabled on any platform but has no effect on most as OpenBao is
+generally built as a static library. Occasionally, the Go toolchain will
+change its behavior on various platforms if CGo is enabled.
+
+The exception to this is PKCS#11 HSM support. This only works on glibc-based
+distributions and does not support musl or other alternative stdlib
+implementations. To enable CGo support (and thus, PKCS#11 HSM support), set
+`CGO_ENABLED=1` in the release binary and assert the `hsm` tag.
+
+### Building
+
+For instance, our upstream release invokes Go as follows:
+
+```
+CGO_ENABLED=0 go build \
+ -ldflags "-X github.com/openbao/openbao/version.fullVersion=v2.1.0 -X github.com/openbao/openbao/version.GitCommit=93609bf0c73a18dd81ac8c7d21b95cbde1e4887c -X github.com/openbao/openbao/version.BuildDate=2024-11-29T15:34:50Z"
+ .
+```
+
+### Linux package scripts
+
+Other scripts for Linux packaging are available under the `.release/linux`
+directory.
+
+### Container images
+
+Our container images use the binary directly with the containerfile at
+`/Dockerfile`. The entrypoint used is available under `.release/docker/`.

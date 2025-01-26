@@ -486,6 +486,7 @@ const sidebars: SidebarsConfig = {
             Contributing: [
                 "contributing/index",
                 "contributing/code-organization",
+                "contributing/packaging",
             ],
             RFCs: [
                 "rfcs/index",

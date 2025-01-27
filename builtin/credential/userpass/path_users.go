@@ -231,6 +231,12 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := strings.ToLower(d.Get("username").(string))
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {
@@ -273,8 +279,15 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(err.Error()), nil
 		}
 	}
+	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
+		return nil, err
+	}
 
-	return nil, b.setUser(ctx, req.Storage, username, userEntry)
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

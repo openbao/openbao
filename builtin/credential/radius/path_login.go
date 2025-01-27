@@ -183,6 +183,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) RadiusLogin(ctx context.Context, req *logical.Request, username string, password string) ([]string, *logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, nil, err
@@ -225,6 +231,10 @@ func (b *backend) RadiusLogin(ctx context.Context, req *logical.Request, usernam
 	}
 	if user != nil {
 		policies = user.Policies
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, nil, err
 	}
 
 	return policies, &logical.Response{}, nil

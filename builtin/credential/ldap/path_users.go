@@ -143,6 +143,12 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	lowercaseGroups := false
 	username := d.Get("name").(string)
 
@@ -173,6 +179,10 @@ func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *fr
 		return nil, err
 	}
 	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

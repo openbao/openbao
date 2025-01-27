@@ -7,12 +7,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
@@ -414,7 +414,7 @@ func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
 					if !ok {
 						return types.NewErr("expected a duration string")
 					}
-					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
 					if err != nil {
 						return types.NewErr("expected a duration string")
 					}
@@ -432,7 +432,7 @@ func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
 					if !ok {
 						return types.NewErr("expected a duration string")
 					}
-					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
 					if err != nil {
 						return types.NewErr("expected a duration string")
 					}
@@ -450,7 +450,7 @@ func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
 					if !ok {
 						return types.NewErr("expected a duration string")
 					}
-					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
 					if err != nil {
 						return types.NewErr("expected a duration string")
 					}
@@ -468,7 +468,7 @@ func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
 					if !ok {
 						return types.NewErr("expected a duration string")
 					}
-					duration, err := time.ParseDuration(fmt.Sprintf("%v", ttl))
+					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
 					if err != nil {
 						return types.NewErr("expected a duration string")
 					}

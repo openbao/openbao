@@ -201,7 +201,6 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*jwtRole, error) {
 	role := jwtRole{}
 	env, err := b.celEnv(&role)
-
 	if err != nil {
 		return nil, err
 	}

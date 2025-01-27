@@ -113,6 +113,12 @@ func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := d.Get("name").(string)
 
 	cfg, err := b.Config(ctx, req)
@@ -132,6 +138,10 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 	}
 	if user == nil {
 		return nil, nil
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{

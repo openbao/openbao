@@ -14,8 +14,9 @@ import (
 const (
 	defaultRef = "default"
 
-	issuerPrefix        = "config/issuer/"
-	storageIssuerConfig = "config/issuers"
+	legacyMigrationInfoKey = "config/legacyMigrationInfo"
+	issuerPrefix           = "config/issuer/"
+	storageIssuerConfig    = "config/issuers"
 
 	caPublicKey                       = "ca_public_key"
 	caPrivateKey                      = "ca_private_key"

@@ -104,8 +104,13 @@ func (b *backend) pathGroupDelete(ctx context.Context, req *logical.Request, d *
 }
 
 func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	groupname := d.Get("name").(string)
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
 
+	groupname := d.Get("name").(string)
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, err
@@ -123,6 +128,10 @@ func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *fr
 	}
 	if group == nil {
 		return nil, nil
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{

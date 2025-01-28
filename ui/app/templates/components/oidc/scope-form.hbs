@@ -5,12 +5,12 @@
         <li>
           <span class="sep">&#x0002f;</span>
           {{#if @model.isNew}}
-            <LinkTo @route={{"vault.cluster.access.oidc.scopes"}}>
+            <LinkTo @route="vault.cluster.access.oidc.scopes">
               Scopes
             </LinkTo>
           {{else}}
             {{! You're editing in this view }}
-            <LinkTo @route={{"vault.cluster.access.oidc.scopes.scope.details"}} @model={{@model.name}}>
+            <LinkTo @route="vault.cluster.access.oidc.scopes.scope.details" @model={{@model.name}}>
               Details
             </LinkTo>
           {{/if}}

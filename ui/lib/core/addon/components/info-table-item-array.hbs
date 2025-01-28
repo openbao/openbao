@@ -21,7 +21,7 @@
             {{else}}
               {{#if (is-array this.itemRoute)}}
                 <LinkTo
-                  @route={{(get this.itemRoute "0")}}
+                  @route={{get this.itemRoute "0"}}
                   @models={{array (get this.itemRoute "1") item (get this.itemRoute "2")}}
                 >
                   {{or (get this.itemNameById item) item}}
@@ -50,7 +50,7 @@
               {{/if}}
               {{#if (and (eq item this.displayArrayTruncated.lastObject) (gte @displayArray.length 10))}}
                 {{#if (is-array @rootRoute)}}
-                  <LinkTo @route={{(get @rootRoute "0")}} @model={{(get @rootRoute "1")}}>
+                  <LinkTo @route={{get @rootRoute "0"}} @model={{get @rootRoute "1"}}>
                     <span data-test-view-all={{lowercase @label}}>View all {{lowercase @label}}.</span>
                   </LinkTo>
                 {{else}}

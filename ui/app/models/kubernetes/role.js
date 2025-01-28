@@ -34,13 +34,6 @@ export default class KubernetesRoleModel extends Model {
   name;
 
   @attr('string', {
-    label: 'Service account name',
-    subText:
-      'OpenBao will use the default template when generating service accounts, roles and role bindings.',
-  })
-  serviceAccountName;
-
-  @attr('string', {
     label: 'Kubernetes role type',
     editType: 'radio',
     possibleValues: ['Role', 'ClusterRole'],

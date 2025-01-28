@@ -2,7 +2,7 @@
   {{#if (and this.waitingForOktaNumberChallenge (not this.cancelAuthForOktaNumberChallenge))}}
     <OktaNumberChallenge
       @correctAnswer={{this.oktaNumberChallengeAnswer}}
-      @hasError={{(not-eq this.error null)}}
+      @hasError={{not-eq this.error null}}
       @onReturnToLogin={{action "returnToLoginFromOktaNumberChallenge"}}
     />
   {{else}}
@@ -61,8 +61,8 @@
           @label="Method"
           @name="auth-method"
           @options={{this.authMethods}}
-          @valueAttribute={{"type"}}
-          @labelAttribute={{"typeDisplay"}}
+          @valueAttribute="type"
+          @labelAttribute="typeDisplay"
           @isFullwidth={{true}}
           @selectedValue={{this.selectedAuth}}
           @onChange={{action (mut this.selectedAuth)}}

@@ -252,6 +252,13 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 }
 
 func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	isCiphertextSet, err := checkKeyFieldsSet(d)
@@ -303,6 +310,10 @@ func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Reque
 	}
 
 	if err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

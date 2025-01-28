@@ -95,6 +95,13 @@ func respondConfigKeys(cfg *keysConfig) *logical.Response {
 }
 
 func (b *backend) pathConfigKeysWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	upsert := d.Get("disable_upsert").(bool)
 
 	cfg, err := b.readConfigKeys(ctx, req)
@@ -113,6 +120,10 @@ func (b *backend) pathConfigKeysWrite(ctx context.Context, req *logical.Request,
 		if err := b.writeConfigKeys(ctx, req, cfg); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return respondConfigKeys(cfg), nil

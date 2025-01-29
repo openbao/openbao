@@ -38,6 +38,11 @@ func ListenerChecks(ctx context.Context, listeners []*configutil.Listener) ([]st
 	for _, l := range listeners {
 		listenerID := l.Address
 
+		if strings.ToLower(l.Type) == "unix" {
+			Warn(ctx, fmt.Sprintf("Listener at address %s: Unix socket being used in a listener config stanza.", listenerID))
+			continue
+		}
+
 		if l.TLSDisable {
 			Warn(ctx, fmt.Sprintf("Listener at address %s: TLS is disabled in a listener config stanza.", listenerID))
 			continue

@@ -50,7 +50,6 @@ allowed to be set when either 'min_encryption_version' or
 
 func (b *backend) pathTrimUpdate() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (resp *logical.Response, retErr error) {
-
 		txRollback, err := logical.StartTxStorage(ctx, req)
 		if err != nil {
 			return nil, err

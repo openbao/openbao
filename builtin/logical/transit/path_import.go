@@ -252,7 +252,6 @@ func (b *backend) pathImportWrite(ctx context.Context, req *logical.Request, d *
 }
 
 func (b *backend) pathImportVersionWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err

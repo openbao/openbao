@@ -60,7 +60,6 @@ func (b *backend) pathBYOKExportKeys() *framework.Path {
 }
 
 func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err

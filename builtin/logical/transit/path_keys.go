@@ -518,7 +518,6 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err
@@ -566,7 +565,6 @@ func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request
 }
 
 func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
 		return nil, err

@@ -31,8 +31,8 @@ storage [NAME] {
 For example:
 
 ```hcl
-storage "file" {
-  path = "/mnt/openbao/data"
+storage "raft" {
+  path = "/mnt/openbao/raft"
 }
 ```
 
@@ -40,23 +40,20 @@ For configuration options which also read an environment variable, the
 environment variable will take precedence over values in the configuration
 file.
 
-## Integrated Storage vs. external storage
+## Integrated Storage (Raft) vs. PostgreSQL
 
-It is recommended to use OpenBao's [integrated
-storage](/docs/configuration/storage/raft) for most use cases rather than
-configuring another system to store OpenBao data externally. (Integrated Storage is
-an **embedded OpenBao data storage**.
+It is recommended to use OpenBao's [integrated storage](/docs/configuration/storage/raft)
+for most use cases rather than configuring another system to store OpenBao
+data externally. (Integrated Storage is an **embedded OpenBao data storage**
+writing to the file system).
 
-The table below compares the characteristics of Integrated Storage and External
-Storage. Suppose you decide that the additional operational complexity of
-external storage is worth it for your use case. In that case, there are several
-community supported external storage options to choose from.
+The table below compares the characteristics of Integrated Storage and PostgreSQL.
 
-|                                | Integrated Storage                                                                                                                                                                                             | External Storage                                                                                                                                                                                                                        |
-|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| OpenBao Supported              | Yes                                                                                                                                                                                                            | Limited support                                                                                                                                                                                                                         |
-| Operation                      | Operationally simpler with no additional software installation required.                                                                                                                                       | Must install and configure the external storage environment outside of OpenBao. For high availability, the external storage should be clustered.                                                                                        |
-| Networking                     | One less network hop.                                                                                                                                                                                          | Extra network hop between OpenBao and the external storage system.                                                                                                                                                                      |
-| Troubleshooting and monitoring | Integrated Storage is a part of OpenBao; therefore, OpenBao is the only system you need to monitor and troubleshoot.                                                                                           | The source of failure could be the external storage; therefore, you need to check the health of both OpenBao and the external storage. This requires expertise in the chosen storage backend and additional monitoring of that storage. |
-| Data location                  | The encrypted OpenBao data is stored on the same host where the OpenBao server process runs.                                                                                                                   | The encrypted OpenBao data is stored where the external storage is located. Therefore, the OpenBao server and the data storage are hosted on physically separate hosts.                                                                 |
-| System requirements            | Avoid "burstable" CPU and storage options. SSDs should be used for the hard drive. | Follow the system requirements given by your chosen storage backend.                                                                                                                                                                    |
+|                                | Integrated Storage                                                                                                   | PostgreSQL                                                                                                                                                                                                                              |
+|--------------------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Production Ready               | Yes                                                                                                                  | Yes                                                                                                                                                                                                                                     |
+| Operation                      | Operationally simpler with no additional software installation required.                                             | Must install and configure the external storage environment outside of OpenBao. For high availability, the external storage should be clustered.                                                                                        |
+| Networking                     | One less network hop: data is stored locally resulting in higher read performance.                                   | Extra network hop between OpenBao and the external storage system if not co-located.                                                                                                                                                    |
+| Troubleshooting and monitoring | Integrated Storage is a part of OpenBao; therefore, OpenBao is the only system you need to monitor and troubleshoot. | The source of failure could be the external storage; therefore, you need to check the health of both OpenBao and the external storage. This requires expertise in the chosen storage backend and additional monitoring of that storage. |
+| Data location                  | The encrypted OpenBao data is stored on the same host where the OpenBao server process runs.                         | The encrypted OpenBao data is stored where the external storage is located. Therefore, the OpenBao server and the data storage are hosted on physically separate hosts.                                                                 |
+| System requirements            | Avoid "burstable" CPU and storage options. SSDs should be used for the hard drive.                                   | Follow the system requirements given by your chosen storage backend.                                                                                                                                                                    |

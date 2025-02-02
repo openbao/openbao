@@ -69,9 +69,9 @@
         <CopyButton
           class="button is-compact is-transparent level-right"
           data-test-button="modal-copy"
-          @clipboardText={{if this.wrapTTL @wrappedToken (stringify @keys)}}
+          @text={{if this.wrapTTL @wrappedToken (stringify @keys)}}
           @buttonType="button"
-          @success={{action (set-flash-message "Token copied!")}}
+          @onSuccess={{action (set-flash-message "Token copied!")}}
         >
           <Icon @name="clipboard-copy" aria-label="Copy" />
         </CopyButton>
@@ -82,9 +82,9 @@
     <CopyButton
       class="button is-primary copy-close"
       data-test-button="modal-copy-close"
-      @clipboardText={{if this.wrapTTL @wrappedToken (stringify @keys)}}
+      @text={{if this.wrapTTL @wrappedToken (stringify @keys)}}
       @buttonType="button"
-      @success={{action @toggleModal "Token copied!"}}
+      @onSuccess={{action @toggleModal "Token copied!"}}
     >
       Copy &amp; Close
     </CopyButton>

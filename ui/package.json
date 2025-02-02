@@ -116,7 +116,7 @@
     "deepmerge": "^4.3.1",
     "doctoc": "^2.2.1",
     "dompurify": "^3.0.2",
-    "ember-auto-import": "2.4.2",
+    "ember-auto-import": "2.10.0",
     "ember-basic-dropdown": "6.0.1",
     "ember-cli": "~4.4.0",
     "ember-cli-autoprefixer": "^0.8.1",

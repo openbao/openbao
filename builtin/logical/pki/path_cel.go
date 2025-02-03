@@ -1,10 +1,11 @@
-// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package pki
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 
@@ -25,8 +26,6 @@ type celRoleEntry struct {
 	Name string `json:"name"`
 	// Required, defines validation logic
 	ValidationProgram ValidationProgram `json:"validation_program"`
-	// Defaults to "deny"
-	FailurePolicy string `json:"failure_policy,omitempty"`
 	// Optional, error message on validation failure
 	Message string `json:"message,omitempty"`
 }
@@ -35,9 +34,7 @@ type ValidationProgram struct {
 	// List of variables with explicit order
 	Variables []Variable `json:"variables,omitempty"`
 	// Required, the main CEL expression
-	Expressions string `json:"expressions"`
-	// Optional, custom error message logic
-	MessageExpression string `json:"message_expressions,omitempty"`
+	Expressions Expressions `json:"expressions"`
 }
 
 type Variable struct {
@@ -45,6 +42,26 @@ type Variable struct {
 	Name string
 	// CEL expression for the variable
 	Expression string
+}
+
+type Expressions struct {
+	// The unique identifier from the request. Used for tracking purposes.
+	RequestID string
+	// Status of the request. True if the request was validated else false if it was rejected due to validation errors .
+	Success string
+	// The Certificate template defined by the CEL Author. Only included if status is success.
+	Certificate x509.Certificate
+	// Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
+	GenerateLease string
+	// If set, certificates issued/signed against this role will not be stored in the storage backend.
+	NoStore string
+	// The issuer used to sign the certificate.
+	Issuer string
+	// Warnings about the request or adjustments made by the CEL policy engine.
+	// E.g., "common_name was empty so added example.com"
+	Warnings string
+	// Detailed error message if status is failure.
+	Error string
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -100,10 +117,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			Type:        framework.TypeMap,
 			Description: "CEL rules defining the validation program for the role",
 		},
-		"failure_policy": {
-			Type:        framework.TypeString,
-			Description: "Failure policy if CEL expressions are not validated",
-		},
 		"message": {
 			Type:        framework.TypeString,
 			Description: "Static error message if validation fails",
@@ -126,10 +139,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			"validation_program": {
 				Type:        framework.TypeMap,
 				Description: "CEL rules defining the validation program for the role",
-			},
-			"failure_policy": {
-				Type:        framework.TypeString,
-				Description: "Failure policy if CEL expressions are not validated",
 			},
 			"message": {
 				Type:        framework.TypeString,
@@ -210,18 +219,9 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 	}
 
-	failurePolicy := "deny" // Default value
-	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
-		failurePolicy = failurePolicyRaw.(string)
-		if failurePolicy != "deny" && failurePolicy != "modify" {
-			return logical.ErrorResponse("failure_policy must be 'deny' or 'modify'"), nil
-		}
-	}
-
 	entry := &celRoleEntry{
 		Name:              name,
 		ValidationProgram: validationProgram,
-		FailurePolicy:     failurePolicy,
 		Message:           data.Get("message").(string),
 	}
 
@@ -294,7 +294,6 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 	entry := &celRoleEntry{
 		Name:              oldEntry.Name,
 		ValidationProgram: oldEntry.ValidationProgram,
-		FailurePolicy:     oldEntry.FailurePolicy,
 		Message:           oldEntry.Message,
 	}
 
@@ -307,10 +306,6 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		if err := mapstructure.Decode(validationProgramMap, &entry.ValidationProgram); err != nil {
 			return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 		}
-	}
-
-	if failurePolicyRaw, ok := data.GetOk("failure_policy"); ok {
-		entry.FailurePolicy = failurePolicyRaw.(string)
 	}
 
 	if messageRaw, ok := data.GetOk("message"); ok {
@@ -389,12 +384,10 @@ func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name": r.Name,
 		"validation_program": map[string]interface{}{
-			"variables":          r.ValidationProgram.Variables,
-			"expressions":        r.ValidationProgram.Expressions,
-			"message_expression": r.ValidationProgram.MessageExpression,
+			"variables":   r.ValidationProgram.Variables,
+			"expressions": r.ValidationProgram.Expressions,
 		},
-		"failure_policy": r.FailurePolicy,
-		"message":        r.Message,
+		"message": r.Message,
 	}
 }
 
@@ -425,7 +418,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	}
 
 	// Validate the main CEL expression
-	ast, issues := env.Parse(validationProgram.Expressions)
+	ast, issues := env.Parse(validationProgram.Expressions.Success)
 	if issues != nil && issues.Err() != nil {
 		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
 	}
@@ -444,7 +437,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	return true, nil
 }
 
-func validateWithK8sValidator(ctx context.Context, validationProgram ValidationProgram, schema *schema.Structural) error {
+func validateWithK8sValidator(ctx context.Context, schema *schema.Structural) error {
 	// Replace `config.DefaultPerCallLimit` with an actual limit, e.g., 1000
 	const perCallLimit = 1000
 
@@ -501,7 +494,7 @@ func evaluateExpression(prog celgo.Program, variables map[string]interface{}) (b
 	return evalResult.Value().(bool), nil
 }
 
-// Helper function to parse, compile, and evaluate a CEL expression
+// Helper function to parse, compile, and evaluate a CEL variable's expression
 func parseCompileAndEvaluateVariable(env *celgo.Env, variable Variable, evaluationData map[string]interface{}) (ref.Val, error) {
 	// Parse the expression
 	ast, issues := env.Parse(variable.Expression)

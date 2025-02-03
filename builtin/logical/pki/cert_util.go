@@ -737,7 +737,7 @@ func generateCert(sc *storageContext,
 	input *inputBundle,
 	caSign *certutil.CAInfoBundle,
 	isCA bool,
-	randomSource io.Reader, isCelRole bool) (*certutil.ParsedCertBundle, []string, error,
+	randomSource io.Reader) (*certutil.ParsedCertBundle, []string, error,
 ) {
 	ctx := sc.Context
 	b := sc.Backend
@@ -750,7 +750,7 @@ func generateCert(sc *storageContext,
 		return nil, nil, errutil.UserError{Err: "RSA keys < 2048 bits are unsafe and not supported"}
 	}
 
-	data, warnings, err := generateCreationBundle(b, input, caSign, nil, isCelRole)
+	data, warnings, err := generateCreationBundle(b, input, caSign, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -824,12 +824,102 @@ func generateCert(sc *storageContext,
 	return parsedBundle, warnings, nil
 }
 
+// Generate a certificate without validating params against any role restrictions
+func generateBasicCert(
+	sc *storageContext,
+	apiData *framework.FieldData,
+	caSign *certutil.CAInfoBundle,
+	isCA bool,
+	randomSource io.Reader,
+) (*certutil.ParsedCertBundle, []string, error) {
+	ctx := sc.Context
+	b := sc.Backend
+
+	// Generate a basic creation bundle without role validations
+	data, warnings, err := generateBasicCreationBundle(b, apiData, caSign, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if data.Params == nil {
+		return nil, nil, errutil.InternalError{Err: "nil parameters received from parameter bundle generation"}
+	}
+
+	if isCA {
+		data.Params.IsCA = isCA
+		data.Params.PermittedDNSDomains = apiData.Get("permitted_dns_domains").([]string)
+
+		if rawKeyUsageValue, ok := apiData.GetOk("key_usage"); ok {
+			data.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := apiData.GetOk("ext_key_usage"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := apiData.GetOk("ext_key_usage_oids"); ok {
+			data.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
+
+		if data.SigningBundle == nil {
+			// Handle self-signed root certificate creation
+			entries, err := getGlobalAIAURLs(ctx, sc.Storage)
+			if err != nil {
+				return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unable to fetch AIA URL information: %v", err)}
+			}
+
+			uris, err := entries.toURLEntries(sc, issuerID(""))
+			if err != nil {
+				// When generating root issuers, don't err on missing issuer
+				// ID; there is little value in including AIA info on a root,
+				// as this info would point back to itself; though RFC 5280 is
+				// a touch vague on this point, this seems to be consensus
+				// from public CAs such as DigiCert Global Root G3, ISRG Root
+				// X1, and others.
+				//
+				// This is a UX bug if we do err here, as it requires AIA
+				// templating to not include issuer id (a best practice for
+				// child certs issued from root and intermediate mounts
+				// however), and setting this before root generation (or, on
+				// root renewal) could cause problems.
+				if _, nonEmptyIssuerErr := entries.toURLEntries(sc, issuerID("empty-issuer-id")); nonEmptyIssuerErr != nil {
+					return nil, nil, errutil.InternalError{Err: fmt.Sprintf("unable to parse AIA URL information: %v\nUsing templated AIA URL's {{issuer_id}} field when generating root certificates is not supported.", err)}
+				}
+
+				uris = &certutil.URLEntries{}
+
+				msg := "When generating root CA, found global AIA configuration with issuer_id template unsuitable for root generation. This AIA configuration has been ignored. To include AIA on this root CA, set the global AIA configuration to not include issuer_id and instead to refer to a static issuer name."
+				warnings = append(warnings, msg)
+			}
+
+			data.Params.URLs = uris
+
+			if maxPathLength := apiData.Get("max_path_length").(int); maxPathLength != 0 {
+				data.Params.MaxPathLength = maxPathLength
+			} else {
+				data.Params.MaxPathLength = -1
+			}
+		}
+	}
+
+	// Generate the certificate bundle
+	parsedBundle, err := generateCABundle(sc, &inputBundle{
+		role:    nil,
+		req:     nil,
+		apiData: apiData,
+	}, data, randomSource)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return parsedBundle, warnings, nil
+}
+
 // N.B.: This is only meant to be used for generating intermediate CAs.
 // It skips some sanity checks.
 func generateIntermediateCSR(sc *storageContext, input *inputBundle, randomSource io.Reader) (*certutil.ParsedCSRBundle, []string, error) {
 	b := sc.Backend
 
-	creation, warnings, err := generateCreationBundle(b, input, nil, nil, false)
+	creation, warnings, err := generateCreationBundle(b, input, nil, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -850,7 +940,7 @@ func signCert(b *backend,
 	data *inputBundle,
 	caSign *certutil.CAInfoBundle,
 	isCA bool,
-	useCSRValues bool, isCelRole bool) (*certutil.ParsedCertBundle, []string, error,
+	useCSRValues bool) (*certutil.ParsedCertBundle, []string, error,
 ) {
 	if data.role == nil {
 		return nil, nil, errutil.InternalError{Err: "no role found in data bundle"}
@@ -1019,7 +1109,7 @@ func signCert(b *backend,
 		}
 	}
 
-	creation, warnings, err := generateCreationBundle(b, data, caSign, csr, isCelRole)
+	creation, warnings, err := generateCreationBundle(b, data, caSign, csr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1186,7 +1276,7 @@ func dedupCommonNames(cnRaw string) []string {
 // generateCreationBundle is a shared function that reads parameters supplied
 // from the various endpoints and generates a CreationParameters with the
 // parameters that can be used to issue or sign
-func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest, isCelRole bool) (*certutil.CreationBundle, []string, error) {
+func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, []string, error) {
 	// Read in names -- CN, DNS and email addresses
 	var cn string
 	var ridSerialNumber string
@@ -1194,114 +1284,108 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	dnsNames := []string{}
 	emailAddresses := []string{}
 	{
-		// If isCelRole is true, use values directly from the API data without role validations
-		if isCelRole {
+		if csr != nil && data.role.UseCSRCommonName {
+			cn = csr.Subject.CommonName
+		}
+		if cn == "" {
 			cn = data.apiData.Get("common_name").(string)
-			ridSerialNumber = data.apiData.Get("serial_number").(string)
-		} else {
-			if csr != nil && data.role.UseCSRCommonName {
-				cn = csr.Subject.CommonName
+			if cn == "" && data.role.RequireCN {
+				return nil, nil, errutil.UserError{Err: `the common_name field is required, or must be provided in a CSR with "use_csr_common_name" set to true, unless "require_cn" is set to false`}
 			}
-			if cn == "" {
-				cn = data.apiData.Get("common_name").(string)
-				if cn == "" && data.role.RequireCN {
-					return nil, nil, errutil.UserError{Err: `the common_name field is required, or must be provided in a CSR with "use_csr_common_name" set to true, unless "require_cn" is set to false`}
+		}
+
+		ridSerialNumber = data.apiData.Get("serial_number").(string)
+
+		// only take serial number from CSR if one was not supplied via API
+		if ridSerialNumber == "" && csr != nil {
+			ridSerialNumber = csr.Subject.SerialNumber
+		}
+
+		if csr != nil && data.role.UseCSRSANs {
+			dnsNames = csr.DNSNames
+			emailAddresses = csr.EmailAddresses
+		}
+
+		if cn != "" && !data.apiData.Get("exclude_cn_from_sans").(bool) {
+			if strings.Contains(cn, "@") {
+				// Note: emails are not disallowed if the role's email protection
+				// flag is false, because they may well be included for
+				// informational purposes; it is up to the verifying party to
+				// ensure that email addresses in a subject alternate name can be
+				// used for the purpose for which they are presented
+				emailAddresses = append(emailAddresses, cn)
+			} else {
+				// Only add to dnsNames if it's actually a DNS name but convert
+				// idn first
+				p := idna.New(
+					idna.StrictDomainName(true),
+					idna.VerifyDNSLength(true),
+				)
+				converted, err := p.ToASCII(cn)
+				if err != nil {
+					return nil, nil, errutil.UserError{Err: err.Error()}
+				}
+				if hostnameRegex.MatchString(converted) {
+					dnsNames = append(dnsNames, converted)
 				}
 			}
+		}
 
-			ridSerialNumber = data.apiData.Get("serial_number").(string)
-
-			// only take serial number from CSR if one was not supplied via API
-			if ridSerialNumber == "" && csr != nil {
-				ridSerialNumber = csr.Subject.SerialNumber
-			}
-
-			if csr != nil && data.role.UseCSRSANs {
-				dnsNames = csr.DNSNames
-				emailAddresses = csr.EmailAddresses
-			}
-
-			if cn != "" && !data.apiData.Get("exclude_cn_from_sans").(bool) {
-				if strings.Contains(cn, "@") {
-					// Note: emails are not disallowed if the role's email protection
-					// flag is false, because they may well be included for
-					// informational purposes; it is up to the verifying party to
-					// ensure that email addresses in a subject alternate name can be
-					// used for the purpose for which they are presented
-					emailAddresses = append(emailAddresses, cn)
-				} else {
-					// Only add to dnsNames if it's actually a DNS name but convert
-					// idn first
-					p := idna.New(
-						idna.StrictDomainName(true),
-						idna.VerifyDNSLength(true),
-					)
-					converted, err := p.ToASCII(cn)
-					if err != nil {
-						return nil, nil, errutil.UserError{Err: err.Error()}
-					}
-					if hostnameRegex.MatchString(converted) {
-						dnsNames = append(dnsNames, converted)
-					}
-				}
-			}
-
-			if csr == nil || !data.role.UseCSRSANs {
-				cnAltRaw, ok := data.apiData.GetOk("alt_names")
-				if ok {
-					cnAlt := dedupCommonNames(cnAltRaw.(string))
-					for _, v := range cnAlt {
-						if strings.Contains(v, "@") {
-							emailAddresses = append(emailAddresses, v)
-						} else {
-							// Only add to dnsNames if it's actually a DNS name but
-							// convert idn first
-							p := idna.New(
-								idna.StrictDomainName(true),
-								idna.VerifyDNSLength(true),
-							)
-							converted, err := p.ToASCII(v)
-							if err != nil {
-								return nil, nil, errutil.UserError{Err: err.Error()}
-							}
-							if hostnameRegex.MatchString(converted) {
-								dnsNames = append(dnsNames, converted)
-							}
+		if csr == nil || !data.role.UseCSRSANs {
+			cnAltRaw, ok := data.apiData.GetOk("alt_names")
+			if ok {
+				cnAlt := dedupCommonNames(cnAltRaw.(string))
+				for _, v := range cnAlt {
+					if strings.Contains(v, "@") {
+						emailAddresses = append(emailAddresses, v)
+					} else {
+						// Only add to dnsNames if it's actually a DNS name but
+						// convert idn first
+						p := idna.New(
+							idna.StrictDomainName(true),
+							idna.VerifyDNSLength(true),
+						)
+						converted, err := p.ToASCII(v)
+						if err != nil {
+							return nil, nil, errutil.UserError{Err: err.Error()}
+						}
+						if hostnameRegex.MatchString(converted) {
+							dnsNames = append(dnsNames, converted)
 						}
 					}
 				}
 			}
+		}
 
-			// Check the CN. This ensures that the CN is checked even if it's
-			// excluded from SANs.
-			if cn != "" {
-				badName := validateCommonName(b, data, cn)
-				if len(badName) != 0 {
-					return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-						"common name %s not allowed by this role", badName)}
-				}
-			}
-
-			if ridSerialNumber != "" {
-				badName := validateSerialNumber(data, ridSerialNumber)
-				if len(badName) != 0 {
-					return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-						"serial_number %s not allowed by this role", badName)}
-				}
-			}
-
-			// Check for bad email and/or DNS names
-			badName := validateNames(b, data, dnsNames)
+		// Check the CN. This ensures that the CN is checked even if it's
+		// excluded from SANs.
+		if cn != "" {
+			badName := validateCommonName(b, data, cn)
 			if len(badName) != 0 {
 				return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-					"subject alternate name %s not allowed by this role", badName)}
+					"common name %s not allowed by this role", badName)}
 			}
+		}
 
-			badName = validateNames(b, data, emailAddresses)
+		if ridSerialNumber != "" {
+			badName := validateSerialNumber(data, ridSerialNumber)
 			if len(badName) != 0 {
 				return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-					"email address %s not allowed by this role", badName)}
+					"serial_number %s not allowed by this role", badName)}
 			}
+		}
+
+		// Check for bad email and/or DNS names
+		badName := validateNames(b, data, dnsNames)
+		if len(badName) != 0 {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+				"subject alternate name %s not allowed by this role", badName)}
+		}
+
+		badName = validateNames(b, data, emailAddresses)
+		if len(badName) != 0 {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+				"email address %s not allowed by this role", badName)}
 		}
 	}
 
@@ -1347,47 +1431,27 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	// Get and verify any IP SANs
 	ipAddresses := []net.IP{}
 	{
-		if !isCelRole {
-			if csr != nil && data.role.UseCSRSANs {
-				if len(csr.IPAddresses) > 0 {
-					if !data.role.AllowIPSANs {
-						return nil, nil, errutil.UserError{Err: "IP Subject Alternative Names are not allowed in this role, but was provided some via CSR"}
-					}
-					ipAddresses = csr.IPAddresses
+		if csr != nil && data.role.UseCSRSANs {
+			if len(csr.IPAddresses) > 0 {
+				if !data.role.AllowIPSANs {
+					return nil, nil, errutil.UserError{Err: "IP Subject Alternative Names are not allowed in this role, but was provided some via CSR"}
 				}
-			} else {
-				ipAlt := data.apiData.Get("ip_sans").([]string)
-				if len(ipAlt) > 0 {
-					if !data.role.AllowIPSANs {
-						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-							"IP Subject Alternative Names are not allowed in this role, but was provided %s", ipAlt)}
-					}
-					for _, v := range ipAlt {
-						parsedIP := net.ParseIP(v)
-						if parsedIP == nil {
-							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-								"the value %q is not a valid IP address", v)}
-						}
-						ipAddresses = append(ipAddresses, parsedIP)
-					}
-				}
+				ipAddresses = csr.IPAddresses
 			}
 		} else {
-			if csr != nil {
-				if len(csr.IPAddresses) > 0 {
-					ipAddresses = csr.IPAddresses
+			ipAlt := data.apiData.Get("ip_sans").([]string)
+			if len(ipAlt) > 0 {
+				if !data.role.AllowIPSANs {
+					return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+						"IP Subject Alternative Names are not allowed in this role, but was provided %s", ipAlt)}
 				}
-			} else {
-				ipAlt := data.apiData.Get("ip_sans").([]string)
-				if len(ipAlt) > 0 {
-					for _, v := range ipAlt {
-						parsedIP := net.ParseIP(v)
-						if parsedIP == nil {
-							return nil, nil, errutil.UserError{Err: fmt.Sprintf(
-								"the value %q is not a valid IP address", v)}
-						}
-						ipAddresses = append(ipAddresses, parsedIP)
+				for _, v := range ipAlt {
+					parsedIP := net.ParseIP(v)
+					if parsedIP == nil {
+						return nil, nil, errutil.UserError{Err: fmt.Sprintf(
+							"the value %q is not a valid IP address", v)}
 					}
+					ipAddresses = append(ipAddresses, parsedIP)
 				}
 			}
 		}
@@ -1446,58 +1510,27 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		}
 	}
 
-	var subject pkix.Name
-	if !isCelRole {
-		// Most of these could also be RemoveDuplicateStable, or even
-		// leave duplicates in, but OU is the one most likely to be duplicated.
-		subject = pkix.Name{
-			CommonName:         cn,
-			SerialNumber:       ridSerialNumber,
-			Country:            strutil.RemoveDuplicatesStable(data.role.Country, false),
-			Organization:       strutil.RemoveDuplicatesStable(data.role.Organization, false),
-			OrganizationalUnit: strutil.RemoveDuplicatesStable(data.role.OU, false),
-			Locality:           strutil.RemoveDuplicatesStable(data.role.Locality, false),
-			Province:           strutil.RemoveDuplicatesStable(data.role.Province, false),
-			StreetAddress:      strutil.RemoveDuplicatesStable(data.role.StreetAddress, false),
-			PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
-		}
-	} else {
-		subject = pkix.Name{
-			CommonName:   cn,
-			SerialNumber: ridSerialNumber,
-		}
-		// For celRole, populate fields directly from the API data
-		if country, ok := data.apiData.GetOk("country"); ok {
-			subject.Country = strutil.RemoveDuplicatesStable(country.([]string), false)
-		}
-		if organization, ok := data.apiData.GetOk("organization"); ok {
-			subject.Organization = strutil.RemoveDuplicatesStable(organization.([]string), false)
-		}
-		if ou, ok := data.apiData.GetOk("organizational_unit"); ok {
-			subject.OrganizationalUnit = strutil.RemoveDuplicatesStable(ou.([]string), false)
-		}
-		if locality, ok := data.apiData.GetOk("locality"); ok {
-			subject.Locality = strutil.RemoveDuplicatesStable(locality.([]string), false)
-		}
-		if province, ok := data.apiData.GetOk("province"); ok {
-			subject.Province = strutil.RemoveDuplicatesStable(province.([]string), false)
-		}
-		if streetAddress, ok := data.apiData.GetOk("street_address"); ok {
-			subject.StreetAddress = strutil.RemoveDuplicatesStable(streetAddress.([]string), false)
-		}
-		if postalCode, ok := data.apiData.GetOk("postal_code"); ok {
-			subject.PostalCode = strutil.RemoveDuplicatesStable(postalCode.([]string), false)
-		}
+	// Most of these could also be RemoveDuplicateStable, or even
+	// leave duplicates in, but OU is the one most likely to be duplicated.
+	subject := pkix.Name{
+		CommonName:         cn,
+		SerialNumber:       ridSerialNumber,
+		Country:            strutil.RemoveDuplicatesStable(data.role.Country, false),
+		Organization:       strutil.RemoveDuplicatesStable(data.role.Organization, false),
+		OrganizationalUnit: strutil.RemoveDuplicatesStable(data.role.OU, false),
+		Locality:           strutil.RemoveDuplicatesStable(data.role.Locality, false),
+		Province:           strutil.RemoveDuplicatesStable(data.role.Province, false),
+		StreetAddress:      strutil.RemoveDuplicatesStable(data.role.StreetAddress, false),
+		PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
 	}
-
 	// Get certificate's Not Before
-	notBefore, err := getCertificateNotBefore(data)
+	notBefore, err := getNotBefore(data)
 	if err != nil {
 		return nil, warnings, err
 	}
 
 	// Get the TTL and verify it against the max allowed
-	notAfter, ttlWarnings, err := getCertificateNotAfter(b, data, caSign)
+	notAfter, ttlWarnings, err := getNotAfter(b, data, caSign)
 	if err != nil {
 		return nil, warnings, err
 	}
@@ -1632,58 +1665,210 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	return creation, warnings, nil
 }
 
-// CertificateParameters holds the parameters required for certificate generation.
-type CertificateParameters struct {
-	CommonName         string              // The common name (CN) for the certificate
-	KeyType            string              // Key type, e.g., "rsa", "ec", "ed25519"
-	KeyBits            int                 // Key size in bits
-	DNSNames           []string            // Subject Alternative Names (SANs) for DNS
-	EmailAddresses     []string            // Email SANs
-	IPAddresses        []net.IP            // IP address SANs
-	URIs               []*url.URL          // URI SANs
-	NotBefore          time.Time           // Start time of certificate validity
-	NotAfter           time.Time           // End time of certificate validity
-	UsePSS             bool                // Use PSS for RSA signatures
-	PolicyIdentifiers  []string            // Policy identifiers for the certificate
-	OtherSANs          map[string][]string // Custom SANs as OID mappings
-	ForceAppendCaChain bool                // Include CA chain in response
-}
+func generateBasicCreationBundle(b *backend, apiData *framework.FieldData, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, []string, error) {
+	var warnings []string
+	var cn string
+	var ridSerialNumber string
+	dnsNames := []string{}
+	emailAddresses := []string{}
+	ipAddresses := []net.IP{}
+	URIs := []*url.URL{}
 
-func generateCreationBundleFromParams(input *CertificateParameters, caSign *certutil.CAInfoBundle) (*certutil.CreationBundle, []string, error) {
-	params := &certutil.CreationParameters{
-		Subject: pkix.Name{
-			CommonName: input.CommonName,
+	// Get common name and serial number
+	cn = apiData.Get("common_name").(string)
+	ridSerialNumber = apiData.Get("serial_number").(string)
+
+	// only take serial number from CSR if one was not supplied via API
+	if ridSerialNumber == "" && csr != nil {
+		ridSerialNumber = csr.Subject.SerialNumber
+	}
+
+	// Use SANs directly from CSR if provided
+	if csr != nil {
+		dnsNames = csr.DNSNames
+		emailAddresses = csr.EmailAddresses
+		ipAddresses = csr.IPAddresses
+		URIs = csr.URIs
+	}
+
+	// Use alt names from API if CSR is not provided
+	if csr == nil {
+		if altNames, ok := apiData.GetOk("alt_names"); ok {
+			for _, v := range dedupCommonNames(altNames.(string)) {
+				if strings.Contains(v, "@") {
+					emailAddresses = append(emailAddresses, v)
+				} else {
+					converted, err := idna.New(
+						idna.StrictDomainName(true),
+						idna.VerifyDNSLength(true),
+					).ToASCII(v)
+					if err == nil && hostnameRegex.MatchString(converted) {
+						dnsNames = append(dnsNames, converted)
+					}
+				}
+			}
+		}
+
+		if ipSANs, ok := apiData.GetOk("ip_sans"); ok {
+			for _, ip := range ipSANs.([]string) {
+				parsedIP := net.ParseIP(ip)
+				if parsedIP != nil {
+					ipAddresses = append(ipAddresses, parsedIP)
+				}
+			}
+		}
+
+		if uriSANs, ok := apiData.GetOk("uri_sans"); ok {
+			for _, uri := range uriSANs.([]string) {
+				parsedURI, err := url.Parse(uri)
+				if err == nil {
+					URIs = append(URIs, parsedURI)
+				}
+			}
+		}
+	}
+
+	// Get other SANs from API
+	var otherSANsInput []string
+	var otherSANs map[string][]string
+	if sans, ok := apiData.GetOk("other_sans"); ok {
+		otherSANsInput = sans.([]string)
+	}
+	if len(otherSANsInput) > 0 {
+		var err error
+		otherSANs, err = parseOtherSANs(otherSANsInput)
+		if err != nil {
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf("failed to parse other SANs: %v", err)}
+		}
+	}
+
+	// Get certificate's Not Before
+	notBefore, err := getCertificateNotBefore(apiData, "")
+	if err != nil {
+		return nil, warnings, err
+	}
+
+	// Get certificate's Not After
+	notAfter, ttlWarnings, err := getCertificateNotAfter(b, apiData, caSign, "", 0, 0)
+	if err != nil {
+		return nil, warnings, err
+	}
+	warnings = append(warnings, ttlWarnings...)
+
+	// Verify that notBefore is older than notAfter.
+	if notBefore.After(notAfter) {
+		return nil, nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
+		}
+	}
+
+	// Disallow zero duration certificate.
+	if notBefore.Equal(notAfter) {
+		return nil, nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
+		}
+	}
+
+	// Parse SKID from the request for cross-signing.
+	var skid []byte
+	{
+		if rawSKIDValue, ok := apiData.GetOk("skid"); ok {
+			// Handle removing common separators to make copy/paste from tool
+			// output easier. Chromium uses space, OpenSSL uses colons, and at
+			// one point, Vault had preferred dash as a separator for hex
+			// strings.
+			var err error
+			skidValue := rawSKIDValue.(string)
+			for _, separator := range []string{":", "-", " "} {
+				skidValue = strings.ReplaceAll(skidValue, separator, "")
+			}
+
+			skid, err = hex.DecodeString(skidValue)
+			if err != nil {
+				return nil, nil, errutil.UserError{Err: fmt.Sprintf("cannot parse requested SKID value as hex: %v", err)}
+			}
+		}
+	}
+
+	// Create the subject
+	subject := pkix.Name{
+		CommonName:   cn,
+		SerialNumber: ridSerialNumber,
+	}
+
+	// Safely add optional fields if they exist
+	if val, ok := apiData.GetOk("country"); ok {
+		subject.Country = val.([]string)
+	}
+	if val, ok := apiData.GetOk("organization"); ok {
+		subject.Organization = val.([]string)
+	}
+	if val, ok := apiData.GetOk("ou"); ok {
+		subject.OrganizationalUnit = val.([]string)
+	}
+	if val, ok := apiData.GetOk("locality"); ok {
+		subject.Locality = val.([]string)
+	}
+	if val, ok := apiData.GetOk("province"); ok {
+		subject.Province = val.([]string)
+	}
+	if val, ok := apiData.GetOk("street_address"); ok {
+		subject.StreetAddress = val.([]string)
+	}
+	if val, ok := apiData.GetOk("postal_code"); ok {
+		subject.PostalCode = val.([]string)
+	}
+
+	creation := &certutil.CreationBundle{
+		Params: &certutil.CreationParameters{
+			Subject:        subject,
+			DNSNames:       dnsNames,
+			EmailAddresses: emailAddresses,
+			IPAddresses:    ipAddresses,
+			URIs:           URIs,
+			OtherSANs:      otherSANs,
+			KeyType:        apiData.Get("key_type").(string),
+			KeyBits:        apiData.Get("key_bits").(int),
+			SignatureBits:  apiData.Get("signature_bits").(int),
+			UsePSS:         apiData.Get("use_pss").(bool),
+			NotBefore:      notBefore,
+			NotAfter:       notAfter,
+			// KeyUsage:       x509.KeyUsage(parseKeyUsages(apiData.Get("key_usage").([]string))),
+			// ExtKeyUsage:                   parseExtKeyUsages(data.role),
+			// ExtKeyUsageOIDs:               apiData.Get("ext_key_usage_oids").([]string),
+			// PolicyIdentifiers:             apiData.Get("policy_identifiers").([]string),
+			// BasicConstraintsValidForNonCA: apiData.Get("basic_constraints_valid_for_non_ca").(bool),
+			// NotBeforeDuration:             apiData.Get("not_before_duration").(time.Duration),
+			ForceAppendCaChain: caSign != nil,
+			SKID:               skid,
 		},
-		KeyType:            input.KeyType,
-		KeyBits:            input.KeyBits,
-		DNSNames:           strutil.RemoveDuplicatesStable(input.DNSNames, false),
-		EmailAddresses:     strutil.RemoveDuplicates(input.EmailAddresses, false),
-		IPAddresses:        input.IPAddresses,
-		URIs:               input.URIs,
-		NotBefore:          input.NotBefore,
-		NotAfter:           input.NotAfter,
-		UsePSS:             input.UsePSS,
-		PolicyIdentifiers:  input.PolicyIdentifiers,
-		OtherSANs:          input.OtherSANs,
-		ForceAppendCaChain: caSign != nil,
+		SigningBundle: caSign,
+		CSR:           csr,
 	}
 
-	if caSign != nil {
-		params.URLs = caSign.URLs
-	}
-
-	return &certutil.CreationBundle{Params: params, SigningBundle: caSign}, nil, nil
+	return creation, warnings, nil
 }
 
-// compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
-func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
+func getNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time
 	var err error
 
 	notBeforeAlt := data.role.NotBefore
 
+	notBefore, err = getCertificateNotBefore(data.apiData, notBeforeAlt)
+	if err != nil {
+		return notBefore, err
+	}
+
+	return notBefore, nil
+}
+
+func getCertificateNotBefore(apiData *framework.FieldData, notBeforeAlt string) (time.Time, error) {
+	var notBefore time.Time
+	var err error
+
 	if notBeforeAlt == "" {
-		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
+		notBeforeAltRaw, ok := apiData.GetOk("not_before")
 		if ok {
 			notBeforeAlt = notBeforeAltRaw.(string)
 		}
@@ -1699,18 +1884,32 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	return notBefore, err
 }
 
-// getCertificateNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input
+// getNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input
 // api data being sent. Returns a NotAfter time, a set of warnings or an error.
-func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle) (time.Time, []string, error) {
+func getNotAfter(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle) (time.Time, []string, error) {
+	var roleTTL, roleMaxTTL time.Duration
+	notAfterAlt := data.role.NotAfter
+
+	// Fetch TTL and MaxTTL from the role if available
+	if data.role.TTL > 0 {
+		roleTTL = data.role.TTL
+	}
+	if data.role.MaxTTL > 0 {
+		roleMaxTTL = data.role.MaxTTL
+	}
+
+	return getCertificateNotAfter(b, data.apiData, caSign, notAfterAlt, roleTTL, roleMaxTTL)
+}
+
+func getCertificateNotAfter(b *backend, apiData *framework.FieldData, caSign *certutil.CAInfoBundle, notAfterAlt string, roleTTL time.Duration, roleMaxTTL time.Duration) (time.Time, []string, error) {
 	var warnings []string
 	var maxTTL time.Duration
 	var notAfter time.Time
 	var err error
 
-	ttl := time.Duration(data.apiData.Get("ttl").(int)) * time.Second
-	notAfterAlt := data.role.NotAfter
+	ttl := time.Duration(apiData.Get("ttl").(int)) * time.Second
 	if notAfterAlt == "" {
-		notAfterAltRaw, ok := data.apiData.GetOk("not_after")
+		notAfterAltRaw, ok := apiData.GetOk("not_after")
 		if ok {
 			notAfterAlt = notAfterAltRaw.(string)
 		}
@@ -1719,12 +1918,12 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		return time.Time{}, warnings, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
 
-	if ttl == 0 && data.role.TTL > 0 {
-		ttl = data.role.TTL
+	if ttl == 0 && roleTTL > 0 {
+		ttl = roleTTL
 	}
 
-	if data.role.MaxTTL > 0 {
-		maxTTL = data.role.MaxTTL
+	if roleMaxTTL > 0 {
+		maxTTL = roleMaxTTL
 	}
 
 	if ttl == 0 {

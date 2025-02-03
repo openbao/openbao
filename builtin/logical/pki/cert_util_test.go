@@ -114,7 +114,7 @@ func TestPki_MultipleOUs(t *testing.T) {
 			OU:     []string{"Z", "E", "V"},
 		},
 	}
-	cb, _, err := generateCreationBundle(&b, input, nil, nil, false)
+	cb, _, err := generateCreationBundle(&b, input, nil, nil)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestPki_PermitFQDNs(t *testing.T) {
 		name := name
 		testCase := testCase
 		t.Run(name, func(t *testing.T) {
-			cb, _, err := generateCreationBundle(&b, testCase.input, nil, nil, false)
+			cb, _, err := generateCreationBundle(&b, testCase.input, nil, nil)
 			if err != nil {
 				t.Fatalf("Error: %v", err)
 			}
@@ -246,7 +246,7 @@ func TestPki_getCertificateNotBefore(t *testing.T) {
 
 	expectedNotBefore := "2024-12-31 23:59:59 +0000 UTC"
 
-	notBefore, err := getCertificateNotBefore(&data)
+	notBefore, err := getNotBefore(&data)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}

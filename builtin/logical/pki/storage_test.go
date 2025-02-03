@@ -262,7 +262,7 @@ func genCertBundle(t *testing.T, b *backend, s logical.Storage) *certutil.CertBu
 		apiData: apiData,
 		role:    role,
 	}
-	parsedCertBundle, _, err := generateCert(sc, input, nil, true, b.GetRandomReader(), false)
+	parsedCertBundle, _, err := generateCert(sc, input, nil, true, b.GetRandomReader())
 
 	require.NoError(t, err)
 	certBundle, err := parsedCertBundle.ToCertBundle()

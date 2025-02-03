@@ -64,6 +64,12 @@ type backend struct {
 }
 
 func (b *backend) Login(ctx context.Context, req *logical.Request, username string, password string, usernameAsAlias bool) (string, []string, *logical.Response, []string, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return "", nil, nil, nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return "", nil, nil, nil, err
@@ -212,6 +218,10 @@ func (b *backend) Login(ctx context.Context, req *logical.Request, username stri
 	}
 	if entityAliasAttribute == "" {
 		return "", nil, logical.ErrorResponse("missing entity alias attribute value"), nil, nil
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return "", nil, nil, nil, err
 	}
 
 	return entityAliasAttribute, policies, ldapResponse, allGroups, nil

@@ -1,0 +1,3 @@
+```release-note:bug
+core-listener: Fix operator diagnose with unix-socker listener
+```

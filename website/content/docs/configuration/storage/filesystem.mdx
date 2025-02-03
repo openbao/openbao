@@ -12,11 +12,21 @@ The Filesystem storage backend stores OpenBao's data on the filesystem using a
 standard directory structure. It can be used for durable single server
 situations, or to develop locally where durability is not critical.
 
-- **No High Availability** – the Filesystem backend does not support high
-  availability.
+:::warning
 
-- **HashiCorp Supported** – the Filesystem backend is officially supported by
-  HashiCorp.
+**No High Availability** – the Filesystem backend does not support high
+availability. Only a single OpenBao node may use this data store.
+
+:::
+
+
+:::danger
+
+**Not Production Recommended** – the Filesystem storage backend is not
+recommended for production installations as it is not transactional and lacks
+system-level file locking.
+
+:::
 
 ```hcl
 storage "file" {

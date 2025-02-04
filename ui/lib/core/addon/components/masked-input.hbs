@@ -26,7 +26,7 @@
   {{/if}}
   {{#if @allowCopy}}
     <CopyButton
-      @text={{@value}}
+      @text={{or (if (is-array @value) (get @value "0") @value) ""}}
       @onSuccess={{action (set-flash-message "Data copied!")}}
       class="copy-button button {{if @displayOnly 'is-compact'}}"
       data-test-copy-button

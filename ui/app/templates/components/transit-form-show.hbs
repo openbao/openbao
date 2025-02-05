@@ -151,10 +151,10 @@
                 <ul class="menu-list">
                   <li class="action">
                     <CopyButton
-                      @clipboardText={{meta.public_key}}
+                      @text={{meta.public_key}}
                       @class="link button is-transparent"
                       @buttonType="button"
-                      @success={{action (set-flash-message "Public key copied!")}}
+                      @onSuccess={{action (set-flash-message "Public key copied!")}}
                     >
                       Copy Public Key
                     </CopyButton>

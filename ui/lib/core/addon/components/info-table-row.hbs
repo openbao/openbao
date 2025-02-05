@@ -33,8 +33,8 @@
       {{#if @addCopyButton}}
         <div class="display-only">
           <CopyButton
-            @clipboardText={{@value}}
-            @success={{action (set-flash-message "Data copied!")}}
+            @text={{@value}}
+            @onSuccess={{action (set-flash-message "Data copied!")}}
             class="button copy-button is-compact"
             data-test-copy-button
           >
@@ -86,8 +86,8 @@
               </T.Trigger>
               <T.Content @defaultClass="tool-tip">
                 <CopyButton
-                  @clipboardText={{@tooltipText}}
-                  @success={{action (set-flash-message "Data copied!")}}
+                  @text={{@tooltipText}}
+                  @onSuccess={{action (set-flash-message "Data copied!")}}
                   @tagName="div"
                   disabled={{not @isTooltipCopyable}}
                   class={{if @isTooltipCopyable "has-pointer"}}

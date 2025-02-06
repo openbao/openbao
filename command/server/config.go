@@ -444,7 +444,7 @@ func (c *Config) Merge(c2 *Config) *Config {
 
 // LoadConfig loads the configuration at the given path, regardless if
 // its a file or directory.
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path string, allPaths []string) (*Config, error) {
 	fi, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -474,11 +474,11 @@ func LoadConfig(path string) (*Config, error) {
 		}
 		return CheckConfig(LoadConfigDir(path))
 	}
-	return CheckConfig(LoadConfigFile(path))
+	return CheckConfig(LoadConfigFile(path, allPaths))
 }
 
 func CheckConfig(c *Config, e error) (*Config, error) {
-	if e != nil {
+	if e != nil || c == nil {
 		return c, e
 	}
 
@@ -495,7 +495,17 @@ func CheckConfig(c *Config, e error) (*Config, error) {
 }
 
 // LoadConfigFile loads the configuration from the given file.
-func LoadConfigFile(path string) (*Config, error) {
+func LoadConfigFile(path string, allPaths []string) (*Config, error) {
+	// Before we read the configuration, check if we would've loaded it from
+	// a configuration directory at some point in time. If so, ignore the
+	// duplicate load.
+	skip, err := checkSkipPaths(path, allPaths)
+	if err != nil {
+		return nil, err
+	} else if skip {
+		return nil, nil
+	}
+
 	// Open the file
 	f, err := os.Open(path)
 	if err != nil {
@@ -786,7 +796,7 @@ func LoadConfigDir(dir string) (*Config, error) {
 
 	result := NewConfig()
 	for _, f := range files {
-		config, err := LoadConfigFile(f)
+		config, err := LoadConfigFile(f, nil /* every file should be loaded */)
 		if err != nil {
 			return nil, fmt.Errorf("error loading %q: %w", f, err)
 		}
@@ -1137,4 +1147,33 @@ func (c *Config) ToVaultNodeConfig() (*testcluster.VaultNodeConfig, error) {
 		return nil, err
 	}
 	return &vnc, nil
+}
+
+func checkSkipPaths(path string, allPaths []string) (bool, error) {
+	curPath, err := filepath.Abs(path)
+	if err != nil {
+		return true, err
+	}
+
+	curPathDir := filepath.Dir(curPath)
+
+	for _, dir := range allPaths {
+		if dir == path {
+			continue
+		}
+
+		absDir, err := filepath.Abs(dir)
+		if err != nil {
+			return true, err
+		}
+
+		// If the given file lives in the directory and has the appropriate
+		// configuration file suffixes, exclude it because directory parsing
+		// would've already included this.
+		if absDir == curPathDir && (strings.HasSuffix(path, ".hcl") || strings.HasSuffix(path, ".json")) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

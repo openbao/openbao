@@ -57,6 +57,12 @@ func pathCredsCreate(b *backend) *framework.Path {
 }
 
 func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := d.Get("role").(string)
 	if roleName == "" {
 		return logical.ErrorResponse("Missing role"), nil
@@ -152,6 +158,10 @@ func (b *backend) pathCredsCreateWrite(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("dynamic key types have been removed")
 	} else {
 		return nil, fmt.Errorf("key type unknown")
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return result, nil

@@ -124,12 +124,23 @@ func (b *backend) pathConfigCARead(ctx context.Context, req *logical.Request, da
 }
 
 func (b *backend) pathConfigCADelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	if err := req.Storage.Delete(ctx, caPrivateKeyStoragePath); err != nil {
 		return nil, err
 	}
 	if err := req.Storage.Delete(ctx, caPublicKeyStoragePath); err != nil {
 		return nil, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

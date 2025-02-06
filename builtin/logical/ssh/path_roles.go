@@ -808,12 +808,18 @@ func (b *backend) pathRoleRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) pathRoleDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := d.Get("role").(string)
 
 	// If the role was given privilege to accept any IP address, there will
 	// be an entry for this role in zero-address roles list. Before the role
 	// is removed, the entry in the list has to be removed.
-	err := b.removeZeroAddressRole(ctx, req.Storage, roleName)
+	err = b.removeZeroAddressRole(ctx, req.Storage, roleName)
 	if err != nil {
 		return nil, err
 	}
@@ -822,6 +828,11 @@ func (b *backend) pathRoleDelete(ctx context.Context, req *logical.Request, d *f
 	if err != nil {
 		return nil, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 

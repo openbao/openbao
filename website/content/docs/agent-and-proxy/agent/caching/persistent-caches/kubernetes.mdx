@@ -15,7 +15,8 @@ and leases between initialization and sidecar OpenBao Agent containers. This cac
 using a memory volume between the OpenBao Agent containers.
 
 If the OpenBao Agent Injector for Kubernetes is being used, the persistent cache is automatically configured
-and used if the annotation [`vault.hashicorp.com/agent-cache-enable: true`](/docs/platform/k8s/injector/annotations#vault-hashicorp-com-agent-cache-enable) is set.
+and used if the annotation [`vault.hashicorp.com/agent-cache-enable: true`](https://github.com/hashicorp/vault-k8s/blob/v1.4.2/agent-inject/agent/annotations.go#L249)
+is set.
 
 ## Configuration
 

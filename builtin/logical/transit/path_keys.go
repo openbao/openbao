@@ -518,6 +518,12 @@ func (b *backend) pathPolicyDelete(ctx context.Context, req *logical.Request, d 
 }
 
 func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
@@ -551,10 +557,20 @@ func (b *backend) pathPolicySoftDelete(ctx context.Context, req *logical.Request
 		resp.AddWarning("key was already marked as soft deleted")
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return resp, nil
 }
 
 func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	p, _, err := b.GetPolicy(ctx, keysutil.PolicyRequest{
@@ -586,6 +602,10 @@ func (b *backend) pathPolicySoftDeleteRestore(ctx context.Context, req *logical.
 
 	if !wasRestored {
 		resp.AddWarning("key was already restored")
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return resp, nil

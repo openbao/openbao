@@ -159,7 +159,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 
 const (
 	pathDeriveKeyHelpSyn = `Derives a new key from a base key`
-	pathDeriveKeyDesc    = `This path uses the named base key from the request path to derive a new named key.
+	pathDeriveKeyDesc    = `This path uses the named base key and derivation algorithm specific parameters to derive a new named key.
 When used with the ECDH key agreement algorithm, the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.
 The computed shared secret is the resulting derived key.`
 )

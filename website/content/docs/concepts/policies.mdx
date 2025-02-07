@@ -611,6 +611,21 @@ path "secret/foo" {
   }
 }
 ```
+
+##### Limiting pagination
+The `pagination_limit` parameter allows policy authors to control the value of
+`limit` on paginated list and scan endpoints. In conjunction with setting
+`required_parameters=["limit"]` on the ACL policy, pagination becomes fully
+required, rejecting the request if the client did not set `limit`; otherwise,
+pagination is optional but, when `limit` is specified, the maximum number of
+results is limited to the value of `pagination_limit`.
+
+It is assumed that the policy author only sets `pagination_limit` on endpoints
+conforming to the [Paginated Lists RFC](/docs/rfcs/paginated-lists/). This
+allows the API to safely translate the value `limit=max` to a numerical value,
+either `limit=0` if no value was set or to the actual limit set by the policy
+author.
+
 ### Required response wrapping TTLs
 
 These parameters can be used to set minimums/maximums on TTLs set by clients

@@ -892,7 +892,8 @@ func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte,
 }
 
 func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedKeySizeInBytes int) ([]byte, error) {
-	var curve elliptic.Curve = elliptic.P256()
+
+	var sharedSecret []byte
 
 	if !p.Type.KeyAgreementSupported() {
 		return nil, errutil.UserError{Err: fmt.Sprintf("base key type %v does not support key agreement", p.Type)}
@@ -917,47 +918,60 @@ func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedK
 		return nil, err
 	}
 
+	peerPublicKeyRaw, err := certutil.ParsePublicKeyPEM(peerPublicKeyPem)
+	if err != nil {
+		return nil, errutil.UserError{Err: fmt.Sprintf("failed to parse supplied peer public key PEM: %s ", err.Error())}
+	}
+
 	switch p.Type {
-	case KeyType_ECDSA_P256:
-		curve = elliptic.P256()
-	case KeyType_ECDSA_P384:
-		curve = elliptic.P384()
-	case KeyType_ECDSA_P521:
-		curve = elliptic.P521()
+	case KeyType_ECDSA_P256, KeyType_ECDSA_P384, KeyType_ECDSA_P521:
+		var curve elliptic.Curve
+		switch p.Type {
+		case KeyType_ECDSA_P384:
+			curve = elliptic.P384()
+		case KeyType_ECDSA_P521:
+			curve = elliptic.P521()
+		default:
+			curve = elliptic.P256()
+		}
+
+		peerPublicKey, ok := peerPublicKeyRaw.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, errutil.UserError{Err: "supplied peer public key is not an ECDSA key"}
+		}
+
+		ownPrivateKey := &ecdsa.PrivateKey{
+			PublicKey: ecdsa.PublicKey{
+				Curve: curve,
+				X:     baseKeyEntry.EC_X,
+				Y:     baseKeyEntry.EC_Y,
+			},
+			D: baseKeyEntry.EC_D,
+		}
+
+		if ownPrivateKey.Curve != peerPublicKey.Curve {
+			return nil, errutil.UserError{Err: fmt.Sprintf("base private key type %v does not match peer public key curve", p.Type)}
+		}
+
+		ownPrivateKeyEcdh, err := ownPrivateKey.ECDH()
+		if err != nil {
+			return nil, errutil.InternalError{Err: err.Error()}
+		}
+		peerPublicKeyEcdh, err := peerPublicKeyRaw.(*ecdsa.PublicKey).ECDH()
+		if err != nil {
+			return nil, errutil.InternalError{Err: err.Error()}
+		}
+
+		sharedSecret, err = ownPrivateKeyEcdh.ECDH(peerPublicKeyEcdh)
+		if err != nil {
+			return nil, errutil.InternalError{Err: err.Error()}
+		}
+
+	case KeyType_ED25519:
+		return nil, errutil.InternalError{Err: "unsupported base key type for ECDH key agreement"}
+
 	default:
 		return nil, errutil.InternalError{Err: "unsupported base key type for ECDH key agreement"}
-	}
-
-	ownPrivateKey := &ecdsa.PrivateKey{
-		PublicKey: ecdsa.PublicKey{
-			Curve: curve,
-			X:     baseKeyEntry.EC_X,
-			Y:     baseKeyEntry.EC_Y,
-		},
-		D: baseKeyEntry.EC_D,
-	}
-
-	peerPublicKey, err := certutil.ParsePublicKeyPEM(peerPublicKeyPem)
-	if err != nil {
-		return nil, errutil.UserError{Err: fmt.Sprintf("failed to parse peer public key PEM: %s ", err.Error())}
-	}
-
-	if ownPrivateKey.Curve != peerPublicKey.(*ecdsa.PublicKey).Curve {
-		return nil, errutil.UserError{Err: fmt.Sprintf("base private key type %v does not match peer public key curve", p.Type)}
-	}
-
-	ownPrivateKeyEcdh, err := ownPrivateKey.ECDH()
-	if err != nil {
-		return nil, errutil.InternalError{Err: err.Error()}
-	}
-	peerPublicKeyEcdh, err := peerPublicKey.(*ecdsa.PublicKey).ECDH()
-	if err != nil {
-		return nil, errutil.InternalError{Err: err.Error()}
-	}
-
-	sharedSecret, err := ownPrivateKeyEcdh.ECDH(peerPublicKeyEcdh)
-	if err != nil {
-		return nil, errutil.InternalError{Err: err.Error()}
 	}
 
 	// TODO - should use a salt/IV for derivating different keys ?

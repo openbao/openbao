@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package transit
@@ -26,6 +26,11 @@ func (b *backend) pathDeriveKey() *framework.Path {
 		},
 
 		Fields: map[string]*framework.FieldSchema{
+			"name": {
+				Type:        framework.TypeString,
+				Description: "Name of the output derived key",
+			},
+
 			"key_derivation_algorithm": {
 				Type:    framework.TypeString,
 				Default: defaultKeyDerivationAlgorithm,
@@ -36,7 +41,7 @@ Defaults to "ecdh".`,
 
 			"peer_public_key": {
 				Type:        framework.TypeString,
-				Description: "The pem-encoded other party's EC public key",
+				Description: "The pem-encoded other party's ECC public key",
 			},
 
 			"base_key_name": {
@@ -49,11 +54,6 @@ Defaults to "ecdh".`,
 				Description: `The version of the base key to use for derivation.
 Must be 0 (for latest) or a value greater than or equal
 to the min_derivation_version configured on the key.`,
-			},
-
-			"derived_key_name": {
-				Type:        framework.TypeString,
-				Description: "Name of the output derived key",
 			},
 
 			"derived_key_type": {
@@ -93,7 +93,7 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 	baseKeyName := d.Get("base_key_name").(string)
 	baseKeyVer := d.Get("base_key_version").(int)
 
-	derivedKeyName := d.Get("derived_key_name").(string)
+	derivedKeyName := d.Get("name").(string)
 	derivedkeyType := d.Get("derived_key_type").(string)
 
 	polReq := keysutil.PolicyRequest{
@@ -160,6 +160,6 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 const (
 	pathDeriveKeyHelpSyn = `Derives a new key from a base key`
 	pathDeriveKeyDesc    = `This path uses the named base key from the request path to derive a new named key.
-When used with the ECDH key agreement algorithm, the base key is one's own EC private key and the "peer_public_key" is the pem-encoded other party's EC public key.
+When used with the ECDH key agreement algorithm, the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.
 The computed shared secret is the resulting derived key.`
 )

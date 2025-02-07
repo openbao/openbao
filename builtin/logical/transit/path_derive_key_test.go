@@ -1,20 +1,39 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package transit
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"testing"
 
-	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-// Case1: nominal workflow for ECDH key agreement between Alice and Bob.
-func TestTransit_ECDH_NominalCase1(t *testing.T) {
+// Nominal workflow for ECDH key agreement between Alice and Bob.
+func TestTransit_ECDH_NominalCase(t *testing.T) {
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "")
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes128-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes128-gcm96")
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes256-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "aes256-gcm96")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "aes256-gcm96")
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "chacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "chacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305")
+
+	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305")
+}
+
+func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string) {
 	var resp *logical.Response
 	var err error
 
@@ -25,7 +44,7 @@ func TestTransit_ECDH_NominalCase1(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/alice_ec_key",
 		Data: map[string]interface{}{
-			"type": "ecdsa-p256",
+			"type": baseKeyType,
 		},
 		Storage: s,
 	}
@@ -71,7 +90,7 @@ func TestTransit_ECDH_NominalCase1(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "keys/bob_ec_key",
 		Data: map[string]interface{}{
-			"type": "ecdsa-p256",
+			"type": baseKeyType,
 		},
 		Storage: s,
 	}
@@ -120,11 +139,14 @@ func TestTransit_ECDH_NominalCase1(t *testing.T) {
 			"key_derivation_algorithm": "ecdh",
 			"peer_public_key":          publicKeyBob,
 			"base_key_name":            "alice_ec_key",
-			"derived_key_name":         "alice_derived_key",
-			"derived_key_type":         "aes256-gcm96",
 		},
 		Storage: s,
 	}
+
+	if len(derivedKeyType) > 0 {
+		policyReq.Data["derived_key_type"] = derivedKeyType
+	}
+
 	resp, err = b.HandleRequest(context.Background(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -163,11 +185,14 @@ func TestTransit_ECDH_NominalCase1(t *testing.T) {
 			"key_derivation_algorithm": "ecdh",
 			"peer_public_key":          publicKeyAlice,
 			"base_key_name":            "bob_ec_key",
-			"derived_key_name":         "bob_derived_key",
-			"derived_key_type":         "aes256-gcm96",
 		},
 		Storage: s,
 	}
+
+	if len(derivedKeyType) > 0 {
+		policyReq.Data["derived_key_type"] = derivedKeyType
+	}
+
 	resp, err = b.HandleRequest(context.Background(), policyReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
@@ -192,49 +217,4 @@ func TestTransit_ECDH_NominalCase1(t *testing.T) {
 		t.Fatalf("bad: plaintext. Expected: %q, Actual: %q", plaintext, resp.Data["plaintext"])
 	}
 
-}
-
-func TestTransit_EncryptWithRSAPublicKeyDGH(t *testing.T) {
-	generateKeys(t)
-	b, s := createBackendWithStorage(t)
-	keyType := "rsa-2048"
-	keyID, err := uuid.GenerateUUID()
-	if err != nil {
-		t.Fatalf("failed to generate key ID: %s", err)
-	}
-
-	// Get key
-	privateKey := getKey(t, keyType)
-	publicKeyBytes, err := getPublicKey(privateKey, keyType)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Import key
-	req := &logical.Request{
-		Storage:   s,
-		Operation: logical.UpdateOperation,
-		Path:      fmt.Sprintf("keys/%s/import", keyID),
-		Data: map[string]interface{}{
-			"public_key": publicKeyBytes,
-			"type":       keyType,
-		},
-	}
-	_, err = b.HandleRequest(context.Background(), req)
-	if err != nil {
-		t.Fatalf("failed to import public key: %s", err)
-	}
-
-	req = &logical.Request{
-		Operation: logical.CreateOperation,
-		Path:      fmt.Sprintf("encrypt/%s", keyID),
-		Storage:   s,
-		Data: map[string]interface{}{
-			"plaintext": "bXkgc2VjcmV0IGRhdGE=",
-		},
-	}
-	_, err = b.HandleRequest(context.Background(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
 }

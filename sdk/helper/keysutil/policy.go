@@ -892,7 +892,6 @@ func (p *Policy) DeriveKey(context, salt []byte, ver int, numBytes int) ([]byte,
 }
 
 func (p *Policy) DeriveKeyECDH(baseKeyVer int, peerPublicKeyPem []byte, derivedKeySizeInBytes int) ([]byte, error) {
-
 	var sharedSecret []byte
 
 	if !p.Type.KeyAgreementSupported() {

@@ -55,6 +55,12 @@ func pathConfig(b *backend) *framework.Path {
  * Construct ConfigEntry struct using stored configuration.
  */
 func (b *backend) Config(ctx context.Context, req *logical.Request) (*ldapConfigEntry, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	storedConfig, err := req.Storage.Get(ctx, "config")
 	if err != nil {
 		return nil, err
@@ -112,6 +118,10 @@ func (b *backend) Config(ctx context.Context, req *logical.Request) (*ldapConfig
 		if err := req.Storage.Put(ctx, entry); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return result, nil

@@ -76,7 +76,7 @@ func TestSystemBackend_Plugin_secret(t *testing.T) {
 				t.Fatalf("err: %v", err)
 			}
 			if resp == nil {
-				t.Fatalf("bad: response should not be nil")
+				t.Fatal("bad: response should not be nil")
 			}
 
 			// Seal the cluster
@@ -134,7 +134,7 @@ func TestSystemBackend_Plugin_auth(t *testing.T) {
 				t.Fatalf("err: %v", err)
 			}
 			if resp == nil {
-				t.Fatalf("bad: response should not be nil")
+				t.Fatal("bad: response should not be nil")
 			}
 
 			// Seal the cluster
@@ -192,7 +192,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 				t.Fatalf("err: %v", err)
 			}
 			if resp == nil {
-				t.Fatalf("bad: response should not be nil")
+				t.Fatal("bad: response should not be nil")
 			}
 
 			// Seal the cluster
@@ -215,7 +215,7 @@ func TestSystemBackend_Plugin_MissingBinary(t *testing.T) {
 			req.ClientToken = core.Client.Token()
 			_, err = core.HandleRequest(namespace.RootContext(testCtx), req)
 			if err == nil {
-				t.Fatalf("expected error")
+				t.Fatal("expected error")
 			}
 		})
 	}
@@ -403,7 +403,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 			req.ClientToken = core.Client.Token()
 			_, err = core.HandleRequest(namespace.RootContext(testCtx), req)
 			if err == nil {
-				t.Fatalf("expected error from error/rpc request")
+				t.Fatal("expected error from error/rpc request")
 			}
 
 			// Check internal value to make sure it's reset
@@ -414,7 +414,7 @@ func TestSystemBackend_Plugin_autoReload(t *testing.T) {
 				t.Fatalf("err: %v", err)
 			}
 			if resp == nil {
-				t.Fatalf("bad: response should not be nil")
+				t.Fatal("bad: response should not be nil")
 			}
 			if resp.Data["value"].(string) == "baz" {
 				t.Fatal("did not expect backend internal value to be 'baz'")
@@ -571,7 +571,7 @@ func testSystemBackend_PluginReload(t *testing.T, reqData map[string]interface{}
 					t.Fatalf("err: %v", err)
 				}
 				if resp == nil {
-					t.Fatalf("bad: response should not be nil")
+					t.Fatal("bad: response should not be nil")
 				}
 				if resp.Data["value"].(string) == "baz" {
 					t.Fatal("did not expect backend internal value to be 'baz'")

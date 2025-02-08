@@ -7,7 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
+	"errors"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -140,7 +140,7 @@ func (b *backend) pathDatakeyWrite(ctx context.Context, req *logical.Request, d 
 	}
 
 	if ciphertext == "" {
-		return nil, fmt.Errorf("empty ciphertext returned")
+		return nil, errors.New("empty ciphertext returned")
 	}
 
 	keyVersion := ver

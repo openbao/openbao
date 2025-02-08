@@ -113,7 +113,7 @@ func TestHashString(t *testing.T) {
 	}
 	out := HashString(localSalt, "foo")
 	if out != "hmac-sha256:08ba357e274f528065766c770a639abf6809b39ccfd37c2a3157c7f51954da0a" {
-		t.Fatalf("err: HashString output did not match expected")
+		t.Fatal("err: HashString output did not match expected")
 	}
 }
 

@@ -5,7 +5,7 @@ package jwtauth
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +18,7 @@ type testProviderConfig struct {
 
 func (t *testProviderConfig) Initialize(_ context.Context, jc *jwtConfig) error {
 	if t.throwError {
-		return fmt.Errorf("i'm throwing an error")
+		return errors.New("i'm throwing an error")
 	}
 	t.initialized = jc.ProviderConfig["initialized_value"].(string)
 	return nil

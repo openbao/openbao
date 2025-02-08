@@ -163,7 +163,7 @@ func TestKeyring_Serialize(t *testing.T) {
 	}
 
 	if k2.ActiveTerm() != k.ActiveTerm() {
-		t.Fatalf("Term mismatch")
+		t.Fatal("Term mismatch")
 	}
 
 	var i uint32

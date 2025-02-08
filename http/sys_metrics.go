@@ -4,7 +4,7 @@
 package http
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/openbao/openbao/helper/metricsutil"
@@ -48,7 +48,7 @@ func handleMetricsUnauthenticated(core *vault.Core) http.Handler {
 			w.WriteHeader(status)
 			w.Write(v)
 		default:
-			respondError(w, http.StatusInternalServerError, fmt.Errorf("wrong response returned"))
+			respondError(w, http.StatusInternalServerError, errors.New("wrong response returned"))
 		}
 	})
 }

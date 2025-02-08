@@ -492,7 +492,7 @@ func assertNoRespData(t *testing.T, resp *logical.Response) {
 func assertRespHasData(t *testing.T, resp *logical.Response) {
 	t.Helper()
 	if resp == nil || len(resp.Data) == 0 {
-		t.Fatalf("Response didn't have any data when some was expected")
+		t.Fatal("Response didn't have any data when some was expected")
 	}
 }
 

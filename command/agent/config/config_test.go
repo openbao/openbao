@@ -667,7 +667,7 @@ func TestLoadConfigFile_Bad_AgentCache_ForceAutoAuthNoMethod(t *testing.T) {
 func TestLoadConfigFile_Bad_AgentCache_NoListeners(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-cache-no-listeners.hcl")
 	if err != nil {
-		t.Fatalf("LoadConfigFile should return an error for this config")
+		t.Fatal("LoadConfigFile should return an error for this config")
 	}
 }
 
@@ -695,7 +695,7 @@ func TestLoadConfigFile_Bad_AutoAuth_Nosinks_Nocache_Notemplates(t *testing.T) {
 func TestLoadConfigFile_Bad_AutoAuth_Both_Wrapping_Types(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-method-wrapping-and-sink-wrapping.hcl")
 	if err == nil {
-		t.Fatalf("LoadConfigFile should return an error for this config")
+		t.Fatal("LoadConfigFile should return an error for this config")
 	}
 }
 
@@ -2102,7 +2102,7 @@ func TestLoadConfigFile_EnvTemplates_Simple(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatalf("expected environment variable name to be populated")
+		t.Fatal("expected environment variable name to be populated")
 	}
 }
 
@@ -2155,7 +2155,7 @@ func TestLoadConfigFile_EnvTemplates_WithSource(t *testing.T) {
 func TestLoadConfigFile_EnvTemplates_NoName(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-no-name.hcl")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 
@@ -2163,7 +2163,7 @@ func TestLoadConfigFile_EnvTemplates_NoName(t *testing.T) {
 func TestLoadConfigFile_EnvTemplates_ExecInvalidSignal(t *testing.T) {
 	_, err := LoadConfigFile("./test-fixtures/bad-config-env-templates-invalid-signal.hcl")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 

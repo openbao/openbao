@@ -173,7 +173,7 @@ func ResponseValidatingCallback(t *testing.T) func(logical.Backend, *logical.Req
 		t.Helper()
 
 		if b == nil {
-			t.Fatalf("non-nil backend required")
+			t.Fatal("non-nil backend required")
 		}
 
 		backend, ok := b.(PathRouter)

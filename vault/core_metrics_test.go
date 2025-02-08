@@ -199,10 +199,10 @@ func TestCoreMetrics_KvSecretGauge_BadPath(t *testing.T) {
 	}
 	if found {
 		if count != 1.0 {
-			t.Errorf("bad secret count for kv1/")
+			t.Error("bad secret count for kv1/")
 		}
 	} else {
-		t.Errorf("no secret count for kv1/")
+		t.Error("no secret count for kv1/")
 	}
 }
 

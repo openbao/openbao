@@ -96,7 +96,7 @@ func TestTruncate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual, err := truncate(test.maxLen, test.input)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -176,7 +176,7 @@ func TestTruncateSHA256(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual, err := truncateSHA256(test.maxLen, test.input)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

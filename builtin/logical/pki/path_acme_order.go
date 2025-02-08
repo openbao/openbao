@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -174,7 +175,7 @@ func (b *backend) acmeFetchCertOrderHandler(ac *acmeContext, _ *logical.Request,
 	}
 
 	if len(order.IssuerId) == 0 || len(order.CertificateSerialNumber) == 0 {
-		return nil, fmt.Errorf("order is missing required fields to load certificate")
+		return nil, errors.New("order is missing required fields to load certificate")
 	}
 
 	certEntry, err := fetchCertBySerial(ac.sc, "certs/", order.CertificateSerialNumber)

@@ -59,7 +59,7 @@ func TestCustomResponseHeadersConfigs(t *testing.T) {
 		"400":     customHeader400,
 	}
 
-	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_1.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_1.hcl", nil)
 	if err != nil {
 		t.Fatalf("Error encountered when loading config %+v", err)
 	}
@@ -78,7 +78,7 @@ func TestCustomResponseHeadersConfigsMultipleListeners(t *testing.T) {
 		"400":     customHeader400,
 	}
 
-	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_multiple_listeners.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config_custom_response_headers_multiple_listeners.hcl", nil)
 	if err != nil {
 		t.Fatalf("Error encountered when loading config %+v", err)
 	}

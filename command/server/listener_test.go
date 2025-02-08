@@ -93,7 +93,7 @@ func testListenerImpl(t *testing.T, ln net.Listener, connFn testListenerConnFn, 
 }
 
 func TestProfilingUnauthenticatedInFlightAccess(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/unauth_in_flight_access.hcl")
+	config, err := LoadConfigFile("./test-fixtures/unauth_in_flight_access.hcl", nil)
 	if err != nil {
 		t.Fatalf("Error encountered when loading config %+v", err)
 	}

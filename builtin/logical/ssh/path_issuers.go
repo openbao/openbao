@@ -15,23 +15,7 @@ func pathIssuers(b *backend) *framework.Path {
 	updateIssuerSchema := map[int][]framework.Response{
 		http.StatusOK: {{
 			Description: "OK",
-			Fields: map[string]*framework.FieldSchema{
-				"issuer_id": {
-					Type:        framework.TypeString,
-					Description: `Issuer Id`,
-					Required:    false,
-				},
-				"issuer_name": {
-					Type:        framework.TypeString,
-					Description: `Issuer Name`,
-					Required:    false,
-				},
-				"public_key": {
-					Type:        framework.TypeBool,
-					Description: `Issuer public key`,
-					Required:    false,
-				},
-			},
+			Fields:      issuerOKResponseFields,
 		}},
 	}
 
@@ -61,14 +45,24 @@ func pathIssuers(b *backend) *framework.Path {
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb: "read",
 				},
-				Responses: updateIssuerSchema,
+				Responses: map[int][]framework.Response{
+					http.StatusOK: {{
+						Description: "OK",
+						Fields:      issuerOKResponseFields,
+					}},
+				},
 			},
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.pathUpdateIssuerHandler,
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb: "update",
 				},
-				Responses: updateIssuerSchema,
+				Responses: map[int][]framework.Response{
+					http.StatusOK: {{
+						Description: "OK",
+						Fields:      issuerOKResponseFields,
+					}},
+				},
 			},
 			logical.DeleteOperation: &framework.PathOperation{
 				Callback: b.pathDeleteIssuerHandler,

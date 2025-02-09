@@ -41,6 +41,7 @@ jobs:
       matrix:
         release_os:
           - linux
+          - hsm
           - darwin
           - freebsd
           - illumos
@@ -187,9 +188,12 @@ jobs:
       - name: "Template GoRelaser configuration"
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         run: |
-          sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
-          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
+          [ "${{ matrix.release_os }}" != "hsm" ] && sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
+          [ "${{ matrix.release_os }}" == "hsm" ] && sed "s/REPLACE_WITH_RELEASE_GOOS/linux/g" .goreleaser-template.yaml > .goreleaser.yaml
           [ "${{ matrix.release_os }}" == "linux" ] && sed -i "s/^#LINUXONLY#//g" .goreleaser.yaml || true
+          [ "${{ matrix.release_os }}" == "hsm" ] && sed -i "s/^#HSMONLY#//g" .goreleaser.yaml || true
+          [ "${{ matrix.release_os }}" != "hsm" ] && sed -i "s/^#NONHSM#//g" .goreleaser.yaml || true
+          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
 
       - name: "GoReleaser: Release"
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly

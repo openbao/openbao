@@ -29,35 +29,35 @@ env:
 #    - GOSUMDB=sum.golang.org
 
 builds:
-  - id: builds-linux
-    tags:
-      - ui
-    ldflags:
-      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - REPLACE_WITH_RELEASE_GOOS
-    goarch:
-      - amd64
-#OTHERARCH#      - arm
-#OTHERARCH#      - arm64
-#OTHERARCH#      - ppc64le
-#OTHERARCH#      - riscv64
-#OTHERARCH#      - s390x
-    goarm:
-      - "6"
-    ignore:
-      - goos: darwin
-      - goos: dragonfly
-      - goos: freebsd
-      - goos: illumos
-      - goos: netbsd
-      - goos: openbsd
-      - goos: wasip1
-      - goos: windows
-    mod_timestamp: "{{ .CommitTimestamp }}"
-    skip: false
+#LINUXONLY#  - id: builds-linux
+#LINUXONLY#    tags:
+#LINUXONLY#      - ui
+#LINUXONLY#    ldflags:
+#LINUXONLY#      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
+#LINUXONLY#    env:
+#LINUXONLY#      - CGO_ENABLED=0
+#LINUXONLY#    goos:
+#LINUXONLY#      - REPLACE_WITH_RELEASE_GOOS
+#LINUXONLY#    goarch:
+#LINUXONLY#      - amd64
+#LINUXONLY##OTHERARCH#      - arm
+#LINUXONLY##OTHERARCH#      - arm64
+#LINUXONLY##OTHERARCH#      - ppc64le
+#LINUXONLY##OTHERARCH#      - riscv64
+#LINUXONLY##OTHERARCH#      - s390x
+#LINUXONLY#    goarm:
+#LINUXONLY#      - "6"
+#LINUXONLY#    ignore:
+#LINUXONLY#      - goos: darwin
+#LINUXONLY#      - goos: dragonfly
+#LINUXONLY#      - goos: freebsd
+#LINUXONLY#      - goos: illumos
+#LINUXONLY#      - goos: netbsd
+#LINUXONLY#      - goos: openbsd
+#LINUXONLY#      - goos: wasip1
+#LINUXONLY#      - goos: windows
+#LINUXONLY#    mod_timestamp: "{{ .CommitTimestamp }}"
+#LINUXONLY#    skip: false
   - id: builds-other
     tags:
       - ui
@@ -159,6 +159,39 @@ builds:
         goarch: wasm
     mod_timestamp: "{{ .CommitTimestamp }}"
     skip: false
+#HSMONLY#  - id: builds-hsm
+#HSMONLY#    tags:
+#HSMONLY#      - ui
+#HSMONLY#      - hsm
+#HSMONLY#    ldflags:
+#HSMONLY#      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
+#HSMONLY#    env:
+#HSMONLY#      - CGO_ENABLED=1
+#HSMONLY#    goos:
+#HSMONLY#      - REPLACE_WITH_RELEASE_GOOS
+#HSMONLY#    goarch:
+#HSMONLY#      - amd64
+#HSMONLY#    ignore:
+#HSMONLY#      - goos: darwin
+#HSMONLY#      - goos: dragonfly
+#HSMONLY#      - goos: freebsd
+#HSMONLY#      - goos: illumos
+#HSMONLY#      - goos: netbsd
+#HSMONLY#      - goos: openbsd
+#HSMONLY#      - goos: wasip1
+#HSMONLY#      - goos: windows
+#HSMONLY#      - goos: linux
+#HSMONLY#        goarch: arm
+#HSMONLY#      - goos: linux
+#HSMONLY#        goarch: arm64
+#HSMONLY#      - goos: linux
+#HSMONLY#        goarch: ppc64le
+#HSMONLY#      - goos: linux
+#HSMONLY#        goarch: s390x
+#HSMONLY#      - goos: linux
+#HSMONLY#        goarch: riscv
+#HSMONLY#    mod_timestamp: "{{ .CommitTimestamp }}"
+#HSMONLY#    skip: false
 
 report_sizes: true
 
@@ -222,8 +255,69 @@ report_sizes: true
 #LINUXONLY#      signature:
 #LINUXONLY#        key_file: "{{ .Env.GPG_KEY_FILE }}"
 
+#HSMONLY#nfpms:
+#HSMONLY#  - vendor: OpenBao
+#HSMONLY#    package_name: bao-hsm
+#HSMONLY#    homepage: https://openbao.org
+#HSMONLY#    maintainer: OpenBao <openbao@lists.lfedge.org>
+#HSMONLY#    description: |
+#HSMONLY#      OpenBao exists to provide a software solution to manage, store, and distribute
+#HSMONLY#      sensitive data including secrets, certificates, and keys.
+#HSMONLY#    license: MPL-2.0
+#HSMONLY#    formats:
+#HSMONLY#      - deb
+#HSMONLY#      - rpm
+#HSMONLY#      - archlinux
+#HSMONLY#    dependencies:
+#HSMONLY#      - openssl
+#HSMONLY#    provides:
+#HSMONLY#      - bao
+#HSMONLY#    bindir: /usr/bin
+#HSMONLY#    section: default
+#HSMONLY#    contents:
+#HSMONLY#      - src: ./LICENSE
+#HSMONLY#        dst: /usr/share/doc/openbao/copyright
+#HSMONLY#        file_info:
+#HSMONLY#          mode: 0644
+#HSMONLY#      - src: ./.release/linux/package/etc/openbao/openbao.env
+#HSMONLY#        dst: /etc/openbao/openbao.env
+#HSMONLY#        type: config|noreplace
+#HSMONLY#        file_info:
+#HSMONLY#          mode: 0644
+#HSMONLY#      - src: ./.release/linux/package/etc/openbao/openbao.hcl
+#HSMONLY#        dst: /etc/openbao/openbao.hcl
+#HSMONLY#        type: config|noreplace
+#HSMONLY#        file_info:
+#HSMONLY#          mode: 0644
+#HSMONLY#      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
+#HSMONLY#        dst: /usr/lib/systemd/system/openbao.service
+#HSMONLY#        type: config|noreplace
+#HSMONLY#        file_info:
+#HSMONLY#          mode: 0644
+#HSMONLY#    scripts:
+#HSMONLY#      preinstall: ".release/linux/preinst"
+#HSMONLY#      postinstall: ".release/linux/postinst"
+#HSMONLY#      postremove: ".release/linux/postrm"
+#HSMONLY#    overrides:
+#HSMONLY#      deb:
+#HSMONLY#        dependencies:
+#HSMONLY#          - openssl
+#HSMONLY#      rpm:
+#HSMONLY#        dependencies:
+#HSMONLY#          - openssl
+#HSMONLY#      archlinux:
+#HSMONLY#        dependencies:
+#HSMONLY#          - openssl
+#HSMONLY#    deb:
+#HSMONLY#      signature:
+#HSMONLY#        key_file: "{{ .Env.GPG_KEY_FILE }}"
+#HSMONLY#    rpm:
+#HSMONLY#      signature:
+#HSMONLY#        key_file: "{{ .Env.GPG_KEY_FILE }}"
+
 checksum:
-  name_template: "checksums-REPLACE_WITH_RELEASE_GOOS.txt"
+#NONHSM#  name_template: "checksums-REPLACE_WITH_RELEASE_GOOS.txt"
+#HSMONLY#  name_template: "checksums-REPLACE_WITH_RELEASE_GOOS-hsm.txt"
   disable: false
   # split: false
 
@@ -776,16 +870,109 @@ checksum:
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
 #LINUXONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
 
+#HSMONLY#dockers:
+#HSMONLY#  - id: hsm-ubi-amd64
+#HSMONLY#    use: buildx
+#HSMONLY#    goos: linux
+#HSMONLY#    goarch: amd64
+#HSMONLY#    skip_push: false
+#HSMONLY#    ids:
+#HSMONLY#      - builds-hsm
+#HSMONLY#    build_flag_templates:
+#HSMONLY#      - "--pull"
+#HSMONLY#      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+#HSMONLY#      - "--build-arg=REVISION={{ .FullCommit }}"
+#HSMONLY#      - "--build-arg=VERSION={{ .Version }}"
+#HSMONLY#      - "--platform=linux/amd64"
+#HSMONLY#      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+#HSMONLY#      - "--label=org.opencontainers.image.vendor=OpenBao"
+#HSMONLY#      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+#HSMONLY#      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+#HSMONLY#      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+#HSMONLY#      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+#HSMONLY#      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+#HSMONLY#      - "--label=org.opencontainers.image.version={{ .Version }}"
+#HSMONLY#      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+#HSMONLY#      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+#HSMONLY#      - "--label=release={{ .Version }}"
+#HSMONLY#      - "--label=revision={{ .FullCommit }}"
+#HSMONLY#      - "--label=version={{ .Version }}"
+#HSMONLY#      - "--target=ubi"
+#HSMONLY#    image_templates:
+#HSMONLY#      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+#HSMONLY#      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+#HSMONLY#      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+#HSMONLY#    extra_files:
+#HSMONLY#      - ./LICENSE
+#HSMONLY#      - ./.release/docker/ubi-docker-entrypoint.sh
+#HSMONLY#      - ./CHANGELOG.md
+#HSMONLY#
+#HSMONLY#docker_manifests:
+#HSMONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+#HSMONLY#    skip_push: false
+#HSMONLY#    image_templates:
+#HSMONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+#HSMONLY#    skip_push: false
+#HSMONLY#    image_templates:
+#HSMONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+#HSMONLY#    skip_push: false
+#HSMONLY#    image_templates:
+#HSMONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+#HSMONLY#  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+#HSMONLY#    skip_push: ${{ .Prerelease }}
+#HSMONLY#    image_templates:
+#HSMONLY#      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+
 archives:
   - formats:
       - tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+#NONHSM#    name_template: >-
+#NONHSM#      {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
+#NONHSM#      {{- if eq .Arch "amd64" }}x86_64
+#NONHSM#      {{- else if eq .Arch "386" }}i386
+#NONHSM#      {{- else }}{{ .Arch }}{{ end }}
+#NONHSM#      {{- if .Arm }}v{{ .Arm }}{{ end }}
+#HSMONLY#    name_template: >-
+#HSMONLY#      {{ .ProjectName }}-hsm_{{ .Version }}_{{- title .Os }}_
+#HSMONLY#      {{- if eq .Arch "amd64" }}x86_64
+#HSMONLY#      {{- else if eq .Arch "386" }}i386
+#HSMONLY#      {{- else }}{{ .Arch }}{{ end }}
+#HSMONLY#      {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
     format_overrides:
       - goos: windows
@@ -806,6 +993,8 @@ sboms:
   - artifacts: archive
   - id: binary
     artifacts: binary
+#HSMONLY#    documents:
+#HSMONLY#      - "{{ .Binary }}-hsm_{{ .Version }}_{{ .Os }}_{{ .Arch }}.sbom.json"
   - id: package
     artifacts: package
 

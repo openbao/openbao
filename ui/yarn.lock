@@ -7020,10 +7020,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/qunit@npm:*, @types/qunit@npm:^2.19.3":
+"@types/qunit@npm:*":
   version: 2.19.3
   resolution: "@types/qunit@npm:2.19.3"
   checksum: bbcea1082a2827f81ddb43f53abf6e6698cb690fa5a1cd59649eee5e9ecf0fe04fae7fb2aaf3015681ac8036f251f4d268819a4935ec5b38832056957ccfb265
+  languageName: node
+  linkType: hard
+
+"@types/qunit@npm:^2.19.12":
+  version: 2.19.12
+  resolution: "@types/qunit@npm:2.19.12"
+  checksum: 00f29247692f3a59977d272474e7d3682d0149cbd4c26abe31025e51763f7cae0918e20545a1dad76c213fe6187473fbb41457c052c358fdde9ec4c002544b3e
   languageName: node
   linkType: hard
 
@@ -22960,16 +22967,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"qunit@npm:^2.19.1":
-  version: 2.19.1
-  resolution: "qunit@npm:2.19.1"
+"qunit@npm:^2.24.1":
+  version: 2.24.1
+  resolution: "qunit@npm:2.24.1"
   dependencies:
     commander: 7.2.0
     node-watch: 0.7.3
     tiny-glob: 0.2.9
   bin:
     qunit: bin/qunit.js
-  checksum: 12ff673549770d2a51c74ee5fae33260610bd98178fae536490063af61d21f50c302033b65a765e43fc65f2ceb8337912bf3b5ecb2e663731b0728ad6ab6e192
+  checksum: 0f12915dd21d1a10e7f8e3ac09f73333f3e09cbda11b2a8f23a01a5fd2ea069da10292aaf0112a05754eaa0801d25906a61ecc6a364c9248abcd0c05d499bc7e
   languageName: node
   linkType: hard
 
@@ -26558,7 +26565,7 @@ __metadata:
     "@types/ember__test": ^4.0.1
     "@types/ember__test-helpers": ^2.8.2
     "@types/ember__utils": ^4.0.2
-    "@types/qunit": ^2.19.3
+    "@types/qunit": ^2.19.12
     "@types/rsvp": ^4.0.4
     "@types/shell-quote": ^1.7.1
     "@typescript-eslint/eslint-plugin": ^5.19.0
@@ -26657,7 +26664,7 @@ __metadata:
     prettier: 2.6.2
     prettier-eslint-cli: ^7.1.0
     pvutils: ^1.0.17
-    qunit: ^2.19.1
+    qunit: ^2.24.1
     qunit-dom: ^2.0.0
     sass: ^1.58.3
     sass-svg-uri: ^2.0.0

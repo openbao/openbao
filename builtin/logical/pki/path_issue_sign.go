@@ -63,6 +63,26 @@ only valid values outside of the empty string.`,
 		},
 	}
 
+	fields["policy_identifiers"] = &framework.FieldSchema{
+		Type:    framework.TypeCommaStringSlice,
+		Default: []string{},
+		Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
+		information, which must include an oid, and may include a notice and/or cps url, using the form 
+		[{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.44947.1.2.4 ","cps"="https://example.com"}].`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "Policy Identifiers",
+		},
+	}
+
+	fields["not_before_duration"] = &framework.FieldSchema{
+		Type:        framework.TypeInt64,
+		Default:     30,
+		Description: `The duration in seconds before now which the certificate needs to be backdated by.`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "Not Before Duration",
+		},
+	}
+
 	return &framework.Path{
 		Pattern: "cel/issue/" + framework.GenericNameRegex("role"),
 

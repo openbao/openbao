@@ -62,17 +62,13 @@ func TestCelRoleIssueWithGenerateLease(t *testing.T) {
 					"expression": `has(request.common_name) && request.common_name == "example2.com"`,
 				},
 				{
+					"name":       "small_ttl",
+					"expression": `has(request.ttl) && duration(request.ttl) < duration("4h")`,
+				},
+				{
 					"name":       "cn_value",
 					"expression": "request.common_name",
 				},
-				// {
-				// 	"name":       "dns_san_value",
-				// 	"expression": `has(request.dns_sans) && request.dns_sans == ["my.example.com"]`,
-				// },
-				// {
-				// 	"name":       "dns_san_missing_value",
-				// 	"expression": `request.dns_sans == ["my.example.com"] ? '' : 'adding my.example.com'`,
-				// },
 			},
 			"expressions": map[string]interface{}{
 				"requestId": "123",
@@ -82,8 +78,8 @@ func TestCelRoleIssueWithGenerateLease(t *testing.T) {
 						"common_name": "cn_value",
 					},
 				},
-				"generateLease": "validate_cn",
-				"noStore":       "validate_cn",
+				"generateLease": "small_ttl",
+				"noStore":       "!small_ttl",
 				"issuer":        "default",
 				"warnings":      "warning",
 				"error":         "error!",
@@ -105,11 +101,14 @@ func TestCelRoleIssueWithGenerateLease(t *testing.T) {
 
 	// Issue a certificate using the CEL role
 	issueData := map[string]interface{}{
-		"format":      "pem",
-		"common_name": "example2.com",
-		"ttl":         "1h",
-		"ip_sans":     "192.168.1.1,10.0.0.1",
-		// "dns_sans":    "my.example.com",
+		"format":              "pem",
+		"common_name":         "example2.com",
+		"ttl":                 "1h",
+		"ip_sans":             "192.168.1.1,10.0.0.1",
+		"key_usage":           "certsign",
+		"ext_key_usage":       "ClientAuth",
+		"policy_identifiers":  "1.3.6.1.4.1.1.1",
+		"not_before_duration": 60,
 	}
 
 	issueReq := &logical.Request{
@@ -153,17 +152,33 @@ func TestCelRoleIssueWithGenerateLease(t *testing.T) {
 	}
 
 	// list certs
-	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+	listResp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      "certs",
 		Storage:   storage,
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad: err: %v resp: %#v", err, resp)
+	if err != nil || (listResp != nil && listResp.IsError()) {
+		t.Fatalf("bad: err: %v listResp: %#v", err, listResp)
 	}
 
 	// check no_store works
-	if len(resp.Data["keys"].([]string)) != 1 {
-		t.Fatalf("Only the CA certificate should be stored: %#v", resp)
+	if len(listResp.Data["keys"].([]string)) != 2 {
+		t.Fatalf("Both the CA and end certificate should be stored: %#v", listResp)
+	}
+
+	// Validate KeyUsage
+	expectedKeyUsage := x509.KeyUsageCertSign
+	if cert.KeyUsage&expectedKeyUsage == 0 {
+		t.Fatalf("Certificate does not have expected KeyUsageCertSign: %v", cert.KeyUsage)
+	}
+
+	// Validate ExtKeyUsage
+	if len(cert.ExtKeyUsage) != 1 {
+		t.Fatalf("expected 1 ExtKeyUsage got %v: %v", len(cert.ExtKeyUsage), cert.ExtKeyUsage)
+	}
+
+	expectedExtKeyUsage := x509.ExtKeyUsageClientAuth
+	if cert.ExtKeyUsage[0] != expectedExtKeyUsage {
+		t.Fatalf("Certificate does not have expected ExtKeyUsageClientAuth: %v", cert.KeyUsage)
 	}
 }

@@ -50,7 +50,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.3.0
-	github.com/hashicorp/cli v1.1.6
+	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-discover v0.0.0-20210818145131-c573d69da192

@@ -317,6 +317,10 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 		return nil, err
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	if generateSigningKey {
 		response := &logical.Response{
 			Data: map[string]interface{}{
@@ -325,10 +329,6 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 		}
 
 		return response, nil
-	}
-
-	if err := logical.EndTxStorage(ctx, req); err != nil {
-		return nil, err
 	}
 
 	return nil, nil

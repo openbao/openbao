@@ -80,7 +80,6 @@ module.exports = function (defaults) {
 
   app.import('vendor/string-includes.js');
   app.import('node_modules/string.prototype.endswith/endswith.js');
-  app.import('node_modules/string.prototype.startswith/startswith.js');
 
   app.import('node_modules/jsonlint/lib/jsonlint.js');
   app.import('node_modules/codemirror/addon/lint/lint.css');

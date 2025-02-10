@@ -15009,17 +15009,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-resolver@npm:^8.0.3":
-  version: 8.0.3
-  resolution: "ember-resolver@npm:8.0.3"
+"ember-resolver@npm:^13.1.0":
+  version: 13.1.0
+  resolution: "ember-resolver@npm:13.1.0"
   dependencies:
-    babel-plugin-debug-macros: ^0.3.4
-    broccoli-funnel: ^3.0.8
-    broccoli-merge-trees: ^4.2.0
-    ember-cli-babel: ^7.26.6
-    ember-cli-version-checker: ^5.1.2
-    resolve: ^1.20.0
-  checksum: 510c48a3318b5b2884bfc4322767dfe66980ffd50f4e44e90d4228e91bd34a04876367c78dc987857d645eec6252e86c91e1050237c112ed27a3a4914e452fd2
+    ember-cli-babel: ^7.26.11
+  peerDependencies:
+    ember-source: ^4.12.0 || >= 5.0.0
+  peerDependenciesMeta:
+    ember-source:
+      optional: true
+  checksum: 050e0b7911924c76572cbd8e27ab2f6459de37b8bce86b1498547b330bf30bcdaed8d2575e32da4900e09f4fe4f5cc556dc23d49e7cbddac0455b6763dd3d3ee
   languageName: node
   linkType: hard
 
@@ -26627,7 +26627,7 @@ __metadata:
     ember-power-select: 6.0.1
     ember-qrcode-shim: ^0.4.0
     ember-qunit: 6.0.0
-    ember-resolver: ^8.0.3
+    ember-resolver: ^13.1.0
     ember-responsive: 5.0.0
     ember-router-helpers: ^0.4.0
     ember-service-worker: "meirish/ember-service-worker#configurable-scope"

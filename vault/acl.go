@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -92,17 +93,17 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		switch policy.Type {
 		case PolicyTypeACL:
 		default:
-			return nil, fmt.Errorf("unable to parse policy (wrong type)")
+			return nil, errors.New("unable to parse policy (wrong type)")
 		}
 
 		// Check if this is root
 		if policy.Name == "root" {
 			if ns.ID != namespace.RootNamespaceID {
-				return nil, fmt.Errorf("root policy is only allowed in root namespace")
+				return nil, errors.New("root policy is only allowed in root namespace")
 			}
 
 			if len(policies) != 1 {
-				return nil, fmt.Errorf("other policies present along with root")
+				return nil, errors.New("other policies present along with root")
 			}
 			a.root = true
 		}
@@ -302,6 +303,9 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 	if capabilities&PatchCapabilityInt > 0 {
 		pathCapabilities = append(pathCapabilities, PatchCapability)
 	}
+	if capabilities&ScanCapabilityInt > 0 {
+		pathCapabilities = append(pathCapabilities, ScanCapability)
+	}
 
 	// If "deny" is explicitly set or if the path has no capabilities at all,
 	// set the path capabilities to "deny"
@@ -427,6 +431,9 @@ CHECK:
 	case logical.PatchOperation:
 		operationAllowed = capabilities&PatchCapabilityInt > 0
 		grantingPolicies = permissions.GrantingPoliciesMap[PatchCapabilityInt]
+	case logical.ScanOperation:
+		operationAllowed = capabilities&ScanCapabilityInt > 0
+		grantingPolicies = permissions.GrantingPoliciesMap[ScanCapabilityInt]
 
 	// These three re-use UpdateCapabilityInt since that's the most appropriate
 	// capability/operation mapping

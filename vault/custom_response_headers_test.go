@@ -83,20 +83,20 @@ func TestConfigCustomHeaders(t *testing.T) {
 
 	listenerCustomHeaders := NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if listenerCustomHeaders == nil || len(listenerCustomHeaders) != 1 {
-		t.Fatalf("failed to get custom header configuration")
+		t.Fatal("failed to get custom header configuration")
 	}
 
 	lch := listenerCustomHeaders[0]
 
 	if lch.ExistCustomResponseHeader("X-Vault-Ignored-307") {
-		t.Fatalf("header name with X-Vault prefix is not valid")
+		t.Fatal("header name with X-Vault prefix is not valid")
 	}
 	if lch.ExistCustomResponseHeader("X-Vault-Ignored-3xx") {
-		t.Fatalf("header name with X-Vault prefix is not valid")
+		t.Fatal("header name with X-Vault prefix is not valid")
 	}
 
 	if !lch.ExistCustomResponseHeader("X-Custom-Header") {
-		t.Fatalf("header name with X-Vault prefix is not valid")
+		t.Fatal("header name with X-Vault prefix is not valid")
 	}
 }
 
@@ -124,16 +124,16 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	}
 	uiHeaders, err := b.(*SystemBackend).Core.uiConfig.Headers(context.Background())
 	if err != nil {
-		t.Fatalf("failed to get headers from ui config")
+		t.Fatal("failed to get headers from ui config")
 	}
 	customListenerHeader := NewListenerCustomHeader(rawListenerConfig, logger, uiHeaders)
 	if customListenerHeader == nil {
-		t.Fatalf("custom header config should be configured")
+		t.Fatal("custom header config should be configured")
 	}
 	b.(*SystemBackend).Core.customListenerHeader.Store(customListenerHeader)
 	clh := b.(*SystemBackend).Core.customListenerHeader
 	if clh == nil {
-		t.Fatalf("custom header config should be configured in core")
+		t.Fatal("custom header config should be configured in core")
 	}
 
 	w := httptest.NewRecorder()
@@ -156,7 +156,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 	)
 
 	if !strings.Contains(resp.Data["error"].(string), fmt.Sprintf("This header already exists in the server configuration and cannot be set in the UI.")) {
-		t.Fatalf("failed to get the expected error")
+		t.Fatal("failed to get the expected error")
 	}
 
 	// setting a header that already exist in custom headers
@@ -180,7 +180,7 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if h.Get("Someheader-400") == "400" {
-		t.Fatalf("should not be able to set a header that is in custom response headers")
+		t.Fatal("should not be able to set a header that is in custom response headers")
 	}
 
 	// setting an ui specific header
@@ -204,6 +204,6 @@ func TestCustomResponseHeadersConfigInteractUiConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	if h.Get("X-CustomUiHeader") != "Ui header value" {
-		t.Fatalf("failed to set a header that is not in custom response headers")
+		t.Fatal("failed to set a header that is not in custom response headers")
 	}
 }

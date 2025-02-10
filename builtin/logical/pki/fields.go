@@ -459,6 +459,11 @@ and expired certificates, removing them both from the CRL and from storage. The
 CRL will be rotated if this causes any values to be removed.`,
 	}
 
+	fields["tidy_invalid_certs"] = &framework.FieldSchema{
+		Type:        framework.TypeBool,
+		Description: `Set to true to delete all invalid certs from storage.`,
+	}
+
 	fields["tidy_revoked_cert_issuer_associations"] = &framework.FieldSchema{
 		Type: framework.TypeBool,
 		Description: `Set to true to validate issuer associations
@@ -511,9 +516,18 @@ deactivated ACME account is deleted.`,
 		Type: framework.TypeDurationSecond,
 		Description: `The amount of extra time that must have passed
 beyond certificate expiration before it is removed
-from the backend storage and/or revocation list.
+from the backend storage.
 Defaults to 72 hours.`,
 		Default: int(defaultTidyConfig.SafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
+	}
+
+	fields["revoked_safety_buffer"] = &framework.FieldSchema{
+		Type: framework.TypeDurationSecond,
+		Description: `The amount of extra time that must have passed
+beyond certificate revocation before it is removed
+from the revocation list.
+Defaults to safety_buffer (which defaults to 72 hours).`,
+		Default: nil,
 	}
 
 	fields["issuer_safety_buffer"] = &framework.FieldSchema{
@@ -531,6 +545,16 @@ Defaults to 8760 hours (1 year).`,
 that an account with no orders is marked revoked, and the amount of time
 after being marked revoked or deactivated.`,
 		Default: int(defaultTidyConfig.AcmeAccountSafetyBuffer / time.Second), // TypeDurationSecond currently requires defaults to be int
+	}
+
+	fields["page_size"] = &framework.FieldSchema{
+		Type: framework.TypeInt,
+		Description: `The number of certificates to process per page during list 
+pagination. This setting enables tidy to handle certificates in smaller increments,
+rather than loading the entire set into memory at once. 
+Defaults to 1000 certificates, with a minimum of 5 certificates per page. To 
+revert to the old behavior, set page size to any value less than zero.`,
+		Default: int(defaultTidyConfig.PageSize),
 	}
 
 	fields["pause_duration"] = &framework.FieldSchema{

@@ -33,7 +33,7 @@ var (
 
 	additionalRoutes = func(mux *http.ServeMux, core *vault.Core) {}
 
-	nonVotersAllowed = false
+	nonVotersAllowed = true
 
 	adjustResponse = func(core *vault.Core, w http.ResponseWriter, req *logical.Request) {}
 )

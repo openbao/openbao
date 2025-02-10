@@ -329,7 +329,7 @@ func (i *IdentityStore) handleEntityUpdateCommon() framework.OperationFunc {
 		// Get the name
 		entityName := d.Get("name").(string)
 		if entityName != "" {
-			entityByName, err := i.MemDBEntityByName(ctx, entityName, false)
+			entityByName, err := i.MemDBEntityByName(ctx, entityName, true)
 			if err != nil {
 				return nil, err
 			}
@@ -916,7 +916,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 					// If it doesn't, check if it clashes with the toEntities
 					if toAlias.MountAccessor == fromAlias.MountAccessor {
 						if aliasClashError == nil {
-							aliasClashError = multierror.Append(aliasClashError, fmt.Errorf("toEntity and at least one fromEntity have aliases with the same mount accessor, repeat the merge request specifying exactly one fromEntity, clashes: "))
+							aliasClashError = multierror.Append(aliasClashError, errors.New("toEntity and at least one fromEntity have aliases with the same mount accessor, repeat the merge request specifying exactly one fromEntity, clashes: "))
 						}
 						aliasClashError = multierror.Append(aliasClashError,
 							fmt.Errorf("mountAccessor: %s, toEntity ID: %s, fromEntity ID: %s, conflicting toEntity alias ID: %s, conflicting fromEntity alias ID: %s",

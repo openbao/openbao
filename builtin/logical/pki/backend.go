@@ -182,6 +182,7 @@ func Backend(conf *logical.BackendConfig) *backend {
 			pathFetchValidRaw(&b),
 			pathFetchValid(&b),
 			pathFetchListCerts(&b),
+			pathFetchListCertsDetailed(&b),
 
 			// OCSP APIs
 			buildPathOcspGet(&b),

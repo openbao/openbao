@@ -1,3 +1,4 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
@@ -5,6 +6,7 @@ package vault
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/hashicorp/go-uuid"
 	"github.com/mitchellh/mapstructure"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/helper/namespace"
@@ -21,7 +22,16 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"golang.org/x/crypto/hkdf"
 )
+
+// Previously server_id was of unbounded size (capped by max_request_size);
+// because this value is persisted to disk, transited over the network, and
+// used in maps, it makes sense to have _some_ reasonable limit to this, so
+// that a moderate size cluster does not need have megabytes of memory
+// devoted to identifiers. Cap this at 2^14 which should exceed most
+// reasonable values.
+const maxServerIDLength = 1 << 14
 
 // raftStoragePaths returns paths for use when raft is the storage mechanism.
 func (b *SystemBackend) raftStoragePaths() []*framework.Path {
@@ -236,26 +246,49 @@ func (b *SystemBackend) handleRaftRemovePeerUpdate() framework.OperationFunc {
 	}
 }
 
+func (b *SystemBackend) getRaftBootstrapChallengeAnswer(serverID string) []byte {
+	// We take our local key and the given serverID and perform an HKDF
+	// invocation on it. This output is then encrypted using the root key
+	// (which protects our barrier keyring) and the remote peer can
+	// "prove" they're allowed to join by unsealing the challenge answer
+	// and providing it back to us. We assume inverting HKDF is hard (it
+	// is at least as hard as inverting an HMAC) and it is hard for an
+	// attacker to find (serverID, answer) such that:
+	//
+	//     HKDF(challengeKey, serverID) == answer
+	//
+	// The benefit of this is that we only need constant memory (a single
+	// root challenge key) and HKDF is fast and arbitrarily extensible.
+
+	kdf := hkdf.New(sha256.New, b.Core.pendingRaftPeerChallengeKey, []byte("openbao-raft-peer-challenge"), []byte(serverID))
+
+	// hkdf cannot fail on this short of output. While this value was
+	// previously 16 bytes, the root key is 32 bytes so 24 bytes provides
+	// increased safety while still retaining domain safety from the root
+	// key. For SHA-256, the maximum HKDF output is 255*32=8160 bytes.
+	//
+	// See e.g., https://cs.opensource.google/go/go/+/refs/tags/go1.23.3:src/crypto/tls/key_schedule.go;l=66
+	// for examples where this panic pattern is also used.
+	var answer [24]byte
+	n, err := kdf.Read(answer[:])
+	if err != nil || n != 24 {
+		panic(fmt.Sprintf("hkdf failed on 24 bytes of output: %v", err))
+	}
+
+	return answer[:]
+}
+
 func (b *SystemBackend) handleRaftBootstrapChallengeWrite() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 		serverID := d.Get("server_id").(string)
 		if len(serverID) == 0 {
 			return logical.ErrorResponse("no server id provided"), logical.ErrInvalidRequest
 		}
-
-		var answer []byte
-		answerRaw, ok := b.Core.pendingRaftPeers.Load(serverID)
-		if !ok {
-			var err error
-			answer, err = uuid.GenerateRandomBytes(16)
-			if err != nil {
-				return nil, err
-			}
-			b.Core.pendingRaftPeers.Store(serverID, answer)
-		} else {
-			answer = answerRaw.([]byte)
+		if len(serverID) > maxServerIDLength {
+			return logical.ErrorResponse("server id exceeds max length"), logical.ErrInvalidRequest
 		}
 
+		answer := b.getRaftBootstrapChallengeAnswer(serverID)
 		sealAccess := b.Core.seal.GetAccess()
 
 		eBlob, err := sealAccess.Encrypt(ctx, answer, nil)
@@ -292,6 +325,9 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 		if len(serverID) == 0 {
 			return logical.ErrorResponse("no server_id provided"), logical.ErrInvalidRequest
 		}
+		if len(serverID) > 16384 {
+			return logical.ErrorResponse("server id exceeds max length"), logical.ErrInvalidRequest
+		}
 		answerRaw := d.Get("answer").(string)
 		if len(answerRaw) == 0 {
 			return logical.ErrorResponse("no answer provided"), logical.ErrInvalidRequest
@@ -308,14 +344,8 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 			return logical.ErrorResponse("could not base64 decode answer"), logical.ErrInvalidRequest
 		}
 
-		expectedAnswerRaw, ok := b.Core.pendingRaftPeers.Load(serverID)
-		if !ok {
-			return logical.ErrorResponse("no expected answer for the server id provided"), logical.ErrInvalidRequest
-		}
-
-		b.Core.pendingRaftPeers.Delete(serverID)
-
-		if subtle.ConstantTimeCompare(answer, expectedAnswerRaw.([]byte)) == 0 {
+		expectedAnswer := b.getRaftBootstrapChallengeAnswer(serverID)
+		if subtle.ConstantTimeCompare(answer, expectedAnswer) == 0 {
 			return logical.ErrorResponse("invalid answer given"), logical.ErrInvalidRequest
 		}
 
@@ -346,9 +376,9 @@ func (b *SystemBackend) handleRaftBootstrapAnswerWrite() framework.OperationFunc
 
 		switch nonVoter {
 		case true:
-			err = errors.New("adding non voting peer is not allowed")
+			err = raftBackend.AddPeer(ctx, serverID, clusterAddr, false)
 		default:
-			err = raftBackend.AddPeer(ctx, serverID, clusterAddr)
+			err = raftBackend.AddPeer(ctx, serverID, clusterAddr, true)
 		}
 		if err != nil {
 			if added {

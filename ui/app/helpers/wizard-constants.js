@@ -6,7 +6,6 @@
 import TutorialMachineConfig from 'vault/machines/tutorial-machine';
 import SecretsMachineConfig from 'vault/machines/secrets-machine';
 import PoliciesMachineConfig from 'vault/machines/policies-machine';
-import ReplicationMachineConfig from 'vault/machines/replication-machine';
 import ToolsMachineConfig from 'vault/machines/tools-machine';
 import AuthMachineConfig from 'vault/machines/auth-machine';
 
@@ -25,7 +24,6 @@ export const MACHINES = {
   tutorial: TutorialMachineConfig,
   secrets: SecretsMachineConfig,
   policies: PoliciesMachineConfig,
-  replication: ReplicationMachineConfig,
   tools: ToolsMachineConfig,
   authentication: AuthMachineConfig,
 };
@@ -56,7 +54,6 @@ export const FEATURE_MACHINE_STEPS = {
     provider: 8,
   },
   policies: 5,
-  replication: 2,
   tools: 8,
   authentication: 4,
 };
@@ -66,7 +63,6 @@ export const INIT_STEPS = ['setup', 'save', 'unseal', 'login'];
 export const FEATURE_MACHINE_TIME = {
   secrets: 7,
   policies: 5,
-  replication: 5,
   tools: 8,
   authentication: 5,
 };

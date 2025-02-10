@@ -12,18 +12,6 @@ export default class VersionService extends Service {
   @tracked features = [];
   @tracked version = null;
 
-  get hasPerfReplication() {
-    return this.features.includes('Performance Replication');
-  }
-
-  get hasDRReplication() {
-    return this.features.includes('DR Replication');
-  }
-
-  get hasSentinel() {
-    return this.features.includes('Sentinel');
-  }
-
   get hasNamespaces() {
     return this.features.includes('Namespaces');
   }

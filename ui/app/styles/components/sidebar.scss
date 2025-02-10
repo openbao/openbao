@@ -25,28 +25,10 @@
   }
 }
 
-.link-status {
-  height: 40px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: $size-7;
-  font-weight: $font-weight-semibold;
+.sidebar-button {
+  border-color: var(--token-side-nav-color-surface-primary);
+}
 
-  &.connected {
-    background-color: var(--token-color-surface-action);
-    color: var(--token-color-foreground-action-active);
-
-    a {
-      color: var(--token-color-foreground-action-active);
-    }
-  }
-  &.warning {
-    background-color: var(--token-color-surface-warning);
-    color: var(--token-color-palette-amber-300);
-
-    a {
-      color: var(--token-color-palette-amber-300);
-    }
-  }
+.hds-side-nav--is-mobile .hds-side-nav__menu-toggle-button {
+  background-color: var(--token-side-nav-color-surface-interactive-active);
 }

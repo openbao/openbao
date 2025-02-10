@@ -56,8 +56,10 @@ Any batch output will preserve the order of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathRewrapWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathRewrapWrite,
+			},
 		},
 
 		HelpSynopsis:    pathRewrapHelpSyn,

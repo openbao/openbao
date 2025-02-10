@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"sync"
@@ -62,7 +63,7 @@ func (c *mySQLConnectionProducer) Init(ctx context.Context, conf map[string]inte
 	}
 
 	if len(c.ConnectionURL) == 0 {
-		return nil, fmt.Errorf("connection_url cannot be empty")
+		return nil, errors.New("connection_url cannot be empty")
 	}
 
 	// Don't escape special characters for MySQL password
@@ -192,7 +193,7 @@ func (c *mySQLConnectionProducer) getTLSAuth() (tlsConfig *tls.Config, err error
 	if len(c.TLSCAData) > 0 {
 		ok := rootCertPool.AppendCertsFromPEM(c.TLSCAData)
 		if !ok {
-			return nil, fmt.Errorf("failed to append CA to client options")
+			return nil, errors.New("failed to append CA to client options")
 		}
 	}
 

@@ -191,7 +191,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 
 	// Create a token with the above created entity set on it
@@ -245,7 +245,7 @@ func TestIdentityStore_EntityIDPassthrough(t *testing.T) {
 
 	// Expected entity ID to be in the response
 	if resp.Data["entity_id"] != entity.ID {
-		t.Fatalf("expected entity ID to be passed through to the backend")
+		t.Fatal("expected entity ID to be passed through to the backend")
 	}
 }
 
@@ -267,7 +267,7 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 
 	if len(entity.Aliases) != 1 {
@@ -283,7 +283,7 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 
 	if len(entity.Aliases) != 1 {
@@ -318,7 +318,7 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 
 	if len(entity.Aliases) != 2 {
@@ -344,7 +344,7 @@ func TestIdentityStore_CreateOrFetchEntity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 
 	if len(entity.Aliases) != 2 {
@@ -386,11 +386,11 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	}
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("entity id not present in response")
+		t.Fatal("entity id not present in response")
 	}
 	entityID := idRaw.(string)
 	if entityID == "" {
-		t.Fatalf("invalid entity id")
+		t.Fatal("invalid entity id")
 	}
 
 	aliasData := map[string]interface{}{
@@ -409,7 +409,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	entity, err := is.entityByAliasFactors(ghAccessor, "alias_name", false)
@@ -417,7 +417,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal(err)
 	}
 	if entity == nil {
-		t.Fatalf("expected a non-nil entity")
+		t.Fatal("expected a non-nil entity")
 	}
 	if entity.ID != entityID {
 		t.Fatalf("bad: entity ID; expected: %q actual: %q", entityID, entity.ID)
@@ -451,11 +451,11 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("entity id not present in response")
+		t.Fatal("entity id not present in response")
 	}
 	entityID := idRaw.(string)
 	if entityID == "" {
-		t.Fatalf("invalid entity id")
+		t.Fatal("invalid entity id")
 	}
 
 	// Create a token which has EntityID set and has update permissions to
@@ -486,7 +486,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 	}
 
 	if resp.WrapInfo == nil {
-		t.Fatalf("expected a non-nil WrapInfo")
+		t.Fatal("expected a non-nil WrapInfo")
 	}
 
 	if resp.WrapInfo.WrappedEntityID != entityID {
@@ -532,7 +532,7 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 	}
 
 	if resp.Auth.EntityID != "" {
-		t.Fatalf("expected entity ID to be not set")
+		t.Fatal("expected entity ID to be not set")
 	}
 }
 
@@ -892,7 +892,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	if storageEntry == nil {
-		t.Fatalf("bad: expected a non-nil entry for casesensitivity key")
+		t.Fatal("bad: expected a non-nil entry for casesensitivity key")
 	}
 
 	// Seal and unseal to trigger identityStore initialize
@@ -918,6 +918,6 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	if storageEntry != nil {
-		t.Fatalf("bad: expected no entry for casesensitivity key")
+		t.Fatal("bad: expected no entry for casesensitivity key")
 	}
 }

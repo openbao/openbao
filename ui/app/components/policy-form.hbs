@@ -73,13 +73,7 @@
       More information about
       {{uppercase @model.policyType}}
       policies can be found
-      <DocLink
-        @path={{if
-          (eq @model.policyType "acl")
-          "/vault/docs/concepts/policies#capabilities"
-          "/vault/tutorials/policies/sentinel#role-governing-policies-rgps"
-        }}
-      >
+      <DocLink @path={{"/docs/concepts/policies#capabilities"}}>
         here.
       </DocLink>
     </p>

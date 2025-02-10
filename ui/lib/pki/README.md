@@ -6,7 +6,7 @@ Welcome to the OpenBao PKI (Ember) Engine! Below is an overview of PKI and resou
 
 > Public Key Infrastructure (PKI) is a system of processes, technologies, and policies that allows you to encrypt and sign data. (source: [digicert.com](https://www.digicert.com/what-is-pki))
 
-The [OpenBao PKI Secrets Engine](https://developer.hashicorp.com/vault/api-docs/secret/pki) allows security engineers to [create a chain of PKI certificates](https://developer.hashicorp.com/vault/tutorials/secrets-management/pki-engine) much easier than they would with traditional workflows.
+The [OpenBao PKI Secrets Engine](https://openbao.org/api-docs/secret/pki) allows security engineers to create a chain of PKI certificates much easier than they would with traditional workflows.
 
 ## About the UI engine
 
@@ -21,10 +21,10 @@ If you couldn't tell from the documentation above, PKI is _complex_. As such, th
 
   The `pki/action`[adapter](../../app/adapters/pki/action.js) is used to map the desired action to the corresponding endpoint, and the `pki/action` [serializer](../../app/serializers/pki/action.js) includes logic to send the relevant attributes. The following PKI workflows use this model:
 
-  - [Root generation and rotation](https://developer.hashicorp.com/vault/api-docs/secret/pki#generate-root)
-  - [Import CA cert and keys](https://developer.hashicorp.com/vault/api-docs/secret/pki#import-ca-certificates-and-keys)
-  - [Generate intermediate CSR](https://developer.hashicorp.com/vault/api-docs/secret/pki#generate-intermediate-csr)
-  - [Sign intermediate](https://developer.hashicorp.com/vault/api-docs/secret/pki#sign-intermediate)
+  - [Root generation and rotation](https://openbao.org/api-docs/secret/pki#generate-root)
+  - [Import CA cert and keys](https://openbao.org/api-docs/secret/pki#import-ca-certificates-and-keys)
+  - [Generate intermediate CSR](https://openbao.org/api-docs/secret/pki#generate-intermediate-csr)
+  - [Sign intermediate](https://openbao.org/api-docs/secret/pki#sign-intermediate)
 
 - ### [pki/certificate/base](../../app/models/pki/certificate/base.js)
 
@@ -34,7 +34,7 @@ If you couldn't tell from the documentation above, PKI is _complex_. As such, th
 
 - ### [pki/tidy](../../app/models/pki/tidy.js)
 
-  This model is used to manage [tidy](https://developer.hashicorp.com/vault/api-docs/secret/pki#tidy) operations in a few different contexts. All of the following endpoints share the same parameters _except_ `enabled` and `interval_duration` which are reserved for auto-tidy operations only.
+  This model is used to manage [tidy](https://openbao.org/api-docs/secret/pki#tidy) operations in a few different contexts. All of the following endpoints share the same parameters _except_ `enabled` and `interval_duration` which are reserved for auto-tidy operations only.
 
   > _`pki/tidy-status` does not use an Ember data model because it is read-only_
 
@@ -48,22 +48,22 @@ If you couldn't tell from the documentation above, PKI is _complex_. As such, th
 
 - ### [pki/issuer](../../app/models/pki/issuer.js)
 
-  > _Issuers are created by the `pki/action` model by either [importing a CA](https://developer.hashicorp.com/vault/api-docs/secret/pki#import-ca-certificates-and-keys) or [generating a root](https://developer.hashicorp.com/vault/api-docs/secret/pki#generate-root)_
+  > _Issuers are created by the `pki/action` model by either [importing a CA](https://openbao.org/api-docs/secret/pki#import-ca-certificates-and-keys) or [generating a root](https://openbao.org/api-docs/secret/pki#generate-root)_
 
-  - [update](https://developer.hashicorp.com/vault/api-docs/secret/pki#read-issuer-certificate)
-  - [read](https://developer.hashicorp.com/vault/api-docs/secret/pki#read-issuer-certificate)
-  - [list](https://developer.hashicorp.com/vault/api-docs/secret/pki#list-issuers)
+  - [update](https://openbao.org/api-docs/secret/pki#update-issuer)
+  - [read](https://openbao.org/api-docs/secret/pki#read-issuer-certificate)
+  - [list](https://openbao.org/api-docs/secret/pki#list-issuers)
 
 - ### [pki/role](../../app/models/pki/role.js)
 
-  - [create/update](https://developer.hashicorp.com/vault/api-docs/secret/pki#create-update-role)
-  - [read](https://developer.hashicorp.com/vault/api-docs/secret/pki#read-role)
-  - [list](https://developer.hashicorp.com/vault/api-docs/secret/pki#list-roles)
+  - [create/update](https://openbao.org/api-docs/secret/pki#createupdate-role)
+  - [read](https://openbao.org/api-docs/secret/pki#read-role)
+  - [list](https://openbao.org/api-docs/secret/pki#list-roles)
 
 - ### [pki/key](../../app/models/pki/key.js)
 
   - `CREATE` has two options:
-    - [generate](https://developer.hashicorp.com/vault/api-docs/secret/pki#import-ca-certificates-and-keys)
-    - [import](https://developer.hashicorp.com/vault/api-docs/secret/pki#import-key)
-  - [read](https://developer.hashicorp.com/vault/api-docs/secret/pki#read-key)
-  - [list](https://developer.hashicorp.com/vault/api-docs/secret/pki#list-keys)
+    - [generate](https://openbao.org/api-docs/secret/pki#import-ca-certificates-and-keys)
+    - [import](https://openbao.org/api-docs/secret/pki#import-key)
+  - [read](https://openbao.org/api-docs/secret/pki#read-key)
+  - [list](https://openbao.org/api-docs/secret/pki#list-keys)

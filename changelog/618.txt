@@ -1,0 +1,3 @@
+```release-note:improvement
+auth/jwt: Allow templating ACL policies from data in claims on JWT or OIDC ID tokens.
+```

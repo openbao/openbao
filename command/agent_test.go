@@ -392,7 +392,7 @@ listener "tcp" {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// defer agent shutdown
@@ -426,7 +426,7 @@ listener "tcp" {
 	req = agentClient.NewRequest("GET", "/v1/sys/health")
 	resp, err := agentClient.RawRequest(req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 	if resp.StatusCode != http.StatusPreconditionFailed {
 		t.Fatalf("expected status code %d, not %d", http.StatusPreconditionFailed, resp.StatusCode)
@@ -441,7 +441,7 @@ listener "tcp" {
 	req = agentClient.NewRequest("GET", "/v1/sys/health")
 	resp, err = agentClient.RawRequest(req)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 	if resp.StatusCode != http.StatusPreconditionFailed {
 		t.Fatalf("expected status code %d, not %d", http.StatusPreconditionFailed, resp.StatusCode)
@@ -608,7 +608,7 @@ auto_auth {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// We need to shut down the Agent command
@@ -814,7 +814,7 @@ auto_auth {
 			select {
 			case <-cmd.startedCh:
 			case <-time.After(5 * time.Second):
-				t.Errorf("timeout")
+				t.Error("timeout")
 			}
 
 			// if using exit_after_auth, then the command will have returned at the
@@ -1092,7 +1092,7 @@ auto_auth {
 			select {
 			case <-cmd.startedCh:
 			case <-time.After(5 * time.Second):
-				t.Errorf("timeout")
+				t.Error("timeout")
 			}
 
 			defer func() {
@@ -1270,7 +1270,7 @@ exit_after_auth = true
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	wg.Wait()
@@ -1593,7 +1593,7 @@ template_config {
 			select {
 			case <-cmd.startedCh:
 			case <-time.After(5 * time.Second):
-				t.Errorf("timeout")
+				t.Error("timeout")
 			}
 
 			verify := func() error {
@@ -1822,7 +1822,7 @@ api_proxy {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// Validate that the auto-auth token has been correctly attained
@@ -1913,7 +1913,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
@@ -2005,7 +2005,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
@@ -2081,7 +2081,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	agentClient, err := api.NewClient(api.DefaultConfig())
@@ -2127,7 +2127,7 @@ vault {
 	token2 := secret.Auth.ClientToken
 
 	if token != token2 {
-		t.Fatalf("token create response not cached when it should have been, as tokens differ")
+		t.Fatal("token create response not cached when it should have been, as tokens differ")
 	}
 
 	close(cmd.ShutdownCh)
@@ -2253,7 +2253,7 @@ vault {
 			select {
 			case <-cmd.startedCh:
 			case <-time.After(5 * time.Second):
-				t.Errorf("timeout")
+				t.Error("timeout")
 			}
 
 			client, err := api.NewClient(api.DefaultConfig())
@@ -2578,7 +2578,7 @@ vault {
 				}
 			case code == 0 && err == nil && !tc.expectError:
 				if exitedEarly {
-					t.Fatalf("did not expect program to exit before verify completes")
+					t.Fatal("did not expect program to exit before verify completes")
 				}
 			default:
 				if code != 0 {
@@ -2643,7 +2643,7 @@ listener "tcp" {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// defer agent shutdown
@@ -2750,7 +2750,7 @@ cache {}
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 	client, err := api.NewClient(api.DefaultConfig())
 	if err != nil {
@@ -2766,7 +2766,7 @@ cache {}
 	// First try on listener 1 where the API should be disabled.
 	resp, err := client.RawRequest(client.NewRequest(http.MethodPost, "/agent/v1/quit"))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 	if resp != nil && resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected %d but got: %d", http.StatusNotFound, resp.StatusCode)
@@ -2786,7 +2786,7 @@ cache {}
 	select {
 	case <-cmd.ShutdownCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	wg.Wait()
@@ -2979,7 +2979,7 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("foo.example.com"); err != nil {
@@ -3010,7 +3010,7 @@ func TestAgent_Config_ReloadTls(t *testing.T) {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	if err := testCertificateName("bar.example.com"); err != nil {
@@ -3081,7 +3081,7 @@ vault {
 	select {
 	case <-cmd.startedCh:
 	case <-time.After(5 * time.Second):
-		t.Errorf("timeout")
+		t.Error("timeout")
 	}
 
 	// Reload
@@ -3089,7 +3089,7 @@ vault {
 	select {
 	case <-cmd.reloadedCh:
 	case <-time.After(5 * time.Second):
-		t.Fatalf("timeout")
+		t.Fatal("timeout")
 	}
 
 	close(cmd.ShutdownCh)

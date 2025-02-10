@@ -8,11 +8,13 @@ The `/sys/policy` endpoint is used to manage ACL policies in OpenBao.
 
 ## List policies
 
-This endpoint lists all configured policies.
+This endpoint lists all configured policies. This endpoint optionally takes a
+prefix to list policies under.
 
-| Method | Path          |
-| :----- | :------------ |
-| `GET`  | `/sys/policy` |
+| Method  | Path                  |
+| :------ | :-------------------- |
+| `GET`   | `/sys/policy`         |
+| `LIST`  | `/sys/policy/:prefix` |
 
 ### Sample request
 

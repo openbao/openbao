@@ -21,8 +21,10 @@ func pathSign(b *backend) *framework.Path {
 			OperationSuffix: "certificate",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathSign,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathSign,
+			},
 		},
 
 		Fields: map[string]*framework.FieldSchema{

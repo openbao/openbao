@@ -23,7 +23,7 @@ The user lockout feature is enabled by default. The default values for "lockout 
 The user lockout feature can be disabled as follows:
 - It can be disabled globally using environment variable `VAULT_DISABLE_USER_LOCKOUT`.
 - It can be disabled for all supported auth methods (ldap, userpass and approle) or a specific supported auth method using the `disable_lockout`
-  parameter within `user_lockout` stanza in configuration file.
+  parameter within the `user_lockout` stanza in the configuration file.
   Please see [user lockout configuration](/docs/configuration/user-lockout#user_lockout-stanza) for more details.
 - It can be disabled for a specific auth mount using "auth tune". Please see [auth tune command](/docs/commands/auth/tune)
   or [auth tune api](/api-docs/system/auth#tune-auth-method) for more details.
@@ -49,7 +49,7 @@ Configuration for "all" auth methods in config file >> Default values.
 
 ## Configuration
 
-User lockout parameters can be configured using config file for "all" auth methods or a specific auth method (userpass, ldap, or approle).
+User lockout parameters can be configured using the config file for "all" auth methods or a specific auth method (userpass, ldap, or approle).
 Please see [user lockout configuration](/docs/configuration/user-lockout#user_lockout-stanza) for more details. 
 
 The user lockout configuration for the auth method at a given path can be tuned using auth tune. Please see [auth tune command](/docs/commands/auth/tune)

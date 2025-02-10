@@ -578,6 +578,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"scan": func() (cli.Command, error) {
+			return &ScanCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"secrets": func() (cli.Command, error) {
 			return &SecretsCommand{
 				BaseCommand: getBaseCommand(),
@@ -775,6 +780,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 		},
 		"kv metadata delete": func() (cli.Command, error) {
 			return &KVMetadataDeleteCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
+		"kv scan": func() (cli.Command, error) {
+			return &KVScanCommand{
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},

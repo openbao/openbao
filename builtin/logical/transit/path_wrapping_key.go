@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -24,8 +25,10 @@ func (b *backend) pathWrappingKey() *framework.Path {
 			OperationPrefix: operationPrefixTransit,
 			OperationSuffix: "wrapping-key",
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathWrappingKeyRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathWrappingKeyRead,
+			},
 		},
 		HelpSynopsis:    pathWrappingKeyHelpSyn,
 		HelpDescription: pathWrappingKeyHelpDesc,
@@ -49,7 +52,7 @@ func (b *backend) pathWrappingKeyRead(ctx context.Context, req *logical.Request,
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)
 	if pemBytes == nil || len(pemBytes) == 0 {
-		return nil, fmt.Errorf("failed to PEM-encode RSA public key")
+		return nil, errors.New("failed to PEM-encode RSA public key")
 	}
 
 	publicKeyString := string(pemBytes)
@@ -80,7 +83,7 @@ func (b *backend) getWrappingKey(ctx context.Context, storage logical.Storage) (
 		return nil, err
 	}
 	if p == nil {
-		return nil, fmt.Errorf("error retrieving wrapping key: returned policy was nil")
+		return nil, errors.New("error retrieving wrapping key: returned policy was nil")
 	}
 	if b.System().CachingDisabled() {
 		p.Unlock()

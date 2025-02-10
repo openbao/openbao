@@ -1,0 +1,3 @@
+```release-note:improvement
+secret/pki: Delete invalid certificates during tidy via `tidy_invalid_certs=true` if they cannot be parsed due to Go's x509 handling.
+```

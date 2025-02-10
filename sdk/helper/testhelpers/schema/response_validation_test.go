@@ -349,7 +349,7 @@ func TestValidateResponse(t *testing.T) {
 				tc.strict,
 			)
 			if err == nil && tc.errorExpected == true {
-				t.Fatalf("expected an error, got nil")
+				t.Fatal("expected an error, got nil")
 			}
 			if err != nil && tc.errorExpected == false {
 				t.Fatalf("unexpected error: %v", err)

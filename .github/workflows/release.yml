@@ -21,6 +21,11 @@ on:
         required: false
         default: true
         type: boolean
+      nightly:
+        description: "Mark as nightly build"
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -41,19 +46,63 @@ jobs:
           - illumos
           - netbsd
           - openbsd
-          - solaris
           - windows
     steps:
+      - name: Disable release on nightly repository
+        if: ${{ !inputs.nightly }}
+        run: |
+          if [ "$GITHUB_REPOSITORY" == "openbao/openbao-nightly" ]; then
+            echo "Refusing to run non-nightly release on nightly repo" 1>&2
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0 # Required by GoRelease
+
+      - name: Disable nightly on primary repository
+        if: inputs.nightly
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          if [ "$GITHUB_REPOSITORY" != "openbao/openbao-nightly" ]; then
+            echo "Refusing to run nightly release on non-nightly repo" 1>&2
+            exit 1
+          fi
+
+          # Locally remove previous nightly tags so they do not interfere
+          # with nightly tag computation. Also add the upstream.
+          git remote add upstream https://github.com/openbao/openbao
+          git fetch --all
+
+          for tag in $(git tag); do
+            if [[ "$tag" == *nightly* ]]; then
+              echo "Deleting $tag"
+              git tag --delete "$tag"
+            fi
+          done
+
+          # Then create a nightly tag for this commit. Because this uses the
+          # time of commit, it is stable across different runners.
+          nightly_tag="$(bash ./scripts/nightly_tag.sh)"
+          git tag "$nightly_tag"
 
       - name: Golang Setup
         uses: ./.github/actions/set-up-go
 
       - name: go-check
         run: go version
+
+      - name: Node setup
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: "./ui/package.json"
+
+      - name: Yarn setup
+        id: install-yarn
+        run: |
+          npm install -g yarn
 
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@v0
@@ -89,7 +138,7 @@ jobs:
           key: ${{ github.ref }}
 
       - name: "Docker Login: ghcr.io"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -97,14 +146,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: "Docker Login: docker.io"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: "Docker Login: quay.io"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: docker/login-action@v3
         with:
           registry: quay.io
@@ -113,7 +162,7 @@ jobs:
 
         # Needed for nPFM
       - name: Create GPG Signing Key File
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         run: |
           GPG_KEY_FILE=/tmp/signing-key.gpg
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -di > "${GPG_KEY_FILE}"
@@ -121,14 +170,29 @@ jobs:
         env:
           GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
+      # Before executing binary builds, build the UI.
+      - name: Install UI dependencies
+        id: ui-dependencies
+        working-directory: ./ui
+        run: |
+          yarn install --frozen-lockfile
+          npm rebuild node-sass
+
+      - name: Build UI
+        id: ui-build
+        run: |
+          make static-dist
+
+      # Execute Go binary builds
       - name: "Template GoRelaser configuration"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         run: |
           sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
+          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
           [ "${{ matrix.release_os }}" == "linux" ] && sed -i "s/^#LINUXONLY#//g" .goreleaser.yaml || true
 
       - name: "GoReleaser: Release"
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -144,6 +208,7 @@ jobs:
           GITHUB_RELEASE_PRERELEASE: ${{ inputs.prerelease }}
           GITHUB_RELEASE_MAKE_LATEST: ${{ inputs.make-latest }}
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
+          NIGHTLY_RELEASE: ${{ inputs.nightly }}
 
       - name: Remove GPG Signing Key File
         if: always()

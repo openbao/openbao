@@ -16,7 +16,7 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
   setupRenderingTest(hooks);
 
   test('it should render nav headings', async function (assert) {
-    const headings = ['Authentication', 'Access Control', 'Organization', 'Administration'];
+    const headings = ['Authentication', 'Organization', 'Administration'];
 
     stubFeaturesAndPermissions(this.owner);
     await renderComponent();
@@ -47,8 +47,6 @@ module('Integration | Component | sidebar-nav-access', function (hooks) {
       'Authentication methods',
       'Multi-factor authentication',
       'OIDC provider',
-      'Control Groups',
-      'Namespaces',
       'Groups',
       'Entities',
       'Leases',

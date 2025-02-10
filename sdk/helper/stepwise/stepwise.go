@@ -28,6 +28,7 @@ const (
 	ReadOperation             = "read"
 	DeleteOperation           = "delete"
 	ListOperation             = "list"
+	ScanOperation             = "scan"
 	HelpOperation             = "help"
 )
 

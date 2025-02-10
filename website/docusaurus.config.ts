@@ -6,7 +6,7 @@ import path from "path";
 
 const config: Config = {
   title: "OpenBao",
-  tagline: "Manage, store, and distribute sensitive data",
+  tagline: "OpenBao is an open source, community-driven fork of HashiCorp Vault managed by the Linux Foundation to manage, store, and distribute sensitive data.",
   favicon: "img/favicon.svg",
 
   // Set the production url of your site here
@@ -177,6 +177,22 @@ const config: Config = {
       darkTheme: prismThemes.dracula,
       additionalLanguages: ["hcl"],
     },
+    metadata: [
+      {name: 'keywords', content: 'openbao, secrets management, open source, linux foundation, encryption as a service, key management system, pki, transit, ssh, secret vault, database passwords'},
+      {name: 'author', content: 'OpenBao a Series of LF Projects, LLC'},
+      {name: 'twitter:card', content: 'summary_large_image'},
+    ],
+    headTags: [
+      {
+        tagName: 'link',
+        attributes: {
+          rel: 'sitemap',
+          type: 'application/xml',
+          title: 'Sitemap',
+          href: '/sitemap.xml',
+        },
+      },
+    ],
   } satisfies Preset.ThemeConfig,
 };
 

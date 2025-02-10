@@ -102,7 +102,7 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 		}
 
 		if actual["nonce"].(string) == "" {
-			t.Fatalf("nonce was empty")
+			t.Fatal("nonce was empty")
 		}
 		expected["nonce"] = actual["nonce"]
 		if diff := deep.Equal(actual, expected); diff != nil {
@@ -127,10 +127,10 @@ func TestSysRekey_Init_Setup(t *testing.T) {
 			"verification_required": false,
 		}
 		if actual["nonce"].(string) == "" {
-			t.Fatalf("nonce was empty")
+			t.Fatal("nonce was empty")
 		}
 		if actual["nonce"].(string) == "" {
-			t.Fatalf("nonce was empty")
+			t.Fatal("nonce was empty")
 		}
 		expected["nonce"] = actual["nonce"]
 		if !reflect.DeepEqual(actual, expected) {

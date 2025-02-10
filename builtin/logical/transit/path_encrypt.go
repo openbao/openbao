@@ -152,9 +152,13 @@ will be ignored. Any batch output will preserve the order of the batch input.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.CreateOperation: b.pathEncryptWrite,
-			logical.UpdateOperation: b.pathEncryptWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathEncryptWrite,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathEncryptWrite,
+			},
 		},
 
 		ExistenceCheck: b.pathEncryptExistenceCheck,
@@ -292,8 +296,13 @@ func (b *backend) pathEncryptExistenceCheck(ctx context.Context, req *logical.Re
 }
 
 func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
-	var err error
 	batchInputRaw := d.Raw["batch_input"]
 	var batchInputItems []BatchRequestItem
 	if batchInputRaw != nil {
@@ -488,6 +497,10 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 
 	if req.Operation == logical.CreateOperation && !upserted {
 		resp.AddWarning("Attempted creation of the key during the encrypt operation, but it was created beforehand")
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return batchRequestResponse(d, resp, req, successesInBatch, userErrorInBatch, internalErrorInBatch)

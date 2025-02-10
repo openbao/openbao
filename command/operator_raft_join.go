@@ -1,3 +1,4 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
@@ -18,6 +19,7 @@ var (
 )
 
 type OperatorRaftJoinCommand struct {
+	flagNonVoter         bool
 	flagRetry            bool
 	flagLeaderCACert     string
 	flagLeaderClientCert string
@@ -113,6 +115,13 @@ func (c *OperatorRaftJoinCommand) Flags() *FlagSets {
 		Usage:   "Continuously retry joining the Raft cluster upon failures.",
 	})
 
+	f.BoolVar(&BoolVar{
+		Name:    "non-voter",
+		Target:  &c.flagNonVoter,
+		Default: false,
+		Usage:   "Join the Raft cluster as non-voter.",
+	})
+
 	return set
 }
 
@@ -179,6 +188,7 @@ func (c *OperatorRaftJoinCommand) Run(args []string) int {
 		LeaderClientCert: leaderClientCert,
 		LeaderClientKey:  leaderClientKey,
 		Retry:            c.flagRetry,
+		NonVoter:         c.flagNonVoter,
 	}
 
 	if strings.Contains(leaderInfo, "provider=") {

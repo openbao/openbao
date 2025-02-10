@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -89,8 +90,10 @@ func pathListRoles(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathRoleList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathRoleList,
+			},
 		},
 
 		HelpSynopsis:    pathRoleHelpSyn,
@@ -394,10 +397,16 @@ func pathRoles(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   b.pathRoleRead,
-			logical.UpdateOperation: b.pathRoleWrite,
-			logical.DeleteOperation: b.pathRoleDelete,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathRoleRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathRoleWrite,
+			},
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathRoleDelete,
+			},
 		},
 
 		HelpSynopsis:    pathRoleHelpSyn,
@@ -724,7 +733,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
 		}
 	case KeyTypeDynamic:
-		return nil, fmt.Errorf("dynamic key type roles are no longer supported")
+		return nil, errors.New("dynamic key type roles are no longer supported")
 	default:
 		return nil, fmt.Errorf("invalid key type: %v", role.KeyType)
 	}

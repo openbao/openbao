@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -174,8 +175,10 @@ preserve the order of the batch input`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathSignWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathSignWrite,
+			},
 		},
 
 		HelpSynopsis:    pathSignHelpSyn,
@@ -284,8 +287,10 @@ preserve the order of the batch input`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathVerifyWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathVerifyWrite,
+			},
 		},
 
 		HelpSynopsis:    pathVerifyHelpSyn,
@@ -445,7 +450,7 @@ func (b *backend) pathSignWrite(ctx context.Context, req *logical.Request, d *fr
 			}
 			response[i].err = err
 		} else if sig == nil {
-			response[i].err = fmt.Errorf("signature could not be computed")
+			response[i].err = errors.New("signature could not be computed")
 		} else {
 			keyVersion := ver
 			if keyVersion == 0 {

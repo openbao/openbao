@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ var pathInternalUINamespacesRead = func(b *SystemBackend) framework.OperationFun
 	return func(ctx context.Context, req *logical.Request, _ *framework.FieldData) (*logical.Response, error) {
 		// Short-circuit here if there's no client token provided
 		if req.ClientToken == "" {
-			return nil, fmt.Errorf("client token empty")
+			return nil, errors.New("client token empty")
 		}
 
 		// Load the ACL policies so we can check for access and filter namespaces
@@ -68,14 +69,14 @@ func (b *SystemBackend) tuneMountTTLs(ctx context.Context, path string, me *Moun
 	var err error
 	switch {
 	case strings.HasPrefix(path, credentialRoutePrefix):
-		err = b.Core.persistAuth(ctx, b.Core.auth, &me.Local)
+		err = b.Core.persistAuth(ctx, nil, b.Core.auth, &me.Local, me.UUID)
 	default:
-		err = b.Core.persistMounts(ctx, b.Core.mounts, &me.Local)
+		err = b.Core.persistMounts(ctx, nil, b.Core.mounts, &me.Local, me.UUID)
 	}
 	if err != nil {
 		me.Config.MaxLeaseTTL = origMax
 		me.Config.DefaultLeaseTTL = origDefault
-		return fmt.Errorf("failed to update mount table, rolling back TTL changes")
+		return errors.New("failed to update mount table, rolling back TTL changes")
 	}
 	if b.Core.logger.IsInfo() {
 		b.Core.logger.Info("mount tuning of leases successful", "path", path)

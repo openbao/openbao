@@ -18,14 +18,6 @@ export default class App extends Application {
         services: ['auth', 'flash-messages', 'namespace', 'router', 'version'],
       },
     },
-    replication: {
-      dependencies: {
-        services: ['auth', 'flash-messages', 'namespace', 'replication-mode', 'router', 'store', 'version'],
-        externalRoutes: {
-          replication: 'vault.cluster.replication.index',
-        },
-      },
-    },
     kmip: {
       dependencies: {
         services: [

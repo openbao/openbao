@@ -53,6 +53,10 @@ func TestMountTableMetrics(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	if nonlocalLogicalMountsize <= 0 {
+		t.Fatalf("expected non-zero value for nonlocalLogicalMountsize: %v", nonlocalLogicalMountsize)
+	}
+
 	// Mount new kv
 	if err = client.Sys().Mount("kv", &api.MountInput{
 		Type: "kv",
@@ -68,13 +72,15 @@ func TestMountTableMetrics(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Notably, the gauge only reports the size of the new table entry; it
+	// does not report the total size on a transactional storage backend.
 	nonlocalLogicalMountsizeAfterMount, err := gaugeSearchHelper(data, 4)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	if nonlocalLogicalMountsizeAfterMount <= nonlocalLogicalMountsize {
-		t.Errorf("Mount size does not change after new mount is mounted")
+	if nonlocalLogicalMountsizeAfterMount <= 0 {
+		t.Fatalf("expected non-zero value for nonlocalLogicalMountsizeAfterMount: %v", nonlocalLogicalMountsizeAfterMount)
 	}
 }
 
@@ -157,18 +163,18 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 		if gauge.Name == "core.active" {
 			coreLeaderMetric = true
 			if gauge.Value != 1 {
-				t.Errorf("metric incorrectly reports active status")
+				t.Error("metric incorrectly reports active status")
 			}
 		}
 		if gauge.Name == "core.unsealed" {
 			coreUnsealMetric = true
 			if gauge.Value != 1 {
-				t.Errorf("metric incorrectly reports unseal status of leader")
+				t.Error("metric incorrectly reports unseal status of leader")
 			}
 		}
 	}
 	if !coreLeaderMetric || !coreUnsealMetric {
-		t.Errorf("unseal metric or leader metric are missing")
+		t.Error("unseal metric or leader metric are missing")
 	}
 
 	err = client.Sys().StepDown()
@@ -197,18 +203,18 @@ func TestLeaderReElectionMetrics(t *testing.T) {
 			if gauge.Name == "core.active" {
 				coreLeaderMetric = true
 				if gauge.Value != 1 {
-					t.Errorf("metric incorrectly reports active status")
+					t.Error("metric incorrectly reports active status")
 				}
 			}
 			if gauge.Name == "core.unsealed" {
 				coreUnsealMetric = true
 				if gauge.Value != 1 {
-					t.Errorf("metric incorrectly reports unseal status of leader")
+					t.Error("metric incorrectly reports unseal status of leader")
 				}
 			}
 		}
 		if !coreLeaderMetric || !coreUnsealMetric {
-			t.Errorf("unseal metric or leader metric are missing")
+			t.Error("unseal metric or leader metric are missing")
 		}
 	}
 	if respo != nil {

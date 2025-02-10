@@ -443,6 +443,138 @@ func TestLogical_ListWithQueryParameters(t *testing.T) {
 	}
 }
 
+func TestLogical_ScanSuffix(t *testing.T) {
+	core, _, rootToken := vault.TestCoreUnsealed(t)
+	req, _ := http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo", nil)
+	req = req.WithContext(namespace.RootContext(nil))
+	req.Header.Add(consts.AuthHeaderName, rootToken)
+
+	lreq, _, status, err := buildLogicalRequest(core, nil, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatalf("got status %d", status)
+	}
+	if strings.HasSuffix(lreq.Path, "/") {
+		t.Fatal("trailing slash found on path")
+	}
+
+	req, _ = http.NewRequest("GET", "http://127.0.0.1:8200/v1/secret/foo?scan=true", nil)
+	req = req.WithContext(namespace.RootContext(nil))
+	req.Header.Add(consts.AuthHeaderName, rootToken)
+
+	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatalf("got status %d", status)
+	}
+	if !strings.HasSuffix(lreq.Path, "/") {
+		t.Fatal("trailing slash not found on path")
+	}
+
+	req, _ = http.NewRequest("SCAN", "http://127.0.0.1:8200/v1/secret/foo", nil)
+	req = req.WithContext(namespace.RootContext(nil))
+	req.Header.Add(consts.AuthHeaderName, rootToken)
+
+	_, _, status, err = buildLogicalRequestNoAuth(nil, req)
+	if err != nil || status != 0 {
+		t.Fatal(err)
+	}
+
+	lreq, _, status, err = buildLogicalRequest(core, nil, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatalf("got status %d", status)
+	}
+	if !strings.HasSuffix(lreq.Path, "/") {
+		t.Fatal("trailing slash not found on path")
+	}
+}
+
+func TestLogical_ScanWithQueryParameters(t *testing.T) {
+	core, _, rootToken := vault.TestCoreUnsealed(t)
+
+	tests := []struct {
+		name          string
+		requestMethod string
+		url           string
+		expectedData  map[string]interface{}
+	}{
+		{
+			name:          "SCAN request method parses query parameter",
+			requestMethod: "SCAN",
+			url:           "http://127.0.0.1:8200/v1/secret/foo?key1=value1",
+			expectedData: map[string]interface{}{
+				"key1": "value1",
+			},
+		},
+		{
+			name:          "SCAN request method parses query multiple parameters",
+			requestMethod: "SCAN",
+			url:           "http://127.0.0.1:8200/v1/secret/foo?key1=value1&key2=value2",
+			expectedData: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+		},
+		{
+			name:          "GET request method with scan=true parses query parameter",
+			requestMethod: "GET",
+			url:           "http://127.0.0.1:8200/v1/secret/foo?scan=true&key1=value1",
+			expectedData: map[string]interface{}{
+				"key1": "value1",
+			},
+		},
+		{
+			name:          "GET request method with scan=true parses multiple query parameters",
+			requestMethod: "GET",
+			url:           "http://127.0.0.1:8200/v1/secret/foo?scan=true&key1=value1&key2=value2",
+			expectedData: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+		},
+		{
+			name:          "GET request method with alternate order scan=true parses multiple query parameters",
+			requestMethod: "GET",
+			url:           "http://127.0.0.1:8200/v1/secret/foo?key1=value1&scan=true&key2=value2",
+			expectedData: map[string]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, _ := http.NewRequest(tc.requestMethod, tc.url, nil)
+			req = req.WithContext(namespace.RootContext(nil))
+			req.Header.Add(consts.AuthHeaderName, rootToken)
+
+			lreq, _, status, err := buildLogicalRequest(core, nil, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if status != 0 {
+				t.Fatalf("got status %d", status)
+			}
+			if !strings.HasSuffix(lreq.Path, "/") {
+				t.Fatal("trailing slash not found on path")
+			}
+			if lreq.Operation != logical.ScanOperation {
+				t.Fatalf("expected logical.ScanOperation, got %v", lreq.Operation)
+			}
+			if !reflect.DeepEqual(tc.expectedData, lreq.Data) {
+				t.Fatalf("expected query parameter data %v, got %v", tc.expectedData, lreq.Data)
+			}
+		})
+	}
+}
+
 func TestLogical_RespondWithStatusCode(t *testing.T) {
 	resp := &logical.Response{
 		Data: map[string]interface{}{
@@ -639,7 +771,7 @@ func TestLogical_AuditPort(t *testing.T) {
 		resp, err := c.Logical().Write("kv/data/foo", writeData)
 		if err != nil {
 			if strings.Contains(err.Error(), "Upgrading from non-versioned to versioned data") {
-				t.Logf("Retrying fetch KV data due to upgrade error")
+				t.Log("Retrying fetch KV data due to upgrade error")
 				time.Sleep(100 * time.Millisecond)
 				numFailures += 1
 				return err

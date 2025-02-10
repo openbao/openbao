@@ -1463,7 +1463,7 @@ func CreateFreshestCRLExt(paths []string) (pkix.Extension, error) {
 // IsCA, MaxPathLen or error. If MaxPathLen was not set, a value of -1 will be returned.
 func ParseBasicConstraintExtension(ext pkix.Extension) (bool, int, error) {
 	if !ext.Id.Equal(ExtensionBasicConstraintsOID) {
-		return false, -1, fmt.Errorf("passed in extension was not a basic constraint extension")
+		return false, -1, errors.New("passed in extension was not a basic constraint extension")
 	}
 
 	// All elements are set to optional here, as it is possible that we receive a CSR with the extension

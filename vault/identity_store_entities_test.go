@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestIdentityStore_EntityDeleteGroupMembershipUpdate(t *testing.T) {
@@ -170,7 +171,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// Test the read by name endpoint
@@ -230,7 +231,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Create 2 entities
@@ -242,7 +243,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity/name/testentityname2",
@@ -252,7 +253,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// List the entities by name
@@ -487,7 +488,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	entity.Aliases[0].ID = "invalidid"
 
 	if clonedEntity.Aliases[0].ID == "invalidid" {
-		t.Fatalf("cloned entity is mutated")
+		t.Fatal("cloned entity is mutated")
 	}
 
 	clonedAlias, err := alias.Clone()
@@ -498,7 +499,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	alias.MergedFromCanonicalIDs[0] = "invalidid"
 
 	if clonedAlias.MergedFromCanonicalIDs[0] == "invalidid" {
-		t.Fatalf("cloned alias is mutated")
+		t.Fatal("cloned alias is mutated")
 	}
 }
 
@@ -707,7 +708,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	// Identity store will be mounted by now, just fetch it from router
 	identitystore := c.router.MatchingBackend(namespace.RootContext(nil), "identity/")
 	if identitystore == nil {
-		t.Fatalf("failed to fetch identity store from router")
+		t.Fatal("failed to fetch identity store from router")
 	}
 
 	is := identitystore.(*IdentityStore)
@@ -746,7 +747,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity")
+		t.Fatal("failed to read the created entity")
 	}
 
 	// Perform a seal/unseal cycle
@@ -776,7 +777,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity after a seal/unseal cycle")
+		t.Fatal("failed to read the created entity after a seal/unseal cycle")
 	}
 }
 
@@ -918,11 +919,11 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("entity id not present in response")
+		t.Fatal("entity id not present in response")
 	}
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid entity id")
+		t.Fatal("invalid entity id")
 	}
 
 	readReq := &logical.Request{
@@ -938,7 +939,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
 		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
-		t.Fatalf("bad: entity response")
+		t.Fatal("bad: entity response")
 	}
 
 	updateData := map[string]interface{}{
@@ -1137,7 +1138,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1
@@ -1288,7 +1289,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1
@@ -1312,4 +1313,53 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 	if len(entity1Lookup.Policies) != 2 {
 		t.Fatalf("invalid number of entity policies; expected: 2, actualL: %d", len(entity1Lookup.Policies))
 	}
+}
+
+func TestIdentityStore_EntityUpdateRefusesRoot(t *testing.T) {
+	i, _, _ := testIdentityStoreWithAppRoleAuth(namespace.RootContext(nil), t)
+
+	// Create an entity
+	resp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"name":     "testentity",
+			"policies": "testing",
+		},
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
+	}
+
+	// Read the entity first.
+	readEntityResp, err := i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.ReadOperation,
+	})
+	if err != nil || (readEntityResp != nil && readEntityResp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, readEntityResp)
+	}
+
+	// Update the entity to set the root policy; this should fail.
+	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.UpdateOperation,
+		Data: map[string]interface{}{
+			"policies": "default,root",
+		},
+	})
+	if err == nil && resp != nil && !resp.IsError() {
+		t.Fatalf("bad: expected error, got resp=%v / err=%v", resp, err)
+	}
+
+	// Ensure that the entity was not modified.
+	resp, err = i.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		Path:      "entity/name/testentity",
+		Operation: logical.ReadOperation,
+	})
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("bad: err:%v\nresp: %#v", err, resp)
+	}
+
+	require.Equal(t, readEntityResp.Data, resp.Data, "expected initial and final response data to be the same")
 }

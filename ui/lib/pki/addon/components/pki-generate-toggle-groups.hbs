@@ -17,7 +17,7 @@
           {{else if (eq @model.type "kms")}}
             This certificate type is kms, meaning managed keys will be used. Below, you will name the key and tell OpenBao
             where to find it in your KMS or HSM.
-            <DocLink @path="/vault/docs/enterprise/managed-keys">Learn more about managed keys.</DocLink>
+            {{! TODO Add a link to a page for 'managed-keys' }}
           {{else if (eq @model.type "exported")}}
             This certificate type is exported. This means the private key will be returned in the response. Below, you will
             name the key and define its type and key bits.

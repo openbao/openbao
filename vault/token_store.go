@@ -114,7 +114,7 @@ var (
 
 		storage := ts.core.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
 		if storage == nil {
-			return fmt.Errorf("no cubby mount entry")
+			return errors.New("no cubby mount entry")
 		}
 		view := storage.(BarrierView)
 
@@ -128,7 +128,7 @@ var (
 
 		default:
 			if te.CubbyholeID == "" {
-				return fmt.Errorf("missing cubbyhole ID while destroying")
+				return errors.New("missing cubbyhole ID while destroying")
 			}
 			return ts.cubbyholeBackend.revoke(ctx, view, te.CubbyholeID)
 		}
@@ -218,8 +218,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "roles",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: ts.tokenStoreRoleList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: ts.tokenStoreRoleList,
+				},
 			},
 
 			HelpSynopsis:    tokenListRolesHelp,
@@ -234,8 +236,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "accessors",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: ts.tokenStoreAccessorList,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: ts.tokenStoreAccessorList,
+				},
 			},
 
 			HelpSynopsis:    tokenListAccessorsHelp,
@@ -253,8 +257,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "orphan",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreateOrphan,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreateOrphan,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateOrphanHelp),
@@ -272,8 +278,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "against-role",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreateAgainstRole,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreateAgainstRole,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateRoleHelp),
@@ -290,8 +298,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationVerb:   "create",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleCreate,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleCreate,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenCreateHelp),
@@ -345,8 +355,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateLookupAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateLookupAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenLookupAccessorHelp),
@@ -403,8 +415,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateRevokeAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateRevokeAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeAccessorHelp),
@@ -420,8 +434,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationSuffix: "self",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeSelf,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeSelf,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeSelfHelp),
@@ -443,8 +459,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeTree,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeTree,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeHelp),
@@ -467,8 +485,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRevokeOrphan,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRevokeOrphan,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRevokeOrphanHelp),
@@ -496,8 +516,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleUpdateRenewAccessor,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleUpdateRenewAccessor,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewAccessorHelp),
@@ -525,8 +547,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRenewSelf,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRenewSelf,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewSelfHelp),
@@ -553,8 +577,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleRenew,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleRenew,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenRenewHelp),
@@ -569,8 +595,10 @@ func (ts *TokenStore) paths() []*framework.Path {
 				OperationVerb:   "tidy",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: ts.handleTidy,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: ts.handleTidy,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(tokenTidyHelp),
@@ -652,11 +680,19 @@ func (ts *TokenStore) paths() []*framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation:   ts.tokenStoreRoleRead,
-			logical.CreateOperation: ts.tokenStoreRoleCreateUpdate,
-			logical.UpdateOperation: ts.tokenStoreRoleCreateUpdate,
-			logical.DeleteOperation: ts.tokenStoreRoleDelete,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleRead,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleCreateUpdate,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleCreateUpdate,
+			},
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: ts.tokenStoreRoleDelete,
+			},
 		},
 
 		ExistenceCheck: ts.tokenStoreRoleExistenceCheck,
@@ -1085,11 +1121,11 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		if userSelectedID {
 			switch {
 			case strings.HasPrefix(entry.ID, consts.ServiceTokenPrefix):
-				return fmt.Errorf("custom token ID cannot have the 'hvs.' prefix")
+				return errors.New("custom token ID cannot have the 'hvs.' prefix")
 			case strings.HasPrefix(entry.ID, consts.LegacyServiceTokenPrefix):
-				return fmt.Errorf("custom token ID cannot have the 's.' prefix")
+				return errors.New("custom token ID cannot have the 's.' prefix")
 			case strings.Contains(entry.ID, "."):
-				return fmt.Errorf("custom token ID cannot have a '.' in the value")
+				return errors.New("custom token ID cannot have a '.' in the value")
 			}
 		}
 
@@ -1122,7 +1158,7 @@ func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) err
 		if userSelectedID {
 			exist, _ := ts.lookupInternal(ctx, entry.ID, false, true)
 			if exist != nil {
-				return fmt.Errorf("cannot create a token with a duplicate ID")
+				return errors.New("cannot create a token with a duplicate ID")
 			}
 		}
 
@@ -1307,7 +1343,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 				return fmt.Errorf("failed to lookup parent: %w", err)
 			}
 			if parent == nil {
-				return fmt.Errorf("parent token not found")
+				return errors.New("parent token not found")
 			}
 
 			parentNS, err := NamespaceByID(ctx, parent.NamespaceID, ts.core)
@@ -1357,7 +1393,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 // good.
 func (ts *TokenStore) UseToken(ctx context.Context, te *logical.TokenEntry) (*logical.TokenEntry, error) {
 	if te == nil {
-		return nil, fmt.Errorf("invalid token entry provided for use count decrementing")
+		return nil, errors.New("invalid token entry provided for use count decrementing")
 	}
 
 	// This case won't be hit with a token with restricted uses because we go
@@ -1380,7 +1416,7 @@ func (ts *TokenStore) UseToken(ctx context.Context, te *logical.TokenEntry) (*lo
 	// back, it is because it has been revoked in the interim or will be
 	// revoked (NumUses is -1)
 	if te == nil {
-		return nil, fmt.Errorf("token not found or fully used already")
+		return nil, errors.New("token not found or fully used already")
 	}
 
 	// Decrement the count. If this is our last use count, we need to indicate
@@ -1417,7 +1453,7 @@ func (ts *TokenStore) UseTokenByID(ctx context.Context, id string) (*logical.Tok
 func (ts *TokenStore) Lookup(ctx context.Context, id string) (*logical.TokenEntry, error) {
 	defer metrics.MeasureSince([]string{"token", "lookup"}, time.Now())
 	if id == "" {
-		return nil, fmt.Errorf("cannot lookup blank token")
+		return nil, errors.New("cannot lookup blank token")
 	}
 
 	// If it starts with "b." it's a batch token
@@ -1447,7 +1483,7 @@ func (ts *TokenStore) stripBatchPrefix(id string) string {
 func (ts *TokenStore) lookupTainted(ctx context.Context, id string) (*logical.TokenEntry, error) {
 	defer metrics.MeasureSince([]string{"token", "lookup"}, time.Now())
 	if id == "" {
-		return nil, fmt.Errorf("cannot lookup blank token")
+		return nil, errors.New("cannot lookup blank token")
 	}
 
 	lock := locksutil.LockForKey(ts.tokenLocks, id)
@@ -1710,7 +1746,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 func (ts *TokenStore) revokeOrphan(ctx context.Context, id string) error {
 	defer metrics.MeasureSince([]string{"token", "revoke"}, time.Now())
 	if id == "" {
-		return fmt.Errorf("cannot revoke blank token")
+		return errors.New("cannot revoke blank token")
 	}
 
 	saltedID, err := ts.SaltID(ctx, id)
@@ -1920,7 +1956,7 @@ func (ts *TokenStore) revokeTree(ctx context.Context, le *leaseEntry) error {
 	defer metrics.MeasureSince([]string{"token", "revoke-tree"}, time.Now())
 	// Verify the token is not blank
 	if le.ClientToken == "" {
-		return fmt.Errorf("cannot tree-revoke blank token")
+		return errors.New("cannot tree-revoke blank token")
 	}
 
 	// In case lookup fails for some reason for the token itself, set the
@@ -1964,7 +2000,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 		}
 	}
 	if ns == nil {
-		return fmt.Errorf("failed to find namespace for token revocation")
+		return errors.New("failed to find namespace for token revocation")
 	}
 
 	for l := len(dfs); l > 0; l = len(dfs) {
@@ -2158,7 +2194,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 			// List all the cubbyhole storage keys
 			view := ts.core.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
 			if view == nil {
-				return fmt.Errorf("no cubby mount entry")
+				return errors.New("no cubby mount entry")
 			}
 			bview := view.(BarrierView)
 
@@ -2265,7 +2301,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 					continue
 				}
 				if accessorEntry == nil {
-					tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to read the accessor index: invalid accessor"))
+					tidyErrors = multierror.Append(tidyErrors, errors.New("failed to read the accessor index: invalid accessor"))
 					continue
 				}
 
@@ -2344,7 +2380,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 						validCubbyholeKeys[salt.SaltID(ts.cubbyholeBackend.saltUUID, saltedID, salt.SHA1Hash)] = true
 					default:
 						if te.CubbyholeID == "" {
-							tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("missing cubbyhole ID for a valid token"))
+							tidyErrors = multierror.Append(tidyErrors, errors.New("missing cubbyhole ID for a valid token"))
 							continue
 						}
 						validCubbyholeKeys[te.CubbyholeID] = true
@@ -2428,7 +2464,7 @@ func (ts *TokenStore) handleUpdateLookupAccessor(ctx context.Context, req *logic
 		return nil, err
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("failed to lookup the token")
+		return nil, errors.New("failed to lookup the token")
 	}
 	if resp.IsError() {
 		return resp, nil
@@ -2479,7 +2515,7 @@ func (ts *TokenStore) handleUpdateRenewAccessor(ctx context.Context, req *logica
 		return nil, err
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("failed to lookup the token")
+		return nil, errors.New("failed to lookup the token")
 	}
 	if resp.IsError() {
 		return resp, nil
@@ -3413,7 +3449,7 @@ func (ts *TokenStore) handleRenew(ctx context.Context, req *logical.Request, dat
 
 func (ts *TokenStore) authRenew(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	if req.Auth == nil {
-		return nil, fmt.Errorf("request auth is nil")
+		return nil, errors.New("request auth is nil")
 	}
 
 	te, err := ts.Lookup(ctx, req.Auth.ClientToken)
@@ -3421,7 +3457,7 @@ func (ts *TokenStore) authRenew(ctx context.Context, req *logical.Request, d *fr
 		return nil, fmt.Errorf("error looking up token: %w", err)
 	}
 	if te == nil {
-		return nil, fmt.Errorf("no token entry found during lookup")
+		return nil, errors.New("no token entry found during lookup")
 	}
 
 	if te.Role == "" {
@@ -3560,7 +3596,7 @@ func (ts *TokenStore) tokenStoreRoleRead(ctx context.Context, req *logical.Reque
 func (ts *TokenStore) tokenStoreRoleExistenceCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 	name := data.Get("role_name").(string)
 	if name == "" {
-		return false, fmt.Errorf("role name cannot be empty")
+		return false, errors.New("role name cannot be empty")
 	}
 	role, err := ts.tokenStoreRole(ctx, name)
 	if err != nil {

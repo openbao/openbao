@@ -5,6 +5,7 @@ package diagnose
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -79,12 +80,12 @@ func (m mockStorageBackend) Delete(ctx context.Context, key string) error {
 
 // List is not used in a mock.
 func (m mockStorageBackend) List(ctx context.Context, prefix string) ([]string, error) {
-	return nil, fmt.Errorf("method not implemented")
+	return nil, errors.New("method not implemented")
 }
 
 // ListPage is not used in a mock.
 func (m mockStorageBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
-	return nil, fmt.Errorf("method not implemented")
+	return nil, errors.New("method not implemented")
 }
 
 func callTypeToOp(ctype string) string {
@@ -117,7 +118,7 @@ func (m mockStorageBackend) GetConfigurationOffline() (*raft.RaftConfigurationRe
 		threeServerList[2].Voter = false
 		return &raft.RaftConfigurationResponse{Servers: threeServerList}, nil
 	case 3:
-		return &raft.RaftConfigurationResponse{Servers: threeServerList}, fmt.Errorf("error: something bad")
+		return &raft.RaftConfigurationResponse{Servers: threeServerList}, errors.New("error: something bad")
 	}
 	return nil, nil
 }

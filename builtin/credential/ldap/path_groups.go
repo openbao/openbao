@@ -23,8 +23,10 @@ func pathGroupsList(b *backend) *framework.Path {
 			ItemType:        "Group",
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathGroupList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathGroupList,
+			},
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,
@@ -58,10 +60,16 @@ func pathGroups(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathGroupDelete,
-			logical.ReadOperation:   b.pathGroupRead,
-			logical.UpdateOperation: b.pathGroupWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathGroupDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathGroupRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathGroupWrite,
+			},
 		},
 
 		HelpSynopsis:    pathGroupHelpSyn,
@@ -96,8 +104,13 @@ func (b *backend) pathGroupDelete(ctx context.Context, req *logical.Request, d *
 }
 
 func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	groupname := d.Get("name").(string)
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
 
+	groupname := d.Get("name").(string)
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, err
@@ -117,6 +130,10 @@ func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *fr
 		return nil, nil
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"policies": group.Policies,
@@ -126,6 +143,12 @@ func (b *backend) pathGroupRead(ctx context.Context, req *logical.Request, d *fr
 
 func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	groupname := d.Get("name").(string)
+
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
 
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
@@ -146,6 +169,10 @@ func (b *backend) pathGroupWrite(ctx context.Context, req *logical.Request, d *f
 		return nil, err
 	}
 	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

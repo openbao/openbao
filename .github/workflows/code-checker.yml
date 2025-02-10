@@ -91,3 +91,5 @@ jobs:
       - uses: ./.github/actions/set-up-go
       - run: make ci-tidy-all
         name: Run go mod tidy to check for differences
+      - run: make ci-sync-deps
+        name: Run go.mod synchronization to check for differences

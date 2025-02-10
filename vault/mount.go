@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -179,7 +180,7 @@ type MountMigrationInfo struct {
 // preserves plaintext size, adding a constant of 30 bytes of
 // padding, which is negligable and subject to change, and thus
 // not accounted for.
-func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compressedTable []byte) {
+func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compressedTableLen int) {
 	if c.metricsHelper == nil {
 		// do nothing if metrics are not initialized
 		return
@@ -207,13 +208,13 @@ func (c *Core) tableMetrics(entryCount int, isLocal bool, isAuth bool, compresse
 		})
 
 	c.metricSink.SetGaugeWithLabels(metricsutil.PhysicalTableSizeName,
-		float32(len(compressedTable)), []metrics.Label{
+		float32(compressedTableLen), []metrics.Label{
 			typeAuthLabelMap[isAuth],
 			typeLocalLabelMap[isLocal],
 		})
 
 	c.metricsHelper.AddGaugeLoopMetric(metricsutil.PhysicalTableSizeName,
-		float32(len(compressedTable)), []metrics.Label{
+		float32(compressedTableLen), []metrics.Label{
 			typeAuthLabelMap[isAuth],
 			typeLocalLabelMap[isLocal],
 		})
@@ -549,6 +550,44 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 	}, nil
 }
 
+func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logical.Storage, prefix string, uuid string) (*MountEntry, error) {
+	path := path.Join(prefix, uuid)
+	sEntry, err := barrier.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if sEntry == nil {
+		return nil, errors.New("unexpected empty storage entry for mount")
+	}
+
+	entry := new(MountEntry)
+	if err := jsonutil.DecodeJSON(sEntry.Value, entry); err != nil {
+		return nil, err
+	}
+
+	if entry.UUID == "" {
+		entry.UUID = uuid
+	} else if entry.UUID != uuid {
+		return nil, fmt.Errorf("mismatch between mount entry uuid in path (%v) and value (%v)", uuid, entry.UUID)
+	}
+
+	if entry.NamespaceID == "" {
+		entry.NamespaceID = namespace.RootNamespaceID
+	}
+	ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+	if err != nil {
+		return nil, err
+	}
+	if ns == nil {
+		c.logger.Error("namespace on mount entry not found", "table", prefix, "uuid", uuid, "namespace_id", entry.NamespaceID, "mount_path", entry.Path, "mount_description", entry.Description)
+		return nil, nil
+	}
+
+	entry.namespace = ns
+
+	return entry, nil
+}
+
 // Mount is used to mount a new backend to the mount table.
 func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 	// Ensure we end the path in a slash
@@ -692,7 +731,7 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	newTable := c.mounts.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
-		if err := c.persistMounts(ctx, newTable, &entry.Local); err != nil {
+		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to update mount table", "error", err)
 			return logical.CodedError(500, "failed to update mount table")
 		}
@@ -791,7 +830,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return fmt.Errorf("no matching mount")
+		return errors.New("no matching mount")
 	}
 
 	// Get the view for this backend
@@ -896,7 +935,7 @@ func (c *Core) removeMountEntry(ctx context.Context, path string, updateStorage 
 
 	if updateStorage {
 		// Update the mount table
-		if err := c.persistMounts(ctx, newTable, &entry.Local); err != nil {
+		if err := c.persistMounts(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to remove entry from mounts table", "error", err)
 			return logical.CodedError(500, "failed to remove entry from mounts table")
 		}
@@ -929,7 +968,7 @@ func (c *Core) taintMountEntry(ctx context.Context, nsID, mountPath string, upda
 
 	if updateStorage {
 		// Update the mount table
-		if err := c.persistMounts(ctx, c.mounts, &entry.Local); err != nil {
+		if err := c.persistMounts(ctx, nil, c.mounts, &entry.Local, entry.UUID); err != nil {
 			c.logger.Error("failed to taint entry in mounts table", "error", err)
 			return logical.CodedError(500, "failed to taint entry in mounts table")
 		}
@@ -1092,7 +1131,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	srcMatch.Path = dst.MountPath
 
 	// Update the mount table
-	if err := c.persistMounts(ctx, c.mounts, &srcMatch.Local); err != nil {
+	if err := c.persistMounts(ctx, nil, c.mounts, &srcMatch.Local, srcMatch.UUID); err != nil {
 		srcMatch.Path = srcPath
 		srcMatch.Tainted = true
 		c.mountsLock.Unlock()
@@ -1131,83 +1170,203 @@ func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.Mou
 
 // loadMounts is invoked as part of postUnseal to load the mount table
 func (c *Core) loadMounts(ctx context.Context) error {
-	// Load the existing mount table
-	raw, err := c.barrier.Get(ctx, coreMountConfigPath)
-	if err != nil {
-		c.logger.Error("failed to read mount table", "error", err)
-		return errLoadMountsFailed
-	}
-	rawLocal, err := c.barrier.Get(ctx, coreLocalMountConfigPath)
-	if err != nil {
-		c.logger.Error("failed to read local mount table", "error", err)
-		return errLoadMountsFailed
-	}
-
+	// Previously, this lock would be held after attempting to read the
+	// storage entries. While we could never read corrupted entries,
+	// we now need to ensure we can gracefully failover from legacy to
+	// transactional mount table structure. This means holding the locks
+	// for longer.
+	//
+	// Note that this lock is used for consistency with other code during
+	// system operation (when mounting and unmounting secret engines), but
+	// is not strictly necessary here as unseal(...) is serial and blocks
+	// startup until finished.
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
+	// Start with an empty mount table.
+	c.mounts = nil
+
+	// Migrating mounts from the previous single-entry to a transactional
+	// variant requires careful surgery that should only be done in the
+	// event the backend is transactionally aware. Otherwise, we'll continue
+	// to use the legacy storage format indefinitely.
+	//
+	// This does mean that going backwards (from a transaction-aware storage
+	// to not) is not possible without manual reconstruction.
+	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
+	if !ok {
+		_, err := c.loadLegacyMounts(ctx, c.barrier)
+		return err
+	}
+
+	// Create a write transaction in case we need to persist the initial
+	// table or migrate from the old format.
+	txn, err := txnableBarrier.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Defer rolling back: we may commit the transaction anyways, but we
+	// need to ensure the transaction is cleaned up in the event of an
+	// error.
+	defer txn.Rollback(ctx)
+
+	legacy, err := c.loadLegacyMounts(ctx, txn)
+	if err != nil {
+		return fmt.Errorf("failed to load legacy mounts in transaction: %w", err)
+	}
+
+	// If we have legacy mounts, migration was handled by the above. Otherwise,
+	// we need to fetch the new mount table.
+	if !legacy {
+		c.logger.Info("reading transactional mount table")
+		if err := c.loadTransactionalMounts(ctx, txn); err != nil {
+			return fmt.Errorf("failed to load transactional mount table: %w", err)
+		}
+	}
+
+	// Finally, persist our changes.
+	if err := txn.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit mount table changes: %w", err)
+	}
+
+	return nil
+}
+
+// This function reads the transactional split mount table.
+func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage) error {
+	globalEntries, err := barrier.List(ctx, coreMountConfigPath+"/")
+	if err != nil {
+		return fmt.Errorf("failed listing core mounts: %w", err)
+	}
+
+	localEntries, err := barrier.List(ctx, coreLocalMountConfigPath+"/")
+	if err != nil {
+		return fmt.Errorf("failed listing core local mounts: %w", err)
+	}
+
+	var needPersist bool
+	if len(globalEntries) == 0 {
+		c.logger.Info("no mounts in transactional mount table; adding default mount table")
+		c.mounts = c.defaultMountTable()
+		needPersist = true
+	} else {
+		c.mounts = &MountTable{
+			Type: mountTableType,
+		}
+
+		for index, uuid := range globalEntries {
+			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreMountConfigPath, uuid)
+			if err != nil {
+				return fmt.Errorf("error loading mount table entry (%v/%v): %w", index, uuid, err)
+			}
+
+			if entry != nil {
+				c.mounts.Entries = append(c.mounts.Entries, entry)
+			}
+		}
+	}
+
+	if len(localEntries) > 0 {
+		for index, uuid := range localEntries {
+			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreLocalMountConfigPath, uuid)
+			if err != nil {
+				return fmt.Errorf("error loading local mount table entry (%v/%v): %w", index, uuid, err)
+			}
+
+			if entry != nil {
+				c.mounts.Entries = append(c.mounts.Entries, entry)
+			}
+		}
+	}
+
+	err = c.runMountUpdates(ctx, barrier, needPersist)
+	if err != nil {
+		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// This function reads the legacy, single-entry combined mount table,
+// returning true if it was used. This will let us know (if we're inside
+// a transaction) if we need to do an upgrade.
+func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (bool, error) {
+	// Load the existing mount table
+	raw, err := barrier.Get(ctx, coreMountConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read legacy mount table", "error", err)
+		return false, errLoadMountsFailed
+	}
+	rawLocal, err := barrier.Get(ctx, coreLocalMountConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read legacy local mount table", "error", err)
+		return false, errLoadMountsFailed
+	}
+
 	if raw != nil {
-		// Check if the persisted value has canary in the beginning. If
-		// yes, decompress the table and then JSON decode it. If not,
-		// simply JSON decode it.
 		mountTable, err := c.decodeMountTable(ctx, raw.Value)
 		if err != nil {
-			c.logger.Error("failed to decompress and/or decode the mount table", "error", err)
-			return err
+			c.logger.Error("failed to decompress and/or decode the legacy mount table", "error", err)
+			return false, err
 		}
-		c.tableMetrics(len(mountTable.Entries), false, false, raw.Value)
+		c.tableMetrics(len(mountTable.Entries), false, false, len(raw.Value))
 		c.mounts = mountTable
 	}
 
 	var needPersist bool
 	if c.mounts == nil {
-		c.logger.Info("no mounts; adding default mount table")
+		// In the event we are inside a transaction, we do not yet know if
+		// we have a transactional mount table; exit early and load the new format.
+		if _, ok := barrier.(logical.Transaction); ok {
+			return false, nil
+		}
+		c.logger.Info("no mounts in legacy mount table; adding default mount table")
 		c.mounts = c.defaultMountTable()
 		needPersist = true
+	} else {
+		if _, ok := barrier.(logical.Transaction); ok {
+			// We know we have legacy mount table entries, so force a migration.
+			c.logger.Info("migrating legacy mount table to transactional layout")
+			needPersist = true
+		}
+		c.tableMetrics(len(c.mounts.Entries), false, false, len(raw.Value))
 	}
 
 	if rawLocal != nil {
 		localMountTable, err := c.decodeMountTable(ctx, rawLocal.Value)
 		if err != nil {
-			c.logger.Error("failed to decompress and/or decode the local mount table", "error", err)
-			return err
+			c.logger.Error("failed to decompress and/or decode the legacy local mount table", "error", err)
+			return false, err
 		}
 		if localMountTable != nil && len(localMountTable.Entries) > 0 {
-			c.tableMetrics(len(localMountTable.Entries), true, false, rawLocal.Value)
+			c.tableMetrics(len(localMountTable.Entries), true, false, len(rawLocal.Value))
 			c.mounts.Entries = append(c.mounts.Entries, localMountTable.Entries...)
 		}
 	}
 
-	// If this node is a performance standby we do not want to attempt to
-	// upgrade the mount table, this will be the active node's responsibility.
-	err = c.runMountUpdates(ctx, needPersist)
+	// Here, we must call runMountUpdates:
+	//
+	// 1. We may be without any mount table and need to create the legacy
+	//    table format because we don't have a transaction aware storage
+	//    backend.
+	// 2. We may have had a legacy mount table and need to upgrade into the
+	//    new format. runMountUpdates will handle this for us.
+	err = c.runMountUpdates(ctx, barrier, needPersist)
 	if err != nil {
-		c.logger.Error("failed to run mount table upgrades", "error", err)
-		return err
+		c.logger.Error("failed to run legacy mount table upgrades", "error", err)
+		return false, err
 	}
 
-	for _, entry := range c.mounts.Entries {
-		if entry.NamespaceID == "" {
-			entry.NamespaceID = namespace.RootNamespaceID
-		}
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
-		if err != nil {
-			return err
-		}
-		if ns == nil {
-			return namespace.ErrNoNamespace
-		}
-		entry.namespace = ns
-
-		// Sync values to the cache
-		entry.SyncCache()
-	}
-	return nil
+	// We loaded a legacy mount table and successfully migrated it, if
+	// necessary.
+	return true, nil
 }
 
 // Note that this is only designed to work with singletons, as it checks by
 // type only.
-func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
+func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, needPersist bool) error {
 	// Upgrade to typed mount table
 	if c.mounts.Type == "" {
 		c.mounts.Type = mountTableType
@@ -1220,6 +1379,10 @@ func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
 			if coreMount.Type == requiredMount.Type {
 				foundRequired = true
 				coreMount.Config = requiredMount.Config
+
+				// Since we're potentially updating the config here, sync the
+				// cache.
+				coreMount.SyncCache()
 				break
 			}
 		}
@@ -1273,11 +1436,23 @@ func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
 			needPersist = true
 		}
 
+		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		if err != nil {
+			return err
+		}
+		if ns == nil {
+			return namespace.ErrNoNamespace
+		}
+		entry.namespace = ns
+
 		// Don't store built-in version in the mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {
 			entry.Version = ""
 			needPersist = true
 		}
+
+		// Sync values to the cache
+		entry.SyncCache()
 	}
 	// Done if we have restored the mount table and we don't need
 	// to persist
@@ -1286,18 +1461,42 @@ func (c *Core) runMountUpdates(ctx context.Context, needPersist bool) error {
 	}
 
 	// Persist both mount tables
-	if err := c.persistMounts(ctx, c.mounts, nil); err != nil {
+	if err := c.persistMounts(ctx, barrier, c.mounts, nil, ""); err != nil {
 		c.logger.Error("failed to persist mount table", "error", err)
 		return errLoadMountsFailed
 	}
 	return nil
 }
 
-// persistMounts is used to persist the mount table after modification
-func (c *Core) persistMounts(ctx context.Context, table *MountTable, local *bool) error {
+// persistMounts is used to persist the mount table after modification.
+func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
+	// Sometimes we may not want to explicitly pass barrier; fetch it if
+	// necessary.
+	if barrier == nil {
+		barrier = c.barrier
+	}
+
+	// Gracefully handle a transaction-aware backend, if a transaction
+	// wasn't created for us. This is safe as we do not support nested
+	// transactions.
+	needTxnCommit := false
+	if txnBarrier, ok := barrier.(logical.TransactionalStorage); ok {
+		var err error
+		barrier, err = txnBarrier.BeginTx(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to begin transaction to persist mounts: %w", err)
+		}
+
+		needTxnCommit = true
+
+		// In the event of an unexpected error, rollback this transaction.
+		// A rollback of a committed transaction does not impact the commit.
+		defer barrier.(logical.Transaction).Rollback(ctx)
+	}
+
 	if table.Type != mountTableType {
 		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", mountTableType)
-		return fmt.Errorf("invalid table type given, not persisting")
+		return errors.New("invalid table type given, not persisting")
 	}
 
 	nonLocalMounts := &MountTable{
@@ -1311,7 +1510,7 @@ func (c *Core) persistMounts(ctx context.Context, table *MountTable, local *bool
 	for _, entry := range table.Entries {
 		if entry.Table != table.Type {
 			c.logger.Error("given entry to persist in mount table has wrong table value", "path", entry.Path, "entry_table_type", entry.Table, "actual_type", table.Type)
-			return fmt.Errorf("invalid mount entry found, not persisting")
+			return errors.New("invalid mount entry found, not persisting")
 		}
 
 		if entry.Local {
@@ -1319,14 +1518,19 @@ func (c *Core) persistMounts(ctx context.Context, table *MountTable, local *bool
 		} else {
 			nonLocalMounts.Entries = append(nonLocalMounts.Entries, entry)
 		}
+
+		// We potentially modified the mount table entry so update the map
+		// accordingly.
+		entry.SyncCache()
 	}
 
-	writeTable := func(mt *MountTable, path string) ([]byte, error) {
+	// Handle writing the legacy mount table by default.
+	writeTable := func(mt *MountTable, path string) (int, error) {
 		// Encode the mount table into JSON and compress it (lzw).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress mount table", "error", err)
-			return nil, err
+			return -1, err
 		}
 
 		// Create an entry
@@ -1336,45 +1540,125 @@ func (c *Core) persistMounts(ctx context.Context, table *MountTable, local *bool
 		}
 
 		// Write to the physical backend
-		if err := c.barrier.Put(ctx, entry); err != nil {
+		if err := barrier.Put(ctx, entry); err != nil {
 			c.logger.Error("failed to persist mount table", "error", err)
-			return nil, err
+			return -1, err
 		}
-		return compressedBytes, nil
+		return len(compressedBytes), nil
+	}
+
+	if _, ok := barrier.(logical.Transaction); ok {
+		// Write a transactional-aware mount table series instead.
+		writeTable = func(mt *MountTable, prefix string) (int, error) {
+			var size int
+			var found bool
+			currentEntries := make(map[string]struct{}, len(mt.Entries))
+			for index, mtEntry := range mt.Entries {
+				if mount != "" && mtEntry.UUID != mount {
+					continue
+				}
+
+				found = true
+				currentEntries[mtEntry.UUID] = struct{}{}
+
+				// Encode the mount table into JSON. There is little value in
+				// compressing short entries.
+				path := path.Join(prefix, mtEntry.UUID)
+				encoded, err := jsonutil.EncodeJSON(mtEntry)
+				if err != nil {
+					c.logger.Error("failed to encode mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+					return -1, err
+				}
+
+				// Create a storage entry.
+				sEntry := &logical.StorageEntry{
+					Key:   path,
+					Value: encoded,
+				}
+
+				// Write to the backend.
+				if err := barrier.Put(ctx, sEntry); err != nil {
+					c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+					return -1, err
+				}
+
+				size += len(encoded)
+			}
+
+			if mount != "" && !found {
+				// Delete this component if it exists. This signifies that
+				// we're removing this mount.
+				path := path.Join(prefix, mount)
+				if err := barrier.Delete(ctx, path); err != nil {
+					return -1, fmt.Errorf("requested removal of mount but failed: %w", err)
+				}
+			}
+
+			if mount == "" {
+				// List all entries and remove any deleted ones.
+				presentEntries, err := barrier.List(ctx, prefix+"/")
+				if err != nil {
+					return -1, fmt.Errorf("failed to list entries for removal: %w", err)
+				}
+
+				for index, presentEntry := range presentEntries {
+					if _, present := currentEntries[presentEntry]; present {
+						continue
+					}
+
+					if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+						return -1, fmt.Errorf("failed to remove deleted mount %v (%d): %w", presentEntry, index, err)
+					}
+				}
+			}
+
+			// Finally, delete the legacy entries, if any.
+			if err := barrier.Delete(ctx, prefix); err != nil {
+				return -1, err
+			}
+
+			return size, nil
+		}
 	}
 
 	var err error
-	var compressedBytes []byte
+	var compressedBytesLen int
 	switch {
 	case local == nil:
 		// Write non-local mounts
-		compressedBytes, err := writeTable(nonLocalMounts, coreMountConfigPath)
+		compressedBytesLen, err = writeTable(nonLocalMounts, coreMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytes)
+		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytesLen)
 
 		// Write local mounts
-		compressedBytes, err = writeTable(localMounts, coreLocalMountConfigPath)
+		compressedBytesLen, err = writeTable(localMounts, coreLocalMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytes)
+		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytesLen)
 
 	case *local:
 		// Write local mounts
-		compressedBytes, err = writeTable(localMounts, coreLocalMountConfigPath)
+		compressedBytesLen, err = writeTable(localMounts, coreLocalMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytes)
+		c.tableMetrics(len(localMounts.Entries), true, false, compressedBytesLen)
 	default:
 		// Write non-local mounts
-		compressedBytes, err = writeTable(nonLocalMounts, coreMountConfigPath)
+		compressedBytesLen, err = writeTable(nonLocalMounts, coreMountConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytes)
+		c.tableMetrics(len(nonLocalMounts.Entries), false, false, compressedBytesLen)
+	}
+
+	if needTxnCommit {
+		if err := barrier.(logical.Transaction).Commit(ctx); err != nil {
+			return fmt.Errorf("failed to persist mounts inside transaction: %w", err)
+		}
 	}
 
 	return nil

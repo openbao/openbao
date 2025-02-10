@@ -67,8 +67,10 @@ disables automatic rotation for the key.`,
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathKeysConfigWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathKeysConfigWrite,
+			},
 		},
 
 		HelpSynopsis:    pathKeysConfigHelpSyn,
@@ -77,6 +79,12 @@ disables automatic rotation for the key.`,
 }
 
 func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (resp *logical.Response, retErr error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 
 	// Check if the policy already exists before we lock everything
@@ -249,6 +257,11 @@ func (b *backend) pathKeysConfigWrite(ctx context.Context, req *logical.Request,
 	if warning != "" {
 		resp.AddWarning(warning)
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return resp, nil
 }
 

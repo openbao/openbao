@@ -1704,8 +1704,10 @@ func (b *SystemBackend) sealPaths() []*framework.Path {
 				OperationVerb:   "status",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ReadOperation: b.handleKeyStatus,
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ReadOperation: &framework.PathOperation{
+					Callback: b.handleKeyStatus,
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["key-status"][0]),
@@ -1787,10 +1789,6 @@ func (b *SystemBackend) sealPaths() []*framework.Path {
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "encryption-key",
 				OperationVerb:   "rotate",
-			},
-
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.handleRotate,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3745,6 +3743,23 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					},
 					Summary: "Retrieve the policy body for the named policy.",
 				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields: map[string]*framework.FieldSchema{
+								"keys": {
+									Type:     framework.TypeStringSlice,
+									Required: true,
+								},
+								"policies": {
+									Type: framework.TypeStringSlice,
+								},
+							},
+						}},
+					},
+				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesSet(PolicyTypeACL),
 					Responses: map[int][]framework.Response{
@@ -3845,6 +3860,23 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 						}},
 					},
 					Summary: "Retrieve information about the named ACL policy.",
+				},
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesList(PolicyTypeACL),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{
+							Description: "OK",
+							Fields: map[string]*framework.FieldSchema{
+								"keys": {
+									Type:     framework.TypeStringSlice,
+									Required: true,
+								},
+								"policies": {
+									Type: framework.TypeStringSlice,
+								},
+							},
+						}},
+					},
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handlePoliciesSet(PolicyTypeACL),
@@ -4008,10 +4040,6 @@ func (b *SystemBackend) wrappingPaths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationVerb: "wrap",
-			},
-
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: b.handleWrappingWrap,
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{

@@ -1,0 +1,195 @@
+---
+sidebar_label: 2.1.x
+description: Release notes for OpenBao 2.1.x
+---
+# OpenBao 2.1.0 release notes
+
+## 2.1.1
+**Release date:** January 21, 2025
+
+:::warning
+
+OpenBao's 2.1.1 Release does not include the builtin WebUI! You can only access
+a running Bao instance via the CLI or API.
+
+:::
+
+### IMPROVEMENTS
+
+* core: Bump to latest Go toolchain 1.23.5. [[GH-912](https://github.com/openbao/openbao/pull/912)]
+
+## 2.1.0
+**Release date:** November 29, 2024
+
+:::info
+
+This release had no major changes over the beta.
+
+:::
+
+:::warning
+
+OpenBao's 2.1.0 GA Release does not include the builtin WebUI! You can only access
+a running Bao instance via the CLI or API.
+
+:::
+
+### SECURITY
+
+* core/identity: fix root namespace privilege escalation via entity modification. HCSEC-2024-21 / CVE-2024-9180. [[GH-695](https://github.com/openbao/openbao/pull/695)]
+* raft: Fix memory exhaustion when processing raft cluster join requests; results in longer challenge/answers. HCSEC-2024-26 / CVE-2024-8185. [[GH-690](https://github.com/openbao/openbao/pull/690)]
+* secrets/ssh: Deny globally valid certificate issuance without valid_principals or allow_empty_principals override. HCSEC-2024-20 / CVE-2024-7594. (**potentially breaking**) [[GH-561](https://github.com/openbao/openbao/pull/561)]
+
+### CHANGES
+
+* api: Load all CA certificates specified in environment variables. [[GH-574](https://github.com/openbao/openbao/pull/574)]
+* auth/userpass: Drop support for Vault v0.2 password entries with no hash.
+sys/initialize: Drop support for pre Vault 1.3 stored Shamir share unseal.
+command/ssh: Drop support for pre Vault 1.1 auto-SSH role detection.
+plugins: Drop support for pre Vault 0.9.4 non-GRPC communication protocols.
+core: Drop support for pre Vault 1.10 batch tokens.
+core: Drop support for pre Vault 1.0 namespaces. [[GH-457](https://github.com/openbao/openbao/pull/457)]
+* cli: Remove 'bao transform ...' CLIs as the Transform plugin is not present in OpenBao. [[GH-455](https://github.com/openbao/openbao/pull/455)]
+* command/debug: Replace mholt/archiver with standard library utils. This may change file permissions but does not affect archive layout. [[GH-611](https://github.com/openbao/openbao/pull/611)]
+* serviceregistration/kubernetes: labels use `openbao` as prefix instead of `vault`. [[GH-416](https://github.com/openbao/openbao/pull/416)]
+* core: Remove support for Solaris due to lack of Docker support. [[GH-710](https://github.com/openbao/openbao/pull/710)]
+
+### FEATURES
+
+* **Remove Mount Table Limits**: Using transactional storage, we've split the
+auth and secret mount tables into separate storage entires, removing the
+requirement that the entire table fit into a single storage entry limited by
+`max_entry_size`. This allows potentially hundreds of thousands of mounts on
+a single scaled-up server. [[GH-622](https://github.com/openbao/openbao/pull/622)]
+* **Transactional Storage**: Plugin developers can now take advantage of safe
+  storage modification APIs when the underlying physical storage supports
+  them. The `physical.TransactionalBackend` and `logical.TransactionalStorage`
+  types allow developers to begin read-only and writable transactions,
+  committing or rolling back the desired changes. [[GH-292](https://github.com/openbao/openbao/pull/292)]
+* **Transit**: Support PKI CSR and certificate storage alongside key material. This allows callers to securely create keys and submit requests for certificates without the key material leaving Transit. Storage of the certificate on the key avoids the need for an additional K/V mount. Rotation of this certificate and its chain is also supported. [[GH-536](https://github.com/openbao/openbao/pull/536)]
+* auth/oidc: Add a new `callback_mode` role option value `device` to use the oidc device flow instead of a callback, add a new `poll_interval` role option to control how often to poll for a response, and add a new `callbackmode=device` option to the oidc login method in the cli. [[GH-319](https://github.com/openbao/openbao/pull/319)]
+* auth/oidc: Add new `callback_mode=direct` role option to cause the oidc callback to be direct to the server instead of the client, and add a `callbackmode=direct` option to the oidc login method in the cli. [[GH-318](https://github.com/openbao/openbao/pull/318)]
+* physical/postgres: Reintroduce Postgres database for OpenBao storage, implementing paginated list support. This feature is currently in **preview** and breaking changes may occur. [[GH-467](https://github.com/openbao/openbao/pull/467)]
+
+### IMPROVEMENTS
+
+* auth/jwt: Allow templating ACL policies from data in claims on JWT or OIDC ID tokens. [[GH-618](https://github.com/openbao/openbao/pull/618)]
+* auth/oidc: Add a new `oauth2_metadata` configuration option to enable sending any of the tokens from the token issuer to the client. [[GH-320](https://github.com/openbao/openbao/pull/320)]
+* core: Add endpoint to inspect request information [[GH-513](https://github.com/openbao/openbao/pull/513)]
+* core: Update to Go 1.23.3. [[GH-699](https://github.com/openbao/openbao/pull/699)]
+* core: Upgrade RHEL UBI container image to 9.5. [[GH-701](https://github.com/openbao/openbao/pull/701)]
+* docker: add `/bin/vault` symlink to docker images [[GH-548](https://github.com/openbao/openbao/pull/548)]
+* raft: Update to hashicorp/raft@v1.7.1, go.etcd.io/bbolt@v1.3.11 for bug fixes and performance improvements. [[GH-633](https://github.com/openbao/openbao/pull/633)]
+* rpm: Fix packaging to properly annotate configs entries for noreplace [[GH-639](https://github.com/openbao/openbao/pull/639)]
+* sdk: Use quay.io/openbao/openbao in containerized testing [[GH-427](https://github.com/openbao/openbao/pull/427)]
+* secret/pki: Add `revoked_safety_buffer` to control retention on revoked certificates separately from expired certificates. [[GH-653](https://github.com/openbao/openbao/pull/653)]
+* secret/pki: Delete invalid certificates during tidy via `tidy_invalid_certs=true` if they cannot be parsed due to Go's x509 handling. [[GH-665](https://github.com/openbao/openbao/pull/665)]
+* secret/pki: Support revoking expired certificates with the `allow_expired_cert_revocation` CRL configuration. [[GH-638](https://github.com/openbao/openbao/pull/638)]
+* secrets/kv: Implement transactions to prevent canceled operations from corrupting storage. [[GH-560](https://github.com/openbao/openbao/pull/560)]
+* secrets/pki: Use transactions for root generation, issuer import [[GH-498](https://github.com/openbao/openbao/pull/498)]
+* secrets/pki: add `not_before` parameter to precisely define a certificate's "not before" field. [[GH-515](https://github.com/openbao/openbao/pull/515)]
+* storage/postgresql: Add support for transactional storage semantics. [[GH-608](https://github.com/openbao/openbao/pull/608)]
+* storage/postgresql: Allow table creation to improve first-start UX. [[GH-614](https://github.com/openbao/openbao/pull/614)]
+* storage/raft: Add support for transactional storage semantics. [[GH-292](https://github.com/openbao/openbao/pull/292)]
+* ui: Remove Vault references on sibebar, splash screen & loading page. [[GH-668](https://github.com/openbao/openbao/pull/668)]
+* ui: Update documentation links. [[GH-669](https://github.com/openbao/openbao/pull/669)]
+
+### BUG FIXES
+
+* api/output_string: Change vault reference to bao. [[GH-511](https://github.com/openbao/openbao/pull/511)]
+* cli: Always pass `BAO_ADDR` to the token helper, so the token helper can know
+the address even if it was provided through the `-address` flag. For
+compatibility we also set `VAULT_ADDR`. [[GH-348](https://github.com/openbao/openbao/pull/348)]
+* core: Fix server panic on AppRole login requests with invalid parameter typing [[GH-512](https://github.com/openbao/openbao/pull/512)]
+* docker: fix collision between the cluster address and local JSON configuration sharing the same variable within the docker-entrypoint script [[GH-446](https://github.com/openbao/openbao/pull/446)]
+* docker: fix configuration of bao cluster and redirect address on separate interfaces when using environment variables [[GH-682](https://github.com/openbao/openbao/pull/682)]
+* physical/cache: Ensure later modifications to entry do not impact cached value. [[GH-483](https://github.com/openbao/openbao/pull/483)]
+* release: remove changelog/ directory from binary release tarballs [[GH-641](https://github.com/openbao/openbao/pull/641)]
+* secrets/pki: Fix ACME HTTP-01 challenge validation with IPv6 addresses [[GH-559](https://github.com/openbao/openbao/pull/559)]
+* secrets/pki: Fix handling of reusing existing Ed25519 keys [[GH-461](https://github.com/openbao/openbao/pull/461)]
+* serviceregistration/k8s: Fix compatibility with legacy VAULT_-prefixed environment variables. [[GH-527](https://github.com/openbao/openbao/pull/527)]
+
+## 2.1.0-beta20241114
+**Release date:** November 14, 2024
+
+:::warning
+
+OpenBao's 2.1.0 Beta Release does not include the builtin WebUI! You can only access
+a running Bao instance via the CLI or API.
+
+:::
+
+### SECURITY
+
+* core/identity: fix root namespace privilege escalation via entity modification. HCSEC-2024-21 / CVE-2024-9180. [[GH-695](https://github.com/openbao/openbao/pull/695)]
+* raft: Fix memory exhaustion when processing raft cluster join requests; results in longer challenge/answers. HCSEC-2024-26 / CVE-2024-8185. [[GH-690](https://github.com/openbao/openbao/pull/690)]
+* secrets/ssh: Deny globally valid certificate issuance without valid_principals or allow_empty_principals override. HCSEC-2024-20 / CVE-2024-7594. (**potentially breaking**) [[GH-561](https://github.com/openbao/openbao/pull/561)]
+
+### CHANGES
+
+* api: Load all CA certificates specified in environment variables. [[GH-574](https://github.com/openbao/openbao/pull/574)]
+* auth/userpass: Drop support for Vault v0.2 password entries with no hash.
+sys/initialize: Drop support for pre Vault 1.3 stored Shamir share unseal.
+command/ssh: Drop support for pre Vault 1.1 auto-SSH role detection.
+plugins: Drop support for pre Vault 0.9.4 non-GRPC communication protocols.
+core: Drop support for pre Vault 1.10 batch tokens.
+core: Drop support for pre Vault 1.0 namespaces. [[GH-457](https://github.com/openbao/openbao/pull/457)]
+* cli: Remove 'bao transform ...' CLIs as the Transform plugin is not present in OpenBao. [[GH-455](https://github.com/openbao/openbao/pull/455)]
+* command/debug: Replace mholt/archiver with standard library utils. This may change file permissions but does not affect archive layout. [[GH-611](https://github.com/openbao/openbao/pull/611)]
+* serviceregistration/kubernetes: labels use `openbao` as prefix instead of `vault`. [[GH-416](https://github.com/openbao/openbao/pull/416)]
+* core: Remove support for Solaris due to lack of Docker support. [[GH-710](https://github.com/openbao/openbao/pull/710)]
+
+### FEATURES
+
+* **Remove Mount Table Limits**: Using transactional storage, we've split the
+auth and secret mount tables into separate storage entires, removing the
+requirement that the entire table fit into a single storage entry limited by
+`max_entry_size`. This allows potentially hundreds of thousands of mounts on
+a single scaled-up server. [[GH-622](https://github.com/openbao/openbao/pull/622)]
+* **Transactional Storage**: Plugin developers can now take advantage of safe
+  storage modification APIs when the underlying physical storage supports
+  them. The `physical.TransactionalBackend` and `logical.TransactionalStorage`
+  types allow developers to begin read-only and writable transactions,
+  committing or rolling back the desired changes. [[GH-292](https://github.com/openbao/openbao/pull/292)]
+* **Transit**: Support PKI CSR and certificate storage alongside key material. This allows callers to securely create keys and submit requests for certificates without the key material leaving Transit. Storage of the certificate on the key avoids the need for an additional K/V mount. Rotation of this certificate and its chain is also supported. [[GH-536](https://github.com/openbao/openbao/pull/536)]
+* auth/oidc: Add a new `callback_mode` role option value `device` to use the oidc device flow instead of a callback, add a new `poll_interval` role option to control how often to poll for a response, and add a new `callbackmode=device` option to the oidc login method in the cli. [[GH-319](https://github.com/openbao/openbao/pull/319)]
+* auth/oidc: Add new `callback_mode=direct` role option to cause the oidc callback to be direct to the server instead of the client, and add a `callbackmode=direct` option to the oidc login method in the cli. [[GH-318](https://github.com/openbao/openbao/pull/318)]
+* physical/postgres: Reintroduce Postgres database for OpenBao storage, implementing paginated list support. This feature is currently in **preview** and breaking changes may occur. [[GH-467](https://github.com/openbao/openbao/pull/467)]
+
+### IMPROVEMENTS
+
+* auth/jwt: Allow templating ACL policies from data in claims on JWT or OIDC ID tokens. [[GH-618](https://github.com/openbao/openbao/pull/618)]
+* auth/oidc: Add a new `oauth2_metadata` configuration option to enable sending any of the tokens from the token issuer to the client. [[GH-320](https://github.com/openbao/openbao/pull/320)]
+* core: Add endpoint to inspect request information [[GH-513](https://github.com/openbao/openbao/pull/513)]
+* core: Update to Go 1.23.3. [[GH-699](https://github.com/openbao/openbao/pull/699)]
+* core: Upgrade RHEL UBI container image to 9.5. [[GH-701](https://github.com/openbao/openbao/pull/701)]
+* docker: add `/bin/vault` symlink to docker images [[GH-548](https://github.com/openbao/openbao/pull/548)]
+* raft: Update to hashicorp/raft@v1.7.1, go.etcd.io/bbolt@v1.3.11 for bug fixes and performance improvements. [[GH-633](https://github.com/openbao/openbao/pull/633)]
+* rpm: Fix packaging to properly annotate configs entries for noreplace [[GH-639](https://github.com/openbao/openbao/pull/639)]
+* sdk: Use quay.io/openbao/openbao in containerized testing [[GH-427](https://github.com/openbao/openbao/pull/427)]
+* secret/pki: Add `revoked_safety_buffer` to control retention on revoked certificates separately from expired certificates. [[GH-653](https://github.com/openbao/openbao/pull/653)]
+* secret/pki: Delete invalid certificates during tidy via `tidy_invalid_certs=true` if they cannot be parsed due to Go's x509 handling. [[GH-665](https://github.com/openbao/openbao/pull/665)]
+* secret/pki: Support revoking expired certificates with the `allow_expired_cert_revocation` CRL configuration. [[GH-638](https://github.com/openbao/openbao/pull/638)]
+* secrets/kv: Implement transactions to prevent canceled operations from corrupting storage. [[GH-560](https://github.com/openbao/openbao/pull/560)]
+* secrets/pki: Use transactions for root generation, issuer import [[GH-498](https://github.com/openbao/openbao/pull/498)]
+* secrets/pki: add `not_before` parameter to precisely define a certificate's "not before" field. [[GH-515](https://github.com/openbao/openbao/pull/515)]
+* storage/postgresql: Add support for transactional storage semantics. [[GH-608](https://github.com/openbao/openbao/pull/608)]
+* storage/postgresql: Allow table creation to improve first-start UX. [[GH-614](https://github.com/openbao/openbao/pull/614)]
+* storage/raft: Add support for transactional storage semantics. [[GH-292](https://github.com/openbao/openbao/pull/292)]
+* ui: Remove Vault references on sibebar, splash screen & loading page. [[GH-668](https://github.com/openbao/openbao/pull/668)]
+* ui: Update documentation links. [[GH-669](https://github.com/openbao/openbao/pull/669)]
+
+### BUG FIXES
+
+* api/output_string: Change vault reference to bao. [[GH-511](https://github.com/openbao/openbao/pull/511)]
+* cli: Always pass `BAO_ADDR` to the token helper, so the token helper can know
+the address even if it was provided through the `-address` flag. For
+compatibility we also set `VAULT_ADDR`. [[GH-348](https://github.com/openbao/openbao/pull/348)]
+* core: Fix server panic on AppRole login requests with invalid parameter typing [[GH-512](https://github.com/openbao/openbao/pull/512)]
+* docker: fix collision between the cluster address and local JSON configuration sharing the same variable within the docker-entrypoint script [[GH-446](https://github.com/openbao/openbao/pull/446)]
+* docker: fix configuration of bao cluster and redirect address on separate interfaces when using environment variables [[GH-682](https://github.com/openbao/openbao/pull/682)]
+* physical/cache: Ensure later modifications to entry do not impact cached value. [[GH-483](https://github.com/openbao/openbao/pull/483)]
+* release: remove changelog/ directory from binary release tarballs [[GH-641](https://github.com/openbao/openbao/pull/641)]
+* secrets/pki: Fix ACME HTTP-01 challenge validation with IPv6 addresses [[GH-559](https://github.com/openbao/openbao/pull/559)]
+* secrets/pki: Fix handling of reusing existing Ed25519 keys [[GH-461](https://github.com/openbao/openbao/pull/461)]
+* serviceregistration/k8s: Fix compatibility with legacy VAULT_-prefixed environment variables. [[GH-527](https://github.com/openbao/openbao/pull/527)]

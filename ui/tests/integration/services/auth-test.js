@@ -253,35 +253,6 @@ module('Integration | Service | auth', function (hooks) {
     assert.strictEqual(this.memStore.keys().length, 0, 'mem storage is empty');
   });
 
-  test('github authentication', function (assert) {
-    assert.expect(6);
-    const done = assert.async();
-    const service = this.owner.factoryFor('service:auth').create({
-      storage: (type) => (type === 'memory' ? this.memStore : this.store),
-    });
-
-    run(() => {
-      service.authenticate({ clusterId: '1', backend: 'github', data: { token: 'test' } }).then(() => {
-        const clusterTokenName = service.get('currentTokenName');
-        const clusterToken = service.get('currentToken');
-        const authData = service.get('authData');
-        const expectedTokenName = `${TOKEN_PREFIX}github${TOKEN_SEPARATOR}1`;
-
-        assert.strictEqual(GITHUB_RESPONSE.auth.client_token, clusterToken, 'token is saved properly');
-        assert.strictEqual(expectedTokenName, clusterTokenName, 'token name is saved properly');
-        assert.strictEqual(authData.backend.type, 'github', 'backend is saved properly');
-        assert.strictEqual(
-          GITHUB_RESPONSE.auth.metadata.org + '/' + GITHUB_RESPONSE.auth.metadata.username,
-          authData.displayName,
-          'displayName is saved properly'
-        );
-        assert.strictEqual(this.memStore.keys().length, 0, 'mem storage is empty');
-        assert.ok(this.store.keys().includes(expectedTokenName), 'normal storage contains the token');
-        done();
-      });
-    });
-  });
-
   test('userpass authentication', function (assert) {
     assert.expect(4);
     const done = assert.async();

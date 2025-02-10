@@ -59,9 +59,9 @@ module('Integration | Component | mount backend form', function (hooks) {
       await render(
         hbs`<MountBackendForm @mountModel={{this.model}} @onMountSuccess={{this.onMountSuccess}} />`
       );
-      await component.selectType('aws');
+      await component.selectType('ldap');
       await component.next();
-      assert.strictEqual(component.pathValue, 'aws', 'sets the value of the type');
+      assert.strictEqual(component.pathValue, 'ldap', 'sets the value of the type');
       await component.back();
       await component.selectType('approle');
       await component.next();
@@ -81,9 +81,9 @@ module('Integration | Component | mount backend form', function (hooks) {
       await component.back();
       assert.strictEqual(this.model.type, '', 'Clears type on back');
       assert.strictEqual(this.model.path, 'newpath', 'Path is still newPath');
-      await component.selectType('aws');
+      await component.selectType('ldap');
       await component.next();
-      assert.strictEqual(this.model.type, 'aws', 'Updates type on model');
+      assert.strictEqual(this.model.type, 'ldap', 'Updates type on model');
       assert.strictEqual(component.pathValue, 'newpath', 'keeps custom path value');
     });
 
@@ -91,7 +91,7 @@ module('Integration | Component | mount backend form', function (hooks) {
       await render(
         hbs`<MountBackendForm @mountModel={{this.model}} @onMountSuccess={{this.onMountSuccess}} />`
       );
-      await component.selectType('github');
+      await component.selectType('ldap');
       await component.next();
       await component.toggleOptions();
       assert

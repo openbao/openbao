@@ -17,7 +17,28 @@ jobs:
           gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/openbao/openbao/pulls/${{ github.event.pull_request.number }}/commits | \
-          jq -f .github/scripts/verify-commits.jq
+            /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits | \
+          jq '[
+              # Iterate over all commits
+              .[] |
+              # select maintainer commits
+              select(
+               .author.login == "JanMa" or
+               .author.login == "cipherboy" or
+               .author.login == "DanGhita" or
+               .author.login == "naphelps" or
+               .author.login == "DrDaveD"
+              ) |
+              # select any unsigned commits
+              select(.commit.verification.verified == false)
+             ] |
+             # check if there are unsigned commits
+             if (. | length) != 0 then
+              # return error
+              ("Pr contains unsigned maintainer commits!\n" | halt_error(1))
+             else
+              # return success
+              "All maintainer commits are signed"
+             end'
         env:
           GH_TOKEN: ${{ github.token }}

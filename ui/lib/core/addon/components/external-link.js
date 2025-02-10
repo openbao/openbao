@@ -8,7 +8,7 @@ import Component from '@glimmer/component';
 /**
  * @module ExternalLinkComponent
  * `ExternalLink` components are used to render anchor links to non-cluster links. Automatically opens in a new tab with noopener noreferrer.
- *  To link to developer.hashicorp.com, use DocLink .
+ *  To link to openbao.org, use DocLink .
  *
  * @example
  * ```js

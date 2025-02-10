@@ -16,8 +16,8 @@ module('Integration | Component | icon', function (hooks) {
     await render(hbs`<Icon class="i-con" />`);
     assert.dom('.i-con').exists('renders');
 
-    await render(hbs`<Icon @name="vault-logo" />`);
-    assert.dom('.vault-logo').exists('inlines the SVG');
+    await render(hbs`<Icon @name="openbao" />`);
+    assert.dom('.openbao-logo').exists('inlines the SVG');
     assert.dom('.hs-icon').hasClass('hs-icon-l', 'Default hs class applied');
 
     await render(hbs`<Icon class="ah" aria-hidden="true" />`);
@@ -26,11 +26,11 @@ module('Integration | Component | icon', function (hooks) {
     await render(hbs`<Icon class="al" aria-label="Testing" />`);
     assert.dom('.al').hasAttribute('aria-label', 'Testing', 'renders aria-label');
 
-    await render(hbs`<Icon @name="vault-logo" @size="24"/>`);
+    await render(hbs`<Icon @name="openbao" @size="24"/>`);
     assert.dom('.hs-icon').hasClass('hs-icon-xl', 'adds the larger size class');
 
     const promise = waitForError();
-    render(hbs`<Icon @name="vault-logo" @size="12"/>`);
+    render(hbs`<Icon @name="openbao" @size="12"/>`);
     const err = await promise;
     assert.strictEqual(
       err.message,

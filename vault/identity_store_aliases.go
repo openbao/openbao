@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -61,8 +62,10 @@ This field is deprecated, use canonical_id.`,
 					Description: "User provided key-value pairs",
 				},
 			},
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.handleAliasCreateUpdate(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.handleAliasCreateUpdate(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(aliasHelp["alias"][0]),
@@ -138,8 +141,10 @@ This field is deprecated, use canonical_id.`,
 				OperationSuffix: "aliases-by-id",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathAliasIDList(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathAliasIDList(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(aliasHelp["alias-id-list"][0]),
@@ -598,7 +603,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 
 		// If there is no entity tied to a valid alias, something is wrong
 		if entity == nil {
-			return nil, fmt.Errorf("alias not associated to an entity")
+			return nil, errors.New("alias not associated to an entity")
 		}
 
 		aliases := []*identity.Alias{

@@ -1,3 +1,4 @@
+// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
@@ -33,7 +34,7 @@ func (a *idAddr) String() string  { return a.id }
 
 func addPeer(t *testing.T, leader, follower *RaftBackend) {
 	t.Helper()
-	if err := leader.AddPeer(context.Background(), follower.NodeID(), follower.NodeID()); err != nil {
+	if err := leader.AddPeer(context.Background(), follower.NodeID(), follower.NodeID(), true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -905,7 +906,7 @@ func TestBoltSnapshotStore_BadPerm(t *testing.T) {
 
 	_, err = NewBoltSnapshotStore(dir2, logger, nil)
 	if err == nil {
-		t.Fatalf("should fail to use dir with bad perms")
+		t.Fatal("should fail to use dir with bad perms")
 	}
 }
 
@@ -942,7 +943,7 @@ func TestBoltSnapshotStore_CloseFailure(t *testing.T) {
 	// Cancel the snapshot! Should delete
 	err = sink.Close()
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	// Ensure the snapshot file does not exist

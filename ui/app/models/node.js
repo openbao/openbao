@@ -29,7 +29,6 @@ export default Model.extend({
   version: attr('string'),
   type: attr('string'),
   storageType: attr('string'),
-  hcpLinkStatus: attr('string'),
 
   //https://www.vaultproject.io/docs/http/sys-leader.html
   haEnabled: attr('boolean'),

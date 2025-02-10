@@ -65,13 +65,29 @@ version-agnostic information about a secret.
 				Description: `Optional number of entries to return; defaults to all entries. Only used for listing.`,
 			},
 		},
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.upgradeCheck(b.pathMetadataWrite()),
-			logical.CreateOperation: b.upgradeCheck(b.pathMetadataWrite()),
-			logical.ReadOperation:   b.upgradeCheck(b.pathMetadataRead()),
-			logical.DeleteOperation: b.upgradeCheck(b.pathMetadataDelete()),
-			logical.ListOperation:   b.upgradeCheck(b.pathMetadataList()),
-			logical.PatchOperation:  b.upgradeCheck(b.pathMetadataPatch()),
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataWrite()),
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataWrite()),
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataRead()),
+			},
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataDelete()),
+			},
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataList()),
+			},
+			logical.ScanOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataScan()),
+			},
+			logical.PatchOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataPatch()),
+			},
 		},
 
 		ExistenceCheck: b.metadataExistenceCheck(),
@@ -122,6 +138,32 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 		// Use encrypted key storage to list the keys
 		keys, err := es.ListPage(ctx, key, after, limit)
 		return logical.ListResponse(keys), err
+	}
+}
+
+func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		key := data.Get("path").(string)
+
+		// Get an encrypted key storage object
+		wrapper, err := b.getKeyEncryptor(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+
+		es := wrapper.Wrap(req.Storage)
+		view := logical.NewStorageView(es, key)
+
+		// Use encrypted key storage to recursively list the keys
+		var keys []string
+		err = logical.ScanView(ctx, view, func(path string) {
+			keys = append(keys, path)
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return logical.ListResponse(keys), nil
 	}
 }
 

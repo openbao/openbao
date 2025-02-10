@@ -5,6 +5,7 @@ package openldap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -65,7 +66,7 @@ func (b *backend) pathDynamicCredsRead(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 	if config == nil {
-		return nil, fmt.Errorf("missing LDAP configuration")
+		return nil, errors.New("missing LDAP configuration")
 	}
 
 	// Generate dynamic data
@@ -176,7 +177,7 @@ func (b *backend) secretCredsRenew() framework.OperationFunc {
 		// Retrieve the role to ensure it still exists. If it doesn't, this will reject the renewal request.
 		roleNameRaw, ok := req.Secret.InternalData["name"]
 		if !ok {
-			return nil, fmt.Errorf("missing role name")
+			return nil, errors.New("missing role name")
 		}
 
 		roleName := roleNameRaw.(string)
@@ -185,7 +186,7 @@ func (b *backend) secretCredsRenew() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to retrieve dynamic role: %w", err)
 		}
 		if dRole == nil {
-			return nil, fmt.Errorf("unable to renew: role does not exist")
+			return nil, errors.New("unable to renew: role does not exist")
 		}
 
 		// Update the default TTL & MaxTTL to the latest from the role in the event the role definition has changed
@@ -207,7 +208,7 @@ func (b *backend) secretCredsRevoke() framework.OperationFunc {
 			return nil, err
 		}
 		if config == nil {
-			return nil, fmt.Errorf("missing LDAP configuration")
+			return nil, errors.New("missing LDAP configuration")
 		}
 
 		deletionTemplate, err := getString(req.Secret.InternalData, "deletion_ldif")
@@ -216,7 +217,7 @@ func (b *backend) secretCredsRevoke() framework.OperationFunc {
 		}
 
 		if deletionTemplate == "" {
-			return nil, fmt.Errorf("broken internal data: missing deletion_ldif")
+			return nil, errors.New("broken internal data: missing deletion_ldif")
 		}
 
 		var templateData dynamicTemplateData
@@ -297,7 +298,7 @@ func encodeUTF16LE(str string) (string, error) {
 
 func getString(m map[string]interface{}, key string) (string, error) {
 	if m == nil {
-		return "", fmt.Errorf("nil map")
+		return "", errors.New("nil map")
 	}
 
 	val, exists := m[key]

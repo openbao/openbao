@@ -5,6 +5,7 @@ package transit
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -61,10 +62,10 @@ func testAccStepwiseListPolicy(t *testing.T, name string, expectNone bool) stepw
 		Path:      "keys",
 		Assert: func(resp *api.Secret, err error) error {
 			if (resp == nil || len(resp.Data) == 0) && !expectNone {
-				return fmt.Errorf("missing response")
+				return errors.New("missing response")
 			}
 			if expectNone && resp != nil {
-				return fmt.Errorf("response data when expecting none")
+				return errors.New("response data when expecting none")
 			}
 
 			if expectNone && resp == nil {
@@ -78,7 +79,7 @@ func testAccStepwiseListPolicy(t *testing.T, name string, expectNone bool) stepw
 				return err
 			}
 			if len(d.Keys) == 0 {
-				return fmt.Errorf("missing keys")
+				return errors.New("missing keys")
 			}
 			if len(d.Keys) > 1 {
 				return fmt.Errorf("only 1 key expected, %d returned", len(d.Keys))
@@ -104,10 +105,10 @@ func testAccStepwiseReadPolicyWithVersions(t *testing.T, name string, expectNone
 		Assert: func(resp *api.Secret, err error) error {
 			t.Helper()
 			if resp == nil && !expectNone {
-				return fmt.Errorf("missing response")
+				return errors.New("missing response")
 			} else if expectNone {
 				if resp != nil {
-					return fmt.Errorf("response when expecting none")
+					return errors.New("response when expecting none")
 				}
 				return nil
 			}
@@ -139,10 +140,10 @@ func testAccStepwiseReadPolicyWithVersions(t *testing.T, name string, expectNone
 			}
 			// Should NOT get a key back
 			if d.Key != nil {
-				return fmt.Errorf("unexpected key found")
+				return errors.New("unexpected key found")
 			}
 			if d.Keys == nil {
-				return fmt.Errorf("no keys found")
+				return errors.New("no keys found")
 			}
 			if d.MinDecryptionVersion != minDecryptionVersion {
 				return fmt.Errorf("minimum decryption version mismatch, expected (%#v), found (%#v)", minEncryptionVersion, d.MinDecryptionVersion)
@@ -151,7 +152,7 @@ func testAccStepwiseReadPolicyWithVersions(t *testing.T, name string, expectNone
 				return fmt.Errorf("minimum encryption version mismatch, expected (%#v), found (%#v)", minEncryptionVersion, d.MinDecryptionVersion)
 			}
 			if d.DeletionAllowed {
-				return fmt.Errorf("expected DeletionAllowed to be false, but got true")
+				return errors.New("expected DeletionAllowed to be false, but got true")
 			}
 			if d.Derived != derived {
 				return fmt.Errorf("derived mismatch, expected (%t), got (%t)", derived, d.Derived)
@@ -182,7 +183,7 @@ func testAccStepwiseEncryptContext(
 				return err
 			}
 			if d.Ciphertext == "" {
-				return fmt.Errorf("missing ciphertext")
+				return errors.New("missing ciphertext")
 			}
 			decryptData["ciphertext"] = d.Ciphertext
 			decryptData["context"] = base64.StdEncoding.EncodeToString([]byte(context))

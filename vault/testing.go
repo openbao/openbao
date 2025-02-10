@@ -56,7 +56,6 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/cluster"
-	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/net/http2"
 )
@@ -329,12 +328,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		SecretThreshold: 3,
 	}
 
-	switch core.seal.StoredKeysSupported() {
-	case seal.StoredKeysNotSupported:
-		barrierConfig.StoredShares = 0
-	default:
-		barrierConfig.StoredShares = 1
-	}
+	barrierConfig.StoredShares = 1
 
 	recoveryConfig := &SealConfig{
 		SecretShares:    3,
@@ -344,9 +338,6 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	initParams := &InitParams{
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
-	}
-	if core.seal.StoredKeysSupported() == seal.StoredKeysNotSupported {
-		initParams.LegacyShamirSeal = true
 	}
 	result, err := core.Initialize(context.Background(), initParams)
 	if err != nil {
@@ -654,10 +645,10 @@ var (
 // invoked before the test core is created.
 func AddTestCredentialBackend(name string, factory logical.Factory) error {
 	if name == "" {
-		return fmt.Errorf("missing backend name")
+		return errors.New("missing backend name")
 	}
 	if factory == nil {
-		return fmt.Errorf("missing backend factory function")
+		return errors.New("missing backend factory function")
 	}
 	testCredentialBackends[name] = factory
 	return nil
@@ -671,10 +662,10 @@ func ClearTestCredentialBackends() {
 // invoked before the test core is created.
 func AddTestLogicalBackend(name string, factory logical.Factory) error {
 	if name == "" {
-		return fmt.Errorf("missing backend name")
+		return errors.New("missing backend name")
 	}
 	if factory == nil {
-		return fmt.Errorf("missing backend factory function")
+		return errors.New("missing backend factory function")
 	}
 	testLogicalBackends[name] = factory
 	return nil
@@ -734,7 +725,7 @@ func (n *rawHTTP) Type() logical.BackendType {
 
 func GenerateRandBytes(length int) ([]byte, error) {
 	if length < 0 {
-		return nil, fmt.Errorf("length must be >= 0")
+		return nil, errors.New("length must be >= 0")
 	}
 
 	buf := make([]byte, length)
@@ -859,7 +850,7 @@ WAITACTIVE:
 		time.Sleep(time.Second)
 	}
 	if activeCore == -1 {
-		t.Fatalf("no core became active")
+		t.Fatal("no core became active")
 	}
 
 	switch {
@@ -911,7 +902,7 @@ func (c *TestCluster) UnsealCoresWithError(useStoredKeys bool) error {
 
 	// Verify unsealed
 	if c.Cores[0].Sealed() {
-		return fmt.Errorf("should not be sealed")
+		return errors.New("should not be sealed")
 	}
 
 	if err := TestWaitActiveWithError(c.Cores[0].Core); err != nil {
@@ -1091,7 +1082,7 @@ func (c *TestCluster) ensureCoresSealed() error {
 		timeout := time.Now().Add(60 * time.Second)
 		for {
 			if time.Now().After(timeout) {
-				return fmt.Errorf("timeout waiting for core to seal")
+				return errors.New("timeout waiting for core to seal")
 			}
 			if core.Sealed() {
 				break
@@ -1638,7 +1629,7 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 
 	if opts != nil && opts.InmemClusterLayers {
 		if opts.ClusterLayers != nil {
-			t.Fatalf("cannot specify ClusterLayers when InmemClusterLayers is true")
+			t.Fatal("cannot specify ClusterLayers when InmemClusterLayers is true")
 		}
 		inmemCluster, err := cluster.NewInmemLayerCluster("inmem-cluster", numCores, testCluster.Logger.Named("inmem-cluster"))
 		if err != nil {
@@ -2183,7 +2174,7 @@ func (testCluster *TestCluster) getAPIClient(
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			// This can of course be overridden per-test by using its own client
-			return fmt.Errorf("redirects not allowed in these tests")
+			return errors.New("redirects not allowed in these tests")
 		},
 	}
 	config := api.DefaultConfig()

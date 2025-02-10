@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/azurekeyvault",
                         "configuration/seal/gcpckms",
                         "configuration/seal/ocikms",
+                        "configuration/seal/pkcs11",
                         "configuration/seal/transit",
                     ],
                     service_registration: [
@@ -396,6 +397,7 @@ const sidebars: SidebarsConfig = {
                 "plugins/index",
                 "plugins/plugin-architecture",
                 "plugins/plugin-development",
+                "plugins/plugin-authors-guide",
                 "plugins/plugin-management",
             ],
             Platforms: [
@@ -466,8 +468,8 @@ const sidebars: SidebarsConfig = {
             ],
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-1-0",
                 "release-notes/2-0-0",
-                "release-notes/2-0-1",
             ],
         },
         "known-issues",
@@ -484,6 +486,7 @@ const sidebars: SidebarsConfig = {
             Contributing: [
                 "contributing/index",
                 "contributing/code-organization",
+                "contributing/packaging",
             ],
             RFCs: [
                 "rfcs/index",
@@ -491,6 +494,8 @@ const sidebars: SidebarsConfig = {
                 "rfcs/mlock-removal",
                 "rfcs/signed-commits",
                 "rfcs/transactions",
+                "rfcs/split-mount-tables",
+                "rfcs/scan-operation",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

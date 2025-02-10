@@ -121,7 +121,7 @@ func TestRollbackManager_ManyWorkers(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), newTable, &mountEntry.Local))
+			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 
@@ -204,7 +204,7 @@ func TestRollbackManager_WorkerPool(t *testing.T) {
 			newTable.Entries = append(newTable.Entries, mountEntry)
 			core.mounts = newTable
 			err = core.router.Mount(b, "logical", mountEntry, view)
-			require.NoError(t, core.persistMounts(context.Background(), newTable, &mountEntry.Local))
+			require.NoError(t, core.persistMounts(context.Background(), nil, newTable, &mountEntry.Local, mountEntry.UUID))
 		}()
 	}
 

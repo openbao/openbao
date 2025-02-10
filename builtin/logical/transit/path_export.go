@@ -66,8 +66,10 @@ func (b *backend) pathExportKeys() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathPolicyExportRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathPolicyExportRead,
+			},
 		},
 
 		HelpSynopsis:    pathExportHelpSyn,
@@ -200,7 +202,7 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 			src = key.Key
 		}
 		if format == "der" || format == "pem" {
-			return "", fmt.Errorf("unknown format for HMAC key; supported values are `` or `raw`")
+			return "", errors.New("unknown format for HMAC key; supported values are `` or `raw`")
 		}
 
 		return strings.TrimSpace(base64.StdEncoding.EncodeToString(src)), nil
@@ -208,7 +210,7 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 		switch policy.Type {
 		case keysutil.KeyType_AES128_GCM96, keysutil.KeyType_AES256_GCM96, keysutil.KeyType_ChaCha20_Poly1305, keysutil.KeyType_XChaCha20_Poly1305:
 			if format == "der" || format == "pem" {
-				return "", fmt.Errorf("unknown format for HMAC key; supported values are `` or `raw`")
+				return "", errors.New("unknown format for HMAC key; supported values are `` or `raw`")
 			}
 
 			return strings.TrimSpace(base64.StdEncoding.EncodeToString(key.Key)), nil
@@ -299,7 +301,7 @@ func getExportKey(policy *keysutil.Policy, key *keysutil.KeyEntry, exportType st
 
 func encodeRSAPrivateKey(key *keysutil.KeyEntry, format string) (string, error) {
 	if format == "raw" {
-		return "", fmt.Errorf("unknown key format for rsa key; supported values are ``, `der`, or `pem`")
+		return "", errors.New("unknown key format for rsa key; supported values are ``, `der`, or `pem`")
 	}
 
 	if key == nil {
@@ -339,7 +341,7 @@ func encodeRSAPrivateKey(key *keysutil.KeyEntry, format string) (string, error) 
 
 func encodeRSAPublicKey(key *keysutil.KeyEntry, format string) (string, error) {
 	if format == "raw" {
-		return "", fmt.Errorf("unknown key format for rsa key; supported values are ``, `der`, or `pem`")
+		return "", errors.New("unknown key format for rsa key; supported values are ``, `der`, or `pem`")
 	}
 
 	if key == nil {
@@ -373,7 +375,7 @@ func encodeRSAPublicKey(key *keysutil.KeyEntry, format string) (string, error) {
 	}
 	pemBytes := pem.EncodeToMemory(pemBlock)
 	if pemBytes == nil || len(pemBytes) == 0 {
-		return "", fmt.Errorf("failed to PEM-encode RSA public key")
+		return "", errors.New("failed to PEM-encode RSA public key")
 	}
 
 	return string(pemBytes), nil
@@ -381,7 +383,7 @@ func encodeRSAPublicKey(key *keysutil.KeyEntry, format string) (string, error) {
 
 func keyEntryToECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
 	if format == "raw" {
-		return "", fmt.Errorf("unknown key format for ec key; supported values are ``, `der`, or `pem`")
+		return "", errors.New("unknown key format for ec key; supported values are ``, `der`, or `pem`")
 	}
 
 	if k == nil {
@@ -431,7 +433,7 @@ func keyEntryToECPrivateKey(k *keysutil.KeyEntry, curve elliptic.Curve, format s
 
 func keyEntryToECPublicKey(k *keysutil.KeyEntry, curve elliptic.Curve, format string) (string, error) {
 	if format == "raw" {
-		return "", fmt.Errorf("unknown key format for ec key; supported values are ``, `der`, or `pem`")
+		return "", errors.New("unknown key format for ec key; supported values are ``, `der`, or `pem`")
 	}
 
 	if k == nil {

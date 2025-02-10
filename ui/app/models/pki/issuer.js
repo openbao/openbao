@@ -64,7 +64,7 @@ export default class PkiIssuerModel extends Model {
     label: 'Leaf notAfter behavior',
     subText:
       'What happens when a leaf certificate is issued, but its NotAfter field (and therefore its expiry date) exceeds that of this issuer.',
-    docLink: '/vault/api-docs/secret/pki#update-issuer',
+    docLink: '/api-docs/secret/pki#update-issuer',
     editType: 'yield',
     valueOptions: ['err', 'truncate', 'permit'],
   })

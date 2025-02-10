@@ -20,8 +20,6 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/hashicorp/go-secure-stdlib/strutil"
-	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"go.uber.org/atomic"
@@ -46,12 +44,6 @@ const (
 	AESGCMVersion1 = 0x1
 	AESGCMVersion2 = 0x2
 )
-
-// barrierInit is the JSON encoded value stored
-type barrierInit struct {
-	Version int    // Version is the current format version
-	Key     []byte // Key is the primary encryption key
-}
 
 // Validate AESGCMBarrier satisfies SecurityBarrier interface
 var (
@@ -163,22 +155,14 @@ func (b *AESGCMBarrier) Initialized(ctx context.Context) (bool, error) {
 	}
 
 	// Read the keyring file
-	keys, err := b.backend.List(ctx, keyringPrefix)
+	entry, err := b.backend.Get(ctx, keyringPath)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for initialization: %w", err)
-	}
-	if strutil.StrListContains(keys, "keyring") {
-		b.initialized.Store(true)
-		return true, nil
 	}
 
-	// Fallback, check for the old sentinel file
-	out, err := b.backend.Get(ctx, barrierInitPath)
-	if err != nil {
-		return false, fmt.Errorf("failed to check for initialization: %w", err)
-	}
-	b.initialized.Store(out != nil)
-	return out != nil, nil
+	initialized := entry != nil
+	b.initialized.Store(initialized)
+	return initialized, nil
 }
 
 // Initialize works only if the barrier has not been initialized
@@ -498,39 +482,6 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to check for keyring: %w", err)
 	}
-	if out != nil {
-		// Verify the term is always just one
-		term := binary.BigEndian.Uint32(out.Value[:4])
-		if term != initialKeyTerm {
-			return errors.New("term mis-match")
-		}
-
-		// Decrypt the barrier init key
-		plain, err := b.decrypt(keyringPath, gcm, out.Value)
-		defer memzero(plain)
-		if err != nil {
-			if strings.Contains(err.Error(), "message authentication failed") {
-				return ErrBarrierInvalidKey
-			}
-			return err
-		}
-
-		// Recover the keyring
-		err = b.recoverKeyring(plain)
-		if err != nil {
-			return fmt.Errorf("keyring deserialization failed: %w", err)
-		}
-
-		b.sealed = false
-
-		return nil
-	}
-
-	// Read the barrier initialization key
-	out, err = b.backend.Get(ctx, barrierInitPath)
-	if err != nil {
-		return fmt.Errorf("failed to check for initialization: %w", err)
-	}
 	if out == nil {
 		return ErrBarrierNotInit
 	}
@@ -542,47 +493,21 @@ func (b *AESGCMBarrier) Unseal(ctx context.Context, key []byte) error {
 	}
 
 	// Decrypt the barrier init key
-	plain, err := b.decrypt(barrierInitPath, gcm, out.Value)
+	plain, err := b.decrypt(keyringPath, gcm, out.Value)
+	defer memzero(plain)
 	if err != nil {
 		if strings.Contains(err.Error(), "message authentication failed") {
 			return ErrBarrierInvalidKey
 		}
 		return err
 	}
-	defer memzero(plain)
 
-	// Unmarshal the barrier init
-	var init barrierInit
-	if err := jsonutil.DecodeJSON(plain, &init); err != nil {
-		return fmt.Errorf("failed to unmarshal barrier init file")
-	}
-
-	// Setup a new keyring, this is for backwards compatibility
-	keyringNew := NewKeyring()
-	keyring := keyringNew.SetRootKey(key)
-
-	// AddKey reuses the root, so we are only zeroizing after this call
-	defer keyringNew.Zeroize(false)
-
-	keyring, err = keyring.AddKey(&Key{
-		Term:    1,
-		Version: 1,
-		Value:   init.Key,
-	})
+	// Recover the keyring
+	err = b.recoverKeyring(plain)
 	if err != nil {
-		return fmt.Errorf("failed to create keyring: %w", err)
-	}
-	if err := b.persistKeyring(ctx, keyring); err != nil {
-		return err
+		return fmt.Errorf("keyring deserialization failed: %w", err)
 	}
 
-	// Delete the old barrier entry
-	if err := b.backend.Delete(ctx, barrierInitPath); err != nil {
-		return fmt.Errorf("failed to delete barrier init file: %w", err)
-	}
-
-	// Set the vault as unsealed
-	b.keyring = keyring
 	b.sealed = false
 
 	return nil
@@ -1036,7 +961,7 @@ func (b *AESGCMBarrier) aeadFromKey(key []byte) (cipher.AEAD, error) {
 	// Create the GCM mode AEAD
 	gcm, err := cipher.NewGCM(aesCipher)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize GCM mode")
+		return nil, errors.New("failed to initialize GCM mode")
 	}
 	return gcm, nil
 }
@@ -1100,7 +1025,7 @@ func termLabel(term uint32) []metrics.Label {
 // decrypt is used to decrypt a value using the keyring
 func (b *AESGCMBarrier) decrypt(path string, gcm cipher.AEAD, cipher []byte) ([]byte, error) {
 	if len(cipher) < 5+gcm.NonceSize() {
-		return nil, fmt.Errorf("invalid cipher length")
+		return nil, errors.New("invalid cipher length")
 	}
 	// Capture the parts
 	nonce := cipher[5 : 5+gcm.NonceSize()]
@@ -1118,7 +1043,7 @@ func (b *AESGCMBarrier) decrypt(path string, gcm cipher.AEAD, cipher []byte) ([]
 		}
 		return gcm.Open(out, nonce, raw, aad)
 	default:
-		return nil, fmt.Errorf("version bytes mis-match")
+		return nil, errors.New("version bytes mis-match")
 	}
 }
 
@@ -1155,13 +1080,13 @@ func (b *AESGCMBarrier) Decrypt(_ context.Context, key string, ciphertext []byte
 
 	if len(ciphertext) == 0 {
 		b.l.RUnlock()
-		return nil, fmt.Errorf("empty ciphertext")
+		return nil, errors.New("empty ciphertext")
 	}
 
 	// Verify the term
 	if len(ciphertext) < 4 {
 		b.l.RUnlock()
-		return nil, fmt.Errorf("invalid ciphertext term")
+		return nil, errors.New("invalid ciphertext term")
 	}
 	term := binary.BigEndian.Uint32(ciphertext[:4])
 

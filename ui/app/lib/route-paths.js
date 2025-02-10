@@ -12,6 +12,4 @@ export const CLUSTER_INDEX = 'vault.cluster.index';
 export const OIDC_CALLBACK = 'vault.cluster.oidc-callback';
 export const OIDC_PROVIDER = 'vault.cluster.oidc-provider';
 export const NS_OIDC_PROVIDER = 'vault.cluster.oidc-provider-ns';
-export const DR_REPLICATION_SECONDARY = 'vault.cluster.replication-dr-promote';
-export const DR_REPLICATION_SECONDARY_DETAILS = 'vault.cluster.replication-dr-promote.details';
 export const EXCLUDED_REDIRECT_URLS = ['/vault/logout'];

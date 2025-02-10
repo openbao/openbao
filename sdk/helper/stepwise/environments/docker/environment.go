@@ -179,7 +179,7 @@ func (dc *DockerCluster) Initialize(ctx context.Context) error {
 		return err
 	}
 	if resp == nil {
-		return fmt.Errorf("nil response to init request")
+		return errors.New("nil response to init request")
 	}
 
 	for _, k := range resp.Keys {
@@ -501,7 +501,7 @@ func (n *dockerClusterNode) NewAPIClient() (*api.Client, error) {
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			// This can of course be overridden per-test by using its own client
-			return fmt.Errorf("redirects not allowed in these tests")
+			return errors.New("redirects not allowed in these tests")
 		},
 	}
 	config := api.DefaultConfig()
@@ -618,7 +618,7 @@ func (n *dockerClusterNode) start(cli *docker.Client, caDir, netName string, net
 	ports := n.container.NetworkSettings.NetworkSettingsBase.Ports[nat.Port("8200/tcp")]
 	if len(ports) == 0 {
 		n.Cleanup()
-		return fmt.Errorf("could not find port binding for 8200/tcp")
+		return errors.New("could not find port binding for 8200/tcp")
 	}
 	n.HostPort = ports[0].HostPort
 
@@ -652,7 +652,7 @@ func ensureHealthMatches(ctx context.Context, client *api.Client, ready func(res
 		switch {
 		case err != nil:
 		case health == nil:
-			err = fmt.Errorf("nil response to health check")
+			err = errors.New("nil response to health check")
 		default:
 			err = ready(health)
 			if err == nil {
@@ -672,7 +672,7 @@ func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(res
 		switch {
 		case err != nil:
 		case leader == nil:
-			err = fmt.Errorf("nil response to leader check")
+			err = errors.New("nil response to leader check")
 		default:
 			err = ready(leader)
 			if err == nil {
@@ -788,9 +788,8 @@ func setupNetwork(cli *docker.Client, netName string) (string, error) {
 
 func createNetwork(cli *docker.Client, netName string) (string, error) {
 	resp, err := cli.NetworkCreate(context.Background(), netName, types.NetworkCreate{
-		CheckDuplicate: true,
-		Driver:         "bridge",
-		Options:        map[string]string{},
+		Driver:  "bridge",
+		Options: map[string]string{},
 		IPAM: &network.IPAM{
 			Driver:  "default",
 			Options: map[string]string{},

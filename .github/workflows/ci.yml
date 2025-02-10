@@ -109,79 +109,78 @@ jobs:
       checkout-ref: ${{ needs.setup.outputs.checkout-ref }}
     secrets: inherit
 
-#  test-ui:
-#    name: Test UI
-#    # The test-ui job is only run on:
-#    # - pushes to main and branches starting with "release/"
-#    # - PRs where the branch starts with "ui/", "backport/ui/", "merge", or when base branch starts with "release/"
-#    # - PRs with the "ui" label on GitHub
-#    if: |
-#      github.ref_name == 'main' ||
-#      startsWith(github.ref_name, 'release/') ||
-#      startsWith(github.head_ref, 'ui/') ||
-#      startsWith(github.head_ref, 'backport/ui/') ||
-#      startsWith(github.head_ref, 'merge') ||
-#      contains(github.event.pull_request.labels.*.name, 'ui')
-#    needs:
-#      - setup
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-#      - uses: ./.github/actions/set-up-go
-#      # Setup node.js without caching to allow running npm install -g yarn (next step)
-#      - uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
-#        with:
-#          node-version-file: "./ui/package.json"
-#      - id: install-yarn
-#        run: |
-#          npm install -g yarn
-#      # Setup node.js with caching using the yarn.lock file
-#      - uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8 # v3.7.0
-#        with:
-#          node-version-file: "./ui/package.json"
-#          cache: yarn
-#          cache-dependency-path: ui/yarn.lock
-#      - id: install-browser
-#        uses: browser-actions/setup-chrome@db1b524c26f20a8d1a10f7fc385c92387e2d0477 # v1.7.1
-#      - id: ui-dependencies
-#        name: ui-dependencies
-#        working-directory: ./ui
-#        run: |
-#          yarn install --frozen-lockfile
-#          npm rebuild node-sass
-#      - id: build-go-dev
-#        name: build-go-dev
-#        run: |
-#          rm -rf ./pkg
-#          mkdir ./pkg
-#
-#          make ci-bootstrap dev
-#      - id: test-ui
-#        name: test-ui
-#        run: |
-#          export PATH="${PWD}/bin:${PATH}"
-#
-#          # Run Ember tests
-#          cd ui
-#          mkdir -p test-results/qunit
-#          yarn test:oss
-#      - uses: actions/upload-artifact@834a144ee995460fba8ed112a2fc961b36a5ec5a # v4.3.6
-#        with:
-#          name: test-results-ui
-#          path: ui/test-results
-#        if: success() || failure()
-#      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # TSCCR: no entry for repository "test-summary/action"
-#        with:
-#          paths: "ui/test-results/qunit/results.xml"
-#          show: "fail"
-#        if: always()
+  test-ui:
+    name: Test UI
+    # The test-ui job is only run on:
+    # - pushes to main and branches starting with "release/"
+    # - PRs where the branch starts with "ui/", "backport/ui/", "merge", or when base branch starts with "release/"
+    # - PRs with the "ui" label on GitHub
+    if: |
+      github.ref_name == 'main' ||
+      startsWith(github.ref_name, 'release/') ||
+      startsWith(github.head_ref, 'ui/') ||
+      startsWith(github.head_ref, 'backport/ui/') ||
+      startsWith(github.head_ref, 'merge') ||
+      contains(github.event.pull_request.labels.*.name, 'ui')
+    needs:
+      - setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+      - uses: ./.github/actions/set-up-go
+      # Setup node.js without caching to allow running npm install -g yarn (next step)
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: "./ui/package.json"
+      - id: install-yarn
+        run: |
+          npm install -g yarn
+      # Setup node.js with caching using the yarn.lock file
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: "./ui/package.json"
+          cache: yarn
+          cache-dependency-path: ui/yarn.lock
+      - id: install-browser
+        uses: browser-actions/setup-chrome@facf10a55b9caf92e0cc749b4f82bf8220989148 # v1.7.2
+      - id: ui-dependencies
+        name: ui-dependencies
+        working-directory: ./ui
+        run: |
+          yarn install --frozen-lockfile
+          npm rebuild node-sass
+      - id: build-go-dev
+        name: build-go-dev
+        run: |
+          rm -rf ./pkg
+          mkdir ./pkg
+
+          make ci-bootstrap dev
+      - id: test-ui
+        name: test-ui
+        run: |
+          export PATH="${PWD}/bin:${PATH}"
+
+          # Run Ember tests
+          cd ui
+          mkdir -p test-results/qunit
+          yarn test:oss
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: test-results-ui
+          path: ui/test-results
+        if: success() || failure()
+      - uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86 # TSCCR: no entry for repository "test-summary/action"
+        with:
+          paths: "ui/test-results/qunit/results.xml"
+          show: "fail"
+        if: always()
 
   tests-completed:
     needs:
       - setup
       - test-go
-      # UI testing is currently disabled.
-      # - test-ui
+      - test-ui
     if: always()
     runs-on: ubuntu-latest
     steps:

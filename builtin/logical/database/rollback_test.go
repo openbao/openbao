@@ -125,7 +125,7 @@ func TestBackend_RotateRootCredentials_WAL_rollback(t *testing.T) {
 	// Reading credentials should no longer work
 	credResp, err = lb.HandleRequest(namespace.RootContext(nil), credReq)
 	if err == nil {
-		t.Fatalf("expected authentication to fail when reading credentials")
+		t.Fatal("expected authentication to fail when reading credentials")
 	}
 
 	// Put a WAL entry that will be used for rolling back the database password

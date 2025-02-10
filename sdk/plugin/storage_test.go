@@ -63,11 +63,11 @@ func TestStorage_GRPCTransaction(t *testing.T) {
 	}
 
 	if _, ok := storage.(logical.Transactional); !ok {
-		t.Fatalf("expected base storage to be transactional but wasn't")
+		t.Fatal("expected base storage to be transactional but wasn't")
 	}
 
 	if _, ok := testStorage.(logical.Transactional); !ok {
-		t.Fatalf("expected client to be transactional but wasn't")
+		t.Fatal("expected client to be transactional but wasn't")
 	}
 
 	logical.TestStorage(t, testStorage)

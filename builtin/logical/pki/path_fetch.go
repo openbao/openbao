@@ -5,6 +5,9 @@ package pki
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -14,6 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"golang.org/x/crypto/ed25519"
 )
 
 var pathFetchReadSchema = map[int][]framework.Response{
@@ -259,6 +263,141 @@ func (b *backend) pathFetchCertList(ctx context.Context, req *logical.Request, d
 		entries[i] = denormalizeSerial(entries[i])
 	}
 	return logical.ListResponse(entries), nil
+}
+
+func pathFetchListCertsDetailed(b *backend) *framework.Path {
+	return &framework.Path{
+		Pattern: "certs/detailed/?$",
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixPKI,
+			OperationSuffix: "certs",
+		},
+
+		Fields: map[string]*framework.FieldSchema{
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries.`,
+			},
+		},
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathFetchCertListDetailed,
+				Responses: map[int][]framework.Response{
+					http.StatusOK: {{
+						Description: "OK",
+						Fields: map[string]*framework.FieldSchema{
+							"keys": {
+								Type:        framework.TypeStringSlice,
+								Description: `A list of keys`,
+								Required:    true,
+							},
+							"key_info": {
+								Type:        framework.TypeMap,
+								Description: `Key info with certificate details`,
+								Required:    false,
+							},
+						},
+					}},
+				},
+			},
+		},
+
+		HelpSynopsis:    pathFetchHelpSyn,
+		HelpDescription: pathFetchHelpDesc,
+	}
+}
+
+func (b *backend) pathFetchCertListDetailed(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	var responseKeys []string
+	responseInfo := make(map[string]interface{})
+
+	after := data.Get("after").(string)
+	limit := data.Get("limit").(int)
+	if limit <= 0 {
+		limit = -1
+	}
+
+	// Use a read-only transaction if available. This doesn't stop others from writing to
+	// storage but ensures that all read operations within this block work on a consistent
+	// snapshot of the data in case an entry is deleted or updated during the read process.
+	originalStorage := req.Storage
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		readOnlyTxn, err := txnStorage.BeginReadOnlyTx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start read-only transaction: %w", err)
+		}
+
+		defer readOnlyTxn.Rollback(ctx) // Ensure rollback after the operation
+		req.Storage = readOnlyTxn
+	}
+
+	entries, err := req.Storage.ListPage(ctx, "certs/", after, limit)
+	if err != nil {
+		return nil, err
+	}
+	for i := range entries {
+		// Fetch the full certificate entry by key
+		entry, err := req.Storage.Get(ctx, "certs/"+entries[i])
+		if err != nil {
+			return nil, err
+		}
+		if entry == nil {
+			return logical.ErrorResponse(fmt.Sprintf("failed to retrieve entry for %s", entries[i])), nil
+		}
+
+		entries[i] = denormalizeSerial(entries[i])
+		responseKeys = append(responseKeys, string(entries[i]))
+
+		// Parse the certificate details
+		certData, err := x509.ParseCertificate(entry.Value)
+		if err != nil {
+			return logical.ErrorResponse(fmt.Sprintf("failed to parse certificate for %s: %s", entries[i], err)), nil
+		}
+
+		// limit DNS names to 5
+		dnsNames := certData.DNSNames
+		if len(dnsNames) > 5 {
+			dnsNames = dnsNames[:5]
+		}
+
+		// Parse the key bits and type
+		var keyBits int
+		var keyType string
+		switch pubKey := certData.PublicKey.(type) {
+		case *rsa.PublicKey:
+			keyBits = pubKey.Size() * 8 // Convert byte size to bits
+			keyType = "rsa"
+		case *ecdsa.PublicKey:
+			keyBits = pubKey.Curve.Params().BitSize
+			keyType = "ec"
+		case ed25519.PublicKey:
+			keyBits = 256 // Fixed size for Ed25519
+			keyType = "ed25519"
+		default:
+			keyBits = 0 // Unknown key type
+			keyType = "unknown"
+		}
+
+		responseInfo[string(entries[i])] = map[string]interface{}{
+			"common_name": certData.Subject.CommonName,
+			"issuer":      certData.Issuer.String(),
+			"key_type":    keyType,
+			"key_bits":    keyBits,
+			"not_after":   certData.NotAfter,
+			"not_before":  certData.NotBefore,
+			"dns_names":   dnsNames,
+		}
+	}
+
+	req.Storage = originalStorage
+
+	return logical.ListResponseWithInfo(responseKeys, responseInfo), nil
 }
 
 func (b *backend) pathFetchRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (response *logical.Response, retErr error) {

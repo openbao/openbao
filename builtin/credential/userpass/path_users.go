@@ -5,7 +5,7 @@ package userpass
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -37,8 +37,10 @@ func pathUsersList(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ListOperation: b.pathUserList,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.pathUserList,
+			},
 		},
 
 		HelpSynopsis:    pathUserHelpSyn,
@@ -96,11 +98,19 @@ func pathUsers(b *backend) *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.DeleteOperation: b.pathUserDelete,
-			logical.ReadOperation:   b.pathUserRead,
-			logical.UpdateOperation: b.pathUserWrite,
-			logical.CreateOperation: b.pathUserWrite,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.DeleteOperation: &framework.PathOperation{
+				Callback: b.pathUserDelete,
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathUserRead,
+			},
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathUserWrite,
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathUserWrite,
+			},
 		},
 
 		ExistenceCheck: b.userExistenceCheck,
@@ -124,7 +134,7 @@ func (b *backend) userExistenceCheck(ctx context.Context, req *logical.Request, 
 
 func (b *backend) user(ctx context.Context, s logical.Storage, username string) (*UserEntry, error) {
 	if username == "" {
-		return nil, fmt.Errorf("missing username")
+		return nil, errors.New("missing username")
 	}
 
 	entry, err := s.Get(ctx, "user/"+strings.ToLower(username))
@@ -221,6 +231,12 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := strings.ToLower(d.Get("username").(string))
 	userEntry, err := b.user(ctx, req.Storage, username)
 	if err != nil {
@@ -263,8 +279,15 @@ func (b *backend) userCreateUpdate(ctx context.Context, req *logical.Request, d 
 			return logical.ErrorResponse(err.Error()), nil
 		}
 	}
+	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
+		return nil, err
+	}
 
-	return nil, b.setUser(ctx, req.Storage, username, userEntry)
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

@@ -31,7 +31,7 @@ func TestMetricFilterConfigs(t *testing.T) {
 		t.Parallel()
 
 		for _, tc := range cases {
-			config, err := LoadConfigFile(tc.configFile)
+			config, err := LoadConfigFile(tc.configFile, nil)
 			if err != nil {
 				t.Fatalf("Error encountered when loading config %+v", err)
 			}

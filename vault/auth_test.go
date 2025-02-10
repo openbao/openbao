@@ -29,7 +29,7 @@ func TestAuth_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		return &NoopBackend{
 			BackendType: logical.TypeCredential,
@@ -77,40 +77,40 @@ func TestAuthMountMetrics(t *testing.T) {
 	loadMetric, ok = mountMetrics.Load(mountKeyName)
 	numEntriesMetric = loadMetric.(metricsutil.GaugeMetric)
 	if !ok || numEntriesMetric.Value != 2 {
-		t.Fatalf("mount metrics for num entries do not match true values")
+		t.Fatal("mount metrics for num entries do not match true values")
 	}
 	if len(numEntriesMetric.Key) != 3 ||
 		numEntriesMetric.Key[0] != "core" ||
 		numEntriesMetric.Key[1] != "mount_table" ||
 		numEntriesMetric.Key[2] != "num_entries" {
-		t.Fatalf("mount metrics for num entries have wrong key")
+		t.Fatal("mount metrics for num entries have wrong key")
 	}
 	if len(numEntriesMetric.Labels) != 2 ||
 		numEntriesMetric.Labels[0].Name != "type" ||
 		numEntriesMetric.Labels[0].Value != "auth" ||
 		numEntriesMetric.Labels[1].Name != "local" ||
 		numEntriesMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for num entries have wrong labels")
+		t.Fatal("mount metrics for num entries have wrong labels")
 	}
 	mountSizeKeyName := "core.mount_table.size.type|auth||local|false||"
 	loadMetric, ok = mountMetrics.Load(mountSizeKeyName)
 	sizeMetric := loadMetric.(metricsutil.GaugeMetric)
 
 	if !ok {
-		t.Fatalf("mount metrics for size do not match exist")
+		t.Fatal("mount metrics for size do not match exist")
 	}
 	if len(sizeMetric.Key) != 3 ||
 		sizeMetric.Key[0] != "core" ||
 		sizeMetric.Key[1] != "mount_table" ||
 		sizeMetric.Key[2] != "size" {
-		t.Fatalf("mount metrics for size have wrong key")
+		t.Fatal("mount metrics for size have wrong key")
 	}
 	if len(sizeMetric.Labels) != 2 ||
 		sizeMetric.Labels[0].Name != "type" ||
 		sizeMetric.Labels[0].Value != "auth" ||
 		sizeMetric.Labels[1].Name != "local" ||
 		sizeMetric.Labels[1].Value != "false" {
-		t.Fatalf("mount metrics for size have wrong labels")
+		t.Fatal("mount metrics for size have wrong labels")
 	}
 }
 
@@ -137,7 +137,7 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -223,13 +223,23 @@ func TestCore_EnableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
-	// Verify matching auth tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	// Verify matching auth tables, up to order.
+	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	for _, entry := range c.auth.Entries {
+		cAuth[entry.UUID] = entry
+	}
+
+	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	for _, entry := range c2.auth.Entries {
+		c2Auth[entry.UUID] = entry
+	}
+
+	if !reflect.DeepEqual(cAuth, c2Auth) {
+		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
 	}
 }
 
@@ -281,13 +291,23 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
-	// Verify matching auth tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	// Verify matching auth tables, up to order.
+	cAuth := make(map[string]*MountEntry, len(c.auth.Entries))
+	for _, entry := range c.auth.Entries {
+		cAuth[entry.UUID] = entry
+	}
+
+	c2Auth := make(map[string]*MountEntry, len(c2.auth.Entries))
+	for _, entry := range c2.auth.Entries {
+		c2Auth[entry.UUID] = entry
+	}
+
+	if !reflect.DeepEqual(cAuth, c2Auth) {
+		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
 	}
 }
 
@@ -333,40 +353,46 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(c.auth.Entries) != 2 {
+		t.Fatalf("expected two entries, got %d", len(c.auth.Entries))
+	}
 
-	rawLocal, err := c.barrier.Get(context.Background(), coreLocalAuthConfigPath)
+	localEntries, err := c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local credential")
-	}
-	localCredentialTable := &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localCredentialTable); err != nil {
-		t.Fatal(err)
-	}
-	if len(localCredentialTable.Entries) > 0 {
-		t.Fatalf("expected no entries in local credential table, got %#v", localCredentialTable)
+	if len(localEntries) != 0 {
+		t.Fatalf("expected zero entry in local auth table, got %#v", localEntries)
 	}
 
 	c.auth.Entries[1].Local = true
-	if err := c.persistAuth(context.Background(), c.auth, nil); err != nil {
+	if err := c.persistAuth(context.Background(), nil, c.auth, nil, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	rawLocal, err = c.barrier.Get(context.Background(), coreLocalAuthConfigPath)
+	localEntries, err = c.barrier.List(context.Background(), coreLocalAuthConfigPath+"/")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rawLocal == nil {
-		t.Fatal("expected non-nil local credential")
+	if len(localEntries) != 1 {
+		t.Fatalf("expected one entry in local auth table, got %#v", localEntries)
 	}
-	localCredentialTable = &MountTable{}
-	if err := jsonutil.DecodeJSON(rawLocal.Value, localCredentialTable); err != nil {
-		t.Fatal(err)
-	}
-	if len(localCredentialTable.Entries) != 1 {
-		t.Fatalf("expected one entry in local credential table, got %#v", localCredentialTable)
+	for _, localEntry := range localEntries {
+		rawLocal, err := c.barrier.Get(context.Background(), coreLocalAuthConfigPath+"/"+localEntry)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rawLocal == nil {
+			t.Fatal("expected non-nil local auth")
+		}
+
+		localMountEntry := &MountEntry{}
+		if err := jsonutil.DecodeJSON(rawLocal.Value, localMountEntry); err != nil {
+			t.Fatal(err)
+		}
+		if localMountEntry.Path != "noop2/" {
+			t.Fatalf("expected only noop2/ entry in local auth table, got %#v at %v", localMountEntry, coreLocalAuthConfigPath+"/"+localEntry)
+		}
 	}
 
 	oldCredential := c.auth
@@ -379,7 +405,7 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 	}
 
 	if len(c.auth.Entries) != 2 {
-		t.Fatalf("expected two credential entries, got %#v", localCredentialTable)
+		t.Fatalf("expected two credential entries, got %#v", c.auth.Entries)
 	}
 }
 
@@ -406,10 +432,10 @@ func TestCore_EnableCredential_twice_409(t *testing.T) {
 	switch err2.(type) {
 	case logical.HTTPCodedError:
 		if err2.(logical.HTTPCodedError).Code() != 409 {
-			t.Fatalf("invalid code given")
+			t.Fatal("invalid code given")
 		}
 	default:
-		t.Fatalf("expected a different error type")
+		t.Fatal("expected a different error type")
 	}
 }
 
@@ -456,7 +482,7 @@ func TestCore_DisableCredential(t *testing.T) {
 
 	match := c.router.MatchingMount(namespace.RootContext(nil), "auth/foo/bar")
 	if match != "" {
-		t.Fatalf("backend present")
+		t.Fatal("backend present")
 	}
 
 	inmemSink := metrics.NewInmemSink(1000000*time.Hour, 2000000*time.Hour)
@@ -477,7 +503,7 @@ func TestCore_DisableCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -719,7 +745,7 @@ func TestCore_RemountCredential(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 

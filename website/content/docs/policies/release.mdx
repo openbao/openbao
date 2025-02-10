@@ -27,16 +27,27 @@ a better release process going forward.
  - [ ] Check generated changelog via `make release-changelog` and make any
        necessary updates to entries.
  - [ ] Draft release notification announcement.
- - [ ] Tag new API versions (including in auth plugins), if necessary.
-      - [ ] When bumping API major version, ensure `api/go.mod` is updated to
-            the new version.
+ - [ ] Tag new API versions (including in auth plugins), if necessary. Minor
+       version numbers follow core release version numbers but patch numbers
+       simply increment; there are no beta releases of API except for new
+       major versions of core.
+      - [ ] When bumping API major version, ensure `api/go.mod` is first
+            updated to the new version.
+ - [ ] Update first-party external dependencies to use new API modules, if
+       necessary.
+      - [ ] [`go-kms-wrapping`](https://github.com/openbao/go-kms-wrapping)
+      - [ ] Tag new `go-kms-wrapping` module versions. Only components which
+            have changed need to be tagged. Note that version numbers do not
+            follow core releases.
+      - [ ] Update SDK and main module to use new `go-kms-wrapping` version.
  - [ ] Update SDK to use the new API version, if necessary.
-      - [ ] When bumping SDK major version, ensure `sdk/go.mod` is updated to
-            the new version.
- - [ ] Tag new SDK version, if necessary.
+ - [ ] Tag new SDK version, if necessary. Minor version numbers follow core
+       release version numbers but patch numbers simply increment; there are
+       no beta releases of SDK except for new major versions of core.
+      - [ ] When bumping SDK major version, ensure `sdk/go.mod` is first updated
+            to the new version.
  - [ ] Update first-party external dependencies to use new API & SDK
        modules, if necessary.
-      - [ ] [`go-kms-wrapping`](https://github.com/openbao/go-kms-wrapping)
       - [ ] [`go-secure-stdlib`](https://github.com/openbao/go-secure-stdlib)
       - [ ] [`openbao-template`](https://github.com/openbao/openbao-template)
  - [ ] Update API, SDK, and first-party external dependencies in main
@@ -54,6 +65,12 @@ a better release process going forward.
 ## Release checklist
 
  - [ ] Open PR to update `CHANGELOG.md` and release notes on website.
+      - [ ] Patch versions should go in the corresponding minor version's
+            existing page; new minor and major versions should get their own
+            page.
+      - [ ] If doing a patch release off an existing major or minor release
+            branch, update the `main` repository's `CHANGELOG.md` file as
+            well, ordering it according to version number.
  - [ ] Tag release commit (`CHANGELOG.md` change).
  - [ ] Start [release workflow](https://github.com/openbao/openbao/actions/workflows/release.yml):
        select target tag, and set applicable pre-release/latest set
@@ -74,3 +91,7 @@ a better release process going forward.
       - [ ] Mention in next community meeting & TSC meetings.
  - [ ] Close the release milestone on GitHub.
  - [ ] For large releases, work with LF Edge for a release blog post.
+ - [ ] For new major or minor versions, create a `release/<version>` branch
+       after the first release on the minor series (including beta and other
+       pre-release branches). Future features should target the next release
+       (`main` branch) but bug and security fixes can be backported.

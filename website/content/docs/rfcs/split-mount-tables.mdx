@@ -1,0 +1,203 @@
+---
+sidebar_label: Split mount tables
+description: |-
+  Split the auth and secret mount tables using transactional storage to remove
+  limits around the maximum number of mounted plugins.
+---
+
+# Split the mount table using transactional storage
+
+## Summary
+
+OpenBao inherits a problem from upstream Vault: because the mount table is stored as a single entry, it is constrained by the size of a storage entry, not system memory. We wish to split this table into separate entries using transactional storage so that this limit can be raised much higher.
+
+## Problem Statement
+
+OpenBao's [default `max_entry_size`](https://openbao.org/docs/configuration/storage/raft/) is 1MB, which [with compression](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/sdk/helper/jsonutil/json.go#L30-L53), usually works out to about [14k mounts due](https://openbao.org/docs/internals/limits/#mount-point-limits) to storing all mounts in a [single entry](https://github.com/openbao/openbao/blob/7d3a5f4b45cd0718eb2f3c97bcd9b90a563f2ce9/vault/mount.go#L1324-L1344). Upstream has opted to [create a second tunable](https://developer.hashicorp.com/vault/docs/release-notes/1.17.0#enterprise-updates), [`max_mount_and_namespace_table_entry_size`](https://developer.hashicorp.com/vault/docs/configuration/storage/raft#max_mount_and_namespace_table_entry_size), letting this entry grow larger than other entries. With [transactional storage](https://github.com/openbao/openbao/issues/296), we can make a better tradeoff: split the mount table into a pieces, one per mount entry, and use transactions to do atomic updates to it. This ensures we do not hit this limit and thus do not need to re-implement the new tunable.
+
+As currently proposed, transactions will still have a size limit (about [8 times larger than `max_entry_size` currently](https://github.com/openbao/openbao/pull/292/files#diff-e7a3b01e6748f4e31a9293348fb545117ed1138c2e6e274d5f30bb07cf9a114cR76)), which means we might still err out. Because we can now atomically update just a portion of the mount table however, the types of operations that cause this will be rarer: this would mostly be the initial migration to the new format (if `max_entry_size` was raised but `max_transaction_size` was not) and any operations which involve scans across the entire mount table (due to adding reads to the transaction to verify they don't conflict).
+
+## User-facing description
+
+Users will now be able to create mounts in excess of the 14k soft limit previously caused by `max_entry_size`. They may decrease this value if they do not have other storage entries currently exceeding the default size in the future.
+
+Further, we'll only support an upgrade from the legacy->transactional mount table and not downgrades from transactional->legacy. This upgrade will happen automatically on the first startup with a transactional storage backend. As long as a non-transactional backend is used, it will continue to use the old mount table format.
+
+## Technical Description
+
+
+This change will apply for both auth and secret engine mounts.
+
+OpenBao's storage semantics mean that entries can both be a directory and a file at the same time. This means we can write individual mount entries from `coreMountConfigPath` into `coreMountConfigPath/{uuid}` and treat the latter (`coreMountConfigPath/`) as a listable directory of mounts. Any modification to individual mounts can be done without impacting other mounts once the UUID is known. By wrapping all updates in a transaction, we can ensure modifications to the mount table are consistent. Further, because the mount table is kept in memory, we will rarely need to load the entire mount table from disk except when invalidating the legacy single-entry table.
+
+More precisely, we have the following places where the mount table is potentially adjusted:
+
+ - When starting up and loading the mount table. This will handle the migration from legacy to standard if necessary.
+ - When an invalidation occurs and we trigger a reload of the core (e.g., leadership changed).
+ - When [mounting](https://openbao.org/api-docs/system/mounts/#enable-secrets-engine) a new secrets engine.
+ - When [tuning](https://openbao.org/api-docs/system/mounts/#tune-mount-configuration) a secrets engine.
+
+Of these, the first two use the common `loadMounts`; only the latter require special care. However, all four of these paths call the common `c.persistMounts` helper, so modifying that will be sufficient for our needs. Further, an extra pair of parameters (`barrier`, to optionally work within an existing transaction) and `uuid` (to persist only a specific mount) will increase performance in these cases.
+
+## Rationale and alternatives
+
+This helps OpenBao's scalability and is a great use for the new transactional storage system.
+
+[@remilapeyre](https://github.com/remilapeyre)'s approach (linked below) uses a similar structure, but because upstream Vault lacks transactions, it must use a pseudo-transactional update mechanism. Entries are encoded together but written in separate segments and the legacy mount table configuration is rewritten to include a list of all segments, before old segments are deleted. Due to this, modifying a single mount table entry still requires modifying several structures (due to compression of the table, which means several shards may update). This is less desirable and transactional storage gets us cleaner semantics.
+
+## Downsides
+
+This would be a breaking change w.r.t. storage and divergence from upstream Vault. Users would be unable to downgrade to non-transactional storage (including to Vault) without having to manually reconstruct their mount table. This new mount table may exceed the size of a storage entry. Note however that [our policy](https://openbao.org/docs/policies/migration/#proposal) is aiming for API compatibility and drop-in binary _upgrades_ from Vault to OpenBao, not supporting the reverse. Thus, this only impacts customers which need to revert this upgrade. In that case, using a backup (such as a snapshot) and restoring afterwards should address this.
+
+## Security Implications
+
+No new security implications are expected as a result of this change.
+
+## User/Developer Experience
+
+Users will be able to have a higher mount count, but otherwise will not be negatively impacted by this change. Adding new mounts might actually be more performant.
+
+## Unresolved Questions
+
+n/a
+
+## Related Issues
+
+OpenBao issues:
+
+ - https://github.com/openbao/openbao/296
+
+Upstream issues:
+
+ - https://github.com/hashicorp/vault/pull/16025
+
+
+## Proof of Concept
+
+WIP: https://github.com/cipherboy/openbao/commits/split-mount-table
+
+Using this code:
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/openbao/openbao/api/v2"
+)
+
+func main() {
+    addr := "http://localhost:8200"
+    token := "devroot"
+    mountType := "transit"
+    count := 360000
+
+    client, err := api.NewClient(&api.Config{
+        Address: addr,
+    })
+    if err != nil {
+        panic(fmt.Sprintf("failed to create client: %v", err))
+    }
+
+    client.SetToken(token)
+
+    for i := 0; i < count; i++ {
+        if err := client.Sys().Mount(fmt.Sprintf("%v-%v", mountType, i), &api.MountInput{
+            Type: mountType,
+        }); err != nil {
+            panic(fmt.Sprintf("failed to mount %v instance: %v", mountType, err))
+        }
+    }
+}
+```
+
+on a [raft backend](https://github.com/cipherboy/devbao) node, I got:
+
+```
+$ time go run ./main.go
+panic: failed to mount transit instance: Error making API request.
+
+URL: POST http://localhost:8200/v1/sys/mounts/transit-288826
+Code: 400. Errors:
+
+* invalid backend version: 2 errors occurred:
+	* Error retrieving cache size from storage: context canceled
+	* Error retrieving cache size from storage: context canceled
+
+
+
+goroutine 1 [running]:
+main.main()
+	/home/cipherboy/GitHub/cipherboy/testbed/openbao-mounts/main.go:28 +0x1ed
+exit status 2
+
+real	120m38.046s
+user	0m39.741s
+sys	0m33.142s
+```
+
+and OpenBao was consuming 36GB of memory. This error was caused [by storage being slow](https://github.com/openbao/openbao/blob/5372ce8429ac8b26d861d266841ffcd1771bf7d4/builtin/logical/transit/backend.go#L92-L96) while the Transit mount was starting up. On a subsequent run, using `ssh` instead (as it does no storage operations on mount):
+
+```
+$ time go run ./main.go
+
+real	159m50.839s
+user	0m50.784s
+sys	0m32.350s
+```
+
+all 360k mounts were created:
+
+```
+$ bao list sys/raw/core/mounts | wc -l
+360002
+$ bao list sys/raw/core/mounts | head -n 10
+Keys
+----
+000009e0-123e-72b4-ed66-cf9a454535e6
+00004caf-b55d-0bed-5bc6-6b006ae9dc50
+00009443-ee00-1443-9d71-c79070eaf825
+0000e52a-2c79-a695-cca5-810b78e7e161
+00013fd2-abbc-0d41-3a4b-71b1aeef1a65
+00015884-79c2-3120-953a-0c475e89456b
+0001593f-b031-9bc9-4938-b20667692667
+00017b32-b7af-52ea-6dbd-fca3e29fb6a8
+$ bao read sys/raw/core/mounts/000009e0-123e-72b4-ed66-cf9a454535e6
+Key      Value
+---      -----
+value    {"table":"mounts","path":"ssh-129154/","type":"ssh","description":"","uuid":"000009e0-123e-72b4-ed66-cf9a454535e6","backend_aware_uuid":"fbb54766-47bd-f2d2-f115-e94b07b5ef7c","accessor":"ssh_46768b9a","config":{},"options":null,"local":false,"seal_wrap":false,"namespace_id":"root","running_plugin_version":"v2.0.0+builtin.bao"}
+```
+
+When attempting to use all of these mounts, I seem to be limited by storage speed:
+
+![image](https://github.com/user-attachments/assets/54ab0920-adf7-49ac-8141-036116265cb7)
+
+```go
+    var wg sync.WaitGroup
+
+    for proc := 0; proc < procs; proc++ {
+        wg.Add(1)
+        go func(us int) {
+            for i := us * (count / procs); i < (us+1)*(count/procs); i++ {
+                if _, err := client.Logical().Write(fmt.Sprintf("%v-%v/config/ca", mountType, i), map[string]interface{}{
+                    "generate_signing_key": true,
+                    "key_type":             "ssh-ed25519",
+                }); err != nil {
+                    // fmt.Fprintf(os.Stderr, "failed to mount %v instance: %v", mountType, err)
+                }
+            }
+            wg.Done()
+        }(proc)
+    }
+
+    wg.Wait()
+```
+
+And I'm roughly getting ~180 SSH CA certs/second.
+
+```
+$ bao list sys/raw/logical/ | wc -l ; sleep 10 ; bao list sys/raw/logical/ | wc -l
+45658
+47083
+```

@@ -1,0 +1,3 @@
+```release-note:security
+core/identity: fix root namespace privilege escalation via entity modification. HCSEC-2024-21 / CVE-2024-9180.
+```

@@ -1,10 +1,10 @@
 {{outlet}}
 <footer class="footer has-text-grey has-text-centered">
   <span class="is-inline-block">
-    <Icon @name="hashicorp" aria-hidden="true" class="has-text-grey-light" />
+    <Icon @name="openbao-single" aria-hidden="true" class="has-text-grey-light" />
     &copy;
     {{date-format (now) "yyyy"}}
-    HashiCorp
+    OpenBao
   </span>
   <span>
     <ExternalLink @href={{changelog-url-for this.auth.activeCluster.leaderNode.version}} class="link has-text-grey">
@@ -13,7 +13,7 @@
     </ExternalLink>
   </span>
   <span>
-    <DocLink @path="/vault" class="has-text-grey">
+    <DocLink @path="" class="has-text-grey">
       Documentation
     </DocLink>
   </span>

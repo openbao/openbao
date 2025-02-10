@@ -27,7 +27,7 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 	}
 
@@ -54,12 +54,12 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 	// creation or has to be filled in by the upgrade code
 	generateLease := resp.Data["generate_lease"].(*bool)
 	if generateLease == nil {
-		t.Fatalf("generate_lease should not be nil")
+		t.Fatal("generate_lease should not be nil")
 	}
 
 	// By default, generate_lease should be `false`
 	if *generateLease {
-		t.Fatalf("generate_lease should not be set by default")
+		t.Fatal("generate_lease should not be set by default")
 	}
 
 	// To test upgrade of generate_lease, we read the storage entry,
@@ -92,12 +92,12 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 
 	generateLease = resp.Data["generate_lease"].(*bool)
 	if generateLease == nil {
-		t.Fatalf("generate_lease should not be nil")
+		t.Fatal("generate_lease should not be nil")
 	}
 
 	// Upgrade should set generate_lease to `true`
 	if !*generateLease {
-		t.Fatalf("generate_lease should be set after an upgrade")
+		t.Fatal("generate_lease should be set after an upgrade")
 	}
 
 	// Make sure that setting generate_lease to `true` works properly
@@ -118,10 +118,10 @@ func TestPki_RoleGenerateLease(t *testing.T) {
 
 	generateLease = resp.Data["generate_lease"].(*bool)
 	if generateLease == nil {
-		t.Fatalf("generate_lease should not be nil")
+		t.Fatal("generate_lease should not be nil")
 	}
 	if !*generateLease {
-		t.Fatalf("generate_lease should have been set")
+		t.Fatal("generate_lease should have been set")
 	}
 }
 
@@ -132,7 +132,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 		"key_usage":       []string{"KeyEncipherment", "DigitalSignature"},
 	}
@@ -159,7 +159,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 
 	keyUsage := resp.Data["key_usage"].([]string)
 	if len(keyUsage) != 2 {
-		t.Fatalf("key_usage should have 2 values")
+		t.Fatal("key_usage should have 2 values")
 	}
 
 	// To test the upgrade of KeyUsageOld into KeyUsage, we read
@@ -194,7 +194,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 
 	keyUsage = resp.Data["key_usage"].([]string)
 	if len(keyUsage) != 2 {
-		t.Fatalf("key_usage should have 2 values")
+		t.Fatal("key_usage should have 2 values")
 	}
 
 	// Read back from storage to ensure upgrade
@@ -203,7 +203,7 @@ func TestPki_RoleKeyUsage(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("role should not be nil")
+		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
 	if err := entry.DecodeJSON(&result); err != nil {
@@ -225,7 +225,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 		"ou":              []string{"abc", "123"},
 		"organization":    []string{"org1", "org2"},
@@ -251,11 +251,11 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 
 	ou := resp.Data["ou"].([]string)
 	if len(ou) != 2 {
-		t.Fatalf("ou should have 2 values")
+		t.Fatal("ou should have 2 values")
 	}
 	organization := resp.Data["organization"].([]string)
 	if len(organization) != 2 {
-		t.Fatalf("organization should have 2 values")
+		t.Fatal("organization should have 2 values")
 	}
 
 	// To test upgrade of O/OU, we read the storage entry, modify it to set
@@ -290,11 +290,11 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 
 	ou = resp.Data["ou"].([]string)
 	if len(ou) != 2 {
-		t.Fatalf("ou should have 2 values")
+		t.Fatal("ou should have 2 values")
 	}
 	organization = resp.Data["organization"].([]string)
 	if len(organization) != 2 {
-		t.Fatalf("organization should have 2 values")
+		t.Fatal("organization should have 2 values")
 	}
 
 	// Read back from storage to ensure upgrade
@@ -303,7 +303,7 @@ func TestPki_RoleOUOrganizationUpgrade(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("role should not be nil")
+		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
 	if err := entry.DecodeJSON(&result); err != nil {
@@ -355,7 +355,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 
 	allowedDomains := resp.Data["allowed_domains"].([]string)
 	if len(allowedDomains) != 2 {
-		t.Fatalf("allowed_domains should have 2 values")
+		t.Fatal("allowed_domains should have 2 values")
 	}
 
 	// To test upgrade of allowed_domains, we read the storage entry,
@@ -388,7 +388,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 
 	allowedDomains = resp.Data["allowed_domains"].([]string)
 	if len(allowedDomains) != 2 {
-		t.Fatalf("allowed_domains should have 2 values")
+		t.Fatal("allowed_domains should have 2 values")
 	}
 
 	// Read back from storage to ensure upgrade
@@ -397,7 +397,7 @@ func TestPki_RoleAllowedDomains(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("role should not be nil")
+		t.Fatal("role should not be nil")
 	}
 	var result roleEntry
 	if err := entry.DecodeJSON(&result); err != nil {
@@ -443,7 +443,7 @@ func TestPki_RoleAllowedURISANs(t *testing.T) {
 
 	allowedURISANs := resp.Data["allowed_uri_sans"].([]string)
 	if len(allowedURISANs) != 2 {
-		t.Fatalf("allowed_uri_sans should have 2 values")
+		t.Fatal("allowed_uri_sans should have 2 values")
 	}
 }
 
@@ -485,57 +485,57 @@ func TestPki_RolePkixFields(t *testing.T) {
 	origCountry := roleData["country"].([]string)
 	respCountry := resp.Data["country"].([]string)
 	if !strutil.StrListSubset(origCountry, respCountry) {
-		t.Fatalf("country did not match values set in role")
+		t.Fatal("country did not match values set in role")
 	} else if len(origCountry) != len(respCountry) {
-		t.Fatalf("country did not have same number of values set in role")
+		t.Fatal("country did not have same number of values set in role")
 	}
 
 	origOU := roleData["ou"].([]string)
 	respOU := resp.Data["ou"].([]string)
 	if !strutil.StrListSubset(origOU, respOU) {
-		t.Fatalf("ou did not match values set in role")
+		t.Fatal("ou did not match values set in role")
 	} else if len(origOU) != len(respOU) {
-		t.Fatalf("ou did not have same number of values set in role")
+		t.Fatal("ou did not have same number of values set in role")
 	}
 
 	origOrganization := roleData["organization"].([]string)
 	respOrganization := resp.Data["organization"].([]string)
 	if !strutil.StrListSubset(origOrganization, respOrganization) {
-		t.Fatalf("organization did not match values set in role")
+		t.Fatal("organization did not match values set in role")
 	} else if len(origOrganization) != len(respOrganization) {
-		t.Fatalf("organization did not have same number of values set in role")
+		t.Fatal("organization did not have same number of values set in role")
 	}
 
 	origLocality := roleData["locality"].([]string)
 	respLocality := resp.Data["locality"].([]string)
 	if !strutil.StrListSubset(origLocality, respLocality) {
-		t.Fatalf("locality did not match values set in role")
+		t.Fatal("locality did not match values set in role")
 	} else if len(origLocality) != len(respLocality) {
-		t.Fatalf("locality did not have same number of values set in role: ")
+		t.Fatal("locality did not have same number of values set in role: ")
 	}
 
 	origProvince := roleData["province"].([]string)
 	respProvince := resp.Data["province"].([]string)
 	if !strutil.StrListSubset(origProvince, respProvince) {
-		t.Fatalf("province did not match values set in role")
+		t.Fatal("province did not match values set in role")
 	} else if len(origProvince) != len(respProvince) {
-		t.Fatalf("province did not have same number of values set in role")
+		t.Fatal("province did not have same number of values set in role")
 	}
 
 	origStreetAddress := roleData["street_address"].([]string)
 	respStreetAddress := resp.Data["street_address"].([]string)
 	if !strutil.StrListSubset(origStreetAddress, respStreetAddress) {
-		t.Fatalf("street_address did not match values set in role")
+		t.Fatal("street_address did not match values set in role")
 	} else if len(origStreetAddress) != len(respStreetAddress) {
-		t.Fatalf("street_address did not have same number of values set in role")
+		t.Fatal("street_address did not have same number of values set in role")
 	}
 
 	origPostalCode := roleData["postal_code"].([]string)
 	respPostalCode := resp.Data["postal_code"].([]string)
 	if !strutil.StrListSubset(origPostalCode, respPostalCode) {
-		t.Fatalf("postal_code did not match values set in role")
+		t.Fatal("postal_code did not match values set in role")
 	} else if len(origPostalCode) != len(respPostalCode) {
-		t.Fatalf("postal_code did not have same number of values set in role")
+		t.Fatal("postal_code did not have same number of values set in role")
 	}
 }
 
@@ -546,7 +546,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
-		"allowed_domains": "myvault.com",
+		"allowed_domains": "example.com",
 		"ttl":             "5h",
 	}
 
@@ -572,26 +572,26 @@ func TestPki_RoleNoStore(t *testing.T) {
 	// By default, no_store should be `false`
 	noStore := resp.Data["no_store"].(bool)
 	if noStore {
-		t.Fatalf("no_store should not be set by default")
+		t.Fatal("no_store should not be set by default")
 	}
 
 	// By default, allowed_domains_template should be `false`
 	allowedDomainsTemplate := resp.Data["allowed_domains_template"].(bool)
 	if allowedDomainsTemplate {
-		t.Fatalf("allowed_domains_template should not be set by default")
+		t.Fatal("allowed_domains_template should not be set by default")
 	}
 
 	// By default, allowed_uri_sans_template should be `false`
 	allowedURISANsTemplate := resp.Data["allowed_uri_sans_template"].(bool)
 	if allowedURISANsTemplate {
-		t.Fatalf("allowed_uri_sans_template should not be set by default")
+		t.Fatal("allowed_uri_sans_template should not be set by default")
 	}
 
 	// Make sure that setting no_store to `true` works properly
 	roleReq.Operation = logical.UpdateOperation
 	roleReq.Path = "roles/testrole_nostore"
 	roleReq.Data["no_store"] = true
-	roleReq.Data["allowed_domain"] = "myvault.com"
+	roleReq.Data["allowed_domain"] = "example.com"
 	roleReq.Data["allow_subdomains"] = true
 	roleReq.Data["ttl"] = "5h"
 
@@ -608,12 +608,12 @@ func TestPki_RoleNoStore(t *testing.T) {
 
 	noStore = resp.Data["no_store"].(bool)
 	if !noStore {
-		t.Fatalf("no_store should have been set to true")
+		t.Fatal("no_store should have been set to true")
 	}
 
 	// issue a certificate and test that it's not stored
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -629,7 +629,7 @@ func TestPki_RoleNoStore(t *testing.T) {
 	}
 
 	issueData := map[string]interface{}{
-		"common_name": "cert.myvault.com",
+		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 		"ttl":         "1h",
@@ -667,7 +667,7 @@ func TestPki_CertsLease(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -685,7 +685,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	roleData := map[string]interface{}{
-		"allowed_domains":  "myvault.com",
+		"allowed_domains":  "example.com",
 		"allow_subdomains": true,
 		"ttl":              "2h",
 	}
@@ -703,7 +703,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	issueData := map[string]interface{}{
-		"common_name": "cert.myvault.com",
+		"common_name": "cert.example.com",
 		"format":      "pem",
 		"ip_sans":     "127.0.0.1",
 	}
@@ -720,7 +720,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	if resp.Secret != nil {
-		t.Fatalf("expected a response that does not contain a secret")
+		t.Fatal("expected a response that does not contain a secret")
 	}
 
 	// Turn on the lease generation and issue a certificate. The response
@@ -738,7 +738,7 @@ func TestPki_CertsLease(t *testing.T) {
 	}
 
 	if resp.Secret == nil {
-		t.Fatalf("expected a response that contains a secret")
+		t.Fatal("expected a response that contains a secret")
 	}
 }
 
@@ -1054,7 +1054,7 @@ func TestPKI_RolePolicyInformation_Flat(t *testing.T) {
 	b, storage := CreateBackendWithStorage(t)
 
 	caData := map[string]interface{}{
-		"common_name": "myvault.com",
+		"common_name": "example.com",
 		"ttl":         "5h",
 		"ip_sans":     "127.0.0.1",
 	}

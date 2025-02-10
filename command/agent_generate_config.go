@@ -5,6 +5,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -336,14 +337,14 @@ func constructTemplatesFromSecret(ctx context.Context, client *api.Client, path,
 		return nil, fmt.Errorf("error querying: %w", err)
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("secret not found")
+		return nil, errors.New("secret not found")
 	}
 
 	var data map[string]interface{}
 	if v2 {
 		internal, ok := resp.Data["data"]
 		if !ok {
-			return nil, fmt.Errorf("secret.Data not found")
+			return nil, errors.New("secret.Data not found")
 		}
 		data = internal.(map[string]interface{})
 	} else {

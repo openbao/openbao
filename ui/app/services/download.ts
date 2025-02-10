@@ -9,7 +9,6 @@ import timestamp from 'core/utils/timestamp';
 interface Extensions {
   csv: string;
   hcl: string;
-  sentinel: string;
   json: string;
   pem: string;
   txt: string;
@@ -19,7 +18,6 @@ interface Extensions {
 const EXTENSION_TO_MIME: Extensions = {
   csv: 'txt/csv',
   hcl: 'text/plain',
-  sentinel: 'text/plain',
   json: 'application/json',
   pem: 'application/x-pem-file',
   txt: 'text/plain',

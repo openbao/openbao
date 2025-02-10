@@ -100,6 +100,12 @@ func TestTidyConfigs(t *testing.T) {
 			DefaultValue: int(defaultTidyConfig.SafetyBuffer / time.Second),
 		},
 		{
+			Config:       "revoked_safety_buffer",
+			FirstValue:   1,
+			SecondValue:  2,
+			DefaultValue: int(defaultTidyConfig.SafetyBuffer / time.Second),
+		},
+		{
 			Config:       "issuer_safety_buffer",
 			FirstValue:   1,
 			SecondValue:  2,
@@ -298,40 +304,7 @@ func TestAutoTidy(t *testing.T) {
 	time.Sleep(time.Until(leafCert.NotAfter) + 3*time.Second)
 
 	// Wait for auto-tidy to run afterwards.
-	var foundTidyRunning string
-	var foundTidyFinished bool
-	timeoutChan := time.After(120 * time.Second)
-	for {
-		if foundTidyRunning != "" && foundTidyFinished {
-			break
-		}
-
-		select {
-		case <-timeoutChan:
-			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before 120 seconds elapsed", foundTidyRunning, foundTidyFinished)
-		default:
-			time.Sleep(250 * time.Millisecond)
-
-			resp, err = client.Logical().Read("pki/tidy-status")
-			require.NoError(t, err)
-			require.NotNil(t, resp)
-			require.NotNil(t, resp.Data)
-			require.NotEmpty(t, resp.Data["state"])
-			require.NotEmpty(t, resp.Data["time_started"])
-			state := resp.Data["state"].(string)
-			started := resp.Data["time_started"].(string)
-			t.Logf("Resp: %v", resp.Data)
-
-			// We want the _next_ tidy run after the cert expires. This
-			// means if we're currently finished when we hit this the
-			// first time, we want to wait for the next run.
-			if foundTidyRunning == "" {
-				foundTidyRunning = started
-			} else if foundTidyRunning != started && !foundTidyFinished && state == "Finished" {
-				foundTidyFinished = true
-			}
-		}
-	}
+	waitForAutoTidyToFinish(t, client)
 
 	// Cert should no longer exist.
 	resp, err = client.Logical().Read("pki/cert/" + leafSerial)
@@ -548,7 +521,9 @@ func TestTidyIssuerConfig(t *testing.T) {
 	defaultConfigMap["interval_duration"] = int(time.Duration(defaultConfigMap["interval_duration"].(float64)) / time.Second)
 	defaultConfigMap["issuer_safety_buffer"] = int(time.Duration(defaultConfigMap["issuer_safety_buffer"].(float64)) / time.Second)
 	defaultConfigMap["safety_buffer"] = int(time.Duration(defaultConfigMap["safety_buffer"].(float64)) / time.Second)
+	defaultConfigMap["revoked_safety_buffer"] = int(defaultConfigMap["safety_buffer"].(int))
 	defaultConfigMap["pause_duration"] = time.Duration(defaultConfigMap["pause_duration"].(float64)).String()
+	defaultConfigMap["page_size"] = int(defaultConfigMap["page_size"].(float64))
 	defaultConfigMap["acme_account_safety_buffer"] = int(time.Duration(defaultConfigMap["acme_account_safety_buffer"].(float64)) / time.Second)
 
 	require.Equal(t, defaultConfigMap, resp.Data)
@@ -664,11 +639,11 @@ func TestCertStorageMetrics(t *testing.T) {
 	mostRecentInterval := stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
 	}
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 	}
 
 	// Write the auto-tidy config.
@@ -705,11 +680,11 @@ func TestCertStorageMetrics(t *testing.T) {
 	mostRecentInterval = stableMetric[len(stableMetric)-1]
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_revoked_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but revoked cert count was emitted as a metric in an unconfigured mount")
 	}
 	_, ok = mostRecentInterval.Gauges["secrets.pki."+backendUUID+".total_certificates_stored"]
 	if ok {
-		t.Fatalf("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
+		t.Fatal("Certificate counting should be off by default, but total certificate count was emitted as a metric in an unconfigured mount")
 	}
 
 	// But since certificate counting is on, the metrics should exist on tidyStatus endpoint:
@@ -721,14 +696,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok := tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("1") {
 		t.Fatalf("Only created one certificate, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok := tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("0") {
 		t.Fatalf("Have not yet revoked a certificate, but got a revoked cert store count of %v", revokedCertCount)
@@ -777,7 +752,7 @@ func TestCertStorageMetrics(t *testing.T) {
 
 	for _, warning := range revokeResp.Warnings {
 		if strings.Contains(warning, "already expired; refusing to add to CRL") {
-			t.Skipf("Skipping test as we missed the revocation window of our leaf cert")
+			t.Skip("Skipping test as we missed the revocation window of our leaf cert")
 		}
 	}
 
@@ -792,14 +767,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	backendUUID = tidyStatus.Data["internal_backend_uuid"].(string)
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("2") {
 		t.Fatalf("Created root and leaf certificate, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("1") {
 		t.Fatalf("Revoked one certificate, but got a revoked cert store count of %v\n:%v", revokedCertCount, tidyStatus)
@@ -836,41 +811,7 @@ func TestCertStorageMetrics(t *testing.T) {
 	time.Sleep(sleepFor)
 
 	// Wait for auto-tidy to run afterwards.
-	var foundTidyRunning string
-	var foundTidyFinished bool
-	timeoutChan := time.After(120 * time.Second)
-	for {
-		if foundTidyRunning != "" && foundTidyFinished {
-			break
-		}
-
-		select {
-		case <-timeoutChan:
-			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before 120 seconds elapsed", foundTidyRunning, foundTidyFinished)
-		default:
-			time.Sleep(250 * time.Millisecond)
-
-			resp, err = client.Logical().Read("pki/tidy-status")
-			require.NoError(t, err)
-			require.NotNil(t, resp)
-			require.NotNil(t, resp.Data)
-			require.NotEmpty(t, resp.Data["state"])
-			require.NotEmpty(t, resp.Data["time_started"])
-			state := resp.Data["state"].(string)
-			started := resp.Data["time_started"].(string)
-
-			t.Logf("%v: Resp: %v", time.Now().Format(time.RFC3339), resp.Data)
-
-			// We want the _next_ tidy run after the cert expires. This
-			// means if we're currently finished when we hit this the
-			// first time, we want to wait for the next run.
-			if foundTidyRunning == "" {
-				foundTidyRunning = started
-			} else if foundTidyRunning != started && !foundTidyFinished && state == "Finished" {
-				foundTidyFinished = true
-			}
-		}
-	}
+	waitForAutoTidyToFinish(t, client)
 
 	// After Tidy, Cert Store Count Should Still Be Available, and Be Updated:
 	// Check Metrics After Cert Has Be Created and Revoked
@@ -882,14 +823,14 @@ func TestCertStorageMetrics(t *testing.T) {
 	// "current_cert_store_count", "current_revoked_cert_count"
 	certStoreCount, ok = tidyStatus.Data["current_cert_store_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but current cert store count does not appear in tidy status")
 	}
 	if certStoreCount != json.Number("1") {
 		t.Fatalf("Created root and leaf certificate, deleted leaf, but a got a certificate count of %v", certStoreCount)
 	}
 	revokedCertCount, ok = tidyStatus.Data["current_revoked_cert_count"]
 	if !ok {
-		t.Fatalf("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
+		t.Fatal("Certificate counting has been turned on, but revoked cert store count does not appear in tidy status")
 	}
 	if revokedCertCount != json.Number("0") {
 		t.Fatalf("Revoked certificate has been tidied, but got a revoked cert store count of %v", revokedCertCount)
@@ -1198,7 +1139,7 @@ func backDateAcmeAccountSys(t *testing.T, testContext context.Context, client *a
 	require.NoError(t, err, "failed listing orders")
 
 	if ordersRaw == nil {
-		t.Logf("skipping backdating orders as there are none")
+		t.Log("skipping backdating orders as there are none")
 		return
 	}
 
@@ -1300,7 +1241,7 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 			return fmt.Errorf("failed reading path: %s: %w", tidyStatusPath, err)
 		}
 		if state, ok := statusResp.Data["state"]; !ok || state == "Running" {
-			return fmt.Errorf("tidy status state is still running")
+			return errors.New("tidy status state is still running")
 		}
 
 		if errorOccurred, ok := statusResp.Data["error"]; !ok || !(errorOccurred == nil || errorOccurred == "") {
@@ -1312,4 +1253,596 @@ func waitForTidyToFinish(t *testing.T, client *api.Client, mount string) *api.Se
 
 	t.Logf("got tidy status: %v", statusResp.Data)
 	return statusResp
+}
+
+func waitForAutoTidyToFinish(t *testing.T, client *api.Client) {
+	var foundTidyRunning string
+	var foundTidyFinished bool
+	timeoutChan := time.After(120 * time.Second)
+
+	for {
+		if foundTidyRunning != "" && foundTidyFinished {
+			break
+		}
+
+		select {
+		case <-timeoutChan:
+			t.Fatalf("expected auto-tidy to run (%v) and finish (%v) before timeout", foundTidyRunning, foundTidyFinished)
+		default:
+			time.Sleep(250 * time.Millisecond)
+
+			resp, err := client.Logical().Read("pki/tidy-status")
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.NotNil(t, resp.Data)
+			require.NotEmpty(t, resp.Data["state"])
+			require.NotEmpty(t, resp.Data["time_started"])
+
+			state := resp.Data["state"].(string)
+			started := resp.Data["time_started"].(string)
+			t.Logf("Resp: %v", resp.Data)
+
+			// We want the _next_ tidy run after the cert expires. This
+			// means if we're currently finished when we hit this the
+			// first time, we want to wait for the next run.
+			if foundTidyRunning == "" {
+				foundTidyRunning = started
+			} else if foundTidyRunning != started && state == "Finished" {
+				foundTidyFinished = true
+			}
+		}
+	}
+}
+
+func waitForManualTidy(t *testing.T, client *api.Client, tidyConfig map[string]interface{}) {
+	status, err := client.Logical().Read("pki/tidy-status")
+	require.NoError(t, err, "got error reading initial tidy status")
+
+	t.Logf("initial status resp: %v", status)
+
+	_, err = client.Logical().Write("pki/tidy", tidyConfig)
+	require.NoError(t, err, "got error starting tidy")
+
+	timeoutChan := time.After(120 * time.Second)
+
+	for {
+		select {
+		case <-timeoutChan:
+			t.Fatal("expected manual tidy to run before timeout")
+		default:
+			time.Sleep(50 * time.Millisecond)
+
+			newStatus, err := client.Logical().Read("pki/tidy-status")
+			require.NoError(t, err, "got error reading subsequent tidy status")
+
+			if newStatus.Data["state"].(string) == "Finished" {
+				thisStart, err := time.Parse(time.RFC3339, newStatus.Data["time_started"].(string))
+				require.NoError(t, err, "failed to parse time")
+				lastStartRaw, ok := status.Data["time_started"]
+				if !ok || lastStartRaw == nil {
+					return
+				}
+
+				lastStart, err := time.Parse(time.RFC3339, lastStartRaw.(string))
+				require.NoError(t, err, "failed to parse time")
+
+				if thisStart.After(lastStart) {
+					return
+				}
+			}
+		}
+	}
+}
+
+func TestTidyWithInvalidCertInStore(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=`
+
+	// Decode base64 to get raw DER bytes
+	invalidCertDER, err := base64.StdEncoding.DecodeString(invalidCert)
+	require.NoError(t, err, "failed to decode base64 certificate content")
+
+	// Generate a root, a role, and both short (1s) and long (5s) TTL certs
+	_, err = CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "root example.com",
+		"issuer_name": "root",
+		"ttl":         "20m",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+	_, err = CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "long-lived",
+		"ttl":         "5s",
+	})
+	require.NoError(t, err)
+	resp, err := CBWrite(b, s, "issue/local-testing", map[string]interface{}{
+		"common_name": "short-lived",
+		"ttl":         "1s",
+	})
+	require.NoError(t, err)
+	shortLivedCert := parseCert(t, resp.Data["certificate"].(string))
+	shortLivedSerial := resp.Data["serial_number"].(string)
+
+	// Write invalid certificate to storage
+	err = s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: invalidCertDER,
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	// check root, invalid and valid certs are in store
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err)
+	certKeys := resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 4, "expected 4 certificates in the store")
+
+	// Wait for short lived cert to expire and the safety buffer to elapse.
+	time.Sleep(time.Until(shortLivedCert.NotAfter) + 1*time.Second)
+
+	// Define tidy configuration
+	tidyConfig := &tidyConfig{
+		CertStore:    true,
+		InvalidCerts: true,
+		SafetyBuffer: 1,
+	}
+
+	// Call doTidyCertStore directly
+	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err, "unable to list certificates in store")
+	certKeys = resp.Data["keys"].([]string)
+
+	// Verify root and long-lived leaf certs are in cert store, while the expired and invalid certs are not.
+	require.Len(t, certKeys, 2, "expected two certificates to remain in the store")
+	require.NotContains(t, certKeys, "1", "invalid certificate '1' should have been removed from the store")
+	require.NotContains(t, certKeys, shortLivedSerial, "expired cert should have been removed from the store")
+}
+
+func TestTidyWithInvalidRevokedCertInStore(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Invalid certificate content to simulate an unprocessable cert in the store
+	invalidCert := `
+MIIBrjCCARegAwIBAgIBATANBgkqhkiG9w0BAQsFADAPMQ0wCwYDVQQDEwR0ZXN0
+MCIYDzAwMDEwMTAxMDAwMDAwWhgPMDAwMTAxMDEwMDAwMDBaMA8xDTALBgNVBAMT
+BHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAMiFchnHms9l9NninAIz
+SkY9acwl9Bk2AtmJrNCenFpiA17AcOO5q8DJYwdXi6WPKlVgcyH+ysW8XMWkq+CP
+yhtF/+LMzl9odaUF2iUy3vgTC5gxGLWH5URVssx21Und2Pm2f4xyou5IVxbS9dxy
+jLvV9PEY9BIb0H+zFthjhihDAgMBAAGjFjAUMAgGAioDBAIFADAIBgIqAwQCBQAw
+DQYJKoZIhvcNAQELBQADgYEAlhQ4TQQKIQ8GUyzGiN/75TCtQtjhMGemxc0cNgre
+d9rmm4DjydH0t7/sMCB56lQrfhJNplguzsbjFW4l245KbNKHfLiqwEGUgZjBNKur
+ot6qX/skahLtt0CNOaFIge75HVKe/69OrWQGdp18dkay/KS4Glu8YMKIjOhfrUi1
+NZA=`
+
+	// Decode base64 to get raw DER bytes
+	invalidCertDER, err := base64.StdEncoding.DecodeString(invalidCert)
+	require.NoError(t, err, "failed to decode base64 certificate content")
+
+	// Write invalid certificate to storage
+	err = s.Put(ctx, &logical.StorageEntry{
+		Key:   "certs/1",
+		Value: invalidCertDER,
+	})
+	require.NoError(t, err, "failed to add invalid certificate to the store for testing")
+
+	// Write invalid cert to revocation storage.
+	info := revocationInfo{
+		CertificateBytes:  invalidCertDER,
+		RevocationTime:    time.Now().Add(-5 * time.Second).Unix(),
+		RevocationTimeUTC: time.Now().Add(-5 * time.Second).UTC(),
+	}
+	revEntry, err := logical.StorageEntryJSON(revokedPath+"1", info)
+	require.NoError(t, err)
+	err = s.Put(ctx, revEntry)
+	require.NoError(t, err, "failed to write revocation entry")
+
+	// check root, invalid and valid certs are in store
+	resp, err := CBList(b, s, "certs")
+	require.NoError(t, err)
+	certKeys := resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 1, "expected invalid certificate in the store")
+
+	// Check revoked cert is in the store.
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	certKeys = resp.Data["keys"].([]string)
+	require.Len(t, certKeys, 1, "expected invalid certificate in the revocation store")
+
+	// Define tidy configuration
+	tidyConfig := &tidyConfig{
+		InvalidCerts: true,
+		SafetyBuffer: 1,
+	}
+
+	// Call tidy directly
+	_, err = b.doTidyCertStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig)
+	require.NoError(t, err, "tidy operation should complete without errors")
+
+	// There should still be a single entry here
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	require.Len(t, resp.Data["keys"].([]string), 1, "expected a single pending revocation entry")
+
+	_, err = b.doTidyRevocationStore(context.Background(), &logical.Request{Storage: s}, b.Logger(), tidyConfig, 0)
+	require.NoError(t, err, "tidy revoked operation should complete without errors")
+
+	// Verify we have nothing in either list.
+	resp, err = CBList(b, s, "certs")
+	require.NoError(t, err, "unable to list certificates in store")
+	require.Empty(t, resp.Data)
+
+	resp, err = CBList(b, s, "certs/revoked")
+	require.NoError(t, err)
+	require.Empty(t, resp.Data)
+}
+
+func TestRevokedSafetyBufferConfig(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	// Verify that the default of revoked_safety_buffer is the default of safety_buffer when neither are set
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, resp.Data["safety_buffer"].(int), resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
+
+	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set
+	safetyBuffer := 3600
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer": safetyBuffer,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, safetyBuffer, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer")
+	require.Equal(t, safetyBuffer, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer")
+
+	// Verify that revoked_safety_buffer defaults to safety_buffer when safety_buffer is explicitly set multiple times,
+	// and revoked_safety_buffer is not set explicitly.
+	safetyBuffer2 := 200
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer": safetyBuffer2,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, safetyBuffer2, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to safetyBuffer2")
+	require.Equal(t, safetyBuffer2, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer2")
+
+	// Verify that revoked_safety_buffer can be explicitly set
+	revokedSafetyBuffer := 400
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"safety_buffer":         safetyBuffer,
+		"revoked_safety_buffer": revokedSafetyBuffer,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set revoked_safety_buffer")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, revokedSafetyBuffer, resp.Data["revoked_safety_buffer"].(int), "expected revoked_safety_buffer to be set to revokedSafetyBuffer")
+	require.Equal(t, safetyBuffer, resp.Data["safety_buffer"].(int), "expected safety_buffer to be set to safetyBuffer")
+}
+
+func TestSafetyBufferVsRevokedSafetyBuffer(t *testing.T) {
+	t.Parallel()
+
+	// Short interval duration to trigger frequent auto-tidy runs
+	newPeriod := 1 * time.Second
+
+	// Set up the test cluster
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"pki": Factory,
+		},
+		EnableRaw:      true,
+		RollbackPeriod: newPeriod,
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	// Mount PKI
+	err := client.Sys().Mount("pki", &api.MountInput{
+		Type: "pki",
+		Config: api.MountConfigInput{
+			DefaultLeaseTTL: "10m",
+			MaxLeaseTTL:     "60m",
+		},
+	})
+	require.NoError(t, err)
+
+	// Generate a root certificate
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "Root X1",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, resp.Data)
+
+	// Run tidy so status is not empty when we run it later
+	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+		"tidy_revoked_certs": true,
+	})
+	require.NoError(t, err)
+
+	// Set up a role for testing
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+
+	// Configure auto-tidy with different safety buffers
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+		"enabled":               true,
+		"interval_duration":     "1s",
+		"tidy_cert_store":       true,
+		"tidy_revoked_certs":    true,
+		"safety_buffer":         "2s",
+		"revoked_safety_buffer": "15s",
+	})
+	require.NoError(t, err)
+
+	// Issue a certificate that expires soon
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "example.com",
+		"ttl":         "5s",
+	})
+	require.NoError(t, err)
+	leafSerial := resp.Data["serial_number"].(string)
+	leafCert := parseCert(t, resp.Data["certificate"].(string))
+
+	// Issue and revoke another certificate
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "revoked-example.com",
+		"ttl":         "10s",
+	})
+	require.NoError(t, err)
+	revokedSerial := resp.Data["serial_number"].(string)
+	revokedCert := parseCert(t, resp.Data["certificate"].(string))
+
+	_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+		"serial_number": revokedSerial,
+	})
+	require.NoError(t, err)
+
+	// Issue a certificate that expires after the revoked
+	// certificate. This expiration needs to be longer than
+	// revoked_safety_buffer+revoked.ttl.
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "example.com",
+		"ttl":         "35s",
+	})
+	require.NoError(t, err)
+	lastLeafSerial := resp.Data["serial_number"].(string)
+	lastLeafCert := parseCert(t, resp.Data["certificate"].(string))
+
+	// Wait for the first certificate to expire and the safety buffer to elapse
+	time.Sleep(time.Until(leafCert.NotAfter) + 3*time.Second)
+
+	// Wait for auto-tidy to run afterwards.
+	waitForAutoTidyToFinish(t, client)
+
+	// The expired certificate should be tidied now
+	resp, err = client.Logical().Read("pki/cert/" + leafSerial)
+	require.Nil(t, err)
+	require.Nil(t, resp)
+
+	// Ensure the revoked certificate is not tidied before revoked_safety_buffer has passed
+	time.Sleep(time.Until(revokedCert.NotAfter) + 3*time.Second)
+	waitForAutoTidyToFinish(t, client)
+
+	// The revoked certificate should still be present: we've not passed
+	// revoked_safety_buffer, only safety_buffer.
+	resp, err = client.Logical().Read("pki/cert/" + revokedSerial)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotNil(t, resp.Data["certificate"], "Revoked certificate should not be tidied before revoked_safety_buffer")
+
+	// Wait for the revoked_safety_buffer to pass
+	time.Sleep(time.Until(revokedCert.NotAfter) + 16*time.Second)
+	waitForAutoTidyToFinish(t, client)
+
+	// Confirm the revoked certificate has been tidied
+	resp, err = client.Logical().Read("pki/cert/" + revokedSerial)
+	require.Nil(t, err)
+	require.Nil(t, resp)
+
+	// Confirm the final certificate has not been tidied.
+	resp, err = client.Logical().Read("pki/cert/" + lastLeafSerial)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	// Ensure it is cleaned up afterwards.
+	time.Sleep(time.Until(lastLeafCert.NotAfter) + 3*time.Second)
+	waitForAutoTidyToFinish(t, client)
+
+	resp, err = client.Logical().Read("pki/cert/" + lastLeafSerial)
+	require.Nil(t, err)
+	require.Nil(t, resp)
+}
+
+func TestTidyPaginationConfig(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	// Verify that the default of page_size is 1000
+	resp, err := CBWrite(b, s, "config/auto-tidy", map[string]interface{}{})
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, 1000, resp.Data["page_size"].(int), "expected page_size to be defaulted to 1000")
+
+	// Verify that page_size can be explicitly set
+	pageSize := 75
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"page_size": pageSize,
+	})
+	requireSuccessNonNilResponse(t, resp, err, "expected to be able to set page_size")
+
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, pageSize, resp.Data["page_size"].(int), "expected page_size to be set to pageSize")
+
+	// Expect an error when setting page_size to less than 5
+	pageSizeInvalid := 4
+	resp, err = CBWrite(b, s, "config/auto-tidy", map[string]interface{}{
+		"page_size": pageSizeInvalid,
+	})
+	require.Error(t, err, "expected error when setting page_size less than 5")
+	require.Contains(t, err.Error(), "page_size must be at least 5", "page_size must be greater than five")
+
+	// Check page size is still the previous value
+	resp, err = CBRead(b, s, "config/auto-tidy")
+	requireSuccessNonNilResponse(t, resp, err, "expected to read auto-tidy config")
+	require.Equal(t, pageSize, resp.Data["page_size"].(int), "expected page_size to be set to pageSize")
+}
+
+func TestTidyPagination(t *testing.T) {
+	t.Parallel()
+
+	// Short interval duration to trigger frequent auto-tidy runs
+	newPeriod := 1 * time.Second
+
+	// Set up the test cluster
+	coreConfig := &vault.CoreConfig{
+		LogicalBackends: map[string]logical.Factory{
+			"pki": Factory,
+		},
+		EnableRaw:      true,
+		RollbackPeriod: newPeriod,
+	}
+	cluster := vault.NewTestCluster(t, coreConfig, &vault.TestClusterOptions{
+		HandlerFunc: vaulthttp.Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+	client := cluster.Cores[0].Client
+
+	// Mount PKI
+	err := client.Sys().Mount("pki", &api.MountInput{
+		Type: "pki",
+		Config: api.MountConfigInput{
+			DefaultLeaseTTL: "10m",
+			MaxLeaseTTL:     "60m",
+		},
+	})
+	require.NoError(t, err)
+
+	// Generate a root certificate
+	resp, err := client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
+		"ttl":         "40h",
+		"common_name": "Root X1",
+		"key_type":    "ec",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.NotEmpty(t, resp.Data)
+	rootSerial := resp.Data["serial_number"].(string)
+
+	// Run tidy so status is not empty when we run it later
+	_, err = client.Logical().Write("pki/tidy", map[string]interface{}{
+		"tidy_revoked_certs": true,
+	})
+	require.NoError(t, err)
+
+	// Set up a role for testing
+	_, err = client.Logical().Write("pki/roles/local-testing", map[string]interface{}{
+		"allow_any_name":    true,
+		"enforce_hostnames": false,
+		"key_type":          "ec",
+	})
+	require.NoError(t, err)
+
+	// Configure auto-tidy
+	_, err = client.Logical().Write("pki/config/auto-tidy", map[string]interface{}{
+		"enabled":               true,
+		"interval_duration":     "1s",
+		"tidy_cert_store":       true,
+		"tidy_revoked_certs":    true,
+		"page_size":             5,
+		"safety_buffer":         "1s",
+		"revoked_safety_buffer": "1s",
+	})
+	require.NoError(t, err)
+
+	// Issue 27 leaf certificates to populate the cert store.
+	// This number is chosen to ensure that the tidy operation can process multiple pages,
+	// even when the page size limit is set below the total number of certificates.
+	for i := 0; i < 26; i++ {
+		_, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+			"common_name": "example.com",
+			"ttl":         "1s",
+		})
+		require.NoError(t, err)
+	}
+	// the last leaf cert being issued
+	resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+		"common_name": "last.com",
+		"ttl":         "1s",
+	})
+	require.NoError(t, err)
+	lastCert := parseCert(t, resp.Data["certificate"].(string))
+
+	// Issue another 4 leaf certificates then revoke them. This is done to ensure that
+	// the tidy operation can process certificates less than its the page size.
+	for i := 0; i < 4; i++ {
+		resp, err = client.Logical().Write("pki/issue/local-testing", map[string]interface{}{
+			"common_name": fmt.Sprintf("revoked.com"),
+			"ttl":         "1s",
+		})
+		require.NoError(t, err)
+		revokedSerial := resp.Data["serial_number"].(string)
+
+		_, err = client.Logical().Write("pki/revoke", map[string]interface{}{
+			"serial_number": revokedSerial,
+		})
+		require.NoError(t, err)
+	}
+
+	// Wait for the last certificate to expire, revoked safety buffer and safety buffer to elapse
+	time.Sleep(time.Until(lastCert.NotAfter) + 3*time.Second)
+
+	// Wait for auto-tidy to run afterwards.
+	waitForAutoTidyToFinish(t, client)
+
+	// List remaining certificates in the cert store
+	resp, err = client.Logical().List("pki/certs/")
+	require.NoError(t, err, "unable to list certificates in store")
+
+	// Check that only the root certificate remains
+	certKeys := resp.Data["keys"].([]interface{})
+	require.Len(t, certKeys, 1, "expected only root cert to remain in the store")
+	require.Contains(t, certKeys, rootSerial, "expected only root cert to remain in the store")
 }

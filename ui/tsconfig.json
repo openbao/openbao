@@ -28,7 +28,6 @@
         "lib/kmip/app/*",
         "lib/open-api-explorer/app/*",
         "lib/pki/app/*",
-        "lib/replication/app/*",
         "lib/service-worker-authenticated-download/app/*"
       ],
       "core": ["lib/core/addon"],
@@ -51,10 +50,6 @@
       "pki/*": ["lib/pki/addon/*"],
       "pki/test-support": ["lib/pki/addon-test-support"],
       "pki/test-support/*": ["lib/pki/addon-test-support/*"],
-      "replication": ["lib/replication/addon"],
-      "replication/*": ["lib/replication/addon/*"],
-      "replication/test-support": ["lib/replication/addon-test-support"],
-      "replication/test-support/*": ["lib/replication/addon-test-support/*"],
       "service-worker-authenticated-download": ["lib/service-worker-authenticated-download/addon"],
       "service-worker-authenticated-download/*": ["lib/service-worker-authenticated-download/addon/*"],
       "service-worker-authenticated-download/test-support": [
@@ -75,7 +70,6 @@
     "lib/kmip/**/*",
     "lib/open-api-explorer/**/*",
     "lib/pki/**/*",
-    "lib/replication/**/*",
     "lib/service-worker-authenticated-download/**/*",
     "mirage/**/*"
   ],

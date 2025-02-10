@@ -23,7 +23,7 @@ func TestSalt(t *testing.T) {
 	}
 
 	if !salt.DidGenerate() {
-		t.Fatalf("expected generation")
+		t.Fatal("expected generation")
 	}
 
 	// Verify the salt exists
@@ -32,7 +32,7 @@ func TestSalt(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out == nil {
-		t.Fatalf("missing salt")
+		t.Fatal("missing salt")
 	}
 
 	// Create a new salt, should restore
@@ -42,7 +42,7 @@ func TestSalt(t *testing.T) {
 	}
 
 	if salt2.DidGenerate() {
-		t.Fatalf("unexpected generation")
+		t.Fatal("unexpected generation")
 	}
 
 	// Check for a match
@@ -56,7 +56,7 @@ func TestSalt(t *testing.T) {
 	sid2 := salt2.SaltID(id)
 
 	if sid1 != sid2 {
-		t.Fatalf("mismatch")
+		t.Fatal("mismatch")
 	}
 }
 
@@ -75,7 +75,7 @@ func TestSaltID(t *testing.T) {
 	}
 
 	if sid1 != sid2 {
-		t.Fatalf("mismatch")
+		t.Fatal("mismatch")
 	}
 
 	sid1 = SaltID(salt, id, SHA256Hash)
@@ -86,6 +86,6 @@ func TestSaltID(t *testing.T) {
 	}
 
 	if sid1 != sid2 {
-		t.Fatalf("mismatch")
+		t.Fatal("mismatch")
 	}
 }

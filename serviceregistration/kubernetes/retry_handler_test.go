@@ -55,7 +55,7 @@ func TestRetryHandlerSimple(t *testing.T) {
 	// Initial number of patches upon Run from setting the initial state
 	initStatePatches := testState.NumPatches()
 	if initStatePatches == 0 {
-		t.Fatalf("expected number of states patches after initial patches to be non-zero")
+		t.Fatal("expected number of states patches after initial patches to be non-zero")
 	}
 
 	// Send a new patch

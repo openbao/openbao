@@ -56,7 +56,7 @@ func TestPassthroughBackend_Write(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("failed to write to view")
+			t.Fatal("failed to write to view")
 		}
 	}
 	b := testPassthroughBackend()
@@ -188,6 +188,39 @@ func TestPassthroughBackend_List(t *testing.T) {
 		}
 
 		req = logical.TestRequest(t, logical.ListOperation, "")
+		req.Storage = storage
+		resp, err := b.HandleRequest(context.Background(), req)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		expected := &logical.Response{
+			Data: map[string]interface{}{
+				"keys": []string{"foo"},
+			},
+		}
+
+		if !reflect.DeepEqual(resp, expected) {
+			t.Fatalf("bad response.\n\nexpected: %#v\n\nGot: %#v", expected, resp)
+		}
+	}
+	b := testPassthroughBackend()
+	test(b)
+	b = testPassthroughLeasedBackend()
+	test(b)
+}
+
+func TestPassthroughBackend_Scan(t *testing.T) {
+	test := func(b logical.Backend) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "foo")
+		req.Data["raw"] = "test"
+		storage := req.Storage
+
+		if _, err := b.HandleRequest(context.Background(), req); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+
+		req = logical.TestRequest(t, logical.ScanOperation, "")
 		req.Storage = storage
 		resp, err := b.HandleRequest(context.Background(), req)
 		if err != nil {

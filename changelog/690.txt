@@ -1,0 +1,3 @@
+```release-note:security
+raft: Fix memory exhaustion when processing raft cluster join requests; results in longer challenge/answers. HCSEC-2024-26 / CVE-2024-8185.
+```

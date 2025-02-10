@@ -134,7 +134,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "a user claim must be defined on the role" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -161,7 +161,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.HasPrefix(resp.Error().Error(), "must have at least one bound constraint") {
 			t.Fatalf("unexpected err: %v", resp)
@@ -189,7 +189,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -215,7 +215,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -241,7 +241,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -269,7 +269,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && resp.IsError() {
-			t.Fatalf("did not expect error")
+			t.Fatal("did not expect error")
 		}
 	})
 
@@ -442,7 +442,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "invalid 'bound_claims_type': invalid" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -477,7 +477,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "claim is not a string or list: 25" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -511,7 +511,7 @@ func TestPath_Create(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if resp.Error().Error() != "claim is not a string: 10" {
 			t.Fatalf("unexpected err: %v", resp)
@@ -644,7 +644,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.Contains(resp.Error().Error(), `metadata key "role" is reserved`) {
 			t.Fatalf("unexpected err: %v", resp)
@@ -690,7 +690,7 @@ func TestPath_OIDCCreate(t *testing.T) {
 			t.Fatal(err)
 		}
 		if resp != nil && !resp.IsError() {
-			t.Fatalf("expected error")
+			t.Fatal("expected error")
 		}
 		if !strings.Contains(resp.Error().Error(), `multiple keys are mapped to metadata key "a"`) {
 			t.Fatalf("unexpected err: %v", resp)
@@ -765,38 +765,39 @@ func TestPath_Read(t *testing.T) {
 	}
 
 	expected := map[string]interface{}{
-		"role_type":               "jwt",
-		"bound_claims_type":       "string",
-		"bound_claims":            map[string]interface{}(nil),
-		"claim_mappings":          map[string]string(nil),
-		"oauth2_metadata":         []string(nil),
-		"bound_subject":           "testsub",
-		"bound_audiences":         []string{"vault"},
-		"allowed_redirect_uris":   []string{"http://127.0.0.1"},
-		"callback_mode":           "client",
-		"oidc_scopes":             []string{"email", "profile"},
-		"user_claim":              "user",
-		"user_claim_json_pointer": false,
-		"groups_claim":            "groups",
-		"token_policies":          []string{"test"},
-		"policies":                []string{"test"},
-		"token_period":            int64(3),
-		"period":                  int64(3),
-		"token_ttl":               int64(1),
-		"ttl":                     int64(1),
-		"token_num_uses":          12,
-		"num_uses":                12,
-		"token_max_ttl":           int64(5),
-		"max_ttl":                 int64(5),
-		"expiration_leeway":       int64(500),
-		"not_before_leeway":       int64(500),
-		"clock_skew_leeway":       int64(100),
-		"verbose_oidc_logging":    false,
-		"token_type":              logical.TokenTypeDefault.String(),
-		"token_no_default_policy": false,
-		"token_explicit_max_ttl":  int64(0),
-		"token_strictly_bind_ip":  false,
-		"max_age":                 int64(0),
+		"role_type":                      "jwt",
+		"bound_claims_type":              "string",
+		"bound_claims":                   map[string]interface{}(nil),
+		"claim_mappings":                 map[string]string(nil),
+		"oauth2_metadata":                []string(nil),
+		"bound_subject":                  "testsub",
+		"bound_audiences":                []string{"vault"},
+		"allowed_redirect_uris":          []string{"http://127.0.0.1"},
+		"callback_mode":                  "client",
+		"oidc_scopes":                    []string{"email", "profile"},
+		"user_claim":                     "user",
+		"user_claim_json_pointer":        false,
+		"groups_claim":                   "groups",
+		"token_policies":                 []string{"test"},
+		"policies":                       []string{"test"},
+		"token_period":                   int64(3),
+		"period":                         int64(3),
+		"token_ttl":                      int64(1),
+		"ttl":                            int64(1),
+		"token_num_uses":                 12,
+		"num_uses":                       12,
+		"token_max_ttl":                  int64(5),
+		"max_ttl":                        int64(5),
+		"expiration_leeway":              int64(500),
+		"not_before_leeway":              int64(500),
+		"clock_skew_leeway":              int64(100),
+		"verbose_oidc_logging":           false,
+		"token_type":                     logical.TokenTypeDefault.String(),
+		"token_no_default_policy":        false,
+		"token_explicit_max_ttl":         int64(0),
+		"token_strictly_bind_ip":         false,
+		"token_policies_template_claims": false,
+		"max_age":                        int64(0),
 	}
 
 	req := &logical.Request{

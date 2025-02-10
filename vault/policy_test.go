@@ -89,6 +89,9 @@ path "test/req" {
 path "test/patch" {
 	capabilities = ["patch"]
 }
+path "test/scan" {
+	capabilities = ["scan"]
+}
 path "test/mfa" {
 	capabilities = ["create", "sudo"]
 	mfa_methods = ["my_totp", "my_totp2"]
@@ -258,6 +261,13 @@ func TestPolicy_Parse(t *testing.T) {
 			},
 		},
 		{
+			Path:         "test/scan",
+			Capabilities: []string{"scan"},
+			Permissions: &ACLPermissions{
+				CapabilitiesBitmap: (ScanCapabilityInt),
+			},
+		},
+		{
 			Path: "test/mfa",
 			Capabilities: []string{
 				"create",
@@ -344,7 +354,7 @@ bad  = "foo"
 nope = "yes"
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `invalid key "bad" on line 2`) {
@@ -365,7 +375,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `invalid key "capabilites" on line 3`) {
@@ -380,7 +390,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "/": invalid policy "banana"`) {
@@ -397,7 +407,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `max_wrapping_ttl cannot be less than min_wrapping_ttl`) {
@@ -412,7 +422,7 @@ path "/" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "/": invalid capability "banana"`) {
@@ -427,7 +437,7 @@ path "foo/+*" {
 }
 `))
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	if !strings.Contains(err.Error(), `path "foo/+*": invalid use of wildcards ('+*' is forbidden)`) {

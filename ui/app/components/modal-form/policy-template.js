@@ -26,17 +26,14 @@ import { tracked } from '@glimmer/tracking';
 
 export default class PolicyTemplate extends Component {
   @service store;
-  @service version;
 
   @tracked policy = null; // model record passed to policy-form
   @tracked showExamplePolicy = false;
 
   get policyOptions() {
-    return [
-      { label: 'ACL Policy', value: 'acl', isDisabled: false },
-      { label: 'Role Governing Policy', value: 'rgp', isDisabled: !this.version.hasSentinel },
-    ];
+    return [{ label: 'ACL Policy', value: 'acl', isDisabled: false }];
   }
+
   // formatting here is purposeful so that whitespace renders correctly in JsonEditor
   policyTemplates = {
     acl: `
@@ -50,23 +47,6 @@ path "secret/*" {
 # secret/super-secret. This takes precedence.
 path "secret/super-secret" {
   capabilities = ["deny"]
-}
-`,
-    rgp: `
-# Import strings library that exposes common string operations
-import "strings"
-
-# Conditional rule (precond) checks the incoming request endpoint
-# targeted to sys/policies/acl/admin
-precond = rule {
-    strings.has_prefix(request.path, "sys/policies/admin")
-}
-
-# Vault checks to see if the request was made by an entity
-# named James Thomas or Team Lead role defined as its metadata
-main = rule when precond {
-    identity.entity.metadata.role is "Team Lead" or
-      identity.entity.name is "James Thomas"
 }
 `,
   };

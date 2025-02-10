@@ -12,9 +12,9 @@ set -e
 # Prevent core dumps
 ulimit -c 0
 
-# Allow setting BAO_CLUSTER_ADDR and BAO_CLUSTER_ADDR using an interface
+# Allow setting BAO_REDIRECT_ADDR and BAO_CLUSTER_ADDR using an interface
 # name instead of an IP address. The interface name is specified using
-# BAO_REDIRECT_INTERFACE and BAO_REDIRECT_INTERFACE environment variables. If
+# BAO_REDIRECT_INTERFACE and BAO_CLUSTER_INTERFACE environment variables. If
 # BAO_*_ADDR is also set, the resulting URI will combine the protocol and port
 # number with the IP of the named interface.
 get_addr () {
@@ -27,12 +27,12 @@ get_addr () {
 }
 
 if [ -n "$BAO_REDIRECT_INTERFACE" ]; then
-    export BAO_CLUSTER_ADDR=$(get_addr $BAO_REDIRECT_INTERFACE ${BAO_CLUSTER_ADDR:-"http://0.0.0.0:8200"})
-    echo "Using $BAO_REDIRECT_INTERFACE for BAO_CLUSTER_ADDR: $BAO_CLUSTER_ADDR"
+    export BAO_REDIRECT_ADDR=$(get_addr $BAO_REDIRECT_INTERFACE ${BAO_REDIRECT_ADDR:-"http://0.0.0.0:8200"})
+    echo "Using $BAO_REDIRECT_INTERFACE for BAO_REDIRECT_ADDR: $BAO_REDIRECT_ADDR"
 fi
-if [ -n "$BAO_REDIRECT_INTERFACE" ]; then
-    export BAO_CLUSTER_ADDR=$(get_addr $BAO_REDIRECT_INTERFACE ${BAO_CLUSTER_ADDR:-"https://0.0.0.0:8201"})
-    echo "Using $BAO_REDIRECT_INTERFACE for BAO_CLUSTER_ADDR: $BAO_CLUSTER_ADDR"
+if [ -n "$BAO_CLUSTER_INTERFACE" ]; then
+    export BAO_CLUSTER_ADDR=$(get_addr $BAO_CLUSTER_INTERFACE ${BAO_CLUSTER_ADDR:-"https://0.0.0.0:8201"})
+    echo "Using $BAO_CLUSTER_INTERFACE for BAO_CLUSTER_ADDR: $BAO_CLUSTER_ADDR"
 fi
 
 # BAO_CONFIG_DIR isn't exposed as a volume but you can compose additional

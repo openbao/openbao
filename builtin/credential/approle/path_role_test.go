@@ -53,7 +53,7 @@ func TestAppRole_LocalSecretIDsRead(t *testing.T) {
 	})
 
 	if !resp.Data["local_secret_ids"].(bool) {
-		t.Fatalf("expected local_secret_ids to be returned")
+		t.Fatal("expected local_secret_ids to be returned")
 	}
 }
 
@@ -101,7 +101,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	})
 
 	if len(resp.Data["keys"].([]string)) != count {
-		t.Fatalf("failed to list secret IDs")
+		t.Fatal("failed to list secret IDs")
 	}
 
 	// Create secret IDs on testrole1
@@ -120,7 +120,7 @@ func TestAppRole_LocalNonLocalSecretIDs(t *testing.T) {
 	})
 
 	if len(resp.Data["keys"].([]string)) != count {
-		t.Fatalf("failed to list secret IDs")
+		t.Fatal("failed to list secret IDs")
 	}
 }
 
@@ -148,7 +148,7 @@ func TestAppRole_UpgradeSecretIDPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 	if role.SecretIDPrefix == "" {
-		t.Fatalf("expected SecretIDPrefix to be set")
+		t.Fatal("expected SecretIDPrefix to be set")
 	}
 
 	// Ensure that the API response contains local_secret_ids
@@ -160,7 +160,7 @@ func TestAppRole_UpgradeSecretIDPrefix(t *testing.T) {
 
 	_, ok := resp.Data["local_secret_ids"]
 	if !ok {
-		t.Fatalf("expected local_secret_ids to be present in the response")
+		t.Fatal("expected local_secret_ids to be present in the response")
 	}
 }
 
@@ -196,7 +196,7 @@ func TestAppRole_LocalSecretIDImmutability(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error since local_secret_ids can't be overwritten")
+		t.Fatal("expected an error since local_secret_ids can't be overwritten")
 	}
 }
 
@@ -270,7 +270,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 	})
 
 	if resp.Data["secret_id"].(string) == "" {
-		t.Fatalf("failed to generate secret-id")
+		t.Fatal("failed to generate secret-id")
 	}
 
 	// Check that the backwards compatibility for the string type is not broken
@@ -284,7 +284,7 @@ func TestAppRole_UpgradeBoundCIDRList(t *testing.T) {
 	})
 
 	if resp.Data["secret_id"].(string) == "" {
-		t.Fatalf("failed to generate secret-id")
+		t.Fatal("failed to generate secret-id")
 	}
 }
 
@@ -349,7 +349,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp == nil || !resp.IsError() {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	// Delete the role and create it again. This time don't directly persist
@@ -410,7 +410,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	})
 
 	if resp == nil {
-		t.Fatalf("failed to lookup secret IDs")
+		t.Fatal("failed to lookup secret IDs")
 	}
 
 	// Listing of secret IDs should work in case-insensitive manner
@@ -421,7 +421,7 @@ func TestAppRole_RoleNameLowerCasing(t *testing.T) {
 	})
 
 	if len(resp.Data["keys"].([]string)) != 1 {
-		t.Fatalf("failed to list secret IDs")
+		t.Fatal("failed to list secret IDs")
 	}
 }
 
@@ -466,7 +466,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 
 	// Check if the warning is being returned
 	if !strings.Contains(resp.Warnings[0], "Role identifier was missing an index back to role name.") {
-		t.Fatalf("bad: expected a warning in the response")
+		t.Fatal("bad: expected a warning in the response")
 	}
 
 	roleIDIndex, err := b.roleIDEntry(context.Background(), storage, roleID)
@@ -476,7 +476,7 @@ func TestAppRole_RoleReadSetIndex(t *testing.T) {
 
 	// Check if the index has been successfully created
 	if roleIDIndex == nil || roleIDIndex.Name != "testrole" {
-		t.Fatalf("bad: expected role to have an index")
+		t.Fatal("bad: expected role to have an index")
 	}
 
 	roleReq.Operation = logical.UpdateOperation
@@ -628,7 +628,7 @@ func TestAppRole_RoleConstraints(t *testing.T) {
 		t.Fatalf("err:%v, resp:%#v", err, resp)
 	}
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -687,7 +687,7 @@ func TestAppRole_RoleIDUpdate(t *testing.T) {
 	resp = b.requestNoErr(t, loginReq)
 
 	if resp.Auth == nil {
-		t.Fatalf("expected a non-nil auth object in the response")
+		t.Fatal("expected a non-nil auth object in the response")
 	}
 }
 
@@ -900,7 +900,7 @@ func TestAppRole_RoleSecretIDAccessorReadDelete(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -1015,13 +1015,13 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 	resp = b.requestNoErr(t, roleSecretIDReq)
 
 	if resp.Data["secret_id"].(string) == "" {
-		t.Fatalf("failed to generate secret_id")
+		t.Fatal("failed to generate secret_id")
 	}
 	if resp.Data["secret_id_ttl"].(int64) != int64(roleData["secret_id_ttl"].(int)) {
-		t.Fatalf("secret_id_ttl has not defaulted to the role's secret id ttl")
+		t.Fatal("secret_id_ttl has not defaulted to the role's secret id ttl")
 	}
 	if resp.Data["secret_id_num_uses"].(int) != roleData["secret_id_num_uses"].(int) {
-		t.Fatalf("secret_id_num_uses has not defaulted to the role's secret id num_uses")
+		t.Fatal("secret_id_num_uses has not defaulted to the role's secret id num_uses")
 	}
 
 	roleSecretIDReq.Path = "role/role1/custom-secret-id"
@@ -1032,13 +1032,13 @@ func TestAppRole_RoleSecretIDWithoutFields(t *testing.T) {
 	resp = b.requestNoErr(t, roleSecretIDReq)
 
 	if resp.Data["secret_id"] != "abcd123" {
-		t.Fatalf("failed to set specific secret_id to role")
+		t.Fatal("failed to set specific secret_id to role")
 	}
 	if resp.Data["secret_id_ttl"].(int64) != int64(roleData["secret_id_ttl"].(int)) {
-		t.Fatalf("secret_id_ttl has not defaulted to the role's secret id ttl")
+		t.Fatal("secret_id_ttl has not defaulted to the role's secret id ttl")
 	}
 	if resp.Data["secret_id_num_uses"].(int) != roleData["secret_id_num_uses"].(int) {
-		t.Fatalf("secret_id_num_uses has not defaulted to the role's secret id num_uses")
+		t.Fatal("secret_id_num_uses has not defaulted to the role's secret id num_uses")
 	}
 }
 
@@ -1099,13 +1099,13 @@ func TestAppRole_RoleSecretIDWithValidFields(t *testing.T) {
 			resp = b.requestNoErr(t, roleSecretIDReq)
 
 			if resp.Data["secret_id"].(string) == "" {
-				t.Fatalf("failed to generate secret_id")
+				t.Fatal("failed to generate secret_id")
 			}
 			if resp.Data["secret_id_ttl"].(int64) != int64(tc.payload["ttl"].(int)) {
-				t.Fatalf("secret_id_ttl has not been set by the 'ttl' field")
+				t.Fatal("secret_id_ttl has not been set by the 'ttl' field")
 			}
 			if resp.Data["secret_id_num_uses"].(int) != tc.payload["num_uses"].(int) {
-				t.Fatalf("secret_id_num_uses has not been set by the 'num_uses' field")
+				t.Fatal("secret_id_num_uses has not been set by the 'num_uses' field")
 			}
 
 			roleSecretIDReq.Path = "role/role1/custom-secret-id"
@@ -1113,13 +1113,13 @@ func TestAppRole_RoleSecretIDWithValidFields(t *testing.T) {
 			resp = b.requestNoErr(t, roleSecretIDReq)
 
 			if resp.Data["secret_id"] != tc.payload["secret_id"] {
-				t.Fatalf("failed to set specific secret_id to role")
+				t.Fatal("failed to set specific secret_id to role")
 			}
 			if resp.Data["secret_id_ttl"].(int64) != int64(tc.payload["ttl"].(int)) {
-				t.Fatalf("secret_id_ttl has not been set by the 'ttl' field")
+				t.Fatal("secret_id_ttl has not been set by the 'ttl' field")
 			}
 			if resp.Data["secret_id_num_uses"].(int) != tc.payload["num_uses"].(int) {
-				t.Fatalf("secret_id_num_uses has not been set by the 'num_uses' field")
+				t.Fatal("secret_id_num_uses has not been set by the 'num_uses' field")
 			}
 		})
 	}
@@ -1392,7 +1392,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if !resp.Data["bind_secret_id"].(bool) {
-		t.Fatalf("expected the default value of 'true' to be set")
+		t.Fatal("expected the default value of 'true' to be set")
 	}
 
 	// RUD for policies field
@@ -1447,7 +1447,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["secret_id_num_uses"].(int) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for secret_id_ttl field
@@ -1472,7 +1472,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["secret_id_ttl"].(time.Duration) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for secret-id-num-uses field
@@ -1502,7 +1502,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["token_num_uses"].(int) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for 'period' field
@@ -1527,7 +1527,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["token_period"].(time.Duration) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for token_ttl field
@@ -1552,7 +1552,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["token_ttl"].(time.Duration) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for token_max_ttl field
@@ -1577,7 +1577,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if resp.Data["token_max_ttl"].(time.Duration) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// Delete test for role
@@ -1592,7 +1592,7 @@ func TestAppRole_RoleCRUD(t *testing.T) {
 	}
 
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -1718,7 +1718,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if len(resp.Data["secret_id_bound_cidrs"].([]string)) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// RUD for token-bound-cidrs field
@@ -1753,7 +1753,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 	resp = b.requestNoErr(t, roleReq)
 
 	if len(resp.Data["token_bound_cidrs"].([]*sockaddr.SockAddrMarshaler)) != 0 {
-		t.Fatalf("expected value to be reset")
+		t.Fatal("expected value to be reset")
 	}
 
 	// Delete test for role
@@ -1767,7 +1767,7 @@ func TestAppRole_RoleWithTokenBoundCIDRsCRUD(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -1883,7 +1883,7 @@ func TestAppRole_RoleWithTokenTypeCRUD(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 }
 
@@ -1945,7 +1945,7 @@ func TestAppRole_TokenutilUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 	if b == nil {
-		t.Fatalf("failed to create backend")
+		t.Fatal("failed to create backend")
 	}
 	if err := b.Setup(ctx, config); err != nil {
 		t.Fatal(err)
@@ -2050,7 +2050,7 @@ func TestAppRole_SecretID_WithTTL(t *testing.T) {
 			// Extract the "ttl" value from the response data if it exists
 			ttlRaw, okTTL := resp.Data["secret_id_ttl"]
 			if !okTTL {
-				t.Fatalf("expected TTL value in response")
+				t.Fatal("expected TTL value in response")
 			}
 
 			var (
@@ -2129,6 +2129,6 @@ func TestAppRole_RoleSecretIDAccessorCrossDelete(t *testing.T) {
 	})
 
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }

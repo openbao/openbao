@@ -165,3 +165,70 @@ func ClearViewWithLogging(ctx context.Context, view ClearableView, logger hclog.
 
 	return nil
 }
+
+// HandleListPage provides a helper for processing paginated storage lists.
+// It supports both item-level and batch-level callbacks for flexibility.
+//
+// itemCallback: Invoked for each individual entry in the paginated list.
+//   - Parameters: `page` (page index), `index` (entry index in the page), and `entry` (the storage entry).
+//   - Return: A boolean `cont` (whether to continue processing) and an `error` if an issue occurs.
+//
+// batchCallback: Invoked after processing a full batch of entries in the current page.
+//   - Parameters: `page` (page index) and `entries` (all entries in the current batch).
+//   - Return: A boolean `cont` (whether to continue processing) and an `error` if an issue occurs.
+//
+// The callbacks are executed sequentially, with `itemCallback` processing each entry individually,
+// followed by `batchCallback` handling the entire batch.
+func HandleListPage(
+	storage Storage,
+	prefix string,
+	limit int,
+	itemCallback func(page int, index int, entry string) (cont bool, err error),
+	batchCallback func(page int, entries []string) (cont bool, err error),
+) error {
+	page := 0
+	for {
+		var after string
+
+		// Fetch the next page
+		entries, err := storage.ListPage(context.Background(), prefix, after, limit)
+		if err != nil {
+			return err
+		}
+
+		// Exit if no entries are returned
+		if len(entries) == 0 {
+			break
+		}
+
+		// Process each entry in the page
+		for index, entry := range entries {
+			cont, err := itemCallback(page, index, entry)
+			if err != nil || !cont {
+				return err
+			}
+		}
+
+		// Process the entire batch
+		cont, err := batchCallback(page, entries)
+		if err != nil || !cont {
+			return err
+		}
+
+		// Stop since all certs have already been processed
+		if limit <= 0 {
+			break
+		}
+
+		// Stop since this is the last page; prevents 1 unnecessary call to ListPage
+		if len(entries) < limit {
+			break
+		}
+
+		// Update after for the next page
+		after = entries[len(entries)-1]
+		page++
+	}
+
+	return nil
+}

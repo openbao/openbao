@@ -26,7 +26,7 @@ function HomepageHeader() {
               }}
             />
             <Heading as="h1" className="hero__title">
-              {siteConfig.tagline} with {siteConfig.title}
+              Manage, store, and distribute sensitive data with OpenBao
             </Heading>
             <p className="hero__subtitle">
               {siteConfig.title} is an open source, community-driven fork of Vault

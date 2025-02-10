@@ -27,8 +27,10 @@ func (b *backend) pathBackup() *framework.Path {
 			},
 		},
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.ReadOperation: b.pathBackupRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathBackupRead,
+			},
 		},
 
 		HelpSynopsis:    pathBackupHelpSyn,

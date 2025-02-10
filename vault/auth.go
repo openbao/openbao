@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/hashicorp/go-secure-stdlib/strutil"
@@ -75,7 +76,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 
 	// Ensure there is a name
 	if entry.Path == "/" {
-		return fmt.Errorf("backend path must be specified")
+		return errors.New("backend path must be specified")
 	}
 
 	c.mountsLock.Lock()
@@ -116,7 +117,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 
 	// Ensure the token backend is a singleton
 	if entry.Type == mountTypeToken {
-		return fmt.Errorf("token credential backend cannot be instantiated")
+		return errors.New("token credential backend cannot be instantiated")
 	}
 
 	// Check for conflicts according to the router
@@ -189,7 +190,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	newTable := c.auth.shallowClone()
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
-		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
+		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
@@ -224,7 +225,7 @@ func (c *Core) disableCredential(ctx context.Context, path string) error {
 
 	// Ensure the token backend is not affected
 	if path == "token/" {
-		return fmt.Errorf("token credential backend cannot be disabled")
+		return errors.New("token credential backend cannot be disabled")
 	}
 
 	// Disable credential internally
@@ -246,7 +247,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 	// Verify exact match of the route
 	match := c.router.MatchingMount(ctx, path)
 	if match == "" || ns.Path+path != match {
-		return fmt.Errorf("no matching mount")
+		return errors.New("no matching mount")
 	}
 
 	// Store the view for this backend
@@ -339,7 +340,7 @@ func (c *Core) removeCredEntry(ctx context.Context, path string, updateStorage b
 
 	if updateStorage {
 		// Update the auth table
-		if err := c.persistAuth(ctx, newTable, &entry.Local); err != nil {
+		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
@@ -419,7 +420,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	srcMatch.Path = strings.TrimPrefix(dst.MountPath, credentialRoutePrefix)
 
 	// Update the mount table
-	if err := c.persistAuth(ctx, c.auth, &srcMatch.Local); err != nil {
+	if err := c.persistAuth(ctx, nil, c.auth, &srcMatch.Local, srcMatch.UUID); err != nil {
 		srcMatch.Path = srcPath
 		srcMatch.Tainted = true
 		c.authLock.Unlock()
@@ -489,7 +490,7 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 
 	if updateStorage {
 		// Update the auth table
-		if err := c.persistAuth(ctx, c.auth, &entry.Local); err != nil {
+		if err := c.persistAuth(ctx, nil, c.auth, &entry.Local, entry.UUID); err != nil {
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
@@ -499,50 +500,201 @@ func (c *Core) taintCredEntry(ctx context.Context, nsID, path string, updateStor
 
 // loadCredentials is invoked as part of postUnseal to load the auth table
 func (c *Core) loadCredentials(ctx context.Context) error {
-	// Load the existing mount table
-	raw, err := c.barrier.Get(ctx, coreAuthConfigPath)
-	if err != nil {
-		c.logger.Error("failed to read auth table", "error", err)
-		return errLoadAuthFailed
-	}
-	rawLocal, err := c.barrier.Get(ctx, coreLocalAuthConfigPath)
-	if err != nil {
-		c.logger.Error("failed to read local auth table", "error", err)
-		return errLoadAuthFailed
-	}
-
+	// Previously, this lock would be held after attempting to read the
+	// storage entries. While we could never read corrupted entries,
+	// we now need to ensure we can gracefully failover from legacy to
+	// transactional auth mount table structure. This means holding the locks
+	// for longer.
+	//
+	// Note that this lock is used for consistency with other code during
+	// system operation (when mounting and unmounting auth engines), but
+	// is not strictly necessary here as unseal(...) is serial and blocks
+	// startup until finished.
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
+
+	// Start with an empty mount table.
+	c.auth = nil
+
+	// Migrating auth mounts from the previous single-entry to a transactional
+	// variant requires careful surgery that should only be done in the
+	// event the backend is transactionally aware. Otherwise, we'll continue
+	// to use the legacy storage format indefinitely.
+	//
+	// This does mean that going backwards (from a transaction-aware storage
+	// to not) is not possible without manual reconstruction.
+	txnableBarrier, ok := c.barrier.(logical.TransactionalStorage)
+	if !ok {
+		_, err := c.loadLegacyCredentials(ctx, c.barrier)
+		return err
+	}
+
+	// Create a write transaction in case we need to persist the initial
+	// table or migrate from the old format.
+	txn, err := txnableBarrier.BeginTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Defer rolling back: we may commit the transaction anyways, but we
+	// need to ensure the transaction is cleaned up in the event of an
+	// error.
+	defer txn.Rollback(ctx)
+
+	legacy, err := c.loadLegacyCredentials(ctx, txn)
+	if err != nil {
+		return fmt.Errorf("failed to load legacy auth mounts in transaction: %w", err)
+	}
+
+	// If we have legacy auth mounts, migration was handled by the above. Otherwise,
+	// we need to fetch the new auth mount table.
+	if !legacy {
+		c.logger.Info("reading transactional auth mount table")
+		if err := c.loadTransactionalCredentials(ctx, txn); err != nil {
+			return fmt.Errorf("failed to load transactional auth mount table: %w", err)
+		}
+	}
+
+	// Finally, persist our changes.
+	if err := txn.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit auth table changes: %w", err)
+	}
+
+	return nil
+}
+
+// This function reads the transactional split auth (credential) table.
+func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage) error {
+	globalEntries, err := barrier.List(ctx, coreAuthConfigPath+"/")
+	if err != nil {
+		return fmt.Errorf("failed listing core auth mounts: %w", err)
+	}
+
+	localEntries, err := barrier.List(ctx, coreLocalAuthConfigPath+"/")
+	if err != nil {
+		return fmt.Errorf("failed listing core local auth mounts: %w", err)
+	}
+
+	var needPersist bool
+	if len(globalEntries) == 0 {
+		c.logger.Info("no auth mounts in transactional auth mount table; adding default auth mount table")
+		c.auth = c.defaultAuthTable()
+		needPersist = true
+	} else {
+		c.auth = &MountTable{
+			Type: credentialTableType,
+		}
+
+		for index, uuid := range globalEntries {
+			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreAuthConfigPath, uuid)
+			if err != nil {
+				return fmt.Errorf("error loading auth mount table entry (%v/%v): %w", index, uuid, err)
+			}
+
+			if entry != nil {
+				c.auth.Entries = append(c.auth.Entries, entry)
+			}
+		}
+	}
+
+	if len(localEntries) > 0 {
+		for index, uuid := range localEntries {
+			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreLocalAuthConfigPath, uuid)
+			if err != nil {
+				return fmt.Errorf("error loading local auth mount table entry (%v/%v): %w", index, uuid, err)
+			}
+
+			if entry != nil {
+				c.auth.Entries = append(c.auth.Entries, entry)
+			}
+		}
+	}
+
+	err = c.runCredentialUpdates(ctx, barrier, needPersist)
+	if err != nil {
+		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// This function reads the legacy, single-entry combined auth mount table,
+// returning true if it was used. This will let us know (if we're inside
+// a transaction) if we need to do an upgrade.
+func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storage) (bool, error) {
+	// Load the existing auth mount table
+	raw, err := barrier.Get(ctx, coreAuthConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read auth table", "error", err)
+		return false, errLoadAuthFailed
+	}
+	rawLocal, err := barrier.Get(ctx, coreLocalAuthConfigPath)
+	if err != nil {
+		c.logger.Error("failed to read local auth table", "error", err)
+		return false, errLoadAuthFailed
+	}
 
 	if raw != nil {
 		authTable, err := c.decodeMountTable(ctx, raw.Value)
 		if err != nil {
 			c.logger.Error("failed to decompress and/or decode the auth table", "error", err)
-			return err
+			return false, err
 		}
 		c.auth = authTable
 	}
 
 	var needPersist bool
 	if c.auth == nil {
+		// In the event we are inside a transaction, we do not yet know if
+		// we have a transactional mount table; exit early and load the new format.
+		if _, ok := barrier.(logical.Transaction); ok {
+			return false, nil
+		}
+		c.logger.Info("no mounts in legacy auth table; adding default mount table")
 		c.auth = c.defaultAuthTable()
 		needPersist = true
 	} else {
-		// only record tableMetrics if we have loaded something from storge
-		c.tableMetrics(len(c.auth.Entries), false, true, raw.Value)
+		if _, ok := barrier.(logical.Transaction); ok {
+			// We know we have legacy mount table entries, so force a migration.
+			c.logger.Info("migrating legacy mount table to transactional layout")
+			needPersist = true
+		}
+		c.tableMetrics(len(c.auth.Entries), false, true, len(raw.Value))
 	}
 	if rawLocal != nil {
 		localAuthTable, err := c.decodeMountTable(ctx, rawLocal.Value)
 		if err != nil {
-			c.logger.Error("failed to decompress and/or decode the local mount table", "error", err)
-			return err
+			c.logger.Error("failed to decompress and/or decode the legacy local auth mount table", "error", err)
+			return false, err
 		}
 		if localAuthTable != nil && len(localAuthTable.Entries) > 0 {
 			c.auth.Entries = append(c.auth.Entries, localAuthTable.Entries...)
-			c.tableMetrics(len(localAuthTable.Entries), true, true, rawLocal.Value)
+			c.tableMetrics(len(localAuthTable.Entries), true, true, len(rawLocal.Value))
 		}
 	}
 
+	// Here, we must call runCredentialUpdates:
+	//
+	// 1. We may be without any auth mount table and need to create the legacy
+	//    table format because we don't have a transaction aware storage
+	//    backend.
+	// 2. We may have had a legacy auth mount table and need to upgrade into the
+	//    new format. runCredentialUpdates will handle this for us.
+	err = c.runCredentialUpdates(ctx, barrier, needPersist)
+	if err != nil {
+		c.logger.Error("failed to run legacy auth mount table upgrades", "error", err)
+		return false, err
+	}
+
+	// We loaded a legacy auth mount table and successfully migrated it, if
+	// necessary.
+	return true, nil
+}
+
+// Note that this is only designed to work with singletons, as it checks by
+// type only.
+func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage, needPersist bool) error {
 	// Upgrade to typed auth table
 	if c.auth.Type == "" {
 		c.auth.Type = credentialTableType
@@ -572,7 +724,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 			needPersist = true
 		}
 
-		// Don't store built-in version in the mount table, to make upgrades smoother.
+		// Don't store built-in version in the auth mount table, to make upgrades smoother.
 		if versions.IsBuiltinVersion(entry.Version) {
 			entry.Version = ""
 			needPersist = true
@@ -599,7 +751,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 		return nil
 	}
 
-	if err := c.persistAuth(ctx, c.auth, nil); err != nil {
+	if err := c.persistAuth(ctx, barrier, c.auth, nil, ""); err != nil {
 		c.logger.Error("failed to persist auth table", "error", err)
 		return errLoadAuthFailed
 	}
@@ -608,10 +760,34 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 }
 
 // persistAuth is used to persist the auth table after modification
-func (c *Core) persistAuth(ctx context.Context, table *MountTable, local *bool) error {
+func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *MountTable, local *bool, mount string) error {
+	// Sometimes we may not want to explicitly pass barrier; fetch it if
+	// necessary.
+	if barrier == nil {
+		barrier = c.barrier
+	}
+
+	// Gracefully handle a transaction-aware backend, if a transaction
+	// wasn't created for us. This is safe as we do not support nested
+	// transactions.
+	needTxnCommit := false
+	if txnBarrier, ok := barrier.(logical.TransactionalStorage); ok {
+		var err error
+		barrier, err = txnBarrier.BeginTx(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to begin transaction to persist auth mounts: %w", err)
+		}
+
+		needTxnCommit = true
+
+		// In the event of an unexpected error, rollback this transaction.
+		// A rollback of a committed transaction does not impact the commit.
+		defer barrier.(logical.Transaction).Rollback(ctx)
+	}
+
 	if table.Type != credentialTableType {
 		c.logger.Error("given table to persist has wrong type", "actual_type", table.Type, "expected_type", credentialTableType)
-		return fmt.Errorf("invalid table type given, not persisting")
+		return errors.New("invalid table type given, not persisting")
 	}
 
 	nonLocalAuth := &MountTable{
@@ -625,7 +801,7 @@ func (c *Core) persistAuth(ctx context.Context, table *MountTable, local *bool) 
 	for _, entry := range table.Entries {
 		if entry.Table != table.Type {
 			c.logger.Error("given entry to persist in auth table has wrong table value", "path", entry.Path, "entry_table_type", entry.Table, "actual_type", table.Type)
-			return fmt.Errorf("invalid auth entry found, not persisting")
+			return errors.New("invalid auth entry found, not persisting")
 		}
 
 		if entry.Local {
@@ -633,14 +809,19 @@ func (c *Core) persistAuth(ctx context.Context, table *MountTable, local *bool) 
 		} else {
 			nonLocalAuth.Entries = append(nonLocalAuth.Entries, entry)
 		}
+
+		// We potentially modified the auth mount table entry so update the
+		// map accordingly.
+		entry.SyncCache()
 	}
 
-	writeTable := func(mt *MountTable, path string) ([]byte, error) {
-		// Encode the mount table into JSON and compress it (lzw).
+	// Handle writing the legacy auth mount table by default.
+	writeTable := func(mt *MountTable, path string) (int, error) {
+		// Encode the auth mount table into JSON and compress it (lzw).
 		compressedBytes, err := jsonutil.EncodeJSONAndCompress(mt, nil)
 		if err != nil {
 			c.logger.Error("failed to encode or compress auth mount table", "error", err)
-			return nil, err
+			return -1, err
 		}
 
 		// Create an entry
@@ -652,43 +833,123 @@ func (c *Core) persistAuth(ctx context.Context, table *MountTable, local *bool) 
 		// Write to the physical backend
 		if err := c.barrier.Put(ctx, entry); err != nil {
 			c.logger.Error("failed to persist auth mount table", "error", err)
-			return nil, err
+			return -1, err
 		}
-		return compressedBytes, nil
+		return len(compressedBytes), nil
+	}
+
+	if _, ok := barrier.(logical.Transaction); ok {
+		// Write a transactional-aware mount table series instead.
+		writeTable = func(mt *MountTable, prefix string) (int, error) {
+			var size int
+			var found bool
+			currentEntries := make(map[string]struct{}, len(mt.Entries))
+			for index, mtEntry := range mt.Entries {
+				if mount != "" && mtEntry.UUID != mount {
+					continue
+				}
+
+				found = true
+				currentEntries[mtEntry.UUID] = struct{}{}
+
+				// Encode the mount table into JSON. There is little value in
+				// compressing short entries.
+				path := path.Join(prefix, mtEntry.UUID)
+				encoded, err := jsonutil.EncodeJSON(mtEntry)
+				if err != nil {
+					c.logger.Error("failed to encode auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+					return -1, err
+				}
+
+				// Create a storage entry.
+				sEntry := &logical.StorageEntry{
+					Key:   path,
+					Value: encoded,
+				}
+
+				// Write to the backend.
+				if err := barrier.Put(ctx, sEntry); err != nil {
+					c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
+					return -1, err
+				}
+
+				size += len(encoded)
+			}
+
+			if mount != "" && !found {
+				// Delete this component if it exists. This signifies that
+				// we're removing this mount.
+				path := path.Join(prefix, mount)
+				if err := barrier.Delete(ctx, path); err != nil {
+					return -1, fmt.Errorf("requested removal of auth mount but failed: %w", err)
+				}
+			}
+
+			if mount == "" {
+				// List all entries and remove any deleted ones.
+				presentEntries, err := barrier.List(ctx, prefix+"/")
+				if err != nil {
+					return -1, fmt.Errorf("failed to list entries for removal: %w", err)
+				}
+
+				for index, presentEntry := range presentEntries {
+					if _, present := currentEntries[presentEntry]; present {
+						continue
+					}
+
+					if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+						return -1, fmt.Errorf("failed to remove deleted mount %v (%d): %w", presentEntry, index, err)
+					}
+				}
+			}
+
+			// Finally, delete the legacy entries, if any.
+			if err := barrier.Delete(ctx, prefix); err != nil {
+				return -1, err
+			}
+
+			return size, nil
+		}
 	}
 
 	var err error
-	var compressedBytes []byte
+	var compressedBytesLen int
 	switch {
 	case local == nil:
 		// Write non-local mounts
-		compressedBytes, err := writeTable(nonLocalAuth, coreAuthConfigPath)
+		compressedBytesLen, err = writeTable(nonLocalAuth, coreAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytes)
+		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytesLen)
 
 		// Write local mounts
-		compressedBytes, err = writeTable(localAuth, coreLocalAuthConfigPath)
+		compressedBytesLen, err = writeTable(localAuth, coreLocalAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytes)
+		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytesLen)
 	case *local:
-		compressedBytes, err = writeTable(localAuth, coreLocalAuthConfigPath)
+		compressedBytesLen, err = writeTable(localAuth, coreLocalAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytes)
+		c.tableMetrics(len(localAuth.Entries), true, true, compressedBytesLen)
 	default:
-		compressedBytes, err = writeTable(nonLocalAuth, coreAuthConfigPath)
+		compressedBytesLen, err = writeTable(nonLocalAuth, coreAuthConfigPath)
 		if err != nil {
 			return err
 		}
-		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytes)
+		c.tableMetrics(len(nonLocalAuth.Entries), false, true, compressedBytesLen)
 	}
 
-	return err
+	if needTxnCommit {
+		if err := barrier.(logical.Transaction).Commit(ctx); err != nil {
+			return fmt.Errorf("failed to persist mounts inside transaction: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // setupCredentials is invoked after we've loaded the auth table to

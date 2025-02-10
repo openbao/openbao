@@ -4,7 +4,7 @@
 package inmem
 
 import (
-	"fmt"
+	"errors"
 	"sync"
 
 	log "github.com/hashicorp/go-hclog"
@@ -73,7 +73,7 @@ func (i *InmemLock) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
 	i.l.Lock()
 	defer i.l.Unlock()
 	if i.held {
-		return nil, fmt.Errorf("lock already held")
+		return nil, errors.New("lock already held")
 	}
 
 	// Attempt an async acquisition

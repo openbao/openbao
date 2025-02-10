@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Upgrade RHEL UBI container image to 9.5.
+```

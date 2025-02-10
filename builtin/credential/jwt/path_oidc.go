@@ -53,6 +53,9 @@ type oidcRequest struct {
 
 	// this is for storing the response in direct callback mode
 	auth *logical.Auth
+
+	// the device flow code
+	deviceCode string
 }
 
 func pathOIDC(b *jwtAuthBackend) []*framework.Path {
@@ -145,7 +148,7 @@ func pathOIDC(b *jwtAuthBackend) []*framework.Path {
 				},
 				"redirect_uri": {
 					Type:        framework.TypeString,
-					Description: "The OAuth redirect_uri to use in the authorization URL.",
+					Description: "The OAuth redirect_uri to use in the authorization URL.  Not needed with device flow.",
 				},
 				"client_nonce": {
 					Type:        framework.TypeString,
@@ -240,6 +243,13 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse(errLoginFailed + " Expired or missing OAuth state."), nil
 	}
 
+	deleteRequest := true
+	defer func() {
+		if deleteRequest {
+			b.deleteOIDCRequest(stateID)
+		}
+	}()
+
 	roleName := oidcReq.rolename
 	role, err := b.role(ctx, req.Storage, roleName)
 	if err != nil {
@@ -247,16 +257,14 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return nil, err
 	}
 	if role == nil {
-		b.deleteOIDCRequest(stateID)
 		return logical.ErrorResponse(errLoginFailed + " Role could not be found"), nil
 	}
 
 	useHttp := false
 	if role.CallbackMode == callbackModeDirect {
 		useHttp = true
-	} else {
-		// state is only accessed once when not using direct callback
-		b.deleteOIDCRequest(stateID)
+		// save request for poll
+		deleteRequest = false
 	}
 
 	errorDescription := d.Get("error_description").(string)
@@ -288,8 +296,13 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return nil, errwrap.Wrapf("error getting provider for login operation: {{err}}", err)
 	}
 
-	var rawToken oidc.IDToken
+	oidcCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+	if err != nil {
+		return nil, errwrap.Wrapf("error preparing context for login operation: {{err}}", err)
+	}
+
 	var token *oidc.Tk
+	var tokenSource oauth2.TokenSource
 
 	code := d.Get("code").(string)
 	if code == noCode {
@@ -302,9 +315,14 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		}
 
 		// Verify the ID token received from the authentication response.
-		rawToken = oidc.IDToken(oidcReq.idToken)
+		rawToken := oidc.IDToken(oidcReq.idToken)
 		if _, err := provider.VerifyIDToken(ctx, rawToken, oidcReq); err != nil {
 			return logical.ErrorResponse("%s %s", errTokenVerification, err.Error()), nil
+		}
+
+		token, err = oidc.NewToken(rawToken, nil)
+		if err != nil {
+			return nil, errwrap.Wrapf("error creating oidc token: {{err}}", err)
 		}
 	} else {
 		// Exchange the authorization code for an ID token and access token.
@@ -314,13 +332,19 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 			return loginFailedResponse(useHttp, fmt.Sprintf("Error exchanging oidc code: %q.", err.Error())), nil
 		}
 
-		rawToken = token.IDToken()
+		tokenSource = token.StaticTokenSource()
 	}
 
+	return b.processToken(ctx, req, config, oidcCtx, provider, roleName, role, token, tokenSource, stateID, oidcReq, useHttp)
+}
+
+// Continue processing a token after it has been received from the
+// OIDC provider from either code or device authorization flows
+func (b *jwtAuthBackend) processToken(ctx context.Context, req *logical.Request, config *jwtConfig, oidcCtx context.Context, provider *oidc.Provider, roleName string, role *jwtRole, token *oidc.Tk, tokenSource oauth2.TokenSource, stateID string, oidcReq *oidcRequest, useHttp bool) (*logical.Response, error) {
 	if role.VerboseOIDCLogging {
 		loggedToken := "invalid token format"
 
-		parts := strings.Split(string(rawToken), ".")
+		parts := strings.Split(string(token.IDToken()), ".")
 		if len(parts) == 3 {
 			// strip signature from logged token
 			loggedToken = fmt.Sprintf("%s.%s.xxxxxxxxxxx", parts[0], parts[1])
@@ -331,10 +355,16 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 
 	// Parse claims from the ID token payload.
 	var allClaims map[string]interface{}
-	if err := rawToken.Claims(&allClaims); err != nil {
+	if err := token.IDToken().Claims(&allClaims); err != nil {
 		return nil, err
 	}
-	delete(allClaims, "nonce")
+
+	if claimNonce, ok := allClaims["nonce"]; ok {
+		if oidcReq != nil && claimNonce != oidcReq.Nonce() {
+			return loginFailedResponse(useHttp, "invalid ID token nonce."), nil
+		}
+		delete(allClaims, "nonce")
+	}
 
 	// Get the subject claim for bound subject and user info validation
 	var subject string
@@ -346,15 +376,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return loginFailedResponse(useHttp, "sub claim does not match bound subject"), nil
 	}
 
-	// Set the token source for the access token if it's available. It will only
-	// be available for the authorization code flow (oidc_response_types=code).
-	// The access token will be used for fetching additional user and group info.
-	var tokenSource oauth2.TokenSource
-	if token != nil {
-		tokenSource = token.StaticTokenSource()
-	}
-
-	// If we have a token, attempt to fetch information from the /userinfo endpoint
+	// If we have a tokenSource, attempt to fetch information from the /userinfo endpoint
 	// and merge it with the existing claims data. A failure to fetch additional information
 	// from this endpoint will not invalidate the authorization flow.
 	if tokenSource != nil {
@@ -433,6 +455,10 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return nil, fmt.Errorf("failed to populate auth information: %w", err)
 	}
 
+	if err := role.maybeTemplatePolicies(auth, allClaims); err != nil {
+		return nil, err
+	}
+
 	resp := &logical.Response{}
 	if useHttp {
 		oidcReq.auth = auth
@@ -449,19 +475,109 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 	return resp, nil
 }
 
+// second half of the client API for direct and device callback modes
 func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	stateID := d.Get("state").(string)
-
 	oidcReq := b.getOIDCRequest(stateID)
 	if oidcReq == nil {
 		return logical.ErrorResponse(errLoginFailed + " Expired or missing OAuth state."), nil
 	}
 
+	deleteRequest := true
+	defer func() {
+		if deleteRequest {
+			b.deleteOIDCRequest(stateID)
+		}
+	}()
+
 	clientNonce := d.Get("client_nonce").(string)
 
 	if oidcReq.clientNonce != "" && clientNonce != oidcReq.clientNonce {
-		b.deleteOIDCRequest(stateID)
 		return logical.ErrorResponse("invalid client_nonce"), nil
+	}
+
+	roleName := oidcReq.rolename
+	role, err := b.role(ctx, req.Storage, roleName)
+	if err != nil {
+		return nil, err
+	}
+	if role == nil {
+		return logical.ErrorResponse(errLoginFailed + " Role could not be found"), nil
+	}
+
+	if role.CallbackMode == callbackModeDevice {
+		config, err := b.config(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+		if config == nil {
+			return logical.ErrorResponse(errLoginFailed + " Could not load configuration"), nil
+		}
+
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		if err != nil {
+			return nil, err
+		}
+		provider, err := b.getProvider(config)
+		if err != nil {
+			return nil, errwrap.Wrapf("error getting provider for poll operation: {{err}}", err)
+		}
+
+		values := url.Values{
+			"client_id":     {config.OIDCClientID},
+			"client_secret": {config.OIDCClientSecret},
+			"device_code":   {oidcReq.deviceCode},
+			"grant_type":    {"urn:ietf:params:oauth:grant-type:device_code"},
+		}
+		body, err := contactIssuer(caCtx, config.OIDCTokenURL, &values, true)
+		if err != nil {
+			return nil, errwrap.Wrapf("error polling for device authorization: {{err}}", err)
+		}
+
+		var tokenOrError struct {
+			*oauth2.Token
+			Error string `json:"error,omitempty"`
+		}
+		err = json.Unmarshal(body, &tokenOrError)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding issuer response while polling for token: %v; response: %v", err, string(body))
+		}
+
+		if tokenOrError.Error != "" {
+			if tokenOrError.Error == "authorization_pending" || tokenOrError.Error == "slow_down" {
+				// save request for another poll
+				deleteRequest = false
+				return logical.ErrorResponse(tokenOrError.Error), nil
+			}
+			return logical.ErrorResponse("authorization failed: %v", tokenOrError.Error), nil
+		}
+
+		extra := make(map[string]interface{})
+		err = json.Unmarshal(body, &extra)
+		if err != nil {
+			// already been unmarshalled once, unlikely
+			return nil, err
+		}
+		oauth2Token := tokenOrError.Token.WithExtra(extra)
+
+		// idToken, ok := oauth2Token.Extra("id_token").(oidc.IDToken)
+		rawToken, ok := oauth2Token.Extra("id_token").(string)
+		if !ok {
+			return logical.ErrorResponse(errTokenVerification + " No id_token found in response."), nil
+		}
+		idToken := oidc.IDToken(rawToken)
+		token, err := oidc.NewToken(idToken, tokenOrError.Token)
+		if err != nil {
+			return nil, errwrap.Wrapf("error creating oidc token: {{err}}", err)
+		}
+
+		return b.processToken(ctx, req, config, caCtx, provider, roleName, role, token, oauth2.StaticTokenSource(oauth2Token), "", nil, false)
+	}
+
+	// else it's the direct callback mode
+	if oidcReq.auth == nil {
+		// save request for another poll
+		deleteRequest = false
 	}
 
 	if oidcReq.auth == nil {
@@ -469,7 +585,6 @@ func (b *jwtAuthBackend) pathPoll(ctx context.Context, req *logical.Request, d *
 		return logical.ErrorResponse("authorization_pending"), nil
 	}
 
-	b.deleteOIDCRequest(stateID)
 	resp := &logical.Response{
 		Auth: oidcReq.auth,
 	}
@@ -511,9 +626,6 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 	}
 
 	redirectURI := d.Get("redirect_uri").(string)
-	if redirectURI == "" {
-		return logical.ErrorResponse("missing redirect_uri"), nil
-	}
 
 	role, err := b.role(ctx, req.Storage, roleName)
 	if err != nil {
@@ -524,8 +636,86 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 	}
 
 	clientNonce := d.Get("client_nonce").(string)
-	if clientNonce == "" && role.CallbackMode == callbackModeDirect {
+	if clientNonce == "" &&
+		(role.CallbackMode == callbackModeDirect ||
+			role.CallbackMode == callbackModeDevice) {
 		return logical.ErrorResponse("missing client_nonce"), nil
+	}
+
+	if role.CallbackMode == callbackModeDevice {
+		// start a device flow
+		caCtx, err := b.createCAContext(ctx, config.OIDCDiscoveryCAPEM)
+		if err != nil {
+			return nil, err
+		}
+
+		// Discover the device url endpoint if not already known
+		// This adds it to the cached config
+		err = b.configDeviceAuthURL(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+
+		// "openid" is a required scope for OpenID Connect flows
+		scopes := append([]string{"openid"}, role.OIDCScopes...)
+
+		values := url.Values{
+			"client_id":     {config.OIDCClientID},
+			"client_secret": {config.OIDCClientSecret},
+			"scope":         {strings.Join(scopes, " ")},
+		}
+		body, err := contactIssuer(caCtx, config.OIDCDeviceAuthURL, &values, false)
+		if err != nil {
+			return nil, errwrap.Wrapf("error authorizing device: {{err}}", err)
+		}
+
+		var deviceCode struct {
+			DeviceCode              string `json:"device_code"`
+			UserCode                string `json:"user_code"`
+			VerificationURI         string `json:"verification_uri"`
+			VerificationURIComplete string `json:"verification_uri_complete"`
+			// Google and other old implementations use url instead of uri
+			VerificationURL         string `json:"verification_url"`
+			VerificationURLComplete string `json:"verification_url_complete"`
+			Interval                int    `json:"interval"`
+		}
+		err = json.Unmarshal(body, &deviceCode)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding issuer response to device auth: %v; response: %v", err, string(body))
+		}
+		// currently hashicorp/cap/oidc.NewRequest requires
+		//  redirectURL to be non-empty so throw in place holder
+		oidcReq, err := b.createOIDCRequest(config, role, roleName, "-", deviceCode.DeviceCode, clientNonce)
+		if err != nil {
+			logger.Warn("error generating OAuth state", "error", err)
+			return resp, nil
+		}
+
+		if deviceCode.VerificationURIComplete != "" {
+			resp.Data["auth_url"] = deviceCode.VerificationURIComplete
+		} else if deviceCode.VerificationURLComplete != "" {
+			resp.Data["auth_url"] = deviceCode.VerificationURLComplete
+		} else {
+			if deviceCode.VerificationURI != "" {
+				resp.Data["auth_url"] = deviceCode.VerificationURI
+			} else {
+				resp.Data["auth_url"] = deviceCode.VerificationURL
+			}
+			resp.Data["user_code"] = deviceCode.UserCode
+		}
+		resp.Data["state"] = oidcReq.State()
+		interval := 5
+		if role.PollInterval != 0 {
+			interval = role.PollInterval
+		} else if deviceCode.Interval != 0 {
+			interval = deviceCode.Interval
+		}
+		resp.Data["poll_interval"] = fmt.Sprintf("%d", interval)
+		return resp, nil
+	}
+
+	if redirectURI == "" {
+		return logical.ErrorResponse("missing redirect_uri"), nil
 	}
 
 	// If namespace will be passed around in oidcReq, and it has been provided as
@@ -566,7 +756,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return resp, nil
 	}
 
-	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, clientNonce)
+	oidcReq, err := b.createOIDCRequest(config, role, roleName, redirectURI, "", clientNonce)
 	if err != nil {
 		logger.Warn("error generating OAuth state", "error", err)
 		return resp, nil
@@ -587,7 +777,11 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 	resp.Data["auth_url"] = urlStr
 	if role.CallbackMode == callbackModeDirect {
 		resp.Data["state"] = oidcReq.State()
-		resp.Data["poll_interval"] = "5"
+		interval := 5
+		if role.PollInterval != 0 {
+			interval = role.PollInterval
+		}
+		resp.Data["poll_interval"] = fmt.Sprintf("%d", interval)
 	}
 
 	return resp, nil
@@ -595,7 +789,7 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 
 // createOIDCRequest makes an expiring request object, associated with a random state ID
 // that is passed throughout the OAuth process. A nonce is also included in the auth process.
-func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, clientNonce string) (*oidcRequest, error) {
+func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rolename, redirectURI, deviceCode string, clientNonce string) (*oidcRequest, error) {
 	options := []oidc.Option{
 		oidc.WithAudiences(role.BoundAudiences...),
 		oidc.WithScopes(role.OIDCScopes...),
@@ -625,6 +819,7 @@ func (b *jwtAuthBackend) createOIDCRequest(config *jwtConfig, role *jwtRole, rol
 		Request:     request,
 		rolename:    rolename,
 		clientNonce: clientNonce,
+		deviceCode:  deviceCode,
 	}
 	b.oidcRequests.SetDefault(request.State(), oidcReq)
 

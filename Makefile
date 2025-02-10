@@ -23,9 +23,12 @@ endif
 
 default: dev
 
-# bin generates the releasable binaries for OpenBao
+# bin generates the equivalent of releasable binaries for OpenBao
 bin: prep
 	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh'"
+
+bin-plugin: prep
+	@CGO_ENABLED=$(CGO_ENABLED) BUILD_TAGS='$(BUILD_TAGS) ui' sh -c "'$(CURDIR)/scripts/build.sh' plugin"
 
 # dev creates binaries for testing OpenBao locally. These are put
 # into ./bin/ as well as $GOPATH/bin
@@ -266,16 +269,16 @@ fmt: ci-bootstrap
 	find . -name '*.go' | grep -v pb.go | grep -v vendor | xargs go run mvdan.cc/gofumpt@latest -w
 
 semgrep:
-	semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	semgrep --include '*.go' -a -f tools/semgrep .
 
 semgrep-ci:
-	semgrep --error --include '*.go' --exclude 'vendor' -f tools/semgrep/ci .
+	semgrep --error --include '*.go' -f tools/semgrep/ci .
 
 docker-semgrep:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' --exclude 'vendor' -a -f tools/semgrep .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --include '*.go' -a -f tools/semgrep .
 
 docker-semgrep-ci:
-	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' --exclude 'vendor' -a -f tools/semgrep/ci .
+	$(DOCKER_CMD) run --rm --mount "type=bind,source=$(PWD),destination=/src,chown=true,relabel=shared" docker.io/returntocorp/semgrep:latest semgrep --error --include '*.go' -a -f tools/semgrep/ci .
 
 assetcheck:
 	@echo "==> Checking compiled UI assets..."
@@ -350,3 +353,29 @@ release-changelog: $(wildcard changelog/*.txt)
 	@:$(if $(LAST_RELEASE),,$(error please set the LAST_RELEASE environment variable for changelog generation))
 	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for changelog generation))
 	changelog-build -changelog-template changelog/changelog.tmpl -entries-dir changelog -git-dir . -note-template changelog/note.tmpl -last-release $(LAST_RELEASE) -this-release $(THIS_RELEASE)
+
+.PHONY: dev-gorelease
+dev-gorelease: export GORELEASER_PREVIOUS_TAG := $(shell git describe --tags --exclude "api/*" --exclude "sdk/*" --abbrev=0)
+dev-gorelease: export GORELEASER_CURRENT_TAG := $(shell git describe --tags --exclude "api/*" --exclude "sdk/*" )
+dev-gorelease: export GPG_KEY_FILE := /dev/null
+dev-gorelease:
+	@echo GORELEASER_CURRENT_TAG: $(GORELEASER_CURRENT_TAG)
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest release --clean --timeout=60m --verbose --parallelism 2 --snapshot --skip docker,sbom,sign
+
+.PHONY: goreleaser-check
+goreleaser-check:
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+
+.PHONY: sync-deps
+sync-deps:
+	sh -c "'$(CURDIR)/scripts/sync-deps.sh'"
+
+.PHONY: ci-sync-deps
+ci-sync-deps: sync-deps
+	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make sync-deps' locally and commit the changes.\n" && exit 1)

@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -45,8 +46,10 @@ func groupAliasPaths(i *IdentityStore) []*framework.Path {
 				},
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.UpdateOperation: i.pathGroupAliasRegister(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathGroupAliasRegister(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupAliasHelp["group-alias"][0]),
@@ -111,8 +114,10 @@ func groupAliasPaths(i *IdentityStore) []*framework.Path {
 				OperationSuffix: "aliases-by-id",
 			},
 
-			Callbacks: map[logical.Operation]framework.OperationFunc{
-				logical.ListOperation: i.pathGroupAliasIDList(),
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: i.pathGroupAliasIDList(),
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(groupAliasHelp["group-alias-id-list"][0]),
@@ -270,7 +275,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 			return nil, err
 		}
 		if previousGroup == nil {
-			return nil, fmt.Errorf("group alias is not associated with a group")
+			return nil, errors.New("group alias is not associated with a group")
 		}
 		if previousGroup.NamespaceID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("previous group found for alias not in the same namespace as alias"), logical.ErrPermissionDenied
@@ -359,7 +364,7 @@ func (i *IdentityStore) pathGroupAliasIDDelete() framework.OperationFunc {
 
 		// If there is no group tied to a valid alias, something is wrong
 		if group == nil {
-			return nil, fmt.Errorf("alias not associated to a group")
+			return nil, errors.New("alias not associated to a group")
 		}
 
 		// Delete group alias in memdb

@@ -4,8 +4,8 @@
       <:header>
         <Hds::SideNav::Header>
           <:logo>
-            <Hds::SideNav::Header::HomeLink
-              @icon="vault"
+            <Sidebar::Header::HomeLink
+              @icon="openbao"
               @route="vault.cluster"
               @model={{this.currentCluster.cluster.name}}
               @ariaLabel="home link"
@@ -14,6 +14,7 @@
           </:logo>
           <:actions>
             <Hds::SideNav::Header::IconButton
+              class="sidebar-button"
               @icon="terminal-screen"
               @ariaLabel="Console toggle"
               data-test-console-toggle
@@ -33,7 +34,6 @@
   <Frame.Main id="app-main-content" class={{if this.console.isOpen "main--console-open"}}>
     {{! outlet for app content }}
     <div id="modal-wormhole"></div>
-    <LinkStatus @status={{this.currentCluster.cluster.hcpLinkStatus}} />
     {{yield}}
     <div data-test-console-panel class={{if this.console.isOpen "panel-open"}}>
       <Console::UiPanel @isFullscreen={{this.consoleFullscreen}} />

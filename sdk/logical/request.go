@@ -86,6 +86,9 @@ type Request struct {
 	// Storage can be used to durably store and retrieve state.
 	Storage Storage `json:"-" sentinel:""`
 
+	// OriginalStorage can hold an original storage instance during TX operations for restoring Storage.
+	OriginalStorage Storage `json:"-" sentinel:""`
+
 	// Secret will be non-nil only for Revoke and Renew operations
 	// to represent the secret that was returned prior.
 	Secret *Secret `json:"secret" structs:"secret" mapstructure:"secret" sentinel:""`
@@ -356,6 +359,7 @@ const (
 	PatchOperation                    = "patch"
 	DeleteOperation                   = "delete"
 	ListOperation                     = "list"
+	ScanOperation                     = "scan"
 	HelpOperation                     = "help"
 	AliasLookaheadOperation           = "alias-lookahead"
 	ResolveRoleOperation              = "resolve-role"

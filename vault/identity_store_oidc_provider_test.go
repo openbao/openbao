@@ -2301,7 +2301,7 @@ func TestOIDC_pathOIDCClientExistenceCheck(t *testing.T) {
 	client := &client{}
 	entry, _ := logical.StorageEntryJSON(clientPath+clientName, client)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -2646,7 +2646,7 @@ func TestOIDC_pathOIDCScopeExistenceCheck(t *testing.T) {
 	scope := &scope{}
 	entry, _ := logical.StorageEntryJSON(scopePath+scopeName, scope)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -3012,7 +3012,7 @@ func TestOIDC_pathOIDCAssignmentExistenceCheck(t *testing.T) {
 	assignment := &assignment{}
 	entry, _ := logical.StorageEntryJSON(assignmentPath+assignmentName, assignment)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -3455,7 +3455,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 		"p1": map[string]interface{}{
 			"allowed_client_ids": []string{"xyz"},
 			"scopes_supported":   []string{"groups"},
-			"issuer":             "https://myvault.com:8200",
+			"issuer":             "https://example.com:8200",
 		},
 	}
 	for name, p := range providers {

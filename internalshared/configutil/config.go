@@ -4,6 +4,7 @@
 package configutil
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -92,7 +93,7 @@ func ParseConfig(d string) (*SharedConfig, error) {
 
 	list, ok := obj.Node.(*ast.ObjectList)
 	if !ok {
-		return nil, fmt.Errorf("error parsing: file doesn't contain a root object")
+		return nil, errors.New("error parsing: file doesn't contain a root object")
 	}
 
 	if o := list.Filter("hsm"); len(o.Items) > 0 {

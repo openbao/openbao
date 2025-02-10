@@ -141,9 +141,11 @@ func (b *backend) pathConfigCADelete(ctx context.Context, req *logical.Request, 
 		if err := storage.Delete(ctx, caPublicKeyStoragePath); err != nil {
 			return err
 		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 

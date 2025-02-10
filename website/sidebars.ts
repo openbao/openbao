@@ -477,6 +477,7 @@ const sidebars: SidebarsConfig = {
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",
+                "policies/brand",
                 "policies/deprecation",
                 "policies/migration",
                 "policies/plugins",

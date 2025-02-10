@@ -78,6 +78,12 @@ Defaults to "aes256-gcm96".
 }
 
 func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	derivationAlgorithm := d.Get("key_derivation_algorithm").(string)
 	if derivationAlgorithm == "" {
 		derivationAlgorithm = defaultKeyDerivationAlgorithm
@@ -151,6 +157,10 @@ func (b *backend) pathPolicyDeriveKeyWrite(ctx context.Context, req *logical.Req
 
 	err = b.lm.ImportPolicy(ctx, polReq, derivedKey, b.GetRandomReader())
 	if err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

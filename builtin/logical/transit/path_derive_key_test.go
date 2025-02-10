@@ -13,6 +13,8 @@ import (
 
 // Nominal workflow for ECDH key agreement between Alice and Bob.
 func TestTransit_ECDH_NominalCase(t *testing.T) {
+	t.Parallel()
+
 	transit_ECDH_NominalCase(t, "ecdsa-p256", "")
 
 	transit_ECDH_NominalCase(t, "ecdsa-p256", "aes128-gcm96")
@@ -29,7 +31,7 @@ func TestTransit_ECDH_NominalCase(t *testing.T) {
 
 	transit_ECDH_NominalCase(t, "ecdsa-p256", "xchacha20-poly1305")
 	transit_ECDH_NominalCase(t, "ecdsa-p384", "xchacha20-poly1305")
-	transit_ECDH_NominalCase(t, "ecdsa-p521", "chacha20-poly1305")
+	transit_ECDH_NominalCase(t, "ecdsa-p521", "xchacha20-poly1305")
 }
 
 func transit_ECDH_NominalCase(t *testing.T, baseKeyType string, derivedKeyType string) {

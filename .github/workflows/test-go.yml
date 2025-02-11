@@ -80,7 +80,6 @@ jobs:
           INPUTS_BINARY_TESTS: ${{ inputs.binary-tests }}
           INPUTS_GO_ARCH: ${{ inputs.go-arch }}
           INPUTS_EXTRA_FLAGS: ${{ inputs.extra-flags }}
-          INPUTS_GO_TEST_PARALLELISM: ${{ inputs.go-test-parallelism }}
           INPUTS_GO_TAGS: ${{ inputs.go-tags }}
         run: |
           echo "INPUTS_NAME=$INPUTS_NAME" >> "$GITHUB_OUTPUT"
@@ -88,7 +87,6 @@ jobs:
           echo "INPUTS_BINARY_TESTS=$INPUTS_BINARY_TESTS" >> "$GITHUB_OUTPUT"
           echo "INPUTS_GO_ARCH=$INPUTS_GO_ARCH" >> "$GITHUB_OUTPUT"
           echo "INPUTS_EXTRA_FLAGS=$INPUTS_EXTRA_FLAGS" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_GO_TEST_PARALLELISM=$INPUTS_GO_TEST_PARALLELISM" >> "$GITHUB_OUTPUT"
           echo "INPUTS_GO_TAGS=$INPUTS_GO_TAGS" >> "$GITHUB_OUTPUT"
       - run: mkdir -p test-results/go-test
       - uses: actions/cache/restore@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
@@ -97,7 +95,7 @@ jobs:
           key: go-test-reports-${{ github.run_number }}
           restore-keys: go-test-reports-
       - name: List cached results
-        id: list-cached-results        
+        id: list-cached-results
         run: ls -lhR test-results/go-test
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
@@ -200,7 +198,6 @@ jobs:
           INPUTS_NAME: ${{ steps.set-variables.outputs.INPUTS_NAME }}
           INPUTS_GO_ARCH: ${{ steps.set-variables.outputs.INPUTS_GO_ARCH }}
           INPUTS_EXTRA_FLAGS: ${{ steps.set-variables.outputs.INPUTS_EXTRA_FLAGS }}
-          INPUTS_GO_TEST_PARALLELISM: ${{ steps.set-variables.outputs.INPUTS_GO_TEST_PARALLELISM }}
           INPUTS_GO_TAGS: ${{ steps.set-variables.outputs.INPUTS_GO_TAGS }}
         run: |
           set -exo pipefail
@@ -239,7 +236,7 @@ jobs:
               -- \
               -tags "$INPUTS_GO_TAGS" \
               -timeout=${{ env.TIMEOUT_IN_MINUTES }}m \
-              -parallel=$INPUTS_GO_TEST_PARALLELISM \
+              -parallel=${{ inputs.go-test-parallelism }} \
               $INPUTS_EXTRA_FLAGS \
       - name: Archive test results
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0

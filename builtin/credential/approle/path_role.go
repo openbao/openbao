@@ -1744,7 +1744,7 @@ func (b *backend) pathRoleCreateUpdate(ctx context.Context, req *logical.Request
 
 	// Store the entry.
 	if err := b.setRoleEntry(ctx, req.Storage, role.name, role, previousRoleID); err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	if err := logical.EndTxStorage(ctx, req); err != nil {

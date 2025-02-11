@@ -97,12 +97,12 @@ jobs:
           key: go-test-reports-${{ github.run_number }}
           restore-keys: go-test-reports-
       - name: List cached results
-        id: list-cached-results
-        env:
-          INPUTS_TOTAL_RUNNERS: ${{ steps.set-variables.outputs.INPUTS_TOTAL_RUNNERS }}
+        id: list-cached-results        
         run: ls -lhR test-results/go-test
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
+        env:
+          INPUTS_TOTAL_RUNNERS: ${{ steps.set-variables.outputs.INPUTS_TOTAL_RUNNERS }}
         if: ${{ !inputs.testonly }}
         run: |
           # testonly tests need additional build tag though let's exclude them anyway for clarity

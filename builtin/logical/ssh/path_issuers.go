@@ -11,6 +11,10 @@ import (
 )
 
 func pathIssuers(b *backend) *framework.Path {
+	fields := map[string]*framework.FieldSchema{}
+	fields = addIssuerRefField(fields)
+	fields = addIssuerNameField(fields)
+
 	return &framework.Path{
 		Pattern: "issuer/" + framework.GenericNameRegex("issuer_ref"),
 
@@ -19,17 +23,7 @@ func pathIssuers(b *backend) *framework.Path {
 			OperationSuffix: "issuer",
 		},
 
-		Fields: map[string]*framework.FieldSchema{
-			"issuer_ref": {
-				Type:        framework.TypeString,
-				Description: `Issuer reference. It can be the issuer's unique identifier, or the optionally given name.`,
-			},
-			"issuer_name": {
-				Type:        framework.TypeString,
-				Required:    false,
-				Description: `Issuer name.`,
-			},
-		},
+		Fields: fields,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{
@@ -169,6 +163,9 @@ func pathListIssuers(b *backend) *framework.Path {
 }
 
 func pathGetIssuerPublicKeyUnauthenticated(b *backend) *framework.Path {
+	fields := map[string]*framework.FieldSchema{}
+	fields = addIssuerRefField(fields)
+
 	return &framework.Path{
 		Pattern: "issuer/" + framework.GenericNameRegex("issuer_ref") + "/public_key",
 
@@ -178,12 +175,7 @@ func pathGetIssuerPublicKeyUnauthenticated(b *backend) *framework.Path {
 			OperationSuffix: "issuer",
 		},
 
-		Fields: map[string]*framework.FieldSchema{
-			"issuer_ref": {
-				Type:        framework.TypeString,
-				Description: `Issuer reference. It can be the issuer's unique identifier, or the optionally given name.`,
-			},
-		},
+		Fields: fields,
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.ReadOperation: &framework.PathOperation{

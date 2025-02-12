@@ -16,7 +16,7 @@ func pathConfigIssuers(b *backend) *framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"default": {
 					Type:        framework.TypeString,
-					Description: `Reference (name or identifier) to the default issuer.`,
+					Description: `Reference (name or identifier) to issuer set as the default.`,
 					Required:    true,
 				},
 			},
@@ -33,7 +33,7 @@ func pathConfigIssuers(b *backend) *framework.Path {
 		Fields: map[string]*framework.FieldSchema{
 			defaultRef: {
 				Type:        framework.TypeString,
-				Description: `Reference (name or identifier) to the default issuer.`,
+				Description: `Reference (name or identifier) to issuer to be used as the default.`,
 			},
 		},
 		Operations: map[logical.Operation]framework.OperationHandler{

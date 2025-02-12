@@ -213,6 +213,67 @@ default value in the `"/sys/config/ui"` [API endpoint](/api-docs/system/config-u
   there is no X-Forwarded-For header or it is empty, the client address will be
   used as-is, rather than the client connection rejected.
 
+### ACME parameters
+
+The following parameters replace direct certificate acquisition when
+`tls_cert_file` is empty. ACME defaults to being enabled. Set the
+`tls_acme_ca_directory` to the empty string to disable. These options belong
+in the root of the TCP listener configuration.
+
+- `tls_acme_ca_directory` `(string: "https://acme-v02.api.letsencrypt.org/directory")` - Path
+  to the ACME directory; defaults to Let's Encrypt's production CA.
+
+- `tls_acme_ca_directory` `(string: "")` - Path
+  to the ACME directory; defaults to Let's Encrypt's staging CA.
+
+- `tls_acme_cache_path` `(string: "~/.local/share/certmagic")` - Specifies the
+  location of the ACME certificate and account information cache to reuse
+  certificates. If this not writable, `/var/lib/openbao/certmagic` and then
+  a temporary directory in `$TEMPDIR` will be used as fallback.
+
+- `tls_acme_ca_root` `(string: "")` - Path to an optional Root CA to use to
+  validate connections to the ACME directory. Defaults to all system
+  certificates when empty.
+
+- `tls_acme_eab_key_id` `(string: "")` - Specify the optional External Account
+  Binding account reference.
+
+- `tls_acme_eab_mac_key` `(string: "")` - Specify the optional External Account
+  Binding account protection key.
+
+- `tls_acme_email` `(string: "")` - Specify an optional account the CA may
+  contact you at for expiring certificates or other service-related emails.
+
+- `tls_acme_domains` `([]string: nil)` - An optional but strongly recommended
+  allow-list of domains to allow acquiring certificates for.
+
+::: warning
+
+Failing to specify `tls_acme_domains` on a publicly listening server issuing
+against a publicly trusted CA will allow anyone (including an attacker) to
+point arbitrary DNS names at your server. This will allow them to force you
+to request additional certificates from your CA, thereby counting against
+your quotas and potentially incurring cost on a paid CA offering.
+
+It is thus strongly recommended you specify `tls_acme_domains` if ACME is
+enabled.
+
+:::
+
+- `tls_acme_disable_http_challenge` `(bool: false)` - An optional but strongly
+  recommended option to allow disabling HTTP challenges. Use of this method
+  without an HTTP listener causes a temporary bind on port 80; this allows
+  a remote peer to connect (if misconfigured to use HTTP) and potentially
+  send sensitive authentication data in the clear over the wire for the
+  duration the challenge solving listener is active. While this data is
+  ignored on the OpenBao side, it still opens up the possibility of a passive
+  attacker capturing authentication information.
+
+- `tls_acme_disable_alpn_challenge` `(bool: false)` - An optional method
+  for disabling ALPN challenges. This should rarely be needed and only if
+  the ALPN challenge type cannot work for some reason (e.g., a load balancer
+  sitting in front of OpenBao).
+
 ### `telemetry` parameters
 
 - `unauthenticated_metrics_access` `(bool: false)` - If set to true, allows

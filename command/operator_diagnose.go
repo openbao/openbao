@@ -571,7 +571,7 @@ SEALFAIL:
 		diagnose.ListenerChecks(ctx, config.Listeners)
 
 		diagnose.Test(ctx, "Create Listeners", func(ctx context.Context) error {
-			status, listeners, _, err = server.InitListeners(config, disableClustering, &infoKeys, &info)
+			status, listeners, _, err = server.InitListeners(nil, config, disableClustering, &infoKeys, &info)
 			if status != 0 {
 				return err
 			}

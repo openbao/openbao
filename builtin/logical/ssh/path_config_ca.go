@@ -198,7 +198,7 @@ func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, 
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
-	publicKey, privateKey, err := b.keys(data)
+	publicKey, privateKey, err := b.handleKeyGeneration(data)
 	if err != nil {
 		return handleStorageContextErr(err)
 	}

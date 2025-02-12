@@ -149,9 +149,9 @@ func substQuery(tpl string, data map[string]string) string {
 	return tpl
 }
 
-// keys parses the input parameters and returns the public and private keys
+// handleKeyGeneration parses the input parameters and returns the public and private keys
 // by either generating them or using the provided ones.
-func (b *backend) keys(data *framework.FieldData) (string, string, error) {
+func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string, error) {
 	var err error
 	publicKey := data.Get("public_key").(string)
 	privateKey := data.Get("private_key").(string)

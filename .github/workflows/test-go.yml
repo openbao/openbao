@@ -124,8 +124,8 @@ jobs:
         run: |
           set -exo pipefail
           matrix_file="matrix.json"
-          if [ "$INPUTS_BINARY_TESTS" == "true" ] && [ -n "$INPUTS_BINARY_TESTS" ]; then
-            export BINARY_TESTS="$INPUTS_BINARY_TESTS"
+          if [ "$INPUTS_BINARY_TESTS" == "true" ] && [ -n "${{ steps.list-binary-tests.outputs.list }}" ]; then
+            export BINARY_TESTS="${{ steps.list-binary-tests.outputs.list }}"
             jq --arg BINARY "${BINARY_TESTS}" --arg BINARY_INDEX "$INPUTS_TOTAL_RUNNERS" \
               '.include += [{
                 "id": $BINARY_INDEX,

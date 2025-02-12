@@ -348,7 +348,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
-	publicKey, privateKey, err := b.keys(d)
+	publicKey, privateKey, err := b.handleKeyGeneration(d)
 	if err != nil {
 		return handleStorageContextErr(err)
 	}

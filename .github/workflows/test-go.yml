@@ -72,22 +72,6 @@ jobs:
       - uses: ./.github/actions/set-up-go
         name: Setup Git configuration (public)
       - uses: ./.github/actions/set-up-gotestsum
-      - name: Set Variables
-        id: set-variables
-        env:
-          INPUTS_NAME: ${{ inputs.name }}
-          INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
-          INPUTS_BINARY_TESTS: ${{ inputs.binary-tests }}
-          INPUTS_GO_ARCH: ${{ inputs.go-arch }}
-          INPUTS_EXTRA_FLAGS: ${{ inputs.extra-flags }}
-          INPUTS_GO_TAGS: ${{ inputs.go-tags }}
-        run: |
-          echo "INPUTS_NAME=$INPUTS_NAME" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_TOTAL_RUNNERS=$INPUTS_TOTAL_RUNNERS" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_BINARY_TESTS=$INPUTS_BINARY_TESTS" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_GO_ARCH=$INPUTS_GO_ARCH" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_EXTRA_FLAGS=$INPUTS_EXTRA_FLAGS" >> "$GITHUB_OUTPUT"
-          echo "INPUTS_GO_TAGS=$INPUTS_GO_TAGS" >> "$GITHUB_OUTPUT"
       - run: mkdir -p test-results/go-test
       - uses: actions/cache/restore@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
         with:
@@ -100,7 +84,7 @@ jobs:
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
         env:
-          INPUTS_TOTAL_RUNNERS: ${{ steps.set-variables.outputs.INPUTS_TOTAL_RUNNERS }}
+          INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
         if: ${{ !inputs.testonly }}
         run: |
           # testonly tests need additional build tag though let's exclude them anyway for clarity
@@ -111,7 +95,7 @@ jobs:
           )
       - name: Build matrix for tests tagged with testonly
         env:
-          INPUTS_TOTAL_RUNNERS: ${{ steps.set-variables.outputs.INPUTS_TOTAL_RUNNERS }}
+          INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
         if: ${{ inputs.testonly }}
         run: |
           set -exo pipefail
@@ -135,13 +119,13 @@ jobs:
       - name: Build complete matrix
         id: build
         env:
-          INPUTS_TOTAL_RUNNERS: ${{ steps.set-variables.outputs.INPUTS_TOTAL_RUNNERS }}
-          INPUTS_BINARY_TESTS: ${{ steps.set-variables.outputs.INPUTS_BINARY_TESTS }}
+          INPUTS_TOTAL_RUNNERS: ${{ inputs.total-runners }}
+          INPUTS_BINARY_TESTS: ${{ inputs.binary-tests }}
         run: |
           set -exo pipefail
           matrix_file="matrix.json"
-          if [ "$INPUTS_BINARY_TESTS" == "true" ] && [ -n "${{ steps.list-binary-tests.outputs.list }}" ]; then
-            export BINARY_TESTS="${{ steps.list-binary-tests.outputs.list }}"
+          if [ "$INPUTS_BINARY_TESTS" == "true" ] && [ -n "$INPUTS_BINARY_TESTS" ]; then
+            export BINARY_TESTS="$INPUTS_BINARY_TESTS"
             jq --arg BINARY "${BINARY_TESTS}" --arg BINARY_INDEX "$INPUTS_TOTAL_RUNNERS" \
               '.include += [{
                 "id": $BINARY_INDEX,
@@ -195,10 +179,10 @@ jobs:
         timeout-minutes: ${{ fromJSON(env.TIMEOUT_IN_MINUTES) }}
         env:
           COMMIT_SHA: ${{ github.sha }}
-          INPUTS_NAME: ${{ steps.set-variables.outputs.INPUTS_NAME }}
-          INPUTS_GO_ARCH: ${{ steps.set-variables.outputs.INPUTS_GO_ARCH }}
-          INPUTS_EXTRA_FLAGS: ${{ steps.set-variables.outputs.INPUTS_EXTRA_FLAGS }}
-          INPUTS_GO_TAGS: ${{ steps.set-variables.outputs.INPUTS_GO_TAGS }}
+          INPUTS_NAME: ${{ inputs.name }}
+          INPUTS_GO_ARCH: ${{ inputs.go-arch }}
+          INPUTS_EXTRA_FLAGS: ${{ inputs.extra-flags }}
+          INPUTS_GO_TAGS: ${{ inputs.go-tags }}
         run: |
           set -exo pipefail
 
@@ -248,7 +232,7 @@ jobs:
       # so we have to fetch it from the API
       - name: Fetch job logs URL
         env:
-          INPUTS_NAME: ${{ steps.set-variables.outputs.INPUTS_NAME }}
+          INPUTS_NAME: ${{ inputs.name }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         if: success() || failure()
         continue-on-error: true
@@ -299,7 +283,7 @@ jobs:
             }
       - name: Prepare failure summary
         env:
-          INPUTS_NAME: ${{ steps.set-variables.outputs.INPUTS_NAME }}
+          INPUTS_NAME: ${{ inputs.name }}
         if: success() || failure()
         continue-on-error: true
         run: |

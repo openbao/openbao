@@ -24,7 +24,7 @@ func addSubmitIssuerCommonFields(fields map[string]*framework.FieldSchema) map[s
 	fields["issuer_name"] = &framework.FieldSchema{
 		Type:        framework.TypeString,
 		Required:    false,
-		Description: `Optional issuer name. If not provided, the name will be the same as the issuer reference.`,
+		Description: `Optional issuer name that can be used to identify the issuer.`,
 	}
 
 	fields["private_key"] = &framework.FieldSchema{
@@ -55,5 +55,25 @@ func addSubmitIssuerCommonFields(fields map[string]*framework.FieldSchema) map[s
 		Default:     0,
 	}
 
+	return fields
+}
+
+func addIssuerRefField(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fields[issuerRefParam] = &framework.FieldSchema{
+		Type: framework.TypeString,
+		Description: `Reference to a existing issuer; either "default"
+for the configured default issuer, an identifier or the name assigned
+to the issuer.`,
+		Default: defaultRef,
+	}
+	return fields
+}
+
+func addIssuerNameField(fields map[string]*framework.FieldSchema) map[string]*framework.FieldSchema {
+	fields["issuer_name"] = &framework.FieldSchema{
+		Type: framework.TypeString,
+		Description: `Provide a name to the generated or existing issuer, the name
+must be unique across all issuers and not be the reserved value 'default'`,
+	}
 	return fields
 }

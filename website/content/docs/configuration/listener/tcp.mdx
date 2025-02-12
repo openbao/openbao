@@ -228,7 +228,8 @@ in the root of the TCP listener configuration.
 
 - `tls_acme_cache_path` `(string: "~/.local/share/certmagic")` - Specifies the
   location of the ACME certificate and account information cache to reuse
-  certificates.
+  certificates. If this not writable, `/var/lib/openbao/certmagic` and then
+  a temporary directory in `$TEMPDIR` will be used as fallback.
 
 - `tls_acme_ca_root` `(string: "")` - Path to an optional Root CA to use to
   validate connections to the ACME directory. Defaults to all system

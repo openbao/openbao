@@ -29,6 +29,8 @@ import (
 	"github.com/openbao/openbao/version"
 )
 
+const varFallback = "/var/lib/openbao/certmagic"
+
 type ReloadableCertGetter interface {
 	Reload() error
 	GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error)
@@ -102,10 +104,12 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 		return nil
 	}
 
-	if l.TLSACMECachePath != "" {
-		acg.Magic.Storage = &certmagic.FileStorage{
-			Path: l.TLSACMECachePath,
-		}
+	if err := adjustCachePath(l); err != nil {
+		return nil, err
+	}
+
+	acg.Magic.Storage = &certmagic.FileStorage{
+		Path: l.TLSACMECachePath,
 	}
 
 	if l.TLSACMEKeyType != "" {
@@ -156,6 +160,65 @@ func NewCertificateGetter(l *configutil.Listener, ui cli.Ui, logger hclog.Logger
 	acg.Magic.Issuers = []certmagic.Issuer{acg.ACME}
 
 	return acg, nil
+}
+
+func adjustCachePath(l *configutil.Listener) error {
+	// Certmagic will create missing directories with mode 0o700. In the event
+	// of using the default paths (and are unable to write to it), we need a
+	// suitable fallback for containers. Certmagic defaults to
+	// ~/.local/share/certmagic, but if that isn't writable (such as in a
+	// container for a service account without a homedir), we'll use
+	// /var/lib/openbao/certmagic or a scratch $TMPDIR directory as a final
+	// fallback.
+	wasDefault := false
+	if l.TLSACMECachePath == "" {
+		l.TLSACMECachePath = certmagic.Default.Storage.(*certmagic.FileStorage).Path
+		wasDefault = true
+	}
+
+	if mainPathErr := os.MkdirAll(l.TLSACMECachePath, 0o700); mainPathErr != nil {
+		if wasDefault {
+			l.TLSACMECachePath = varFallback
+			if varPathErr := os.MkdirAll(l.TLSACMECachePath, 0o700); varPathErr != nil {
+				dir, tmpPathErr := os.MkdirTemp("", "openbao-certmagic-*")
+				if tmpPathErr != nil {
+					msg := "failed to create ACME cache directory: %w (for default %v)\n\t%v (for %v)\n\t%v (in the temporary directory)"
+					return fmt.Errorf(msg, mainPathErr, certmagic.Default.Storage.(*certmagic.FileStorage).Path, varPathErr, varFallback, tmpPathErr)
+				}
+
+				l.TLSACMECachePath = dir
+			}
+		} else {
+			return fmt.Errorf("failed to create ACME cache directory: %w", mainPathErr)
+		}
+	}
+
+	// If we created the directory or it existed, we now need to see if we can
+	// write into it, else we might still swap it out.
+	file, tmpErr := os.CreateTemp(l.TLSACMECachePath, "openbao-test-write")
+	if tmpErr != nil {
+		// We do this even if it wasn't default.
+		l.TLSACMECachePath = varFallback
+		if varPathErr := os.MkdirAll(l.TLSACMECachePath, 0o700); varPathErr != nil {
+			dir, tmpPathErr := os.MkdirTemp("", "openbao-certmagic-*")
+			if tmpPathErr != nil {
+				msg := "failed to create ACME cache test file: %w\n\tfailed to create ACME directory %v (for %v)\n\t%v (in the temporary directory)"
+				return fmt.Errorf(msg, tmpErr, varPathErr, varFallback, tmpPathErr)
+			}
+
+			l.TLSACMECachePath = dir
+		}
+	}
+
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("failed to close cache directory temporary file: %w", err)
+	}
+
+	if err := os.Remove(file.Name()); err != nil {
+		return fmt.Errorf("failed to remove cache directory temporary file: %w", err)
+	}
+
+	return nil
 }
 
 func (c *ACMECertGetter) ALPNProtos() []string {

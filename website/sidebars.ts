@@ -498,6 +498,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/split-mount-tables",
                 "rfcs/scan-operation",
                 "rfcs/acme-tls-listeners",
+                "rfcs/acl-paginated-lists",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

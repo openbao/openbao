@@ -1916,7 +1916,7 @@ func (c *Core) validateDuo(ctx context.Context, mfaFactors *MFAFactor, mConfig *
 	case "allow":
 		return nil
 	case "deny":
-		return fmt.Errorf(preauth.Response.Status_Msg)
+		return errors.New(preauth.Response.Status_Msg)
 	case "enroll":
 		return fmt.Errorf("%q - %q", preauth.Response.Status_Msg, preauth.Response.Enroll_Portal_Url)
 	case "auth":

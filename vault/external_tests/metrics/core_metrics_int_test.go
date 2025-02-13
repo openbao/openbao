@@ -50,7 +50,7 @@ func TestMountTableMetrics(t *testing.T) {
 
 	nonlocalLogicalMountsize, err := gaugeSearchHelper(data, 3)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 
 	if nonlocalLogicalMountsize <= 0 {
@@ -76,7 +76,7 @@ func TestMountTableMetrics(t *testing.T) {
 	// does not report the total size on a transactional storage backend.
 	nonlocalLogicalMountsizeAfterMount, err := gaugeSearchHelper(data, 4)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 	}
 
 	if nonlocalLogicalMountsizeAfterMount <= 0 {

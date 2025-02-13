@@ -376,8 +376,8 @@ func TestCore_Mount_Local(t *testing.T) {
 	}
 	c.mounts.Entries = compEntries
 
-	if !reflect.DeepEqual(oldMounts, c.mounts) {
-		t.Fatalf("expected\n%#v\ngot\n%#v\n", oldMounts, c.mounts)
+	if diff := deep.Equal(oldMounts, c.mounts); diff != nil {
+		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldMounts, c.mounts, diff)
 	}
 
 	if len(c.mounts.Entries) != 2 {

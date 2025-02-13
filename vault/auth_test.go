@@ -5,16 +5,16 @@ package vault
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
-
 	"github.com/armon/go-metrics"
+	"github.com/go-test/deep"
+
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/versions"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -142,8 +142,8 @@ func TestCore_DefaultAuthTable(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %#v\n\tc2.auth: %#v\n\tdiff: %#v", c.auth, c2.auth, diff)
 	}
 }
 
@@ -238,8 +238,8 @@ func TestCore_EnableCredential(t *testing.T) {
 		c2Auth[entry.UUID] = entry
 	}
 
-	if !reflect.DeepEqual(cAuth, c2Auth) {
-		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
+	if diff := deep.Equal(cAuth, c2Auth); diff != nil {
+		t.Fatalf("mismatch:\n\tcAuth: %#v\n\tc2Auth: %#v\n\tDiff: %#v", cAuth, c2Auth, diff)
 	}
 }
 
@@ -306,8 +306,8 @@ func TestCore_EnableCredential_aws_ec2(t *testing.T) {
 		c2Auth[entry.UUID] = entry
 	}
 
-	if !reflect.DeepEqual(cAuth, c2Auth) {
-		t.Fatalf("mismatch: %#v %#v", cAuth, c2Auth)
+	if diff := deep.Equal(cAuth, c2Auth); diff != nil {
+		t.Fatalf("mismatch:\n\tcAuth: %#v\n\tc2Auth: %#v\n\tdiff: %#v", cAuth, c2Auth, diff)
 	}
 }
 
@@ -400,8 +400,8 @@ func TestCore_EnableCredential_Local(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(oldCredential, c.auth) {
-		t.Fatalf("expected\n%#v\ngot\n%#v\n", oldCredential, c.auth)
+	if diff := deep.Equal(oldCredential, c.auth); diff != nil {
+		t.Fatalf("expected\n%#v\ngot\n%#v\ndiff: %#v\n", oldCredential, c.auth, diff)
 	}
 
 	if len(c.auth.Entries) != 2 {
@@ -508,8 +508,8 @@ func TestCore_DisableCredential(t *testing.T) {
 	}
 
 	// Verify matching mount tables
-	if !reflect.DeepEqual(c.auth, c2.auth) {
-		t.Fatalf("mismatch: %v %v", c.auth, c2.auth)
+	if diff := deep.Equal(c.auth, c2.auth); diff != nil {
+		t.Fatalf("mismatch:\n\tc.auth: %v\n\tc2.auth: %v\n\tdiff: %#v", c.auth, c2.auth, diff)
 	}
 }
 

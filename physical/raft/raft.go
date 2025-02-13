@@ -1232,6 +1232,63 @@ func (b *RaftBackend) RemovePeer(ctx context.Context, peerID string) error {
 	return b.autopilot.RemoveServer(raft.ServerID(peerID))
 }
 
+// PromotePeer promotes a permanent non-voter to voter
+func (b *RaftBackend) PromotePeer(ctx context.Context, peerID string) error {
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if b.disableAutopilot {
+		if b.raft == nil {
+			return errors.New("raft storage is not initialized")
+		}
+		return errors.New("raft storage autopilot must be enabled to promote a peer")
+	}
+
+	if b.autopilot == nil {
+		return errors.New("raft storage autopilot is not initialized")
+	}
+
+	if !b.delegate.IsNonVoter(raft.ServerID(peerID)) {
+		return errors.New("server is not a non-voter")
+	}
+
+	b.logger.Trace("promoting non-voter to voter", "id", peerID)
+	return b.delegate.RemoveNonVoter(raft.ServerID(peerID))
+}
+
+// DemotePeer demotes a voter to a permanent non-voter
+func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	if b.disableAutopilot {
+		if b.raft == nil {
+			return errors.New("raft storage is not initialized")
+		}
+		return errors.New("raft storage autopilot must be enabled to promote a peer")
+	}
+
+	if b.autopilot == nil {
+		return errors.New("raft storage autopilot is not initialized")
+	}
+
+	b.logger.Trace("demoting voter to non-voter", "id", peerID)
+
+	if b.delegate.IsNonVoter(raft.ServerID(peerID)) {
+		return errors.New("server is already a non-voter")
+	}
+
+	return b.delegate.AddNonVoter(raft.ServerID(peerID))
+}
+
 // GetConfigurationOffline is used to read the stale, last known raft
 // configuration to this node. It accesses the last state written into the
 // FSM. When a server is online use GetConfiguration instead.

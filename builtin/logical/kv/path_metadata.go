@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -97,6 +98,42 @@ version-agnostic information about a secret.
 	}
 }
 
+// pathDetailedMetadata returns the path configuration for LIST and SCAN
+// operations on the detailed metadata endpoint (with metadata included
+// in responses).
+func pathDetailedMetadata(b *versionedKVBackend) *framework.Path {
+	return &framework.Path{
+		Pattern: "detailed-metadata/" + framework.MatchAllRegex("path"),
+		Fields: map[string]*framework.FieldSchema{
+			"path": {
+				Type:        framework.TypeString,
+				Description: "Location of the secret.",
+			},
+			"after": {
+				Type:        framework.TypeString,
+				Description: `Optional entry to list begin listing after, not required to exist. Only used for listing.`,
+			},
+			"limit": {
+				Type:        framework.TypeInt,
+				Description: `Optional number of entries to return; defaults to all entries. Only used for listing.`,
+			},
+		},
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.ListOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataList()),
+			},
+			logical.ScanOperation: &framework.PathOperation{
+				Callback: b.upgradeCheck(b.pathMetadataScan()),
+			},
+		},
+
+		ExistenceCheck: b.metadataExistenceCheck(),
+
+		HelpSynopsis:    confHelpSyn,
+		HelpDescription: confHelpDesc,
+	}
+}
+
 func (b *versionedKVBackend) metadataExistenceCheck() framework.ExistenceFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
 		key := data.Get("path").(string)
@@ -127,6 +164,20 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 
 		key := data.Get("path").(string)
 
+		readMetadata := strings.HasPrefix(req.Path, "detailed-metadata/")
+
+		// Create a read-only transaction if we can. We do not need to commit
+		// this as we're not writing to storage.
+		if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+			txn, err := txnStorage.BeginReadOnlyTx(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			defer txn.Rollback(ctx)
+			req.Storage = txn
+		}
+
 		// Get an encrypted key storage object
 		wrapper, err := b.getKeyEncryptor(ctx, req.Storage)
 		if err != nil {
@@ -137,13 +188,42 @@ func (b *versionedKVBackend) pathMetadataList() framework.OperationFunc {
 
 		// Use encrypted key storage to list the keys
 		keys, err := es.ListPage(ctx, key, after, limit)
-		return logical.ListResponse(keys), err
+		if err != nil {
+			return nil, err
+		}
+
+		if !readMetadata {
+			return logical.ListResponse(keys), nil
+		}
+
+		// Read metadata of each entry and attach to the response.
+		keyInfos := map[string]interface{}{}
+
+		for index, subKey := range keys {
+			path := filepath.Join(key, subKey)
+
+			meta, err := b.getKeyMetadata(ctx, req.Storage, path)
+			if err != nil {
+				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
+			}
+
+			data, err := b.metadataResponseData(meta)
+			if err != nil {
+				return nil, fmt.Errorf("[%d] failed to format metadata: %w", index, err)
+			}
+
+			keyInfos[subKey] = data
+		}
+
+		return logical.ListResponseWithInfo(keys, keyInfos), nil
 	}
 }
 
 func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		key := data.Get("path").(string)
+
+		readMetadata := strings.HasPrefix(req.Path, "detailed-metadata/")
 
 		// Get an encrypted key storage object
 		wrapper, err := b.getKeyEncryptor(ctx, req.Storage)
@@ -163,8 +243,63 @@ func (b *versionedKVBackend) pathMetadataScan() framework.OperationFunc {
 			return nil, err
 		}
 
-		return logical.ListResponse(keys), nil
+		if !readMetadata {
+			return logical.ListResponse(keys), nil
+		}
+
+		// Read metadata of each entry and attach to the response.
+		keyInfos := map[string]interface{}{}
+
+		for index, subKey := range keys {
+			path := filepath.Join(key, subKey)
+
+			meta, err := b.getKeyMetadata(ctx, req.Storage, path)
+			if err != nil {
+				return nil, fmt.Errorf("[%d] failed to read entry: %w", index, err)
+			}
+
+			data, err := b.metadataResponseData(meta)
+			if err != nil {
+				return nil, fmt.Errorf("[%d] failed to format metadata: %w", index, err)
+			}
+
+			keyInfos[subKey] = data
+		}
+
+		return logical.ListResponseWithInfo(keys, keyInfos), nil
 	}
+}
+
+func (b *versionedKVBackend) metadataResponseData(meta *KeyMetadata) (map[string]interface{}, error) {
+	versions := make(map[string]interface{}, len(meta.Versions))
+	for i, v := range meta.Versions {
+		versions[fmt.Sprintf("%d", i)] = map[string]interface{}{
+			"created_time":  ptypesTimestampToString(v.CreatedTime),
+			"deletion_time": ptypesTimestampToString(v.DeletionTime),
+			"destroyed":     v.Destroyed,
+		}
+	}
+
+	var deleteVersionAfter time.Duration
+	if meta.GetDeleteVersionAfter() != nil {
+		var err error
+		deleteVersionAfter, err = ptypes.Duration(meta.GetDeleteVersionAfter())
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return map[string]interface{}{
+		"versions":             versions,
+		"current_version":      meta.CurrentVersion,
+		"oldest_version":       meta.OldestVersion,
+		"created_time":         ptypesTimestampToString(meta.CreatedTime),
+		"updated_time":         ptypesTimestampToString(meta.UpdatedTime),
+		"max_versions":         meta.MaxVersions,
+		"cas_required":         meta.CasRequired,
+		"delete_version_after": deleteVersionAfter.String(),
+		"custom_metadata":      meta.CustomMetadata,
+	}, nil
 }
 
 func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
@@ -191,35 +326,10 @@ func (b *versionedKVBackend) pathMetadataRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		versions := make(map[string]interface{}, len(meta.Versions))
-		for i, v := range meta.Versions {
-			versions[fmt.Sprintf("%d", i)] = map[string]interface{}{
-				"created_time":  ptypesTimestampToString(v.CreatedTime),
-				"deletion_time": ptypesTimestampToString(v.DeletionTime),
-				"destroyed":     v.Destroyed,
-			}
-		}
-
-		var deleteVersionAfter time.Duration
-		if meta.GetDeleteVersionAfter() != nil {
-			deleteVersionAfter, err = ptypes.Duration(meta.GetDeleteVersionAfter())
-			if err != nil {
-				return nil, err
-			}
-		}
+		respData, err := b.metadataResponseData(meta)
 
 		return &logical.Response{
-			Data: map[string]interface{}{
-				"versions":             versions,
-				"current_version":      meta.CurrentVersion,
-				"oldest_version":       meta.OldestVersion,
-				"created_time":         ptypesTimestampToString(meta.CreatedTime),
-				"updated_time":         ptypesTimestampToString(meta.UpdatedTime),
-				"max_versions":         meta.MaxVersions,
-				"cas_required":         meta.CasRequired,
-				"delete_version_after": deleteVersionAfter.String(),
-				"custom_metadata":      meta.CustomMetadata,
-			},
+			Data: respData,
 		}, nil
 	}
 }

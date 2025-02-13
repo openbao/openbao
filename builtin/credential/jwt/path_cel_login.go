@@ -60,6 +60,12 @@ func pathCelLogin(b *jwtAuthBackend) *framework.Path {
 }
 
 func (b *jwtAuthBackend) pathResolveCelRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	config, err := b.config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -71,6 +77,11 @@ func (b *jwtAuthBackend) pathResolveCelRole(ctx context.Context, req *logical.Re
 	if resp != nil || err != nil {
 		return resp, err
 	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return logical.ResolveRoleResponse(celRole.Name)
 }
 
@@ -95,6 +106,12 @@ func (b *jwtAuthBackend) getCelRoleFromLoginRequest(config *jwtConfig, ctx conte
 }
 
 func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	config, err := b.config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
@@ -189,6 +206,10 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}
 
 	if err := jwtRole.maybeTemplatePolicies(auth, allClaims); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

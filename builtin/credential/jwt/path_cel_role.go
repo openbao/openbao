@@ -257,6 +257,12 @@ func (b *jwtAuthBackend) pathCelRoleRead(ctx context.Context, req *logical.Reque
 }
 
 func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := data.Get("name").(string)
 
 	oldEntry, err := b.getCelRole(ctx, req.Storage, roleName)
@@ -288,6 +294,10 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 		return nil, err
 	}
 	if err := req.Storage.Put(ctx, jsonEntry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

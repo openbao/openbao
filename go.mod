@@ -107,20 +107,20 @@ require (
 	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.2.0
-	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250114185509-3fa7a3d31521
-	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
 	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0
-	github.com/openbao/openbao/api/v2 v2.1.0
-	github.com/openbao/openbao/sdk/v2 v2.1.0
+	github.com/openbao/openbao/api/v2 v2.2.0
+	github.com/openbao/openbao/sdk/v2 v2.1.1-0.20250213170500-bf84bfe8daa7
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.6.1

@@ -1,7 +1,7 @@
 package ctmanager
 
 import (
-	"fmt"
+	"errors"
 	"io"
 	"strings"
 
@@ -69,7 +69,7 @@ func NewConfig(mc ManagerConfig, templates ctconfig.TemplateConfigs) (*ctconfig.
 	// Use the cache if available or fallback to the Vault server values.
 	if mc.AgentConfig.Cache != nil {
 		if mc.AgentConfig.Cache.InProcDialer == nil {
-			return nil, fmt.Errorf("missing in-process dialer configuration")
+			return nil, errors.New("missing in-process dialer configuration")
 		}
 		if conf.Vault.Transport == nil {
 			conf.Vault.Transport = &ctconfig.TransportConfig{}

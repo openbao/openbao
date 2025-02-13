@@ -5,7 +5,7 @@ package userpass
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
@@ -54,6 +54,12 @@ func pathUserPolicies(b *backend) *framework.Path {
 }
 
 func (b *backend) pathUserPoliciesUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := d.Get("username").(string)
 
 	userEntry, err := b.user(ctx, req.Storage, username)
@@ -61,7 +67,7 @@ func (b *backend) pathUserPoliciesUpdate(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 	if userEntry == nil {
-		return nil, fmt.Errorf("username does not exist")
+		return nil, errors.New("username does not exist")
 	}
 
 	policiesRaw, ok := d.GetOk("token_policies")
@@ -81,7 +87,15 @@ func (b *backend) pathUserPoliciesUpdate(ctx context.Context, req *logical.Reque
 		}
 	}
 
-	return nil, b.setUser(ctx, req.Storage, username, userEntry)
+	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 const pathUserPoliciesHelpSyn = `

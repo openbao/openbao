@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -49,7 +50,7 @@ func ValidateKeyAuthorization(keyAuthz string, token string, thumbprint string) 
 	thumbprintPart := parts[1]
 
 	if token != tokenPart || thumbprint != thumbprintPart {
-		return false, fmt.Errorf("key authorization was invalid")
+		return false, errors.New("key authorization was invalid")
 	}
 
 	return true, nil
@@ -66,7 +67,7 @@ func ValidateSHA256KeyAuthorization(keyAuthz string, token string, thumbprint st
 	expectedAuthz := base64.RawURLEncoding.EncodeToString(checksum[:])
 
 	if keyAuthz != expectedAuthz {
-		return false, fmt.Errorf("sha256 key authorization was invalid")
+		return false, errors.New("sha256 key authorization was invalid")
 	}
 
 	return true, nil
@@ -82,7 +83,7 @@ func ValidateRawSHA256KeyAuthorization(keyAuthz []byte, token string, thumbprint
 	expectedAuthz := sha256.Sum256([]byte(authzContents))
 
 	if len(keyAuthz) != len(expectedAuthz) || subtle.ConstantTimeCompare(expectedAuthz[:], keyAuthz) != 1 {
-		return false, fmt.Errorf("sha256 key authorization was invalid")
+		return false, errors.New("sha256 key authorization was invalid")
 	}
 
 	return true, nil
@@ -269,7 +270,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 			// use it. Verify that the server has not inadvertently
 			// reused connections between validation attempts or something.
 			if connState.DidResume {
-				return fmt.Errorf("server under test incorrectly reported that handshake was resumed when no session cache was provided; refusing to continue")
+				return errors.New("server under test incorrectly reported that handshake was resumed when no session cache was provided; refusing to continue")
 			}
 
 			// Per RFC 8737 Section 3. TLS with Application-Layer Protocol
@@ -328,7 +329,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 			// TODO: this does not validate that there are not other SANs
 			// with unknown (to Go) OIDs.
 			if len(cert.DNSNames) != 1 || len(cert.EmailAddresses) > 0 || len(cert.IPAddresses) > 0 || len(cert.URIs) > 0 {
-				return fmt.Errorf("server under test returned a certificate with incorrect SANs")
+				return errors.New("server under test returned a certificate with incorrect SANs")
 			}
 
 			// Per RFC 8737 Section 3. TLS with Application-Layer Protocol
@@ -352,7 +353,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 
 				// There must be only a single ACME extension.
 				if foundACMEId {
-					return fmt.Errorf("server under test returned a certificate with multiple acmeIdentifier extensions")
+					return errors.New("server under test returned a certificate with multiple acmeIdentifier extensions")
 				}
 				foundACMEId = true
 
@@ -361,7 +362,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 				//
 				// > a critical acmeIdentifier extension
 				if !ext.Critical {
-					return fmt.Errorf("server under test returned a certificate with an acmeIdentifier extension marked non-Critical")
+					return errors.New("server under test returned a certificate with an acmeIdentifier extension marked non-Critical")
 				}
 
 				var keyAuthz []byte
@@ -370,7 +371,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 					return fmt.Errorf("server under test returned a certificate with invalid acmeIdentifier extension value: %w", err)
 				}
 				if len(remainder) > 0 {
-					return fmt.Errorf("server under test returned a certificate with invalid acmeIdentifier extension value with additional trailing data")
+					return errors.New("server under test returned a certificate with invalid acmeIdentifier extension value with additional trailing data")
 				}
 
 				ok, err := ValidateRawSHA256KeyAuthorization(keyAuthz, token, thumbprint)
@@ -386,7 +387,7 @@ func ValidateTLSALPN01Challenge(domain string, token string, thumbprint string, 
 			// > contains: ... a critical acmeIdentifier extension containing
 			// > the expected SHA-256 digest computed in step 1.
 			if !foundACMEId {
-				return fmt.Errorf("server under test returned a certificate without the required acmeIdentifier extension")
+				return errors.New("server under test returned a certificate without the required acmeIdentifier extension")
 			}
 
 			// Remove the handled critical extension and validate that we

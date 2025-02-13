@@ -143,7 +143,7 @@ can have a negative effect on performance due to the tracking of each lock attem
 
 - `enable_response_header_raft_node_id` `(bool: false)` - Enables the addition of an HTTP header
   in all of OpenBao's HTTP responses: `X-Vault-Raft-Node-ID`. If OpenBao is participating
-  in a Raft cluster (i.e. using integrated storage), this header will contain the
+  in a Raft cluster (i.e. using integrated Storage), this header will contain the
   Raft node ID of the OpenBao node that serviced the HTTP request. If OpenBao is not
   participating in a Raft cluster, this header will be omitted, whether this configuration
   option is enabled or not.
@@ -180,9 +180,9 @@ can have a negative effect on performance due to the tracking of each lock attem
   When `imprecise_lease_role_tracking` is set to true and a new role-based quota is enabled, subsequent lease counts start from 0.
   `imprecise_lease_role_tracking` affects role-based lease count quotas, but reduces latencies when not using role based quotas.
 
-### High availability parameters
+### High Availability parameters
 
-The following parameters are used on backends that support [high availability][high-availability].
+The following parameters are used on backends that support [High Availability][high-availability].
 
 - `api_addr` `(string: "")` – Specifies the address (full URL) to advertise to
   other OpenBao servers in the cluster for client redirection. This value is also

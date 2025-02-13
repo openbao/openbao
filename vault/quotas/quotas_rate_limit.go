@@ -6,6 +6,7 @@ package quotas
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -285,7 +286,7 @@ func (rlq *RateLimitQuota) allow(ctx context.Context, req *Request) (Response, e
 	}
 
 	if req.ClientAddress == "" {
-		return resp, fmt.Errorf("missing request client address in quota request")
+		return resp, errors.New("missing request client address in quota request")
 	}
 
 	var retryAfter string

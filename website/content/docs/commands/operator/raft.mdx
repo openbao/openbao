@@ -222,14 +222,14 @@ This command groups subcommands for operators interacting with the autopilot
 functionality of the integrated Raft storage backend.
 
 Subcommands:
-    get-config    Returns the configuration of the autopilot subsystem under integrated storage
-    set-config    Modify the configuration of the autopilot subsystem under integrated storage
-    state         Displays the state of the raft cluster under integrated storage as seen by autopilot
+    get-config    Returns the configuration of the autopilot subsystem under Integrated Storage
+    set-config    Modify the configuration of the autopilot subsystem under Integrated Storage
+    state         Displays the state of the raft cluster under Integrated Storage as seen by autopilot
 ```
 
 ### autopilot state
 
-Displays the state of the raft cluster under integrated storage as seen by
+Displays the state of the raft cluster under Integrated Storage as seen by
 autopilot. It shows whether autopilot thinks the cluster is healthy or not,
 and how many nodes could fail before the cluster becomes unhealthy ("Failure Tolerance").
 
@@ -241,7 +241,7 @@ A node can have a status of "leader", "voter" or "non-voter".
 ```text
 Usage: bao operator raft autopilot state
 
-  Displays the state of the raft cluster under integrated storage as seen by autopilot.
+  Displays the state of the raft cluster under Integrated Storage as seen by autopilot.
 
     $ bao operator raft autopilot state
 ```
@@ -281,24 +281,24 @@ Servers:
 
 ### autopilot get-config
 
-Returns the configuration of the autopilot subsystem under integrated storage.
+Returns the configuration of the autopilot subsystem under Integrated Storage.
 
 ```text
 Usage: bao operator raft autopilot get-config
 
-  Returns the configuration of the autopilot subsystem under integrated storage.
+  Returns the configuration of the autopilot subsystem under Integrated Storage.
 
     $ bao operator raft autopilot get-config
 ```
 
 ### autopilot set-config
 
-Modify the configuration of the autopilot subsystem under integrated storage.
+Modify the configuration of the autopilot subsystem under Integrated Storage.
 
 ```text
 Usage: bao operator raft autopilot set-config [options]
 
-  Modify the configuration of the autopilot subsystem under integrated storage.
+  Modify the configuration of the autopilot subsystem under Integrated Storage.
 
 	  $ bao operator raft autopilot set-config -server-stabilization-time 10s
 

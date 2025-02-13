@@ -105,7 +105,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error logging in with secret ID from file: %v", err)
 	}
 	if loginRespFromFile.Auth == nil || loginRespFromFile.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login")
+		t.Fatal("no authentication info returned by login")
 	}
 
 	authFromEnv, err := NewAppRoleAuth(allowedRoleID, &SecretID{FromEnv: secretIDEnvVar})
@@ -118,7 +118,7 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error logging in with secret ID from env var: %v", err)
 	}
 	if loginRespFromEnv.Auth == nil || loginRespFromEnv.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login with secret ID from env var")
+		t.Fatal("no authentication info returned by login with secret ID from env var")
 	}
 
 	authFromStr, err := NewAppRoleAuth(allowedRoleID, &SecretID{FromString: allowedSecretID})
@@ -131,6 +131,6 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("error logging in with string: %v", err)
 	}
 	if loginRespFromStr.Auth == nil || loginRespFromStr.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login with secret ID from string")
+		t.Fatal("no authentication info returned by login with secret ID from string")
 	}
 }

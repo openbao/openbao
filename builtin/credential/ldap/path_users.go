@@ -113,6 +113,12 @@ func (b *backend) pathUserDelete(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := d.Get("name").(string)
 
 	cfg, err := b.Config(ctx, req)
@@ -134,6 +140,10 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 		return nil, nil
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"groups":   strings.Join(user.Groups, ","),
@@ -143,6 +153,12 @@ func (b *backend) pathUserRead(ctx context.Context, req *logical.Request, d *fra
 }
 
 func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	lowercaseGroups := false
 	username := d.Get("name").(string)
 
@@ -173,6 +189,10 @@ func (b *backend) pathUserWrite(ctx context.Context, req *logical.Request, d *fr
 		return nil, err
 	}
 	if err := req.Storage.Put(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

@@ -10,6 +10,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -179,7 +180,7 @@ func parseTemplateCertificate(certificate x509.Certificate, useExistingKey bool,
 	if useExistingKey {
 		templateData["skid"] = hex.EncodeToString(certificate.SubjectKeyId) // TODO: Double Check this with someone
 		if keyRef == "" {
-			return nil, fmt.Errorf("unable to create certificate template for existing key without a key_id")
+			return nil, errors.New("unable to create certificate template for existing key without a key_id")
 		}
 		templateData["key_ref"] = keyRef
 	} else {

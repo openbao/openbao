@@ -106,7 +106,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	if loginRespFromFile.Auth == nil || loginRespFromFile.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login")
+		t.Fatal("no authentication info returned by login")
 	}
 
 	// Password fromEnv Test
@@ -121,7 +121,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	if loginRespFromEnv.Auth == nil || loginRespFromEnv.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login with password from env var")
+		t.Fatal("no authentication info returned by login with password from env var")
 	}
 
 	// Password fromStr test
@@ -136,7 +136,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	if loginRespFromStr.Auth == nil || loginRespFromStr.Auth.ClientToken == "" {
-		t.Fatalf("no authentication info returned by login with password from string")
+		t.Fatal("no authentication info returned by login with password from string")
 	}
 
 	// Empty User Test

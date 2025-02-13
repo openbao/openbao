@@ -91,7 +91,7 @@ func TestOperatorSealCommand_Run(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !sealStatus.Sealed {
-			t.Errorf("expected to be sealed")
+			t.Error("expected to be sealed")
 		}
 	})
 

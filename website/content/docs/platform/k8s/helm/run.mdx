@@ -22,7 +22,7 @@ The [OpenBao Helm chart](https://github.com/openbao/openbao-helm)
 is the recommended way to install and configure OpenBao on Kubernetes.
 In addition to running OpenBao itself, the Helm chart is the primary
 method for installing and configuring OpenBao to integrate with other
-services such as Consul for High Availability (HA) deployments.
+services such as the [Vault Agent Injector](https://github.com/hashicorp/vault-k8s/tree/v1.4.2).
 
 While the Helm chart automatically sets up complex resources and exposes the
 configuration to meet your requirements, it **does not automatically operate
@@ -49,7 +49,7 @@ checklist](/docs/platform/k8s/helm/run#architecture).
 Helm must be installed and configured on your machine. Please refer to the [Helm
 documentation](https://helm.sh/) for more information.
 
-To use the Helm chart, add the Hashicorp helm repository and check that you have
+To use the Helm chart, add the OpenBao helm repository and check that you have
 access to the chart:
 
 @include 'helm/repo.mdx'
@@ -127,8 +127,8 @@ $ helm install openbao openbao/openbao
 
 #### HA mode
 
-The Helm chart may be run in high availability (HA) mode. This installs three
-OpenBao servers with an existing integrated storage backend.
+The Helm chart may be run in High Availability (HA) mode. This installs three
+OpenBao servers with an existing Integrated Storage backend.
 Install the latest OpenBao Helm chart in HA mode.
 
 ```shell-session

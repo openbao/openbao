@@ -1511,7 +1511,7 @@ func TestPadEqualSigns(t *testing.T) {
 
 			signs := strings.Split(padded, fmt.Sprintf(" %s ", header))
 			if len(signs[0]) != len(signs[1]) {
-				t.Fatalf("expected an equal number of equal signs on both sides")
+				t.Fatal("expected an equal number of equal signs on both sides")
 			}
 			for _, sign := range signs {
 				count := strings.Count(sign, "=")

@@ -17,13 +17,19 @@ risk. Some breaking changes may occur prior to GA.
 The PostgreSQL storage backend is used to persist OpenBao's data in a
 [PostgreSQL][postgresql] server or cluster.
 
-- **High Availability** – the PostgreSQL storage backend supports
-  high availability. Requires PostgreSQL 9.5 or later.
+:::tip
 
-- **Community Supported** – the PostgreSQL storage backend is supported by the
-  community. While it has undergone review by HashiCorp employees, they may not
-  be as knowledgeable about the technology. If you encounter problems with them,
-  you may be referred to the original author.
+**High Availability** – the PostgreSQL storage backend supports High
+Availability. Requires PostgreSQL 9.5 or later.
+
+:::
+
+:::tip
+
+**Production Ready** – the PostgreSQL backend is considered production ready
+and supports paginated lists and transactional storage.
+
+:::
 
 ```hcl
 storage "postgresql" {
@@ -64,7 +70,7 @@ to disable SSL.
   PostgreSQL 9.5 or later.
 
 - `ha_table` `(string: "openbao_ha_locks")` – Specifies the name of the table to use
-  for storing high availability information. OpenBao will attempt to create it
+  for storing High Availability information. OpenBao will attempt to create it
   if missing and `skip_create_table=false` (the default).
 
 - `upsert_function` `(string: "openbao_kv_put")` – Specifies the name of the

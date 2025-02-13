@@ -1,0 +1,168 @@
+---
+sidebar_label: PKCS#11 Unseal
+description: |-
+  The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the
+  autounseal mechanism.
+---
+# `pkcs11` seal
+
+The PKCS11 seal configures OpenBao to use an HSM with PKCS11 as the autounseal
+mechanism. OpenBao's HSM PKCS11 support is activated by one of the following:
+
+- The presence of a `seal "pkcs11"` block in OpenBao's configuration file
+- The presence of the environment variable `BAO_HSM_LIB` set to the library's
+  path as well as `BAO_SEAL_TYPE` set to `pkcs11`. If enabling via environment
+  variable, all other required values (i.e. `BAO_HSM_SLOT`) must be also
+  supplied.
+
+:::info
+
+Unlike Vault Enterprise, OpenBao requires key material to be created externally
+before initializing the instance. OpenBao will not attempt to create its own
+key material.
+
+:::
+
+:::warning
+
+Because PKCS#11 auto-unseal was not present in Vault v1.14 OSS, it is not
+expected that it is [seal-compatible](/docs/policies/migration/); manual
+migration of data between nodes may be required.
+
+:::
+
+## Requirements
+
+The following software packages are required for OpenBao:
+
+- PKCS#11 compatible HSM integration library. Depending on any given HSM, some
+  functions (such as key generation) may have to be performed manually.
+- The cgo-enabled OpenBao binary for your architecture, complete with relevant
+  dynamic libraries such as `glibc`.
+
+## `pkcs11` example
+
+This example shows configuring HSM PKCS11 seal through the OpenBao configuration
+file by providing all the required values:
+
+```hcl
+seal "pkcs11" {
+  lib = "/usr/lib64/softhsm/libsofthsm.so"
+  token_label = "OpenBao"
+  pin = "4321"
+  key_label = "bao-root-key-rsa"
+  rsa_oaep_hash = "sha1"
+}
+```
+
+To create the key in the HSM, use a utility like `pkcs11-tool`:
+
+```bash
+$ pkcs11-tool --module "/usr/lib64/softhsm/libsofthsm.so" --token-label "OpenBao" --so-pin 1234 --pin 4321 --keypairgen --key-type rsa:4096 --label "bao-root-key-rsa"
+```
+
+## `pkcs11` parameters
+
+These parameters apply to the `seal` stanza in the OpenBao configuration file:
+
+- `lib` `(string: <required>)`: The path to the PKCS#11 library shared object
+  file. May also be specified by the `BAO_HSM_LIB` environment variable.
+
+:::info
+
+Depending on your HSM, the value of the `lib` parameter may be
+either a binary or a dynamic library, and its use may require other libraries
+depending on which system the OpenBao binary is currently running on (e.g.: a
+Linux system may require other libraries to interpret Windows .dll files).
+
+:::
+
+- `slot` `(string: <slot or token label required>)`: The slot number to use,
+  specified as a string (e.g. `"2305843009213693953"`). May also be specified by
+  the `BAO_HSM_SLOT` environment variable.
+
+:::info
+
+Slots are typically listed as hex-decimal values in the OS setup
+utility but this configuration uses their decimal equivalent. For example, using the
+HSM command-line `pkcs11-tool`, a slot listed as `0x2000000000000001`in hex is equal
+to `2305843009213693953` in decimal; these values may be listed shorter or
+differently as determined by the HSM in use.
+
+:::
+
+- `token_label` `(string: <slot or token label required>)`: The slot token label to
+  use. May also be specified by the `BAO_HSM_TOKEN_LABEL` environment variable.
+
+- `pin` `(string: <required>)`: The PIN for login. May also be specified by the
+  `BAO_HSM_PIN` environment variable. _If set via the environment variable,
+  it will need to be re-set if OpenBao is restarted._
+
+- `key_label` `(string: <required>)`: The label of the key to use. If the key
+  does not exist and generation is enabled, this is the label that will be given
+  to the generated key. May also be specified by the `BAO_HSM_KEY_LABEL`
+  environment variable.
+
+- `default_key_label` `(string: "")`: This is the default key label for decryption
+  operations. Prior to 0.10.1, key labels were not stored with the ciphertext.
+  Seal entries now track the label used in encryption operations. The default value
+  for this field is the `key_label`. If `key_label` is rotated and this value is not
+  set, decryption may fail. May also be specified by the `BAO_HSM_DEFAULT_KEY_LABEL`
+  environment variable. This value is ignored in new installations.
+
+- `key_id` `(string: "")`: The ID of the key to use. The value should be a hexadecimal
+  string (e.g., "0x33333435363434373537"). May also be specified by the
+  `BAO_HSM_KEY_ID` environment variable.
+
+- `mechanism` `(string: <best available>)`: The encryption/decryption mechanism to use,
+  specified as a decimal or hexadecimal (prefixed by `0x`) string. May also be
+  specified by the `BAO_HSM_MECHANISM` environment variable.
+  Currently supported mechanisms (in order of precedence):
+
+  - `0x1087` `CKM_AES_GCM`
+  - `0x0009` `CKM_RSA_PKCS_OAEP`
+
+:::warning
+
+Unlike Vault Enterprise, OpenBao only supports AEAD-enabled algorithms and
+will not support Encrypt-Then-MAC constructs (like `CKM_AES_CBC_PAD` with
+explicit HMACing).
+
+:::
+
+- `disabled` `(string: "")`: Set this to `true` if OpenBao is migrating from an auto seal configuration. Otherwise, set to `false`.
+
+Refer to the [Seal Migration](/docs/concepts/seal#seal-migration) documentation for more information about the seal migration process.
+  
+### Mechanism specific flags
+
+- `rsa_oaep_hash` `(string: "sha256")`: Specify the hash algorithm to use for RSA
+  with OAEP padding. Valid values are sha1, sha224, sha256, sha384, and sha512.
+  Available for mechanism `CKM_RSA_PKCS_OAEP`. May also be specified by the
+  `BAO_HSM_RSA_OAEP_HASH` environment variable.
+
+## `pkcs11` environment variables
+
+Alternatively, the HSM seal can be activated by providing the following
+environment variables:
+
+```text
+BAO_SEAL_TYPE
+BAO_HSM_LIB
+BAO_HSM_SLOT
+BAO_HSM_TOKEN_LABEL
+BAO_HSM_PIN
+BAO_HSM_KEY_LABEL
+BAO_HSM_DEFAULT_KEY_LABEL
+BAO_HSM_KEY_ID
+BAO_HSM_MECHANISM
+BAO_HSM_RSA_OAEP_HASH
+```
+
+## Key rotation
+
+This seal supports rotating keys by using different key labels to track key versions. To rotate
+the key value, generate a new key in a different key label in the HSM and update OpenBao's
+configuration with the new key label value. Restart your OpenBao instance to pick up the new key
+label and all new encryption operations will use the updated key label. Old keys must not be disabled
+or deleted and are used to decrypt older data.

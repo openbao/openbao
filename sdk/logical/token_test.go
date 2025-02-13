@@ -53,7 +53,7 @@ func TestCreateClientID(t *testing.T) {
 	entry := TokenEntry{NamespaceID: "namespaceFoo", Policies: []string{"bar", "baz", "foo", "banana"}}
 	id, isTWE := entry.CreateClientID()
 	if !isTWE {
-		t.Fatalf("TWE token should return true value in isTWE bool")
+		t.Fatal("TWE token should return true value in isTWE bool")
 	}
 	expectedIDPlaintext := "banana" + string(SortedPoliciesTWEDelimiter) + "bar" +
 		string(SortedPoliciesTWEDelimiter) + "baz" +
@@ -68,17 +68,17 @@ func TestCreateClientID(t *testing.T) {
 	entry = TokenEntry{EntityID: "entityFoo", NamespaceID: "namespaceFoo", Policies: []string{"bar", "baz", "foo", "banana"}}
 	id, isTWE = entry.CreateClientID()
 	if isTWE {
-		t.Fatalf("token with entity should return false value in isTWE bool")
+		t.Fatal("token with entity should return false value in isTWE bool")
 	}
 	if id != "entityFoo" {
-		t.Fatalf("client ID should be entity ID")
+		t.Fatal("client ID should be entity ID")
 	}
 
 	// Test without namespace
 	entry = TokenEntry{Policies: []string{"bar", "baz", "foo", "banana"}}
 	id, isTWE = entry.CreateClientID()
 	if !isTWE {
-		t.Fatalf("TWE token should return true value in isTWE bool")
+		t.Fatal("TWE token should return true value in isTWE bool")
 	}
 	expectedIDPlaintext = "banana" + string(SortedPoliciesTWEDelimiter) + "bar" +
 		string(SortedPoliciesTWEDelimiter) + "baz" +
@@ -94,7 +94,7 @@ func TestCreateClientID(t *testing.T) {
 	entry = TokenEntry{NamespaceID: "namespaceFoo"}
 	id, isTWE = entry.CreateClientID()
 	if !isTWE {
-		t.Fatalf("TWE token should return true value in isTWE bool")
+		t.Fatal("TWE token should return true value in isTWE bool")
 	}
 	expectedIDPlaintext = "namespaceFoo"
 

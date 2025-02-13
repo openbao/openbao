@@ -198,6 +198,7 @@ func login(client *openbao.Client) (*openbao.Secret, error) {
 	// log in to OpenBao using various auth methods. This function is just
 	// demonstrating the basic idea that a *openbao.Secret is returned by
 	// the login call.
+	
 	userpassAuth, err := auth.NewUserpassAuth("my-user", &auth.Password{FromString: "my-password"})
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize userpass auth method: %w", err)

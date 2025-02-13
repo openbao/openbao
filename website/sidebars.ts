@@ -95,6 +95,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/azurekeyvault",
                         "configuration/seal/gcpckms",
                         "configuration/seal/ocikms",
+                        "configuration/seal/pkcs11",
                         "configuration/seal/transit",
                     ],
                     service_registration: [
@@ -396,6 +397,7 @@ const sidebars: SidebarsConfig = {
                 "plugins/index",
                 "plugins/plugin-architecture",
                 "plugins/plugin-development",
+                "plugins/plugin-authors-guide",
                 "plugins/plugin-management",
             ],
             Platforms: [
@@ -475,6 +477,7 @@ const sidebars: SidebarsConfig = {
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",
+                "policies/brand",
                 "policies/deprecation",
                 "policies/migration",
                 "policies/plugins",
@@ -484,6 +487,7 @@ const sidebars: SidebarsConfig = {
             Contributing: [
                 "contributing/index",
                 "contributing/code-organization",
+                "contributing/packaging",
             ],
             RFCs: [
                 "rfcs/index",
@@ -493,6 +497,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/transactions",
                 "rfcs/split-mount-tables",
                 "rfcs/scan-operation",
+                "rfcs/acme-tls-listeners",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

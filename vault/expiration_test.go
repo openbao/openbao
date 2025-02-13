@@ -215,7 +215,7 @@ func TestExpiration_Metrics(t *testing.T) {
 
 	for _, labelVal := range flattenedResults {
 		if len(labelVal.Labels) != 1 {
-			t.Errorf("Namespace label is returned when explicitly not requested.")
+			t.Error("Namespace label is returned when explicitly not requested.")
 		}
 		retTimeLabel := labelVal.Labels[0]
 		if labelVal.Value == 100 {
@@ -230,7 +230,7 @@ func TestExpiration_Metrics(t *testing.T) {
 		}
 	}
 	if !foundLabelOne || !foundLabelTwo {
-		t.Errorf("One of the labels is missing")
+		t.Error("One of the labels is missing")
 	}
 }
 
@@ -1192,7 +1192,7 @@ func TestExpiration_RegisterAuth_NoLease(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out == nil {
-		t.Fatalf("missing token")
+		t.Fatal("missing token")
 	}
 }
 
@@ -2102,7 +2102,7 @@ func TestExpiration_Renew_FinalSecond(t *testing.T) {
 	}
 
 	if _, ok := exp.nonexpiring.Load(id); ok {
-		t.Fatalf("expirable lease became nonexpiring")
+		t.Fatal("expirable lease became nonexpiring")
 	}
 }
 
@@ -2164,7 +2164,7 @@ func TestExpiration_Renew_FinalSecond_Lease(t *testing.T) {
 	}
 
 	if _, ok := exp.nonexpiring.Load(id); ok {
-		t.Fatalf("expirable lease became nonexpiring")
+		t.Fatal("expirable lease became nonexpiring")
 	}
 }
 
@@ -2264,7 +2264,7 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if indexEntry == nil {
-		t.Fatalf("err: should have found a secondary index entry")
+		t.Fatal("err: should have found a secondary index entry")
 	}
 
 	err = exp.revokeEntry(namespace.RootContext(nil), le)
@@ -2286,7 +2286,7 @@ func TestExpiration_revokeEntry_token(t *testing.T) {
 	}
 
 	if indexEntry != nil {
-		t.Fatalf("should not have found a secondary index entry after revocation")
+		t.Fatal("should not have found a secondary index entry after revocation")
 	}
 
 	out, err := exp.tokenStore.Lookup(namespace.RootContext(nil), le.ClientToken)
@@ -2372,10 +2372,10 @@ func TestExpiration_revokeEntry_rejected_fairsharing(t *testing.T) {
 		RequestHandler: func(ctx context.Context, req *logical.Request) (*logical.Response, error) {
 			if req.Operation == logical.RevokeOperation {
 				if atomic.CompareAndSwapUint32(rejected, 0, 1) {
-					t.Logf("denying revocation")
+					t.Log("denying revocation")
 					return nil, errors.New("nope")
 				}
-				t.Logf("allowing revocation")
+				t.Log("allowing revocation")
 			}
 			return nil, nil
 		},
@@ -2786,7 +2786,7 @@ func badRenewFactory(ctx context.Context, conf *logical.BackendConfig) (logical.
 			{
 				Type: "badRenewBackend",
 				Revoke: func(context.Context, *logical.Request, *framework.FieldData) (*logical.Response, error) {
-					return nil, fmt.Errorf("always errors")
+					return nil, errors.New("always errors")
 				},
 			},
 		},
@@ -2916,7 +2916,7 @@ func waitForRestore(t *testing.T, exp *ExpirationManager) {
 	for exp.inRestoreMode() {
 		select {
 		case <-timeout:
-			t.Fatalf("Timeout waiting for expiration manager to recover.")
+			t.Fatal("Timeout waiting for expiration manager to recover.")
 		case <-ticker:
 			continue
 		}
@@ -3021,29 +3021,29 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 	}
 
 	if loadedLE.isIrrevocable() {
-		t.Fatalf("lease is irrevocable and shouldn't be")
+		t.Fatal("lease is irrevocable and shouldn't be")
 	}
 	if _, ok := exp.irrevocable.Load(leaseID); ok {
-		t.Fatalf("lease included in irrevocable map")
+		t.Fatal("lease included in irrevocable map")
 	}
 	if _, ok := exp.pending.Load(leaseID); !ok {
-		t.Fatalf("lease not included in pending map")
+		t.Fatal("lease not included in pending map")
 	}
 
-	irrevocableErr := fmt.Errorf("test irrevocable error")
+	irrevocableErr := errors.New("test irrevocable error")
 
 	exp.pendingLock.Lock()
 	exp.markLeaseIrrevocable(ctx, loadedLE, irrevocableErr)
 	exp.pendingLock.Unlock()
 
 	if !loadedLE.isIrrevocable() {
-		t.Fatalf("irrevocable lease is not irrevocable and should be")
+		t.Fatal("irrevocable lease is not irrevocable and should be")
 	}
 	if loadedLE.RevokeErr != irrevocableErr.Error() {
 		t.Errorf("irrevocable lease has wrong error message. expected %s, got %s", irrevocableErr.Error(), loadedLE.RevokeErr)
 	}
 	if _, ok := exp.irrevocable.Load(leaseID); !ok {
-		t.Fatalf("irrevocable lease not included in irrevocable map")
+		t.Fatal("irrevocable lease not included in irrevocable map")
 	}
 
 	exp.pendingLock.RLock()
@@ -3054,10 +3054,10 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 		t.Fatalf("expected 1 irrevocable lease, found %d", irrevocableLeaseCount)
 	}
 	if _, ok := exp.pending.Load(leaseID); ok {
-		t.Fatalf("irrevocable lease included in pending map")
+		t.Fatal("irrevocable lease included in pending map")
 	}
 	if _, ok := exp.nonexpiring.Load(leaseID); ok {
-		t.Fatalf("irrevocable lease included in nonexpiring map")
+		t.Fatal("irrevocable lease included in nonexpiring map")
 	}
 
 	// stop and restore to verify that irrevocable leases are properly loaded from storage
@@ -3078,19 +3078,19 @@ func TestExpiration_MarkIrrevocable(t *testing.T) {
 	exp.updatePending(loadedLE)
 
 	if !loadedLE.isIrrevocable() {
-		t.Fatalf("irrevocable lease is not irrevocable and should be")
+		t.Fatal("irrevocable lease is not irrevocable and should be")
 	}
 	if loadedLE.RevokeErr != irrevocableErr.Error() {
 		t.Errorf("irrevocable lease has wrong error message. expected %s, got %s", irrevocableErr.Error(), loadedLE.RevokeErr)
 	}
 	if _, ok := exp.irrevocable.Load(leaseID); !ok {
-		t.Fatalf("irrevocable lease not included in irrevocable map")
+		t.Fatal("irrevocable lease not included in irrevocable map")
 	}
 	if _, ok := exp.pending.Load(leaseID); ok {
-		t.Fatalf("irrevocable lease included in pending map")
+		t.Fatal("irrevocable lease included in pending map")
 	}
 	if _, ok := exp.nonexpiring.Load(leaseID); ok {
-		t.Fatalf("irrevocable lease included in nonexpiring map")
+		t.Fatal("irrevocable lease included in nonexpiring map")
 	}
 }
 
@@ -3112,7 +3112,7 @@ func TestExpiration_FetchLeaseTimesIrrevocable(t *testing.T) {
 		t.Fatalf("error loading lease: %v", err)
 	}
 	exp.pendingLock.Lock()
-	exp.markLeaseIrrevocable(ctx, le, fmt.Errorf("test irrevocable error"))
+	exp.markLeaseIrrevocable(ctx, le, errors.New("test irrevocable error"))
 	exp.pendingLock.Unlock()
 
 	irrevocableLeaseTimes, err := exp.FetchLeaseTimes(ctx, leaseID)
@@ -3151,7 +3151,7 @@ func TestExpiration_StopClearsIrrevocableCache(t *testing.T) {
 	}
 
 	exp.pendingLock.Lock()
-	exp.markLeaseIrrevocable(ctx, le, fmt.Errorf("test irrevocable error"))
+	exp.markLeaseIrrevocable(ctx, le, errors.New("test irrevocable error"))
 	exp.pendingLock.Unlock()
 
 	err = c.stopExpiration()
@@ -3202,7 +3202,7 @@ func TestExpiration_errorIsUnrecoverable(t *testing.T) {
 			isUnrecoverable: false,
 		},
 		{
-			err:             fmt.Errorf("some other error"),
+			err:             errors.New("some other error"),
 			isUnrecoverable: false,
 		},
 	}
@@ -3256,7 +3256,7 @@ func TestExpiration_unrecoverableErrorMakesIrrevocable(t *testing.T) {
 			shouldBeIrrevocable: false,
 		},
 		{
-			err:                 fmt.Errorf("some random recoverable error"),
+			err:                 errors.New("some random recoverable error"),
 			job:                 makeJob(),
 			shouldBeIrrevocable: false,
 		},
@@ -3479,7 +3479,7 @@ func TestExpiration_listIrrevocableLeases_includeAll(t *testing.T) {
 		t.Errorf("expected no warning, got %q", warn)
 	}
 	if dataRaw == nil {
-		t.Fatalf("got nil data when using limit=none")
+		t.Fatal("got nil data when using limit=none")
 	}
 
 	leaseListLength = len(dataRaw["leases"].([]*leaseResponse))
@@ -3489,10 +3489,10 @@ func TestExpiration_listIrrevocableLeases_includeAll(t *testing.T) {
 
 	numLeasesRaw, ok := dataRaw["lease_count"]
 	if !ok {
-		t.Fatalf("lease count data not present")
+		t.Fatal("lease count data not present")
 	}
 	if numLeasesRaw == nil {
-		t.Fatalf("nil lease count")
+		t.Fatal("nil lease count")
 	}
 
 	numLeases := numLeasesRaw.(int)

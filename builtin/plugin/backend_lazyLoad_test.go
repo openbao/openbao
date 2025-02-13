@@ -26,10 +26,10 @@ func TestBackend_lazyLoad(t *testing.T) {
 		return nil
 	})
 	if invocations != 1 {
-		t.Fatalf("expected 1 invocation")
+		t.Fatal("expected 1 invocation")
 	}
 	if b.canary != "" {
-		t.Fatalf("expected empty canary")
+		t.Fatal("expected empty canary")
 	}
 
 	// load with plugin shutdown
@@ -42,10 +42,10 @@ func TestBackend_lazyLoad(t *testing.T) {
 		return nil
 	})
 	if invocations != 2 {
-		t.Fatalf("expected 2 invocations")
+		t.Fatal("expected 2 invocations")
 	}
 	if b.canary == "" {
-		t.Fatalf("expected canary")
+		t.Fatal("expected canary")
 	}
 }
 
@@ -79,31 +79,31 @@ func testLazyLoad(t *testing.T, methodWrapper func() error) *PluginBackend {
 		t.Fatal(err)
 	}
 	if !b.loaded {
-		t.Fatalf("not loaded")
+		t.Fatal("not loaded")
 	}
 
 	// make sure dummy plugin was handled properly
 	ob := orig.(*testBackend)
 	if !ob.cleaned {
-		t.Fatalf("not cleaned")
+		t.Fatal("not cleaned")
 	}
 	if ob.setup {
-		t.Fatalf("setup")
+		t.Fatal("setup")
 	}
 	if ob.initialized {
-		t.Fatalf("initialized")
+		t.Fatal("initialized")
 	}
 
 	// make sure our newly initialized plugin was handled properly
 	nb := b.Backend.(*testBackend)
 	if nb.cleaned {
-		t.Fatalf("cleaned")
+		t.Fatal("cleaned")
 	}
 	if !nb.setup {
-		t.Fatalf("not setup")
+		t.Fatal("not setup")
 	}
 	if !nb.initialized {
-		t.Fatalf("not initialized")
+		t.Fatal("not initialized")
 	}
 
 	return b

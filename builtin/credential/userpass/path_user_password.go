@@ -5,7 +5,7 @@ package userpass
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -47,6 +47,12 @@ func pathUserPassword(b *backend) *framework.Path {
 }
 
 func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	username := d.Get("username").(string)
 
 	userEntry, err := b.user(ctx, req.Storage, username)
@@ -54,7 +60,7 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 	if userEntry == nil {
-		return nil, fmt.Errorf("username does not exist")
+		return nil, errors.New("username does not exist")
 	}
 
 	userErr, intErr := b.updateUserPassword(req, d, userEntry)
@@ -64,14 +70,21 @@ func (b *backend) pathUserPasswordUpdate(ctx context.Context, req *logical.Reque
 	if userErr != nil {
 		return logical.ErrorResponse(userErr.Error()), logical.ErrInvalidRequest
 	}
+	if err := b.setUser(ctx, req.Storage, username, userEntry); err != nil {
+		return nil, err
+	}
 
-	return nil, b.setUser(ctx, req.Storage, username, userEntry)
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 func (b *backend) updateUserPassword(req *logical.Request, d *framework.FieldData, userEntry *UserEntry) (error, error) {
 	password := d.Get("password").(string)
 	if password == "" {
-		return fmt.Errorf("missing password"), nil
+		return errors.New("missing password"), nil
 	}
 	// Generate a hash of the password
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -79,6 +92,7 @@ func (b *backend) updateUserPassword(req *logical.Request, d *framework.FieldDat
 		return nil, err
 	}
 	userEntry.PasswordHash = hash
+
 	return nil, nil
 }
 

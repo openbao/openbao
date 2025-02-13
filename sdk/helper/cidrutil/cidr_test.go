@@ -45,7 +45,7 @@ func TestCIDRUtil_IPBelongsToCIDR(t *testing.T) {
 	cidr = "192.168.26.30/24"
 	belongs, err = IPBelongsToCIDR(ip, cidr)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 }
 
@@ -66,7 +66,7 @@ func TestCIDRUtil_IPBelongsToCIDRBlocksSlice(t *testing.T) {
 
 	belongs, err = IPBelongsToCIDRBlocksSlice(ip, cidrList)
 	if err == nil {
-		t.Fatalf("expected an error")
+		t.Fatal("expected an error")
 	}
 
 	ip = "30.40.50.60"

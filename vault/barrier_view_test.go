@@ -24,17 +24,17 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 
 	_, err := view.List(context.Background(), "../")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	_, err = view.Get(context.Background(), "../")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	err = view.Delete(context.Background(), "../foo")
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	le := &logical.StorageEntry{
@@ -43,7 +43,7 @@ func TestBarrierView_BadKeysKeys(t *testing.T) {
 	}
 	err = view.Put(context.Background(), le)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 }
 
@@ -86,7 +86,7 @@ func TestBarrierView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("missing nested foo/test")
+		t.Fatal("missing nested foo/test")
 	}
 
 	// Delete nested
@@ -100,7 +100,7 @@ func TestBarrierView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry != nil {
-		t.Fatalf("nested foo/test should be gone")
+		t.Fatal("nested foo/test should be gone")
 	}
 
 	// Check the non-nested key
@@ -109,7 +109,7 @@ func TestBarrierView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if entry == nil {
-		t.Fatalf("root test missing")
+		t.Fatal("root test missing")
 	}
 }
 
@@ -148,7 +148,7 @@ func TestBarrierView_SubView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if bout == nil {
-		t.Fatalf("missing nested foo/bar/test")
+		t.Fatal("missing nested foo/bar/test")
 	}
 
 	// Check for visibility in root
@@ -157,7 +157,7 @@ func TestBarrierView_SubView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if out == nil {
-		t.Fatalf("missing nested bar/test")
+		t.Fatal("missing nested bar/test")
 	}
 
 	// Delete nested
@@ -171,7 +171,7 @@ func TestBarrierView_SubView(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if bout != nil {
-		t.Fatalf("nested foo/bar/test should be gone")
+		t.Fatal("nested foo/bar/test should be gone")
 	}
 }
 
@@ -312,6 +312,6 @@ func TestBarrierView_Readonly(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if e == nil {
-		t.Fatalf("key test missing")
+		t.Fatal("key test missing")
 	}
 }

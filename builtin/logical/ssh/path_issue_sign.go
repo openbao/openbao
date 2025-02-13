@@ -192,7 +192,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	switch {
 	case len(parsedPrincipals) == 0:
 		if !role.AllowEmptyPrincipals && principalsAllowedByRole != "*" {
-			return nil, fmt.Errorf("refusing to issue unsafe, globally-valid certificate with no principals specified; set valid_principals or default_user")
+			return nil, errors.New("refusing to issue unsafe, globally-valid certificate with no principals specified; set valid_principals or default_user")
 		}
 
 		// There is nothing to process
@@ -200,7 +200,7 @@ func (b *backend) calculateValidPrincipals(data *framework.FieldData, req *logic
 	case len(allowedPrincipals) == 0:
 		// User has requested principals to be set, but role is not configured
 		// with any principals
-		return nil, fmt.Errorf("role is not configured to allow any principals")
+		return nil, errors.New("role is not configured to allow any principals")
 	default:
 		// Role was explicitly configured to allow any principal.
 		if principalsAllowedByRole == "*" {
@@ -258,7 +258,7 @@ func (b *backend) calculateKeyID(data *framework.FieldData, req *logical.Request
 
 	if reqID != "" {
 		if !role.AllowUserKeyIDs {
-			return "", fmt.Errorf("setting key_id is not allowed by role")
+			return "", errors.New("setting key_id is not allowed by role")
 		}
 		return reqID, nil
 	}
@@ -499,7 +499,7 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 
 	sshAlgorithmSigner, ok := b.Signer.(ssh.AlgorithmSigner)
 	if !ok {
-		return nil, fmt.Errorf("failed to generate signed SSH key: signer is not an AlgorithmSigner")
+		return nil, errors.New("failed to generate signed SSH key: signer is not an AlgorithmSigner")
 	}
 
 	// prepare certificate for signing

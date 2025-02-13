@@ -179,7 +179,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 		t.Fatalf("err: %v", err)
 	}
 	if out != nil {
-		t.Fatalf("non-salted key found")
+		t.Fatal("non-salted key found")
 	}
 
 	// Ensure the path is salted
@@ -189,7 +189,7 @@ func testSalting(t *testing.T, ctx context.Context, storage logical.Storage, sal
 		t.Fatalf("err: %v", err)
 	}
 	if out == nil {
-		t.Fatalf("missing salted key")
+		t.Fatal("missing salted key")
 	}
 
 	// Read via HTTP

@@ -33,7 +33,7 @@ func TestNewTokenFileEmptyFilePath(t *testing.T) {
 		},
 	})
 	if err == nil {
-		t.Fatalf("Expected error when giving empty file path")
+		t.Fatal("Expected error when giving empty file path")
 	}
 }
 

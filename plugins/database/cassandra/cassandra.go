@@ -5,6 +5,7 @@ package cassandra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -179,7 +180,7 @@ func rollbackUser(ctx context.Context, session *gocql.Session, username string, 
 
 func (c *Cassandra) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
 	if req.Password == nil && req.Expiration == nil {
-		return dbplugin.UpdateUserResponse{}, fmt.Errorf("no changes requested")
+		return dbplugin.UpdateUserResponse{}, errors.New("no changes requested")
 	}
 
 	if req.Password != nil {

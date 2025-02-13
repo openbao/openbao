@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -37,7 +38,7 @@ func (c *Client) DialLDAP(cfg *ConfigEntry) (Connection, error) {
 	for _, uut := range urls {
 		u, err := url.Parse(uut)
 		if err != nil {
-			retErr = multierror.Append(retErr, fmt.Errorf(fmt.Sprintf("error parsing url %q: {{err}}", uut), err))
+			retErr = multierror.Append(retErr, fmt.Errorf("error parsing url %q: %w", uut, err))
 			continue
 		}
 		host, port, err := net.SplitHostPort(u.Host)
@@ -64,7 +65,7 @@ func (c *Client) DialLDAP(cfg *ConfigEntry) (Connection, error) {
 				break
 			}
 			if conn == nil {
-				err = fmt.Errorf("empty connection after dialing")
+				err = errors.New("empty connection after dialing")
 				break
 			}
 			if cfg.StartTLS {
@@ -104,7 +105,7 @@ func (c *Client) DialLDAP(cfg *ConfigEntry) (Connection, error) {
 			retErr = nil
 			break
 		}
-		retErr = multierror.Append(retErr, fmt.Errorf(fmt.Sprintf("error connecting to host %q: {{err}}", uut), err))
+		retErr = multierror.Append(retErr, fmt.Errorf("error connecting to host %q: %w", uut, err))
 	}
 	if retErr != nil {
 		return nil, retErr
@@ -183,7 +184,7 @@ func (c *Client) GetUserBindDN(cfg *ConfigEntry, conn Connection, username strin
 			return bindDN, fmt.Errorf("LDAP search for binddn failed %w", err)
 		}
 		if len(result.Entries) != 1 {
-			return bindDN, fmt.Errorf("LDAP search for binddn 0 or not unique")
+			return bindDN, errors.New("LDAP search for binddn 0 or not unique")
 		}
 
 		bindDN = result.Entries[0].DN
@@ -270,11 +271,11 @@ func (c *Client) GetUserAliasAttributeValue(cfg *ConfigEntry, conn Connection, u
 			return aliasAttributeValue, fmt.Errorf("LDAP search for entity alias attribute failed: %w", err)
 		}
 		if len(result.Entries) != 1 {
-			return aliasAttributeValue, fmt.Errorf("LDAP search for entity alias attribute 0 or not unique")
+			return aliasAttributeValue, errors.New("LDAP search for entity alias attribute 0 or not unique")
 		}
 
 		if len(result.Entries[0].Attributes) != 1 {
-			return aliasAttributeValue, fmt.Errorf("LDAP attribute missing for entity alias mapping")
+			return aliasAttributeValue, errors.New("LDAP attribute missing for entity alias mapping")
 		}
 
 		if len(result.Entries[0].Attributes[0].Values) != 1 {
@@ -453,21 +454,21 @@ func sidBytesToString(b []byte) (string, error) {
 	var identifierAuthorityParts [3]uint16
 
 	if err := binary.Read(reader, binary.LittleEndian, &revision); err != nil {
-		return "", fmt.Errorf(fmt.Sprintf("SID %#v convert failed reading Revision: {{err}}", b), err)
+		return "", fmt.Errorf("SID %#v convert failed reading Revision: %w", b, err)
 	}
 
 	if err := binary.Read(reader, binary.LittleEndian, &subAuthorityCount); err != nil {
-		return "", fmt.Errorf(fmt.Sprintf("SID %#v convert failed reading SubAuthorityCount: {{err}}", b), err)
+		return "", fmt.Errorf("SID %#v convert failed reading SubAuthorityCount: %w", b, err)
 	}
 
 	if err := binary.Read(reader, binary.BigEndian, &identifierAuthorityParts); err != nil {
-		return "", fmt.Errorf(fmt.Sprintf("SID %#v convert failed reading IdentifierAuthority: {{err}}", b), err)
+		return "", fmt.Errorf("SID %#v convert failed reading IdentifierAuthority: %w", b, err)
 	}
 	identifierAuthority := (uint64(identifierAuthorityParts[0]) << 32) + (uint64(identifierAuthorityParts[1]) << 16) + uint64(identifierAuthorityParts[2])
 
 	subAuthority := make([]uint32, subAuthorityCount)
 	if err := binary.Read(reader, binary.LittleEndian, &subAuthority); err != nil {
-		return "", fmt.Errorf(fmt.Sprintf("SID %#v convert failed reading SubAuthority: {{err}}", b), err)
+		return "", fmt.Errorf("SID %#v convert failed reading SubAuthority: %w", b, err)
 	}
 
 	result := fmt.Sprintf("S-%d-%d", revision, identifierAuthority)
@@ -715,7 +716,7 @@ func getTLSConfig(cfg *ConfigEntry, host string) (*tls.Config, error) {
 	if cfg.TLSMinVersion != "" {
 		tlsMinVersion, ok := tlsutil.TLSLookup[cfg.TLSMinVersion]
 		if !ok {
-			return nil, fmt.Errorf("invalid 'tls_min_version' in config")
+			return nil, errors.New("invalid 'tls_min_version' in config")
 		}
 		tlsConfig.MinVersion = tlsMinVersion
 	}
@@ -723,7 +724,7 @@ func getTLSConfig(cfg *ConfigEntry, host string) (*tls.Config, error) {
 	if cfg.TLSMaxVersion != "" {
 		tlsMaxVersion, ok := tlsutil.TLSLookup[cfg.TLSMaxVersion]
 		if !ok {
-			return nil, fmt.Errorf("invalid 'tls_max_version' in config")
+			return nil, errors.New("invalid 'tls_max_version' in config")
 		}
 		tlsConfig.MaxVersion = tlsMaxVersion
 	}
@@ -735,7 +736,7 @@ func getTLSConfig(cfg *ConfigEntry, host string) (*tls.Config, error) {
 		caPool := x509.NewCertPool()
 		ok := caPool.AppendCertsFromPEM([]byte(cfg.Certificate))
 		if !ok {
-			return nil, fmt.Errorf("could not append CA certificate")
+			return nil, errors.New("could not append CA certificate")
 		}
 		tlsConfig.RootCAs = caPool
 	}
@@ -746,7 +747,7 @@ func getTLSConfig(cfg *ConfigEntry, host string) (*tls.Config, error) {
 		}
 		tlsConfig.Certificates = append(tlsConfig.Certificates, certificate)
 	} else if cfg.ClientTLSCert != "" || cfg.ClientTLSKey != "" {
-		return nil, fmt.Errorf("both client_tls_cert and client_tls_key must be set")
+		return nil, errors.New("both client_tls_cert and client_tls_key must be set")
 	}
 	return tlsConfig, nil
 }

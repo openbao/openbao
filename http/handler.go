@@ -30,6 +30,7 @@ import (
 	gziphandler "github.com/klauspost/compress/gzhttp"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
@@ -369,6 +370,19 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			r = newR
 
 		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
+			for _, ln := range props.AllListeners {
+				if ln.Config == nil || ln.Config.TLSDisable {
+					continue
+				}
+
+				if acg, ok := ln.Config.TLSCertGetter.(*listenerutil.ACMECertGetter); ok {
+					if acg.HandleHTTPChallenge(w, r) {
+						cancelFunc()
+						return
+					}
+				}
+			}
 		default:
 			respondError(nw, http.StatusNotFound, nil)
 			cancelFunc()
@@ -380,7 +394,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		// in-flight requests, and use that to update the req data with clientID
 		inFlightReqID, err := uuid.GenerateUUID()
 		if err != nil {
-			respondError(nw, http.StatusInternalServerError, fmt.Errorf("failed to generate an identifier for the in-flight request"))
+			respondError(nw, http.StatusInternalServerError, errors.New("failed to generate an identifier for the in-flight request"))
 		}
 		// adding an entry to the context to enable updating in-flight
 		// data with ClientID in the logical layer
@@ -437,7 +451,7 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 				h.ServeHTTP(w, r)
 				return
 			}
-			respondError(w, http.StatusBadRequest, fmt.Errorf("missing x-forwarded-for header and configured to reject when not present"))
+			respondError(w, http.StatusBadRequest, errors.New("missing x-forwarded-for header and configured to reject when not present"))
 			return
 		}
 
@@ -486,7 +500,7 @@ func WrapForwardedForHandler(h http.Handler, l *configutil.Listener) http.Handle
 				return
 			}
 
-			respondError(w, http.StatusBadRequest, fmt.Errorf("client address not authorized for x-forwarded-for and configured to reject connection"))
+			respondError(w, http.StatusBadRequest, errors.New("client address not authorized for x-forwarded-for and configured to reject connection"))
 			return
 		}
 
@@ -754,7 +768,7 @@ func handleRequestForwarding(core *vault.Core, handler http.Handler) http.Handle
 			return
 		}
 		if leaderAddr == "" {
-			respondError(w, http.StatusInternalServerError, fmt.Errorf("local node not active but active cluster node not found"))
+			respondError(w, http.StatusInternalServerError, errors.New("local node not active but active cluster node not found"))
 			return
 		}
 
@@ -981,7 +995,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 		return req, err
 	}
 	if int64(dur) < 0 {
-		return req, fmt.Errorf("requested wrap ttl cannot be negative")
+		return req, errors.New("requested wrap ttl cannot be negative")
 	}
 
 	req.WrapInfo = &logical.RequestWrapInfo{
@@ -1001,7 +1015,7 @@ func requestWrapInfo(r *http.Request, req *logical.Request) (*logical.Request, e
 // them with MFA method name as the index.
 func parseMFAHeader(req *logical.Request) error {
 	if req == nil {
-		return fmt.Errorf("request is nil")
+		return errors.New("request is nil")
 	}
 
 	if req.Headers == nil {

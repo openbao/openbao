@@ -171,7 +171,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// Test the read by name endpoint
@@ -231,7 +231,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp != nil {
-		t.Fatalf("expected a nil response")
+		t.Fatal("expected a nil response")
 	}
 
 	// Create 2 entities
@@ -243,7 +243,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 	resp, err = i.HandleRequest(ctx, &logical.Request{
 		Path:      "entity/name/testentityname2",
@@ -253,7 +253,7 @@ func TestIdentityStore_EntityByName(t *testing.T) {
 		t.Fatalf("bad: resp: %#v\nerr: %v", resp, err)
 	}
 	if resp == nil {
-		t.Fatalf("expected a non-nil response")
+		t.Fatal("expected a non-nil response")
 	}
 
 	// List the entities by name
@@ -488,7 +488,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	entity.Aliases[0].ID = "invalidid"
 
 	if clonedEntity.Aliases[0].ID == "invalidid" {
-		t.Fatalf("cloned entity is mutated")
+		t.Fatal("cloned entity is mutated")
 	}
 
 	clonedAlias, err := alias.Clone()
@@ -499,7 +499,7 @@ func TestIdentityStore_CloneImmutability(t *testing.T) {
 	alias.MergedFromCanonicalIDs[0] = "invalidid"
 
 	if clonedAlias.MergedFromCanonicalIDs[0] == "invalidid" {
-		t.Fatalf("cloned alias is mutated")
+		t.Fatal("cloned alias is mutated")
 	}
 }
 
@@ -708,7 +708,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	// Identity store will be mounted by now, just fetch it from router
 	identitystore := c.router.MatchingBackend(namespace.RootContext(nil), "identity/")
 	if identitystore == nil {
-		t.Fatalf("failed to fetch identity store from router")
+		t.Fatal("failed to fetch identity store from router")
 	}
 
 	is := identitystore.(*IdentityStore)
@@ -747,7 +747,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity")
+		t.Fatal("failed to read the created entity")
 	}
 
 	// Perform a seal/unseal cycle
@@ -777,7 +777,7 @@ func TestIdentityStore_LoadingEntities(t *testing.T) {
 	}
 
 	if resp.Data["id"] != entityID {
-		t.Fatalf("failed to read the created entity after a seal/unseal cycle")
+		t.Fatal("failed to read the created entity after a seal/unseal cycle")
 	}
 }
 
@@ -919,11 +919,11 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 
 	idRaw, ok := resp.Data["id"]
 	if !ok {
-		t.Fatalf("entity id not present in response")
+		t.Fatal("entity id not present in response")
 	}
 	id := idRaw.(string)
 	if id == "" {
-		t.Fatalf("invalid entity id")
+		t.Fatal("invalid entity id")
 	}
 
 	readReq := &logical.Request{
@@ -939,7 +939,7 @@ func TestIdentityStore_EntityCRUD(t *testing.T) {
 	if resp.Data["id"] != id ||
 		resp.Data["name"] != registerData["name"] ||
 		!reflect.DeepEqual(resp.Data["policies"], strutil.RemoveDuplicates(registerData["policies"].([]string), false)) {
-		t.Fatalf("bad: entity response")
+		t.Fatal("bad: entity response")
 	}
 
 	updateData := map[string]interface{}{
@@ -1138,7 +1138,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1
@@ -1289,7 +1289,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	if resp != nil {
-		t.Fatalf("entity should have been deleted")
+		t.Fatal("entity should have been deleted")
 	}
 
 	entityReq.Path = "entity/id/" + entityID1

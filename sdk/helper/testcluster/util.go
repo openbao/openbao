@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -144,7 +145,7 @@ func NodeHealthy(ctx context.Context, cluster VaultCluster, nodeIdx int) error {
 		switch {
 		case err != nil:
 		case health == nil:
-			err = fmt.Errorf("nil response to health check")
+			err = errors.New("nil response to health check")
 		case health.Sealed:
 			err = fmt.Errorf("sealed: %#v", health)
 		default:
@@ -181,7 +182,7 @@ func LeaderNode(ctx context.Context, cluster VaultCluster) (int, error) {
 		leaderActiveTimes[i] = resp.ActiveTime
 	}
 	if len(leaderActiveTimes) == 0 {
-		return -1, fmt.Errorf("no leader found")
+		return -1, errors.New("no leader found")
 	}
 	// At least one node thinks it is active. If multiple, pick the one with the
 	// most recent ActiveTime. Note if there is only one then this just returns
@@ -256,7 +257,7 @@ func GenerateRoot(cluster VaultCluster, kind GenerateRootKind) (string, error) {
 		}
 	}
 	if !status.Complete {
-		return "", fmt.Errorf("generate root operation did not end successfully")
+		return "", errors.New("generate root operation did not end successfully")
 	}
 
 	tokenBytes, err := base64.RawStdEncoding.DecodeString(status.EncodedToken)

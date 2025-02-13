@@ -224,7 +224,7 @@ func TestConfig_Create(t *testing.T) {
 
 			resp, err := b.configCreateUpdateOperation(context.Background(), req, test.createData)
 			if test.createExpectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.createExpectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

@@ -189,6 +189,7 @@ The interface for Physical storage will need to be updated to include new transa
 // that one is a one-shot (list of transactions to execute) transaction
 // interface.
 type InteractiveTransactional interface {
+
     // This function allows the creation of a new interactive transaction
     // handle, only supporting read operations. Attempts to perform write
     // operations (PUT or DELETE) will result in immediate errors.
@@ -233,9 +234,10 @@ When a `physical.Backend` supports transactions (being a `physical.InteractiveTr
 // physical.InteractiveTransactional, not the earlier, one-shot
 // physical.Transactional interface.
 type Transactional interface {
+
     // This function allows the creation of a new interactive transaction
     // handle, only supporting read operations. Attempts to perform write
-    // operations (
+    // operations
     BeginReadOnlyTx(context.Context) (Transaction, error)
 
     // This function allows the creation of a new interactive transaction

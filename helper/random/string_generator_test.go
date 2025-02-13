@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -194,7 +195,7 @@ func TestStringGenerator_Generate_errors(t *testing.T) {
 
 			actual, err := test.generator.Generate(ctx, test.rng)
 			if err == nil {
-				t.Fatalf("Expected error but none found")
+				t.Fatal("Expected error but none found")
 			}
 			if actual != "" {
 				t.Fatalf("Random string returned: %s", actual)
@@ -360,7 +361,7 @@ func TestRandomRunes_errors(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			actual, err := randomRunes(test.rng, test.charset, test.length)
 			if err == nil {
-				t.Fatalf("Expected error but none found")
+				t.Fatal("Expected error but none found")
 			}
 			if actual != nil {
 				t.Fatalf("Expected no value, but found [%s]", string(actual))
@@ -554,7 +555,7 @@ func TestStringGenerator_JSON(t *testing.T) {
 type badReader struct{}
 
 func (badReader) Read([]byte) (int, error) {
-	return 0, fmt.Errorf("test error")
+	return 0, errors.New("test error")
 }
 
 func TestValidate(t *testing.T) {
@@ -626,7 +627,7 @@ func TestValidate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			err := test.generator.validateConfig()
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

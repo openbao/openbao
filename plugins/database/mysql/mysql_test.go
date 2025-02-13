@@ -158,7 +158,7 @@ func testInitialize(t *testing.T, rootPassword string) {
 			defer dbtesting.AssertClose(t, db)
 			initResp, err := db.Initialize(context.Background(), test.initRequest)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -310,7 +310,7 @@ func TestMySQL_NewUser_nonLegacy(t *testing.T) {
 
 			userResp, err := db.NewUser(context.Background(), test.newUserReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -464,7 +464,7 @@ func TestMySQL_NewUser_legacy(t *testing.T) {
 
 			userResp, err := db.NewUser(context.Background(), test.newUserReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -549,7 +549,7 @@ func TestMySQL_RotateRootCredentials(t *testing.T) {
 
 			// verify old password doesn't work
 			if err := mysqlhelper.TestCredsExist(t, connURL, updateReq.Username, "secret"); err == nil {
-				t.Fatalf("Should not be able to connect with initial credentials")
+				t.Fatal("Should not be able to connect with initial credentials")
 			}
 
 			err = db.Close()
@@ -649,7 +649,7 @@ func TestMySQL_DeleteUser(t *testing.T) {
 			}
 
 			if err := mysqlhelper.TestCredsExist(t, connURL, userResp.Username, password); err == nil {
-				t.Fatalf("Credentials were not revoked!")
+				t.Fatal("Credentials were not revoked!")
 			}
 		})
 	}
@@ -739,7 +739,7 @@ func TestMySQL_UpdateUser(t *testing.T) {
 
 			// verify old password doesn't work
 			if err := mysqlhelper.TestCredsExist(t, connURL, dbUser, initPassword); err == nil {
-				t.Fatalf("Should not be able to connect with initial credentials")
+				t.Fatal("Should not be able to connect with initial credentials")
 			}
 		})
 	}

@@ -9,14 +9,14 @@ The main purpose of recovery mode is to allow direct access to storage in case
 OpenBao isn't starting up due to some newly discovered bug.  This probably won't
 be helpful without an OpenBao expert on hand to advise.
 
-Differences between recovery mode and regular OpenBao operation:
+Recovery mode is differentiated from regular OpenBao operation in that:
 - none of the usual subsystems run, e.g. expiration, clustering, RPCs from other nodes
 - instead of a regular unseal request, unseal a node by generating a recovery token
 - all requests are to `sys/raw` and are authenticated using the recovery token
 
 ## Recovery process
 
-The usual way recovery mode is used is:
+Recovery mode is usually used to:
 - seal or stop all nodes in the cluster
 - if using Integrated Storage, run `bao status` on each node to find the highest-index ones
   (this will require they be running and sealed, as if unsealed a new leader might be
@@ -26,7 +26,7 @@ The usual way recovery mode is used is:
 - use the recovery token to perform sys/raw requests to repair the node
 - if using Integrated Storage, reform the raft cluster as described below
 
-## Integrated storage for HA only (ha_storage)
+## Integrated Storage for HA only (ha_storage)
 
 If Integrated Storage is used in hybrid mode (i.e. for `ha_storage`),
 recovery mode will not allow for changes to the Raft data but instead allow for
@@ -34,15 +34,15 @@ modification of the underlying physical data that is associated with OpenBao's
 storage backend.  This means that the notes regarding Integrated Storage in
 this doc do not apply.
 
-## Integrated storage
+## Integrated Storage
 
 With Integrated Storage, not all nodes are equal.  It's possible that some
 nodes are further behind - i.e. haven't applied as many Raft logs.  It is
 important when choosing a node to use for recovery that it has the highest
-AppliedIndex found in the cluster.
+`AppliedIndex` found in the cluster.
 
-Each node's AppliedIndex value can be obtained by running `bao status` against
-the node sealed nodes of the cluster after bringing it down.
+Each node's `AppliedIndex` value can be obtained by running `bao status` against
+the sealed nodes of the cluster after bringing it down.
 
 ## Recovery tokens
 

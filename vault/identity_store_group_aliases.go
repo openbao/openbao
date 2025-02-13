@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -274,7 +275,7 @@ func (i *IdentityStore) handleGroupAliasUpdateCommon(ctx context.Context, req *l
 			return nil, err
 		}
 		if previousGroup == nil {
-			return nil, fmt.Errorf("group alias is not associated with a group")
+			return nil, errors.New("group alias is not associated with a group")
 		}
 		if previousGroup.NamespaceID != groupAlias.NamespaceID {
 			return logical.ErrorResponse("previous group found for alias not in the same namespace as alias"), logical.ErrPermissionDenied
@@ -363,7 +364,7 @@ func (i *IdentityStore) pathGroupAliasIDDelete() framework.OperationFunc {
 
 		// If there is no group tied to a valid alias, something is wrong
 		if group == nil {
-			return nil, fmt.Errorf("alias not associated to a group")
+			return nil, errors.New("alias not associated to a group")
 		}
 
 		// Delete group alias in memdb

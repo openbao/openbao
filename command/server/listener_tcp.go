@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/hashicorp/cli"
-	"github.com/hashicorp/go-secure-stdlib/reloadutil"
+	"github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
 )
 
-func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, reloadutil.ReloadFunc, error) {
+func tcpListenerFactory(l *configutil.Listener, logger hclog.Logger, _ io.Writer, ui cli.Ui) (net.Listener, map[string]string, listenerutil.ReloadableCertGetter, error) {
 	addr := l.Address
 	if addr == "" {
 		addr = "127.0.0.1:8200"
@@ -66,7 +66,7 @@ func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (net.Lis
 		}
 	}
 
-	tlsConfig, reloadFunc, err := listenerutil.TLSConfig(l, props, ui)
+	tlsConfig, cg, err := listenerutil.TLSConfig(l, props, ui, logger)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -74,7 +74,7 @@ func tcpListenerFactory(l *configutil.Listener, _ io.Writer, ui cli.Ui) (net.Lis
 		ln = tls.NewListener(ln, tlsConfig)
 	}
 
-	return ln, props, reloadFunc, nil
+	return ln, props, cg, nil
 }
 
 // TCPKeepAliveListener sets TCP keep-alive timeouts on accepted

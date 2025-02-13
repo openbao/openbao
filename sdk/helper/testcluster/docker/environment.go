@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -179,7 +180,7 @@ func (dc *DockerCluster) setupNode0(ctx context.Context) error {
 		return err
 	}
 	if resp == nil {
-		return fmt.Errorf("nil response to init request")
+		return errors.New("nil response to init request")
 	}
 
 	for _, k := range resp.Keys {
@@ -466,7 +467,8 @@ type DockerClusterNode struct {
 	Cluster              *DockerCluster
 	Container            *types.ContainerJSON
 	DockerAPI            *docker.Client
-	runner               *dockhelper.Runner
+	Service              *dockhelper.Service
+	Runner               *dockhelper.Runner
 	Logger               log.Logger
 	cleanupContainer     func()
 	RealAPIAddr          string
@@ -515,7 +517,7 @@ func (n *DockerClusterNode) apiConfig() (*api.Config, error) {
 		Transport: transport,
 		CheckRedirect: func(*http.Request, []*http.Request) error {
 			// This can of course be overridden per-test by using its own client
-			return fmt.Errorf("redirects not allowed in these tests")
+			return errors.New("redirects not allowed in these tests")
 		},
 	}
 	config := api.DefaultConfig()
@@ -572,16 +574,48 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		}
 	}
 	vaultCfg := map[string]interface{}{}
-	vaultCfg["listener"] = map[string]interface{}{
-		"tcp": map[string]interface{}{
-			"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
-			"tls_cert_file": "/openbao/config/cert.pem",
-			"tls_key_file":  "/openbao/config/key.pem",
-			"telemetry": map[string]interface{}{
-				"unauthenticated_metrics_access": true,
+	ports := []string{"8200/tcp", "8201/tcp"}
+	listeners := []interface{}{
+		map[string]interface{}{
+			"tcp": map[string]interface{}{
+				"address":       fmt.Sprintf("%s:%d", "0.0.0.0", 8200),
+				"tls_cert_file": "/openbao/config/cert.pem",
+				"tls_key_file":  "/openbao/config/key.pem",
+				"telemetry": map[string]interface{}{
+					"unauthenticated_metrics_access": true,
+				},
 			},
 		},
 	}
+	if opts.ClusterOptions.VaultNodeConfig != nil && opts.ClusterOptions.VaultNodeConfig.AdditionalListeners != nil {
+		lsCfg := opts.ClusterOptions.VaultNodeConfig.AdditionalListeners
+		listeners = append(listeners, lsCfg...)
+		for _, lCfgRaw := range lsCfg {
+			lCfg := lCfgRaw.(map[string]interface{})
+			for lType, lValueRaw := range lCfg {
+				if lType == "unix" {
+					continue
+				}
+
+				lValue := lValueRaw.(map[string]interface{})
+				address, ok := lValue["address"].(string)
+				if !ok {
+					continue
+				}
+
+				host, port, err := net.SplitHostPort(address)
+				if err != nil {
+					return fmt.Errorf("failed to split host/port in listener config: %w\n\tcfg: %#v", err, lValue)
+				}
+
+				if host != "127.0.0.1" && host != "localhost" {
+					ports = append(ports, fmt.Sprintf("%v/%v", port, lType))
+				}
+			}
+		}
+	}
+	vaultCfg["listener"] = listeners
+
 	vaultCfg["telemetry"] = map[string]interface{}{
 		"disable_hostname": true,
 	}
@@ -669,20 +703,26 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		}
 		testcluster.JSONLogNoTimestamp(n.Logger, s)
 	}}
+
+	env := []string{
+		// For now we're using disable_mlock, because this is for testing
+		// anyway, and because it prevents us using external plugins.
+		"SKIP_SETCAP=true",
+		"BAO_LOG_FORMAT=json",
+	}
+	if opts.Root {
+		env = append(env, "BAO_SKIP_DROP_ROOT=true")
+	}
+
 	r, err := dockhelper.NewServiceRunner(dockhelper.RunOptions{
 		ImageRepo: n.ImageRepo,
 		ImageTag:  n.ImageTag,
 		// We don't need to run update-ca-certificates in the container, because
 		// we're providing the CA in the raft join call, and otherwise Vault
 		// servers don't talk to one another on the API port.
-		Cmd: append([]string{"server"}, opts.Args...),
-		Env: []string{
-			// For now we're using disable_mlock, because this is for testing
-			// anyway, and because it prevents us using external plugins.
-			"SKIP_SETCAP=true",
-			"BAO_LOG_FORMAT=json",
-		},
-		Ports:           []string{"8200/tcp", "8201/tcp"},
+		Cmd:             append([]string{"server"}, opts.Args...),
+		Env:             env,
+		Ports:           ports,
 		ContainerName:   n.Name(),
 		NetworkName:     opts.NetworkName,
 		CopyFromTo:      copyFromTo,
@@ -700,7 +740,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 			// If we signal Vault before it installs its sighup handler, it'll die.
 			wg.Wait()
 			n.Logger.Trace("running poststart", "containerID", containerID, "IP", realIP)
-			return n.runner.RefreshFiles(ctx, containerID)
+			return n.Runner.RefreshFiles(ctx, containerID)
 		},
 		Capabilities:      []string{"NET_ADMIN"},
 		OmitLogTimestamps: true,
@@ -711,7 +751,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 	if err != nil {
 		return err
 	}
-	n.runner = r
+	n.Runner = r
 
 	probe := opts.StartProbe
 	if probe == nil {
@@ -741,6 +781,7 @@ func (n *DockerClusterNode) Start(ctx context.Context, opts *DockerClusterOption
 		return err
 	}
 
+	n.Service = svc
 	n.HostPort = svc.Config.Address()
 	n.Container = svc.Container
 	netName := opts.NetworkName
@@ -782,7 +823,7 @@ func (n *DockerClusterNode) AddNetworkDelay(ctx context.Context, delay time.Dura
 	// we're doing docker networking.
 	lastOctet := ip.To4()[3]
 
-	stdout, stderr, exitCode, err := n.runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
+	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
 			fmt.Sprintf("echo isolating node %s", targetIP),
@@ -817,7 +858,7 @@ func (n *DockerClusterNode) AddNetworkDelay(ctx context.Context, delay time.Dura
 // daemon to continue streaming logs and any test code to continue making
 // requests from the host to the partitioned node.
 func (n *DockerClusterNode) PartitionFromCluster(ctx context.Context) error {
-	stdout, stderr, exitCode, err := n.runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
+	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
 			fmt.Sprintf("echo partitioning container from network"),
@@ -851,7 +892,7 @@ func (n *DockerClusterNode) PartitionFromCluster(ctx context.Context) error {
 // UnpartitionFromCluster reverses a previous call to PartitionFromCluster and
 // restores full connectivity. Currently assumes the default "bridge" network.
 func (n *DockerClusterNode) UnpartitionFromCluster(ctx context.Context) error {
-	stdout, stderr, exitCode, err := n.runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
+	stdout, stderr, exitCode, err := n.Runner.RunCmdWithOutput(ctx, n.Container.ID, []string{
 		"/bin/sh",
 		"-xec", strings.Join([]string{
 			fmt.Sprintf("echo un-partitioning container from network"),
@@ -904,11 +945,12 @@ type DockerClusterOptions struct {
 	Args        []string
 	StartProbe  func(*api.Client) error
 	Storage     testcluster.ClusterStorage
+	Root        bool
+	Entrypoint  string
 }
 
 func DefaultOptions(t *testing.T) *DockerClusterOptions {
 	return &DockerClusterOptions{
-		// TODO - update to openbao's Docker location when it is published.
 		ImageRepo:   "quay.io/openbao/openbao",
 		ImageTag:    "latest",
 		VaultBinary: api.ReadBaoVariable("BAO_BINARY"),
@@ -930,7 +972,7 @@ func ensureLeaderMatches(ctx context.Context, client *api.Client, ready func(res
 		switch {
 		case err != nil:
 		case leader == nil:
-			err = fmt.Errorf("nil response to leader check")
+			err = errors.New("nil response to leader check")
 		default:
 			err = ready(leader)
 			if err == nil {
@@ -1105,6 +1147,7 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 	if err != nil {
 		return "", err
 	}
+	defer f.Close()
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
@@ -1115,10 +1158,35 @@ func (dc *DockerCluster) setupImage(ctx context.Context, opts *DockerClusterOpti
 		Mode: 0o755,
 	}
 
+	if len(opts.Entrypoint) > 0 {
+		ef, err := os.Open(opts.Entrypoint)
+		if err != nil {
+			return "", err
+		}
+		defer ef.Close()
+
+		edata, err := io.ReadAll(ef)
+		if err != nil {
+			return "", err
+		}
+
+		bCtx["entrypoint"] = &dockhelper.FileContents{
+			Data: edata,
+			Mode: 0o755,
+		}
+	}
+
 	containerFile := fmt.Sprintf(`
 FROM %s:%s
 COPY bao /bin/bao
 `, opts.ImageRepo, sourceTag)
+
+	if opts.Root {
+		containerFile += "USER root\n"
+	}
+	if len(opts.Entrypoint) > 0 {
+		containerFile += "COPY entrypoint /usr/local/bin/docker-entrypoint.sh\n"
+	}
 
 	_, err = dockhelper.BuildImage(ctx, dc.DockerAPI, containerFile, bCtx,
 		dockhelper.BuildRemove(true), dockhelper.BuildForceRemove(true),

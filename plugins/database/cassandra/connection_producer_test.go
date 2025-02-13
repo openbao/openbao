@@ -165,7 +165,7 @@ func TestSelfSignedCA(t *testing.T) {
 
 			_, err := db.Initialize(ctx, initReq)
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

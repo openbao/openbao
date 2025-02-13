@@ -4,6 +4,7 @@
 package configutil
 
 import (
+	"errors"
 	"fmt"
 	"net/textproto"
 	"strconv"
@@ -38,14 +39,14 @@ func ParseCustomResponseHeaders(responseHeaders interface{}) (map[string]map[str
 
 	customResponseHeader, ok := responseHeaders.([]map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("response headers were not configured correctly. please make sure they're in a slice of maps")
+		return nil, errors.New("response headers were not configured correctly. please make sure they're in a slice of maps")
 	}
 
 	for _, crh := range customResponseHeader {
 		for statusCode, responseHeader := range crh {
 			headerValList, ok := responseHeader.([]map[string]interface{})
 			if !ok {
-				return nil, fmt.Errorf("response headers were not configured correctly. please make sure they're in a slice of maps")
+				return nil, errors.New("response headers were not configured correctly. please make sure they're in a slice of maps")
 			}
 
 			if !IsValidStatusCode(statusCode) {
@@ -53,7 +54,7 @@ func ParseCustomResponseHeaders(responseHeaders interface{}) (map[string]map[str
 			}
 
 			if len(headerValList) != 1 {
-				return nil, fmt.Errorf("invalid number of response headers exist")
+				return nil, errors.New("invalid number of response headers exist")
 			}
 			headerValMap := headerValList[0]
 			headerVal, err := parseHeaders(headerValMap)
@@ -112,7 +113,7 @@ func parseHeaders(in map[string]interface{}) (map[string]string, error) {
 func parseHeaderValues(header interface{}) (string, error) {
 	var sl []string
 	if _, ok := header.([]interface{}); !ok {
-		return "", fmt.Errorf("headers must be given in a list of strings")
+		return "", errors.New("headers must be given in a list of strings")
 	}
 	headerValList := header.([]interface{})
 	for _, vh := range headerValList {

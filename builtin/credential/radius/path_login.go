@@ -5,6 +5,7 @@ package radius
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -64,7 +65,7 @@ func pathLogin(b *backend) *framework.Path {
 func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username := d.Get("username").(string)
 	if username == "" {
-		return nil, fmt.Errorf("missing username")
+		return nil, errors.New("missing username")
 	}
 
 	return &logical.Response{
@@ -173,7 +174,7 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 	}
 
 	if !policyutil.EquivalentPolicies(finalPolicies, req.Auth.TokenPolicies) {
-		return nil, fmt.Errorf("policies have changed, not renewing")
+		return nil, errors.New("policies have changed, not renewing")
 	}
 
 	req.Auth.Period = cfg.TokenPeriod
@@ -183,6 +184,12 @@ func (b *backend) pathLoginRenew(ctx context.Context, req *logical.Request, d *f
 }
 
 func (b *backend) RadiusLogin(ctx context.Context, req *logical.Request, username string, password string) ([]string, *logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer txRollback()
+
 	cfg, err := b.Config(ctx, req)
 	if err != nil {
 		return nil, nil, err
@@ -225,6 +232,10 @@ func (b *backend) RadiusLogin(ctx context.Context, req *logical.Request, usernam
 	}
 	if user != nil {
 		policies = user.Policies
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, nil, err
 	}
 
 	return policies, &logical.Response{}, nil

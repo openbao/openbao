@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -33,7 +32,7 @@ func TestAudit_ReadOnlyViewDuringMount(t *testing.T) {
 			Value: []byte("baz"),
 		})
 		if err == nil || !strings.Contains(err.Error(), logical.ErrSetupReadOnly.Error()) {
-			t.Fatalf("expected a read-only error")
+			t.Fatal("expected a read-only error")
 		}
 		factory := corehelpers.NoopAuditFactory(nil)
 		return factory(ctx, config)
@@ -65,7 +64,7 @@ func TestCore_EnableAudit(t *testing.T) {
 	}
 
 	if !c.auditBroker.IsRegistered("foo/") {
-		t.Fatalf("missing audit backend")
+		t.Fatal("missing audit backend")
 	}
 
 	conf := &CoreConfig{
@@ -84,7 +83,7 @@ func TestCore_EnableAudit(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -95,7 +94,7 @@ func TestCore_EnableAudit(t *testing.T) {
 
 	// Check for registration
 	if !c2.auditBroker.IsRegistered("foo/") {
-		t.Fatalf("missing audit backend")
+		t.Fatal("missing audit backend")
 	}
 }
 
@@ -103,7 +102,7 @@ func TestCore_EnableAudit_MixedFailures(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	c.auditBackends["fail"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		return nil, fmt.Errorf("failing enabling")
+		return nil, errors.New("failing enabling")
 	}
 
 	c.audit = &MountTable{
@@ -152,7 +151,7 @@ func TestCore_EnableAudit_Local(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)
 	c.auditBackends["fail"] = func(ctx context.Context, config *audit.BackendConfig) (audit.Backend, error) {
-		return nil, fmt.Errorf("failing enabling")
+		return nil, errors.New("failing enabling")
 	}
 
 	c.audit = &MountTable{
@@ -260,7 +259,7 @@ func TestCore_DisableAudit(t *testing.T) {
 
 	// Check for registration
 	if c.auditBroker.IsRegistered("foo") {
-		t.Fatalf("audit backend present")
+		t.Fatal("audit backend present")
 	}
 
 	conf := &CoreConfig{
@@ -277,7 +276,7 @@ func TestCore_DisableAudit(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -293,7 +292,7 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 
 	// Verify we have an audit broker
 	if c.auditBroker == nil {
-		t.Fatalf("missing audit broker")
+		t.Fatal("missing audit broker")
 	}
 
 	// Start a second core with same physical
@@ -311,7 +310,7 @@ func TestCore_DefaultAuditTable(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if i+1 == len(keys) && !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -406,7 +405,7 @@ func TestAuditBroker_LogRequest(t *testing.T) {
 	}
 
 	// Should still work with one failing backend
-	a1.ReqErr = fmt.Errorf("failed")
+	a1.ReqErr = errors.New("failed")
 	logInput = &logical.LogInput{
 		Auth:    auth,
 		Request: req,
@@ -416,7 +415,7 @@ func TestAuditBroker_LogRequest(t *testing.T) {
 	}
 
 	// Should FAIL work with both failing backends
-	a2.ReqErr = fmt.Errorf("failed")
+	a2.ReqErr = errors.New("failed")
 	if err := b.LogRequest(ctx, logInput, headersConf); !errwrap.Contains(err, "no audit backend succeeded in logging the request") {
 		t.Fatalf("err: %v", err)
 	}
@@ -454,7 +453,7 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 			"password": "password",
 		},
 	}
-	respErr := fmt.Errorf("permission denied")
+	respErr := errors.New("permission denied")
 
 	// Copy so we can verify nothing changed
 	authCopyRaw, err := copystructure.Copy(auth)
@@ -507,7 +506,7 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 	}
 
 	// Should still work with one failing backend
-	a1.RespErr = fmt.Errorf("failed")
+	a1.RespErr = errors.New("failed")
 	logInput = &logical.LogInput{
 		Auth:     auth,
 		Request:  req,
@@ -520,7 +519,7 @@ func TestAuditBroker_LogResponse(t *testing.T) {
 	}
 
 	// Should FAIL work with both failing backends
-	a2.RespErr = fmt.Errorf("failed")
+	a2.RespErr = errors.New("failed")
 	err = b.LogResponse(ctx, logInput, headersConf)
 	if !strings.Contains(err.Error(), "no audit backend succeeded in logging the response") {
 		t.Fatalf("err: %v", err)
@@ -554,7 +553,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 			"Content-Type":   {"baz"},
 		},
 	}
-	respErr := fmt.Errorf("permission denied")
+	respErr := errors.New("permission denied")
 
 	// Copy so we can verify nothing changed
 	reqCopyRaw, err := copystructure.Copy(req)
@@ -592,7 +591,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 	}
 
 	// Should still work with one failing backend
-	a1.ReqErr = fmt.Errorf("failed")
+	a1.ReqErr = errors.New("failed")
 	logInput = &logical.LogInput{
 		Auth:     auth,
 		Request:  req,
@@ -604,7 +603,7 @@ func TestAuditBroker_AuditHeaders(t *testing.T) {
 	}
 
 	// Should FAIL work with both failing backends
-	a2.ReqErr = fmt.Errorf("failed")
+	a2.ReqErr = errors.New("failed")
 	err = b.LogRequest(ctx, logInput, headersConf)
 	if !errwrap.Contains(err, "no audit backend succeeded in logging the request") {
 		t.Fatalf("err: %v", err)

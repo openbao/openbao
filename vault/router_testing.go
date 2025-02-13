@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -47,7 +46,7 @@ func (n *NoopBackend) HandleRequest(ctx context.Context, req *logical.Request) (
 	}
 
 	if n.RollbackErrs && req.Operation == "rollback" {
-		return nil, fmt.Errorf("no-op backend rollback has erred out")
+		return nil, errors.New("no-op backend rollback has erred out")
 	}
 
 	var err error
@@ -63,7 +62,7 @@ func (n *NoopBackend) HandleRequest(ctx context.Context, req *logical.Request) (
 	n.Paths = append(n.Paths, req.Path)
 	n.Requests = append(n.Requests, &requestCopy)
 	if req.Storage == nil {
-		return nil, fmt.Errorf("missing view")
+		return nil, errors.New("missing view")
 	}
 
 	if req.Path == "panic" {

@@ -557,10 +557,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
-	//ns, err := namespace.FromContext(ctx)
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
-	//}
 	var requestBodyToken string
 	var returnRequestAuthToken bool
 

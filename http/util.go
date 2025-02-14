@@ -23,16 +23,13 @@ import (
 
 var (
 	restrictedAPIs = []string{
-		"sys/activation-flags/secrets-sync/activate",
 		"sys/audit",
 		"sys/audit-hash",
 		"sys/config/cors",
-		"sys/config/group-policy-application",
 		"sys/config/reload",
 		"sys/config/state",
 		"sys/config/ui",
 		"sys/decode-token",
-		"sys/experiments",
 		"sys/generate-recovery-token",
 		"sys/generate-root",
 		"sys/health",
@@ -72,10 +69,6 @@ var (
 		"sys/mfa/method/",
 		"sys/pprof/",
 		"sys/rekey/",
-		"/sys/replication/dr/primary/",
-		"/sys/replication/dr/secondary/",
-		"/sys/replication/performance/primary/",
-		"/sys/replication/performance/secondary/",
 	}
 
 	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {

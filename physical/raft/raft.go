@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1245,7 +1246,29 @@ func (b *RaftBackend) PromotePeer(ctx context.Context, peerID string) error {
 		if b.raft == nil {
 			return errors.New("raft storage is not initialized")
 		}
-		return errors.New("raft storage autopilot must be enabled to promote a peer")
+		peers, err := b.Peers(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get Raft peers: %s", err)
+		}
+
+		found := false
+		addr := ""
+		for _, peer := range peers {
+			if peer.ID == peerID {
+				addr = peer.Address
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("server %s not found in raft configuration", peerID)
+		}
+
+		future := b.raft.AddVoter(raft.ServerID(peerID), raft.ServerAddress(addr), 0, 0)
+		if err := future.Error(); err != nil {
+			return fmt.Errorf("failed to promote non-voter to voter: %s", err)
+		}
+		return nil
 	}
 
 	if b.autopilot == nil {
@@ -1273,7 +1296,37 @@ func (b *RaftBackend) DemotePeer(ctx context.Context, peerID string) error {
 		if b.raft == nil {
 			return errors.New("raft storage is not initialized")
 		}
-		return errors.New("raft storage autopilot must be enabled to promote a peer")
+
+		// refuse to demote current leader to not trigger a leader election
+		// when the leader is demoted. This is not necessary if autopilot is enabled,
+		// as it will handle this case for us and only demote the leader after a
+		// leader election
+		if strings.EqualFold(peerID, b.localID) {
+			return errors.New("refusing to demote current leader")
+		}
+
+		peers, err := b.Peers(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get Raft peers: %s", err)
+		}
+
+		found := false
+		for _, peer := range peers {
+			if peer.ID == peerID {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return fmt.Errorf("server %s not found in raft configuration", peerID)
+		}
+
+		future := b.raft.DemoteVoter(raft.ServerID(peerID), 0, 0)
+		if err := future.Error(); err != nil {
+			return fmt.Errorf("failed to demote voter to non-voter: %s", err)
+		}
+		return nil
 	}
 
 	if b.autopilot == nil {

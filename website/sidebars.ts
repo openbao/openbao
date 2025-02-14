@@ -463,7 +463,7 @@ const sidebars: SidebarsConfig = {
             ],
             "Upgrade Guides": [
                 "upgrading/index",
-                "upgrading/vault-ha-upgrade",
+                "upgrading/ha-upgrade",
                 "upgrading/plugins",
             ],
             "Release Notes": [

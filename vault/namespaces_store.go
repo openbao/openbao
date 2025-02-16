@@ -17,18 +17,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
-func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Namespace, error) {
-	return namespaceByID(ctx, nsID, c)
-}
-
-func (c *Core) ListNamespaces(includePath bool) []*namespace.Namespace {
-	return []*namespace.Namespace{namespace.RootNamespace}
-}
-
-func (c *Core) resetNamespaceCache() {}
-
-// start all new namespace code below
-
 var immutableNamespaces = []string{
 	"sys",
 	"audit",

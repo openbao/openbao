@@ -302,39 +302,70 @@ func (b *backend) pathDeleteIssuerHandler(ctx context.Context, req *logical.Requ
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
-	issuerRef := getIssuerRef(d)
+	// This handler is used by two endpoints, `config/ca` and `issuer/{issuer_ref}`
+	isConfigCARequest := req.Path == "config/ca"
+
+	// Use the transaction storage if there's one.
+	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
+		txn, err := txnStorage.BeginTx(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		defer txn.Rollback(ctx)
+		req.Storage = txn
+	}
 
 	sc := b.makeStorageContext(ctx, req.Storage)
-	id, err := sc.resolveIssuerReference(issuerRef)
-	if err != nil {
-		// Return as if we deleted it if we fail to lookup the issuer.
-		if id == IssuerRefNotFound {
-			return &logical.Response{}, nil
-		}
-		return handleStorageContextErr(err)
-	}
 
 	response := &logical.Response{}
+	if isConfigCARequest {
+		issuersDeleted, err := sc.purgeIssuers()
+		if err != nil {
+			return handleStorageContextErr(err, "failed to delete issuers")
+		}
+		if issuersDeleted > 0 {
+			response.AddWarning(fmt.Sprintf("Deleted %d issuers, including default issuer if configured.", issuersDeleted))
+		}
+	} else {
+		issuerRef := getIssuerRef(d)
+		id, err := sc.resolveIssuerReference(issuerRef)
+		if err != nil {
+			// Return as if we deleted it if we fail to lookup the issuer.
+			if id == IssuerRefNotFound {
+				return nil, nil
+			}
+			return handleStorageContextErr(err)
+		}
 
-	issuer, err := sc.fetchIssuerById(id)
-	if err != nil {
-		return nil, err
-	}
-	if issuer.Name != "" {
-		addWarningOnDereferencing(sc, issuer.Name, response)
-	}
-	addWarningOnDereferencing(sc, string(issuer.ID), response)
+		issuer, err := sc.fetchIssuerById(id)
+		if err != nil {
+			return handleStorageContextErr(err)
+		}
+		if issuer.Name != "" {
+			addWarningOnDereferencing(sc, issuer.Name, response)
+		}
+		addWarningOnDereferencing(sc, string(issuer.ID), response)
 
-	wasDefault, err := sc.deleteIssuer(id)
-	if err != nil {
-		return nil, err
+		wasDefault, err := sc.deleteIssuer(id)
+		if err != nil {
+			return handleStorageContextErr(err)
+		}
+
+		if wasDefault {
+			response.AddWarning(fmt.Sprintf("Deleted issuer %v (via issuer_ref %v); this was configured as the default issuer. Operations without an explicit issuer will not work until a new default is configured.", id, issuerRef))
+			addWarningOnDereferencing(sc, defaultRef, response)
+		}
 	}
 
-	if wasDefault {
-		response.AddWarning(fmt.Sprintf("Deleted issuer %v (via issuer_ref %v); this was configured as the default issuer. Operations without an explicit issuer will not work until a new default is configured.", id, issuerRef))
-		addWarningOnDereferencing(sc, defaultRef, response)
+	// Commit our transaction if we created one!
+	if txn, ok := req.Storage.(logical.Transaction); ok {
+		if err := txn.Commit(ctx); err != nil {
+			return nil, err
+		}
 	}
 
+	//  If there are no warnings to be returned, the response status code should be 204
 	if len(response.Warnings) == 0 {
 		return nil, nil
 	}

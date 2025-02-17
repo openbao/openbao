@@ -57,7 +57,7 @@ func pathConfigCA(b *backend) *framework.Path {
 				},
 			},
 			logical.DeleteOperation: &framework.PathOperation{
-				Callback: b.pathConfigCADelete,
+				Callback: b.pathDeleteIssuerHandler,
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationSuffix: "ca",
 					OperationVerb:   "purge",
@@ -86,46 +86,6 @@ func pathConfigCA(b *backend) *framework.Path {
 		HelpSynopsis:    pathConfigCASyn,
 		HelpDescription: pathConfigCADesc,
 	}
-}
-
-func (b *backend) pathConfigCADelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// Since we're planning on updating issuers here, grab the lock so we've
-	// got a consistent view.
-	b.issuersLock.Lock()
-	defer b.issuersLock.Unlock()
-
-	// Use the transaction storage if there's one.
-	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		defer txn.Rollback(ctx)
-		req.Storage = txn
-	}
-
-	sc := b.makeStorageContext(ctx, req.Storage)
-
-	issuersDeleted, err := sc.purgeIssuers()
-	if err != nil {
-		return handleStorageContextErr(err, "failed to delete issuers")
-	}
-
-	// Commit our transaction if we created one!
-	if txn, ok := req.Storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	response := &logical.Response{}
-
-	if issuersDeleted > 0 {
-		response.AddWarning(fmt.Sprintf("Deleted %d issuers, including the configured 'default'.", issuersDeleted))
-	}
-
-	return response, nil
 }
 
 func caKey(ctx context.Context, storage logical.Storage, keyType string) (*keyStorageEntry, error) {

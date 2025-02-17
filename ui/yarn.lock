@@ -6607,13 +6607,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/ember-resolver@npm:*, @types/ember-resolver@npm:^5.0.13":
+"@types/ember-resolver@npm:*":
   version: 5.0.13
   resolution: "@types/ember-resolver@npm:5.0.13"
   dependencies:
     "@types/ember__object": "*"
     "@types/ember__owner": "*"
   checksum: 3ece114d8368768d8198e3156b2df51b4be9d4f9ab8d60f2a1cb63a301b48ec485f51f5ddc8ad9b6f4d3739d252107463ff2508bec559efb7d8593e4975e3f48
+  languageName: node
+  linkType: hard
+
+"@types/ember-resolver@npm:^9.0.2":
+  version: 9.0.2
+  resolution: "@types/ember-resolver@npm:9.0.2"
+  dependencies:
+    ember-resolver: "*"
+  checksum: cdaaae5480d40641610debfeecad1fa7a8aeac9b2dfacd259b867949426cf853c671aea3375a0706efc2893513cd209a9ecb04a6cd3ac2a114232584563156d9
   languageName: node
   linkType: hard
 
@@ -15220,7 +15229,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-resolver@npm:^13.1.0":
+"ember-resolver@npm:*, ember-resolver@npm:^13.1.0":
   version: 13.1.0
   resolution: "ember-resolver@npm:13.1.0"
   dependencies:
@@ -27534,7 +27543,7 @@ __metadata:
     "@types/ember-data__serializer": ^4.0.1
     "@types/ember-data__store": ^4.0.2
     "@types/ember-qunit": ^5.0.2
-    "@types/ember-resolver": ^5.0.13
+    "@types/ember-resolver": ^9.0.2
     "@types/ember__application": ^4.0.4
     "@types/ember__array": ^4.0.3
     "@types/ember__component": ^4.0.22

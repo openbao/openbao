@@ -221,20 +221,30 @@ func (b *backend) pathGetIssuerPublicKeyHandler(ctx context.Context, req *logica
 }
 
 func (b *backend) pathReadIssuerHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	issuerRef := getIssuerRef(d)
-
 	sc := b.makeStorageContext(ctx, req.Storage)
-	id, err := sc.resolveIssuerReference(issuerRef)
+
+	// This handler is used by two endpoints, `config/ca` and `issuer/{issuer_ref}`
+	// If called from `config/ca`, we don't want to check the reference provided and fetch the default issuer
+	isConfigCA := req.Path == "config/ca"
+
+	var issuer *issuerEntry
+	var err error
+	if isConfigCA {
+		issuer, err = sc.fetchDefaultIssuer()
+	} else {
+		issuerRef := getIssuerRef(d)
+		var id string
+		id, err = sc.resolveIssuerReference(issuerRef)
+		if err == nil {
+			issuer, err = sc.fetchIssuerById(id)
+		}
+	}
+
 	if err != nil {
 		return handleStorageContextErr(err)
 	}
 
-	entry, err := sc.fetchIssuerById(id)
-	if err != nil {
-		return handleStorageContextErr(err)
-	}
-
-	return respondReadIssuer(entry)
+	return respondReadIssuer(issuer)
 }
 
 func (b *backend) pathUpdateIssuerHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

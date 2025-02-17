@@ -69,7 +69,7 @@ func pathConfigCA(b *backend) *framework.Path {
 				},
 			},
 			logical.ReadOperation: &framework.PathOperation{
-				Callback: b.pathConfigCARead,
+				Callback: b.pathReadIssuerHandler,
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "read",
 					OperationSuffix: "default-ca",
@@ -86,17 +86,6 @@ func pathConfigCA(b *backend) *framework.Path {
 		HelpSynopsis:    pathConfigCASyn,
 		HelpDescription: pathConfigCADesc,
 	}
-}
-
-func (b *backend) pathConfigCARead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	sc := b.makeStorageContext(ctx, req.Storage)
-
-	issuer, err := sc.fetchDefaultIssuer()
-	if err != nil {
-		return handleStorageContextErr(err)
-	}
-
-	return respondReadIssuer(issuer)
 }
 
 func (b *backend) pathConfigCADelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

@@ -67,7 +67,7 @@ func pathIssuers(b *backend) *framework.Path {
 	}
 }
 
-func pathSubmitIssuer(b *backend) *framework.Path {
+func pathImportIssuer(b *backend) *framework.Path {
 	fields := map[string]*framework.FieldSchema{}
 	fields = addSubmitIssuerCommonFields(fields)
 
@@ -340,6 +340,10 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
+	// This handler is used by two endpoints, `config/ca` and `issuers/import/{issuer_name}`
+	// If called from `config/ca`, we don't want to explicity set a name neither check if `set_default` is set
+	isConfigCA := req.Path == "config/ca"
+
 	publicKey, privateKey, err := b.handleKeyGeneration(d)
 	if err != nil {
 		return handleStorageContextErr(err)
@@ -363,16 +367,19 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	if err != nil {
 		return nil, fmt.Errorf("error generating issuer's unique identifier: %w", err)
 	}
-	name, err := getIssuerName(sc, d)
-	if err != nil && err != errIssuerNameIsEmpty {
-		return handleStorageContextErr(err)
-	}
 	issuer := &issuerEntry{
 		ID:         id,
-		Name:       name,
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,
 		Version:    1,
+	}
+
+	if !isConfigCA {
+		name, err := getIssuerName(sc, d)
+		if err != nil && err != errIssuerNameIsEmpty {
+			return handleStorageContextErr(err)
+		}
+		issuer.Name = name
 	}
 
 	err = sc.writeIssuer(issuer)
@@ -380,11 +387,10 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		return handleStorageContextErr(err, "failed to persist the issuer")
 	}
 
-	response, err := respondReadIssuer(issuer)
+	response, _ := respondReadIssuer(issuer)
 
-	setDefault := d.Get("set_default").(bool)
+	setDefault := isConfigCA || d.Get("set_default").(bool)
 	if setDefault {
-		// Update issuers config to set new issuer as the 'default'
 		err = sc.setIssuersConfig(&issuerConfigEntry{DefaultIssuerID: id})
 		if err != nil {
 			// Even if the new issuer fails to be set as default, we want to return

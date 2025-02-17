@@ -76,7 +76,7 @@ func Backend(conf *logical.BackendConfig) (*backend, error) {
 			pathCleanupKeys(&b),
 			// Issuer APIs
 			pathConfigIssuers(&b),
-			pathSubmitIssuer(&b),
+			pathImportIssuer(&b),
 			pathIssuers(&b),
 			pathListIssuers(&b),
 			pathGetIssuerPublicKeyUnauthenticated(&b),

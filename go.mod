@@ -104,7 +104,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
-	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
+	github.com/natefinch/atomic v1.0.1
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
 	github.com/openbao/go-kms-wrapping/v2 v2.3.0

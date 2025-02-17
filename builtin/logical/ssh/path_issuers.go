@@ -223,11 +223,11 @@ func (b *backend) pathReadIssuerHandler(ctx context.Context, req *logical.Reques
 
 	// This handler is used by two endpoints, `config/ca` and `issuer/{issuer_ref}`
 	// If called from `config/ca`, we don't want to check the reference provided and fetch the default issuer
-	isConfigCA := req.Path == "config/ca"
+	isConfigCARequest := req.Path == "config/ca"
 
 	var issuer *issuerEntry
 	var err error
-	if isConfigCA {
+	if isConfigCARequest {
 		issuer, err = sc.fetchDefaultIssuer()
 	} else {
 		issuerRef := getIssuerRef(d)
@@ -381,7 +381,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 	// This handler is used by two endpoints, `config/ca` and `issuers/import/{issuer_name}`
 	// If called from `config/ca`, we don't want to explicity set a name neither check if `set_default` is set
-	isConfigCA := req.Path == "config/ca"
+	isConfigCARequest := req.Path == "config/ca"
 
 	publicKey, privateKey, err := b.handleKeyGeneration(d)
 	if err != nil {
@@ -413,7 +413,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		Version:    1,
 	}
 
-	if !isConfigCA {
+	if !isConfigCARequest {
 		name, err := getIssuerName(sc, d)
 		if err != nil && err != errIssuerNameIsEmpty {
 			return handleStorageContextErr(err)
@@ -428,7 +428,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 	response, _ := respondReadIssuer(issuer)
 
-	setDefault := isConfigCA || d.Get("set_default").(bool)
+	setDefault := isConfigCARequest || d.Get("set_default").(bool)
 	if setDefault {
 		err = sc.setIssuersConfig(&issuerConfigEntry{DefaultIssuerID: id})
 		if err != nil {

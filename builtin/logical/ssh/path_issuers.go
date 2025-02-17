@@ -303,6 +303,8 @@ func (b *backend) pathDeleteIssuerHandler(ctx context.Context, req *logical.Requ
 	defer b.issuersLock.Unlock()
 
 	// This handler is used by two endpoints, `config/ca` and `issuer/{issuer_ref}`
+	// If called from `config/ca`, we want to delete all generated or imported issuers
+	// otherwise just the one passed in by reference
 	isConfigCARequest := req.Path == "config/ca"
 
 	// Use the transaction storage if there's one.

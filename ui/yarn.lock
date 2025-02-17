@@ -7095,10 +7095,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/rsvp@npm:*, @types/rsvp@npm:^4.0.4":
+"@types/rsvp@npm:*":
   version: 4.0.4
   resolution: "@types/rsvp@npm:4.0.4"
   checksum: ed59be8246325c3676e67237c00d84830f801710af864dbf7d22e80441892e9a7beee07afcbdcd74ee8fbe3a24f37e93826dac1208199ac5601b663b7293cbed
+  languageName: node
+  linkType: hard
+
+"@types/rsvp@npm:^4.0.9":
+  version: 4.0.9
+  resolution: "@types/rsvp@npm:4.0.9"
+  checksum: 2c93a5bab22bd0ecfb6ecc238ca1e7e1dd0dff870d63eb63670d33148112f9d66b0af832e5c31cc0aa6534ab916092938a9b64072377070832808b7b36283a27
   languageName: node
   linkType: hard
 
@@ -27567,7 +27574,7 @@ __metadata:
     "@types/ember__test-helpers": ^2.8.2
     "@types/ember__utils": ^4.0.2
     "@types/qunit": ^2.19.12
-    "@types/rsvp": ^4.0.4
+    "@types/rsvp": ^4.0.9
     "@types/shell-quote": ^1.7.1
     "@typescript-eslint/eslint-plugin": 6.21.0
     "@typescript-eslint/parser": ^5.19.0

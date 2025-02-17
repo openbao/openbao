@@ -387,13 +387,9 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		// Update issuers config to set new issuer as the 'default'
 		err = sc.setIssuersConfig(&issuerConfigEntry{DefaultIssuerID: id})
 		if err != nil {
-			// It is not possible to have this error in the transaction, so check
-			// storage type and skip if is a transaction
-			if _, ok := req.Storage.(logical.Transaction); !ok {
-				// Even if the new issuer fails to be set as default, we want to return
-				// the newly submitted issuer with a warning
-				response.AddWarning(fmt.Sprintf("Unable to update the default issuers configuration: %s", err.Error()))
-			}
+			// Even if the new issuer fails to be set as default, we want to return
+			// the newly submitted issuer with a warning
+			response.AddWarning(fmt.Sprintf("Unable to update the default issuers configuration: %s", err.Error()))
 		}
 	}
 

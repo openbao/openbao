@@ -91,7 +91,7 @@
     "@types/ember__test-helpers": "^2.8.2",
     "@types/ember__utils": "^4.0.2",
     "@types/qunit": "^2.19.12",
-    "@types/rsvp": "^4.0.4",
+    "@types/rsvp": "^4.0.9",
     "@types/shell-quote": "^1.7.1",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "^5.19.0",

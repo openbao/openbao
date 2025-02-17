@@ -18,7 +18,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"golang.org/x/crypto/ssh"
@@ -45,7 +44,7 @@ func pathConfigCA(b *backend) *framework.Path {
 
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
-				Callback: b.pathConfigCAUpdate,
+				Callback: b.pathWriteIssuerHandler,
 				DisplayAttrs: &framework.DisplayAttributes{
 					OperationVerb:   "configure",
 					OperationSuffix: "default-ca",
@@ -190,76 +189,6 @@ func caKey(ctx context.Context, storage logical.Storage, keyType string) (*keySt
 	}
 
 	return &keyEntry, nil
-}
-
-func (b *backend) pathConfigCAUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	// Since we're planning on updating issuers here, grab the lock so we've
-	// got a consistent view.
-	b.issuersLock.Lock()
-	defer b.issuersLock.Unlock()
-
-	publicKey, privateKey, err := b.handleKeyGeneration(data)
-	if err != nil {
-		return handleStorageContextErr(err)
-	}
-
-	// Use the transaction storage if there's one.
-	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		defer txn.Rollback(ctx)
-		req.Storage = txn
-	}
-
-	sc := b.makeStorageContext(ctx, req.Storage)
-
-	// Create a new issuer entry
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		return nil, fmt.Errorf("error generating issuer's unique identifier: %w", err)
-	}
-	name, err := getIssuerName(sc, data)
-	if err != nil && err != errIssuerNameIsEmpty {
-		return handleStorageContextErr(err)
-	}
-	issuer := &issuerEntry{
-		ID:         id,
-		Name:       name,
-		PublicKey:  publicKey,
-		PrivateKey: privateKey,
-		Version:    1,
-	}
-
-	err = sc.writeIssuer(issuer)
-	if err != nil {
-		return handleStorageContextErr(err, "failed to persist the issuer")
-	}
-
-	response, err := respondReadIssuer(issuer)
-
-	// Update issuers config to set new issuers as the 'default'
-	err = sc.setIssuersConfig(&issuerConfigEntry{DefaultIssuerID: id})
-	if err != nil {
-		// It is not possible to have this error in the transaction, so check
-		// storage type and skip if is a transaction
-		if _, ok := req.Storage.(logical.Transaction); !ok {
-			// Even if the new issuer fails to be set as default, we want to return
-			// the newly submitted issuer with a warning
-			response.AddWarning(fmt.Sprintf("Unable to update default issuers configuration: %s", err.Error()))
-		}
-	}
-
-	// Commit our transaction if we created one!
-	if txn, ok := req.Storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return nil, err
-		}
-	}
-
-	return response, nil
 }
 
 func generateSSHKeyPair(randomSource io.Reader, keyType string, keyBits int) (string, string, error) {

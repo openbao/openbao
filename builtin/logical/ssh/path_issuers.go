@@ -209,15 +209,13 @@ func (b *backend) pathGetIssuerPublicKeyHandler(ctx context.Context, req *logica
 		return handleStorageContextErr(err)
 	}
 
-	response := &logical.Response{
+	return &logical.Response{
 		Data: map[string]interface{}{
 			logical.HTTPContentType: "text/plain",
 			logical.HTTPRawBody:     []byte(issuer.PublicKey),
-			logical.HTTPStatusCode:  200,
+			logical.HTTPStatusCode:  http.StatusOK,
 		},
-	}
-
-	return response, nil
+	}, nil
 }
 
 func (b *backend) pathReadIssuerHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {

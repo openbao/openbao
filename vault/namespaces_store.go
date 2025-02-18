@@ -156,7 +156,11 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, path string, meta ma
 
 // PatchNamespace is used to update the given namespace
 func (ns *NamespaceStore) PatchNamespace(ctx context.Context, path string, meta map[string]string) error {
-	return fmt.Errorf("namespace patching is not supported, use the delete and set operation instead")
+	_, err := ns.GetNamespace(ctx, path)
+	if err != nil {
+		return fmt.Errorf("namespace not found: %w", err)
+	}
+	return ns.SetNamespace(ctx, path, meta, false)
 }
 
 // GetNamespace is used to fetch the named namespace

@@ -160,7 +160,7 @@ func (ns *NamespaceStore) PatchNamespace(ctx context.Context, path string, meta 
 	if err != nil {
 		return fmt.Errorf("namespace not found: %w", err)
 	}
-	return ns.SetNamespace(ctx, path, meta, false)
+	return ns.SetNamespace(ctx, path, meta)
 }
 
 // GetNamespace is used to fetch the named namespace

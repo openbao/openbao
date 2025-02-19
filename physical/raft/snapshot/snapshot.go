@@ -99,6 +99,7 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {
+		compressor.Close()
 		return nil, fmt.Errorf("failed to write snapshot file: %v", err)
 	}
 
@@ -144,6 +145,7 @@ func Write(logger hclog.Logger, r *raft.Raft, sealer Sealer, w io.Writer) error 
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {
+		compressor.Close()
 		return fmt.Errorf("failed to write snapshot file: %v", err)
 	}
 
@@ -208,7 +210,11 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress snapshot: %v", err)
 	}
-	defer decomp.Close()
+	defer func() {
+		if err := decomp.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	// Read the archive, throwing away the snapshot data.
 	var metadata raft.SnapshotMeta
@@ -246,7 +252,11 @@ func Parse(in io.Reader, out io.Writer) (*raft.SnapshotMeta, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress snapshot: %v", err)
 	}
-	defer decomp.Close()
+	defer func() {
+		if err := decomp.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	// Read the archive, and write the snapshot data to out.
 	var metadata raft.SnapshotMeta

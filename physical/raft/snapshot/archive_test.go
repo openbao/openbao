@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"strings"
@@ -78,7 +77,7 @@ func TestArchive_GoodData(t *testing.T) {
 		defer f.Close()
 
 		var metadata raft.SnapshotMeta
-		err = read(f, &metadata, ioutil.Discard, nil)
+		err = read(f, &metadata, io.Discard, nil)
 		if err != nil {
 			t.Fatalf("case %d: should've read the snapshot, but didn't: %v", i, err)
 		}
@@ -107,7 +106,7 @@ func TestArchive_BadData(t *testing.T) {
 		defer f.Close()
 
 		var metadata raft.SnapshotMeta
-		err = read(f, &metadata, ioutil.Discard, nil)
+		err = read(f, &metadata, io.Discard, nil)
 		if err == nil || !strings.Contains(err.Error(), c.Error) {
 			t.Fatalf("case %d (%s): %v", i, c.Name, err)
 		}

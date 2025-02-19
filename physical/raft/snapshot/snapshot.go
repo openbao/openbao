@@ -13,7 +13,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/hashicorp/go-hclog"
@@ -57,13 +56,13 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 	// Take the snapshot.
 	future := r.Snapshot()
 	if err := future.Error(); err != nil {
-		return nil, fmt.Errorf("Raft error when taking snapshot: %v", err)
+		return nil, fmt.Errorf("raft error when taking snapshot: %v", err)
 	}
 
 	// Open up the snapshot.
 	metadata, snap, err := future.Open()
 	if err != nil {
-		return nil, fmt.Errorf("failed to open snapshot: %v:", err)
+		return nil, fmt.Errorf("failed to open snapshot: %v", err)
 	}
 	defer func() {
 		if err := snap.Close(); err != nil {
@@ -74,7 +73,7 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 	// Make a scratch file to receive the contents so that we don't buffer
 	// everything in memory. This gets deleted in Close() since we keep it
 	// around for re-reading.
-	archive, err := ioutil.TempFile("", "snapshot")
+	archive, err := os.CreateTemp("", "snapshot")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create snapshot file: %v", err)
 	}
@@ -123,7 +122,7 @@ func Write(logger hclog.Logger, r *raft.Raft, sealer Sealer, w io.Writer) error 
 	// Take the snapshot.
 	future := r.Snapshot()
 	if err := future.Error(); err != nil {
-		return fmt.Errorf("Raft error when taking snapshot: %v", err)
+		return fmt.Errorf("raft error when taking snapshot: %v", err)
 	}
 
 	// Open up the snapshot.
@@ -213,7 +212,7 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 
 	// Read the archive, throwing away the snapshot data.
 	var metadata raft.SnapshotMeta
-	if err := read(decomp, &metadata, ioutil.Discard, nil); err != nil {
+	if err := read(decomp, &metadata, io.Discard, nil); err != nil {
 		return nil, fmt.Errorf("failed to read snapshot file: %v", err)
 	}
 
@@ -230,7 +229,7 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 // The docs for gzip.Reader say: "Clients should treat data returned by Read as
 // tentative until they receive the io.EOF marking the end of the data."
 func concludeGzipRead(decomp *gzip.Reader) error {
-	extra, err := io.Copy(ioutil.Discard, decomp) // Copy consumes the EOF
+	extra, err := io.Copy(io.Discard, decomp) // Copy consumes the EOF
 	if err != nil {
 		return err
 	} else if extra != 0 {
@@ -273,7 +272,7 @@ func RestoreWithSealer(logger hclog.Logger, in io.Reader, r *raft.Raft, sealer S
 
 	// Feed the snapshot into Raft.
 	if err := r.Restore(&metadata, snap, 0); err != nil {
-		return fmt.Errorf("Raft error when restoring snapshot: %v", err)
+		return fmt.Errorf("raft error when restoring snapshot: %v", err)
 	}
 
 	return nil
@@ -297,7 +296,7 @@ func WriteToTempFileWithSealer(logger hclog.Logger, in io.Reader, metadata *raft
 
 	// Make a scratch file to receive the contents of the snapshot data so
 	// we can avoid buffering in memory.
-	snap, err := ioutil.TempFile("", "snapshot")
+	snap, err := os.CreateTemp("", "snapshot")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create temp snapshot file: %v", err)
 	}

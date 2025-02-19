@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,7 +70,9 @@ func (m *MockSnapshot) Persist(sink raft.SnapshotSink) error {
 	hd := codec.MsgpackHandle{}
 	enc := codec.NewEncoder(sink, &hd)
 	if err := enc.Encode(m.logs[:m.maxIndex]); err != nil {
-		sink.Cancel()
+		if err := sink.Cancel(); err != nil {
+			log.Printf("Failed to cancel sink: %v", err)
+		}
 		return err
 	}
 	sink.Close()

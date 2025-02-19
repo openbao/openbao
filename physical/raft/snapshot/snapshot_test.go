@@ -156,11 +156,10 @@ func fileSha256(t *testing.T, f *os.File) string {
 
 func TestSnapshot(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
-	defer func() error {
+	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	// Make a Raft and populate it with some data. We tee everything we
@@ -189,11 +188,10 @@ func TestSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	defer func() error {
+	defer func() {
 		if err := snap.Close(); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	// Verify checksum is populated
@@ -257,11 +255,10 @@ func TestSnapshot(t *testing.T) {
 
 func TestSnapshotWrite(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
-	defer func() error {
+	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	// Make a Raft and populate it with some data. We tee everything we
@@ -291,15 +288,14 @@ func TestSnapshotWrite(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 
-	Write(logger, before, nil, snap)
+	err = Write(logger, before, nil, snap)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	defer func() error {
+	defer func() {
 		if err := snap.Close(); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	if _, err := snap.Seek(0, 0); err != nil {
@@ -385,11 +381,10 @@ func TestSnapshot_BadVerify(t *testing.T) {
 
 func TestSnapshot_TruncatedVerify(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
-	defer func() error {
+	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	// Make a Raft and populate it with some data. We tee everything we
@@ -419,11 +414,10 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	defer func() error {
+	defer func() {
 		if err := snap.Close(); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	var data []byte
@@ -451,11 +445,10 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 
 func TestSnapshot_BadRestore(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
-	defer func() error {
+	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			return err
+			panic(err)
 		}
-		return nil
 	}()
 
 	// Make a Raft and populate it with some data.

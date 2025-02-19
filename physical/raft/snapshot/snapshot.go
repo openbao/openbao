@@ -200,7 +200,10 @@ func (s *Snapshot) Close() error {
 	if err := s.file.Close(); err != nil {
 		return err
 	}
-	return os.Remove(s.file.Name())
+	if err := os.Remove(s.file.Name()); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Verify takes the snapshot from the reader and verifies its contents.

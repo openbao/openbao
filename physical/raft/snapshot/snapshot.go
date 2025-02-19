@@ -215,7 +215,7 @@ func Verify(in io.Reader) (*raft.SnapshotMeta, error) {
 	}
 	defer func() {
 		if err := decomp.Close(); err != nil {
-			panic(err)
+			fmt.Printf("failed to close decompressor: %v\n", err)
 		}
 	}()
 

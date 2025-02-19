@@ -74,7 +74,12 @@ func TestArchive_GoodData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		defer f.Close()
+		defer func() error {
+			if err := f.Close(); err != nil {
+				return err
+			}
+			return nil
+		}()
 
 		var metadata raft.SnapshotMeta
 		err = read(f, &metadata, io.Discard, nil)
@@ -103,7 +108,12 @@ func TestArchive_BadData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		defer f.Close()
+		defer func() error {
+			if err := f.Close(); err != nil {
+				return err
+			}
+			return nil
+		}()
 
 		var metadata raft.SnapshotMeta
 		err = read(f, &metadata, io.Discard, nil)

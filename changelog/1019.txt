@@ -1,0 +1,3 @@
+```release-note:improvement
+database/valkey: Revive Redis plugin as Valkey, the OSI-licensed fork of Redis
+```

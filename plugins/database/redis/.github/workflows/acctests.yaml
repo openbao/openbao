@@ -1,0 +1,8 @@
+name: Acceptance Tests
+
+on: push
+
+jobs:
+  run-acceptance-tests:
+    uses: hashicorp/vault-workflows-common/.github/workflows/acc-tests.yaml@1540ee539622447caf4c0269252b0d7d1d897dba
+    secrets: inherit

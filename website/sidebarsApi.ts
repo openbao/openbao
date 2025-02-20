@@ -26,6 +26,7 @@ const sidebars: SidebarsConfig = {
             "secret/databases/influxdb",
             "secret/databases/mysql-maria",
             "secret/databases/postgresql",
+            "secret/databases/redis",
           ],
           Identity: [
             "secret/identity/index",

@@ -93,6 +93,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.20
+	github.com/mediocregopher/radix/v4 v4.1.4
 	github.com/mholt/acmez/v3 v3.0.1
 	github.com/michaelklishin/rabbit-hole/v3 v3.1.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
@@ -338,6 +339,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
+	github.com/tilinna/clock v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect

@@ -51,7 +51,7 @@ configure: dev
 	@./scripts/configure.sh \
 	$(PLUGIN_DIR) \
 	$(PLUGIN_NAME) \
-	$(TEST_REDIS_HOST) \
-	$(TEST_REDIS_PORT) \
-	$(TEST_REDIS_USERNAME) \
-	$(TEST_REDIS_PASSWORD)
+	$(TEST_VALKEY_HOST) \
+	$(TEST_VALKEY_PORT) \
+	$(TEST_VALKEY_USERNAME) \
+	$(TEST_VALKEY_PASSWORD)

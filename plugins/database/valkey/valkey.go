@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package redis
+package valkey
 
 import (
 	"context"
@@ -20,18 +20,18 @@ import (
 )
 
 const (
-	redisTypeName        = "redis"
-	defaultRedisUserRule = `["~*", "+@read"]`
-	defaultTimeout       = 20000 * time.Millisecond
-	maxKeyLength         = 64
+	valkeyTypeName        = "valkey"
+	defaultValkeyUserRule = `["~*", "+@read"]`
+	defaultTimeout        = 20000 * time.Millisecond
+	maxKeyLength          = 64
 )
 
-var _ dbplugin.Database = &RedisDB{}
+var _ dbplugin.Database = &ValkeyDB{}
 
-// Type that combines the custom plugins Redis database connection configuration options and the Vault CredentialsProducer
-// used for generating user information for the Redis database.
-type RedisDB struct {
-	*redisDBConnectionProducer
+// Type that combines the custom plugins Valkey database connection configuration options and the Vault CredentialsProducer
+// used for generating user information for the Valkey database.
+type ValkeyDB struct {
+	*valkeyDBConnectionProducer
 	credsutil.CredentialsProducer
 }
 
@@ -43,19 +43,19 @@ func New() (interface{}, error) {
 	return dbType, nil
 }
 
-func new() *RedisDB {
-	connProducer := &redisDBConnectionProducer{}
-	connProducer.Type = redisTypeName
+func new() *ValkeyDB {
+	connProducer := &valkeyDBConnectionProducer{}
+	connProducer.Type = valkeyTypeName
 
-	db := &RedisDB{
-		redisDBConnectionProducer: connProducer,
+	db := &ValkeyDB{
+		valkeyDBConnectionProducer: connProducer,
 	}
 
 	return db
 }
 
-func (c *RedisDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
-	err := c.redisDBConnectionProducer.Initialize(ctx, req.Config, req.VerifyConnection)
+func (c *ValkeyDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest) (dbplugin.InitializeResponse, error) {
+	err := c.valkeyDBConnectionProducer.Initialize(ctx, req.Config, req.VerifyConnection)
 	if err != nil {
 		return dbplugin.InitializeResponse{}, err
 	}
@@ -65,7 +65,7 @@ func (c *RedisDB) Initialize(ctx context.Context, req dbplugin.InitializeRequest
 	return resp, nil
 }
 
-func (c *RedisDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
+func (c *ValkeyDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbplugin.NewUserResponse, error) {
 	// Grab the lock
 	c.Lock()
 	defer c.Unlock()
@@ -95,7 +95,7 @@ func (c *RedisDB) NewUser(ctx context.Context, req dbplugin.NewUserRequest) (dbp
 	return resp, nil
 }
 
-func (c *RedisDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
+func (c *ValkeyDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest) (dbplugin.UpdateUserResponse, error) {
 	if req.Password != nil {
 		err := c.changeUserPassword(ctx, req.Username, req.Password.NewPassword)
 		return dbplugin.UpdateUserResponse{}, err
@@ -103,7 +103,7 @@ func (c *RedisDB) UpdateUser(ctx context.Context, req dbplugin.UpdateUserRequest
 	return dbplugin.UpdateUserResponse{}, nil
 }
 
-func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
+func (c *ValkeyDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest) (dbplugin.DeleteUserResponse, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -133,7 +133,7 @@ func (c *RedisDB) DeleteUser(ctx context.Context, req dbplugin.DeleteUserRequest
 func newUser(ctx context.Context, db radix.Client, username string, req dbplugin.NewUserRequest) error {
 	statements := removeEmpty(req.Statements.Commands)
 	if len(statements) == 0 {
-		statements = append(statements, defaultRedisUserRule)
+		statements = append(statements, defaultValkeyUserRule)
 	}
 
 	aclargs := []string{"SETUSER", username, "ON", ">" + req.Password}
@@ -141,7 +141,7 @@ func newUser(ctx context.Context, db radix.Client, username string, req dbplugin
 	var args []string
 	err := json.Unmarshal([]byte(statements[0]), &args)
 	if err != nil {
-		return errwrap.Wrapf("error unmarshalling REDIS rules in the creation statement JSON: {{err}}", err)
+		return errwrap.Wrapf("error unmarshalling VALKEY rules in the creation statement JSON: {{err}}", err)
 	}
 
 	aclargs = append(aclargs, args...)
@@ -155,7 +155,7 @@ func newUser(ctx context.Context, db radix.Client, username string, req dbplugin
 	return nil
 }
 
-func (c *RedisDB) changeUserPassword(ctx context.Context, username, password string) error {
+func (c *ValkeyDB) changeUserPassword(ctx context.Context, username, password string) error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -174,10 +174,10 @@ func (c *RedisDB) changeUserPassword(ctx context.Context, username, password str
 
 	var response resp3.ArrayHeader
 	mn := radix.Maybe{Rcv: &response}
-	var redisErr resp3.SimpleError
+	var valkeyErr resp3.SimpleError
 	err = db.Do(ctx, radix.Cmd(&mn, "ACL", "GETUSER", username))
-	if errors.As(err, &redisErr) {
-		return fmt.Errorf("redis error returned: %s", redisErr.Error())
+	if errors.As(err, &valkeyErr) {
+		return fmt.Errorf("valkey error returned: %s", valkeyErr.Error())
 	}
 
 	if err != nil {
@@ -218,7 +218,7 @@ func computeTimeout(ctx context.Context) (timeout time.Duration) {
 	return defaultTimeout
 }
 
-func (c *RedisDB) getConnection(ctx context.Context) (radix.Client, error) {
+func (c *ValkeyDB) getConnection(ctx context.Context) (radix.Client, error) {
 	db, err := c.Connection(ctx)
 	if err != nil {
 		return nil, err
@@ -226,6 +226,6 @@ func (c *RedisDB) getConnection(ctx context.Context) (radix.Client, error) {
 	return db.(radix.Client), nil
 }
 
-func (c *RedisDB) Type() (string, error) {
-	return redisTypeName, nil
+func (c *ValkeyDB) Type() (string, error) {
+	return valkeyTypeName, nil
 }

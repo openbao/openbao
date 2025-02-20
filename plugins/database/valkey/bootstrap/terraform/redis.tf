@@ -27,9 +27,9 @@ resource "null_resource" "docker_compose_down" {
 resource "local_file" "setup_environment_file" {
   filename = "local_environment_setup.sh"
   content = <<EOF
-export TEST_REDIS_HOST=localhost &&\
-export TEST_REDIS_PORT=6379 &&\
-export TEST_REDIS_USERNAME=us4rn4m3 &&\
-export TEST_REDIS_PASSWORD=user-pa55w0rd
+export TEST_VALKEY_HOST=localhost &&\
+export TEST_VALKEY_PORT=6379 &&\
+export TEST_VALKEY_USERNAME=us4rn4m3 &&\
+export TEST_VALKEY_PASSWORD=user-pa55w0rd
 EOF
 }

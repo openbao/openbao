@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package redis
+package valkey
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/database/helper/connutil"
 )
 
-type redisDBConnectionProducer struct {
+type valkeyDBConnectionProducer struct {
 	Host        string `json:"host"`
 	Port        int    `json:"port"`
 	Username    string `json:"username"`
@@ -34,14 +34,14 @@ type redisDBConnectionProducer struct {
 	sync.Mutex
 }
 
-func (c *redisDBConnectionProducer) secretValues() map[string]string {
+func (c *valkeyDBConnectionProducer) secretValues() map[string]string {
 	return map[string]string{
 		c.Password: "[password]",
 		c.Username: "[username]",
 	}
 }
 
-func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[string]interface{}, verifyConnection bool) (saveConfig map[string]interface{}, err error) {
+func (c *valkeyDBConnectionProducer) Init(ctx context.Context, initConfig map[string]interface{}, verifyConnection bool) (saveConfig map[string]interface{}, err error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -94,12 +94,12 @@ func (c *redisDBConnectionProducer) Init(ctx context.Context, initConfig map[str
 	return initConfig, nil
 }
 
-func (c *redisDBConnectionProducer) Initialize(ctx context.Context, config map[string]interface{}, verifyConnection bool) error {
+func (c *valkeyDBConnectionProducer) Initialize(ctx context.Context, config map[string]interface{}, verifyConnection bool) error {
 	_, err := c.Init(ctx, config, verifyConnection)
 	return err
 }
 
-func (c *redisDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
+func (c *valkeyDBConnectionProducer) Connection(ctx context.Context) (interface{}, error) {
 	// This is intentionally not grabbing the lock since the calling functions (e.g. CreateUser)
 	// are claiming it. (The locking patterns could be refactored to be more consistent/clear.)
 
@@ -150,7 +150,7 @@ func (c *redisDBConnectionProducer) Connection(ctx context.Context) (interface{}
 }
 
 // close terminates the database connection without locking
-func (c *redisDBConnectionProducer) close() error {
+func (c *valkeyDBConnectionProducer) close() error {
 	if c.client != nil {
 		if err := c.client.Close(); err != nil {
 			return err
@@ -162,7 +162,7 @@ func (c *redisDBConnectionProducer) close() error {
 }
 
 // Close terminates the database connection with locking
-func (c *redisDBConnectionProducer) Close() error {
+func (c *valkeyDBConnectionProducer) Close() error {
 	c.Lock()
 	defer c.Unlock()
 

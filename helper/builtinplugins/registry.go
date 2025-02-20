@@ -26,7 +26,7 @@ import (
 	dbInflux "github.com/openbao/openbao/plugins/database/influxdb"
 	dbMysql "github.com/openbao/openbao/plugins/database/mysql"
 	dbPostgres "github.com/openbao/openbao/plugins/database/postgresql"
-	dbRedis "github.com/openbao/openbao/plugins/database/redis"
+	dbValkey "github.com/openbao/openbao/plugins/database/valkey"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -92,7 +92,8 @@ func newRegistry() *registry {
 			"cassandra-database-plugin":  {Factory: dbCass.New},
 			"influxdb-database-plugin":   {Factory: dbInflux.New},
 			"postgresql-database-plugin": {Factory: dbPostgres.New},
-			"redis-database-plugin":      {Factory: dbRedis.New},
+			"redis-database-plugin":      {Factory: dbValkey.New},
+			"valkey-database-plugin":     {Factory: dbValkey.New},
 		},
 		logicalBackends: map[string]logicalBackend{
 			"kubernetes": {Factory: logicalKube.Factory},

@@ -1,7 +1,7 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
-package redis
+package valkey
 
 import (
 	"context"
@@ -20,30 +20,30 @@ import (
 	dc "github.com/ory/dockertest/v3/docker"
 )
 
-var pre6dot5 = false // check for Pre 6.5.0 Redis
+var pre6dot5 = false // check for Pre 6.5.0 Valkey
 
 const (
-	defaultUsername       = "default"
-	defaultPassword       = "default-pa55w0rd"
-	adminUsername         = "Administrator"
-	adminPassword         = "password"
-	aclCat                = "+@admin"
-	testRedisRole         = `["%s"]`
-	testRedisGroup        = `["+@all"]`
-	testRedisRoleAndGroup = `["%s"]`
+	defaultUsername        = "default"
+	defaultPassword        = "default-pa55w0rd"
+	adminUsername          = "Administrator"
+	adminPassword          = "password"
+	aclCat                 = "+@admin"
+	testValkeyRole         = `["%s"]`
+	testValkeyGroup        = `["+@all"]`
+	testValkeyRoleAndGroup = `["%s"]`
 )
 
-var redisTls = false
+var valkeyTls = false
 
-func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
-	if os.Getenv("TEST_REDIS_TLS") != "" {
-		redisTls = true
+func prepareValkeyTestContainer(t *testing.T) (func(), string, int) {
+	if os.Getenv("TEST_VALKEY_TLS") != "" {
+		valkeyTls = true
 	}
-	if os.Getenv("TEST_REDIS_HOST") != "" {
-		return func() {}, os.Getenv("TEST_REDIS_HOST"), 6379
+	if os.Getenv("TEST_VALKEY_HOST") != "" {
+		return func() {}, os.Getenv("TEST_VALKEY_HOST"), 6379
 	}
-	// redver should match a redis repository tag. Default to latest.
-	redver := os.Getenv("REDIS_VERSION")
+	// redver should match a valkey repository tag. Default to latest.
+	redver := os.Getenv("VALKEY_VERSION")
 	if redver == "" {
 		redver = "latest"
 	}
@@ -54,7 +54,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 	}
 
 	ro := &dockertest.RunOptions{
-		Repository:   "docker.io/redis",
+		Repository:   "docker.io/valkey/valkey",
 		Tag:          redver,
 		ExposedPorts: []string{"6379"},
 		PortBindings: map[dc.Port][]dc.PortBinding{
@@ -65,7 +65,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 	}
 	resource, err := pool.RunWithOptions(ro)
 	if err != nil {
-		t.Fatalf("Could not start local redis docker container: %s", err)
+		t.Fatalf("Could not start local valkey docker container: %s", err)
 	}
 
 	cleanup := func() {
@@ -92,7 +92,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 
 		return nil
 	}); err != nil {
-		t.Fatalf("Could not connect to redis: %s", err)
+		t.Fatalf("Could not connect to valkey: %s", err)
 		cleanup()
 	}
 	time.Sleep(3 * time.Second)
@@ -102,7 +102,7 @@ func prepareRedisTestContainer(t *testing.T) (func(), string, int) {
 func TestDriver(t *testing.T) {
 	var err error
 	var caCert []byte
-	if os.Getenv("TEST_REDIS_TLS") != "" {
+	if os.Getenv("TEST_VALKEY_TLS") != "" {
 		caCertFile := os.Getenv("CA_CERT_FILE")
 		caCert, err = os.ReadFile(caCertFile)
 		if err != nil {
@@ -110,40 +110,40 @@ func TestDriver(t *testing.T) {
 		}
 	}
 
-	// Spin up redis
-	cleanup, host, port := prepareRedisTestContainer(t)
+	// Spin up valkey
+	cleanup, host, port := prepareValkeyTestContainer(t)
 	defer cleanup()
 
-	err = createUser(host, port, redisTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
+	err = createUser(host, port, valkeyTls, caCert, defaultUsername, defaultPassword, "Administrator", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create Administrator user using 'default' user: %s", err)
 	}
-	err = createUser(host, port, redisTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
+	err = createUser(host, port, valkeyTls, caCert, adminUsername, adminPassword, "rotate-root", "rotate-rootpassword",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create rotate-root test user: %s", err)
 	}
-	err = createUser(host, port, redisTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
+	err = createUser(host, port, valkeyTls, caCert, adminUsername, adminPassword, "vault-edu", "password",
 		aclCat)
 	if err != nil {
 		t.Fatalf("Failed to create vault-edu test user: %s", err)
 	}
 
-	t.Run("Init", func(t *testing.T) { testRedisDBInitialize_NoTLS(t, host, port) })
-	t.Run("Init", func(t *testing.T) { testRedisDBInitialize_TLS(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_DefaultRule(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_plusRole(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_groupOnly(t, host, port) })
-	t.Run("Create/Revoke", func(t *testing.T) { testRedisDBCreateUser_roleAndGroup(t, host, port) })
-	t.Run("Rotate", func(t *testing.T) { testRedisDBRotateRootCredentials(t, host, port) })
-	t.Run("Creds", func(t *testing.T) { testRedisDBSetCredentials(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_NoTLS(t, host, port) })
+	t.Run("Init", func(t *testing.T) { testValkeyDBInitialize_TLS(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_DefaultRule(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_plusRole(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_groupOnly(t, host, port) })
+	t.Run("Create/Revoke", func(t *testing.T) { testValkeyDBCreateUser_roleAndGroup(t, host, port) })
+	t.Run("Rotate", func(t *testing.T) { testValkeyDBRotateRootCredentials(t, host, port) })
+	t.Run("Creds", func(t *testing.T) { testValkeyDBSetCredentials(t, host, port) })
 	t.Run("Secret", func(t *testing.T) { testConnectionProducerSecretValues(t) })
 	t.Run("TimeoutCalc", func(t *testing.T) { testComputeTimeout(t) })
 }
 
-func setupRedisDBInitialize(t *testing.T, connectionDetails map[string]interface{}) (err error) {
+func setupValkeyDBInitialize(t *testing.T, connectionDetails map[string]interface{}) (err error) {
 	initReq := dbplugin.InitializeRequest{
 		Config:           connectionDetails,
 		VerifyConnection: true,
@@ -166,8 +166,8 @@ func setupRedisDBInitialize(t *testing.T, connectionDetails map[string]interface
 	return nil
 }
 
-func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
-	if redisTls {
+func testValkeyDBInitialize_NoTLS(t *testing.T, host string, port int) {
+	if valkeyTls {
 		t.Skip("skipping plain text Init() test in TLS mode")
 	}
 
@@ -179,14 +179,14 @@ func testRedisDBInitialize_NoTLS(t *testing.T, host string, port int) {
 		"username": adminUsername,
 		"password": adminPassword,
 	}
-	err := setupRedisDBInitialize(t, connectionDetails)
+	err := setupValkeyDBInitialize(t, connectionDetails)
 	if err != nil {
 		t.Fatalf("Testing Init() failed: error: %s", err)
 	}
 }
 
-func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
-	if !redisTls {
+func testValkeyDBInitialize_TLS(t *testing.T, host string, port int) {
+	if !valkeyTls {
 		t.Skip("skipping TLS Init() test in plain text mode")
 	}
 
@@ -207,13 +207,13 @@ func testRedisDBInitialize_TLS(t *testing.T, host string, port int) {
 		"ca_cert":      CACert,
 		"insecure_tls": true,
 	}
-	err = setupRedisDBInitialize(t, connectionDetails)
+	err = setupValkeyDBInitialize(t, connectionDetails)
 	if err != nil {
 		t.Fatalf("Testing TLS Init() failed: error: %s", err)
 	}
 }
 
-func testRedisDBCreateUser(t *testing.T, address string, port int) {
+func testValkeyDBCreateUser(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -227,7 +227,7 @@ func testRedisDBCreateUser(t *testing.T, address string, port int) {
 		"password": adminPassword,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -299,7 +299,7 @@ func checkCredsExist(t *testing.T, username, password, address string, port int)
 		"password": password,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -343,7 +343,7 @@ func checkRuleAllowed(t *testing.T, username, password, address string, port int
 		"password": password,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -389,7 +389,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 		"password": adminPassword,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -425,7 +425,7 @@ func revokeUser(t *testing.T, username, address string, port int) error {
 	return nil
 }
 
-func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
+func testValkeyDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -439,7 +439,7 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 		"password": adminPassword,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -507,7 +507,7 @@ func testRedisDBCreateUser_DefaultRule(t *testing.T, address string, port int) {
 	db.Close()
 }
 
-func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
+func testValkeyDBCreateUser_plusRole(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -522,7 +522,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 		"protocol_version": 4,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -557,7 +557,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRole, aclCat)},
+			Commands: []string{fmt.Sprintf(testValkeyRole, aclCat)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -581,7 +581,7 @@ func testRedisDBCreateUser_plusRole(t *testing.T, address string, port int) {
 }
 
 // g1 & g2 must exist in the database.
-func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
+func testValkeyDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -600,7 +600,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 		"protocol_version": 4,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -635,7 +635,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisGroup)},
+			Commands: []string{fmt.Sprintf(testValkeyGroup)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -658,7 +658,7 @@ func testRedisDBCreateUser_groupOnly(t *testing.T, address string, port int) {
 	}
 }
 
-func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
+func testValkeyDBCreateUser_roleAndGroup(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -677,7 +677,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 		"protocol_version": 4,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -712,7 +712,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 			RoleName:    "test",
 		},
 		Statements: dbplugin.Statements{
-			Commands: []string{fmt.Sprintf(testRedisRoleAndGroup, aclCat)},
+			Commands: []string{fmt.Sprintf(testValkeyRoleAndGroup, aclCat)},
 		},
 		Password:   password,
 		Expiration: time.Now().Add(time.Minute),
@@ -735,7 +735,7 @@ func testRedisDBCreateUser_roleAndGroup(t *testing.T, address string, port int) 
 	}
 }
 
-func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
+func testValkeyDBRotateRootCredentials(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
@@ -749,7 +749,7 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 		"password": "rotate-rootpassword",
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -791,14 +791,14 @@ func testRedisDBRotateRootCredentials(t *testing.T, address string, port int) {
 	}
 
 	// defer setting the password back in case the test fails.
-	defer doRedisDBSetCredentials(t, "rotate-root", "rotate-rootpassword", address, port)
+	defer doValkeyDBSetCredentials(t, "rotate-root", "rotate-rootpassword", address, port)
 
 	if err := checkCredsExist(t, db.Username, "newpassword", address, port); err != nil {
 		t.Fatalf("Could not connect with new RotatedRootcredentials: %s", err)
 	}
 }
 
-func doRedisDBSetCredentials(t *testing.T, username, password, address string, port int) {
+func doValkeyDBSetCredentials(t *testing.T, username, password, address string, port int) {
 	t.Log("Testing SetCredentials()")
 
 	connectionDetails := map[string]interface{}{
@@ -808,7 +808,7 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 		"password": adminPassword,
 	}
 
-	if redisTls {
+	if valkeyTls {
 		CACertFile := os.Getenv("CA_CERT_FILE")
 		CACert, err := os.ReadFile(CACertFile)
 		if err != nil {
@@ -869,25 +869,25 @@ func doRedisDBSetCredentials(t *testing.T, username, password, address string, p
 	}
 }
 
-func testRedisDBSetCredentials(t *testing.T, address string, port int) {
+func testValkeyDBSetCredentials(t *testing.T, address string, port int) {
 	if api.ReadBaoVariable("BAO_ACC") == "" {
 		t.SkipNow()
 	}
 
-	doRedisDBSetCredentials(t, "vault-edu", "password", address, port)
+	doValkeyDBSetCredentials(t, "vault-edu", "password", address, port)
 }
 
 func testConnectionProducerSecretValues(t *testing.T) {
-	t.Log("Testing redisDBConnectionProducer.secretValues()")
+	t.Log("Testing valkeyDBConnectionProducer.secretValues()")
 
-	cp := &redisDBConnectionProducer{
+	cp := &valkeyDBConnectionProducer{
 		Username: "USR",
 		Password: "PWD",
 	}
 
 	if cp.secretValues()["USR"] != "[username]" &&
 		cp.secretValues()["PWD"] != "[password]" {
-		t.Fatal("redisDBConnectionProducer.secretValues() test failed.")
+		t.Fatal("valkeyDBConnectionProducer.secretValues() test failed.")
 	}
 }
 
@@ -903,10 +903,10 @@ func testComputeTimeout(t *testing.T) {
 	}
 }
 
-func createUser(hostname string, port int, redisTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
+func createUser(hostname string, port int, valkeyTls bool, CACert []byte, adminuser, adminpassword, username, password, aclRule string) (err error) {
 	var poolConfig radix.PoolConfig
 
-	if redisTls {
+	if valkeyTls {
 		rootCAs := x509.NewCertPool()
 		ok := rootCAs.AppendCertsFromPEM(CACert)
 		if !ok {

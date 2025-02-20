@@ -3,10 +3,10 @@
 
 PLUGIN_DIR=$1
 PLUGIN_NAME=$2
-TEST_REDIS_HOST=$3
-TEST_REDIS_PORT=$4
-TEST_REDIS_USERNAME=$5
-TEST_REDIS_PASSWORD=$6
+TEST_VALKEY_HOST=$3
+TEST_VALKEY_PORT=$4
+TEST_VALKEY_USERNAME=$5
+TEST_VALKEY_PASSWORD=$6
 
 vault plugin deregister "$PLUGIN_NAME"
 vault secrets disable database
@@ -25,17 +25,17 @@ vault plugin register \
       database "$PLUGIN_NAME"
 
 # Configure & test the new registered plugin
-vault write database/config/local-redis \
+vault write database/config/local-valkey \
       plugin_name="$PLUGIN_NAME" \
     	allowed_roles="*" \
-    	host="$TEST_REDIS_HOST" \
-    	port="$TEST_REDIS_PORT" \
-    	username="$TEST_REDIS_USERNAME" \
-    	password="$TEST_REDIS_PASSWORD" \
+    	host="$TEST_VALKEY_HOST" \
+    	port="$TEST_VALKEY_PORT" \
+    	username="$TEST_VALKEY_USERNAME" \
+    	password="$TEST_VALKEY_PASSWORD" \
     	insecure_tls=true
 
 vault write database/roles/my-dynamic-role \
-    db_name="local-redis" \
+    db_name="local-valkey" \
     creation_statements='["+@read"]' \
     default_ttl="5m" \
     max_ttl="1h"

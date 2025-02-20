@@ -7,7 +7,7 @@ import (
 	"os"
 
 	hclog "github.com/hashicorp/go-hclog"
-	redis "github.com/openbao/openbao/plugins/database/redis"
+	valkey "github.com/openbao/openbao/plugins/database/valkey"
 	dbplugin "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 )
 
@@ -21,9 +21,9 @@ func main() {
 	}
 }
 
-// Run instantiates a RedisDB object, and runs the RPC server for the plugin
+// Run instantiates a ValkeyDB object, and runs the RPC server for the plugin
 func Run() error {
-	db, err := redis.New()
+	db, err := valkey.New()
 	if err != nil {
 		return err
 	}

@@ -138,8 +138,7 @@ $ curl \
 
 ## Remove a node from raft cluster
 
-This endpoint removes a node from the raft cluster. An optional `dr_operation_token`
-may be provided if the node is in a DR secondary cluster.
+This endpoint removes a node from the raft cluster.
 
 | Method | Path                            |
 | :----- | :------------------------------ |
@@ -150,7 +149,6 @@ may be provided if the node is in a DR secondary cluster.
 ```json
 {
   "server_id": "raft1",
-  "dr_operation_token": ""
 }
 ```
 

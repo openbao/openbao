@@ -99,7 +99,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	entry.namespace = ns
 
 	// Populate cache
-	NamespaceByID(ctx, ns.ID, c)
+	c.NamespaceByID(ctx, ns.ID)
 
 	// Basic check for matching names
 	for _, ent := range c.auth.Entries {
@@ -734,7 +734,7 @@ func (c *Core) runCredentialUpdates(ctx context.Context, barrier logical.Storage
 			entry.NamespaceID = namespace.RootNamespaceID
 			needPersist = true
 		}
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -1063,7 +1063,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 		}
 
 		// Populate cache
-		NamespaceByID(ctx, entry.NamespaceID, c)
+		c.NamespaceByID(ctx, entry.NamespaceID)
 
 		// Initialize
 		// Bind locally

@@ -531,7 +531,7 @@ func (c *Core) decodeMountTable(ctx context.Context, raw []byte) (*MountTable, e
 		if entry.NamespaceID == "" {
 			entry.NamespaceID = namespace.RootNamespaceID
 		}
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
 		}
@@ -574,7 +574,7 @@ func (c *Core) fetchAndDecodeMountTableEntry(ctx context.Context, barrier logica
 	if entry.NamespaceID == "" {
 		entry.NamespaceID = namespace.RootNamespaceID
 	}
-	ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+	ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -639,7 +639,7 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	entry.namespace = ns
 
 	// Ensure the cache is populated, don't need the result
-	NamespaceByID(ctx, ns.ID, c)
+	c.NamespaceByID(ctx, ns.ID)
 
 	// Basic check for matching names
 	for _, ent := range c.mounts.Entries {
@@ -1436,7 +1436,7 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 			needPersist = true
 		}
 
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -1783,7 +1783,7 @@ func (c *Core) setupMounts(ctx context.Context) error {
 		}
 
 		// Ensure the cache is populated, don't need the result
-		NamespaceByID(ctx, entry.NamespaceID, c)
+		c.NamespaceByID(ctx, entry.NamespaceID)
 	}
 	return nil
 }

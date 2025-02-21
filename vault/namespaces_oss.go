@@ -10,9 +10,18 @@ import (
 )
 
 func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Namespace, error) {
-	return namespaceByID(ctx, nsID, c)
+	ns, err := c.namespaceStore.GetNamespaceByAccessor(ctx, nsID)
+	if err != nil {
+		return nil, err
+	}
+
+	if ns == nil {
+		return nil, nil
+	}
+
+	return ns.Namespace, nil
 }
 
-func (c *Core) ListNamespaces(includePath bool) []*namespace.Namespace {
-	return []*namespace.Namespace{namespace.RootNamespace}
+func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
+	return c.namespaceStore.ListNamespaces(ctx, true /* includeRoot */)
 }

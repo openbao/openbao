@@ -1034,7 +1034,7 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 		return err
 	}
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1076,7 +1076,7 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) error {
 	defer metrics.MeasureSince([]string{"token", "create"}, time.Now())
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1311,7 +1311,7 @@ func (ts *TokenStore) store(ctx context.Context, entry *logical.TokenEntry) erro
 // storeCommon handles the actual storage of an entry, possibly generating
 // secondary indexes
 func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry, writeSecondary bool) error {
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1346,7 +1346,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 				return errors.New("parent token not found")
 			}
 
-			parentNS, err := NamespaceByID(ctx, parent.NamespaceID, ts.core)
+			parentNS, err := ts.core.NamespaceByID(ctx, parent.NamespaceID)
 			if err != nil {
 				return err
 			}
@@ -1583,7 +1583,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		// the request namespace, ensure the request namespace is a child
 		_, nsID := namespace.SplitIDFromString(id)
 		if nsID != "" {
-			tokenNS, err := NamespaceByID(ctx, nsID, ts.core)
+			tokenNS, err := ts.core.NamespaceByID(ctx, nsID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to look up namespace from the token: %w", err)
 			}
@@ -1704,7 +1704,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	switch {
 	// It's any kind of expiring token with no lease, immediately delete it
 	case le == nil:
-		tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+		tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
 		}
@@ -1795,7 +1795,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		}
 	}
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1845,7 +1845,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			case parentNSID == "":
 				parentNS = namespace.RootNamespace
 			default:
-				parentNS, err = NamespaceByID(ctx, parentNSID, ts.core)
+				parentNS, err = ts.core.NamespaceByID(ctx, parentNSID)
 				if err != nil {
 					return fmt.Errorf("failed to get parent namespace: %w", err)
 				}
@@ -1901,7 +1901,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			childCtx := revokeCtx
 			child, childNSID = namespace.SplitIDFromString(child)
 			if childNSID != "" {
-				childNS, err := NamespaceByID(ctx, childNSID, ts.core)
+				childNS, err := ts.core.NamespaceByID(ctx, childNSID)
 				if err != nil {
 					return fmt.Errorf("failed to get child token: %w", err)
 				}
@@ -1994,7 +1994,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 			return err
 		}
 	} else {
-		ns, err = NamespaceByID(ctx, te.NamespaceID, ts.core)
+		ns, err = ts.core.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -2011,7 +2011,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 		saltedNS := ns
 		saltedID, saltedNSID := namespace.SplitIDFromString(id)
 		if saltedNSID != "" {
-			saltedNS, err = NamespaceByID(ctx, saltedNSID, ts.core)
+			saltedNS, err = ts.core.NamespaceByID(ctx, saltedNSID)
 			if err != nil {
 				return fmt.Errorf("failed to find namespace for token revocation: %w", err)
 			}
@@ -2094,7 +2094,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	if !salted {
 		_, nsID := namespace.SplitIDFromString(id)
 		if nsID != "" {
-			accessorNS, err := NamespaceByID(ctx, nsID, ts.core)
+			accessorNS, err := ts.core.NamespaceByID(ctx, nsID)
 			if err != nil {
 				return nil, err
 			}
@@ -2555,7 +2555,7 @@ func (ts *TokenStore) handleUpdateRevokeAccessor(ctx context.Context, req *logic
 		return logical.ErrorResponse("token not found"), logical.ErrInvalidRequest
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -2623,7 +2623,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 	if ns.ID != parent.NamespaceID {
-		parentNS, err := NamespaceByID(ctx, parent.NamespaceID, ts.core)
+		parentNS, err := ts.core.NamespaceByID(ctx, parent.NamespaceID)
 		if err != nil {
 			ts.logger.Error("error looking up parent namespace", "error", err, "parent_namespace", parent.NamespaceID)
 			return nil, ErrInternalError
@@ -3234,7 +3234,7 @@ func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("batch tokens cannot be revoked"), nil
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3363,7 +3363,7 @@ func (ts *TokenStore) handleLookup(ctx context.Context, req *logical.Request, da
 		resp.Data["bound_cidrs"] = out.BoundCIDRs
 	}
 
-	tokenNS, err := NamespaceByID(ctx, out.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, out.NamespaceID)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
@@ -4058,7 +4058,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	prefixTree := radix.New()
 
 	pathToPrefix := func(nsID string, path string) string {
-		ns, err := NamespaceByID(rootContext, nsID, ts.core)
+		ns, err := ts.core.NamespaceByID(rootContext, nsID)
 		if ns == nil || err != nil {
 			return "unknown"
 		}

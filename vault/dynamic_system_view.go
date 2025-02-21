@@ -75,7 +75,7 @@ func (e extendedSystemViewImpl) SudoPrivilege(ctx context.Context, path string, 
 	// Add token policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, e.core)
+	tokenNS, err := e.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		e.core.logger.Error("failed to lookup token namespace", "error", err)
 		return false

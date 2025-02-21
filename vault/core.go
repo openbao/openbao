@@ -2247,13 +2247,13 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
+	if err := c.setupNamespaceStore(ctx); err != nil {
+		return err
+	}
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
 	if err := c.setupMounts(ctx); err != nil {
-		return err
-	}
-	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
 	if err := c.setupPolicyStore(ctx); err != nil {

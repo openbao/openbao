@@ -85,6 +85,15 @@ for context on the different types of plugins.
 | influxdb | [github.com/openbao/openbao/plugins/database/influxdb](https://github.com/openbao/openbao/tree/development/plugins/database/influxdb) |
 | mysql | [github.com/openbao/openbao/plugins/database/mysql](https://github.com/openbao/openbao/tree/development/plugins/database/mysql) |
 | postgresql | [github.com/openbao/openbao/plugins/database/postgresql](https://github.com/openbao/openbao/tree/development/plugins/database/postgresql) |
+| redis | [github.com/hashicorp/vault-plugin-database-redis](https://github.com/hashicorp/vault-plugin-database-redis) |
+
+:::info
+
+Since this document was adopted, `redis` changed to a non-OSI license and was
+subsequently removed. However, the plugin has been reintroduced under the name
+of its fork, Valkey.
+
+:::
 
 ## Secrets plugins
 
@@ -129,6 +138,14 @@ being testable locally with SoftHSM.
  - secrets-kubernetes
  - secrets-openldap
 
+:::info
+
+Since this document was adopted, `redis` changed to a non-OSI license and was
+subsequently removed. However, the plugin has been reintroduced under the name
+of its fork, Valkey.
+
+:::
+
 ## Removals of builtin plugins to external, community supported
 
  - auth-alicloud
@@ -146,9 +163,6 @@ being testable locally with SoftHSM.
  - database-mongodb
  - database-mongodbatlas
  - database-mssql
- - database-redis, as it [relicensed to the proprietary
-   RSALv2 & SSPLv1](https://redis.com/blog/redis-adopts-dual-source-available-licensing/)
-   licenses after this RFC was accepted and prior to initial Alpha.
  - database-redis-elasticache
  - database-redshift
  - database-snowflake

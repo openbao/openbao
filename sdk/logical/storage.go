@@ -203,16 +203,20 @@ func HandleListPage(
 
 		// Process each entry in the page
 		for index, entry := range entries {
-			cont, err := itemCallback(page, index, entry)
-			if err != nil || !cont {
-				return err
+			if itemCallback != nil {
+				cont, err := itemCallback(page, index, entry)
+				if err != nil || !cont {
+					return err
+				}
 			}
 		}
 
 		// Process the entire batch
-		cont, err := batchCallback(page, entries)
-		if err != nil || !cont {
-			return err
+		if batchCallback != nil {
+			cont, err := batchCallback(page, entries)
+			if err != nil || !cont {
+				return err
+			}
 		}
 
 		// Stop since all certs have already been processed

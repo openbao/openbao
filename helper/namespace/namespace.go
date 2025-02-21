@@ -7,10 +7,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
+	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 )
+
+var immutableNamespaces = []string{
+	"sys",
+	"audit",
+	"auth",
+	"cubbyhole",
+	"identity",
+}
 
 type contextValues struct{}
 
@@ -22,6 +32,29 @@ type Namespace struct {
 
 func (n *Namespace) String() string {
 	return fmt.Sprintf("ID: %s. Path: %s", n.ID, n.Path)
+}
+
+func (n *Namespace) Validate() error {
+	n.Path = Canonicalize(n.Path)
+	if n.Path == "" {
+		return errors.New("path is missing; cannot validate root namespace")
+	}
+
+	if n.ID == RootNamespaceID {
+		return errors.New("cannot reuse root namespace identifier")
+	}
+
+	if strutil.StrListContains(immutableNamespaces, n.Path) {
+		return fmt.Errorf("%v is a reserved path and cannot be used as a namespace", n.Path)
+	}
+
+	// Canonicalize ensures we have a trailing slash; remove it for this
+	// comparison to ensure we have no other slashes.
+	if strings.Contains(n.Path[:len(n.Path)-1], "/") {
+		return errors.New("path separator ('/') cannot be used in namespace path")
+	}
+
+	return nil
 }
 
 const (
@@ -87,12 +120,15 @@ func FromContext(ctx context.Context) (*Namespace, error) {
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the
 // provided string
 func Canonicalize(nsPath string) string {
-	if nsPath == "" {
+	if nsPath == "" || nsPath == "/" {
 		return ""
 	}
 
 	// Canonicalize the path to not have a '/' prefix
 	nsPath = strings.TrimPrefix(nsPath, "/")
+
+	// Remove duplicate slashes and any ../ values if present.
+	nsPath = path.Clean(nsPath)
 
 	// Canonicalize the path to always having a '/' suffix
 	if !strings.HasSuffix(nsPath, "/") {

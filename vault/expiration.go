@@ -477,7 +477,7 @@ func (m *ExpirationManager) invalidate(key string) {
 		leaseNS := namespace.RootNamespace
 		var err error
 		if nsID != "" {
-			leaseNS, err = NamespaceByID(ctx, nsID, m.core)
+			leaseNS, err = m.core.NamespaceByID(ctx, nsID)
 			if err != nil {
 				m.logger.Error("failed to invalidate lease entry", "error", err)
 				return
@@ -1071,7 +1071,7 @@ func (m *ExpirationManager) RevokePrefix(ctx context.Context, prefix string, syn
 // (NB: it's called by token tidy as well.)
 func (m *ExpirationManager) RevokeByToken(ctx context.Context, te *logical.TokenEntry) error {
 	defer metrics.MeasureSince([]string{"expire", "revoke-by-token"}, time.Now())
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1297,7 +1297,7 @@ func (m *ExpirationManager) RenewToken(ctx context.Context, req *logical.Request
 ) (*logical.Response, error) {
 	defer metrics.MeasureSince([]string{"expire", "renew-token"}, time.Now())
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -1574,7 +1574,7 @@ func (m *ExpirationManager) RegisterAuth(ctx context.Context, te *logical.TokenE
 		return consts.ErrPathContainsParentReferences
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1646,7 +1646,7 @@ func (m *ExpirationManager) FetchLeaseTimesByToken(ctx context.Context, te *logi
 		}, nil
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -1971,7 +1971,7 @@ func (m *ExpirationManager) loadEntry(ctx context.Context, leaseID string) (*lea
 
 	_, nsID := namespace.SplitIDFromString(leaseID)
 	if nsID != "" {
-		leaseNS, err := NamespaceByID(ctx, nsID, m.core)
+		leaseNS, err := m.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return nil, err
 		}
@@ -2074,7 +2074,7 @@ func (m *ExpirationManager) createIndexByToken(ctx context.Context, le *leaseEnt
 	_, nsID := namespace.SplitIDFromString(token)
 	if nsID != "" {
 		var err error
-		tokenNS, err = NamespaceByID(ctx, nsID, m.core)
+		tokenNS, err = m.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return err
 		}
@@ -2111,7 +2111,7 @@ func (m *ExpirationManager) indexByToken(ctx context.Context, le *leaseEntry) (*
 	_, nsID := namespace.SplitIDFromString(le.ClientToken)
 	if nsID != "" {
 		var err error
-		tokenNS, err = NamespaceByID(ctx, nsID, m.core)
+		tokenNS, err = m.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return nil, err
 		}
@@ -2146,7 +2146,7 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 	_, nsID := namespace.SplitIDFromString(token)
 	if nsID != "" {
 		var err error
-		tokenNS, err = NamespaceByID(ctx, nsID, m.core)
+		tokenNS, err = m.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return err
 		}
@@ -2178,7 +2178,7 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 // it's created.
 func (m *ExpirationManager) CreateOrFetchRevocationLeaseByToken(ctx context.Context, te *logical.TokenEntry) (string, error) {
 	// Fetch the saltedID of the token and construct the leaseID
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return "", err
 	}
@@ -2250,7 +2250,7 @@ func (m *ExpirationManager) CreateOrFetchRevocationLeaseByToken(ctx context.Cont
 
 // lookupLeasesByToken is used to lookup all the leaseID's via the tokenID
 func (m *ExpirationManager) lookupLeasesByToken(ctx context.Context, te *logical.TokenEntry) ([]string, error) {
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, m.core)
+	tokenNS, err := m.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -2514,7 +2514,7 @@ func (m *ExpirationManager) getNamespaceFromLeaseID(ctx context.Context, leaseID
 	leaseNS := namespace.RootNamespace
 	var err error
 	if nsID != "" {
-		leaseNS, err = NamespaceByID(ctx, nsID, m.core)
+		leaseNS, err = m.core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return nil, err
 		}

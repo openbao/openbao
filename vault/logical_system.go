@@ -3348,7 +3348,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	unwrapNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	unwrapNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3682,7 +3682,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	lookupNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	lookupNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}

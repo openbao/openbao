@@ -285,7 +285,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 			needPersist = true
 		}
 		// Get the namespace from the namespace ID and load it in memory
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}

@@ -76,7 +76,7 @@ func TestArchive_GoodData(t *testing.T) {
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				panic(err)
+				t.Fatalf("failed to close: %v", err)
 			}
 		}()
 
@@ -109,7 +109,7 @@ func TestArchive_BadData(t *testing.T) {
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				panic(err)
+				t.Fatalf("failed to close: %v", err)
 			}
 		}()
 

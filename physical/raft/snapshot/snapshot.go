@@ -99,7 +99,6 @@ func NewWithSealer(logger hclog.Logger, r *raft.Raft, sealer Sealer) (*Snapshot,
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {
-		compressor.Close()
 		return nil, fmt.Errorf("failed to write snapshot file: %v", err)
 	}
 
@@ -145,7 +144,6 @@ func Write(logger hclog.Logger, r *raft.Raft, sealer Sealer, w io.Writer) error 
 
 	// Write the archive.
 	if err := write(compressor, metadata, snap, sealer); err != nil {
-		compressor.Close()
 		return fmt.Errorf("failed to write snapshot file: %v", err)
 	}
 
@@ -257,7 +255,7 @@ func Parse(in io.Reader, out io.Writer) (*raft.SnapshotMeta, error) {
 	}
 	defer func() {
 		if err := decomp.Close(); err != nil {
-			panic(err)
+			fmt.Printf("failed to close the decompressor: %v", err)
 		}
 	}()
 

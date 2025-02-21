@@ -158,7 +158,7 @@ func TestSnapshot(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			panic(err)
+			t.Fatalf("failed to remove directory: %v", err)
 		}
 	}()
 
@@ -190,7 +190,7 @@ func TestSnapshot(t *testing.T) {
 	}
 	defer func() {
 		if err := snap.Close(); err != nil {
-			panic(err)
+			t.Fatalf("failed to close snap: %v", err)
 		}
 	}()
 
@@ -257,7 +257,7 @@ func TestSnapshotWrite(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			panic(err)
+			t.Fatalf("failed to remove the directory: %v", err)
 		}
 	}()
 
@@ -294,7 +294,7 @@ func TestSnapshotWrite(t *testing.T) {
 	}
 	defer func() {
 		if err := snap.Close(); err != nil {
-			panic(err)
+			t.Fatalf("failed to close snap: %v", err)
 		}
 	}()
 
@@ -383,7 +383,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			panic(err)
+			t.Fatalf("failed to remove the directory: %v", err)
 		}
 	}()
 
@@ -416,7 +416,7 @@ func TestSnapshot_TruncatedVerify(t *testing.T) {
 	}
 	defer func() {
 		if err := snap.Close(); err != nil {
-			panic(err)
+			t.Fatalf("failed to close snap: %v", err)
 		}
 	}()
 
@@ -447,7 +447,7 @@ func TestSnapshot_BadRestore(t *testing.T) {
 	dir := testutil.TempDir(t, "snapshot")
 	defer func() {
 		if err := os.RemoveAll(dir); err != nil {
-			panic(err)
+			t.Fatalf("failed to remove the directory: %v", err)
 		}
 	}()
 

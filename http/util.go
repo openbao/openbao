@@ -74,28 +74,26 @@ var (
 	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {
 		u := r.URL
 		p := u.Path[3:]
+
+		nsHeaderPath := namespace.Canonicalize(r.Header.Get(consts.NamespaceHeaderName))
 		for _, api := range restrictedAPIs {
-			if strings.HasSuffix(p, api) {
-				return r, 0
-			}
-		}
-		for _, api := range containsAPIs {
-			if strings.Contains(p, api) {
-				return r, 0
+			if strings.HasSuffix(p, api) && (p != "/"+api || nsHeaderPath != "") {
+				return r, http.StatusBadRequest
 			}
 		}
 
-		id := namespace.RootNamespaceID
-		namespace.RootNamespace.ID = id // this is reset to root namespace id
-		ns := namespace.Canonicalize(r.Header.Get(consts.NamespaceHeaderName))
-		if ns != "" && ns != "/" {
-			id += "/" + ns
+		for _, api := range containsAPIs {
+			if strings.Contains(p, api) && (!strings.HasPrefix(p, "/"+api) && nsHeaderPath != "") {
+				return r, http.StatusBadRequest
+			}
 		}
-		r = r.WithContext(namespace.ContextWithNamespace(r.Context(), &namespace.Namespace{
-			ID:             id,
-			Path:           ns,
-			CustomMetadata: map[string]string{},
-		}))
+
+		// TODO(ascheel): Consider if we can combine header with actual request path here without triggering redirect logic.
+		if nsHeaderPath != "" {
+			r = r.WithContext(namespace.ContextWithNamespace(r.Context(), &namespace.Namespace{
+				Path: nsHeaderPath,
+			}))
+		}
 
 		return r, 0
 	}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -553,4 +554,64 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	}
 
 	return nil
+}
+
+// ResolveNamespaceFromRequestContext merges the given base context with
+// the namespace from httpCtx.
+func (ns *NamespaceStore) ResolveNamespaceFromRequestContext(baseCtx context.Context, httpCtx context.Context) (context.Context, *namespace.Namespace, error) {
+	rawNs, err := namespace.FromContext(httpCtx)
+	if err != nil {
+		return baseCtx, nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+	}
+
+	entry, err := ns.GetNamespaceByPath(baseCtx, rawNs.Path)
+	if err != nil {
+		return baseCtx, nil, fmt.Errorf("could not fetch namespace by path: %w", err)
+	}
+
+	if entry == nil {
+		return baseCtx, nil, fmt.Errorf("requested namespace was not found")
+	}
+
+	newCtx := namespace.ContextWithNamespace(baseCtx, entry.Namespace)
+	return newCtx, entry.Namespace, nil
+}
+
+// ResolveNamespaceFromRequest merges the given base context with the
+// namespace from httpCtx, combining it with any namespaces within the
+// request path itself. We remove the prefix from the path, if given,
+// because logic elsewhere in vault/ combines the namespace with the
+// path again.
+func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, httpCtx context.Context, reqPath string) (context.Context, *namespace.Namespace, string, error) {
+	// We stack the namespace context ahead of any namespace in path.
+	newCtx, parentNs, err := ns.ResolveNamespaceFromRequestContext(baseCtx, httpCtx)
+	if err != nil {
+		return newCtx, parentNs, reqPath, err
+	}
+
+	paths, err := ns.ListNamespacePaths(newCtx, false)
+	if err != nil {
+		return newCtx, parentNs, reqPath, err
+	}
+
+	// TODO(ascheel): handle child namespaces properly
+	for _, nsPath := range paths {
+		if strings.HasPrefix(reqPath, nsPath) {
+			childNs, err := ns.GetNamespaceByPath(newCtx, nsPath)
+			if err != nil {
+				return newCtx, parentNs, reqPath, err
+			}
+			parentNs = childNs.Namespace
+			reqPath = reqPath[len(nsPath):]
+			break
+		}
+	}
+
+	// TODO(ascheel): Fix global uses of comparison by pointer.
+	if parentNs.ID == namespace.RootNamespaceID {
+		parentNs = namespace.RootNamespace
+	}
+
+	finalCtx := namespace.ContextWithNamespace(baseCtx, parentNs)
+	return finalCtx, parentNs, reqPath, nil
 }

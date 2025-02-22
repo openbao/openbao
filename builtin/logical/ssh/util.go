@@ -249,10 +249,11 @@ func getIssuerName(sc *storageContext, data *framework.FieldData) (string, error
 			return issuerName, errIssuerNameInUse
 		}
 
-		if err != nil && issuerId != IssuerRefNotFound {
+		if issuerId != IssuerRefNotFound {
 			return issuerName, errutil.InternalError{Err: err.Error()}
 		}
 	}
+
 	return issuerName, nil
 }
 

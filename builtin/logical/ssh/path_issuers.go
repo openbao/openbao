@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -403,36 +402,29 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 	sc := b.makeStorageContext(ctx, req.Storage)
 
-	// Create a new issuer entry
-	id, err := uuid.GenerateUUID()
-	if err != nil {
-		return nil, fmt.Errorf("error generating issuer's unique identifier: %w", err)
-	}
-	issuer := &issuerEntry{
-		ID:         id,
-		PublicKey:  publicKey,
-		PrivateKey: privateKey,
-		Version:    1,
-	}
-
+	var issuerName string
 	if !isConfigCARequest {
-		name, err := getIssuerName(sc, d)
+		issuerName, err = getIssuerName(sc, d)
 		if err != nil && err != errIssuerNameIsEmpty {
 			return handleStorageContextErr(err)
 		}
-		issuer.Name = name
 	}
 
-	err = sc.writeIssuer(issuer)
+	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, issuerName)
 	if err != nil {
+		// NOTE (gabrielopesantos) Review error message
 		return handleStorageContextErr(err, "failed to persist the issuer")
 	}
 
 	response, _ := respondReadIssuer(issuer)
+	// NOTE (gabrielopesantos) Review warning message
+	if existing {
+		response.AddWarning("An issuer with the provided public key already exists, returning the existing issuer")
+	}
 
 	setDefault := isConfigCARequest || d.Get("set_default").(bool)
 	if setDefault {
-		err = sc.setIssuersConfig(&issuerConfigEntry{DefaultIssuerID: id})
+		err = sc.updateDefaultIssuerId(issuer.ID)
 		if err != nil {
 			// Even if the new issuer fails to be set as default, we want to return
 			// the newly submitted issuer with a warning

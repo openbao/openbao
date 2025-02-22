@@ -4,9 +4,11 @@
 package ssh
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
+	uuid "github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -93,6 +95,22 @@ func (sc *storageContext) deleteIssuer(id string) (bool, error) {
 	}
 
 	return wasDefault, sc.Storage.Delete(sc.Context, issuerPrefix+id)
+}
+
+// updateDefaultIssuerId updates the default issuer ID in the configuration
+// if it is different from the current one
+func (sc *storageContext) updateDefaultIssuerId(id string) error {
+	config, err := sc.getIssuersConfig()
+	if err != nil {
+		return err
+	}
+
+	if config.DefaultIssuerID != id {
+		config.DefaultIssuerID = id
+		return sc.setIssuersConfig(config)
+	}
+
+	return nil
 }
 
 // setIssuersConfig writes the issuers configuration to storage
@@ -291,4 +309,52 @@ func (sc *storageContext) checkForRolesReferencingIssuer(issuerName string) (tim
 	}
 
 	return false, inUseBy, nil
+}
+
+func (sc *storageContext) ImportIssuer(publicKey, privateKey, issuerName string) (*issuerEntry, bool, error) {
+	issuerPublicKey, err := parsePublicSSHKey(publicKey)
+	if err != nil {
+		return nil, false, errutil.UserError{Err: fmt.Sprintf("unable to parse public key: %v", err)}
+	}
+
+	knownIssuers, err := sc.listIssuers()
+	if err != nil {
+		return nil, false, err
+	}
+
+	for _, issuerId := range knownIssuers {
+		existingIssuer, err := sc.fetchIssuerById(issuerId)
+		if err != nil {
+			return nil, false, err
+		}
+
+		existingIssuerPublicKey, err := parsePublicSSHKey(existingIssuer.PublicKey)
+		if err != nil {
+			return nil, false, errutil.InternalError{Err: fmt.Sprintf("unable to parse existing public key: %v", err)}
+		}
+
+		if existingIssuerPublicKey.Type() == issuerPublicKey.Type() && bytes.Equal(existingIssuerPublicKey.Marshal(), issuerPublicKey.Marshal()) {
+			return existingIssuer, true, nil
+		}
+	}
+
+	// Create a new issuer entry
+	id, err := uuid.GenerateUUID()
+	if err != nil {
+		return nil, false, err
+	}
+	issuer := &issuerEntry{
+		ID:         id,
+		Name:       issuerName,
+		PublicKey:  publicKey,
+		PrivateKey: privateKey,
+		Version:    1,
+	}
+
+	err = sc.writeIssuer(issuer)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return issuer, false, nil
 }

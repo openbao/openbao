@@ -509,13 +509,11 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ns, err := namespace.FromContext(httpCtx)
+	ctx, _, req.Path, err = c.namespaceStore.ResolveNamespaceFromRequest(ctx, httpCtx, req.Path)
 	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+		return nil, err
 	}
 
-	ctx = namespace.ContextWithNamespace(ctx, ns)
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
 		ctx = context.WithValue(ctx, logical.CtxKeyInFlightRequestID{}, inFlightReqID)
@@ -678,15 +676,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			return nil, ErrCannotForwardLocalOnly
 		}
 	}
-
-	//ns, err = namespace.FromContext(ctx)
-	//if err != nil {
-	//	return nil, errwrap.Wrapf("could not parse namespace from http context: {{err}}", err)
-	//}
-
-	//if ns.Path != "" {
-	//	return nil, logical.CodedError(403, "namespaces feature not enabled")
-	//}
 
 	var auth *logical.Auth
 	if c.isLoginRequest(ctx, req) {

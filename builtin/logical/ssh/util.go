@@ -266,17 +266,16 @@ func handleStorageContextErr(err error, additionalMessageLog ...string) (*logica
 		return nil, nil
 	}
 
-	var prefix string
 	if len(additionalMessageLog) > 0 && additionalMessageLog[0] != "" {
-		prefix = additionalMessageLog[0] + ": "
+		err = fmt.Errorf("%s: %w", additionalMessageLog[0], err)
 	}
 
-	switch typedErr := err.(type) {
+	switch err.(type) {
 	case errutil.UserError:
-		return logical.ErrorResponse(prefix + typedErr.Error()), nil
+		return logical.ErrorResponse(err.Error()), nil
 	case errutil.InternalError:
-		return nil, errutil.InternalError{Err: prefix + typedErr.Error()}
+		return nil, errutil.InternalError{Err: err.Error()}
 	default:
-		return nil, fmt.Errorf("%s%w", prefix, typedErr)
+		return nil, fmt.Errorf("%w", err)
 	}
 }

@@ -384,7 +384,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	// If called from `config/ca`, we don't want to explicity set a name neither check if `set_default` is set
 	isConfigCARequest := req.Path == "config/ca"
 
-	publicKey, privateKey, _, err := b.handleKeyGeneration(d)
+	publicKey, privateKey, generatedKeyMaterial, err := b.handleKeyGeneration(d)
 	if err != nil {
 		return handleStorageContextErr(err)
 	}
@@ -410,7 +410,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		}
 	}
 
-	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, issuerName)
+	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, generatedKeyMaterial, issuerName)
 	if err != nil {
 		return handleStorageContextErr(err, "failed to persist the issuer")
 	}

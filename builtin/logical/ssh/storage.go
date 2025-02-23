@@ -314,36 +314,38 @@ func (sc *storageContext) checkForRolesReferencingIssuer(issuerName string) (tim
 // ImportIssuer imports an issuer with the given public key, private key, and name
 // The function returns the issuer entry, a boolean indicating if the issuer was already known,
 // and an error if any. The provided key material is compared against existing issuers to avoid duplicates
-func (sc *storageContext) ImportIssuer(publicKey, privateKey, issuerName string) (*issuerEntry, bool, error) {
-	issuerPublicKey, err := parsePublicSSHKey(publicKey)
-	if err != nil {
-		return nil, false, errutil.UserError{Err: fmt.Sprintf("unable to parse issuer's public key: %v", err)}
-	}
+func (sc *storageContext) ImportIssuer(publicKey string, privateKey string, generatedKeyMaterial bool, issuerName string) (*issuerEntry, bool, error) {
+	if !generatedKeyMaterial {
+		issuerPublicKey, err := parsePublicSSHKey(publicKey)
+		if err != nil {
+			return nil, false, errutil.UserError{Err: fmt.Sprintf("failed to parse issuer's public key: %v", err)}
+		}
 
-	knownIssuers, err := sc.listIssuers()
-	if err != nil {
-		return nil, false, err
-	}
-
-	for _, issuerId := range knownIssuers {
-		existingIssuer, err := sc.fetchIssuerById(issuerId)
+		knownIssuers, err := sc.listIssuers()
 		if err != nil {
 			return nil, false, err
 		}
 
-		existingIssuerPublicKey, err := parsePublicSSHKey(existingIssuer.PublicKey)
-		if err != nil {
-			return nil, false, errutil.InternalError{Err: fmt.Sprintf("could not validate if key material is known, unable to parse existing issuer's public key: %v", err)}
-		}
+		for _, issuerId := range knownIssuers {
+			existingIssuer, err := sc.fetchIssuerById(issuerId)
+			if err != nil {
+				return nil, false, err
+			}
 
-		if existingIssuerPublicKey.Type() == issuerPublicKey.Type() && bytes.Equal(existingIssuerPublicKey.Marshal(), issuerPublicKey.Marshal()) {
-			return existingIssuer, true, nil
+			existingIssuerPublicKey, err := parsePublicSSHKey(existingIssuer.PublicKey)
+			if err != nil {
+				return nil, false, errutil.InternalError{Err: fmt.Sprintf("could not validate if key material is known, unable to parse existing issuer's public key: %v", err)}
+			}
+
+			if existingIssuerPublicKey.Type() == issuerPublicKey.Type() && bytes.Equal(existingIssuerPublicKey.Marshal(), issuerPublicKey.Marshal()) {
+				return existingIssuer, true, nil
+			}
 		}
 	}
 
 	id, err := uuid.GenerateUUID()
 	if err != nil {
-		return nil, false, err
+		return nil, false, errutil.InternalError{Err: fmt.Sprintf("failed to generate UUID for issuer: %v", err)}
 	}
 	issuer := &issuerEntry{
 		ID:         id,
@@ -355,7 +357,7 @@ func (sc *storageContext) ImportIssuer(publicKey, privateKey, issuerName string)
 
 	err = sc.writeIssuer(issuer)
 	if err != nil {
-		return nil, false, err
+		return nil, false, errutil.InternalError{Err: fmt.Sprintf("failed to write issuer: %v", err)}
 	}
 
 	return issuer, false, nil

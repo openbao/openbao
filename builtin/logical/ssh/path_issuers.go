@@ -412,12 +412,10 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, issuerName)
 	if err != nil {
-		// NOTE (gabrielopesantos) Review error message
 		return handleStorageContextErr(err, "failed to persist the issuer")
 	}
 
 	response, _ := respondReadIssuer(issuer)
-	// NOTE (gabrielopesantos) Review warning message
 	if existing {
 		response.AddWarning("An issuer with the provided public key already exists, returning the existing issuer")
 	}

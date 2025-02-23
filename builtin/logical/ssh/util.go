@@ -160,7 +160,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string
 
 	generateSigningKeyRaw, ok := data.GetOk("generate_signing_key")
 	switch {
-	// explicitly set true
+	// generation of signing key is explicitly set to true
 	case ok && generateSigningKeyRaw.(bool):
 		if publicKey != "" || privateKey != "" {
 			return "", "", errutil.UserError{Err: "public_key and private_key must not be set when generate_signing_key is set to true"}
@@ -168,7 +168,7 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string
 
 		generateSigningKey = true
 
-	// explicitly set to false, or not set and we have both a public and private key
+	// generation of signing key explicitly set to false, or not set and we have both a public and private key
 	case publicKey != "" && privateKey != "":
 		if publicKey == "" {
 			return "", "", errutil.UserError{Err: "missing public_key"}
@@ -188,11 +188,11 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string
 			return "", "", errutil.UserError{Err: fmt.Sprintf("could not parse private_key provided value: %v", err)}
 		}
 
-	// not set and no public/private key provided so generate
+	// generation of signing key not set and no key material provided so generate
 	case publicKey == "" && privateKey == "":
 		generateSigningKey = true
 
-	// not set, but one or the other supplied
+	// generation of signing key not set and only one key material provided
 	default:
 		return "", "", errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}
 	}

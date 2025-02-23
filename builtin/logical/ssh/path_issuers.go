@@ -384,7 +384,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	// If called from `config/ca`, we don't want to explicity set a name neither check if `set_default` is set
 	isConfigCARequest := req.Path == "config/ca"
 
-	publicKey, privateKey, err := b.handleKeyGeneration(d)
+	publicKey, privateKey, _, err := b.handleKeyGeneration(d)
 	if err != nil {
 		return handleStorageContextErr(err)
 	}

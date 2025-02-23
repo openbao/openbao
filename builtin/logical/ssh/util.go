@@ -151,50 +151,39 @@ func substQuery(tpl string, data map[string]string) string {
 
 // handleKeyGeneration parses the input parameters and returns the public and private keys
 // by either generating them or using the provided ones.
-func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string, error) {
-	var err error
-	publicKey := data.Get("public_key").(string)
-	privateKey := data.Get("private_key").(string)
-
-	var generateSigningKey bool
+func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey string, privateKey string, generateSigningKey bool, err error) {
+	publicKey = data.Get("public_key").(string)
+	privateKey = data.Get("private_key").(string)
 
 	generateSigningKeyRaw, ok := data.GetOk("generate_signing_key")
 	switch {
 	// generation of signing key is explicitly set to true
 	case ok && generateSigningKeyRaw.(bool):
 		if publicKey != "" || privateKey != "" {
-			return "", "", errutil.UserError{Err: "public_key and private_key must not be set when generate_signing_key is set to true"}
+			err = errutil.UserError{Err: "public_key and private_key must not be set when generate_signing_key is set to true"}
+			return
 		}
-
 		generateSigningKey = true
-
 	// generation of signing key explicitly set to false, or not set and we have both a public and private key
 	case publicKey != "" && privateKey != "":
-		if publicKey == "" {
-			return "", "", errutil.UserError{Err: "missing public_key"}
-		}
-
-		if privateKey == "" {
-			return "", "", errutil.UserError{Err: "missing private_key"}
-		}
-
 		_, err = parsePublicSSHKey(publicKey)
 		if err != nil {
-			return "", "", errutil.UserError{Err: fmt.Sprintf("could not parse public_key provided value: %v", err)}
+			err = errutil.UserError{Err: fmt.Sprintf("could not parse public_key provided value: %v", err)}
+			return
 		}
 
-		_, err := ssh.ParsePrivateKey([]byte(privateKey))
+		_, err = ssh.ParsePrivateKey([]byte(privateKey))
 		if err != nil {
-			return "", "", errutil.UserError{Err: fmt.Sprintf("could not parse private_key provided value: %v", err)}
+			err = errutil.UserError{Err: fmt.Sprintf("could not parse private_key provided value: %v", err)}
+			return
 		}
-
 	// generation of signing key not set and no key material provided so generate
 	case publicKey == "" && privateKey == "":
 		generateSigningKey = true
-
 	// generation of signing key not set and only one key material provided
 	default:
-		return "", "", errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}
+		err = errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}
+		return
 	}
 
 	if generateSigningKey {
@@ -203,15 +192,16 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (string, string
 
 		publicKey, privateKey, err = generateSSHKeyPair(b.Backend.GetRandomReader(), keyType, keyBits)
 		if err != nil {
-			return "", "", errutil.InternalError{Err: err.Error()}
+			err = errutil.InternalError{Err: err.Error()}
+			return
 		}
 	}
 
 	if publicKey == "" || privateKey == "" {
-		return "", "", errutil.InternalError{Err: "failed to generate or parse the keys"}
+		err = errutil.InternalError{Err: "failed to generate or parse the keys"}
 	}
 
-	return publicKey, privateKey, nil
+	return
 }
 
 func getIssuerRef(data *framework.FieldData) string {

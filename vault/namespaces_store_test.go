@@ -14,7 +14,7 @@ func TestNamespaceStore(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := context.TODO()
+	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
 	ns, err := s.ListNamespaceUUIDs(ctx, false)
@@ -170,4 +170,47 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
 	require.Equal(t, item.Namespace.Path, "ns1/")
 	require.Equal(t, item.Namespace.Path, itemPath)
+}
+
+func TestNamespaceHierarchy(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.TODO())
+
+	// Initial store should be empty.
+	ns, err := s.ListNamespaceUUIDs(ctx, false)
+	require.NoError(t, err)
+	require.Empty(t, ns)
+
+	// Creating an item should save it, set IDs, and canonicalize path.
+	namespaces := map[string]struct {
+		context.Context
+		*NamespaceEntry
+	}{
+		"ns1": {
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1"}},
+		},
+		"ns2": {
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns2"}},
+		},
+		"ns3": {
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns3"}},
+		},
+	}
+
+	for name, ns := range namespaces {
+		t.Run(name, func(t *testing.T) {
+			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+			require.NoError(t, err)
+			require.NotEmpty(t, ns.UUID)
+			require.NotEmpty(t, ns.Namespace.ID)
+			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[name].Namespace.Path))
+		})
+	}
 }

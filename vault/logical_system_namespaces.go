@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	p "path"
 	"strings"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -193,6 +195,12 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		path = namespace.Canonicalize(p.Join(ns.Path, path))
+
 		imetadata, ok := data.GetOk("custom_metadata")
 		var metadata map[string]string
 		if ok {

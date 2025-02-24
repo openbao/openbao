@@ -48,12 +48,6 @@ func (n *Namespace) Validate() error {
 		return fmt.Errorf("%v is a reserved path and cannot be used as a namespace", n.Path)
 	}
 
-	// Canonicalize ensures we have a trailing slash; remove it for this
-	// comparison to ensure we have no other slashes.
-	if strings.Contains(n.Path[:len(n.Path)-1], "/") {
-		return errors.New("path separator ('/') cannot be used in namespace path")
-	}
-
 	return nil
 }
 

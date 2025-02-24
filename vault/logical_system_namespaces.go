@@ -6,10 +6,12 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
@@ -137,17 +139,26 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 // handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// TODO(satoqz): Use ListNamespaceEntries once this can be rebased so we can also return the UUID fields.
-		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
+		parent, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entries, err := b.Core.namespaceStore.ListNamespaceEntries(ctx, false, false)
 		if err != nil {
 			return nil, err
 		}
 
 		var keys []string
 		keyInfo := make(map[string]interface{})
-		for _, ns := range namespaces {
-			keys = append(keys, ns.Path)
-			keyInfo[ns.Path] = ns
+		for _, entry := range entries {
+			p := parent.TrimmedPath(entry.Namespace.Path)
+			keys = append(keys, p)
+			keyInfo[p] = map[string]any{
+				"uuid":            entry.UUID,
+				"id":              entry.Namespace.ID,
+				"path":            entry.Namespace.Path,
+				"custom_metadata": entry.Namespace.CustomMetadata,
+			}
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -165,7 +176,11 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 // handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := data.Get("path").(string)
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		if err != nil {
@@ -192,7 +207,12 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 // handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := data.Get("path").(string)
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
 		imetadata, ok := data.GetOk("custom_metadata")
 		var metadata map[string]string
 		if ok {
@@ -204,8 +224,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
-			ns.Namespace.Path = path
+		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			ns.Namespace.CustomMetadata = metadata
 			return ns, nil
 		})
@@ -214,10 +233,10 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            ns.UUID,
-			"path":            ns.Namespace.Path,
-			"id":              ns.Namespace.ID,
-			"custom_metadata": ns.Namespace.CustomMetadata,
+			"uuid":            entry.UUID,
+			"path":            entry.Namespace.Path,
+			"id":              entry.Namespace.ID,
+			"custom_metadata": entry.Namespace.CustomMetadata,
 		}}
 		return resp, nil
 	}
@@ -242,7 +261,12 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := data.Get("path").(string)
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
+
 		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
@@ -283,7 +307,11 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 // handleNamespacesDelete handles the "/sys/namespace/<path>" endpoints to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		path := data.Get("path").(string)
+		path := namespace.Canonicalize(data.Get("path").(string))
+
+		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
+			return nil, errors.New("path must not contain /")
+		}
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		if err != nil {

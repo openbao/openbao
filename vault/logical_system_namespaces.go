@@ -126,7 +126,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 	}
 }
 
-// handleNamespacesList handles /sys/namespaces/ endpoints to provide the enabled namespaces
+// handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
@@ -145,7 +145,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	}
 }
 
-// handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace
+// handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -172,7 +172,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	}
 }
 
-// handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace
+// handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -222,7 +222,7 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 	return metadata, nil
 }
 
-// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace
+// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -263,6 +263,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	}
 }
 
+// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoints to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)

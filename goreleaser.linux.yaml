@@ -470,7 +470,7 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -479,7 +479,7 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -488,7 +488,7 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -504,21 +504,21 @@ docker_manifests:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
@@ -534,7 +534,7 @@ docker_manifests:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -543,7 +543,7 @@ docker_manifests:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -552,7 +552,7 @@ docker_manifests:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -568,21 +568,21 @@ docker_manifests:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
@@ -598,7 +598,7 @@ docker_manifests:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -607,7 +607,7 @@ docker_manifests:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -616,7 +616,7 @@ docker_manifests:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-riscv64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm
@@ -632,21 +632,21 @@ docker_manifests:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-ppc64le
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-s390x
   - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
-    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    skip_push: auto
     image_templates:
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
       - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-arm64
@@ -727,8 +727,7 @@ release:
     owner: openbao
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
-  prerelease: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
-  make_latest: ${{ .Env.GITHUB_RELEASE_MAKE_LATEST }}
+  prerelease: auto
   disable: false
 
   draft: false

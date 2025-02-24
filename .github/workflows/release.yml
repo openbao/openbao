@@ -6,21 +6,6 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      prerelease:
-        description: "Mark this release as a prerelease"
-        required: false
-        default: "auto"
-        type: choice
-        # auto follows semver. Prerelease versions are hyphenated with a label. ex. 0.0.0-alpha, 1.0.0-rc1
-        options:
-          - auto
-          - "true"
-          - "false"
-      make-latest:
-        description: "Latest release"
-        required: false
-        default: true
-        type: boolean
       nightly:
         description: "Mark as nightly build"
         required: true
@@ -59,8 +44,6 @@ jobs:
 
       - name: Disable nightly on primary repository
         if: inputs.nightly
-        env:
-          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           if [ "$GITHUB_REPOSITORY" != "openbao/openbao-nightly" ]; then
             echo "Refusing to run nightly release on non-nightly repo" 1>&2
@@ -193,8 +176,6 @@ jobs:
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GITHUB_RELEASE_PRERELEASE: ${{ inputs.prerelease }}
-          GITHUB_RELEASE_MAKE_LATEST: ${{ inputs.make-latest }}
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
           NIGHTLY_RELEASE: ${{ inputs.nightly }}
 

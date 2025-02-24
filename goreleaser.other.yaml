@@ -147,8 +147,7 @@ release:
     owner: openbao
     name: openbao{{ .Env.NIGHTLY_RELEASE }}
 
-  prerelease: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
-  make_latest: ${{ .Env.GITHUB_RELEASE_MAKE_LATEST }}
+  prerelease: auto
   disable: false
 
   draft: false

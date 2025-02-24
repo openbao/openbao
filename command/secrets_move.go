@@ -126,6 +126,4 @@ func (c *SecretsMoveCommand) Run(args []string) int {
 		c.UI.Output(fmt.Sprintf("Waiting for terminal status in migration of secrets engine %s to %s, with migration ID %s", source, destination, remountResp.MigrationID))
 		time.Sleep(10 * time.Second)
 	}
-
-	return 0
 }

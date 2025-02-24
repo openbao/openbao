@@ -26342,12 +26342,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"swagger-ui-dist@npm:^5.18.2":
-  version: 5.18.2
-  resolution: "swagger-ui-dist@npm:5.18.2"
+"swagger-ui-dist@npm:^5.19.0":
+  version: 5.19.0
+  resolution: "swagger-ui-dist@npm:5.19.0"
   dependencies:
     "@scarf/scarf": =1.4.0
-  checksum: 4e8f3e4669276f421f91ce6214f9df09a5b0f9aa1b636e9044076af4f3a02b093d1eb43ed1b3962aba08be803692e71dfc1ce0c28c2057b9eb0c35b166d7ef42
+  checksum: a2ae866b9f4d9e28a580f094811938997af9db5554c7d66264af679f12916a3bf53a3ca811a466bb272145b041e84b5b9d958c9d58071d7c625a6c2f0eabe827
   languageName: node
   linkType: hard
 
@@ -27731,7 +27731,7 @@ __metadata:
     shell-quote: ^1.8.2
     string.prototype.endswith: ^0.2.0
     string.prototype.startswith: ^1.0.1
-    swagger-ui-dist: ^5.18.2
+    swagger-ui-dist: ^5.19.0
     text-encoder-lite: 2.0.0
     typescript: ^5.7.3
     uuid: ^11.0.5

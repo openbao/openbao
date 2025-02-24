@@ -193,7 +193,7 @@
     "shell-quote": "^1.8.2",
     "string.prototype.endswith": "^0.2.0",
     "string.prototype.startswith": "^1.0.1",
-    "swagger-ui-dist": "^5.18.2",
+    "swagger-ui-dist": "^5.19.0",
     "text-encoder-lite": "2.0.0",
     "typescript": "^5.7.3",
     "walk-sync": "^3.0.0",

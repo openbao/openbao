@@ -32,7 +32,7 @@ type Config struct {
 	AutoAuth                  *AutoAuth `hcl:"auto_auth"`
 	ExitAfterAuth             bool      `hcl:"exit_after_auth"`
 	Cache                     *Cache    `hcl:"cache"`
-	APIProxy                  *APIProxy `hcl:"api_proxy""`
+	APIProxy                  *APIProxy `hcl:"api_proxy"`
 	Vault                     *Vault    `hcl:"vault"`
 	DisableIdleConns          []string  `hcl:"disable_idle_connections"`
 	DisableIdleConnsAPIProxy  bool      `hcl:"-"`

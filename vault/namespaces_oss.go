@@ -23,5 +23,5 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Names
 }
 
 func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
-	return c.namespaceStore.ListNamespaces(ctx, true /* includeRoot */)
+	return c.namespaceStore.ListAllNamespaces(ctx, true)
 }

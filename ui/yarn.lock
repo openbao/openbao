@@ -27659,7 +27659,7 @@ __metadata:
     filesize: ^4.2.1
     flat: ^6.0.1
     handlebars: 4.7.8
-    highlight.js: ^10.4.1
+    highlight.js: ^11.11.1
     jsondiffpatch: ^0.4.1
     jsonlint: ^1.6.3
     lint-staged: ^15.4.1

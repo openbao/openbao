@@ -48,12 +48,6 @@ func (n *Namespace) Validate() error {
 		return fmt.Errorf("%v is a reserved path and cannot be used as a namespace", n.Path)
 	}
 
-	// Canonicalize ensures we have a trailing slash; remove it for this
-	// comparison to ensure we have no other slashes.
-	if strings.Contains(n.Path[:len(n.Path)-1], "/") {
-		return errors.New("path separator ('/') cannot be used in namespace path")
-	}
-
 	return nil
 }
 
@@ -79,6 +73,18 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 		return false
 	default:
 		return strings.HasPrefix(n.Path, possibleParent.Path)
+	}
+}
+
+// ParentPath returns the path of the parent namespace
+func (n *Namespace) ParentPath() string {
+	canonicalPath := n.Path
+	switch {
+	case canonicalPath == "":
+		return ""
+	default:
+		segments := strings.Split(canonicalPath, "/")
+		return Canonicalize(strings.Join(segments[:len(segments)-2], "/"))
 	}
 }
 

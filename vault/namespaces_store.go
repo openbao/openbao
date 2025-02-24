@@ -249,6 +249,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		return fmt.Errorf("failed validating namespace: %w", err)
 	}
 
+	parentPath := namespace.Namespace.ParentPath()
+	parent, err := ns.getNamespaceByPathLocked(ctx, parentPath)
+	if err != nil || parent == nil {
+		return fmt.Errorf("parent namespace does not exist: %s", parentPath)
+	}
+
 	index := -1
 	if entry.UUID == "" {
 		id, err := ns.assignIdentifier(entry.Namespace.Path)
@@ -432,7 +438,7 @@ func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string)
 	return nil, nil
 }
 
-// GetNamespaceByPath is used to fetch the namespace with the given path.
+// GetNamespaceByPath is used to fetch the namespace with the given full path.
 func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (*NamespaceEntry, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_path"}, time.Now())
 
@@ -443,6 +449,10 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
+	return ns.getNamespaceByPathLocked(ctx, path)
+}
+
+func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*NamespaceEntry, error) {
 	path = namespace.Canonicalize(path)
 	for _, item := range ns.namespaces {
 		if item.Namespace.Path == path {
@@ -470,6 +480,11 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, errors.New("refusing to modify root namespace")
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var entry *NamespaceEntry
 	for _, item := range ns.namespaces {
 		if item.Namespace.Path == path {
@@ -482,10 +497,13 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		entry = &NamespaceEntry{Namespace: &namespace.Namespace{}}
 	}
 
-	var err error
 	entry, err = callback(ctx, entry)
 	if err != nil {
 		return nil, err
+	}
+
+	if !entry.Namespace.HasParent(parent) {
+		return nil, errors.New("not child of current namespace")
 	}
 
 	if err := ns.setNamespaceLocked(ctx, entry); err != nil {
@@ -503,12 +521,17 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 		return nil, err
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]*namespace.Namespace, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -549,12 +572,17 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 		return nil, err
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || (!item.Namespace.HasParent(parent) && item.Namespace.Path != parent.Path) {
 			continue
 		}
 
@@ -572,12 +600,17 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 		return nil, err
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -588,10 +621,15 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 }
 
 // ListNamespacePaths is used to list the paths of all available namespaces
-func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeRoot bool) ([]string, error) {
+func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_paths"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -600,7 +638,7 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeRoot bo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.Path == parent.Path || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -618,12 +656,21 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return err
 	}
 
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
 	index := -1
 	for idx, item := range ns.namespaces {
+		if !item.Namespace.HasParent(parent) {
+			continue
+		}
+
 		if item.UUID == uuid {
 			if item.Namespace.ID == namespace.RootNamespaceID {
 				return errors.New("unable to delete root namespace")

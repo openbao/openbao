@@ -110,7 +110,7 @@
     "d3-selection": "^3.0.0",
     "d3-time-format": "^2.1.1",
     "d3-tip": "^0.9.1",
-    "d3-transition": "^1.2.0",
+    "d3-transition": "^3.0.1",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^1.2.2",
     "deepmerge": "^4.3.1",

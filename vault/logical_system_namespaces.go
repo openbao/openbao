@@ -251,6 +251,10 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
 		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+			if ns.UUID == "" {
+				return nil, fmt.Errorf("requested namespace does not exist")
+			}
+
 			current := make(map[string]interface{})
 			for k, v := range ns.Namespace.CustomMetadata {
 				current[k] = v

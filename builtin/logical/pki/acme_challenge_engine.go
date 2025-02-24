@@ -6,7 +6,6 @@ package pki
 import (
 	"container/list"
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -238,8 +237,6 @@ func (ace *ACMEChallengeEngine) _run(b *backend, state *acmeState) error {
 		}
 		ace.ValidationLock.Unlock()
 	}
-
-	return errors.New("unexpectedly exited from ACMEChallengeEngine._run()")
 }
 
 func (ace *ACMEChallengeEngine) AcceptChallenge(sc *storageContext, account string, authz *ACMEAuthorization, challenge *ACMEChallenge, thumbprint string) error {

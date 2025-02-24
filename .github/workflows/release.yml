@@ -42,12 +42,7 @@ jobs:
         release_os:
           - linux
           - hsm
-          - darwin
-          - freebsd
-          - illumos
-          - netbsd
-          - openbsd
-          - windows
+          - other
     steps:
       - name: Disable release on nightly repository
         if: ${{ !inputs.nightly }}
@@ -184,24 +179,13 @@ jobs:
         run: |
           make static-dist
 
-      # Execute Go binary builds
-      - name: "Template GoRelaser configuration"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        run: |
-          [ "${{ matrix.release_os }}" != "hsm" ] && sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
-          [ "${{ matrix.release_os }}" == "hsm" ] && sed "s/REPLACE_WITH_RELEASE_GOOS/linux/g" .goreleaser-template.yaml > .goreleaser.yaml
-          [ "${{ matrix.release_os }}" == "linux" ] && sed -i "s/^#LINUXONLY#//g" .goreleaser.yaml || true
-          [ "${{ matrix.release_os }}" == "hsm" ] && sed -i "s/^#HSMONLY#//g" .goreleaser.yaml || true
-          [ "${{ matrix.release_os }}" != "hsm" ] && sed -i "s/^#NONHSM#//g" .goreleaser.yaml || true
-          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
-
       - name: "GoReleaser: Release"
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --timeout=60m --verbose --parallelism 2
+          args: release --clean --timeout=60m --verbose --parallelism 2 -f goreleaser.${{ matrix.release_os }}.yaml
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}

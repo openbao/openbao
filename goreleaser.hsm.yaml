@@ -1,0 +1,284 @@
+version: 2
+
+project_name: bao
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+    - make bootstrap
+
+env:
+  - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}
+
+builds:
+  - id: builds-hsm
+    tags:
+      - ui
+      - hsm
+    ldflags:
+      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }} -X github.com/openbao/openbao/version.VersionMetadata=hsm
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ignore:
+      - goos: darwin
+      - goos: dragonfly
+      - goos: freebsd
+      - goos: illumos
+      - goos: netbsd
+      - goos: openbsd
+      - goos: wasip1
+      - goos: windows
+      - goos: linux
+        goarch: arm
+      - goos: linux
+        goarch: arm64
+      - goos: linux
+        goarch: ppc64le
+      - goos: linux
+        goarch: s390x
+      - goos: linux
+        goarch: riscv
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    skip: false
+
+report_sizes: true
+
+nfpms:
+  - vendor: OpenBao
+    package_name: bao-hsm
+    homepage: https://openbao.org
+    maintainer: OpenBao <openbao@lists.lfedge.org>
+    description: |
+      OpenBao exists to provide a software solution to manage, store, and distribute
+      sensitive data including secrets, certificates, and keys.
+    license: MPL-2.0
+    formats:
+      - deb
+      - rpm
+      - archlinux
+    dependencies:
+      - openssl
+    provides:
+      - bao
+    bindir: /usr/bin
+    section: default
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/doc/openbao/copyright
+        file_info:
+          mode: 0644
+      - src: ./.release/linux/package/etc/openbao/openbao.env
+        dst: /etc/openbao/openbao.env
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      - src: ./.release/linux/package/etc/openbao/openbao.hcl
+        dst: /etc/openbao/openbao.hcl
+        type: config|noreplace
+        file_info:
+          mode: 0644
+      - src: ./.release/linux/package/usr/lib/systemd/system/openbao.service
+        dst: /usr/lib/systemd/system/openbao.service
+        type: config|noreplace
+        file_info:
+          mode: 0644
+    scripts:
+      preinstall: ".release/linux/preinst"
+      postinstall: ".release/linux/postinst"
+      postremove: ".release/linux/postrm"
+    overrides:
+      deb:
+        dependencies:
+          - openssl
+      rpm:
+        dependencies:
+          - openssl
+      archlinux:
+        dependencies:
+          - openssl
+    deb:
+      signature:
+        key_file: "{{ .Env.GPG_KEY_FILE }}"
+    rpm:
+      signature:
+        key_file: "{{ .Env.GPG_KEY_FILE }}"
+
+checksum:
+  name_template: "checksums-linux-hsm.txt"
+  disable: false
+
+dockers:
+  - id: hsm-ubi-amd64
+    use: buildx
+    goos: linux
+    goarch: amd64
+    skip_push: false
+    ids:
+      - builds-hsm
+    build_flag_templates:
+      - "--pull"
+      - "--build-arg=BIN_NAME={{ .ProjectName }}"
+      - "--build-arg=REVISION={{ .FullCommit }}"
+      - "--build-arg=VERSION={{ .Version }}"
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.vendor=OpenBao"
+      - "--label=org.opencontainers.image.description=OpenBao {{ .Version }}"
+      - "--label=org.opencontainers.image.url=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.documentation=https://github.com/openbao/openbao/blob/main/README.md"
+      - "--label=org.opencontainers.image.source=https://github.com/openbao/openbao"
+      - "--label=org.opencontainers.image.licenses=MPL-2.0"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - '--label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}'
+      - "--label=release={{ .Version }}"
+      - "--label=revision={{ .FullCommit }}"
+      - "--label=version={{ .Version }}"
+      - "--target=ubi"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+      - "docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64"
+    extra_files:
+      - ./LICENSE
+      - ./.release/docker/ubi-docker-entrypoint.sh
+      - ./CHANGELOG.md
+
+docker_manifests:
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - docker.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}
+    skip_push: false
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}.{{ .Minor }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Major }}
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+  - name_template: quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:latest
+    skip_push: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+    image_templates:
+      - quay.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/openbao-hsm-ubi{{ .Env.NIGHTLY_RELEASE }}:{{ .Version }}-amd64
+
+archives:
+  - formats:
+      - tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}-hsm_{{ .Version }}_{{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - "LICENSE"
+      - "README.md"
+      - "CHANGELOG.md"
+    builds_info:
+      group: root
+      owner: root
+      mode: 0755
+      # format is `time.RFC3339Nano`
+      mtime: 2008-01-02T15:04:05Z
+
+sboms:
+  - artifacts: archive
+  - id: binary
+    artifacts: binary
+    documents:
+      - "{{ .Binary }}-hsm_{{ .Version }}_{{ .Os }}_{{ .Arch }}.sbom.json"
+  - id: package
+    artifacts: package
+
+changelog:
+  disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+signs:
+  - id: cosign
+    artifacts: all
+    cmd: cosign
+    certificate: "${artifact}.pem"
+    args:
+      - "sign-blob"
+      - "--oidc-issuer=https://token.actions.githubusercontent.com"
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes" # needed on cosign 2.0.0+
+  - id: gpg
+    artifacts: all
+    signature: "${artifact}.gpgsig"
+    cmd: gpg
+    stdin: "{{ .Env.GPG_PASSWORD }}"
+    args:
+      - "--batch"
+      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
+      - "--output=${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+
+docker_signs:
+  - artifacts: all
+    args:
+      - "sign"
+      - "--oidc-issuer=https://token.actions.githubusercontent.com"
+      - "${artifact}@${digest}"
+      - "--yes" # needed on cosign 2.0.0+
+
+release:
+  github:
+    owner: openbao
+    name: openbao{{ .Env.NIGHTLY_RELEASE }}
+
+  prerelease: ${{ .Env.GITHUB_RELEASE_PRERELEASE }}
+  make_latest: ${{ .Env.GITHUB_RELEASE_MAKE_LATEST }}
+  disable: false
+
+  draft: false
+  replace_existing_draft: false
+  replace_existing_artifacts: false

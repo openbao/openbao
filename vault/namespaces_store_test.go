@@ -252,6 +252,37 @@ func TestNamespaceHierarchy(t *testing.T) {
 			require.Truef(t, containsRoot, "ListNamespaces must contain root namespace")
 			require.Equal(t, len(namespaces)+1, len(nsList), "ListNamespaces must return all namespaces")
 		})
-		// TODO (voigt): add test case with parent namespace other than root
+		t.Run("list child namespaces", func(t *testing.T) {
+			ctx := namespace.ContextWithNamespace(ctx, namespaces["ns1"].Namespace)
+			nsList, err := s.ListNamespaces(ctx, false)
+			// TODO (voigt):
+			// nsList, err := s.ListNamespaces(ctx, TRUE) does not include
+			// the root namespace. Effectively, the "includeRoot" parameter does not have any effect
+			// if the context is set to a child namespace (and not to a root namespace).
+			// Proposal: adjust ListNamespaces, so that it does not have a "includeRoot", but an
+			// "includeParent" parameter. If this parameter is set to true, the list should contain
+			// the root or the parent namespace respectively.
+			require.NoError(t, err)
+			for _, nss := range nsList {
+				t.Logf("> ID  : %s\n", nss.ID)
+				t.Logf("> Path: %s\n", nss.Path)
+			}
+			// TODO (voigt): this currently fails, as ListNamespaces lists not only child
+			// namespaces, but also the parent namespace. This is not expected behavior and
+			// needs to be fixed.
+			require.Equal(t, 1, len(nsList))
+
+			ctx = namespace.ContextWithNamespace(ctx, namespaces["ns2"].Namespace)
+			nsList, err = s.ListNamespaces(ctx, false)
+			require.NoError(t, err)
+			// for _, nss := range nsList {
+			// 	t.Logf("> ID  : %s\n", nss.ID)
+			// 	t.Logf("> Path: %s\n", nss.Path)
+			// }
+			// TODO (voigt): this currently fails, as ListNamespaces lists not only child
+			// namespaces, but also the parent namespace. This is not expected behavior and
+			// needs to be fixed.
+			require.Equal(t, 0, len(nsList))
+		})
 	})
 }

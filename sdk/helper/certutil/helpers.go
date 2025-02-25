@@ -932,18 +932,16 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 
 	AddExtKeyUsageOids(data, certTemplate)
 
-	if data.Params.IsCA {
-		certTemplate.IssuingCertificateURL = data.Params.URLs.IssuingCertificates
-		certTemplate.CRLDistributionPoints = data.Params.URLs.CRLDistributionPoints
-		certTemplate.OCSPServer = data.Params.URLs.OCSPServers
+	certTemplate.IssuingCertificateURL = data.Params.URLs.IssuingCertificates
+	certTemplate.CRLDistributionPoints = data.Params.URLs.CRLDistributionPoints
+	certTemplate.OCSPServer = data.Params.URLs.OCSPServers
 
-		if len(data.Params.URLs.DeltaCRLDistributionPoints) > 0 {
-			ext, err := CreateFreshestCRLExt(data.Params.URLs.DeltaCRLDistributionPoints)
-			if err != nil {
-				return nil, err
-			}
-			certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
+	if len(data.Params.URLs.DeltaCRLDistributionPoints) > 0 {
+		ext, err := CreateFreshestCRLExt(data.Params.URLs.DeltaCRLDistributionPoints)
+		if err != nil {
+			return nil, err
 		}
+		certTemplate.ExtraExtensions = append(certTemplate.ExtraExtensions, ext)
 	}
 
 	var certBytes []byte

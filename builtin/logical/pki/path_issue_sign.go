@@ -172,7 +172,7 @@ func buildPathIssue(b *backend, pattern string, displayAttrs *framework.DisplayA
 		Operations: map[logical.Operation]framework.OperationHandler{
 			logical.UpdateOperation: &framework.PathOperation{
 				Callback: b.metricsWrap("issue", roleRequired, func(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
-					return b.pathIssue(ctx, req, data, role, false)
+					return b.pathIssue(ctx, req, data, role)
 				}),
 				Responses: map[int][]framework.Response{
 					http.StatusOK: {{
@@ -267,6 +267,78 @@ func pathSign(b *backend) *framework.Path {
 	}
 
 	return buildPathSign(b, pattern, displayAttrs)
+}
+
+func pathCelSign(b *backend) *framework.Path {
+	fields := getCsrSignVerbatimSchemaFields()
+
+	return &framework.Path{
+		Pattern: "cel/sign/" + framework.GenericNameRegex("role"),
+
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixPKI,
+			OperationVerb:   "sign",
+			OperationSuffix: "with-cel-role",
+		},
+
+		Fields: fields,
+
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathCelSign,
+				Responses: map[int][]framework.Response{
+					http.StatusOK: {{
+						Description: "OK",
+						Fields: map[string]*framework.FieldSchema{
+							"certificate": {
+								Type:        framework.TypeString,
+								Description: `Certificate`,
+								Required:    true,
+							},
+							"issuing_ca": {
+								Type:        framework.TypeString,
+								Description: `Issuing Certificate Authority`,
+								Required:    true,
+							},
+							"ca_chain": {
+								Type:        framework.TypeCommaStringSlice,
+								Description: `Certificate Chain`,
+								Required:    false,
+							},
+							"serial_number": {
+								Type:        framework.TypeString,
+								Description: `Serial Number`,
+								Required:    true,
+							},
+							"not_before": {
+								Type:        framework.TypeInt64,
+								Description: `Starting time of validity`,
+								Required:    true,
+							},
+							"expiration": {
+								Type:        framework.TypeInt64,
+								Description: `Time of expiration`,
+								Required:    true,
+							},
+							"private_key": {
+								Type:        framework.TypeString,
+								Description: `Private key`,
+								Required:    false,
+							},
+							"private_key_type": {
+								Type:        framework.TypeString,
+								Description: `Private key type`,
+								Required:    false,
+							},
+						},
+					}},
+				},
+			},
+		},
+
+		HelpSynopsis:    pathCelSignHelpSyn,
+		HelpDescription: pathCelSignHelpDesc,
+	}
 }
 
 func pathIssuerSign(b *backend) *framework.Path {
@@ -471,7 +543,7 @@ See the API documentation for more information about required parameters.
 
 // pathIssue issues a certificate and private key from given parameters,
 // subject to role restrictions
-func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry, isCelRole bool) (*logical.Response, error) {
+func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
 	keyTypeRaw, keyTypePresent := data.GetOk("key_type")
 	keyBitsRaw, keyBitsPresent := data.GetOk("key_bits")
 
@@ -762,6 +834,257 @@ func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *fram
 	return b.pathIssueSignCert(ctx, req, data, role, true, false)
 }
 
+// pathCelSign issues a certificate from a submitted CSR, subject to
+// CEL role restrictions, and can modify the request based on CEL evaluations.
+func (b *backend) pathCelSign(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	// Fetch the CEL role name from the request
+	roleName := data.Get("role").(string)
+	if roleName == "" {
+		return nil, fmt.Errorf("missing CEL role name")
+	}
+
+	fmt.Printf("\n\n roleName%v", roleName)
+
+	// Retrieve the CEL role
+	celRole, err := b.getCelRole(ctx, req.Storage, roleName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch CEL role: %w", err)
+	}
+	if celRole == nil {
+		return nil, fmt.Errorf("CEL role not found")
+	}
+
+	fmt.Printf("\n\n celRole %v", celRole)
+
+	// Declare a map variable named "request" to represent the incoming data.
+	envOptions := []celgo.EnvOption{
+		celgo.Declarations(
+			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
+		),
+	}
+
+	// Add all variable declarations to the CEL environment.
+	for _, variable := range celRole.ValidationProgram.Variables {
+		envOptions = append(envOptions, celgo.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	}
+
+	// Create the CEL environment using the prepared declarations.
+	env, err := celgo.NewEnv(envOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
+	}
+
+	// Initialize the evaluation context for CEL expressions with the raw request data.
+	// The "request" key allows CEL expressions to access and evaluate against input fields.
+	// Additional variables and evaluated results will be added dynamically during processing.
+	evaluationData := map[string]interface{}{
+		"request": data.Raw,
+	}
+
+	// Evaluate all variables
+	for _, variable := range celRole.ValidationProgram.Variables {
+		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("%w", err)
+		}
+
+		// Add the evaluated result for subsequent CEL evaluations.
+		// This ensures variables can reference each other and build a cumulative evaluation context.
+		evaluationData[variable.Name] = result.Value()
+	}
+
+	// Compile and evaluate the main CEL expression
+	ast, issues := env.Parse(celRole.ValidationProgram.Expressions.Success)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("CEL expression validation failed: %w", issues.Err())
+	}
+	prog, err := env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile CEL expression: %w", err)
+	}
+
+	// Evaluate the success expression with the cumulative context
+	evalResult, _, err := prog.Eval(evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+	}
+
+	// Ensure the evaluation result is a boolean
+	if evalResult.Type() != celgo.BoolType {
+		return nil, fmt.Errorf("CEL program did not return a boolean value for success")
+	}
+
+	// Check if CEL rules passed
+	if !evalResult.Value().(bool) {
+		return nil, fmt.Errorf("%s", celRole.ValidationProgram.Expressions.Error)
+	}
+
+	fmt.Printf("\n\n evalResult %v", evalResult)
+
+	var generateLease bool
+	genLeaseExpr := celRole.ValidationProgram.Expressions.GenerateLease
+	if genLeaseExpr != "" {
+		ast, issues := env.Parse(genLeaseExpr)
+		if issues != nil && issues.Err() != nil {
+			return nil, fmt.Errorf("failed to parse generate_lease CEL expression: %w", issues.Err())
+		}
+
+		prog, err := env.Program(ast)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile generate_lease CEL expression: %w", err)
+		}
+
+		// Evaluate generate_lease CEL Expression
+		evalResult, _, err := prog.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate generate_lease CEL expression: %w", err)
+		}
+
+		// Ensure Boolean Result
+		if evalResult.Type() != celgo.BoolType {
+			return nil, fmt.Errorf("generate_lease expression did not return a boolean value")
+		}
+		generateLease = evalResult.Value().(bool)
+	} else {
+		generateLease = false // Default if not provided
+	}
+
+	var noStore bool
+	noStoreExpr := celRole.ValidationProgram.Expressions.NoStore
+	if noStoreExpr != "" {
+		ast, issues := env.Parse(noStoreExpr)
+		if issues != nil && issues.Err() != nil {
+			return nil, fmt.Errorf("failed to parse no_store CEL expression: %w", issues.Err())
+		}
+
+		prog, err := env.Program(ast)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile no_store CEL expression: %w", err)
+		}
+
+		// Evaluate no_store CEL Expression
+		evalResult, _, err := prog.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate no_store CEL expression: %w", err)
+		}
+
+		// Ensure Boolean Result
+		if evalResult.Type() != celgo.BoolType {
+			return nil, fmt.Errorf("no_store expression did not return a boolean value")
+		}
+		noStore = evalResult.Value().(bool)
+	} else {
+		noStore = false // Default if not provided
+	}
+
+	// Fetch issuer information
+	var issuerName string
+	if strings.HasPrefix(req.Path, "cel/sign/") {
+		issuerName = celRole.ValidationProgram.Expressions.Issuer
+		if len(issuerName) == 0 {
+			issuerName = defaultRef
+		}
+	} else {
+		// Otherwise, we must have a newer API which requires an issuer
+		// reference. Fetch it in this case
+		issuerName = getIssuerRef(data)
+		if len(issuerName) == 0 {
+			return logical.ErrorResponse("missing issuer reference"), nil
+		}
+	}
+
+	fmt.Printf("\n\n issuerName %v", issuerName)
+
+	var caErr error
+	sc := b.makeStorageContext(ctx, req.Storage)
+	fmt.Printf("\n\n sc %v", sc)
+	signingBundle, caErr := sc.fetchCAInfo(issuerName, IssuanceUsage)
+	fmt.Printf("\n\nsigningBundle %v", signingBundle)
+	if caErr != nil {
+		switch caErr.(type) {
+		case errutil.UserError:
+			return nil, errutil.UserError{Err: fmt.Sprintf(
+				"could not fetch the CA certificate (was one set?): %s", caErr)}
+		default:
+			return nil, errutil.InternalError{Err: fmt.Sprintf(
+				"error fetching CA certificate: %s", caErr)}
+		}
+	}
+
+	parsedBundle, warnings, err := signBasicCert(b, data, signingBundle, false, false)
+
+	fmt.Printf("\n\nparsedBundle %v", parsedBundle)
+
+	signingCB, err := signingBundle.ToCertBundle()
+	if err != nil {
+		return nil, fmt.Errorf("error converting raw signing bundle to cert bundle: %w", err)
+	}
+
+	cb, err := parsedBundle.ToCertBundle()
+	if err != nil {
+		return nil, fmt.Errorf("error converting raw cert bundle to cert bundle: %w", err)
+	}
+
+	caChainGen := newCaChainOutput(parsedBundle, data)
+
+	respData := map[string]interface{}{
+		"certificate":      cb.Certificate,
+		"not_before":       int64(parsedBundle.Certificate.NotBefore.Unix()),
+		"expiration":       int64(parsedBundle.Certificate.NotAfter.Unix()),
+		"serial_number":    cb.SerialNumber,
+		"issuing_ca":       signingCB.Certificate,
+		"private_key":      cb.PrivateKey,
+		"private_key_type": cb.PrivateKeyType,
+	}
+	fmt.Printf("\n\n respData %v", respData)
+
+	if caChainGen.containsChain() {
+		respData["ca_chain"] = caChainGen.pemEncodedChain()
+	}
+
+	// Generate Response
+	var resp *logical.Response
+	if generateLease {
+		// Lease-Managed Certificate
+		resp = b.Secret(SecretCertsType).Response(
+			respData,
+			map[string]interface{}{
+				"serial_number": cb.SerialNumber,
+			})
+		resp.Secret.TTL = parsedBundle.Certificate.NotAfter.Sub(time.Now())
+	} else {
+		// Non-Leased Certificate
+		resp = &logical.Response{
+			Data: respData,
+		}
+	}
+
+	if !noStore {
+		key := "certs/" + normalizeSerial(cb.SerialNumber)
+		certsCounted := b.certsCounted.Load()
+		err = req.Storage.Put(ctx, &logical.StorageEntry{
+			Key:   key,
+			Value: parsedBundle.CertificateBytes,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unable to store certificate locally: %w", err)
+		}
+		b.ifCountEnabledIncrementTotalCertificatesCount(certsCounted, key)
+	}
+
+	if data.Get("private_key_format").(string) == "pkcs8" {
+		err = convertRespToPKCS8(resp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	resp = addWarnings(resp, warnings)
+	fmt.Printf("\n\n resp %v", resp)
+
+	return resp, nil
+}
+
 // pathSignVerbatim issues a certificate from a submitted CSR, *not* subject to
 // role restrictions
 func (b *backend) pathSignVerbatim(ctx context.Context, req *logical.Request, data *framework.FieldData, role *roleEntry) (*logical.Response, error) {
@@ -788,7 +1111,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	//    allows users with access to those paths to manually choose their
 	//    issuer in desired scenarios).
 	var issuerName string
-	if strings.HasPrefix(req.Path, "sign-verbatim/") || strings.HasPrefix(req.Path, "sign/") || strings.HasPrefix(req.Path, "issue/") || strings.HasPrefix(req.Path, "cel/issue/") {
+	if strings.HasPrefix(req.Path, "sign-verbatim/") || strings.HasPrefix(req.Path, "sign/") || strings.HasPrefix(req.Path, "issue/") {
 		issuerName = role.Issuer
 		if len(issuerName) == 0 {
 			issuerName = defaultRef

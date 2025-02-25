@@ -1150,6 +1150,108 @@ func signCert(b *backend,
 	return parsedBundle, warnings, nil
 }
 
+func signBasicCert(b *backend,
+	apiData *framework.FieldData,
+	caSign *certutil.CAInfoBundle,
+	isCA bool,
+	useCSRValues bool) (*certutil.ParsedCertBundle, []string, error,
+) {
+	csrString := apiData.Get("csr").(string)
+	if csrString == "" {
+		return nil, nil, errutil.UserError{Err: "\"csr\" is empty"}
+	}
+
+	pemBlock, _ := pem.Decode([]byte(csrString))
+	if pemBlock == nil {
+		return nil, nil, errutil.UserError{Err: "csr contains no data"}
+	}
+	csr, err := x509.ParseCertificateRequest(pemBlock.Bytes)
+	if err != nil {
+		return nil, nil, errutil.UserError{Err: fmt.Sprintf("certificate request could not be parsed: %v", err)}
+	}
+
+	if csr.PublicKeyAlgorithm == x509.UnknownPublicKeyAlgorithm || csr.PublicKey == nil {
+		return nil, nil, errutil.UserError{Err: "Refusing to sign CSR with empty PublicKey. This usually means the SubjectPublicKeyInfo field has an OID not recognized by Go, such as 1.2.840.113549.1.1.10 for rsaPSS."}
+	}
+
+	// This switch validates that the CSR key type matches the role and sets
+	// the value in the actualKeyType/actualKeyBits values.
+	// actualKeyType := ""
+	// actualKeyBits := 0
+
+	switch csr.PublicKeyAlgorithm {
+	case x509.RSA:
+		pubKey, ok := csr.PublicKey.(*rsa.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+		if pubKey.N.BitLen() < 2048 {
+			return nil, nil, errutil.UserError{Err: "RSA keys < 2048 bits are unsafe and not supported"}
+		}
+
+		// actualKeyType = "rsa"
+		// actualKeyBits = pubKey.N.BitLen()
+	case x509.ECDSA:
+		_, ok := csr.PublicKey.(*ecdsa.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+
+		// actualKeyType = "ec"
+		// actualKeyBits = pubKey.Params().BitSize
+	case x509.Ed25519:
+		_, ok := csr.PublicKey.(ed25519.PublicKey)
+		if !ok {
+			return nil, nil, errutil.UserError{Err: "could not parse CSR's public key"}
+		}
+
+		// actualKeyType = "ed25519"
+		// actualKeyBits = 0
+	default:
+		return nil, nil, errutil.UserError{Err: "Unknown key type in CSR: " + csr.PublicKeyAlgorithm.String()}
+	}
+
+	creation, warnings, err := generateBasicCreationBundle(b, apiData, caSign, csr)
+	if err != nil {
+		return nil, nil, err
+	}
+	if creation.Params == nil {
+		return nil, nil, errutil.InternalError{Err: "nil parameters received from parameter bundle generation"}
+	}
+
+	creation.Params.IsCA = isCA
+	creation.Params.UseCSRValues = useCSRValues
+
+	if isCA {
+		creation.Params.PermittedDNSDomains = apiData.Get("permitted_dns_domains").([]string)
+
+		if rawKeyUsageValue, ok := apiData.GetOk("key_usage"); ok {
+			creation.Params.KeyUsage = x509.KeyUsage(parseKeyUsages(rawKeyUsageValue.([]string)))
+		}
+
+		if rawExtKeyUsagesValue, ok := apiData.GetOk("ext_key_usage"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsagesValue.([]string))
+		}
+
+		if rawExtKeyUsageOidsValue, ok := apiData.GetOk("ext_key_usage_oids"); ok {
+			creation.Params.ExtKeyUsage = parseExtKeyUsagesValue(0, rawExtKeyUsageOidsValue.([]string))
+		}
+	} else {
+		for _, ext := range csr.Extensions {
+			if ext.Id.Equal(certutil.ExtensionBasicConstraintsOID) {
+				warnings = append(warnings, "specified CSR contained a Basic Constraints extension that was ignored during issuance")
+			}
+		}
+	}
+
+	parsedBundle, err := certutil.SignCertificate(creation)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return parsedBundle, warnings, nil
+}
+
 // otherNameRaw describes a name related to a certificate which is not in one
 // of the standard name formats. RFC 5280, 4.2.1.6:
 //
@@ -1819,32 +1921,83 @@ func generateBasicCreationBundle(b *backend, apiData *framework.FieldData, caSig
 		subject.PostalCode = val.([]string)
 	}
 
+	var keyType string
+	var keyBits int
+	if csr == nil {
+		keyType = apiData.Get("key_type").(string)
+		keyBits = apiData.Get("key_bits").(int)
+	} else {
+		// Extract key type and bits from CSR
+		switch csr.PublicKeyAlgorithm {
+		case x509.RSA:
+			pubKey, ok := csr.PublicKey.(*rsa.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's RSA public key"}
+			}
+			if pubKey.N.BitLen() < 2048 {
+				return nil, nil, errutil.UserError{Err: "RSA keys < 2048 bits are unsafe and not supported"}
+			}
+			keyType = "rsa"
+			keyBits = pubKey.N.BitLen()
+
+		case x509.ECDSA:
+			pubKey, ok := csr.PublicKey.(*ecdsa.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's ECDSA public key"}
+			}
+			keyType = "ec"
+			keyBits = pubKey.Params().BitSize
+
+		case x509.Ed25519:
+			_, ok := csr.PublicKey.(ed25519.PublicKey)
+			if !ok {
+				return nil, nil, errutil.UserError{Err: "could not parse CSR's Ed25519 public key"}
+			}
+			keyType = "ed25519"
+			keyBits = 0 // Ed25519 does not have a variable bit size
+
+		default:
+			return nil, nil, errutil.UserError{Err: fmt.Sprintf("unknown key type in CSR: %s", csr.PublicKeyAlgorithm.String())}
+		}
+
+		fmt.Printf("\n\nCertificate Signing Request (CSR) detected, using key type: %s, key bits: %d\n", keyType, keyBits)
+	}
+
 	creation := &certutil.CreationBundle{
 		Params: &certutil.CreationParameters{
-			Subject:                       subject,
-			DNSNames:                      dnsNames,
-			EmailAddresses:                emailAddresses,
-			IPAddresses:                   ipAddresses,
-			URIs:                          URIs,
-			OtherSANs:                     otherSANs,
-			KeyType:                       apiData.Get("key_type").(string),
-			KeyBits:                       apiData.Get("key_bits").(int),
-			SignatureBits:                 apiData.Get("signature_bits").(int),
-			UsePSS:                        apiData.Get("use_pss").(bool),
-			NotBefore:                     notBefore,
-			NotAfter:                      notAfter,
-			KeyUsage:                      x509.KeyUsage(parseKeyUsages(apiData.Get("key_usage").([]string))),
-			ExtKeyUsage:                   parseExtKeyUsagesValue(0, (apiData.Get("ext_key_usage").([]string))),
-			ExtKeyUsageOIDs:               apiData.Get("ext_key_usage_oids").([]string),
-			PolicyIdentifiers:             apiData.Get("policy_identifiers").([]string),
+			Subject:         subject,
+			DNSNames:        dnsNames,
+			EmailAddresses:  emailAddresses,
+			IPAddresses:     ipAddresses,
+			URIs:            URIs,
+			OtherSANs:       otherSANs,
+			KeyType:         keyType,
+			KeyBits:         keyBits,
+			SignatureBits:   apiData.Get("signature_bits").(int),
+			UsePSS:          apiData.Get("use_pss").(bool),
+			NotBefore:       notBefore,
+			NotAfter:        notAfter,
+			KeyUsage:        x509.KeyUsage(parseKeyUsages(apiData.Get("key_usage").([]string))),
+			ExtKeyUsage:     parseExtKeyUsagesValue(0, (apiData.Get("ext_key_usage").([]string))),
+			ExtKeyUsageOIDs: apiData.Get("ext_key_usage_oids").([]string),
+			// PolicyIdentifiers:             apiData.Get("policy_identifiers").([]string),
 			BasicConstraintsValidForNonCA: apiData.Get("basic_constraints_valid_for_non_ca").(bool),
-			NotBeforeDuration:             time.Duration(apiData.Get("not_before_duration").(int64)) * time.Second,
-			ForceAppendCaChain:            caSign != nil,
-			SKID:                          skid,
+			// NotBeforeDuration:             time.Duration(apiData.Get("not_before_duration").(int64)) * time.Second,
+			ForceAppendCaChain: caSign != nil,
+			SKID:               skid,
 		},
 		SigningBundle: caSign,
 		CSR:           csr,
 	}
+
+	// Don't deal with URLs or max path length if it's self-signed, as these
+	// normally come from the signing bundle
+	if caSign == nil {
+		return creation, warnings, nil
+	}
+
+	// This will have been read in from the getGlobalAIAURLs function
+	creation.Params.URLs = caSign.URLs
 
 	return creation, warnings, nil
 }

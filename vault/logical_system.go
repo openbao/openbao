@@ -5794,9 +5794,6 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	GET /
-		Returns a list of all namespaces.
-
 	LIST /
 		Returns a list of all namespaces.
 		`,

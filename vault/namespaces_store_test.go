@@ -173,7 +173,6 @@ func TestNamespaceStore(t *testing.T) {
 }
 
 func TestNamespaceHierarchy(t *testing.T) {
-	// t.Parallel()
 	t.Parallel()
 
 	c, _, _ := TestCoreUnsealed(t)
@@ -205,22 +204,54 @@ func TestNamespaceHierarchy(t *testing.T) {
 		},
 	}
 
-	for name, ns := range namespaces {
-		// This test can be flaky - some times ns1 is not created before ns1/ns3 gets created.
-		// Resulting in
-		// --- FAIL: TestNamespaceHierarchy (0.02s)
-		//     --- FAIL: TestNamespaceHierarchy/ns3 (0.00s)
-		//         namespaces_store_test.go:210:
-		//             	Error Trace:	/Users/c.voigt/go/src/github.com/Ki-Reply-GmbH/openbao/vault/namespaces_store_test.go:210
-		//             	Error:      	Received unexpected error:
-		//             	            	parent namespace does not exist: ns1/
-		//             	Test:       	TestNamespaceHierarchy/ns3
-		t.Run(name, func(t *testing.T) {
-			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+	t.Run("SetNamespace", func(t *testing.T) {
+		for name, ns := range namespaces {
+			// This test can be flaky - some times ns1 is not created before ns1/ns3 gets created.
+			// Resulting in
+			// --- FAIL: TestNamespaceHierarchy (0.02s)
+			//     --- FAIL: TestNamespaceHierarchy/ns3 (0.00s)
+			//         namespaces_store_test.go:210:
+			//             	Error Trace:	/Users/c.voigt/go/src/github.com/Ki-Reply-GmbH/openbao/vault/namespaces_store_test.go:210
+			//             	Error:      	Received unexpected error:
+			//             	            	parent namespace does not exist: ns1/
+			//             	Test:       	TestNamespaceHierarchy/ns3
+			t.Run(name, func(t *testing.T) {
+				err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+				require.NoError(t, err)
+				require.NotEmpty(t, ns.UUID)
+				require.NotEmpty(t, ns.Namespace.ID)
+				require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[name].Namespace.Path))
+			})
+		}
+	})
+
+	t.Run("ListNamespaces", func(t *testing.T) {
+		t.Run("no root namespace", func(t *testing.T) {
+			nsList, err := s.ListNamespaces(ctx, false)
 			require.NoError(t, err)
-			require.NotEmpty(t, ns.UUID)
-			require.NotEmpty(t, ns.Namespace.ID)
-			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[name].Namespace.Path))
+			containsRoot := false
+			for _, nss := range nsList {
+				if (nss.Path == "") || (nss.Path == namespace.RootNamespaceID) {
+					containsRoot = true
+					break
+				}
+			}
+			require.Falsef(t, containsRoot, "ListNamespaces must not contain root namespace")
+			require.Equal(t, len(namespaces), len(nsList), "ListNamespaces must return all namespaces, excluding root")
 		})
-	}
+		t.Run("with root namespace", func(t *testing.T) {
+			nsList, err := s.ListNamespaces(ctx, true)
+			require.NoError(t, err)
+			containsRoot := false
+			for _, nss := range nsList {
+				if (nss.Path == "") || (nss.Path == namespace.RootNamespaceID) {
+					containsRoot = true
+					break
+				}
+			}
+			require.Truef(t, containsRoot, "ListNamespaces must contain root namespace")
+			require.Equal(t, len(namespaces)+1, len(nsList), "ListNamespaces must return all namespaces")
+		})
+		// TODO (voigt): add test case with parent namespace other than root
+	})
 }

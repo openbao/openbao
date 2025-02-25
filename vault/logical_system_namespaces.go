@@ -65,6 +65,13 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					},
 					Summary: "List namespaces.",
 				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesScan(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: namespaceListSchema}},
+					},
+					Summary: "Scan (recursively list) namespaces.",
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
@@ -143,6 +150,14 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
+	}
+}
+
+// handleNamespacesScan handles "/sys/namespaces" endpoint to scan the enabled namespaces.
+func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// TODO(satoqz): Implement scan once a clear API is available from NamespaceStore.
+		return nil, fmt.Errorf("scan is unimplemented")
 	}
 }
 

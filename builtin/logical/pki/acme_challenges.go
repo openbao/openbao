@@ -223,9 +223,14 @@ func ValidateDNS01Challenge(domain string, token string, thumbprint string, conf
 	defer cancel()
 
 	name := DNSChallengePrefix + domain
-	results, err := resolver.LookupTXT(ctx, name)
+	canonical_name, err := resolver.LookupCNAME(ctx, name)
 	if err != nil {
-		return false, fmt.Errorf("dns-01: failed to lookup TXT records for domain (%v) via resolver %v: %w", name, config.DNSResolver, err)
+		return false, fmt.Errorf("dns-01: failed to resolve the canonical domain for domain (%v) via resolver %v: %w", name, config.DNSResolver, err)
+	}
+
+	results, err := resolver.LookupTXT(ctx, canonical_name)
+	if err != nil {
+		return false, fmt.Errorf("dns-01: failed to lookup TXT records for domain (%v) via resolver %v: %w", canonical_name, config.DNSResolver, err)
 	}
 
 	for _, keyAuthz := range results {

@@ -137,6 +137,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 // handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// TODO(satoqz): Use ListNamespaceEntries once this can be rebased so we can also return the UUID fields.
 		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
 		if err != nil {
 			return nil, err

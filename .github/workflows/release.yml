@@ -115,6 +115,10 @@ jobs:
           - openbsd
           - windows
     steps:
+      - name: "Check free space on runner"
+        run: |
+          df -h .
+
       - name: Checkout
         uses: actions/checkout@v4.1.7
         with:

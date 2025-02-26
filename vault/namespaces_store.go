@@ -502,7 +502,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, err
 	}
 
-	if !entry.Namespace.HasParent(parent) {
+	if !entry.Namespace.HasAncestor(parent) {
 		return nil, errors.New("not child of current namespace")
 	}
 
@@ -531,7 +531,7 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 
 	entries := make([]*namespace.Namespace, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasAncestor(parent) {
 			continue
 		}
 
@@ -582,7 +582,7 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeParent 
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.ID == parent.ID || (!item.Namespace.HasParent(parent) && item.Namespace.Path != parent.Path) {
+		if !includeParent && item.Namespace.ID == parent.ID || (!item.Namespace.HasAncestor(parent) && item.Namespace.Path != parent.Path) {
 			continue
 		}
 
@@ -638,7 +638,7 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent 
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
+		if (!includeParent && item.Namespace.ID == parent.ID) || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -667,7 +667,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 
 	index := -1
 	for idx, item := range ns.namespaces {
-		if !item.Namespace.HasParent(parent) {
+		if !item.Namespace.HasAncestor(parent) {
 			continue
 		}
 

@@ -514,7 +514,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 }
 
 // ListNamespaces is used to list all available namespaces
-func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
+func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -531,7 +531,7 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 
 	entries := make([]*namespace.Namespace, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -565,7 +565,7 @@ func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeRoot 
 }
 
 // ListNamespaceUUIDs is used to list the uuids of available namespaces
-func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bool) ([]string, error) {
+func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeParent bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_uuids"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -582,7 +582,7 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || (!item.Namespace.HasParent(parent) && item.Namespace.Path != parent.Path) {
+		if !includeParent && item.Namespace.ID == parent.ID || (!item.Namespace.HasParent(parent) && item.Namespace.Path != parent.Path) {
 			continue
 		}
 
@@ -593,7 +593,7 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 }
 
 // ListNamespaceAccessors is used to list the identifiers of available namespaces
-func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoot bool) ([]string, error) {
+func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeParent bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_accessors"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -610,7 +610,7 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -638,7 +638,7 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent 
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeParent && item.Namespace.Path == parent.Path || !item.Namespace.HasParent(parent) {
+		if !includeParent && item.Namespace.ID == parent.ID || !item.Namespace.HasParent(parent) {
 			continue
 		}
 

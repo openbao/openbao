@@ -71,6 +71,8 @@ var (
 	}
 )
 
+// HasParent returns true if possibleParent is a parent namespace of n.
+// Otherwise it returns false.
 func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	switch {
 	case possibleParent.Path == "":
@@ -82,14 +84,38 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	}
 }
 
+// HasDirectParent returns true if possibleParent is the direct parent of n. Otherwise
+// it returns false.
+func (n *Namespace) HasDirectParent(possibleParent *Namespace) bool {
+	parentPath, ok := n.ParentPath()
+	return ok && parentPath == possibleParent.Path
+}
+
+// ParentPath returns the path of the parent namespace. n.Path must be a
+// canonicalized path.
+func (n *Namespace) ParentPath() (string, bool) {
+	if n.Path == "" {
+		return "", false
+	}
+	segments := strings.SplitAfter(n.Path, "/")
+	if len(segments) <= 2 {
+		return "", true
+	}
+	return strings.Join(segments[:len(segments)-2], ""), true
+}
+
+// TrimmedPath trims n.Path from the given path
 func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
 }
 
+// ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)
 }
 
+// RootContext adds the root namespace to the given context or returns a new
+// context if the given context is nil
 func RootContext(ctx context.Context) context.Context {
 	if ctx == nil {
 		return ContextWithNamespace(context.Background(), RootNamespace)
@@ -118,7 +144,7 @@ func FromContext(ctx context.Context) (*Namespace, error) {
 }
 
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the
-// provided string
+// provided string. The canonical root namespace path is the empty string.
 func Canonicalize(nsPath string) string {
 	if nsPath == "" || nsPath == "/" {
 		return ""

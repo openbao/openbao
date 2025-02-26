@@ -186,42 +186,31 @@ func TestNamespaceHierarchy(t *testing.T) {
 	require.Empty(t, ns)
 
 	// Creating an item should save it, set IDs, and canonicalize path.
-	namespaces := map[string]struct {
+	namespaces := []struct {
 		context.Context
 		*NamespaceEntry
 	}{
-		"ns1": {
+		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
 			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1"}},
 		},
-		"ns2": {
+		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
 			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns2"}},
 		},
-		"ns3": {
+		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
 			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns3"}},
 		},
 	}
 
-	t.Run("SetNamespace", func(t *testing.T) {
-		for name, ns := range namespaces {
-			// This test can be flaky - some times ns1 is not created before ns1/ns3 gets created.
-			// Resulting in
-			// --- FAIL: TestNamespaceHierarchy (0.02s)
-			//     --- FAIL: TestNamespaceHierarchy/ns3 (0.00s)
-			//         namespaces_store_test.go:210:
-			//             	Error Trace:	/Users/c.voigt/go/src/github.com/Ki-Reply-GmbH/openbao/vault/namespaces_store_test.go:210
-			//             	Error:      	Received unexpected error:
-			//             	            	parent namespace does not exist: ns1/
-			//             	Test:       	TestNamespaceHierarchy/ns3
-			t.Run(name, func(t *testing.T) {
-				err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
-				require.NoError(t, err)
-				require.NotEmpty(t, ns.UUID)
-				require.NotEmpty(t, ns.Namespace.ID)
-				require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[name].Namespace.Path))
-			})
+	t.Run("SetNamespaces", func(t *testing.T) {
+		for idx, ns := range namespaces {
+			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+			require.NoError(t, err)
+			require.NotEmpty(t, ns.UUID)
+			require.NotEmpty(t, ns.Namespace.ID)
+			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
 		}
 	})
 
@@ -253,7 +242,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 			require.Equal(t, len(namespaces)+1, len(nsList), "ListNamespaces must return all namespaces")
 		})
 		t.Run("list child namespaces", func(t *testing.T) {
-			ctx := namespace.ContextWithNamespace(ctx, namespaces["ns1"].Namespace)
+			ctx := namespace.ContextWithNamespace(ctx, namespaces[0].Namespace)
 			nsList, err := s.ListNamespaces(ctx, false)
 			// TODO (voigt):
 			// nsList, err := s.ListNamespaces(ctx, TRUE) does not include
@@ -272,7 +261,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 			// needs to be fixed.
 			require.Equal(t, 1, len(nsList))
 
-			ctx = namespace.ContextWithNamespace(ctx, namespaces["ns2"].Namespace)
+			ctx = namespace.ContextWithNamespace(ctx, namespaces[1].Namespace)
 			nsList, err = s.ListNamespaces(ctx, false)
 			require.NoError(t, err)
 			// for _, nss := range nsList {

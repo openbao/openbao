@@ -102,6 +102,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 	if err != nil {
 		return handleStorageContextErr(err)
 	}
+
 	issuer, err := sc.fetchIssuerById(issuerId)
 	if err != nil {
 		return handleStorageContextErr(err)
@@ -140,6 +141,7 @@ func (b *backend) pathSignIssueCertificateHelper(sc *storageContext, req *logica
 		Data: map[string]interface{}{
 			"serial_number": strconv.FormatUint(certificate.Serial, 16),
 			"signed_key":    string(signedSSHCertificate),
+			"issuer_id":     issuerId,
 		},
 	}
 

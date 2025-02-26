@@ -212,7 +212,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		nsEntry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			ns.Namespace.Path = path
 			ns.Namespace.CustomMetadata = metadata
 			return ns, nil
@@ -222,10 +222,10 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            ns.UUID,
-			"path":            ns.Namespace.Path,
-			"id":              ns.Namespace.ID,
-			"custom_metadata": ns.Namespace.CustomMetadata,
+			"uuid":            nsEntry.UUID,
+			"path":            nsEntry.Namespace.Path,
+			"id":              nsEntry.Namespace.ID,
+			"custom_metadata": nsEntry.Namespace.CustomMetadata,
 		}}
 		return resp, nil
 	}

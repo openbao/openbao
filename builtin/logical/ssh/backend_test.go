@@ -2786,21 +2786,19 @@ func TestSSHBackend_MultiIssuer(t *testing.T) {
 	}
 	resp, err = b.HandleRequest(context.Background(), signReq)
 	if err != nil || (resp != nil && !resp.IsError()) {
-		t.Fatalf("expected key signing to have failed as no CA issuer is configured, got resp: %+v, err: %v", resp, err)
+		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
 	}
 
-	// submit an issuer to be used by the role
-	submitCAIssuerReq := &logical.Request{
+	// submit an issuer to be used by the role and don't set it explicity
+	// as default, with `set_default` as the first issuer imported is set as default
+	importIssuerReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/import",
-		Data: map[string]interface{}{
-			"set_default": true,
-		},
-		Storage: s,
+		Storage:   s,
 	}
-	resp, err = b.HandleRequest(context.Background(), submitCAIssuerReq)
+	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot create CA issuer, got: resp: %+v, err: %v", resp, err)
+		t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
 	}
 
 	// get the issuer's public key
@@ -2813,7 +2811,7 @@ func TestSSHBackend_MultiIssuer(t *testing.T) {
 	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
 	defer cleanup()
 
-	// try to sign a key with the role, should succeed as there is an issuer configured
+	// try to sign a key with the role, should succeed as there is an issuer configured as default
 	resp, err = b.HandleRequest(context.Background(), signReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("expected key sign to succeed, got resp: %+v, err: %v", resp, err)
@@ -2846,16 +2844,16 @@ func TestSSHBackend_MultiIssuer(t *testing.T) {
 	}
 
 	// create a second issuer which will override the current default
-	caIssuerName := "test-ca-2"
-	submitCAIssuerReq = &logical.Request{
+	issuerName := "test-ca-2"
+	importIssuerReq = &logical.Request{
 		Operation: logical.UpdateOperation,
-		Path:      "issuers/import/" + caIssuerName,
+		Path:      "issuers/import/" + issuerName,
 		Data: map[string]interface{}{
 			"set_default": true,
 		},
 		Storage: s,
 	}
-	resp, err = b.HandleRequest(context.Background(), submitCAIssuerReq)
+	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("ca issuer should have been successfully submited, got: resp: %+v, err: %v", resp, err)
 	}

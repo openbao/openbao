@@ -402,15 +402,21 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 
 	sc := b.makeStorageContext(ctx, req.Storage)
 
+	// Depending on the request, we may need to fetch the issuer name
+	// and whether it should be set as the default issuer
 	var issuerName string
+	setDefault := true
 	if !isConfigCARequest {
+
 		issuerName, err = getIssuerName(sc, d)
 		if err != nil && err != errIssuerNameIsEmpty {
 			return handleStorageContextErr(err)
 		}
+
+		setDefault = d.Get("set_default").(bool)
 	}
 
-	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, generatedKeyMaterial, issuerName)
+	issuer, existing, err := sc.ImportIssuer(publicKey, privateKey, generatedKeyMaterial, issuerName, setDefault)
 	if err != nil {
 		return handleStorageContextErr(err, "failed to persist the issuer")
 	}
@@ -418,16 +424,6 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	response, _ := respondReadIssuer(issuer)
 	if existing {
 		response.AddWarning("An issuer with the provided public key already exists, returning the existing issuer")
-	}
-
-	setDefault := isConfigCARequest || d.Get("set_default").(bool)
-	if setDefault {
-		err = sc.updateDefaultIssuerId(issuer.ID)
-		if err != nil {
-			// Even if the new issuer fails to be set as default, we want to return
-			// the newly submitted issuer with a warning
-			response.AddWarning(fmt.Sprintf("Unable to update the default issuers configuration: %s", err.Error()))
-		}
 	}
 
 	// Commit our transaction if we created one!

@@ -97,22 +97,6 @@ func (sc *storageContext) deleteIssuer(id string) (bool, error) {
 	return wasDefault, sc.Storage.Delete(sc.Context, issuerPrefix+id)
 }
 
-// updateDefaultIssuerId updates the default issuer ID in the configuration
-// if it is different from the current one
-func (sc *storageContext) updateDefaultIssuerId(id string) error {
-	config, err := sc.getIssuersConfig()
-	if err != nil {
-		return err
-	}
-
-	if config.DefaultIssuerID != id {
-		config.DefaultIssuerID = id
-		return sc.setIssuersConfig(config)
-	}
-
-	return nil
-}
-
 // setIssuersConfig writes the issuers configuration to storage
 func (sc *storageContext) setIssuersConfig(config *issuerConfigEntry) error {
 	json, err := logical.StorageEntryJSON(storageIssuerConfig, config)
@@ -314,16 +298,16 @@ func (sc *storageContext) checkForRolesReferencingIssuer(issuerName string) (tim
 // ImportIssuer imports an issuer with the given public key, private key, and name
 // The function returns the issuer entry, a boolean indicating if the issuer was already known,
 // and an error if any. The provided key material is compared against existing issuers to avoid duplicates
-func (sc *storageContext) ImportIssuer(publicKey string, privateKey string, generatedKeyMaterial bool, issuerName string) (*issuerEntry, bool, error) {
+func (sc *storageContext) ImportIssuer(publicKey string, privateKey string, generatedKeyMaterial bool, issuerName string, setDefault bool) (*issuerEntry, bool, error) {
+	knownIssuers, err := sc.listIssuers()
+	if err != nil {
+		return nil, false, err
+	}
+
 	if !generatedKeyMaterial {
 		issuerPublicKey, err := parsePublicSSHKey(publicKey)
 		if err != nil {
 			return nil, false, errutil.UserError{Err: fmt.Sprintf("failed to parse issuer's public key: %v", err)}
-		}
-
-		knownIssuers, err := sc.listIssuers()
-		if err != nil {
-			return nil, false, err
 		}
 
 		for _, issuerId := range knownIssuers {
@@ -360,5 +344,42 @@ func (sc *storageContext) ImportIssuer(publicKey string, privateKey string, gene
 		return nil, false, errutil.InternalError{Err: fmt.Sprintf("failed to write issuer: %v", err)}
 	}
 
+	// We want an issuer to be set as default when one of the following conditions is met:
+	// - There are no issuers in the backend, so the new issuer will be the default
+	// - The request is coming from the `config/ca` endpoint, so the new issuer will be the default
+	// - The `set_default` field is set to true on `issuers/import` endpoint
+	if len(knownIssuers) == 0 || setDefault {
+		err = sc.updateDefaultIssuerId(issuer.ID)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+
 	return issuer, false, nil
+}
+
+// updateDefaultIssuerId updates the default issuer ID in the configuration
+// if it is different from the current one
+func (sc *storageContext) updateDefaultIssuerId(id string) error {
+	config, err := sc.getIssuersConfig()
+	if err != nil {
+		return err
+	}
+
+	if config.DefaultIssuerID != id {
+		config.DefaultIssuerID = id
+		return sc.setIssuersConfig(config)
+	}
+
+	return nil
+}
+
+// isIssuersEmpty checks if there are any issuers in storage
+func (sc *storageContext) isIssuersEmpty() (bool, error) {
+	issuerIds, err := sc.listIssuersPage("", 1)
+	if err != nil {
+		return false, err
+	}
+
+	return len(issuerIds) == 0, nil
 }

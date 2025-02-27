@@ -263,6 +263,9 @@ func (te *TokenEntry) SentinelGet(key string) (interface{}, error) {
 	case "creation_time_unix":
 		return time.Unix(te.CreationTime, 0), nil
 
+	case "expiration_time_unix":
+		return time.Unix(time.Now().Unix()+int64(te.TTL.Seconds()), 0), nil
+
 	case "meta", "metadata":
 		return te.Meta, nil
 
@@ -291,6 +294,7 @@ func (te *TokenEntry) SentinelKeys() []string {
 		"creation_ttl_seconds",
 		"creation_time",
 		"creation_time_unix",
+		"expiration_time_unix",
 		"meta",
 		"metadata",
 		"type",

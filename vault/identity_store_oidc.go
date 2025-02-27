@@ -9,12 +9,14 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
 	mathrand "math/rand"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -112,6 +114,10 @@ const (
 	namedKeyConfigPath   = oidcTokensPrefix + "named_keys/"
 	publicKeysConfigPath = oidcTokensPrefix + "public_keys/"
 	roleConfigPath       = oidcTokensPrefix + "roles/"
+
+	// Error constants used in the Introspect Endpoint. See details at
+	// https://openid.net/specs/openid-connect-core-1_0.html#TokenErrorResponse
+	ErrIntrospectInvalidClient = "invalid_client"
 )
 
 var (
@@ -133,6 +139,79 @@ var (
 
 // pseudo-namespace for cache items that don't belong to any real namespace.
 var noNamespace = &namespace.Namespace{ID: "__NO_NAMESPACE"}
+
+type ClientAuthenticationError struct {
+	StatusCode string
+	Err        error
+}
+
+func (e *ClientAuthenticationError) Error() string {
+	return fmt.Sprintf("status-code %s: %v", e.StatusCode, e.Err)
+}
+
+func NewClientAuthenticationError(statusCode string, err error) *ClientAuthenticationError {
+	return &ClientAuthenticationError{
+		StatusCode: statusCode,
+		Err:        err,
+	}
+}
+
+func (i *IdentityStore) authenticateWithClientCredentials(ctx context.Context, req *logical.Request, d *framework.FieldData) (*client, *provider, *ClientAuthenticationError) {
+	// Used header: "Authorization: Basic [client_id:client_secret]"
+	// Potentially used fields: "client_id", "client_secret", "name" (provider-name)
+
+	// Require the OIDC provider, if specified in the schema.
+	providerName, isProviderDefinedInSchema := d.GetOk("name")
+	var provider *provider = nil
+	if isProviderDefinedInSchema {
+		p, err := i.getOIDCProvider(ctx, req.Storage, providerName.(string))
+		if err != nil {
+			return nil, nil, NewClientAuthenticationError("server_error", err)
+		}
+		if p == nil {
+			return nil, nil, NewClientAuthenticationError("invalid_request", errors.New("provider not found"))
+		}
+		provider = p
+	}
+
+	// Check for client credentials in the Authorization header
+	clientID, clientSecret, okBasicAuth := basicAuth(req)
+	if !okBasicAuth {
+		// Check for client credentials in the request body
+		clientID = d.Get("client_id").(string)
+		clientSecret = d.Get("client_secret").(string)
+		if clientID == "" {
+			return nil, nil, NewClientAuthenticationError("invalid_request", errors.New("client_id parameter is required"))
+		}
+	}
+
+	client, err := i.clientByID(ctx, req.Storage, clientID)
+	if err != nil {
+		return nil, nil, NewClientAuthenticationError("server_error", err)
+	}
+	if client == nil {
+		i.Logger().Debug("client failed to authenticate with client not found", "client_id", clientID)
+		return nil, nil, NewClientAuthenticationError("invalid_client", errors.New("client failed to authenticate"))
+	}
+
+	// Authenticate the client if it's a confidential client type.
+	// Details at https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
+	if client.Type == confidential &&
+		subtle.ConstantTimeCompare([]byte(client.ClientSecret), []byte(clientSecret)) == 0 {
+		i.Logger().Debug("client failed to authenticate with invalid client secret", "client_id", clientID)
+		return nil, nil, NewClientAuthenticationError("invalid_client", errors.New("client failed to authenticate"))
+	}
+
+	// Validate that the client is authorized to use the provider (if any).
+	// Note that 'provider' can only be nil here, if it was explicitly allowed
+	// to be nil - it does not mean there was a lookup failure, that would have
+	// resulted in a 'provider not found' response earlier.
+	if provider != nil && !provider.allowedClientID(clientID) {
+		return nil, nil, NewClientAuthenticationError("invalid_client", errors.New("client is not authorized to use the provider"))
+	}
+
+	return client, provider, nil
+}
 
 func oidcPaths(i *IdentityStore) []*framework.Path {
 	return []*framework.Path{
@@ -382,7 +461,7 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"token": {
 					Type:        framework.TypeString,
-					Description: "Token to verify",
+					Description: "ID-Token to verify",
 				},
 				"client_id": {
 					Type:        framework.TypeString,
@@ -396,6 +475,43 @@ func oidcPaths(i *IdentityStore) []*framework.Path {
 			},
 			HelpSynopsis:    "Verify the authenticity of an OIDC token",
 			HelpDescription: "Use this path to verify the authenticity of an OIDC token and whether the associated entity is active and enabled.",
+		},
+		{
+			Pattern: "oidc/introspect-access-token/?$",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "oidc",
+				OperationVerb:   "introspect-access-token",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"token": {
+					Type:        framework.TypeString,
+					Description: "Access-Token to verify",
+					Required:    true,
+				},
+				"token_type_hint": {
+					Type:        framework.TypeString,
+					Description: "The token type. Only 'access_token' is expected.",
+				},
+				// For confidential clients, the client_id and client_secret are provided to
+				// the token endpoint via the 'client_secret_basic' or 'client_secret_post'
+				// authentication methods. See the OIDC spec for details at:
+				// https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication
+				"client_id": {
+					Type:        framework.TypeString,
+					Description: "The ID of the requesting client.",
+				},
+				"client_secret": {
+					Type:        framework.TypeString,
+					Description: "The secret of the requesting client.",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCIntrospectAccessToken,
+				},
+			},
+			HelpSynopsis:    "Provides the OIDC Introspect Endpoint, intended to validate access-tokens using OIDC client-credentials.",
+			HelpDescription: "The OIDC Introspect Endpoint allows an OpenBao-Client to lookup the validity, audience and expiration of an Access Token.",
 		},
 	}
 }
@@ -531,7 +647,7 @@ func (i *IdentityStore) getOIDCConfig(ctx context.Context, s logical.Storage) (*
 	return &c, nil
 }
 
-// handleOIDCCreateKey is used to create a new named key or update an existing one
+// pathOIDCCreateUpdateKey is used to create a new named key or update an existing one
 func (i *IdentityStore) pathOIDCCreateUpdateKey(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
@@ -1343,11 +1459,21 @@ func (i *IdentityStore) getOIDCRole(ctx context.Context, s logical.Storage, role
 
 // handleOIDCDeleteRole is used to delete a role if it exists
 func (i *IdentityStore) pathOIDCDeleteRole(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	name := d.Get("name").(string)
-	err := req.Storage.Delete(ctx, roleConfigPath+name)
+	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	name := d.Get("name").(string)
+	err = req.Storage.Delete(ctx, roleConfigPath+name)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := i.oidcCache.Flush(ns); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
@@ -1463,7 +1589,7 @@ func (i *IdentityStore) pathOIDCReadPublicKeys(ctx context.Context, req *logical
 	if ok {
 		data = v.([]byte)
 	} else {
-		jwks, err := i.generatePublicJWKS(ctx, req.Storage)
+		jwks, err := i.lookupPublicJwksByRoles(ctx, req.Storage)
 		if err != nil {
 			return nil, err
 		}
@@ -1544,41 +1670,47 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 		return introspectionResp(fmt.Sprintf("error parsing token: %s", err.Error()))
 	}
 
-	// validate signature
-	jwks, err := i.generatePublicJWKS(ctx, req.Storage)
-	if err != nil {
-		return nil, err
-	}
-
-	var valid bool
-	for _, key := range jwks.Keys {
-		if err := parsedJWT.Claims(key, &claims); err == nil {
-			valid = true
-			break
+	// validate JWT signature
+	var jwks *jose.JSONWebKeySet
+	if clientID == "" {
+		jwks, err = i.lookupPublicJwksByRoles(ctx, req.Storage)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		jwks, err = i.lookupPublicJwksByClient(ctx, req.Storage, clientID)
+		if err != nil {
+			if err.Error() == "invalid client-id" {
+				// don't propagate as an *error* to the call-site.
+				return introspectionResp(err.Error())
+			}
+			return nil, err
 		}
 	}
 
-	if !valid {
+	// check whether any of the found signing-keys has signed the claims
+	var foundValidKey bool
+	for _, key := range jwks.Keys {
+		if err := parsedJWT.Claims(key, &claims); err == nil {
+			foundValidKey = true
+			break
+		}
+	}
+	if !foundValidKey {
 		return introspectionResp("unable to validate the token signature")
 	}
 
-	// validate claims
-	c, err := i.getOIDCConfig(ctx, req.Storage)
-	if err != nil {
-		return nil, err
-	}
-
+	// validate contents of the claims
 	expected := jwt.Expected{
-		Issuer: c.effectiveIssuer,
-		Time:   time.Now(),
+		Time: time.Now(),
 	}
-
 	if clientID != "" {
 		expected.Audience = []string{clientID}
 	}
 
-	if claimsErr := claims.Validate(expected); claimsErr != nil {
-		return introspectionResp(fmt.Sprintf("error validating claims: %s", claimsErr.Error()))
+	_, err = i.getValidClaimsIssuer(ctx, req, claims, expected)
+	if err != nil {
+		return introspectionResp(fmt.Sprintf("error validating claims: %s", err.Error()))
 	}
 
 	// validate entity exists and is active
@@ -1593,6 +1725,182 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 	}
 
 	return introspectionResp("")
+}
+
+func (i *IdentityStore) getValidClaimsIssuer(ctx context.Context, req *logical.Request, claims jwt.Claims, expected jwt.Expected) (*provider, error) {
+	// There is this asymmetry where identity/oidc/provider/{name}/token generates a key,
+	// with the provider-name baked into the key-issuer. When validating claims, we asserted
+	// that the key-issuer matches the *global* default oidc-conf providers issuer, instead of
+	// considering the provider that generated the token as the issuer. This leads to
+	// claim-validation failing on the 'iss' claim. Hence, we fetch all providers and see
+	// whether one matches the issuer of the token.
+	providerNames, err := req.Storage.List(ctx, "oidc_provider/provider/")
+	if err != nil {
+		return nil, err
+	}
+
+	// ensure the 'default' case of 'no provider' is tested *last* (we use the last error-message)
+	providerNames = append(providerNames, "")
+
+	var lastClaimsError error
+
+	// iterate over all issuers (providers and oidc-default) and find which can validate the claim.
+	for _, providerName := range providerNames {
+		var provider *provider
+		if providerName == "" {
+			// global default, which would not support more than 1 provider
+			c, err := i.getOIDCConfig(ctx, req.Storage)
+			if err != nil {
+				return nil, err
+			}
+			// validate whether token was issued by the default issuer
+			expected.Issuer = c.effectiveIssuer
+		} else {
+			provider, err = i.getOIDCProvider(ctx, req.Storage, providerName)
+			if err != nil {
+				return nil, err
+			}
+			// validate whether token was issued by this provider's issuer
+			expected.Issuer = provider.effectiveIssuer
+		}
+
+		if claimsErr := claims.Validate(expected); claimsErr != nil {
+			lastClaimsError = claimsErr
+		} else {
+			return provider, nil // provider MAY be nil, meaning: the default oidc-config
+		}
+	}
+
+	return nil, lastClaimsError
+}
+
+func (i *IdentityStore) pathOIDCIntrospectAccessToken(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Serves the endpoint /v1/identity/oidc/introspect-access-token, which introspects (opaque) access-tokens.
+	// N.B.: distinct from /v1/identity/oidc/introspect, which introspects JWT ID-tokens only.
+	// Given the completely different approaches, it may take significant effort to merge them into one endpoint.
+
+	// Get the namespace
+	ns, err := namespace.FromContext(ctx)
+	if ns == nil || err != nil {
+		return introspectResponse(nil, ErrIntrospectInvalidClient, "missing namespace")
+	}
+
+	authClient, _, authErr := i.authenticateWithClientCredentials(ctx, req, d)
+	if err != nil {
+		return introspectResponse(nil, authErr.StatusCode, authErr.Error())
+	}
+	if authClient == nil {
+		return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+	}
+	if authClient.Type != confidential {
+		// The client that authenticates MUST be confidential.
+		// The client that generated the access-token, MAY be confidential.
+		return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+	}
+
+	// Look up the access token
+	accessToken := d.Get("token").(string)
+	// Currently unused: tokenTypeHint := d.Get("token_type_hint").(string)
+	tokenEntry, err := i.tokenStorer.LookupToken(ctx, accessToken)
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token lookup failed")
+	}
+	if tokenEntry == nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("non-existing or expired token")
+	}
+	if tokenEntry.Type != logical.TokenTypeBatch {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token must be of type 'batch'")
+	}
+
+	// Get the client ID that originated the request from the access token metadata
+	accessTokenClientID, okClientID := tokenEntry.InternalMeta[accessTokenClientIDMeta]
+	if !okClientID {
+		return i.convertIntrospectErrorToInactiveTokenResponse("missing client ID in token metadata")
+	}
+
+	accessTokenClient, err := i.clientByID(ctx, req.Storage, accessTokenClientID)
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("client lookup failed")
+	}
+	if accessTokenClient == nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("client of token not found")
+	}
+
+	accessTokenIat, err := tokenEntry.SentinelGet("creation_time_unix")
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token issued-at calculation failed")
+	}
+
+	accessTokenExp, err := tokenEntry.SentinelGet("expiration_time_unix")
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token expiration calculation failed")
+	}
+
+	// Construct the response body
+	responseBody := map[string]interface{}{
+		"active": true,
+		"aud":    accessTokenClientID,
+	}
+	if accessTokenIat != nil {
+		responseBody["iat"] = accessTokenIat.(time.Time).Unix()
+	}
+	if accessTokenExp != nil {
+		responseBody["exp"] = accessTokenExp.(time.Time).Unix()
+	}
+	return introspectResponse(responseBody, "", "")
+}
+
+func (i *IdentityStore) convertIntrospectErrorToInactiveTokenResponse(errorDescription string) (*logical.Response, error) {
+	// The oidc-introspection specification states that we should be opaque about the reason
+	// the provided token could not be validated, and that we just reply with 'active=false'.
+	// Details at https://datatracker.ietf.org/doc/html/rfc7662#section-2.1
+	i.Logger().Debug("oidc introspect-access-token endpoint failed to validate token", "error_description", errorDescription)
+
+	return introspectResponse(map[string]interface{}{"active": false}, "", "")
+}
+
+func introspectResponse(response map[string]interface{}, errorCode, errorDescription string) (*logical.Response, error) {
+	statusCode := http.StatusOK
+
+	// Set the error response and status code if error code isn't empty
+	if errorCode != "" {
+		switch errorCode {
+		case ErrIntrospectInvalidClient:
+			statusCode = http.StatusUnauthorized
+		}
+
+		response = map[string]interface{}{
+			"error":             errorCode,
+			"error_description": errorDescription,
+		}
+	}
+
+	body, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+
+	data := map[string]interface{}{
+		logical.HTTPStatusCode:  statusCode,
+		logical.HTTPRawBody:     body,
+		logical.HTTPContentType: "application/json",
+
+		// Token responses must include the following HTTP response headers
+		// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
+		logical.HTTPCacheControlHeader: "no-store",
+		logical.HTTPPragmaHeader:       "no-cache",
+	}
+
+	// Set the WWW-Authenticate response header when returning the
+	// invalid_client error code per the OAuth 2.0 spec at
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+	if errorCode == ErrIntrospectInvalidClient {
+		data[logical.HTTPWWWAuthenticateHeader] = "Basic"
+	}
+
+	return &logical.Response{
+		Data: data,
+	}, nil
 }
 
 // namedKey.rotate(overrides) performs a key rotation on a namedKey.
@@ -1739,7 +2047,7 @@ func listOIDCPublicKeys(ctx context.Context, s logical.Storage) ([]string, error
 	return keys, nil
 }
 
-func (i *IdentityStore) generatePublicJWKS(ctx context.Context, s logical.Storage) (*jose.JSONWebKeySet, error) {
+func (i *IdentityStore) lookupPublicJwksByRoles(ctx context.Context, s logical.Storage) (*jose.JSONWebKeySet, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -1801,6 +2109,34 @@ func (i *IdentityStore) generatePublicJWKS(ctx context.Context, s logical.Storag
 	if err := i.oidcCache.SetDefault(ns, "jwks", jwks); err != nil {
 		return nil, err
 	}
+
+	return jwks, nil
+}
+
+func (i *IdentityStore) lookupPublicJwksByClient(ctx context.Context, s logical.Storage, clientID string) (*jose.JSONWebKeySet, error) {
+	client, err := i.clientByID(ctx, s, clientID)
+	if err != nil {
+		return nil, err
+	}
+	if client == nil {
+		return nil, errors.New("invalid client-id")
+	}
+
+	clientKey, err := i.getNamedKey(ctx, s, client.Key)
+	if err != nil {
+		return nil, err
+	}
+	if clientKey == nil {
+		return nil, errors.New("missing client-named-key")
+	}
+	if clientKey.SigningKey == nil {
+		return nil, errors.New("missing client-signing-key")
+	}
+
+	jwks := &jose.JSONWebKeySet{
+		Keys: make([]jose.JSONWebKey, 0, 1),
+	}
+	jwks.Keys = append(jwks.Keys, clientKey.SigningKey.Public())
 
 	return jwks, nil
 }

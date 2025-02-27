@@ -67,6 +67,10 @@ const (
 	ErrTokenUnsupportedGrantType = "unsupported_grant_type"
 	ErrTokenServerError          = "server_error"
 
+	// Error constants used in the Introspect Endpoint. See details at
+	// https://openid.net/specs/openid-connect-core-1_0.html#TokenErrorResponse
+	ErrIntrospectInvalidClient = "invalid_client"
+
 	// Error constants used in the UserInfo Endpoint. See details at
 	// https://openid.net/specs/openid-connect-core-1_0.html#UserInfoError
 	ErrUserInfoServerError    = "server_error"
@@ -622,6 +626,39 @@ func oidcProviderPaths(i *IdentityStore) []*framework.Path {
 			},
 			HelpSynopsis:    "Provides the OIDC UserInfo Endpoint.",
 			HelpDescription: "The OIDC UserInfo Endpoint returns claims about the authenticated end-user.",
+		},
+		{
+			Pattern: "oidc/provider/" + framework.GenericNameRegex("name") + "/introspect",
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "oidc-provider",
+				OperationVerb:   "introspect",
+			},
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeString,
+					Description: "Name of the provider",
+					Required:    true,
+				},
+				"token": {
+					Type:        framework.TypeString,
+					Description: "The token to introspect.",
+					Required:    true,
+				},
+				"token_type_hint": {
+					Type:        framework.TypeString,
+					Description: "The token type. The following token types are expected: 'access_token', 'refresh_token'",
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: i.pathOIDCIntrospectForProvider,
+					DisplayAttrs: &framework.DisplayAttributes{
+						OperationVerb: "introspect",
+					},
+				},
+			},
+			HelpSynopsis:    "Provides the OIDC Introspect Endpoint.",
+			HelpDescription: "The OIDC Introspect Endpoint allows a client to lookup the validity, and optionally the audience and expiration of an Access Token.",
 		},
 	}
 }
@@ -2365,6 +2402,151 @@ func userInfoResponse(response map[string]interface{}, errorCode, errorDescripti
 	if errorCode == ErrUserInfoInvalidRequest || errorCode == ErrUserInfoInvalidToken {
 		data[logical.HTTPWWWAuthenticateHeader] = fmt.Sprintf("Bearer error=%q,error_description=%q",
 			errorCode, errorDescription)
+	}
+
+	return &logical.Response{
+		Data: data,
+	}, nil
+}
+
+func (i *IdentityStore) pathOIDCIntrospectForProvider(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	// Serves endpoint /v1/identity/oidc/provider/<name>/introspect, which introspects access-tokens.
+	// N.B.: Not to be confused with /v1/identity/oidc/introspect, which introspects JWT-tokens.
+
+	// Attempt to authenticate using Auth-Basic.
+	authClientID, authClientSecret, okBasicAuth := basicAuth(req)
+	if !okBasicAuth {
+		// Attempt to authenticate using Auth-Bearer.
+
+		// N.B.: Despite the name, the value `ClientTokenFromAuthzHeader` is *only* set when there is a Auth-Bearer token.
+		if req.ClientTokenSource != logical.ClientTokenFromAuthzHeader {
+			return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+		}
+
+		// Given that this is an endpoint that allows 'unauthenticated' access (to facilitate usage of Auth-Basic), we
+		// verify that the request-handler has actually found a client for the Bearer token.
+		if req.ClientID == "" {
+			return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+		}
+		authClientID = req.ClientID
+	}
+	authClient, err := i.clientByID(ctx, req.Storage, authClientID)
+	if err != nil || authClient == nil {
+		return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+	}
+	// Only check the client-secret when using Auth-Basic, as when using Auth-Bearer the token itself is the secret.
+	if okBasicAuth && subtle.ConstantTimeCompare([]byte(authClient.ClientSecret), []byte(authClientSecret)) == 0 {
+		i.Logger().Debug("client failed to authenticate with invalid client secret", "client_id", authClientID)
+		return introspectResponse(nil, ErrIntrospectInvalidClient, "client failed to authenticate")
+	}
+
+	// Mind that we make a distinction between these clients:
+	// 1. The client which is authenticating on the endpoint.
+	// 2. The client tied to the access-token we are validating.
+	//
+	// Open question: do we allow *any* authenticated client to validate the access-tokens
+	// managed by other clients? Probably. If not, ensure authClientID == accessTokenClientID.
+
+	// Look up the access token
+	accessToken := d.Get("token").(string)
+	// Currently unused: tokenTypeHint := d.Get("token_type_hint").(string)
+	tokenEntry, err := i.tokenStorer.LookupToken(ctx, accessToken)
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token lookup failed")
+	}
+	if tokenEntry == nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("non-existing or expired token")
+	}
+	if tokenEntry.Type != logical.TokenTypeBatch {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token must be of type 'batch'")
+	}
+
+	// Get the client ID that originated the request from the access token metadata
+	accessTokenClientID, okClientID := tokenEntry.InternalMeta[accessTokenClientIDMeta]
+	if !okClientID {
+		return i.convertIntrospectErrorToInactiveTokenResponse("missing client ID in token metadata")
+	}
+
+	// N.B.: This would be the place to check: authClientID == accessTokenClientID, if required.
+
+	// Get the OIDC provider, to see whether the access-token belongs to it.
+	endpointProviderName := d.Get("name").(string)
+	endpointProvider, err := i.getOIDCProvider(ctx, req.Storage, endpointProviderName)
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("endpoint provider lookup failed")
+	}
+	if endpointProvider == nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("endpoint provider not found")
+	}
+	if !endpointProvider.allowedClientID(accessTokenClientID) {
+		return i.convertIntrospectErrorToInactiveTokenResponse("endpoint provider has not authorized client of token")
+	}
+
+	accessTokenClient, err := i.clientByID(ctx, req.Storage, accessTokenClientID)
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("client lookup failed")
+	}
+	if accessTokenClient == nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("client of token not found")
+	}
+	accessTokenExp, err := tokenEntry.SentinelGet("expiration_time_unix")
+	if err != nil {
+		return i.convertIntrospectErrorToInactiveTokenResponse("token expiration calculation failed")
+	}
+
+	return introspectResponse(map[string]interface{}{
+		"active": true,
+		"aud":    accessTokenClientID,
+		"exp":    accessTokenExp,
+	}, "", "")
+}
+
+func (i *IdentityStore) convertIntrospectErrorToInactiveTokenResponse(errorDescription string) (*logical.Response, error) {
+	// The oidc-introspection specification states that we should be opaque about the reason
+	// the provided token could not be validated, and that we just reply with 'active=false'.
+	// Details at https://datatracker.ietf.org/doc/html/rfc7662#section-2.1
+	i.Logger().Debug("oidc introspect-for-provider endpoint failed to validate token", "error_description", errorDescription)
+
+	return introspectResponse(map[string]interface{}{"active": false}, "", "")
+}
+
+func introspectResponse(response map[string]interface{}, errorCode, errorDescription string) (*logical.Response, error) {
+	statusCode := http.StatusOK
+
+	// Set the error response and status code if error code isn't empty
+	if errorCode != "" {
+		switch errorCode {
+		case ErrIntrospectInvalidClient:
+			statusCode = http.StatusUnauthorized
+		}
+
+		response = map[string]interface{}{
+			"error":             errorCode,
+			"error_description": errorDescription,
+		}
+	}
+
+	body, err := json.Marshal(response)
+	if err != nil {
+		return nil, err
+	}
+
+	data := map[string]interface{}{
+		logical.HTTPStatusCode:  statusCode,
+		logical.HTTPRawBody:     body,
+		logical.HTTPContentType: "application/json",
+
+		// Token responses must include the following HTTP response headers
+		// https://openid.net/specs/openid-connect-core-1_0.html#TokenResponse
+		logical.HTTPCacheControlHeader: "no-store",
+		logical.HTTPPragmaHeader:       "no-cache",
+	}
+
+	// Set the WWW-Authenticate response header when returning the
+	// invalid_client error code per the OAuth 2.0 spec at
+	// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+	if errorCode == ErrIntrospectInvalidClient {
+		data[logical.HTTPWWWAuthenticateHeader] = "Basic"
 	}
 
 	return &logical.Response{

@@ -104,7 +104,11 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 			Unauthenticated: []string{
 				"oidc/.well-known/*",
 				"oidc/provider/+/.well-known/*",
+
+				// The Token and Introspect endpoints do not use a Bearer OpenBao-token, and thus cannot use OpenBao's
+				// authentication mechanism. Instead the endpoints support client-credentials as authentication type.
 				"oidc/provider/+/token",
+				"oidc/introspect-access-token",
 			},
 			LocalStorage: []string{
 				localAliasesBucketsPrefix,

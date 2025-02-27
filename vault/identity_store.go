@@ -105,6 +105,7 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 				"oidc/.well-known/*",
 				"oidc/provider/+/.well-known/*",
 				"oidc/provider/+/token",
+				"oidc/provider/+/introspect",
 			},
 			LocalStorage: []string{
 				localAliasesBucketsPrefix,

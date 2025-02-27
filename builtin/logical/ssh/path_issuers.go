@@ -403,7 +403,7 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 	sc := b.makeStorageContext(ctx, req.Storage)
 
 	// Depending on the request, we may need to fetch the issuer name
-	// and whether it should be set as the default issuer
+	// and whether the issuer should be set as the default
 	var issuerName string
 	setDefault := true
 	if !isConfigCARequest {

@@ -27,10 +27,12 @@ func TestCRUDCelRoles(t *testing.T) {
 					"expression": "size(request.ip_sans) > 0",
 				},
 			},
-			"expressions": "request.common_name == 'example.com' && require_ip_sans",
+			"expressions": map[string]interface{}{
+				"success": "request.common_name == 'example.com' && require_ip_sans",
+				"error":   "error!",
+			},
 		},
-		"failure_policy": "deny",
-		"message":        "Error",
+		"message": "Error",
 	}
 
 	roleReq := &logical.Request{
@@ -90,10 +92,11 @@ func TestCRUDCelRoles(t *testing.T) {
 	// Create a second CEL role
 	roleData2 := map[string]interface{}{
 		"validation_program": map[string]interface{}{
-			"expressions": "request.common_name == 'example2.com'",
+			"expressions": map[string]interface{}{
+				"success": "request.common_name == 'example2.com'",
+			},
 		},
-		"failure_policy": "deny",
-		"message":        "Common name must be 'example2.com'.",
+		"message": "Common name must be 'example2.com'.",
 	}
 
 	roleReq2 := &logical.Request{

@@ -1959,8 +1959,6 @@ func generateBasicCreationBundle(b *backend, apiData *framework.FieldData, caSig
 		default:
 			return nil, nil, errutil.UserError{Err: fmt.Sprintf("unknown key type in CSR: %s", csr.PublicKeyAlgorithm.String())}
 		}
-
-		fmt.Printf("\n\nCertificate Signing Request (CSR) detected, using key type: %s, key bits: %d\n", keyType, keyBits)
 	}
 
 	creation := &certutil.CreationBundle{

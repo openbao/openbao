@@ -140,6 +140,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		// TODO(satoqz): Use ListNamespaceEntries once this can be rebased so we can also return the UUID fields.
+		// TODO(phyrog): This must not list namespaces recursively, as ListNamespaces currently does.
+		// TODO(phyrog): The returned paths must be shortened to only the last path segment.
 		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
 		if err != nil {
 			return nil, err

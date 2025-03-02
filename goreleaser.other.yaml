@@ -77,8 +77,7 @@ checksum:
   disable: false
 
 archives:
-  - formats:
-      - tar.gz
+  - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
@@ -89,8 +88,7 @@ archives:
     # use zip for windows archives
     format_overrides:
       - goos: windows
-        formats:
-          - zip
+        format: zip
     files:
       - "LICENSE"
       - "README.md"

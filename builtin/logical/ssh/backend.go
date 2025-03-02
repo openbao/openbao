@@ -173,12 +173,12 @@ func (b *backend) initializeIssuersStorage(ctx context.Context) error {
 	// Early exit if not a primary cluster or performance secondary with a local mount.
 	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
 		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
-		b.Logger().Debug("skipping SSH migration as we are not on primary or secondary with a local mount")
+		b.Logger().Debug("Skipping SSH migration as we are not on primary or secondary with a local mount")
 		return nil
 	}
 
 	if err := migrateStorage(ctx, b, storage); err != nil {
-		return err
+		b.Logger().Error("Error during migration of SSH mount: " + err.Error())
 	}
 
 	// Commit our transaction if we created one!

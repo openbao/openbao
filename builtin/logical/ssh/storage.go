@@ -16,7 +16,7 @@ import (
 const (
 	defaultRef = "default"
 
-	MigrationInfoKey    = "config/migrationInfo"
+	migrationLogKey     = "config/migrationLog"
 	issuerPrefix        = "config/issuer/"
 	storageIssuerConfig = "config/issuers"
 

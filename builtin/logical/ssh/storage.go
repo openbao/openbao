@@ -75,8 +75,9 @@ func (sc *storageContext) writeIssuer(issuer *issuerEntry) error {
 	return sc.Storage.Put(sc.Context, json)
 }
 
-// deleteIssuer removes an issuer from storage and unsets from default, if was.
-// Returns a boolean indicating if the issuer was the default issuer
+// deleteIssuer removes an issuer from storage and unsets
+// it as unsets it  as the default issuer if it was the default.
+// Returns a boolean indicating if the issuer was the default and an error if any.
 func (sc *storageContext) deleteIssuer(id string) (bool, error) {
 	config, err := sc.getIssuersConfig()
 	if err != nil {
@@ -146,7 +147,7 @@ func (sc *storageContext) listIssuersPage(after string, limit int) ([]string, er
 	return issuerIds, nil
 }
 
-// fetchIssuerById returns an issuer entry based on issuerId, if none found an error is returned.
+// fetchIssuerById returns an issuer entry based an identifier, if not found an error is returned
 func (sc *storageContext) fetchIssuerById(issuerId string) (*issuerEntry, error) {
 	if len(issuerId) == 0 {
 		return nil, errutil.InternalError{Err: "unable to fetch ssh issuer: empty issuer identifier"}
@@ -170,8 +171,8 @@ func (sc *storageContext) fetchIssuerById(issuerId string) (*issuerEntry, error)
 
 // Lookup within storage the value of reference, assuming the string is a
 // reference to an issuer entry, returning the id or an error if not found.
-func (sc *storageContext) resolveIssuerReference(ref string) (string, error) {
-	if ref == defaultRef {
+func (sc *storageContext) resolveIssuerReference(issuerRef string) (string, error) {
+	if issuerRef == defaultRef {
 		// If reference is 'default', fetch the default issuer ID from the configuration
 		issuerConfig, err := sc.getIssuersConfig()
 		if err != nil {
@@ -185,13 +186,13 @@ func (sc *storageContext) resolveIssuerReference(ref string) (string, error) {
 	}
 
 	// Look by a direct get first to see if our reference is an ID, if so, return it
-	if len(ref) == uuidLength {
-		entry, err := sc.Storage.Get(sc.Context, issuerPrefix+ref)
+	if len(issuerRef) == uuidLength {
+		entry, err := sc.Storage.Get(sc.Context, issuerPrefix+issuerRef)
 		if err != nil {
 			return "", err
 		}
 		if entry != nil {
-			return ref, nil
+			return issuerRef, nil
 		}
 	}
 
@@ -208,13 +209,13 @@ func (sc *storageContext) resolveIssuerReference(ref string) (string, error) {
 			return "", err
 		}
 
-		if issuer.Name == ref {
+		if issuer.Name == issuerRef {
 			return issuer.ID, nil
 		}
 	}
 
 	// If the reference is not an ID or a name, return an error
-	return IssuerRefNotFound, errutil.UserError{Err: fmt.Sprintf("unable to find issuer for reference: %v", ref)}
+	return IssuerRefNotFound, errutil.UserError{Err: fmt.Sprintf("unable to find issuer for reference: %v", issuerRef)}
 }
 
 // fetchDefaultIssuer fetches the default issuer if set, otherwise nil is returned
@@ -256,15 +257,13 @@ func (sc *storageContext) purgeIssuers() (int, error) {
 }
 
 // checkForRolesReferencingIssuer checks if any roles are referencing the given issuer. The reference can either be the issuer's ID or name.
-func (sc *storageContext) checkForRolesReferencingIssuer(issuerName string) (timeout bool, inUseBy int32, err error) {
+func (sc *storageContext) checkForRolesReferencingIssuer(issuerRef string) (timeout bool, inUseBy int32, err error) {
 	roleEntries, err := sc.Storage.List(sc.Context, "roles/")
 	if err != nil {
 		return false, 0, err
 	}
 
-	inUseBy = 0
 	checkedRoles := 0
-
 	for _, roleName := range roleEntries {
 		entry, err := sc.Storage.Get(sc.Context, "roles/"+roleName)
 		if err != nil {
@@ -277,7 +276,7 @@ func (sc *storageContext) checkForRolesReferencingIssuer(issuerName string) (tim
 			if err != nil {
 				return false, inUseBy, err
 			}
-			if role.Issuer == issuerName {
+			if role.Issuer == issuerRef {
 				inUseBy = inUseBy + 1
 				if inUseBy >= maxRolesToFindOnIssuerChange {
 					return true, inUseBy, nil

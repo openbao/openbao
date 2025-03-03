@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
@@ -734,7 +735,8 @@ func TestCore_Remount_Protected(t *testing.T) {
 
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable()
+	table, err := c.defaultMountTable(context.Background())
+	require.NoError(t, err)
 	verifyDefaultTable(t, table, 3)
 }
 

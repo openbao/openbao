@@ -67,9 +67,7 @@ func (b *backend) makeStorageContext(ctx context.Context, s logical.Storage) *st
 
 // writeIssuer writes an issuerEntry to storage
 func (sc *storageContext) writeIssuer(issuer *issuerEntry) error {
-	issuerId := issuer.ID
-
-	json, err := logical.StorageEntryJSON(issuerPrefix+issuerId, issuer)
+	json, err := logical.StorageEntryJSON(issuerPrefix+issuer.ID, issuer)
 	if err != nil {
 		return err
 	}

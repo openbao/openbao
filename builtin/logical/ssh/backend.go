@@ -158,35 +158,18 @@ func (b *backend) initializeIssuersStorage(ctx context.Context) error {
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
-	// Use the transaction storage if there's one.
-	storage := b.view
-	if txnStorage, ok := b.view.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return err
+	return logical.WithTransaction(ctx, b.view, func(s logical.Storage) error {
+		// Early exit if not a primary cluster or performance secondary with a local mount.
+		if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
+			(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
+			b.Logger().Debug("Skipping SSH migration as we are not on primary or secondary with a local mount")
+			return nil
 		}
 
-		defer txn.Rollback(ctx)
-		storage = txn
-	}
+		if err := migrateStorage(ctx, b, s); err != nil {
+			b.Logger().Error("Error during migration of SSH mount: " + err.Error())
+		}
 
-	// Early exit if not a primary cluster or performance secondary with a local mount.
-	if b.System().ReplicationState().HasState(consts.ReplicationDRSecondary|consts.ReplicationPerformanceStandby) ||
-		(!b.System().LocalMount() && b.System().ReplicationState().HasState(consts.ReplicationPerformanceSecondary)) {
-		b.Logger().Debug("Skipping SSH migration as we are not on primary or secondary with a local mount")
 		return nil
-	}
-
-	if err := migrateStorage(ctx, b, storage); err != nil {
-		b.Logger().Error("Error during migration of SSH mount: " + err.Error())
-	}
-
-	// Commit our transaction if we created one!
-	if txn, ok := storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	})
 }

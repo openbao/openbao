@@ -517,6 +517,8 @@ This endpoint allows fetching the public key of an issuer without authentication
 	pathImportIssuerDesc = `
 This endpoint allows submitting a new issuer with an optional explicit name. If the
 name is not provided, the issuer will be created with an empty name. The issuer will
-be set as the default issuer if the 'set_default' field is set to true.
+be set as the default issuer if the 'set_default' field is set to true.On the
+submission of the first issuer, the default reference will be set to it independently
+of this parameter.
 `
 )

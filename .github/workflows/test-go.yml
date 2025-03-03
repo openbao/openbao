@@ -72,7 +72,7 @@ jobs:
         name: Setup Git configuration (public)
       - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
-      - uses: actions/cache/restore@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - uses: actions/cache/restore@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}
@@ -291,7 +291,7 @@ jobs:
     needs: test-go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}

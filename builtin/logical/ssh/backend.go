@@ -168,6 +168,7 @@ func (b *backend) initializeIssuersStorage(ctx context.Context) error {
 
 		if err := migrateStorage(ctx, b, s); err != nil {
 			b.Logger().Error("Error during migration of SSH mount: " + err.Error())
+			return err
 		}
 
 		return nil

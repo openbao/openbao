@@ -306,16 +306,11 @@ func (b *backend) pathDeleteIssuerHandler(ctx context.Context, req *logical.Requ
 	// otherwise just the one passed in by reference
 	isConfigCARequest := req.Path == "config/ca"
 
-	// Use the transaction storage if there's one.
-	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		defer txn.Rollback(ctx)
-		req.Storage = txn
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
 	}
+	defer txRollback()
 
 	sc := b.makeStorageContext(ctx, req.Storage)
 
@@ -359,11 +354,8 @@ func (b *backend) pathDeleteIssuerHandler(ctx context.Context, req *logical.Requ
 		}
 	}
 
-	// Commit our transaction if we created one!
-	if txn, ok := req.Storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return nil, err
-		}
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	//  If there are no warnings to be returned, the response status code should be 204
@@ -389,16 +381,11 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		return handleStorageContextErr(err)
 	}
 
-	// Use the transaction storage if there's one.
-	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		defer txn.Rollback(ctx)
-		req.Storage = txn
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
 	}
+	defer txRollback()
 
 	sc := b.makeStorageContext(ctx, req.Storage)
 
@@ -426,11 +413,8 @@ func (b *backend) pathWriteIssuerHandler(ctx context.Context, req *logical.Reque
 		response.AddWarning("An issuer with the provided public key already exists, returning the existing issuer")
 	}
 
-	// Commit our transaction if we created one!
-	if txn, ok := req.Storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return nil, err
-		}
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	// Whether an key material is generated or submitted, we return the issuer's data always.

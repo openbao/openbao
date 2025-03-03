@@ -82,16 +82,11 @@ func (b *backend) pathWriteDefaultIssuerHandler(ctx context.Context, req *logica
 	b.issuersLock.Lock()
 	defer b.issuersLock.Unlock()
 
-	// Use the transaction storage if there's one.
-	if txnStorage, ok := req.Storage.(logical.TransactionalStorage); ok {
-		txn, err := txnStorage.BeginTx(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		defer txn.Rollback(ctx)
-		req.Storage = txn
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
 	}
+	defer txRollback()
 
 	sc := b.makeStorageContext(ctx, req.Storage)
 
@@ -118,11 +113,8 @@ func (b *backend) pathWriteDefaultIssuerHandler(ctx context.Context, req *logica
 		return handleStorageContextErr(err, "error updating issuer configuration")
 	}
 
-	// Commit our transaction if we created one!
-	if txn, ok := req.Storage.(logical.Transaction); ok {
-		if err := txn.Commit(ctx); err != nil {
-			return nil, err
-		}
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	response := &logical.Response{

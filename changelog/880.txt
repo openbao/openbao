@@ -1,0 +1,3 @@
+```release-note:feature
+ssh: Allow multiple issuers in SSH secret engine mounts
+```

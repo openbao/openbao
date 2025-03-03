@@ -87,6 +87,14 @@ func (ne *NamespaceEntry) Validate() error {
 	return ne.Namespace.Validate()
 }
 
+func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
+	if ne.Namespace.ID == namespace.RootNamespaceID {
+		return NewBarrierView(barrier, "")
+	}
+
+	return NewBarrierView(barrier, path.Join("namespace", ne.UUID)+"/")
+}
+
 // NewNamespaceStore creates a new NamespaceStore that is backed
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
@@ -212,14 +220,29 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *Namespace
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
 	return ns.setNamespaceLocked(ctx, namespace)
 }
 
 // setNamespaceLocked must be called while holding a write lock over the
-// NamespaceStore.
+// NamespaceStore. This function unlocks the lock once finished.
 func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *NamespaceEntry) error {
+	// If we are creating a net-new namespace, we have to unlock before
+	// creating required mounts as the mount type will call
+	// GetNamespaceByAccessor. In that case, we will manually call
+	// ns.lock.Unlock() but in all other cases (including early exit)
+	// we _also_ need to unlock. So using a defer is preferable. Calling
+	// unlock twice may fail (either incorrectly releasing the write lock
+	// if someone else grabbed it or panicing if it was double unlocked)
+	// so we need a boolean here to determine whether or not our deferred
+	// unlock should actually be run.
+	var unlocked bool
+	defer func() {
+		if !unlocked {
+			ns.lock.Unlock()
+			unlocked = true
+		}
+	}()
+
 	// Copy the entry before validating and potentially mutating it.
 	entry := namespace.Clone()
 	if err := entry.Validate(); err != nil {
@@ -256,14 +279,29 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		}
 	}
 
+	if index != -1 && ns.namespaces[index].Namespace.Path != entry.Namespace.Path {
+		return errors.New("unable to remount namespace at new path")
+	}
+
 	if err := ns.writeNamespace(ctx, entry); err != nil {
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 
 	if index == -1 {
 		ns.namespaces = append(ns.namespaces, entry)
+
+		// Release the lock before creating new entries.
+		ns.lock.Unlock()
+		unlocked = true
+
+		// Create sys/ and token/ mounts for the new namespace.
+		if err := ns.createMounts(ctx, entry); err != nil {
+			return err
+		}
 	} else {
 		ns.namespaces[index] = entry
+
+		// No need to adjust mounts as they should already exist.
 	}
 
 	// Since the write succeeded, copy back any potentially changed values.
@@ -294,7 +332,7 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *NamespaceEn
 	return nil
 }
 
-// / assignIdentifier assumes the lock is held.
+// assignIdentifier assumes the lock is held.
 func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 	for {
 		id, err := base62.Random(namespaceIdLength)
@@ -320,6 +358,38 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 
 		return id, nil
 	}
+}
+
+// createMounts handles creation of sys/ and token/ mounts for this new
+// namespace.
+func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntry) error {
+	// ctx may have a namespace of the parent of our newly created namespace,
+	// so create a new context with the newly created child namespace.
+	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone().Namespace)
+
+	mounts, err := ns.core.requiredMountTable(nsCtx)
+	if err != nil {
+		return fmt.Errorf("for new namespace: %w", err)
+	}
+
+	for _, mount := range mounts.Entries {
+		if err := ns.core.mountInternal(nsCtx, mount, MountTableUpdateStorage); err != nil {
+			return err
+		}
+	}
+
+	credentials, err := ns.core.defaultAuthTable(nsCtx)
+	if err != nil {
+		return fmt.Errorf("for new namespace: %w", err)
+	}
+
+	for _, credential := range credentials.Entries {
+		if err := ns.core.enableCredentialInternal(nsCtx, credential, MountTableUpdateStorage); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetNamespace is used to fetch the namespace with the given uuid.
@@ -393,8 +463,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return err
 	}
 
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
+	ns.lock.Lock()
 
 	path = namespace.Canonicalize(path)
 	if path == "" {
@@ -440,6 +509,29 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 		}
 
 		entries = append(entries, item.Clone().Namespace)
+	}
+
+	return entries, nil
+}
+
+// ListNamespaceEntries is used to list all available namespace entries
+func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeRoot bool) ([]*NamespaceEntry, error) {
+	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
+	entries := make([]*NamespaceEntry, 0, len(ns.namespaces))
+	for _, item := range ns.namespaces {
+		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+			continue
+		}
+
+		entries = append(entries, item.Clone())
 	}
 
 	return entries, nil

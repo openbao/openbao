@@ -1,0 +1,3 @@
+```release-note:bug
+ui: fix missing checkmarks in all checkboxes, due to invalid use of sass-svg-uri package
+```

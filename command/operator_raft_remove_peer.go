@@ -18,8 +18,6 @@ var (
 
 type OperatorRaftRemovePeerCommand struct {
 	*BaseCommand
-
-	flagDRToken string
 }
 
 func (c *OperatorRaftRemovePeerCommand) Synopsis() string {
@@ -40,19 +38,7 @@ Usage: bao operator raft remove-peer <server_id>
 }
 
 func (c *OperatorRaftRemovePeerCommand) Flags() *FlagSets {
-	set := c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
-	f := set.NewFlagSet("Command Options")
-
-	f.StringVar(&StringVar{
-		Name:       "dr-token",
-		Target:     &c.flagDRToken,
-		Default:    "",
-		EnvVar:     "",
-		Completion: complete.PredictAnything,
-		Usage:      "DR operation token used to authorize this request (if a DR secondary node).",
-	})
-
-	return set
+	return c.flagSet(FlagSetHTTP | FlagSetOutputFormat)
 }
 
 func (c *OperatorRaftRemovePeerCommand) AutocompleteArgs() complete.Predictor {
@@ -94,8 +80,7 @@ func (c *OperatorRaftRemovePeerCommand) Run(args []string) int {
 	}
 
 	_, err = client.Logical().Write("sys/storage/raft/remove-peer", map[string]interface{}{
-		"server_id":          serverID,
-		"dr_operation_token": c.flagDRToken,
+		"server_id": serverID,
 	})
 	if err != nil {
 		c.UI.Error(fmt.Sprintf("Error removing the peer from raft cluster: %s", err))

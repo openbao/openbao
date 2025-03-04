@@ -25,7 +25,6 @@ type OperatorRaftAutopilotSetConfigCommand struct {
 	flagMaxTrailingLogs                uint64
 	flagMinQuorum                      uint
 	flagServerStabilizationTime        time.Duration
-	flagDRToken                        string
 }
 
 func (c *OperatorRaftAutopilotSetConfigCommand) Synopsis() string {
@@ -83,15 +82,6 @@ func (c *OperatorRaftAutopilotSetConfigCommand) Flags() *FlagSets {
 		Usage:  "Minimum amount of time a server must be in a stable, healthy state before it can be added to the cluster.",
 	})
 
-	f.StringVar(&StringVar{
-		Name:       "dr-token",
-		Target:     &c.flagDRToken,
-		Default:    "",
-		EnvVar:     "",
-		Completion: complete.PredictAnything,
-		Usage:      "DR operation token used to authorize this request (if a DR secondary node).",
-	})
-
 	return set
 }
 
@@ -143,9 +133,6 @@ func (c *OperatorRaftAutopilotSetConfigCommand) Run(args []string) int {
 	}
 	if c.flagServerStabilizationTime > 0 {
 		data["server_stabilization_time"] = c.flagServerStabilizationTime.String()
-	}
-	if c.flagDRToken != "" {
-		data["dr_operation_token"] = c.flagDRToken
 	}
 
 	secret, err := client.Logical().Write("sys/storage/raft/autopilot/configuration", data)

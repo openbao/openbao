@@ -72,14 +72,6 @@ jobs:
         name: Setup Git configuration (public)
       - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
-      - uses: actions/cache/restore@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
-        with:
-          path: test-results/go-test
-          key: go-test-reports-${{ github.run_number }}
-          restore-keys: go-test-reports-
-      - name: List cached results
-        id: list-cached-results
-        run: ls -lhR test-results/go-test
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
         if: ${{ !inputs.testonly }}

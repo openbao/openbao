@@ -72,7 +72,7 @@ jobs:
         name: Setup Git configuration (public)
       - uses: ./.github/actions/set-up-gotestsum
       - run: mkdir -p test-results/go-test
-      - uses: actions/cache/restore@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - uses: actions/cache/restore@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}
@@ -213,7 +213,7 @@ jobs:
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: test-results-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{ inputs.name }}
-          path: test-results/go-test-${{ matrix.id }}
+          path: test-results/go-test
         if: success() || failure()
       # GitHub Actions doesn't expose the job ID or the URL to the job execution,
       # so we have to fetch it from the API
@@ -291,7 +291,7 @@ jobs:
     needs: test-go
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319 # v4.0.1
+      - uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
           path: test-results/go-test
           key: go-test-reports-${{ github.run_number }}

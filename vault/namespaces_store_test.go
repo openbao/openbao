@@ -2,8 +2,11 @@ package vault
 
 import (
 	"context"
+	"math/rand"
+	"strconv"
 	"testing"
 
+	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/stretchr/testify/require"
 )
@@ -219,4 +222,156 @@ func TestNamespaceHierarchy(t *testing.T) {
 			require.Equal(t, 0, len(nsList))
 		})
 	})
+}
+
+func randomNamespace(ns *NamespaceStore) *NamespaceEntry {
+	idx := rand.Intn(len(ns.namespaces))
+
+	return ns.namespaces[idx]
+}
+
+func BenchmarkNamespaceStore(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	n := 1_000
+
+	for i := range n {
+		parent := randomNamespace(s)
+		ctx := namespace.ContextWithNamespace(ctx, parent.Namespace)
+		item := &NamespaceEntry{
+			Namespace: &namespace.Namespace{
+				Path: parent.Namespace.Path + "ns" + strconv.Itoa(i) + "/",
+			},
+		}
+		s.SetNamespace(ctx, item)
+	}
+
+	require.Equal(b, n+1, len(s.namespaces))
+
+	b.Run("GetNamespace", func(b *testing.B) {
+		n := len(s.namespaces)
+		for b.Loop() {
+			idx := rand.Intn(n)
+			uuid := s.namespaces[idx].UUID
+			s.GetNamespace(ctx, uuid)
+		}
+	})
+
+	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
+		n := len(s.namespaces)
+		for b.Loop() {
+			idx := rand.Intn(n)
+			accessor := s.namespaces[idx].Namespace.ID
+			s.GetNamespaceByAccessor(ctx, accessor)
+		}
+	})
+
+	b.Run("GetNamespaceByPath", func(b *testing.B) {
+		n := len(s.namespaces)
+		for b.Loop() {
+			idx := rand.Intn(n)
+			path := s.namespaces[idx].Namespace.Path
+			s.GetNamespaceByPath(ctx, path)
+		}
+	})
+
+	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
+		n := len(s.namespaces)
+		for b.Loop() {
+			idx := rand.Intn(n)
+			path := s.namespaces[idx].Namespace.Path
+			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
+		}
+	})
+
+	b.Run("ListAllNamespaces", func(b *testing.B) {
+		for b.Loop() {
+			s.ListAllNamespaces(ctx, false)
+		}
+	})
+
+	b.Run("ListNamespaces non-recursive", func(b *testing.B) {
+		for b.Loop() {
+			parent := randomNamespace(s).Namespace
+			ctx = namespace.ContextWithNamespace(ctx, parent)
+			s.ListNamespaces(ctx, false, false)
+		}
+	})
+
+	b.Run("ListNamespaces recursive", func(b *testing.B) {
+		for b.Loop() {
+			parent := randomNamespace(s).Namespace
+			ctx = namespace.ContextWithNamespace(ctx, parent)
+			s.ListNamespaces(ctx, false, true)
+		}
+	})
+
+	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
+		rootCtx := namespace.RootContext(context.TODO())
+		n := len(s.namespaces)
+		for b.Loop() {
+			idx := rand.Intn(n)
+			ns := s.namespaces[idx].Namespace
+			ctx := namespace.ContextWithNamespace(rootCtx, ns)
+			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
+		}
+	})
+
+	b.Run("DeleteNamespace", func(b *testing.B) {
+		for b.Loop() {
+			n := len(s.namespaces)
+			idx := rand.Intn(n)
+			uuid := s.namespaces[idx].UUID
+			s.DeleteNamespace(ctx, uuid)
+		}
+	})
+}
+
+func testModifyNamespace(_ context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+	uuid := ns.UUID
+	accessor := ns.Namespace.ID
+	ns.Namespace.CustomMetadata["uuid"] = uuid
+	ns.Namespace.CustomMetadata["accessor"] = accessor
+
+	return ns, nil
+}
+
+func BenchmarkNamespaceSet(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	item := &NamespaceEntry{
+		Namespace: &namespace.Namespace{},
+	}
+
+	var i int
+	for b.Loop() {
+		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		s.SetNamespace(ctx, item)
+		i += 1
+	}
+}
+
+func BenchmarkNamespaceSetLocked(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	item := &NamespaceEntry{
+		Namespace: &namespace.Namespace{},
+	}
+
+	var i int
+	for b.Loop() {
+		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		s.lock.Lock()
+		s.setNamespaceLocked(ctx, item)
+		i += 1
+	}
 }

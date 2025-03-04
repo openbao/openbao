@@ -575,4 +575,119 @@ func TestCelParsedCsr(t *testing.T) {
 	}
 }
 
+// Test custom CEL function
+func TestCelCustomFunction(t *testing.T) {
+	t.Parallel()
+
+	b, storage := CreateBackendWithStorage(t)
+
+	// Create a root CA
+	caData := map[string]interface{}{
+		"common_name": "root.com",
+		"ttl":         "30h",
+		"ip_sans":     "127.0.0.1",
+		"locality":    "MiltonPark",
+	}
+	caReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "root/generate/internal",
+		Storage:   storage,
+		Data:      caData,
+	}
+	caResp, err := b.HandleRequest(context.Background(), caReq)
+	if err != nil || (caResp != nil && caResp.IsError()) {
+		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
+	}
+
+	// Validate the response
+	CAcertPEM, ok := caResp.Data["certificate"].(string)
+	if !ok || CAcertPEM == "" {
+		t.Fatalf("Certificate not found in response: %v", caResp.Data)
+	}
+
+	CAblock, _ := pem.Decode([]byte(CAcertPEM))
+	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
+		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
+	}
+
+	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
+	if err != nil && CAcert != nil {
+		t.Fatalf("Failed to parse certificate: %v", err)
+	}
+
+	// Create a CEL role
+	roleData := map[string]interface{}{
+		"validation_program": map[string]interface{}{
+			"variables": []map[string]interface{}{
+				{
+					"name":       "valid_emails",
+					"expression": `check_valid_email(request.alt_names)`,
+				},
+			},
+			"expressions": map[string]interface{}{
+				"requestId": "123",
+				"success":   "valid_emails",
+				"certificate": map[string]interface{}{
+					"subject": map[string]interface{}{
+						"common_name": "request.common_name",
+					},
+					"email_addresses": "request.email_addresses",
+				},
+				"issuer":   "default",
+				"warnings": "warning",
+				"error":    "Error: common_name should be a valid email!",
+			},
+		},
+	}
+
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/roles/testrole",
+		Storage:   storage,
+		Data:      roleData,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
+	}
+
+	// Issue a certificate using the CEL role
+	issueData := map[string]interface{}{
+		"common_name": "example.com",
+		"ttl":         "1h",
+		"alt_names":   "example@gmail.com",
+	}
+
+	issueReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/issue/testrole",
+		Storage:   storage,
+		Data:      issueData,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), issueReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
+	}
+
+	// Validate the response
+	certPEM, ok := resp.Data["certificate"].(string)
+	if !ok || certPEM == "" {
+		t.Fatalf("Certificate not found in response: %v", resp.Data)
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil || block.Type != "CERTIFICATE" {
+		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("Failed to parse certificate: %v", err)
+	}
+
+	require.Equal(t, "example.com", cert.Subject.CommonName, "Common Name should be example.com")
+}
+
 // TO DO: Test Error messages are returned appropriately

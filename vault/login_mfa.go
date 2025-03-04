@@ -260,7 +260,7 @@ func (i *IdentityStore) handleMFAMethodReadCommon(ctx context.Context, req *logi
 	}
 
 	// reading the method config either from the same namespace or from the parent or from the child should all work
-	if !(ns.ID == mfaNs.ID || mfaNs.HasParent(ns) || ns.HasParent(mfaNs)) {
+	if !(ns.ID == mfaNs.ID || mfaNs.HasAncestor(ns) || ns.HasAncestor(mfaNs)) {
 		return logical.ErrorResponse("request namespace does not match method namespace"), logical.ErrPermissionDenied
 	}
 
@@ -499,7 +499,7 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 		return logical.ErrorResponse("methodID namespace not found"), nil
 	}
 
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
+	if configNS.ID != entityNS.ID && !entityNS.HasAncestor(configNS) {
 		return logical.ErrorResponse(fmt.Sprintf("entity namespace %s outside of the config namespace %s", entityNS.Path, configNS.Path)), nil
 	}
 
@@ -569,7 +569,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 		return logical.ErrorResponse("methodID namespace not found"), nil
 	}
 
-	if configNS.ID != entityNS.ID && !entityNS.HasParent(configNS) {
+	if configNS.ID != entityNS.ID && !entityNS.HasAncestor(configNS) {
 		return logical.ErrorResponse(fmt.Sprintf("entity namespace %s outside of the current namespace %s", entityNS.Path, ns.Path)), nil
 	}
 
@@ -938,7 +938,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 			return logical.ErrorResponse("failed to retrieve config namespace"), nil
 		}
 
-		if ns.ID != mfaNs.ID && !ns.HasParent(mfaNs) {
+		if ns.ID != mfaNs.ID && !ns.HasAncestor(mfaNs) {
 			return logical.ErrorResponse("one of the provided method ids is in an incompatible namespace and can't be used"), nil
 		}
 	}
@@ -1335,7 +1335,7 @@ func (b *LoginMFABackend) mfaMethodList(ctx context.Context, methodType string) 
 		}
 
 		// the namespaces have to match, or the config namespace needs to be a parent of the request namespace
-		if !(ns.ID == mfaNs.ID || ns.HasParent(mfaNs)) {
+		if !(ns.ID == mfaNs.ID || ns.HasAncestor(mfaNs)) {
 			continue
 		}
 
@@ -1751,7 +1751,7 @@ ECONFIG_LOOP:
 			return nil, errors.New("failed to find the MFAEnforcementConfig namespace")
 		}
 
-		if eConfig == nil || eConfigNS == nil || (eConfigNS.ID != ns.ID && !ns.HasParent(eConfigNS)) {
+		if eConfig == nil || eConfigNS == nil || (eConfigNS.ID != ns.ID && !ns.HasAncestor(eConfigNS)) {
 			continue
 		}
 

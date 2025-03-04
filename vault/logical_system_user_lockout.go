@@ -196,5 +196,5 @@ func (b *SystemBackend) includeNSInLockedUsersResponse(query *namespace.Namespac
 		// Deleted namespace, only include in root queries
 		return query.ID == namespace.RootNamespaceID
 	}
-	return record.HasParent(query)
+	return record.HasAncestor(query)
 }

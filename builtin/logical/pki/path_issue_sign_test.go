@@ -1,4 +1,4 @@
-// Copyright (c) 2024 OpenBao a Series of LF Projects, LLC
+// Copyright (c) 2025 OpenBao a Series of LF Projects, LLC
 // SPDX-License-Identifier: MPL-2.0
 
 package pki
@@ -9,6 +9,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"testing"
 	"time"
@@ -483,3 +484,95 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 		t.Fatalf("Two CA and one end certificate should be stored: %#v", listResp)
 	}
 }
+
+// Test with CSR extensions being validated by CEL Role
+func TestCelParsedCsr(t *testing.T) {
+	t.Parallel()
+
+	b, storage := CreateBackendWithStorage(t)
+
+	// Create a root CA
+	caData := map[string]interface{}{
+		"common_name": "root.com",
+		"ttl":         "30h",
+		"ip_sans":     "127.0.0.1",
+		"locality":    "MiltonPark",
+	}
+	caReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "root/generate/internal",
+		Storage:   storage,
+		Data:      caData,
+	}
+	caResp, err := b.HandleRequest(context.Background(), caReq)
+	if err != nil || (caResp != nil && caResp.IsError()) {
+		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
+	}
+
+	// Create a CEL role for signing
+	roleData := map[string]interface{}{
+		"validation_program": map[string]interface{}{
+			"variables": []map[string]interface{}{
+				{
+					"name":       "validate_cn",
+					"expression": `parsed_csr.Subject.CommonName == "example.com"`,
+				},
+			},
+			"expressions": map[string]interface{}{
+				"success":       "validate_cn",
+				"generateLease": "true",
+				"noStore":       "false",
+				"issuer":        "default",
+				"error":         "CommonName in CSR should be example.com",
+			},
+		},
+	}
+
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/roles/testrole",
+		Storage:   storage,
+		Data:      roleData,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
+	}
+
+	// Generate a CSR (Certificate Signing Request)
+	identifiers := []string{"example.com"}
+	goodCr := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName: identifiers[0], // Correct placement of CN
+		},
+	}
+	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	csr, err := x509.CreateCertificateRequest(rand.Reader, goodCr, csrKey)
+	require.NoError(t, err, "failed generating csr")
+
+	csrPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csr,
+	})
+
+	// Issue a certificate using the CEL role and CSR
+	signData := map[string]interface{}{
+		"csr":         csrPEM,
+		"common_name": "example2.com",
+	}
+
+	signReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/sign/testrole",
+		Storage:   storage,
+		Data:      signData,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), signReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to sign certificate with CSR: err: %v, \nresp: %v", err, resp)
+	}
+}
+
+// TO DO: Test Error messages are returned appropriately

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -583,7 +585,7 @@ func (b *backend) pathIssue(ctx context.Context, req *logical.Request, data *fra
 // pathCelIssue issues a certificate and private key from given parameters,
 // subject to CEL role restrictions, and can modify the request based on CEL evaluations.
 func (b *backend) pathCelIssue(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return b.pathCelIssueSign(ctx, req, data, false)
+	return b.pathCelIssueSignCert(ctx, req, data, false)
 }
 
 // pathSign issues a certificate from a submitted CSR, subject to role
@@ -595,7 +597,7 @@ func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *fram
 // pathCelSign issues a certificate from a submitted CSR, subject to
 // CEL role restrictions, and can modify the request based on CEL evaluations.
 func (b *backend) pathCelSign(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	return b.pathCelIssueSign(ctx, req, data, true)
+	return b.pathCelIssueSignCert(ctx, req, data, true)
 }
 
 // pathSignVerbatim issues a certificate from a submitted CSR, *not* subject to
@@ -771,7 +773,7 @@ func (b *backend) pathIssueSignCert(ctx context.Context, req *logical.Request, d
 	return resp, nil
 }
 
-func (b *backend) pathCelIssueSign(ctx context.Context, req *logical.Request, data *framework.FieldData, useCSR bool) (*logical.Response, error) {
+func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request, data *framework.FieldData, useCSR bool) (*logical.Response, error) {
 	celRole, err := b.fetchAndValidateCelRole(ctx, req, data)
 	if err != nil {
 		return nil, err
@@ -782,6 +784,10 @@ func (b *backend) pathCelIssueSign(ctx context.Context, req *logical.Request, da
 		celgo.Declarations(
 			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
 		),
+	}
+
+	if useCSR {
+		envOptions = append(envOptions, celgo.Declarations(decls.NewVar("parsed_csr", decls.NewMapType(decls.String, decls.Dyn))))
 	}
 
 	// Add all variable declarations to the CEL environment.
@@ -795,11 +801,34 @@ func (b *backend) pathCelIssueSign(ctx context.Context, req *logical.Request, da
 		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
 
+	// Add custom CEL functions into the env
+	env, err = cel.RegisterAllCelFunctions(env)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+
 	// Initialize the evaluation context for CEL expressions with the raw request data.
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
 	evaluationData := map[string]interface{}{
 		"request": data.Raw,
+	}
+
+	// Parse then add the CSR to the evaluationData
+	if useCSR {
+		var parsedCsr map[string]interface{}
+		if useCSR {
+			csrPEM, ok := data.GetOk("csr")
+			if ok {
+				// Convert CSR to a structured map
+				parsedCsr, err = csrToMap(csrPEM.(string))
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse CSR: %w", err)
+				}
+			}
+		}
+
+		evaluationData["parsed_csr"] = parsedCsr
 	}
 
 	// Evaluate all variables
@@ -814,72 +843,27 @@ func (b *backend) pathCelIssueSign(ctx context.Context, req *logical.Request, da
 		evaluationData[variable.Name] = result.Value()
 	}
 
-	// Compile and evaluate the main CEL expression
-	prog, err := compileExpression(env, celRole.ValidationProgram.Expressions.Success)
+	// Evaluate the CEL Role success expression
+	success, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.Success, evaluationData)
 	if err != nil {
-		return nil, fmt.Errorf("%w", err)
+		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
 	}
 
-	// Evaluate the success expression with the cumulative context
-	evalResult, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
-	}
-
-	// Ensure the evaluation result is a boolean
-	if evalResult.Type() != celgo.BoolType {
-		return nil, fmt.Errorf("CEL program did not return a boolean value for success")
-	}
-
-	// Check if CEL rules passed
-	if !evalResult.Value().(bool) {
+	// Check if CEL validation against the request was successful
+	if !success {
 		return nil, fmt.Errorf("%s", celRole.ValidationProgram.Expressions.Error)
 	}
 
-	var generateLease bool
-	genLeaseExpr := celRole.ValidationProgram.Expressions.GenerateLease
-	if genLeaseExpr != "" {
-		prog, err := compileExpression(env, genLeaseExpr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to process generate_lease: %w", err)
-		}
-
-		// Evaluate generate_lease CEL Expression
-		evalResult, _, err := prog.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate generate_lease CEL expression: %w", err)
-		}
-
-		// Ensure Boolean Result
-		if evalResult.Type() != celgo.BoolType {
-			return nil, fmt.Errorf("generate_lease expression did not return a boolean value")
-		}
-		generateLease = evalResult.Value().(bool)
-	} else {
-		generateLease = false // Default if not provided
+	// Evaluate generate_lease
+	generateLease, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.GenerateLease, evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
 	}
 
-	var noStore bool
-	noStoreExpr := celRole.ValidationProgram.Expressions.NoStore
-	if noStoreExpr != "" {
-		prog, err := compileExpression(env, noStoreExpr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to process no_store: %w", err)
-		}
-
-		// Evaluate no_store CEL Expression
-		evalResult, _, err := prog.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate no_store CEL expression: %w", err)
-		}
-
-		// Ensure Boolean Result
-		if evalResult.Type() != celgo.BoolType {
-			return nil, fmt.Errorf("no_store expression did not return a boolean value")
-		}
-		noStore = evalResult.Value().(bool)
-	} else {
-		noStore = false // Default if not provided
+	// Evaluate no_store
+	noStore, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.NoStore, evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process no_store: %w", err)
 	}
 
 	// Fetch issuer information
@@ -1065,6 +1049,105 @@ func (b *backend) fetchCaSigningBundle(ctx context.Context, req *logical.Request
 		}
 	}
 	return signingBundle, sc, nil
+}
+
+// Helper function to evaluate a CEL expression and return a boolean value.
+func evaluateCelBooleanExpression(env *celgo.Env, expression string, evaluationData map[string]interface{}) (bool, error) {
+	if expression == "" {
+		return false, nil // Default to false if expression is empty
+	}
+
+	prog, err := compileExpression(env, expression)
+	if err != nil {
+		return false, fmt.Errorf("failed to compile CEL expression: %w", err)
+	}
+
+	// Evaluate the expression
+	evalResult, _, err := prog.Eval(evaluationData)
+	if err != nil {
+		return false, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+	}
+
+	// Ensure result is a boolean
+	if evalResult.Type() != celgo.BoolType {
+		return false, fmt.Errorf("CEL expression did not return a boolean value")
+	}
+
+	return evalResult.Value().(bool), nil
+}
+
+// csrToMap parses the CSR and returns it as a map of its attributes
+func csrToMap(csrPEM string) (map[string]interface{}, error) {
+	block, _ := pem.Decode([]byte(csrPEM))
+	if block == nil || block.Type != "CERTIFICATE REQUEST" {
+		return nil, fmt.Errorf("Invalid CSR format")
+	}
+
+	csr, err := x509.ParseCertificateRequest(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to parse CSR")
+	}
+
+	// Convert Extensions to a readable map
+	parsedExtensions := make(map[string]interface{})
+	for _, ext := range csr.Extensions {
+		parsedExtensions[ext.Id.String()] = ext.Value
+	}
+
+	// Convert IPAddresses to string format
+	ipStrings := make([]string, len(csr.IPAddresses))
+	for i, ip := range csr.IPAddresses {
+		ipStrings[i] = ip.String()
+	}
+
+	// Convert URIs to string format
+	uriStrings := make([]string, len(csr.URIs))
+	for i, uri := range csr.URIs {
+		uriStrings[i] = uri.String()
+	}
+
+	var extraNames []string
+	for _, name := range csr.Subject.ExtraNames {
+		extraNames = append(extraNames, name.Type.String()) // Convert to string
+	}
+
+	// Map CSR attributes
+	parsedCsr := map[string]interface{}{
+		"Raw":                      csr.Raw,
+		"RawTBSCertificateRequest": csr.RawTBSCertificateRequest,
+		"RawSubjectPublicKeyInfo":  csr.RawSubjectPublicKeyInfo,
+		"RawSubject":               csr.RawSubject,
+
+		"Version":            csr.Version,
+		"Signature":          csr.Signature,
+		"SignatureAlgorithm": csr.SignatureAlgorithm.String(),
+
+		"PublicKeyAlgorithm": csr.PublicKeyAlgorithm.String(),
+		"PublicKey":          csr.PublicKey,
+
+		"Subject": map[string]interface{}{
+			"CommonName":         csr.Subject.CommonName,
+			"Country":            csr.Subject.Country,
+			"Organization":       csr.Subject.Organization,
+			"OrganizationalUnit": csr.Subject.OrganizationalUnit,
+			"Locality":           csr.Subject.Locality,
+			"Province":           csr.Subject.Province,
+			"StreetAddress":      csr.Subject.StreetAddress,
+			"PostalCode":         csr.Subject.PostalCode,
+			"ExtraNames":         extraNames,
+			"SerialNumber":       csr.Subject.SerialNumber,
+		},
+
+		"Extensions":      parsedExtensions,
+		"ExtraExtensions": csr.ExtraExtensions,
+
+		"DNSNames":       csr.DNSNames,
+		"EmailAddresses": csr.EmailAddresses,
+		"IPAddresses":    ipStrings,
+		"URIs":           uriStrings,
+	}
+
+	return parsedCsr, nil
 }
 
 const pathIssueHelpSyn = `

@@ -55,7 +55,8 @@ type NamespaceStore struct {
 	// initialization time and persisted throughout the lifetime of the
 	// instance. Entries should not be returned directly but instead be
 	// copied to prevent modification.
-	namespaces []*NamespaceEntry
+	namespaces       []*NamespaceEntry
+	namespacesByPath map[string]*NamespaceEntry
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -105,9 +106,10 @@ func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
 	ns := &NamespaceStore{
-		core:    core,
-		storage: core.barrier,
-		logger:  logger,
+		core:             core,
+		storage:          core.barrier,
+		logger:           logger,
+		namespacesByPath: make(map[string]*NamespaceEntry),
 	}
 
 	// Add namespaces from storage to our table. We can do this without
@@ -148,7 +150,10 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	// as we'll likely be essentially in sync already. However, at startup, this
 	// will mostly just give us space for the root namespace.
 	allNamespaces := make([]*NamespaceEntry, 0, len(ns.namespaces)+1)
-	allNamespaces = append(allNamespaces, &NamespaceEntry{Namespace: namespace.RootNamespace})
+	namespacesByPath := make(map[string]*NamespaceEntry, len(ns.namespacesByPath)+1)
+	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
+	allNamespaces = append(allNamespaces, rootNs)
+	namespacesByPath[rootNs.Namespace.Path] = rootNs
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		// TODO(ascheel): We'll need to keep track of newly found namespaces
@@ -171,6 +176,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 			}
 
 			allNamespaces = append(allNamespaces, &namespace)
+			namespacesByPath[namespace.Namespace.Path] = &namespace
 
 			return true, nil
 		}, nil); err != nil {
@@ -183,6 +189,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	ns.namespaces = allNamespaces
+	ns.namespacesByPath = namespacesByPath
 
 	return nil
 }
@@ -295,6 +302,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 
 	if index == -1 {
 		ns.namespaces = append(ns.namespaces, entry)
+		ns.namespacesByPath[entry.Namespace.Path] = entry
 
 		// Release the lock before creating new entries.
 		ns.lock.Unlock()
@@ -306,6 +314,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		}
 	} else {
 		ns.namespaces[index] = entry
+		ns.namespacesByPath[entry.Namespace.Path] = entry
 
 		// No need to adjust mounts as they should already exist.
 	}
@@ -479,13 +488,12 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 		return nil, err
 	}
 	path = namespace.Canonicalize(parent.Path + path)
-	for _, item := range ns.namespaces {
-		if item.Namespace.Path == path {
-			return item.Clone(), nil
-		}
+	item, ok := ns.namespacesByPath[path]
+	if !ok {
+		return nil, nil
 	}
 
-	return nil, nil
+	return item.Clone(), nil
 }
 
 // ModifyNamespace is used to perform modifications to a namespace while
@@ -510,15 +518,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 
 	ns.lock.Lock()
 
-	var entry *NamespaceEntry
-	for _, item := range ns.namespaces {
-		if item.Namespace.Path == path {
-			entry = item.Clone()
-			break
-		}
-	}
-
-	if entry == nil {
+	entry, ok := ns.namespacesByPath[path]
+	if ok {
+		entry = entry.Clone()
+	} else {
 		entry = &NamespaceEntry{Namespace: &namespace.Namespace{
 			Path: path,
 		}}
@@ -634,6 +637,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return nil
 	}
 
+	delete(ns.namespacesByPath, ns.namespaces[index].Namespace.Path)
 	// We're guaranteed at least one item remaining since the root namespace
 	// should always be present and not be removable.
 	ns.namespaces = append(ns.namespaces[0:index], ns.namespaces[index+1:]...)

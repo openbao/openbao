@@ -55,7 +55,8 @@ type NamespaceStore struct {
 	// initialization time and persisted throughout the lifetime of the
 	// instance. Entries should not be returned directly but instead be
 	// copied to prevent modification.
-	namespaces []*NamespaceEntry
+	namespaces       []*NamespaceEntry
+	namespacesByPath map[string]*NamespaceEntry
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -148,7 +149,10 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	// as we'll likely be essentially in sync already. However, at startup, this
 	// will mostly just give us space for the root namespace.
 	allNamespaces := make([]*NamespaceEntry, 0, len(ns.namespaces)+1)
-	allNamespaces = append(allNamespaces, &NamespaceEntry{Namespace: namespace.RootNamespace})
+	namespacesByPath := make(map[string]*NamespaceEntry, len(ns.namespacesByPath)+1)
+	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
+	allNamespaces = append(allNamespaces, rootNs)
+	namespacesByPath[rootNs.Namespace.Path] = rootNs
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		// TODO(ascheel): We'll need to keep track of newly found namespaces
@@ -171,6 +175,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 			}
 
 			allNamespaces = append(allNamespaces, &namespace)
+			namespacesByPath[namespace.Namespace.Path] = &namespace
 
 			return true, nil
 		}, nil); err != nil {
@@ -183,6 +188,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	}
 
 	ns.namespaces = allNamespaces
+	ns.namespacesByPath = namespacesByPath
 
 	return nil
 }
@@ -318,6 +324,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 
 		// No need to adjust mounts as they should already exist.
 	}
+	ns.namespacesByPath[entry.Namespace.Path] = entry
 
 	// Since the write succeeded, copy back any potentially changed values.
 	namespace.UUID = entry.UUID
@@ -484,13 +491,12 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 
 func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*NamespaceEntry, error) {
 	path = namespace.Canonicalize(path)
-	for _, item := range ns.namespaces {
-		if item.Namespace.Path == path {
-			return item.Clone(), nil
-		}
+	item, ok := ns.namespacesByPath[path]
+	if !ok {
+		return nil, errors.New("could not find namespace")
 	}
 
-	return nil, nil
+	return item.Clone(), nil
 }
 
 // ModifyNamespace is used to perform modifications to a namespace while
@@ -510,15 +516,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, errors.New("refusing to modify root namespace")
 	}
 
-	var entry *NamespaceEntry
-	for _, item := range ns.namespaces {
-		if item.Namespace.Path == path {
-			entry = item.Clone()
-			break
-		}
-	}
-
-	if entry == nil {
+	entry, ok := ns.namespacesByPath[path]
+	if ok {
+		entry = entry.Clone()
+	} else {
 		entry = &NamespaceEntry{Namespace: &namespace.Namespace{}}
 	}
 
@@ -624,6 +625,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return nil
 	}
 
+	delete(ns.namespacesByPath, ns.namespaces[index].Namespace.Path)
 	// We're guaranteed at least one item remaining since the root namespace
 	// should always be present and not be removable.
 	ns.namespaces = append(ns.namespaces[0:index], ns.namespaces[index+1:]...)

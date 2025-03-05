@@ -111,7 +111,9 @@ var (
 	// loaded by default. These are types, not paths.
 	singletonMounts = []string{
 		mountTypeCubbyhole,
+		mountTypeNSCubbyhole,
 		mountTypeSystem,
+		mountTypeNSSystem,
 		mountTypeToken,
 		mountTypeIdentity,
 	}
@@ -120,6 +122,16 @@ var (
 	// to move/rename backends but maintain backwards compatibility
 	mountAliases = map[string]string{"generic": "kv"}
 )
+
+func knownMountType(entryType string) error {
+	switch entryType {
+	case mountTypeKV, mountTypeSystem, mountTypeCubbyhole, mountTypeNSSystem, mountTypeNSCubbyhole:
+	default:
+		return fmt.Errorf(`unknown backend type: "%s"`, entryType)
+	}
+
+	return nil
+}
 
 func (c *Core) generateMountAccessor(entryType string) (string, error) {
 	var accessor string
@@ -638,9 +650,6 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	entry.NamespaceID = ns.ID
 	entry.namespace = ns
 
-	// Ensure the cache is populated, don't need the result
-	c.NamespaceByID(ctx, ns.ID)
-
 	// Basic check for matching names
 	for _, ent := range c.mounts.Entries {
 		if ns.ID == ent.NamespaceID {
@@ -712,8 +721,8 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	// Check for the correct backend type
 	backendType := backend.Type()
 	if backendType != logical.TypeLogical {
-		if entry.Type != mountTypeKV && entry.Type != mountTypeSystem && entry.Type != mountTypeCubbyhole {
-			return fmt.Errorf(`unknown backend type: "%s"`, entry.Type)
+		if err := knownMountType(entry.Type); err != nil {
+			return err
 		}
 	}
 
@@ -1235,47 +1244,69 @@ func (c *Core) loadMounts(ctx context.Context) error {
 
 // This function reads the transactional split mount table.
 func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage) error {
-	globalEntries, err := barrier.List(ctx, coreMountConfigPath+"/")
+	allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
 	if err != nil {
-		return fmt.Errorf("failed listing core mounts: %w", err)
-	}
-
-	localEntries, err := barrier.List(ctx, coreLocalMountConfigPath+"/")
-	if err != nil {
-		return fmt.Errorf("failed listing core local mounts: %w", err)
+		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
 	var needPersist bool
+	globalEntries := make(map[string][]string, len(allNamespaces))
+	localEntries := make(map[string][]string, len(allNamespaces))
+	for index, ns := range allNamespaces {
+		view := ns.View(barrier)
+		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
+		if err != nil {
+			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.Namespace.ID)
+			return err
+		}
+
+		if len(nsGlobal) > 0 {
+			globalEntries[ns.Namespace.ID] = nsGlobal
+		}
+
+		if len(nsLocal) > 0 {
+			localEntries[ns.Namespace.ID] = nsLocal
+		}
+	}
+
 	if len(globalEntries) == 0 {
+		// TODO(ascheel) Assertion: globalEntries is empty iff there is only
+		// one namespace (the root namespace).
 		c.logger.Info("no mounts in transactional mount table; adding default mount table")
-		c.mounts = c.defaultMountTable()
+		c.mounts = c.defaultMountTable(ctx)
 		needPersist = true
 	} else {
 		c.mounts = &MountTable{
 			Type: mountTableType,
 		}
 
-		for index, uuid := range globalEntries {
-			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreMountConfigPath, uuid)
-			if err != nil {
-				return fmt.Errorf("error loading mount table entry (%v/%v): %w", index, uuid, err)
-			}
+		for nsIndex, ns := range allNamespaces {
+			view := ns.View(barrier)
+			for index, uuid := range globalEntries[ns.Namespace.ID] {
+				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
+				if err != nil {
+					return fmt.Errorf("error loading mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+				}
 
-			if entry != nil {
-				c.mounts.Entries = append(c.mounts.Entries, entry)
+				if entry != nil {
+					c.mounts.Entries = append(c.mounts.Entries, entry)
+				}
 			}
 		}
 	}
 
 	if len(localEntries) > 0 {
-		for index, uuid := range localEntries {
-			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreLocalMountConfigPath, uuid)
-			if err != nil {
-				return fmt.Errorf("error loading local mount table entry (%v/%v): %w", index, uuid, err)
-			}
+		for nsIndex, ns := range allNamespaces {
+			view := ns.View(barrier)
+			for index, uuid := range localEntries[ns.Namespace.ID] {
+				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
+				if err != nil {
+					return fmt.Errorf("error loading local mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+				}
 
-			if entry != nil {
-				c.mounts.Entries = append(c.mounts.Entries, entry)
+				if entry != nil {
+					c.mounts.Entries = append(c.mounts.Entries, entry)
+				}
 			}
 		}
 	}
@@ -1287,6 +1318,20 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	}
 
 	return nil
+}
+
+func listTransactionalMountsForNamespace(ctx context.Context, barrier logical.Storage) ([]string, []string, error) {
+	globalEntries, err := barrier.List(ctx, coreMountConfigPath+"/")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed listing core mounts: %w", err)
+	}
+
+	localEntries, err := barrier.List(ctx, coreLocalMountConfigPath+"/")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed listing core local mounts: %w", err)
+	}
+
+	return globalEntries, localEntries, nil
 }
 
 // This function reads the legacy, single-entry combined mount table,
@@ -1323,7 +1368,7 @@ func (c *Core) loadLegacyMounts(ctx context.Context, barrier logical.Storage) (b
 			return false, nil
 		}
 		c.logger.Info("no mounts in legacy mount table; adding default mount table")
-		c.mounts = c.defaultMountTable()
+		c.mounts = c.defaultMountTable(ctx)
 		needPersist = true
 	} else {
 		if _, ok := barrier.(logical.Transaction); ok {
@@ -1373,7 +1418,11 @@ func (c *Core) runMountUpdates(ctx context.Context, barrier logical.Storage, nee
 		needPersist = true
 	}
 
-	for _, requiredMount := range c.requiredMountTable().Entries {
+	requiredMounts, err := c.requiredMountTable(ctx)
+	if err != nil {
+		panic(err.Error())
+	}
+	for _, requiredMount := range requiredMounts.Entries {
 		foundRequired := false
 		for _, coreMount := range c.mounts.Entries {
 			if coreMount.Type == requiredMount.Type {
@@ -1558,6 +1607,18 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					continue
 				}
 
+				ne, err := c.namespaceStore.GetNamespaceByAccessor(ctx, mtEntry.NamespaceID)
+				if err != nil {
+					return -1, err
+				}
+
+				// Namespace might've been removed.
+				if ne == nil {
+					continue
+				}
+
+				view := ne.View(barrier)
+
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
 
@@ -1577,7 +1638,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				// Write to the backend.
-				if err := barrier.Put(ctx, sEntry); err != nil {
+				if err := view.Put(ctx, sEntry); err != nil {
 					c.logger.Error("failed to persist mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
 					return -1, err
 				}
@@ -1587,27 +1648,45 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 
 			if mount != "" && !found {
 				// Delete this component if it exists. This signifies that
-				// we're removing this mount.
-				path := path.Join(prefix, mount)
-				if err := barrier.Delete(ctx, path); err != nil {
-					return -1, fmt.Errorf("requested removal of mount but failed: %w", err)
+				// we're removing this mount. We don't know which namespace
+				// this entry could belong to, so remove it from all.
+				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
+				if err != nil {
+					return -1, fmt.Errorf("failed to list namespaces: %w", err)
+				}
+
+				for nsIndex, ns := range allNamespaces {
+					view := ns.View(barrier)
+					path := path.Join(prefix, mount)
+					if err := view.Delete(ctx, path); err != nil {
+						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.Namespace.ID, nsIndex, err)
+					}
 				}
 			}
 
 			if mount == "" {
-				// List all entries and remove any deleted ones.
-				presentEntries, err := barrier.List(ctx, prefix+"/")
+				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
 				if err != nil {
-					return -1, fmt.Errorf("failed to list entries for removal: %w", err)
+					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
 
-				for index, presentEntry := range presentEntries {
-					if _, present := currentEntries[presentEntry]; present {
-						continue
+				for nsIndex, ns := range allNamespaces {
+					view := ns.View(barrier)
+
+					// List all entries and remove any deleted ones.
+					presentEntries, err := view.List(ctx, prefix+"/")
+					if err != nil {
+						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.Namespace.ID, nsIndex, err)
 					}
 
-					if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
-						return -1, fmt.Errorf("failed to remove deleted mount %v (%d): %w", presentEntry, index, err)
+					for index, presentEntry := range presentEntries {
+						if _, present := currentEntries[presentEntry]; present {
+							continue
+						}
+
+						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+							return -1, fmt.Errorf("failed to remove deleted mount %v (%v) in namespace %v (%v): %w", presentEntry, index, ns.Namespace.ID, nsIndex, err)
+						}
 					}
 				}
 			}
@@ -1735,8 +1814,8 @@ func (c *Core) setupMounts(ctx context.Context) error {
 			backendType := backend.Type()
 
 			if backendType != logical.TypeLogical {
-				if entry.Type != mountTypeKV && entry.Type != mountTypeSystem && entry.Type != mountTypeCubbyhole {
-					return fmt.Errorf(`unknown backend type: "%s"`, entry.Type)
+				if err := knownMountType(entry.Type); err != nil {
+					return err
 				}
 			}
 
@@ -1781,9 +1860,6 @@ func (c *Core) setupMounts(ctx context.Context) error {
 			c.logger.Debug("tainting a mount due to it being marked as tainted in mount table", "entry.path", entry.Path, "entry.namespace.path", entry.Namespace().Path, "full_path", path)
 			c.router.Taint(ctx, path)
 		}
-
-		// Ensure the cache is populated, don't need the result
-		c.NamespaceByID(ctx, entry.NamespaceID)
 	}
 	return nil
 }
@@ -1882,11 +1958,16 @@ func (c *Core) newLogicalBackend(ctx context.Context, entry *MountEntry, sysView
 }
 
 // defaultMountTable creates a default mount table
-func (c *Core) defaultMountTable() *MountTable {
+func (c *Core) defaultMountTable(ctx context.Context) *MountTable {
 	table := &MountTable{
 		Type: mountTableType,
 	}
-	table.Entries = append(table.Entries, c.requiredMountTable().Entries...)
+
+	requiredMounts, err := c.requiredMountTable(ctx)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create required mounts: %v", err))
+	}
+	table.Entries = append(table.Entries, requiredMounts.Entries...)
 
 	if api.ReadBaoVariable("BAO_INTERACTIVE_DEMO_SERVER") != "" {
 		mountUUID, err := uuid.GenerateUUID()
@@ -1923,21 +2004,29 @@ func (c *Core) defaultMountTable() *MountTable {
 
 // requiredMountTable() creates a mount table with entries required
 // to be available
-func (c *Core) requiredMountTable() *MountTable {
+func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil && !errors.Is(err, namespace.ErrNoNamespace) {
+		return nil, err
+	}
+	if ns == nil {
+		ns = namespace.RootNamespace
+	}
+
 	table := &MountTable{
 		Type: mountTableType,
 	}
 	cubbyholeUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create cubbyhole UUID: %v", err))
+		return nil, fmt.Errorf("could not create cubbyhole UUID: %w", err)
 	}
 	cubbyholeAccessor, err := c.generateMountAccessor("cubbyhole")
 	if err != nil {
-		panic(fmt.Sprintf("could not generate cubbyhole accessor: %v", err))
+		return nil, fmt.Errorf("could not generate cubbyhole accessor: %w", err)
 	}
 	cubbyholeBackendUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create cubbyhole backend UUID: %v", err))
+		return nil, fmt.Errorf("could not create cubbyhole backend UUID: %w", err)
 	}
 	cubbyholeMount := &MountEntry{
 		Table:            mountTableType,
@@ -1949,19 +2038,22 @@ func (c *Core) requiredMountTable() *MountTable {
 		Local:            true,
 		BackendAwareUUID: cubbyholeBackendUUID,
 		RunningVersion:   versions.GetBuiltinVersion(consts.PluginTypeSecrets, "cubbyhole"),
+
+		NamespaceID: ns.ID,
+		namespace:   ns,
 	}
 
 	sysUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create sys UUID: %v", err))
+		return nil, fmt.Errorf("could not create sys UUID: %w", err)
 	}
 	sysAccessor, err := c.generateMountAccessor("system")
 	if err != nil {
-		panic(fmt.Sprintf("could not generate sys accessor: %v", err))
+		return nil, fmt.Errorf("could not generate sys accessor: %w", err)
 	}
 	sysBackendUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create sys backend UUID: %v", err))
+		return nil, fmt.Errorf("could not create sys backend UUID: %w", err)
 	}
 	sysMount := &MountEntry{
 		Table:            mountTableType,
@@ -1976,19 +2068,22 @@ func (c *Core) requiredMountTable() *MountTable {
 			PassthroughRequestHeaders: []string{"Accept"},
 		},
 		RunningVersion: versions.DefaultBuiltinVersion,
+
+		NamespaceID: ns.ID,
+		namespace:   ns,
 	}
 
 	identityUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create identity mount entry UUID: %v", err))
+		return nil, fmt.Errorf("could not create identity mount entry UUID: %w", err)
 	}
 	identityAccessor, err := c.generateMountAccessor("identity")
 	if err != nil {
-		panic(fmt.Sprintf("could not generate identity accessor: %v", err))
+		return nil, fmt.Errorf("could not generate identity accessor: %w", err)
 	}
 	identityBackendUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create identity backend UUID: %v", err))
+		return nil, fmt.Errorf("could not create identity backend UUID: %w", err)
 	}
 	identityMount := &MountEntry{
 		Table:            mountTableType,
@@ -2002,13 +2097,20 @@ func (c *Core) requiredMountTable() *MountTable {
 			PassthroughRequestHeaders: []string{"Authorization"},
 		},
 		RunningVersion: versions.DefaultBuiltinVersion,
+		NamespaceID:    ns.ID,
+		namespace:      ns,
+	}
+
+	if ns.ID != namespace.RootNamespaceID {
+		cubbyholeMount.Type = mountTypeNSCubbyhole
+		sysMount.Type = mountTypeNSSystem
 	}
 
 	table.Entries = append(table.Entries, cubbyholeMount)
 	table.Entries = append(table.Entries, sysMount)
 	table.Entries = append(table.Entries, identityMount)
 
-	return table
+	return table, nil
 }
 
 // This function returns tables that are singletons. The main usage of this is

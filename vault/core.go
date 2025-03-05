@@ -1219,6 +1219,7 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
+	credentialBackends[mountTypeNSToken] = credentialBackends[mountTypeToken]
 
 	c.credentialBackends = credentialBackends
 }
@@ -1240,6 +1241,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	// Cubbyhole
 	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[mountTypeNSCubbyhole] = logicalBackends[mountTypeCubbyhole]
 
 	// System
 	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1251,6 +1253,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		}
 		return b, nil
 	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {

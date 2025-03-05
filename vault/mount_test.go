@@ -734,7 +734,7 @@ func TestCore_Remount_Protected(t *testing.T) {
 
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable()
+	table := c.defaultMountTable(context.Background())
 	verifyDefaultTable(t, table, 3)
 }
 

@@ -57,6 +57,7 @@ type NamespaceStore struct {
 	// copied to prevent modification.
 	namespaces       []*NamespaceEntry
 	namespacesByPath map[string]*NamespaceEntry
+	namespacesByUUID map[string]*NamespaceEntry
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -150,9 +151,11 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	// will mostly just give us space for the root namespace.
 	allNamespaces := make([]*NamespaceEntry, 0, len(ns.namespaces)+1)
 	namespacesByPath := make(map[string]*NamespaceEntry, len(ns.namespacesByPath)+1)
+	namespacesByUUID := make(map[string]*NamespaceEntry, len(ns.namespacesByUUID)+1)
 	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
 	allNamespaces = append(allNamespaces, rootNs)
 	namespacesByPath[rootNs.Namespace.Path] = rootNs
+	namespacesByUUID[rootNs.UUID] = rootNs
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		// TODO(ascheel): We'll need to keep track of newly found namespaces
@@ -176,6 +179,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 
 			allNamespaces = append(allNamespaces, &namespace)
 			namespacesByPath[namespace.Namespace.Path] = &namespace
+			namespacesByUUID[namespace.UUID] = &namespace
 
 			return true, nil
 		}, nil); err != nil {
@@ -189,6 +193,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 
 	ns.namespaces = allNamespaces
 	ns.namespacesByPath = namespacesByPath
+	ns.namespacesByUUID = namespacesByUUID
 
 	return nil
 }
@@ -325,6 +330,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		// No need to adjust mounts as they should already exist.
 	}
 	ns.namespacesByPath[entry.Namespace.Path] = entry
+	ns.namespacesByUUID[entry.UUID] = entry
 
 	// Since the write succeeded, copy back any potentially changed values.
 	namespace.UUID = entry.UUID
@@ -626,6 +632,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	}
 
 	delete(ns.namespacesByPath, ns.namespaces[index].Namespace.Path)
+	delete(ns.namespacesByUUID, ns.namespaces[index].UUID)
+
 	// We're guaranteed at least one item remaining since the root namespace
 	// should always be present and not be removable.
 	ns.namespaces = append(ns.namespaces[0:index], ns.namespaces[index+1:]...)

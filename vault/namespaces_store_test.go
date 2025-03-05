@@ -2,7 +2,6 @@ package vault
 
 import (
 	"context"
-	"math/rand"
 	"strconv"
 	"testing"
 
@@ -248,43 +247,36 @@ func BenchmarkNamespaceStore(b *testing.B) {
 				Path: parent.Namespace.Path + "ns" + strconv.Itoa(i) + "/",
 			},
 		}
-		s.SetNamespace(ctx, item)
+		err := s.SetNamespace(ctx, item)
+		require.NoError(b, err)
 	}
 
-	require.Equal(b, n+1, len(s.namespaces))
+	require.Equal(b, n+1, len(s.namespacesByUUID))
 
 	b.Run("GetNamespace", func(b *testing.B) {
-		n := len(s.namespaces)
 		for b.Loop() {
-			idx := rand.Intn(n)
-			uuid := s.namespaces[idx].UUID
+			uuid := randomNamespace(s).UUID
 			s.GetNamespace(ctx, uuid)
 		}
 	})
 
 	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
-		n := len(s.namespaces)
 		for b.Loop() {
-			idx := rand.Intn(n)
-			accessor := s.namespaces[idx].Namespace.ID
+			accessor := randomNamespace(s).Namespace.ID
 			s.GetNamespaceByAccessor(ctx, accessor)
 		}
 	})
 
 	b.Run("GetNamespaceByPath", func(b *testing.B) {
-		n := len(s.namespaces)
 		for b.Loop() {
-			idx := rand.Intn(n)
-			path := s.namespaces[idx].Namespace.Path
+			path := randomNamespace(s).Namespace.Path
 			s.GetNamespaceByPath(ctx, path)
 		}
 	})
 
 	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
-		n := len(s.namespaces)
 		for b.Loop() {
-			idx := rand.Intn(n)
-			path := s.namespaces[idx].Namespace.Path
+			path := randomNamespace(s).Namespace.Path
 			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
 		}
 	})
@@ -313,10 +305,8 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
 		rootCtx := namespace.RootContext(context.TODO())
-		n := len(s.namespaces)
 		for b.Loop() {
-			idx := rand.Intn(n)
-			ns := s.namespaces[idx].Namespace
+			ns := randomNamespace(s).Namespace
 			ctx := namespace.ContextWithNamespace(rootCtx, ns)
 			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
 		}
@@ -324,9 +314,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("DeleteNamespace", func(b *testing.B) {
 		for b.Loop() {
-			n := len(s.namespaces)
-			idx := rand.Intn(n)
-			uuid := s.namespaces[idx].UUID
+			uuid := randomNamespace(s).UUID
 			s.DeleteNamespace(ctx, uuid)
 		}
 	})

@@ -55,8 +55,9 @@ type NamespaceStore struct {
 	// initialization time and persisted throughout the lifetime of the
 	// instance. Entries should not be returned directly but instead be
 	// copied to prevent modification.
-	namespacesByPath map[string]*NamespaceEntry
-	namespacesByUUID map[string]*NamespaceEntry
+	namespacesByPath     map[string]*NamespaceEntry
+	namespacesByUUID     map[string]*NamespaceEntry
+	namespacesByAccessor map[string]*NamespaceEntry
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -106,11 +107,12 @@ func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
 // using a given view. It used used to durable store and manage named namespace.
 func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*NamespaceStore, error) {
 	ns := &NamespaceStore{
-		core:             core,
-		storage:          core.barrier,
-		logger:           logger,
-		namespacesByPath: make(map[string]*NamespaceEntry),
-		namespacesByUUID: make(map[string]*NamespaceEntry),
+		core:                 core,
+		storage:              core.barrier,
+		logger:               logger,
+		namespacesByPath:     make(map[string]*NamespaceEntry),
+		namespacesByUUID:     make(map[string]*NamespaceEntry),
+		namespacesByAccessor: make(map[string]*NamespaceEntry),
 	}
 
 	// Add namespaces from storage to our table. We can do this without
@@ -152,9 +154,11 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	// will mostly just give us space for the root namespace.
 	namespacesByPath := make(map[string]*NamespaceEntry, len(ns.namespacesByPath)+1)
 	namespacesByUUID := make(map[string]*NamespaceEntry, len(ns.namespacesByUUID)+1)
+	namespacesByAccessor := make(map[string]*NamespaceEntry, len(ns.namespacesByAccessor)+1)
 	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
 	namespacesByPath[rootNs.Namespace.Path] = rootNs
 	namespacesByUUID[rootNs.UUID] = rootNs
+	namespacesByAccessor[rootNs.Namespace.ID] = rootNs
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		// TODO(ascheel): We'll need to keep track of newly found namespaces
@@ -178,6 +182,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 
 			namespacesByPath[namespace.Namespace.Path] = &namespace
 			namespacesByUUID[namespace.UUID] = &namespace
+			namespacesByAccessor[namespace.Namespace.ID] = &namespace
 
 			return true, nil
 		}, nil); err != nil {
@@ -191,6 +196,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 
 	ns.namespacesByPath = namespacesByPath
 	ns.namespacesByUUID = namespacesByUUID
+	ns.namespacesByAccessor = namespacesByAccessor
 
 	return nil
 }
@@ -305,6 +311,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 	}
 	ns.namespacesByPath[entry.Namespace.Path] = entry
 	ns.namespacesByUUID[entry.UUID] = entry
+	ns.namespacesByAccessor[entry.Namespace.ID] = entry
 
 	// Since the write succeeded, copy back any potentially changed values.
 	namespace.UUID = entry.UUID
@@ -347,26 +354,18 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *NamespaceEn
 
 // assignIdentifier assumes the lock is held.
 func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
+	if _, ok := ns.namespacesByPath[path]; ok {
+		return "", errors.New("unable to update when a namespace with this path already exists")
+	}
+
 	for {
 		id, err := base62.Random(namespaceIdLength)
 		if err != nil {
 			return "", fmt.Errorf("unable to generate namespace identifier: %w", err)
 		}
 
-		var found bool
-		// TODO: replace with namespacesByAccessor
-		for _, existing := range ns.namespacesByUUID {
-			if existing.Namespace.Path == path {
-				return "", errors.New("unable to update when a namespace with this path already exists")
-			}
-
-			if existing.Namespace.ID == id {
-				found = true
-				break
-			}
-		}
-
-		if found {
+		// accessor id already exists
+		if _, ok := ns.namespacesByAccessor[id]; ok {
 			continue
 		}
 
@@ -440,10 +439,10 @@ func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*Names
 
 	item, ok := ns.namespacesByUUID[uuid]
 	if !ok {
-		return nil, errors.New("could not find namespace")
+		return nil, nil
 	}
 
-	return item, nil
+	return item.Clone(), nil
 }
 
 // GetNamespaceByAccessor is used to fetch the namespace with the given accessor.
@@ -457,13 +456,12 @@ func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string)
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
-	for _, item := range ns.namespacesByUUID {
-		if item.Namespace.ID == id {
-			return item.Clone(), nil
-		}
+	item, ok := ns.namespacesByAccessor[id]
+	if !ok {
+		return nil, nil
 	}
 
-	return nil, nil
+	return item.Clone(), nil
 }
 
 // GetNamespaceByPath is used to fetch the namespace with the given full path.
@@ -484,7 +482,7 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 	path = namespace.Canonicalize(path)
 	item, ok := ns.namespacesByPath[path]
 	if !ok {
-		return nil, errors.New("could not find namespace")
+		return nil, nil
 	}
 
 	return item.Clone(), nil
@@ -613,6 +611,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 
 	delete(ns.namespacesByPath, item.Namespace.Path)
 	delete(ns.namespacesByUUID, uuid)
+	delete(ns.namespacesByAccessor, item.Namespace.ID)
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		storagePath := path.Join(namespaceStoreRoot, uuid)

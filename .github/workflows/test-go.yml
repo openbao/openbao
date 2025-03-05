@@ -202,7 +202,7 @@ jobs:
               -parallel=${{ inputs.go-test-parallelism }} \
               ${{ inputs.extra-flags }} \
       - name: Archive test results
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: test-results-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{ inputs.name }}
           path: test-results/go-test
@@ -272,7 +272,7 @@ jobs:
           failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}.json \
           >> failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}.md
       - name: Upload failure summary
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         if: success() || failure()
         with:
           name: failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}${{inputs.name}}

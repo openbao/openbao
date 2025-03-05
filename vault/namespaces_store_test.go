@@ -225,9 +225,11 @@ func TestNamespaceHierarchy(t *testing.T) {
 }
 
 func randomNamespace(ns *NamespaceStore) *NamespaceEntry {
-	idx := rand.Intn(len(ns.namespaces))
-
-	return ns.namespaces[idx]
+	// make use of random map iteration order
+	for _, item := range ns.namespacesByUUID {
+		return item
+	}
+	return nil
 }
 
 func BenchmarkNamespaceStore(b *testing.B) {

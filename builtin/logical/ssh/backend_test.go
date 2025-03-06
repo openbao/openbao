@@ -2970,3 +2970,291 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 
 	return b, config.StorageView
 }
+
+// TestSSHBackend_IssuerLifecycle tests the complete lifecycle of issuers including
+// creation, configuration, updates, and deletion
+func TestSSHBackend_IssuerLifecycle(t *testing.T) {
+	b, s := CreateBackendWithStorage(t)
+
+	// Test initial state
+	t.Run("initial_state", func(t *testing.T) {
+		// Reading default issuer should fail when none configured
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError(), "expected error when no default issuer configured")
+	})
+
+	// Test issuer creation and default behavior
+	t.Run("creation_and_default", func(t *testing.T) {
+		// Create first issuer - should become default automatically
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/first-issuer",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		firstIssuerId := resp.Data["issuer_id"].(string)
+
+		// Verify it's set as default
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, firstIssuerId, resp.Data["default"])
+
+		// Create second issuer with explicit default setting
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/second-issuer",
+			Data: map[string]interface{}{
+				"set_default": true,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		secondIssuerId := resp.Data["issuer_id"].(string)
+
+		// Verify second issuer is now default
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, secondIssuerId, resp.Data["default"])
+	})
+
+	// TODO (gabrielopesantos): Review
+	// Test issuer listing and pagination
+	// t.Run("listing_and_pagination", func(t *testing.T) {
+	// 	// Purge all issuers previously created
+	// 	_, err := b.HandleRequest(context.Background(), &logical.Request{
+	// 		Operation: logical.DeleteOperation,
+	// 		Path:      "config/ca",
+	// 		Storage:   s,
+	// 	})
+	// 	require.NoError(t, err)
+
+	// 	// Create additional issuers for pagination testing
+	// 	totalIssuers := 5
+	// 	issuers := make([]string, totalIssuers)
+	// 	for i := 0; i < totalIssuers; i++ {
+	// 		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	// 			Operation: logical.UpdateOperation,
+	// 			Path:      fmt.Sprintf("issuers/import/test-issuer-%d", i),
+	// 			Storage:   s,
+	// 		})
+	// 		require.NoError(t, err)
+	// 		require.NotNil(t, resp)
+	// 		require.NotNil(t, resp.Data)
+	// 		require.NotNil(t, resp.Data["issuer_id"])
+	// 		issuers[i] = resp.Data["issuer_id"].(string)
+	// 	}
+
+	// 	// Test listing with different page sizes
+	// 	testCases := []struct {
+	// 		name     string
+	// 		limit    int
+	// 		after    string
+	// 		expected int
+	// 	}{
+	// 		{"full_list", 0, "", totalIssuers},
+	// 		{"first_page", 2, "", 2},
+	// 		{"second_page", 2, issuers[1], 2},
+	// 		{"last_page", 2, issuers[3], 1},
+	// 	}
+
+	// 	for _, tc := range testCases {
+	// 		t.Run(tc.name, func(t *testing.T) {
+	// 			data := make(map[string]interface{})
+	// 			if tc.limit > 0 {
+	// 				data["limit"] = tc.limit
+	// 			}
+	// 			if tc.after != "" {
+	// 				data["after"] = tc.after
+	// 			}
+
+	// 			resp, err := b.HandleRequest(context.Background(), &logical.Request{
+	// 				Operation: logical.ListOperation,
+	// 				Path:      "issuers",
+	// 				Data:      data,
+	// 				Storage:   s,
+	// 			})
+	// 			require.NoError(t, err)
+	// 			require.NotNil(t, resp, "expected response to be non-nil")
+	// 			require.NotNil(t, resp.Data, "expected data to be non-nil")
+	// 			require.NotNil(t, resp.Data["keys"], "expected keys to be non-nil")
+	// 			keys := resp.Data["keys"].([]string)
+	// 			require.Len(t, keys, tc.expected)
+	// 		})
+	// 	}
+	// })
+
+	// Test issuer updates and reference resolution
+	t.Run("updates_and_references", func(t *testing.T) {
+		// Create test issuer
+		issuerName := "test-issuer-ref"
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Test different reference types
+		testCases := []struct {
+			name          string
+			reference     string
+			shouldSucceed bool
+		}{
+			{"by_id", issuerId, true},
+			{"by_name", issuerName, true},
+			{"by_default", "default", true},
+			{"invalid", "non-existent", false},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				resp, err := b.HandleRequest(context.Background(), &logical.Request{
+					Operation: logical.ReadOperation,
+					Path:      "issuer/" + tc.reference,
+					Storage:   s,
+				})
+				require.NoError(t, err)
+				if tc.shouldSucceed {
+					require.NotNil(t, resp)
+					require.False(t, resp.IsError())
+				} else {
+					require.True(t, resp.IsError())
+				}
+			})
+		}
+
+		// Test name update
+		newName := "updated-name"
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuer/" + issuerId,
+			Data: map[string]interface{}{
+				"issuer_name": newName,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Verify old name fails and new name works
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + newName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuerId, resp.Data["issuer_id"])
+	})
+
+	// Test public key operations
+	t.Run("public_key_operations", func(t *testing.T) {
+		// Create issuer with known key material
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Test authenticated public key retrieval
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, testCAPublicKey, resp.Data["public_key"])
+
+		// Test unauthenticated public key retrieval
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId + "/public_key",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, []byte(testCAPublicKey), resp.Data[logical.HTTPRawBody])
+	})
+
+	// Test deletion and cleanup
+	t.Run("deletion_and_cleanup", func(t *testing.T) {
+		// Create test issuer
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/delete-test",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Delete the issuer
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+
+		// Verify issuer is gone
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+
+		// Test bulk deletion via config/ca
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "config/ca",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+
+		// Verify all issuers are gone
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ListOperation,
+			Path:      "issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Data["keys"])
+	})
+}

@@ -1,0 +1,183 @@
+---
+sidebar_label: ACME TLS Listeners
+description: |-
+  An OpenBao RFC for adding just-in-time ACME certificate acquisition to TLS listners.
+---
+
+# ACME TLS Listeners
+
+## Summary
+
+Allow OpenBao to self-manage TLS certificates for its listener via the ACME protocol, similar to Caddy's automated certificate management. This would align OpenBao with server projects like Caddy, Apache's httpd, nginx, and others, that can acquire and rotate their listener certificates automatically via the ACME protocol.
+
+## Problem Statement
+
+Presently, OpenBao's TLS server certificate and key must be provided via external files (`tls_cert_file` and `tls_key_file`) and be referenced by the server's configuration file. This introduces friction to the TLS management workflow: certificates must be rotated and a `SIGHUP` sent to the server process to trigger a reload. This makes it hard in a Kubernetes environment, as SIGHUP [cannot be sent to a pod](https://github.com/kubernetes/kubernetes/issues/24957). Indeed, the dev mode server [recently introduced flags](https://github.com/hashicorp/vault/blob/main/CHANGELOG.md#1120) to create a temporary CA and sign its dev server certificate with it, though lacks rotation capabilities (as it is not meant to be used in production).
+
+OpenBao's ability to keep secrets and keys uniquely positions it to be the X.509 root of trust of an ecosystem built on top of it. This is especially true of bare metal and Docker-based architectures where there is no platform-provided capabilities for identity or secret storage and every application has its own method of acquiring and using certificates.
+
+Given that the main value proposition of OpenBao is its ability to rotate secrets, the inability to reuse an internal PKI service for its own leaf certificate, transparently handling its rotation, is a notable shortcoming.
+
+Moreover, it means that OpenBao then relies on some other root of trust to bootstrap it, which may be a manual process if that trust does not itself support ACME (or, if no ACME client is present in the environment). Building an ACME client into OpenBao allows it to interact via open protocols to acquire certificates even when the environment lacks such tools, regardless of whether that source is internal or external.
+
+With Google's push for [90-day public TLS certificates](https://www.chromium.org/Home/chromium-security/root-ca-policy/moving-forward-together/), any certificate management process other than an automated one is practically unimplementable for certificates from a public CA. When OpenBao is connected to the public internet, it is thus doubly important to have ACME support built-in.
+
+## User-facing Description
+
+[ACME](https://datatracker.ietf.org/doc/html/rfc8555) is the most widely adopted certificate management protocol for TLS certificates. While [EST](https://datatracker.ietf.org/doc/html/rfc7030), [CMPv2](https://datatracker.ietf.org/doc/html/rfc4210), and [SCEP](https://datatracker.ietf.org/doc/html/rfc8894) exist for different niches (seemingly IoT, Telco, and device attestation respectively), none are as widely adopted as ACME, in either the public CA or private CA space. Further, ACME was the first protocol to bridge the disparate public CA APIs and domain validation processes into a single, automated protocol.
+
+OpenBao defaults to a TLS-enabled listener because secrets management fundamentally isn't secure unless that connection is secure: even over private, internal networks, HTTPS is preferable to prevent accidental logging or packet captures from containing sensitive data. However, this listener lacks certificates by default: using ACME can fix this.
+
+ACME aims to automate certificate issuance: when a ACME directory is known (usually defaulting to Let's Encrypt by convention otherwise), an ACME client can authenticate itself to a certificate authority and request certificates for particular domain name(s). The ACME protocol currently defines three types of requests: a HTTP request, hitting a `/.well-known/acme-challenge` URI on the server; an ALPN request, using TLS's ALPN protocol negotiation to authenticate itself; and a DNS challenge, requiring provisioning of DNS records visible to the CA. When run in internal networks, this latter method is preferable: often OpenBao is run on non-standard ports, which the former two protocols do not support.
+
+By utilizing ACME in conjunction with a `localhost`-only HTTP listener (secure as it never leaves the system) _and_ auto-unseal (for automated startup), OpenBao can thus automatically provision certificates from a local PKI instance over the ACME protocol, becoming its own root of trust. OpenBao's initialization must be done locally to `localhost`, as no PKI hierarchy or storage subsystem is yet configured and thus auto-fetching of certificates will fail. Furthermore, subsequent manual unseals would have to again be over the localhost interface as the ACME client will be unable to fetch certs when OpenBao is sealed.
+
+By utilizing ["on-demand"](https://pkg.go.dev/github.com/caddyserver/certmagic#readme-on-demand-tls) ACME certificates (whereby requested SNIs can be automatically requested from the CA), no additional service name configuration is required. Note that reusing the bind address may not work as it may not be to a particular domain but instead to a global listen address such as `0.0.0.0`.
+
+## Technical Description
+
+The Caddy server uses [`certmagic`](https://pkg.go.dev/github.com/caddyserver/certmagic) for its ACME management needs. This offers a few conviences over [`x/crypto/acme`](https://pkg.go.dev/golang.org/x/crypto/acme): caching and rotation are handled automatically and the on-demand issuance allows for minimal default configuration.
+
+Notable complexity still remains however: in addition to more attributes to configure TLS with ACME (including choice of directory, an option root CA for connecting to said directory, and any external account bindings), for instances wishing to use DNS providers, additional support is necessary for provisioning a [`libdns`](https://github.com/libdns/) instance. This will likely require creating a generic, `hcl` (and `json` for the community at large) config-driven dispatching library over those providers.
+
+When using HTTP challenges, ACME requires the CA validate against port 80. When this bound, we'll solve challenges through OpenBao's `http.ServerMux` instance. However, when it is unbound, `certmagic` will automatically attempt to provision a listener on port 80. This is both desirable and undesirable: a short-lived port 80 means few (if any) accidental requests will come to this port, preventing accidental, inadvertent leakage of tokens & secrets due to misconfigured clients doing automatic http->https upgrade. However, this may still fail when the OpenBao instance is not running with sufficient (root or systemd/... port mapping) permissions.
+
+Further, [Fraser's](https://frasertweedale.github.io/blog-redhat/posts/2020-11-13-acme-service-discovery.html) IETF draft [for ACME service discovery](https://datatracker.ietf.org/doc/draft-tweedale-acme-discovery/01/) appears not to have been accepted by the ACME WG; a [replacement standard](https://datatracker.ietf.org/doc/draft-vanbrouwershaven-acme-auto-discovery/) with reliance on `CAA` records makes it largely unsuitable for [internal, enterprise usage](https://mailarchive.ietf.org/arch/msg/acme/qFDDqb2M80MUq40SV_9A2o__a_g/). This makes it hard for us to choose a default-_correct_ ACME provider. Thus, we'll rely on Let's Encrypt here as a default, suggesting users set their own directory if running on a local network.
+
+Certificates and keys are stored in-memory. This means that each restart of the service will request new certificates, but also prevents them from being stored on disk unencrypted. When provisioned as the root of trust, this shouldn't cause issues as OpenBao may not have quota information and thus won't rate-limit itself. However, when running against a public CA, too frequent restarts may trigger global rate limiting. This may warrant an option in the future to cache certificates on-disk, if also to help restarts and avoid a CA outage from affecting the ability to become operational. This would also allow unsealing OpenBao externally via the TLS listener on subsequent startups.
+
+The following parameters will be added to the [TCP listener](https://janma.github.io/openbao/docs/configuration/listener/tcp/) configuration:
+
+ - `tls_acme_cache_path`, to control where ACME account information (and perhaps, in a future release, certificates & keys) are stored. Per certmagic, this defaults to `~/.local/share/certmagic` if `$XDG_DATA_HOME` is unset.
+ - `tls_acme_ca_directory`, the default ACME CA directory path; this defaults to Let's Encrypt's production ACME instance if unset.
+ - `tls_acme_ca_root`, an optional root CA to trust to validate connections to the ACME directory; defaults to all system-trusted CAs.
+ - `tls_acme_eab_key_id` and `tls_acme_eab_mac_key`, for providing optional [external account bindings](https://datatracker.ietf.org/doc/html/rfc8555#section-7.3.4).
+ - `tls_acme_key_type`, for choosing the type of leaf keys to request.
+ - `tls_acme_email`, for setting the optional account notification email to subscribe to CA's messages about certificate expiry.
+- `tls_acme_domains`, an optional allow-list of domains to acquire certificates for; unrecognized SNIs will be ignored.
+
+## Rationale and Alternatives
+
+Making TLS infrastructure easier to manage is a core use case of OpenBao; this feature brings much-needed UX improvements to this side of instance management.
+
+[One alternative](https://github.com/openbao/openbao/issues/17#issuecomment-1857260621) would be to implement native support for OpenBao's PKI secrets engine's [APIs](https://github.com/cipherboy/openbao/blob/main/website/content/api-docs/secret/pki.mdx). This could be done [by utilizing support for parsing existing certificates back into API parameters](https://github.com/openbao/openbao/issues/17#issuecomment-1896921484), but requiring [an authentication bypass](https://github.com/openbao/openbao/issues/17#issuecomment-1858505651) as there's no concept of a "self" token for listener-to-plugin requests. Indeed, OpenBao may not be unsealed yet and thus may not even have access to unencrypted storage. Without solving the self-authentication approach, ACME support is preferable as a localhost-only listener can be used to fetch certificates, assuming .
+
+Regardless of approach though (ACME vs native PKI APIs), unless some persistent caching of certificates and keys is utilized (likely unencrypted on disk), an auto-unseal mechanism must be used in order to automatically retrieve certificates on startup. Additionally, while native PKI APIs make sense for cross-instance communication in a situation where DNS could not be provisioned or necessarily trusted, DNS must still be trusted for the API request and thus there's little benefit over ACME unless running on non-standard ports.
+
+## Downsides
+
+The approach above for two listeners (HTTP on localhost, HTTPS bound preferably) stipulates that all requested SNIs be self-reachable unless DNS challenges were used; this may not be the case in e.g., dual-homed virtualization environments with validated IP addresses (wherein a passthrough listener is used in conjunction with a VM-network or local listener; for DNS hostnames this can be avoided by configuring a local `/etc/host` entry to point at localhost).
+
+## Security Implications
+
+ - This approach requires trusting DNS to validate issuance requests as documented in [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555#section-10); though arguably this was already an issue with [HTTPS listeners and X.509 validation](https://datatracker.ietf.org/doc/html/rfc6125) today (unless Unix sockets were used via alternative routing protocols).
+
+ - However, this approach does _not_ impact any internal authentication or authorization code: this automated ACME client is no more or less privileged than any other ACME client, and so its security impact is well-understood.
+
+ - Upstream CA outages may cause degraded user experience downstream: if no local cache is implemented or required, restarting OpenBao would result in clients being unable to connect until it is resolved.
+
+ - If an allow-list of domains (for on-demand creation) is not specified, a remote attacker _may_ be able to cause a DoS by sending requests with arbitrary SNI information (depending on how OpenBao is configured) which may negatively impact the ACME account (if the CA implements per-account rate-limiting).
+
+## User/Developer Experience
+
+When deploying public network routable, production grade instances, this would make the experience much smoother assuming Let's Encrypt was the preferred certificate provider.
+
+Otherwise, this requires setting fewer parameters and requiring less provisioning when an organization can use ACME (at minimum the `tls_acme_ca_directory` value, rather than at minimum requiring both `tls_cert_file` and `tls_key_file`).
+
+## Unresolved Questions
+
+### DNS Support
+
+The current Proof of Concept lacks ALPN plumbing and libdns support; both should be achievable, though the latter will require building a wrapper library.
+
+For configuration, the following parameter would be added for DNS support:
+
+ - `tls_acme_dns_config`, a structure for setting DNS provider configuration; doing so disables HTTP and ALPN challenges.
+    - `provider`, a typed, per-provider configuration structure to control how DNS is managed.
+    - `ttl`, for setting how long temporary challenge records will live.
+    - `propagation_delay`, for setting how long to wait until starting propagation checks against the DNS resolver.
+    - `propagation_timeout`, for setting how long propagation checks should run for until assuming DNS record provisioning failed, prior to completing the challenge.
+    - `resolvers`, to use to perform DNS challenge lookups.
+    - `override_domain`, to delegate the challenge to [a different domain](https://pkg.go.dev/github.com/caddyserver/certmagic#DNS01Solver).
+
+### Logging
+
+Additionally, [`certmagic`](https://pkg.go.dev/github.com/caddyserver/certmagic#Config) requires [Uber's `zap` logger](https://pkg.go.dev/go.uber.org/zap#Logger), which is not compatible with [HashiCorp's go-hclog](https://pkg.go.dev/github.com/hashicorp/go-hclog#Logger). This means that configuration options set for logging will not be respected by `certmagic` and are presently disabled. These log lines look like e.g.:
+
+> ```
+> 1.7098166561676574e+09	info	maintenance	started background certificate maintenance	{"cache": "0xc000883a00"}
+> ```
+
+as they don't use our formatter. While we could update the formatting of the log message to use the new format, it might be hard to ensure the log locations are reused and adequately locked to allow two disparate writers.
+
+We were able to create a zlog core, backed by hclog, which outputs log messages appropriately.
+
+## Proof of Concept
+
+See code: https://github.com/cipherboy/openbao/pull/new/auto-tls-listener.
+
+Presently this is buildable, but requires `sudo` permissions to bind to port 80 for challenge verification, which isn't ideal. DNS support should help to alleviate this in the near future, but will require building the aforementioned library first.
+
+Assuming that's alright: use  [`devbao`](https://github.com/cipherboy/devbao) to provision and then stop a new node:
+
+```
+$ devbao node start --name prod --force --initialize --unseal --profiles pki --listeners "tcp:0.0.0.0:9999,tcp:0.0.0.0:8200"
+$ bao read -format=raw pki-root/ca/pem > root.pem
+$ killall bao
+```
+
+This node is pre-provisioned with ACME support; we save the root CA for later.
+
+
+Modify the configuration file as so:
+
+```
+listener "tcp" {
+  address = "127.0.0.1:9999"
+  tls_disable = true
+}
+
+listener "tcp" {
+  address = "0.0.0.0:8200"
+  tls_acme_ca_directory = "http://127.0.0.1:9999/v1/pki-int/acme/directory"
+}
+
+disable_mlock = true
+storage "raft" {
+  path = "/home/cipherboy/.local/share/devbao/nodes/prod/storage/raft"
+}
+
+cluster_addr = "https://localhost:8201"
+api_addr = "https://localhost:8200"
+plugin_directory = "/home/cipherboy/.local/share/devbao/nodes/prod/plugins"
+```
+
+Namely, we change the second listener to use a custom ACME directory pointed at the first listener. I've also updated `cluster_addr` and `api_addr` to use the second listener's port, though this matters less.
+
+Now we can restart `bao` manually:
+
+```
+$ sudo /home/cipherboy/go/bin/bao server -exit-on-core-shutdown -config=/home/cipherboy/.local/share/devbao/nodes/prod/config.hcl
+```
+
+and in a new terminal, unseal `bao` using the localhost-only listener:
+
+```
+$ . <(devbao node env prod) # source env
+$ bao operator unseal "$(devbao node get-unseal prod | head -n 1)"
+$ bao operator unseal "$(devbao node get-unseal prod | tail -n 1)"
+$ bao secrets list
+$ bao list pki-int/certs # (should have a few certs)
+```
+
+(ignoring the warning about the ndoe not running, since it wasn't started through `devbao`).
+
+Finally, the new address can be used:
+
+```
+$ export VAULT_ADDR=https://localhost:8200
+$ export VAULT_CACERT=root.pem
+$ bao list pki-int/certs # (should have more certs)
+```
+
+Note that changing `VAULT_ADDR` to equivalent ones will also work (e.g., `localhost.localdomain`, `127.0.0.1`, &c): the initial connection will be slower but subsequent ones will be fast.

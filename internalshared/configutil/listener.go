@@ -58,8 +58,10 @@ type Listener struct {
 	RequireRequestHeader    bool          `hcl:"-"`
 	RequireRequestHeaderRaw interface{}   `hcl:"require_request_header"`
 
-	TLSDisable                       bool        `hcl:"-"`
-	TLSDisableRaw                    interface{} `hcl:"tls_disable"`
+	TLSDisable    bool        `hcl:"-"`
+	TLSDisableRaw interface{} `hcl:"tls_disable"`
+	TLSCertGetter interface{} `hcl:"-"`
+
 	TLSCertFile                      string      `hcl:"tls_cert_file"`
 	TLSKeyFile                       string      `hcl:"tls_key_file"`
 	TLSMinVersion                    string      `hcl:"tls_min_version"`
@@ -71,6 +73,20 @@ type Listener struct {
 	TLSClientCAFile                  string      `hcl:"tls_client_ca_file"`
 	TLSDisableClientCerts            bool        `hcl:"-"`
 	TLSDisableClientCertsRaw         interface{} `hcl:"tls_disable_client_certs"`
+
+	TLSACMECachePath               string      `hcl:"tls_acme_cache_path"`
+	TLSACMECADirectory             string      `hcl:"tls_acme_ca_directory"`
+	TLSACMETestCADirectory         string      `hcl:"tls_acme_test_ca_directory"`
+	TLSACMECARoot                  string      `hcl:"tls_acme_ca_root"`
+	TLSACMEEABKeyId                string      `hcl:"tls_acme_eab_key_id"`
+	TLSACMEEABMacKey               string      `hcl:"tls_acme_eab_mac_key"`
+	TLSACMEKeyType                 string      `hcl:"tls_acme_key_type"`
+	TLSACMEEmail                   string      `hcl:"tls_acme_email"`
+	TLSACMEDomains                 []string    `hcl:"tls_acme_domains"`
+	TLSACMEDisableHttpChallenge    bool        `hcl:"-"`
+	TLSACMEDisableHttpChallengeRaw interface{} `hcl:"tls_acme_disable_http_challenge"`
+	TLSACMEDisableAlpnChallenge    bool        `hcl:"-"`
+	TLSACMEDisableAlpnChallengeRaw interface{} `hcl:"tls_acme_disable_alpn_challenge"`
 
 	HTTPReadTimeout          time.Duration `hcl:"-"`
 	HTTPReadTimeoutRaw       interface{}   `hcl:"http_read_timeout"`
@@ -420,6 +436,31 @@ func ParseListeners(result *SharedConfig, list *ast.ObjectList) error {
 			}
 			l.CustomResponseHeaders = customHeadersMap
 			l.CustomResponseHeadersRaw = nil
+		}
+
+		// ACME configuration validation
+		{
+			if l.TLSACMEEABKeyId != "" || l.TLSACMEEABMacKey != "" {
+				if l.TLSACMEEABKeyId == "" || l.TLSACMEEABMacKey == "" {
+					return multierror.Prefix(errors.New("both tls_acme_eab_key_id and tls_acme_eab_mac_key must be provided to use external account bindings"), fmt.Sprintf("listeners.%d", i))
+				}
+			}
+
+			if l.TLSACMEDisableHttpChallengeRaw != nil {
+				if l.TLSACMEDisableHttpChallenge, err = parseutil.ParseBool(l.TLSACMEDisableHttpChallengeRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for tls_acme_disable_http_challenge: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.TLSACMEDisableHttpChallengeRaw = nil
+			}
+
+			if l.TLSACMEDisableAlpnChallengeRaw != nil {
+				if l.TLSACMEDisableAlpnChallenge, err = parseutil.ParseBool(l.TLSACMEDisableAlpnChallengeRaw); err != nil {
+					return multierror.Prefix(fmt.Errorf("invalid value for tls_acme_disable_alpn_challenge: %w", err), fmt.Sprintf("listeners.%d", i))
+				}
+
+				l.TLSACMEDisableAlpnChallengeRaw = nil
+			}
 		}
 
 		result.Listeners = append(result.Listeners, &l)

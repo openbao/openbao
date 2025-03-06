@@ -566,7 +566,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 	// Initialize the listeners
 	lns := make([]listenerutil.Listener, 0, len(config.Listeners))
 	for _, lnConfig := range config.Listeners {
-		ln, _, _, err := server.NewListener(lnConfig, c.logGate, c.UI)
+		ln, _, _, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
 		if err != nil {
 			c.UI.Error(fmt.Sprintf("Error initializing listener of type %s: %s", lnConfig.Type, err))
 			return 1
@@ -627,6 +627,7 @@ func (c *ServerCommand) runRecoveryMode() int {
 		handler := vaulthttp.Handler.Handler(&vault.HandlerProperties{
 			Core:                  core,
 			ListenerConfig:        ln.Config,
+			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
 			RecoveryToken:         atomic.NewString(""),
@@ -783,7 +784,7 @@ func beginServiceRegistration(c *ServerCommand, config *server.Config) (sr.Servi
 }
 
 // InitListeners returns a response code, error message, Listeners, and a TCP Address list.
-func (c *ServerCommand) InitListeners(config *server.Config, disableClustering bool, infoKeys *[]string, info *map[string]string) (int, []listenerutil.Listener, []*net.TCPAddr, error) {
+func (c *ServerCommand) InitListeners(logger hclog.Logger, config *server.Config, disableClustering bool, infoKeys *[]string, info *map[string]string) (int, []listenerutil.Listener, []*net.TCPAddr, error) {
 	clusterAddrs := []*net.TCPAddr{}
 
 	// Initialize the listeners
@@ -795,15 +796,15 @@ func (c *ServerCommand) InitListeners(config *server.Config, disableClustering b
 
 	var errMsg error
 	for i, lnConfig := range config.Listeners {
-		ln, props, reloadFunc, err := server.NewListener(lnConfig, c.logGate, c.UI)
+		ln, props, cg, err := server.NewListener(lnConfig, c.logger, c.logGate, c.UI)
 		if err != nil {
 			errMsg = fmt.Errorf("Error initializing listener of type %s: %s", lnConfig.Type, err)
 			return 1, nil, nil, errMsg
 		}
 
-		if reloadFunc != nil {
+		if cg != nil {
 			relSlice := (*c.reloadFuncs)["listener|"+lnConfig.Type]
-			relSlice = append(relSlice, reloadFunc)
+			relSlice = append(relSlice, cg.Reload)
 			(*c.reloadFuncs)["listener|"+lnConfig.Type] = relSlice
 		}
 
@@ -1259,7 +1260,7 @@ func (c *ServerCommand) Run(args []string) int {
 		}
 	}
 
-	status, lns, clusterAddrs, errMsg := c.InitListeners(config, disableClustering, &infoKeys, &info)
+	status, lns, clusterAddrs, errMsg := c.InitListeners(c.logger, config, disableClustering, &infoKeys, &info)
 
 	if status != 0 {
 		c.UI.Output("Error parsing listener configuration.")
@@ -2774,6 +2775,7 @@ func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config,
 		handler := vaulthttp.Handler.Handler(&vault.HandlerProperties{
 			Core:                  core,
 			ListenerConfig:        ln.Config,
+			AllListeners:          lns,
 			DisablePrintableCheck: config.DisablePrintableCheck,
 			RecoveryMode:          c.flagRecovery,
 		})

@@ -6,21 +6,6 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      prerelease:
-        description: "Mark this release as a prerelease"
-        required: false
-        default: "auto"
-        type: choice
-        # auto follows semver. Prerelease versions are hyphenated with a label. ex. 0.0.0-alpha, 1.0.0-rc1
-        options:
-          - auto
-          - "true"
-          - "false"
-      make-latest:
-        description: "Latest release"
-        required: false
-        default: true
-        type: boolean
       nightly:
         description: "Mark as nightly build"
         required: true
@@ -33,20 +18,8 @@ permissions:
   packages: write
 
 jobs:
-  release:
+  setup:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_CLI_EXPERIMENTAL: "enabled"
-    strategy:
-      matrix:
-        release_os:
-          - linux
-          - darwin
-          - freebsd
-          - illumos
-          - netbsd
-          - openbsd
-          - windows
     steps:
       - name: Disable release on nightly repository
         if: ${{ !inputs.nightly }}
@@ -55,22 +28,105 @@ jobs:
             echo "Refusing to run non-nightly release on nightly repo" 1>&2
             exit 1
           fi
-
-      - name: Checkout
-        uses: actions/checkout@v4.1.7
-        with:
-          fetch-depth: 0 # Required by GoRelease
-
       - name: Disable nightly on primary repository
         if: inputs.nightly
-        env:
-          PRERELEASE: ${{ inputs.prerelease }}
         run: |
           if [ "$GITHUB_REPOSITORY" != "openbao/openbao-nightly" ]; then
             echo "Refusing to run nightly release on non-nightly repo" 1>&2
             exit 1
           fi
 
+  build-ui:
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0 # Required by GoRelease
+
+      - name: Configure nightly build
+        if: inputs.nightly
+        run: |
+          # Locally remove previous nightly tags so they do not interfere
+          # with nightly tag computation. Also add the upstream.
+          git remote add upstream https://github.com/openbao/openbao
+          git fetch --all
+
+          for tag in $(git tag); do
+            if [[ "$tag" == *nightly* ]]; then
+              echo "Deleting $tag"
+              git tag --delete "$tag"
+            fi
+          done
+
+          # Then create a nightly tag for this commit. Because this uses the
+          # time of commit, it is stable across different runners.
+          nightly_tag="$(bash ./scripts/nightly_tag.sh)"
+          git tag "$nightly_tag"
+
+      - name: Node setup
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version-file: "./ui/package.json"
+
+      - name: Yarn setup
+        id: install-yarn
+        run: |
+          npm install -g yarn
+
+      - name: UI Cache Setup
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+        with:
+          path: |
+            http/web_ui/
+          key: ${{ github.ref }}-ui
+
+      # Before executing binary builds, build the UI.
+      - name: Install UI dependencies
+        id: ui-dependencies
+        working-directory: ./ui
+        run: |
+          yarn install --frozen-lockfile
+          npm rebuild node-sass
+
+      - name: Build UI
+        id: ui-build
+        run: |
+          make static-dist
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - build-ui
+    env:
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
+    strategy:
+      matrix:
+        release_os:
+          - linux
+          - hsm
+          - darwin
+          - freebsd
+          - illumos
+          - netbsd
+          - openbsd
+          - windows
+    steps:
+      - name: "Check free space on runner"
+        run: |
+          df -h .
+
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0 # Required by GoRelease
+
+      - name: Configure nightly build
+        if: inputs.nightly
+        run: |
           # Locally remove previous nightly tags so they do not interfere
           # with nightly tag computation. Also add the upstream.
           git remote add upstream https://github.com/openbao/openbao
@@ -94,15 +150,12 @@ jobs:
       - name: go-check
         run: go version
 
-      - name: Node setup
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+      - name: UI Cache Setup
+        uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
         with:
-          node-version-file: "./ui/package.json"
-
-      - name: Yarn setup
-        id: install-yarn
-        run: |
-          npm install -g yarn
+          path: |
+            http/web_ui/
+          key: ${{ github.ref }}-ui
 
       # Supports syft/sbom generation
       - uses: anchore/sbom-action/download-syft@v0
@@ -123,19 +176,6 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSWORD }}
-
-      - name: Cache Setup
-        uses: actions/cache@v4
-        with:
-          path: |
-            ./dist/**/bao
-            ./dist/**/*.exe
-            ./dist/**/*.deb
-            ./dist/**/*.rpm
-            ./dist/*.tar.gz
-            ./dist/*.tar.gz.zst
-            ./dist/*.zip
-          key: ${{ github.ref }}
 
       - name: "Docker Login: ghcr.io"
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
@@ -170,34 +210,22 @@ jobs:
         env:
           GPG_TTY: /dev/ttys000 # Set the GPG_TTY to avoid issues with pinentry
 
-      # Before executing binary builds, build the UI.
-      - name: Install UI dependencies
-        id: ui-dependencies
-        working-directory: ./ui
-        run: |
-          yarn install --frozen-lockfile
-          npm rebuild node-sass
-
-      - name: Build UI
-        id: ui-build
-        run: |
-          make static-dist
-
-      # Execute Go binary builds
-      - name: "Template GoRelaser configuration"
-        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
-        run: |
-          sed "s/REPLACE_WITH_RELEASE_GOOS/${{ matrix.release_os }}/g" .goreleaser-template.yaml > .goreleaser.yaml
-          sed -i "s/^#OTHERARCH#//g" .goreleaser.yaml
-          [ "${{ matrix.release_os }}" == "linux" ] && sed -i "s/^#LINUXONLY#//g" .goreleaser.yaml || true
-
-      - name: "GoReleaser: Release"
+      - name: Install GoReleaser
         if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
         uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean --timeout=60m --verbose --parallelism 2
+          install-only: true
+          # TODO: remove version pinning when Goreleaser 2.8 is released
+          version: v2.5.1
+
+      - name: "GoReleaser: Release"
+        if: startsWith(github.ref, 'refs/tags/') || inputs.nightly
+        run: |
+          if [[ ! -f "goreleaser.${{ matrix.release_os }}.yaml" ]]; then
+            yq e '.builds[0].goos |= ["${{ matrix.release_os }}"] | .checksum.name_template |= "checksums-${{ matrix.release_os }}.txt"' "goreleaser.other.yaml" | goreleaser release --clean --timeout=60m --verbose --parallelism 2 -f -
+          else
+            goreleaser release --clean --timeout=60m --verbose --parallelism 2 -f "goreleaser.${{ matrix.release_os }}.yaml"
+          fi
         env:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
@@ -205,8 +233,6 @@ jobs:
           GPG_FINGERPRINT: ${{ steps.gpg-import.outputs.fingerprint }}
           GPG_PASSWORD: ${{ secrets.GPG_PASSWORD }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GITHUB_RELEASE_PRERELEASE: ${{ inputs.prerelease }}
-          GITHUB_RELEASE_MAKE_LATEST: ${{ inputs.make-latest }}
           NFPM_DEFAULT_PASSPHRASE: ${{ secrets.GPG_PASSWORD }}
           NIGHTLY_RELEASE: ${{ inputs.nightly }}
 
@@ -216,7 +242,3 @@ jobs:
           if [ -n "${GPG_KEY_FILE}" ]; then
             rm -rf "${GPG_KEY_FILE}"
           fi
-
-      - name: "Check free space on runner"
-        run: |
-          df -h .

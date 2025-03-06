@@ -1,0 +1,107 @@
+---
+sidebar_label: 2.2.x
+description: Release notes for OpenBao 2.2.x
+---
+# OpenBao 2.2.0 release notes
+
+## 2.2.0
+**Release date:** March 5, 2025
+
+:::tip
+
+This is the first release with Web UI support!
+
+:::
+
+### CHANGES
+
+* command/server: Prevent and warn about loading of duplicate config file from config directory. [[GH-816](https://github.com/openbao/openbao/pull/816)]
+* container: Set -dev-no-store-token in default container images, fixing default read-only containers. [[GH-826](https://github.com/openbao/openbao/pull/826)]
+* core/seal: remove support for legacy pre-keyring barrier entries
+core/seal: remove support for legacy (direct) shamir unseal keys [[GH-750](https://github.com/openbao/openbao/pull/750)]
+* core: Remove support for Solaris due to lack of Docker support. [[GH-710](https://github.com/openbao/openbao/pull/710)]
+
+### FEATURES
+
+* **ACME TLS Listener Certificate Provisioning**: Automatically fetch TLS certificates for OpenBao Server's TCP listeners via an Automatic Certificate Management Environment (ACME - RFC 8555) capable certificate authority (CA). This allows OpenBao to be self-hosted, using a CA contained within the instance to sign the instance's own certificates. [[GH-857](https://github.com/openbao/openbao/pull/857)]
+* **PKCS#11 Auto-Unseal**: Add support for automatic unsealing of OpenBao using a PKCS#11-enabled Hardware Security Module (HSM) or Key Management System (KMS). [[GH-889](https://github.com/openbao/openbao/pull/889)]
+* **Scanning**: introduce the ability to recursively list (scan) within plugins, adding a separate `scan` ACL capability, operation type, HTTP verb (`SCAN` with `GET` fallback via `?scan=true`), API, and CLI support. This also adds support to the KVv1 and KVv2 engines. [[GH-763](https://github.com/openbao/openbao/pull/763)]
+* **Transit**: Add support for key derivation mechansims (derives a new key from a base key).
+   - This path uses the named base key and derivation algorithm specific parameters to derive a new named key.
+   - Currently, only the ECDH key agreement algorithm is supported: the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.The computed shared secret is the resulting derived key. [[GH-811](https://github.com/openbao/openbao/pull/811)]
+* **UI**: Reintroduction of the WebUI. [[GH-940](https://github.com/openbao/openbao/pull/940)]
+* raft: Added support for nodes to join the Raft cluster as non-voters. [[GH-741](https://github.com/openbao/openbao/pull/741)]
+
+### IMPROVEMENTS
+
+* audit: modify the hashWalker to handle nested structs without panicing [[GH-887](https://github.com/openbao/openbao/pull/887)]
+* auth: Use transactions for read-then-write methods in the credential package [[GH-952](https://github.com/openbao/openbao/pull/952)]
+* auth: Use transactions for write and delete config for various auth methods. [[GH-878](https://github.com/openbao/openbao/pull/878)]
+* core/mounts: Allow tuning HMAC request and response parameters on sys/, cubbyhole/, and identity/, enabling auditing of core policy changes. [[GH-921](https://github.com/openbao/openbao/pull/921)]
+* core/policies: Allow listing policies under a given prefix. [[GH-736](https://github.com/openbao/openbao/pull/736)]
+* core/policies: add `pagination_limit` to ACL policies for enforcing max pagination sizes. [[GH-802](https://github.com/openbao/openbao/pull/802)]
+* core: Bump to latest Go toolchain 1.24.0. [[GH-1000](https://github.com/openbao/openbao/pull/1000)]
+* identity: return alias metadata when listing entity aliases [[GH-1013](https://github.com/openbao/openbao/pull/1013)]
+* rabbitmq: Use transactions for read-then-write methods in the rabbitmq package [[GH-997](https://github.com/openbao/openbao/pull/997)]
+* secret/pki: Add new endpoint `pki/certs/detailed` to return detailed cert list. [[GH-680](https://github.com/openbao/openbao/pull/680)]
+* secret/pki: Add pagination to `tidy` operations for improved scalability in large certificate stores. [[GH-678](https://github.com/openbao/openbao/pull/678)]
+* secrets/kv: add a `detailed-metadata/:prefix` endpoint that supports listing entries along with their corresponding metadata in the detailed key_info response field [[GH-766](https://github.com/openbao/openbao/pull/766)]
+* transit: Use transactions for read + write policy operations [[GH-956](https://github.com/openbao/openbao/pull/956)]
+* ui: Remove client count menu [[GH-734](https://github.com/openbao/openbao/pull/734)]
+
+### BUG FIXES
+
+* core-listener: Fix operator diagnose with unix-socker listener [[GH-958](https://github.com/openbao/openbao/pull/958)]
+* raft: Fix noisy warn on follower-less keyring rotation. [[GH-937](https://github.com/openbao/openbao/pull/937)]
+* secrets/pki: Fix bao pki health-check detection on non-pki mounts. [[GH-935](https://github.com/openbao/openbao/pull/935)]
+* ui: fix missing checkmarks in all checkboxes, due to invalid use of sass-svg-uri package [[GH-1042](https://github.com/openbao/openbao/pull/1042)]
+
+
+## 2.2.0-beta20250213
+**Release date:** February 13, 2025
+
+:::tip
+
+This is the first release with Web UI support!
+
+:::
+
+### CHANGES
+
+* command/server: Prevent and warn about loading of duplicate config file from config directory. [[GH-816](https://github.com/openbao/openbao/pull/816)]
+* container: Set -dev-no-store-token in default container images, fixing default read-only containers. [[GH-826](https://github.com/openbao/openbao/pull/826)]
+* core/seal: remove support for legacy pre-keyring barrier entries
+core/seal: remove support for legacy (direct) shamir unseal keys [[GH-750](https://github.com/openbao/openbao/pull/750)]
+
+### FEATURES
+
+* **UI**: Reintroduction of the WebUI. [[GH-940](https://github.com/openbao/openbao/pull/940)]
+* **PKCS#11 Auto-Unseal**: Add support for automatic unsealing of OpenBao using a PKCS#11-enabled Hardware Security Module (HSM) or Key Management System (KMS). [[GH-889](https://github.com/openbao/openbao/pull/889)]
+* **ACME TLS Listener Certificate Provisioning**: Automatically fetch TLS certificates for OpenBao Server's TCP listeners via an Automatic Certificate Management Environment (ACME - RFC 8555) capable certificate authority (CA). This allows OpenBao to be self-hosted, using a CA contained within the instance to sign the instance's own certificates. [[GH-857](https://github.com/openbao/openbao/pull/857)]
+* **Scanning**: introduce the ability to recursively list (scan) within plugins, adding a separate `scan` ACL capability, operation type, HTTP verb (`SCAN` with `GET` fallback via `?scan=true`), API, and CLI support. This also adds support to the KVv1 and KVv2 engines. [[GH-763](https://github.com/openbao/openbao/pull/763)]
+* **Transit**: Add support for key derivation mechansims (derives a new key from a base key).
+   - This path uses the named base key and derivation algorithm specific parameters to derive a new named key.
+   - Currently, only the ECDH key agreement algorithm is supported: the base key is one's own ECC private key and the "peer_public_key" is the pem-encoded other party's ECC public key.The computed shared secret is the resulting derived key. [[GH-811](https://github.com/openbao/openbao/pull/811)]
+* raft: Added support for nodes to join the Raft cluster as non-voters. [[GH-741](https://github.com/openbao/openbao/pull/741)]
+
+### IMPROVEMENTS
+
+* audit: modify the hashWalker to handle nested structs without panicing [[GH-887](https://github.com/openbao/openbao/pull/887)]
+* auth: Use transactions for read-then-write methods in the credential package [[GH-952](https://github.com/openbao/openbao/pull/952)]
+* auth: Use transactions for write and delete config for various auth methods. [[GH-878](https://github.com/openbao/openbao/pull/878)]
+* core/mounts: Allow tuning HMAC request and response parameters on sys/, cubbyhole/, and identity/, enabling auditing of core policy changes. [[GH-921](https://github.com/openbao/openbao/pull/921)]
+* core/policies: Allow listing policies under a given prefix. [[GH-736](https://github.com/openbao/openbao/pull/736)]
+* core/policies: add `pagination_limit` to ACL policies for enforcing max pagination sizes. [[GH-802](https://github.com/openbao/openbao/pull/802)]
+* core: Bump to latest Go toolchain 1.24.0. [[GH-1000](https://github.com/openbao/openbao/pull/1000)]
+* rabbitmq: Use transactions for read-then-write methods in the rabbitmq package [[GH-997](https://github.com/openbao/openbao/pull/997)]
+* secret/pki: Add new endpoint `pki/certs/detailed` to return detailed cert list. [[GH-680](https://github.com/openbao/openbao/pull/680)]
+* secret/pki: Add pagination to `tidy` operations for improved scalability in large certificate stores. [[GH-678](https://github.com/openbao/openbao/pull/678)]
+* secrets/kv: add a `detailed-metadata/:prefix` endpoint that supports listing entries along with their corresponding metadata in the detailed key_info response field [[GH-766](https://github.com/openbao/openbao/pull/766)]
+* transit: Use transactions for read + write policy operations [[GH-956](https://github.com/openbao/openbao/pull/956)]
+* ui: Remove client count menu [[GH-734](https://github.com/openbao/openbao/pull/734)]
+
+### BUG FIXES
+
+* core-listener: Fix operator diagnose with unix-socker listener [[GH-958](https://github.com/openbao/openbao/pull/958)]
+* raft: Fix noisy warn on follower-less keyring rotation. [[GH-937](https://github.com/openbao/openbao/pull/937)]
+* secrets/pki: Fix bao pki health-check detection on non-pki mounts. [[GH-935](https://github.com/openbao/openbao/pull/935)]

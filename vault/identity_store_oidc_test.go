@@ -1136,13 +1136,13 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			i := 0
 			for currentCycle <= lastCycle {
-
-				// sleep until the nextRun value updates
+				// capture the "nextRun" time at the start
 				v, _, err := c.identityStore.oidcCache.Get(noNamespace, "nextRun")
 				if err != nil {
 					t.Fatal("failed to get nextRun")
 				}
 
+				// call periodicFunc and wait until the "nextRun" value is updated
 				for {
 					c.identityStore.oidcPeriodicFunc(ctx)
 					v1, _, err := c.identityStore.oidcCache.Get(noNamespace, "nextRun")

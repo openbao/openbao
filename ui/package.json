@@ -197,7 +197,7 @@
     "text-encoder-lite": "2.0.0",
     "typescript": "^5.7.3",
     "walk-sync": "^3.0.0",
-    "webpack": "^5.97.1",
+    "webpack": "^5.98.0",
     "xstate": "^3.3.3"
   },
   "resolutions": {

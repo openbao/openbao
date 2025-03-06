@@ -1136,7 +1136,27 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			i := 0
 			for currentCycle <= lastCycle {
-				c.identityStore.oidcPeriodicFunc(ctx)
+
+				// sleep until the nextRun value updates
+				v, _, err := c.identityStore.oidcCache.Get(noNamespace, "nextRun")
+				if err != nil {
+					t.Fatal("failed to get nextRun")
+				}
+
+				for {
+					c.identityStore.oidcPeriodicFunc(ctx)
+					v1, _, err := c.identityStore.oidcCache.Get(noNamespace, "nextRun")
+					if err != nil {
+						t.Fatal("failed to get nextRun")
+					}
+					if v1 == nil {
+						t.Fatalf("no next run available")
+					}
+					if v == nil || v1.(time.Time) != v.(time.Time) {
+						break
+					}
+				}
+
 				if currentCycle == testSet.testCases[i].cycle {
 					namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)
 					publicKeysEntry, _ := storage.List(ctx, publicKeysConfigPath)
@@ -1145,15 +1165,6 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 					i = i + 1
 				}
 				currentCycle = currentCycle + 1
-
-				// sleep until we are in the next cycle - where a next run will happen
-				v, _, _ := c.identityStore.oidcCache.Get(noNamespace, "nextRun")
-				nextRun := v.(time.Time)
-				now := time.Now()
-				diff := nextRun.Sub(now)
-				if now.Before(nextRun) {
-					time.Sleep(diff)
-				}
 			}
 
 			// measure collected samples

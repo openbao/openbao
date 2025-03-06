@@ -223,6 +223,84 @@ func TestNamespaceHierarchy(t *testing.T) {
 	})
 }
 
+func TestNamespaceTree(t *testing.T) {
+	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
+	tree := newNamespaceTree(rootNs)
+
+	namespaces1 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns1/", ID: "00001"}, UUID: "00001"},
+		{Namespace: &namespace.Namespace{Path: "ns1/ns2/", ID: "00002"}, UUID: "00002"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns4/", ID: "00004"}, UUID: "00004"},
+		{Namespace: &namespace.Namespace{Path: "ns3/", ID: "00003"}, UUID: "00003"},
+	}
+
+	for _, entry := range namespaces1 {
+		tree.unsafeInsert(entry)
+	}
+	err := tree.validate()
+	require.NoError(t, err)
+
+	namespaces2 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007"}, UUID: "00007"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/ns9/", ID: "00009"}, UUID: "00009"},
+	}
+
+	for _, entry := range namespaces2 {
+		tree.unsafeInsert(entry)
+	}
+	err = tree.validate()
+	require.Error(t, err)
+
+	namespaces3 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006"}, UUID: "00006"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/", ID: "00008"}, UUID: "00008"},
+		{Namespace: &namespace.Namespace{Path: "ns9/ns10/", ID: "00010"}, UUID: "00010"},
+	}
+
+	err = tree.Insert(namespaces3[0])
+	require.NoError(t, err)
+	err = tree.Insert(namespaces3[1])
+	require.NoError(t, err)
+	err = tree.Insert(namespaces3[2])
+	require.Error(t, err)
+
+	err = tree.validate()
+	require.NoError(t, err)
+
+	beforeSize := tree.size
+	err = tree.Delete("ns9/ns10/")
+	require.NoError(t, err)
+	require.Equal(t, beforeSize, tree.size)
+
+	err = tree.Delete("ns3/")
+	require.Error(t, err)
+	require.Equal(t, beforeSize, tree.size)
+
+	err = tree.Delete("ns1/ns2/")
+	require.NoError(t, err)
+	require.Equal(t, beforeSize-1, tree.size)
+
+	entries, err := tree.List("", false, false)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(entries))
+
+	entries, err = tree.List("", false, true)
+	require.NoError(t, err)
+	require.Equal(t, tree.size, len(entries))
+
+	entry := tree.Get("ns1/")
+	require.NotNil(t, entry)
+	require.Equal(t, namespaces1[0], entry)
+
+	entry = tree.Get("ns3/ns4/foobar")
+	require.Nil(t, entry)
+
+	namespacePrefix, entry, pathSuffix := tree.LongestPrefix("ns3/ns4/foobar")
+	require.NotNil(t, entry)
+	require.Equal(t, "ns3/ns4/", namespacePrefix)
+	require.Equal(t, "foobar", pathSuffix)
+}
+
 func randomNamespace(ns *NamespaceStore) *NamespaceEntry {
 	// make use of random map iteration order
 	for _, item := range ns.namespacesByUUID {

@@ -2750,227 +2750,6 @@ func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.Test
 	}
 }
 
-// TestSSHBackend_MuiltiCAIssuance tests the ability submit and use
-// multiple issuers generated/submitted
-func TestSSHBackend_MultiIssuer(t *testing.T) {
-	b, s := CreateBackendWithStorage(t)
-
-	// create a role to perform operations against without a specific issuer configured, using the 'default'
-	roleName := "test-role-1"
-	roleReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "roles/" + roleName,
-		Data: map[string]interface{}{
-			"allow_user_certificates": true,
-			"allowed_users":           "*",
-			"key_type":                "ca",
-			"default_user":            testUserName,
-			"ttl":                     "30m0s",
-		},
-		Storage: s,
-	}
-	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
-	}
-
-	// try to sign a key with the role, should fail as there is no issuer configured
-	signReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "sign/" + roleName,
-		Data: map[string]interface{}{
-			"public_key":       testKeyToSignPublic,
-			"valid_principals": testUserName,
-		},
-		Storage: s,
-	}
-	resp, err = b.HandleRequest(context.Background(), signReq)
-	if err != nil || (resp != nil && !resp.IsError()) {
-		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
-	}
-
-	// submit an issuer to be used by the role and don't set it explicity
-	// as default, with `set_default` as the first issuer imported is set as default
-	importIssuerReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "issuers/import",
-		Storage:   s,
-	}
-	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
-	}
-
-	// get the issuer's public key
-	caPublicKey := strings.TrimSpace(resp.Data["public_key"].(string))
-	if caPublicKey == "" {
-		t.Fatalf("empty public key")
-	}
-
-	// prepare test container to test SSH
-	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
-	defer cleanup()
-
-	// try to sign a key with the role, should succeed as there is an issuer configured as default
-	resp, err = b.HandleRequest(context.Background(), signReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("expected key sign to succeed, got resp: %+v, err: %v", resp, err)
-	}
-
-	// parse the signed key and validate it
-	signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
-	if signedKey == "" {
-		t.Fatal("empty signed key")
-	}
-
-	privateKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
-	if err != nil {
-		t.Fatalf("error parsing private key, got err: %v", err)
-	}
-
-	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
-	if err != nil {
-		t.Fatalf("error parsing signed key, got err: %v", err)
-	}
-
-	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
-	if err != nil {
-		t.Fatalf("error creating cert signer, got err: %v", err)
-	}
-
-	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
-	if err != nil {
-		t.Fatalf("did not expect error, got err: %v", err)
-	}
-
-	// create a second issuer which will override the current default
-	issuerName := "test-ca-2"
-	importIssuerReq = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "issuers/import/" + issuerName,
-		Data: map[string]interface{}{
-			"set_default": true,
-		},
-		Storage: s,
-	}
-	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("ca issuer should have been successfully submited, got: resp: %+v, err: %v", resp, err)
-	}
-
-	// issue a key with the new issuer's key material
-	issueReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "issue/" + roleName,
-		Data: map[string]interface{}{
-			"valid_principals": testUserName,
-		},
-		Storage: s,
-	}
-	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("expected key issue to succeed, got resp: %+v, err: %v", resp, err)
-	}
-
-	// parse keys
-	issuedSignedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
-	if issuedSignedKey == "" {
-		t.Fatalf("empty signed public key")
-	}
-
-	// try to validate new signed key with previous issuer's public key, should fail
-	parsedKey, _, _, _, err = ssh.ParseAuthorizedKey([]byte(issuedSignedKey))
-	if err != nil {
-		t.Fatalf("error parsing signed key: %v", err)
-	}
-
-	issuedPrivateKey := strings.TrimSpace(resp.Data["private_key"].(string))
-	if issuedPrivateKey == "" {
-		t.Fatalf("empty private key")
-	}
-
-	privateKey, err = ssh.ParsePrivateKey([]byte(issuedPrivateKey))
-	if err != nil {
-		t.Fatalf("error parsing private key: %v", err)
-	}
-
-	certSigner, err = ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
-	if err != nil {
-		t.Fatalf("error creating cert signer: %v", err)
-	}
-
-	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
-	if err == nil {
-		t.Fatalf("expected error but got none")
-	}
-}
-
-func TestSSHBackend_MultiIssuerKnownKeyMaterial(t *testing.T) {
-	b, s := CreateBackendWithStorage(t)
-
-	verifyResponseErr := func(t *testing.T, resp *logical.Response, err error) {
-		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotNil(t, resp.Data)
-		require.NotNil(t, resp.Data["issuer_id"])
-		require.NotNil(t, resp.Data["public_key"])
-	}
-
-	// submit an issuer
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "issuers/import",
-		Data: map[string]interface{}{
-			"public_key":  testCAPublicKey,
-			"private_key": testCAPrivateKey,
-		},
-		Storage: s,
-	}
-	resp, err := b.HandleRequest(context.Background(), req)
-	verifyResponseErr(t, resp, err)
-
-	issuerId1, _ := resp.Data["issuer_id"].(string)
-	issuerPublicKey1, _ := resp.Data["public_key"]
-
-	// submit a new issuer with the same key material
-	req = &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "config/ca",
-		Data: map[string]interface{}{
-			"public_key":  testCAPublicKey,
-			"private_key": testCAPrivateKey,
-		},
-		Storage: s,
-	}
-	resp, err = b.HandleRequest(context.Background(), req)
-	verifyResponseErr(t, resp, err)
-
-	issuerId2, _ := resp.Data["issuer_id"]
-	issuerPublicKey2, _ := resp.Data["public_key"]
-
-	require.EqualValues(t, issuerId1, issuerId2, "expected issuer identifiers to match")
-	require.EqualValues(t, issuerPublicKey1, issuerPublicKey2, "expected public keys to match")
-}
-
-func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
-	t.Helper()
-
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	b, err := Backend(config)
-	if err != nil {
-		t.Fatalf("cannot create backend, got err: %v", err)
-	}
-
-	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return b, config.StorageView
-}
-
 // TestSSHBackend_IssuerLifecycle tests the complete lifecycle of issuers including
 // creation, configuration, updates, and deletion
 func TestSSHBackend_IssuerLifecycle(t *testing.T) {
@@ -3034,76 +2813,32 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		require.Equal(t, secondIssuerId, resp.Data["default"])
 	})
 
-	// TODO (gabrielopesantos): Review
-	// Test issuer listing and pagination
-	// t.Run("listing_and_pagination", func(t *testing.T) {
-	// 	// Purge all issuers previously created
-	// 	_, err := b.HandleRequest(context.Background(), &logical.Request{
-	// 		Operation: logical.DeleteOperation,
-	// 		Path:      "config/ca",
-	// 		Storage:   s,
-	// 	})
-	// 	require.NoError(t, err)
+	// Test issuer name conflicts
+	t.Run("issuer_name_conflicts", func(t *testing.T) {
+		// Create first issuer with name
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-name",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
 
-	// 	// Create additional issuers for pagination testing
-	// 	totalIssuers := 5
-	// 	issuers := make([]string, totalIssuers)
-	// 	for i := 0; i < totalIssuers; i++ {
-	// 		resp, err := b.HandleRequest(context.Background(), &logical.Request{
-	// 			Operation: logical.UpdateOperation,
-	// 			Path:      fmt.Sprintf("issuers/import/test-issuer-%d", i),
-	// 			Storage:   s,
-	// 		})
-	// 		require.NoError(t, err)
-	// 		require.NotNil(t, resp)
-	// 		require.NotNil(t, resp.Data)
-	// 		require.NotNil(t, resp.Data["issuer_id"])
-	// 		issuers[i] = resp.Data["issuer_id"].(string)
-	// 	}
+		// Try to create second issuer with same name
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-name",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Error().Error(), "name already in use")
+	})
 
-	// 	// Test listing with different page sizes
-	// 	testCases := []struct {
-	// 		name     string
-	// 		limit    int
-	// 		after    string
-	// 		expected int
-	// 	}{
-	// 		{"full_list", 0, "", totalIssuers},
-	// 		{"first_page", 2, "", 2},
-	// 		{"second_page", 2, issuers[1], 2},
-	// 		{"last_page", 2, issuers[3], 1},
-	// 	}
-
-	// 	for _, tc := range testCases {
-	// 		t.Run(tc.name, func(t *testing.T) {
-	// 			data := make(map[string]interface{})
-	// 			if tc.limit > 0 {
-	// 				data["limit"] = tc.limit
-	// 			}
-	// 			if tc.after != "" {
-	// 				data["after"] = tc.after
-	// 			}
-
-	// 			resp, err := b.HandleRequest(context.Background(), &logical.Request{
-	// 				Operation: logical.ListOperation,
-	// 				Path:      "issuers",
-	// 				Data:      data,
-	// 				Storage:   s,
-	// 			})
-	// 			require.NoError(t, err)
-	// 			require.NotNil(t, resp, "expected response to be non-nil")
-	// 			require.NotNil(t, resp.Data, "expected data to be non-nil")
-	// 			require.NotNil(t, resp.Data["keys"], "expected keys to be non-nil")
-	// 			keys := resp.Data["keys"].([]string)
-	// 			require.Len(t, keys, tc.expected)
-	// 		})
-	// 	}
-	// })
-
-	// Test issuer updates and reference resolution
-	t.Run("updates_and_references", func(t *testing.T) {
+	// Test issuer name update
+	t.Run("name_update", func(t *testing.T) {
 		// Create test issuer
-		issuerName := "test-issuer-ref"
+		issuerName := "test-issuer-name"
 		resp, err := b.HandleRequest(context.Background(), &logical.Request{
 			Operation: logical.UpdateOperation,
 			Path:      "issuers/import/" + issuerName,
@@ -3112,35 +2847,6 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		issuerId := resp.Data["issuer_id"].(string)
-
-		// Test different reference types
-		testCases := []struct {
-			name          string
-			reference     string
-			shouldSucceed bool
-		}{
-			{"by_id", issuerId, true},
-			{"by_name", issuerName, true},
-			{"by_default", "default", true},
-			{"invalid", "non-existent", false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				resp, err := b.HandleRequest(context.Background(), &logical.Request{
-					Operation: logical.ReadOperation,
-					Path:      "issuer/" + tc.reference,
-					Storage:   s,
-				})
-				require.NoError(t, err)
-				if tc.shouldSucceed {
-					require.NotNil(t, resp)
-					require.False(t, resp.IsError())
-				} else {
-					require.True(t, resp.IsError())
-				}
-			})
-		}
 
 		// Test name update
 		newName := "updated-name"
@@ -3256,5 +2962,541 @@ func TestSSHBackend_IssuerLifecycle(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Empty(t, resp.Data["keys"])
+
+		// Verify that there's no default issuer configured
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Data["default"])
 	})
+
+	t.Run("issuer_reference_resolution", func(t *testing.T) {
+		// Create issuer with name
+		issuerName := "ref-test"
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerID := resp.Data["issuer_id"].(string)
+
+		// Test referencing by ID
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerID,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Test referencing by name
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Test referencing by 'default' when it's the default
+		updateReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/issuers",
+			Data: map[string]interface{}{
+				"default": issuerID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), updateReq)
+		require.NoError(t, err)
+
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/default",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	})
+
+	t.Run("known_key_material", func(t *testing.T) {
+		// submit an issuer
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		require.NotNil(t, resp.Data["issuer_id"])
+		require.NotNil(t, resp.Data["public_key"])
+
+		issuerId1 := resp.Data["issuer_id"].(string)
+		issuerPublicKey1 := resp.Data["public_key"]
+
+		// submit a new issuer with the same key material
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		require.NotNil(t, resp.Data["issuer_id"])
+		require.NotNil(t, resp.Data["public_key"])
+
+		issuerId2 := resp.Data["issuer_id"]
+		issuerPublicKey2 := resp.Data["public_key"]
+
+		require.EqualValues(t, issuerId1, issuerId2, "expected issuer identifiers to match")
+		require.EqualValues(t, issuerPublicKey1, issuerPublicKey2, "expected public keys to match")
+	})
+}
+
+// TestSSHBackend_BasicIssuerOperations tests the basic creation and usage of issuers
+func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
+	b, s := CreateBackendWithStorage(t)
+
+	// Test creating first issuer and automatic default setting
+	t.Run("first_issuer_becomes_default", func(t *testing.T) {
+		// create a role to perform operations against without a specific issuer configured
+		roleName := "test-role-1"
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), roleReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
+		}
+
+		// try to sign a key with the role, should fail as there is no issuer configured
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + roleName,
+			Data: map[string]interface{}{
+				"public_key":       testKeyToSignPublic,
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		if err != nil || (resp != nil && !resp.IsError()) {
+			t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
+		}
+
+		// submit an issuer to be used by the role and don't set it explicity
+		// as the first issuer imported is set as default
+		importIssuerReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import",
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), importIssuerReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
+		}
+
+		// get the issuer's public key
+		caPublicKey := strings.TrimSpace(resp.Data["public_key"].(string))
+		if caPublicKey == "" {
+			t.Fatalf("empty public key")
+		}
+
+		// prepare test container to test SSH
+		cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
+		defer cleanup()
+
+		// try to sign a key with the role, should succeed as there is an issuer configured as default
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("expected key sign to succeed, got resp: %+v, err: %v", resp, err)
+		}
+
+		// validate the signed key
+		signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
+		if signedKey == "" {
+			t.Fatal("empty signed key")
+		}
+
+		privateKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
+		if err != nil {
+			t.Fatalf("error parsing private key, got err: %v", err)
+		}
+
+		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
+		if err != nil {
+			t.Fatalf("error parsing signed key, got err: %v", err)
+		}
+
+		certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
+		if err != nil {
+			t.Fatalf("error creating cert signer, got err: %v", err)
+		}
+
+		err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
+		if err != nil {
+			t.Fatalf("did not expect error, got err: %v", err)
+		}
+	})
+}
+
+// TestSSHBackend_DefaultIssuerBehavior tests default issuer mechanics
+func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
+	b, s := CreateBackendWithStorage(t)
+
+	t.Run("default_issuer_override", func(t *testing.T) {
+		// First create a role and initial issuer (reusing setup from previous test)
+		roleName := "test-role-1"
+		setupInitialIssuerAndRole(t, b, s, roleName)
+
+		// create a second issuer which will override the current default
+		issuerName := "test-ca-2"
+		importIssuerReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/" + issuerName,
+			Data: map[string]interface{}{
+				"set_default": true,
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), importIssuerReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("ca issuer should have been successfully submited, got: resp: %+v, err: %v", resp, err)
+		}
+
+		// issue a key with the new issuer's key material
+		issueReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issue/" + roleName,
+			Data: map[string]interface{}{
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), issueReq)
+		if err != nil || (resp != nil && resp.IsError()) {
+			t.Fatalf("expected key issue to succeed, got resp: %+v, err: %v", resp, err)
+		}
+
+		// parse keys
+		issuedSignedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
+		if issuedSignedKey == "" {
+			t.Fatalf("empty signed public key")
+		}
+
+		parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(issuedSignedKey))
+		if err != nil {
+			t.Fatalf("error parsing signed key: %v", err)
+		}
+
+		issuedPrivateKey := strings.TrimSpace(resp.Data["private_key"].(string))
+		if issuedPrivateKey == "" {
+			t.Fatalf("empty private key")
+		}
+
+		privateKey, err := ssh.ParsePrivateKey([]byte(issuedPrivateKey))
+		if err != nil {
+			t.Fatalf("error parsing private key: %v", err)
+		}
+
+		certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
+		if err != nil {
+			t.Fatalf("error creating cert signer: %v", err)
+		}
+
+		// SSH should fail since we're using a different issuer
+		cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, "")
+		defer cleanup()
+
+		err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
+		if err == nil {
+			t.Fatalf("expected error but got none")
+		}
+	})
+}
+
+// TestSSHBackend_RoleIssuerBinding tests the relationship between roles and issuers
+func TestSSHBackend_RoleIssuerBinding(t *testing.T) {
+	b, s := CreateBackendWithStorage(t)
+
+	t.Run("explicit_role_issuer_binding", func(t *testing.T) {
+		// Create two issuers with known key material for better testing
+		issuer1Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer1",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuer1Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer1ID := resp.Data["issuer_id"].(string)
+
+		// Create second issuer with different key material
+		issuer2Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer2",
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), issuer2Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer2ID := resp.Data["issuer_id"].(string)
+
+		require.NotEqual(t, issuer1ID, issuer2ID, "issuer IDs should be different")
+
+		// Create role with issuer1 explicity bound
+		role1Name := "role-with-issuer1"
+		role1Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + role1Name,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuer1ID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), role1Req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Verify role correctly stores issuer reference
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + role1Name,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuer1ID, resp.Data["issuer_ref"])
+
+		// Test signing with explicit issuer binding
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + role1Name,
+			Data: map[string]interface{}{
+				"public_key":       testKeyToSignPublic,
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotEmpty(t, resp.Data["signed_key"])
+	})
+
+	t.Run("issuer_deletion_impact", func(t *testing.T) {
+		// Create issuer and role
+		issuerReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-issuer",
+			Storage:   s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuerReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerID := resp.Data["issuer_id"].(string)
+
+		roleName := "test-role"
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuerID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Sign a certificate before deletion
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + roleName,
+			Data: map[string]interface{}{
+				"public_key":       testKeyToSignPublic,
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotEmpty(t, resp.Data["signed_key"])
+
+		// Delete the issuer
+		deleteReq := &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "issuer/" + issuerID,
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), deleteReq)
+		require.NoError(t, err)
+		// Response should contain warning about role references
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Warnings[0], "1 roles reference")
+
+		// Verify signing now fails
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Error().Error(), fmt.Sprintf("unable to find issuer for reference: %s", issuerID))
+
+		// Verify role still exists but shows invalid issuer
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + roleName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuerID, resp.Data["issuer_ref"])
+	})
+
+	t.Run("role_issuer_update", func(t *testing.T) {
+		// Create two issuers
+		issuer1Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer3",
+			Storage:   s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuer1Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer3ID := resp.Data["issuer_id"].(string)
+
+		issuer2Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer4",
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), issuer2Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer4ID := resp.Data["issuer_id"].(string)
+
+		// Create role with issuer3
+		roleName := "updateable-role"
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuer3ID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Update role to use issuer4
+		roleReq.Data["issuer_ref"] = issuer4ID
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Verify role now uses issuer4
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + roleName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuer4ID, resp.Data["issuer_ref"])
+	})
+}
+
+// Helper function to setup initial issuer and role
+func setupInitialIssuerAndRole(t *testing.T, b *backend, s logical.Storage, roleName string) {
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "roles/" + roleName,
+		Data: map[string]interface{}{
+			"allow_user_certificates": true,
+			"allowed_users":           "*",
+			"key_type":                "ca",
+			"default_user":            testUserName,
+			"ttl":                     "30m0s",
+		},
+		Storage: s,
+	}
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
+	}
+
+	importIssuerReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "issuers/import",
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
+	}
+}
+
+func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
+	t.Helper()
+
+	config := logical.TestBackendConfig()
+	config.StorageView = &logical.InmemStorage{}
+
+	b, err := Backend(config)
+	if err != nil {
+		t.Fatalf("cannot create backend, got err: %v", err)
+	}
+
+	err = b.Setup(context.Background(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return b, config.StorageView
 }

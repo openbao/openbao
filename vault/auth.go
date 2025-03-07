@@ -59,6 +59,11 @@ var (
 
 // enableCredential is used to enable a new credential backend
 func (c *Core) enableCredential(ctx context.Context, entry *MountEntry) error {
+	// Ensure the token backend is a singleton
+	if entry.Type == mountTypeToken || entry.Type == mountTypeNSToken {
+		return errors.New("token credential backend cannot be instantiated")
+	}
+
 	// Enable credential internally
 	if err := c.enableCredentialInternal(ctx, entry, MountTableUpdateStorage); err != nil {
 		return err
@@ -98,9 +103,6 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	entry.NamespaceID = ns.ID
 	entry.namespace = ns
 
-	// Populate cache
-	c.NamespaceByID(ctx, ns.ID)
-
 	// Basic check for matching names
 	for _, ent := range c.auth.Entries {
 		if ns.ID == ent.NamespaceID {
@@ -113,11 +115,6 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 				return logical.CodedError(409, fmt.Sprintf("path is already in use at %s", ent.Path))
 			}
 		}
-	}
-
-	// Ensure the token backend is a singleton
-	if entry.Type == mountTypeToken {
-		return errors.New("token credential backend cannot be instantiated")
 	}
 
 	// Check for conflicts according to the router
@@ -565,47 +562,75 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 
 // This function reads the transactional split auth (credential) table.
 func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage) error {
-	globalEntries, err := barrier.List(ctx, coreAuthConfigPath+"/")
+	allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
 	if err != nil {
-		return fmt.Errorf("failed listing core auth mounts: %w", err)
-	}
-
-	localEntries, err := barrier.List(ctx, coreLocalAuthConfigPath+"/")
-	if err != nil {
-		return fmt.Errorf("failed listing core local auth mounts: %w", err)
+		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
 
 	var needPersist bool
+	globalEntries := make(map[string][]string, len(allNamespaces))
+	localEntries := make(map[string][]string, len(allNamespaces))
+	for index, ns := range allNamespaces {
+		view := ns.View(barrier)
+
+		nsGlobal, nsLocal, err := c.listTransactionalCredentialsForNamespace(ctx, view)
+		if err != nil {
+			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.Namespace.ID)
+			return err
+		}
+
+		if len(nsGlobal) > 0 {
+			globalEntries[ns.Namespace.ID] = nsGlobal
+		}
+
+		if len(nsLocal) > 0 {
+			localEntries[ns.Namespace.ID] = nsLocal
+		}
+	}
+
 	if len(globalEntries) == 0 {
+		// TODO(ascheel) Assertion: globalEntries is empty iff there is only
+		// one namespace (the root namespace).
 		c.logger.Info("no auth mounts in transactional auth mount table; adding default auth mount table")
-		c.auth = c.defaultAuthTable()
+		c.auth, err = c.defaultAuthTable(ctx)
+		if err != nil {
+			panic(err.Error())
+		}
 		needPersist = true
 	} else {
 		c.auth = &MountTable{
 			Type: credentialTableType,
 		}
 
-		for index, uuid := range globalEntries {
-			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreAuthConfigPath, uuid)
-			if err != nil {
-				return fmt.Errorf("error loading auth mount table entry (%v/%v): %w", index, uuid, err)
-			}
+		for nsIndex, ns := range allNamespaces {
+			view := ns.View(barrier)
+			for index, uuid := range globalEntries[ns.Namespace.ID] {
+				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
+				if err != nil {
+					return fmt.Errorf("error loading auth mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+				}
 
-			if entry != nil {
-				c.auth.Entries = append(c.auth.Entries, entry)
+				if entry != nil {
+					c.auth.Entries = append(c.auth.Entries, entry)
+				}
 			}
 		}
+
 	}
 
 	if len(localEntries) > 0 {
-		for index, uuid := range localEntries {
-			entry, err := c.fetchAndDecodeMountTableEntry(ctx, barrier, coreLocalAuthConfigPath, uuid)
-			if err != nil {
-				return fmt.Errorf("error loading local auth mount table entry (%v/%v): %w", index, uuid, err)
-			}
+		for nsIndex, ns := range allNamespaces {
+			view := ns.View(barrier)
 
-			if entry != nil {
-				c.auth.Entries = append(c.auth.Entries, entry)
+			for index, uuid := range localEntries[ns.Namespace.ID] {
+				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
+				if err != nil {
+					return fmt.Errorf("error loading local auth mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+				}
+
+				if entry != nil {
+					c.auth.Entries = append(c.auth.Entries, entry)
+				}
 			}
 		}
 	}
@@ -617,6 +642,20 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	}
 
 	return nil
+}
+
+func (c *Core) listTransactionalCredentialsForNamespace(ctx context.Context, barrier logical.Storage) ([]string, []string, error) {
+	globalEntries, err := barrier.List(ctx, coreAuthConfigPath+"/")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed listing core auth mounts: %w", err)
+	}
+
+	localEntries, err := barrier.List(ctx, coreLocalAuthConfigPath+"/")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed listing core local auth mounts: %w", err)
+	}
+
+	return globalEntries, localEntries, nil
 }
 
 // This function reads the legacy, single-entry combined auth mount table,
@@ -652,7 +691,10 @@ func (c *Core) loadLegacyCredentials(ctx context.Context, barrier logical.Storag
 			return false, nil
 		}
 		c.logger.Info("no mounts in legacy auth table; adding default mount table")
-		c.auth = c.defaultAuthTable()
+		c.auth, err = c.defaultAuthTable(ctx)
+		if err != nil {
+			panic(err.Error())
+		}
 		needPersist = true
 	} else {
 		if _, ok := barrier.(logical.Transaction); ok {
@@ -849,6 +891,18 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					continue
 				}
 
+				ne, err := c.namespaceStore.GetNamespaceByAccessor(ctx, mtEntry.NamespaceID)
+				if err != nil {
+					return -1, err
+				}
+
+				// Namespace might've been removed.
+				if ne == nil {
+					continue
+				}
+
+				view := ne.View(barrier)
+
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
 
@@ -868,7 +922,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				}
 
 				// Write to the backend.
-				if err := barrier.Put(ctx, sEntry); err != nil {
+				if err := view.Put(ctx, sEntry); err != nil {
 					c.logger.Error("failed to persist auth mount table entry", "index", index, "uuid", mtEntry.UUID, "error", err)
 					return -1, err
 				}
@@ -878,27 +932,45 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 
 			if mount != "" && !found {
 				// Delete this component if it exists. This signifies that
-				// we're removing this mount.
-				path := path.Join(prefix, mount)
-				if err := barrier.Delete(ctx, path); err != nil {
-					return -1, fmt.Errorf("requested removal of auth mount but failed: %w", err)
+				// we're removing this mount. We don't know which namespace
+				// this entry could belong to, so remove it from all.
+				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
+				if err != nil {
+					return -1, fmt.Errorf("failed to list namespaces: %w", err)
+				}
+
+				for nsIndex, ns := range allNamespaces {
+					view := ns.View(barrier)
+					path := path.Join(prefix, mount)
+					if err := view.Delete(ctx, path); err != nil {
+						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.Namespace.ID, nsIndex, err)
+					}
 				}
 			}
 
 			if mount == "" {
-				// List all entries and remove any deleted ones.
-				presentEntries, err := barrier.List(ctx, prefix+"/")
+				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
 				if err != nil {
-					return -1, fmt.Errorf("failed to list entries for removal: %w", err)
+					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
 
-				for index, presentEntry := range presentEntries {
-					if _, present := currentEntries[presentEntry]; present {
-						continue
+				for nsIndex, ns := range allNamespaces {
+					view := ns.View(barrier)
+
+					// List all entries and remove any deleted ones.
+					presentEntries, err := view.List(ctx, prefix+"/")
+					if err != nil {
+						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.Namespace.ID, nsIndex, err)
 					}
 
-					if err := barrier.Delete(ctx, prefix+"/"+presentEntry); err != nil {
-						return -1, fmt.Errorf("failed to remove deleted mount %v (%d): %w", presentEntry, index, err)
+					for index, presentEntry := range presentEntries {
+						if _, present := currentEntries[presentEntry]; present {
+							continue
+						}
+
+						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
+							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v (%v): %w", presentEntry, index, ns.Namespace.ID, nsIndex, err)
+						}
 					}
 				}
 			}
@@ -1062,9 +1134,6 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 			c.tokenStore.cubbyholeBackend = c.router.MatchingBackend(ctx, mountPathCubbyhole).(*CubbyholeBackend)
 		}
 
-		// Populate cache
-		c.NamespaceByID(ctx, entry.NamespaceID)
-
 		// Initialize
 		// Bind locally
 		localEntry := entry
@@ -1176,21 +1245,29 @@ func (c *Core) newCredentialBackend(ctx context.Context, entry *MountEntry, sysV
 }
 
 // defaultAuthTable creates a default auth table
-func (c *Core) defaultAuthTable() *MountTable {
+func (c *Core) defaultAuthTable(ctx context.Context) (*MountTable, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil && !errors.Is(err, namespace.ErrNoNamespace) {
+		return nil, err
+	}
+	if ns == nil {
+		ns = namespace.RootNamespace
+	}
+
 	table := &MountTable{
 		Type: credentialTableType,
 	}
 	tokenUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not generate UUID for default auth table token entry: %v", err))
+		return nil, fmt.Errorf("could not generate UUID for default auth table token entry: %w", err)
 	}
 	tokenAccessor, err := c.generateMountAccessor("auth_token")
 	if err != nil {
-		panic(fmt.Sprintf("could not generate accessor for default auth table token entry: %v", err))
+		return nil, fmt.Errorf("could not generate accessor for default auth table token entry: %w", err)
 	}
 	tokenBackendUUID, err := uuid.GenerateUUID()
 	if err != nil {
-		panic(fmt.Sprintf("could not create identity backend UUID: %v", err))
+		return nil, fmt.Errorf("could not create identity backend UUID: %w", err)
 	}
 	tokenAuth := &MountEntry{
 		Table:            credentialTableType,
@@ -1200,7 +1277,14 @@ func (c *Core) defaultAuthTable() *MountTable {
 		UUID:             tokenUUID,
 		Accessor:         tokenAccessor,
 		BackendAwareUUID: tokenBackendUUID,
+		NamespaceID:      ns.ID,
+		namespace:        ns,
 	}
+
+	if ns.ID != namespace.RootNamespaceID {
+		tokenAuth.Type = mountTypeNSToken
+	}
+
 	table.Entries = append(table.Entries, tokenAuth)
-	return table
+	return table, nil
 }

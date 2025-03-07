@@ -11,6 +11,7 @@ import (
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/namespace"
@@ -598,7 +599,8 @@ func TestCore_DisableCredential_Cleanup(t *testing.T) {
 
 func TestDefaultAuthTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultAuthTable()
+	table, err := c.defaultAuthTable(context.Background())
+	require.NoError(t, err)
 	verifyDefaultAuthTable(t, table)
 }
 

@@ -109,7 +109,7 @@ func TestSplitIDFromString(t *testing.T) {
 	}
 }
 
-func TestHasParent(t *testing.T) {
+func TestHasAncestor(t *testing.T) {
 	// Create ns1
 	ns1 := &Namespace{
 		ID:   "id1",
@@ -197,9 +197,186 @@ func TestHasParent(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actual := test.ns.HasParent(test.parent)
+		actual := test.ns.HasAncestor(test.parent)
 		if actual != test.expected {
 			t.Fatalf("bad ancestor calculation; name: %q, actual: %t, expected: %t", test.name, actual, test.expected)
+		}
+	}
+}
+
+func TestHasParent(t *testing.T) {
+	// Create ns1
+	ns1 := &Namespace{
+		ID:   "id1",
+		Path: "ns1/",
+	}
+
+	// Create ns1/ns2
+	ns2 := &Namespace{
+		ID:   "id2",
+		Path: "ns1/ns2/",
+	}
+
+	// Create ns1/ns2/ns3
+	ns3 := &Namespace{
+		ID:   "id3",
+		Path: "ns1/ns2/ns3/",
+	}
+
+	// Create ns4
+	ns4 := &Namespace{
+		ID:   "id4",
+		Path: "ns4/",
+	}
+
+	// Create ns4/ns5
+	ns5 := &Namespace{
+		ID:   "id5",
+		Path: "ns4/ns5/",
+	}
+
+	tests := []struct {
+		name     string
+		parent   *Namespace
+		ns       *Namespace
+		expected bool
+	}{
+		{
+			"is root the parent of root",
+			RootNamespace,
+			RootNamespace,
+			false,
+		},
+		{
+			"is root the parent of ns1",
+			RootNamespace,
+			ns1,
+			true,
+		},
+		{
+			"is ns1 the parent of ns2",
+			ns1,
+			ns2,
+			true,
+		},
+		{
+			"is ns2 the parent of ns3",
+			ns2,
+			ns3,
+			true,
+		},
+		{
+			"is ns1 the parent of ns3",
+			ns1,
+			ns3,
+			false,
+		},
+		{
+			"is root the parent of ns3",
+			RootNamespace,
+			ns3,
+			false,
+		},
+		{
+			"is ns4 the parent of ns3",
+			ns4,
+			ns3,
+			false,
+		},
+		{
+			"is ns5 the parent of ns3",
+			ns5,
+			ns3,
+			false,
+		},
+		{
+			"is ns1 the parent of ns5",
+			ns1,
+			ns5,
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		actual := test.ns.HasParent(test.parent)
+		if actual != test.expected {
+			t.Fatalf("bad parent calculation; name: %q, actual: %t, expected: %t", test.name, actual, test.expected)
+		}
+	}
+}
+
+func TestParentPath(t *testing.T) {
+	// Create ns1
+	ns1 := &Namespace{
+		ID:   "id1",
+		Path: "ns1/",
+	}
+
+	// Create ns1/ns2
+	ns2 := &Namespace{
+		ID:   "id2",
+		Path: "ns1/ns2/",
+	}
+
+	// Create ns1/ns2/ns3
+	ns3 := &Namespace{
+		ID:   "id3",
+		Path: "ns1/ns2/ns3/",
+	}
+
+	// Create ns4
+	ns4 := &Namespace{
+		ID:   "id4",
+		Path: "ns4/",
+	}
+
+	// Create ns4/ns5
+	ns5 := &Namespace{
+		ID:   "id5",
+		Path: "ns4/ns5/",
+	}
+
+	tests := []struct {
+		name     string
+		ns       *Namespace
+		expected string
+	}{
+		{
+			"parent path of root",
+			RootNamespace,
+			"",
+		},
+		{
+			"parent path of ns1",
+			ns1,
+			"",
+		},
+		{
+			"parent path of ns2",
+			ns2,
+			"ns1/",
+		},
+		{
+			"parent path of ns3",
+			ns3,
+			"ns1/ns2/",
+		},
+		{
+			"parent path of ns4",
+			ns4,
+			"",
+		},
+		{
+			"parent path of ns5",
+			ns5,
+			"ns4/",
+		},
+	}
+
+	for _, test := range tests {
+		actual := test.ns.ParentPath()
+		if actual != test.expected {
+			t.Fatalf("bad parent path calculation; name: %q, actual: %s, expected: %s", test.name, actual, test.expected)
 		}
 	}
 }

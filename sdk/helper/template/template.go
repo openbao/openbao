@@ -89,6 +89,14 @@ func Option(opts ...string) Opt {
 //   - decode_base64 decodes the previous value.
 //     Example: {{ .DisplayName | decode_base64 }}
 //
+// - hex
+//   - hex encodes the previous value.
+//     Example: {{ .DisplayName | hex }}
+//
+// - decode_hex
+//   - hex decodes the previous value.
+//     Example: {{ .DisplayName | decode_hex }}
+//
 // - unix_time
 //   - Provides the current unix time in seconds.
 //     Example: {{ unix_time }}
@@ -121,16 +129,17 @@ type StringTemplate struct {
 func NewTemplate(opts ...Opt) (up StringTemplate, err error) {
 	up = StringTemplate{
 		funcMap: map[string]interface{}{
-			"random":          base62.Random,
-			"truncate":        truncate,
-			"truncate_sha256": truncateSHA256,
-			"uppercase":       uppercase,
-			"lowercase":       lowercase,
-			"replace":         replace,
-			"sha256":          hashSHA256,
-			"base64":          encodeBase64,
-			"decode_base64":   decodeBase64,
-
+			"random":           base62.Random,
+			"truncate":         truncate,
+			"truncate_sha256":  truncateSHA256,
+			"uppercase":        uppercase,
+			"lowercase":        lowercase,
+			"replace":          replace,
+			"sha256":           hashSHA256,
+			"base64":           encodeBase64,
+			"decode_base64":    decodeBase64,
+			"hex":              encodeHex,
+			"decode_hex":       decodeHex,
 			"unix_time":        unixTime,
 			"unix_time_millis": unixTimeMillis,
 			"timestamp":        timestamp,

@@ -286,7 +286,7 @@ assetcheck:
 
 spellcheck:
 	@echo "==> Spell checking website..."
-	$(GO_CMD) run github.com/client9/misspell/cmd/misspell@latest -error -source=text website/source
+	$(GO_CMD) run github.com/golangci/misspell/cmd/misspell@latest -w -source=text website/content
 
 mysql-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin

@@ -371,5 +371,111 @@ func TestNamespaceBackend_List(t *testing.T) {
 }
 
 func TestNamespaceBackend_Scan(t *testing.T) {
-	// TODO(satoqz): Implement scan once a clear API is available from NamespaceStore.
+	b := testSystemBackend(t)
+	rootCtx := namespace.RootContext(context.Background())
+
+	t.Run("scan is empty if root is only namespace", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Equal(t, res.Data, map[string]interface{}{}, "scan data has unexpected elements")
+	})
+
+	t.Run("scan includes non-root namespaces", func(t *testing.T) {
+		testCreateNamespace(t, rootCtx, b, "foo", nil)
+		testCreateNamespace(t, rootCtx, b, "bar", nil)
+
+		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
+		res, err := b.HandleRequest(rootCtx, req)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, res.Data["keys"], "keys is empty")
+		require.NotEmpty(t, res.Data["key_info"], "key_info is empty")
+
+		keys, ok := res.Data["keys"].([]string)
+		require.True(t, ok, "keys is not a list")
+		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		require.True(t, ok, "key_info is not a map")
+
+		require.Equal(t, len(keys), 2, "expected two entries in keys")
+		require.Equal(t, len(keyInfo), 2, "expected two entries in key_info")
+
+		for _, path := range keys {
+			info, ok := keyInfo[path]
+			require.True(t, ok, fmt.Sprintf("key_info does not have path %q which is present in keys", path))
+			var ns namespace.Namespace
+			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
+			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
+			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
+		}
+	})
+
+	t.Run("scan includes multiple levels of namespaces", func(t *testing.T) {
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		nestedCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
+		testCreateNamespace(t, rootCtx, b, "bar", nil)
+		testCreateNamespace(t, nestedCtx, b, "baz", nil)
+
+		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
+		res, err := b.HandleRequest(rootCtx, req)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, res.Data["keys"], "keys is empty")
+		require.NotEmpty(t, res.Data["key_info"], "key_info is empty")
+
+		keys, ok := res.Data["keys"].([]string)
+		require.True(t, ok, "keys is not a list")
+		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		require.True(t, ok, "key_info is not a map")
+
+		require.Equal(t, 3, len(keys), "expected two entries in keys")
+		require.Equal(t, 3, len(keyInfo), "expected two entries in key_info")
+		require.Subset(t, keys, []string{"foo/", "bar/", "foo/baz/"})
+
+		for _, path := range keys {
+			info, ok := keyInfo[path]
+			require.True(t, ok, fmt.Sprintf("key_info does not have path %q which is present in keys", path))
+			var ns namespace.Namespace
+			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
+			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
+			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
+		}
+	})
+
+	t.Run("scan nested namespaces", func(t *testing.T) {
+		testCreateNamespace(t, rootCtx, b, "unrelated", nil)
+		fooNs := testCreateNamespace(t, rootCtx, b, "foo", nil)
+		fooCtx := namespace.ContextWithNamespace(rootCtx, fooNs)
+		bazNs := testCreateNamespace(t, fooCtx, b, "baz", nil)
+		bazCtx := namespace.ContextWithNamespace(rootCtx, bazNs)
+		testCreateNamespace(t, bazCtx, b, "bar", nil)
+
+		req := logical.TestRequest(t, logical.ScanOperation, "namespaces")
+		res, err := b.HandleRequest(fooCtx, req)
+
+		require.NoError(t, err)
+		require.NotEmpty(t, res.Data["keys"], "keys is empty")
+		require.NotEmpty(t, res.Data["key_info"], "key_info is empty")
+
+		keys, ok := res.Data["keys"].([]string)
+		require.True(t, ok, "keys is not a list")
+		keyInfo, ok := res.Data["key_info"].(map[string]interface{})
+		require.True(t, ok, "key_info is not a map")
+
+		require.Equal(t, 2, len(keys), "expected two entries in keys: %v", keys)
+		require.Equal(t, 2, len(keyInfo), "expected two entries in key_info")
+
+		for _, path := range keys {
+			info, ok := keyInfo[path]
+			require.True(t, ok, fmt.Sprintf("key_info does not have path %q which is present in keys", path))
+			var ns namespace.Namespace
+			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
+			require.Equal(t, ns.Path, info.(map[string]any)["path"], "path in key does not match path in info struct")
+			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
+			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
+			require.Subset(t, []string{"baz/", "baz/bar/"}, []string{path})
+		}
+	})
 }

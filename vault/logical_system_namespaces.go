@@ -168,8 +168,29 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 // handleNamespacesScan handles "/sys/namespaces" endpoint to scan the enabled namespaces.
 func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// TODO(satoqz): Implement scan once a clear API is available from NamespaceStore.
-		return nil, fmt.Errorf("scan is unimplemented")
+		parent, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		entries, err := b.Core.namespaceStore.ListNamespaceEntries(ctx, false, true)
+		if err != nil {
+			return nil, err
+		}
+
+		var keys []string
+		keyInfo := make(map[string]interface{})
+		for _, entry := range entries {
+			p := parent.TrimmedPath(entry.Namespace.Path)
+			keys = append(keys, p)
+			keyInfo[p] = map[string]any{
+				"uuid":            entry.UUID,
+				"id":              entry.Namespace.ID,
+				"path":            entry.Namespace.Path,
+				"custom_metadata": entry.Namespace.CustomMetadata,
+			}
+		}
+
+		return logical.ListResponseWithInfo(keys, keyInfo), nil
 	}
 }
 

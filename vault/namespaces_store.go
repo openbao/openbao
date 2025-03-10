@@ -255,7 +255,10 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		return fmt.Errorf("failed validating namespace: %w", err)
 	}
 
-	parentPath := namespace.Namespace.ParentPath()
+	parentPath, ok := namespace.Namespace.ParentPath()
+	if !ok {
+		return fmt.Errorf("namespace has no parent: %s", namespace.Namespace.Path)
+	}
 	parent, err := ns.getNamespaceByPathLocked(ctx, parentPath)
 	if err != nil || parent == nil {
 		return fmt.Errorf("parent namespace does not exist: %s", parentPath)

@@ -21,8 +21,7 @@ func TestMigrateStorage_EmptyStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, log)
 
-	request := &logical.InitializationRequest{Storage: s}
-	err = b.initialize(ctx, request)
+	err = migrateStorage(ctx, b, s)
 	require.NoError(t, err)
 
 	// Fetch migration log again
@@ -73,8 +72,7 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, issuerIds)
 
-	request := &logical.InitializationRequest{Storage: s}
-	err = b.initialize(ctx, request)
+	err = migrateStorage(ctx, b, s)
 	require.NoError(t, err)
 
 	// Fetch migration log again
@@ -122,8 +120,8 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 	err = s.Put(ctx, json)
 	require.NoError(t, err)
 
-	// Initialize
-	err = b.initialize(ctx, request)
+	// Run migration again
+	err = migrateStorage(ctx, b, s)
 	require.NoError(t, err)
 
 	// Fetch migration log
@@ -136,6 +134,60 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 
 	// Verify that issuer has been set as default
 	entry, err = sc.fetchDefaultIssuer()
+	require.NotNil(t, entry)
+	require.NoError(t, err)
+	require.Equal(t, log.CreatedIssuer, entry.ID)
+}
+
+func TestMigrateStorage_EmptyMountDowngradeUpgrade(t *testing.T) {
+	t.Parallel()
+	startTime := time.Now()
+	ctx := context.Background()
+	b, s := CreateBackendWithStorage(t)
+	sc := b.makeStorageContext(ctx, s)
+
+	// Run initial migration on empty mount
+	err := migrateStorage(ctx, b, s)
+	require.NoError(t, err)
+
+	// Verify migration log exists but no issuer was created
+	log, err := getMigrationLog(ctx, s)
+	require.NotNil(t, log)
+	require.NoError(t, err)
+	require.Equal(t, latestMigrationVersion, log.MigrationVersion)
+	require.Empty(t, log.CreatedIssuer)
+
+	// Simulate downgrade by importing CA key material into the old paths
+	// Write key material
+	json, err := logical.StorageEntryJSON(caPublicKeyStoragePath, &keyStorageEntry{
+		Key: testCAPublicKeyEd25519,
+	})
+	require.NoError(t, err)
+	err = s.Put(ctx, json)
+	require.NoError(t, err)
+
+	json, err = logical.StorageEntryJSON(caPrivateKeyStoragePath, &keyStorageEntry{
+		Key: testCAPrivateKeyEd25519,
+	})
+	require.NoError(t, err)
+	err = s.Put(ctx, json)
+	require.NoError(t, err)
+
+	// Run migration again
+	startTime = time.Now()
+	err = migrateStorage(ctx, b, s)
+	require.NoError(t, err)
+
+	// Verify migration created new issuer
+	log, err = getMigrationLog(ctx, s)
+	require.NotNil(t, log)
+	require.NoError(t, err)
+	require.Equal(t, latestMigrationVersion, log.MigrationVersion)
+	require.NotEmpty(t, log.CreatedIssuer)
+	require.True(t, startTime.Before(log.Created))
+
+	// Verify issuer was set as default
+	entry, err := sc.fetchDefaultIssuer()
 	require.NotNil(t, entry)
 	require.NoError(t, err)
 	require.Equal(t, log.CreatedIssuer, entry.ID)

@@ -620,6 +620,132 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 // TestPolicyStore_NestedNamespaces tests that policies are correctly stored
 // and isolated in a hierarchy of namespaces, including proper inheritance
 // and cross-namespace access control.
+func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
+	core, _, token := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(context.Background())
+	ps := core.policyStore
+
+	// Create parent namespace
+	parentResp, err := core.HandleRequest(rootCtx, &logical.Request{
+		Operation:   logical.UpdateOperation,
+		Path:        "sys/namespaces/parent",
+		ClientToken: token,
+	})
+	require.NoError(t, err)
+	require.False(t, parentResp.IsError())
+
+	// Get parent namespace context
+	parentNS, err := core.namespaceStore.GetNamespaceByPath(rootCtx, "parent")
+	require.NoError(t, err)
+	parentCtx := namespace.ContextWithNamespace(rootCtx, parentNS.Namespace)
+
+	// Create child namespace
+	childResp, err := core.HandleRequest(parentCtx, &logical.Request{
+		Operation:   logical.UpdateOperation,
+		Path:        "sys/namespaces/child",
+		ClientToken: token,
+	})
+	require.NoError(t, err)
+	require.False(t, childResp.IsError())
+
+	// Get child namespace context
+	childNS, err := core.namespaceStore.GetNamespaceByPath(parentCtx, "child")
+	require.NoError(t, err)
+	// Create child context from root context to avoid inheriting parent context
+	childCtx := namespace.ContextWithNamespace(parentCtx, childNS.Namespace)
+
+	// Add distinct policies to each namespace
+	policyTemplates := []struct {
+		ns      *namespace.Namespace
+		ctx     context.Context
+		name    string
+		content string
+	}{
+		{namespace.RootNamespace, rootCtx, "root-policy", `path "sys/*" { capabilities = ["read"] }`},
+		{parentNS.Namespace, parentCtx, "parent-policy", `path "secret/*" { capabilities = ["list"] }`},
+		{childNS.Namespace, childCtx, "child-policy", `path "auth/*" { capabilities = ["create"] }`},
+	}
+
+	for _, tmpl := range policyTemplates {
+		policy, _ := ParseACLPolicy(tmpl.ns, tmpl.content)
+		policy.Name = tmpl.name
+		require.NoError(t, ps.SetPolicy(tmpl.ctx, policy))
+	}
+
+	// Verify policy listings in each namespace context
+	tests := []struct {
+		name        string
+		ctx         context.Context
+		expected    []string
+		requireRoot bool
+	}{
+		{
+			"root-namespace",
+			rootCtx,
+			[]string{"default", "root-policy", "root"},
+			true, // Should include root policy
+		},
+		{
+			"parent-namespace",
+			parentCtx,
+			[]string{"default", "parent-policy"},
+			false,
+		},
+		{
+			"child-namespace",
+			childCtx,
+			[]string{"default", "child-policy"},
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			policiesRes, err := core.HandleRequest(tt.ctx, &logical.Request{
+				Operation:   logical.ListOperation,
+				Path:        "sys/policies/acl",
+				ClientToken: token,
+			})
+			require.NoError(t, err)
+			require.False(t, childResp.IsError())
+
+			policies := policiesRes.Data["keys"].([]string)
+
+			// Verify expected policies exist
+			require.ElementsMatch(t, tt.expected, policies)
+
+			// Verify namespace isolation
+			switch tt.name {
+			case "root-namespace":
+				require.NotContains(t, policies, "parent-policy", "parent policy should not appear in root namespace")
+				require.NotContains(t, policies, "child-policy", "child policy should not appear in root namespace")
+			case "parent-namespace":
+				require.NotContains(t, policies, "child-policy", "child policy should not appear in parent namespace")
+			case "child-namespace":
+				require.NotContains(t, policies, "parent-policy", "parent policy should not appear in child namespace")
+			}
+		})
+	}
+
+	// Verify child namespace only sees its own policy
+	childPolicies, err := ps.ListPolicies(childCtx, PolicyTypeACL)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"default", "child-policy"}, childPolicies,
+		"child namespace should only contain its own policy and default")
+
+	// Verify parent namespace listing
+	parentPolicies, err := ps.ListPolicies(parentCtx, PolicyTypeACL)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"default", "parent-policy"}, parentPolicies,
+		"parent namespace should contain its own policy and default")
+
+	// Verify root namespace listing
+	rootPolicies, err := ps.ListPolicies(rootCtx, PolicyTypeACL)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"default", "root-policy"}, rootPolicies,
+		"root namespace should contain its own policy and default")
+}
+
 func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(context.Background())

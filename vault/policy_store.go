@@ -524,41 +524,34 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 		return []string{}, fmt.Errorf("unable to get the barrier subview for policy type %q", policyType)
 	}
 
-	// Use direct List instead of CollectKeysWithPrefix to avoid collecting keys from all namespaces
-	keys, err := view.List(ctx, prefix)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []string
-	for _, key := range keys {
-		// Skip directories/subpaths in the listing
-		if strings.HasSuffix(key, "/") {
-			continue
-		}
-
-		// Combine prefix with key for the full path if not already included
-		fullKey := prefix + key
-		result = append(result, fullKey)
+	// Scan the view, since the policy names are the same as the
+	// key names.
+	var keys []string
+	switch policyType {
+	case PolicyTypeACL:
+		keys, err = logical.CollectKeysWithPrefix(ctx, view, prefix)
+	default:
+		return nil, fmt.Errorf("unknown policy type %q", policyType)
 	}
 
 	// We only have non-assignable ACL policies at the moment
 	for _, nonAssignable := range nonAssignablePolicies {
 		deleteIndex := -1
 		// Find indices of non-assignable policies in keys
-		for index, key := range result {
+		for index, key := range keys {
 			if key == nonAssignable {
+				// Delete collection outside the loop
 				deleteIndex = index
 				break
 			}
 		}
 		// Remove non-assignable policies when found
 		if deleteIndex != -1 {
-			result = append(result[:deleteIndex], result[deleteIndex+1:]...)
+			keys = append(keys[:deleteIndex], keys[deleteIndex+1:]...)
 		}
 	}
 
-	return result, nil
+	return keys, err
 }
 
 // DeletePolicy is used to delete the named policy

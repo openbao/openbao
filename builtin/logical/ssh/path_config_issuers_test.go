@@ -5,23 +5,22 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSSH_ConfigIssuers(t *testing.T) {
 	b, s := CreateBackendWithStorage(t)
 
-	// reading the 'default' configured issuer when no default has been configured should return a 400 error
+	// reading the default issuer when no default has been configured should return a 400 error
 	resp, err := b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/issuers",
 		Storage:   s,
 	})
+	require.NoError(t, err, "unexpected error reading issuers config")
+	require.True(t, resp != nil && resp.IsError(), "expected error response when no default issuer is configured")
 
-	if err != nil || (resp != nil && !resp.IsError()) {
-		t.Fatalf("should have failed to fetch issuers config has no issuer has be set as default: err: %v, resp: %v", err, resp)
-	}
-
-	// submit a 'default' issuer with 'config/ca' endpoint
+	// create an issuer and set it as default
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
@@ -30,43 +29,38 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 			"generate_signing_key": true,
 		},
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot submit CA issuer as default: err: %v, resp: %v", err, resp)
-	}
+	require.NoError(t, err, "cannot submit issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting issuer")
 
-	// parse 'default' issuer's id
+	// parse default issuer's id
 	defaultIssuerId := resp.Data["issuer_id"]
 
-	// read the 'default' issuer
+	// read issuer's config and check if the default issuer is set
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/issuers",
 		Storage:   s,
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot read default issuer: err: %v, resp: %v", err, resp)
-	}
+	require.NoError(t, err, "cannot read issuer's config")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response reading issuer's config")
 
-	// check if the 'default' keyword exists and the value is the same as the 'default' issuer's id
-	if resp.Data["default"] != defaultIssuerId {
-		t.Fatalf("expected '%v' but got '%v'", defaultIssuerId, resp.Data["default"])
-	}
+	// check if the 'default' keyword exists and the value is the same as the default issuer's id
+	require.Equal(t, defaultIssuerId, resp.Data["default"], "default issuer ID mismatch")
 
-	// submit a new issuer
+	// create a new issuer
 	issuerName := "test-issuer"
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "issuers/import/" + issuerName,
 		Storage:   s,
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot submit new issuer: err: %v, resp: %v", err, resp)
-	}
+	require.NoError(t, err, "cannot create new issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response creating new issuer")
 
 	// parse 'test-issuer's id
 	testIssuerId := resp.Data["issuer_id"]
 
-	// set 'test-issuer' as the 'default' issuer
+	// set 'test-issuer' as the default issuer
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
@@ -75,9 +69,8 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		},
 		Storage: s,
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot set 'test-issuer' as default: err: %v, resp: %v", err, resp)
-	}
+	require.NoError(t, err, "cannot set 'test-issuer' as default")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response setting test-issuer as default")
 
 	// read the 'default' issuer and check if it's the same as 'test-issuer'
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -85,11 +78,44 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		Path:      "config/issuers",
 		Storage:   s,
 	})
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot read default issuer: err: %v, resp: %v", err, resp)
-	}
+	require.NoError(t, err, "cannot read default issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response reading default issuer")
 
-	if resp.Data["default"] != testIssuerId {
-		t.Fatalf("expected '%v' but got '%v'", issuerName, resp.Data["default"])
-	}
+	require.Equal(t, testIssuerId, resp.Data["default"], "default issuer ID mismatch after update")
+
+	// update issuer's config with the default being directly the issuer's id
+	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "config/issuers",
+		Data: map[string]interface{}{
+			"default": testIssuerId,
+		},
+		Storage: s,
+	})
+	require.NoError(t, err, "cannot update issuer's config")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response updating issuer's config")
+
+	require.Equal(t, testIssuerId, resp.Data["default"], "default issuer ID mismatch after update")
+
+	// try to set the keyword `default` as the default issuer should expect an error
+	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "config/issuers",
+		Data: map[string]interface{}{
+			"default": "default",
+		},
+	})
+	require.NoError(t, err, "unexpected error when setting 'default' as the default issuer")
+	require.True(t, resp != nil && resp.IsError(), "expected error response when setting 'default' as the default issuer")
+
+	// try to set an empty string as the default issuer should expect an error
+	resp, err = b.HandleRequest(context.Background(), &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "config/issuers",
+		Data: map[string]interface{}{
+			"default": "",
+		},
+	})
+	require.NoError(t, err, "unexpected error when setting an empty string as the default issuer")
+	require.True(t, resp != nil && resp.IsError(), "expected error response when setting an empty string as the default issuer")
 }

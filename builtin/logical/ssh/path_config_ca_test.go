@@ -9,17 +9,12 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
 )
 
 func TestSSH_ConfigCASubmitDefaultIssuer(t *testing.T) {
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("cannot create backend, got err: %v", err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	testKeyToSignPrivate := `-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
@@ -63,28 +58,24 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 			"default_user":            testUserName,
 			"ttl":                     "30m0s",
 		},
-		Storage: config.StorageView,
+		Storage: s,
 	}
 	resp, err := b.HandleRequest(context.Background(), roleReq)
-	if err != nil {
-		t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot create role")
+	require.Nil(t, resp, "unexpected response creating role")
 
 	// create the default CA issuer
 	defaultCaReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	resp, err = b.HandleRequest(context.Background(), defaultCaReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot create default CA issuer, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot create default CA issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response creating default CA issuer")
 
 	caPublicKey := strings.TrimSpace(resp.Data["public_key"].(string))
-	if caPublicKey == "" {
-		t.Fatal("empty CA issuer public key")
-	}
+	require.NotEmpty(t, caPublicKey, "empty CA issuer public key")
 
 	// prepare test container to test SSH
 	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
@@ -98,48 +89,31 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 			"public_key":       testKeyToSignPublic,
 			"valid_principals": testUserName,
 		},
-		Storage: config.StorageView,
+		Storage: s,
 	}
 	resp, err = b.HandleRequest(context.Background(), signReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot sign key, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot sign key")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response signing key")
 
 	signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
-	if signedKey == "" {
-		t.Fatal("empty signed key")
-	}
+	require.NotEmpty(t, signedKey, "empty signed key")
 
 	privateKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
-	if err != nil {
-		t.Fatalf("error parsing private key, got err: %v", err)
-	}
+	require.NoError(t, err, "error parsing private key")
 
 	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
-	if err != nil {
-		t.Fatalf("error parsing signed key, got err: %v", err)
-	}
+	require.NoError(t, err, "error parsing signed key")
 
 	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
-	if err != nil {
-		t.Fatalf("error creating cert signer, got err: %v", err)
-	}
+	require.NoError(t, err, "error creating cert signer")
 
 	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
-	if err != nil {
-		t.Fatalf("did not expect an error verifying testing SSH, got err: %v", err)
-	}
+	require.NoError(t, err, "error verifying testing SSH")
 }
 
 func TestSSH_ConfigCAKeyTypes(t *testing.T) {
 	var err error
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("cannot create backend: %s", err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	cases := []struct {
 		keyType string
@@ -173,28 +147,18 @@ func TestSSH_ConfigCAKeyTypes(t *testing.T) {
 		Operation: logical.UpdateOperation,
 		Path:      "roles/ca-issuance",
 		Data:      roleOptions,
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	_, err = b.HandleRequest(context.Background(), roleReq)
-	if err != nil {
-		t.Fatalf("cannot create role to issue against: %s", err)
-	}
+	require.NoError(t, err, "cannot create role to issue against")
 
 	for index, scenario := range cases {
-		createDeleteHelper(t, b, config, index, scenario.keyType, scenario.keyBits)
+		createDeleteHelper(t, b, s, index, scenario.keyType, scenario.keyBits)
 	}
 }
 
 func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
-	// create backend config
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	// create and initialize backend
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("cannot create backend: %s", err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	// submit multiple CA issuers
 	caIssuerOptions := []struct {
@@ -215,61 +179,45 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 				"key_bits":             opts.keyBits,
 				"generate_signing_key": true,
 			},
-			Storage: config.StorageView,
+			Storage: s,
 		}
 		resp, err := b.HandleRequest(context.Background(), defaultCaReq)
-		if err != nil || (resp != nil && resp.IsError()) {
-			t.Fatalf("issuer %d: cannot create CA issuer to perform signing operations, got resp: %+v, err: %v", id, resp, err)
-		}
+		require.NoError(t, err, "issuer %d: cannot create CA issuer to perform signing operations", id)
+		require.False(t, resp != nil && resp.IsError(), "issuer %d: unexpected error response creating CA issuer", id)
 	}
 
 	// list all isuers make sure all are present
 	listReq := &logical.Request{
 		Operation: logical.ListOperation,
 		Path:      "issuers",
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	resp, err := b.HandleRequest(context.Background(), listReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot list issuers, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot list issuers")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response listing issuers")
 
-	if len(resp.Data["keys"].([]string)) != 3 {
-		t.Fatalf("expected three issuers but got %d", len(resp.Data))
-	}
+	require.Equal(t, 3, len(resp.Data["keys"].([]string)), "expected three issuers")
 
 	// purge all issuers
 	purgeReq := &logical.Request{
 		Operation: logical.DeleteOperation,
 		Path:      "config/ca",
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	resp, err = b.HandleRequest(context.Background(), purgeReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot purge CA issuers, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot purge CA issuers")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response purging CA issuers")
 
 	// list all isuers make sure none are present
 	resp, err = b.HandleRequest(context.Background(), listReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot list issuers, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot list issuers")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response listing issuers")
 
-	if len(resp.Data) > 0 && len(resp.Data["keys"].([]string)) != 0 {
-		t.Fatalf("expected no issuers but got %d", len(resp.Data))
-	}
+	require.True(t, len(resp.Data) == 0 || len(resp.Data["keys"].([]string)) == 0, "expected no issuers")
 }
 
 func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
-	// create backend config
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	// create and initialize backend
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("cannot create backend: %s", err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	// submit an issuer and set as default
 	createCaIssuerReq := &logical.Request{
@@ -278,12 +226,11 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 		Data: map[string]interface{}{
 			"set_as_default": true,
 		},
-		Storage: config.StorageView,
+		Storage: s,
 	}
 	resp, err := b.HandleRequest(context.Background(), createCaIssuerReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot submit CA issuer as default, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot submit CA issuer as default")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting CA issuer as default")
 
 	// override existing 'default with 'config/ca' endpoint
 	configDefaultCARequest := &logical.Request{
@@ -293,39 +240,32 @@ func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 			"private_key": testCAPrivateKey,
 			"public_key":  testCAPublicKey,
 		},
-		Storage: config.StorageView,
+		Storage: s,
 	}
 	resp, err = b.HandleRequest(context.Background(), configDefaultCARequest)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot submit a new CA and override existing 'default', got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot submit a new CA and override existing 'default'")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting new CA")
 
 	// read the 'default' issuer
 	readDefaultIssuerRequest := &logical.Request{
 		Operation: logical.ReadOperation,
 		Path:      "config/ca",
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	resp, err = b.HandleRequest(context.Background(), readDefaultIssuerRequest)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("cannot read default issuer, got resp: %+v, err: %v", resp, err)
-	}
+	require.NoError(t, err, "cannot read default issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response reading default issuer")
 
-	if resp.Data["public_key"] == "" {
-		t.Fatal("expected a public key but got none")
-	}
-
-	if resp.Data["public_key"] != testCAPublicKey {
-		t.Fatalf("expected public key %v but got %v", testCAPublicKey, resp.Data["public_key"])
-	}
+	require.NotEmpty(t, resp.Data["public_key"], "expected a public key but got none")
+	require.Equal(t, testCAPublicKey, resp.Data["public_key"], "expected public key %v but got %v", testCAPublicKey, resp.Data["public_key"])
 }
 
-func createDeleteHelper(t *testing.T, b logical.Backend, config *logical.BackendConfig, index int, keyType string, keyBits int) {
+func createDeleteHelper(t *testing.T, b logical.Backend, s logical.Storage, index int, keyType string, keyBits int) {
 	// Check that we can create a new key of the specified type
 	caReq := &logical.Request{
 		Path:      "config/ca",
 		Operation: logical.UpdateOperation,
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	caReq.Data = map[string]interface{}{
 		"generate_signing_key": true,
@@ -333,12 +273,9 @@ func createDeleteHelper(t *testing.T, b logical.Backend, config *logical.Backend
 		"key_bits":             keyBits,
 	}
 	resp, err := b.HandleRequest(context.Background(), caReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad case %v: err: %v, resp: %v", index, err, resp)
-	}
-	if !strings.Contains(resp.Data["public_key"].(string), caReq.Data["key_type"].(string)) {
-		t.Fatalf("bad case %v: expected public key of type %v but was %v", index, caReq.Data["key_type"], resp.Data["public_key"])
-	}
+	require.NoError(t, err, "bad case %v", index)
+	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
+	require.Contains(t, resp.Data["public_key"].(string), caReq.Data["key_type"].(string), "bad case %v: expected public key of type %v but was %v", index, caReq.Data["key_type"], resp.Data["public_key"])
 
 	issueOptions := map[string]interface{}{
 		"public_key":       testCAPublicKeyEd25519,
@@ -348,17 +285,15 @@ func createDeleteHelper(t *testing.T, b logical.Backend, config *logical.Backend
 		Path:      "sign/ca-issuance",
 		Operation: logical.UpdateOperation,
 		Data:      issueOptions,
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 	resp, err = b.HandleRequest(context.Background(), issueReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad case %v: err: %v, resp: %v", index, err, resp)
-	}
+	require.NoError(t, err, "bad case %v", index)
+	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 
 	// Delete the configured keys
 	caReq.Operation = logical.DeleteOperation
 	resp, err = b.HandleRequest(context.Background(), caReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("bad case %v: err: %v, resp: %v", index, err, resp)
-	}
+	require.NoError(t, err, "bad case %v", index)
+	require.False(t, resp != nil && resp.IsError(), "bad case %v", index)
 }

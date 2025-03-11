@@ -3488,14 +3488,10 @@ func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
 	config.StorageView = &logical.InmemStorage{}
 
 	b, err := Backend(config)
-	if err != nil {
-		t.Fatalf("cannot create backend, got err: %v", err)
-	}
+	require.NoError(t, err, "cannot create backend")
 
 	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "cannot setup backend")
 
 	return b, config.StorageView
 }

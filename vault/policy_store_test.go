@@ -194,7 +194,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	// This shouldn't contain response-wrapping since it's non-assignable
+	// This shouldn't contain response-wrapping and control-group since it's non-assignable
 	if len(out) != 1 || out[0] != "default" {
 		t.Fatalf("bad: %v", out)
 	}
@@ -220,6 +220,29 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	err = ps.DeletePolicy(ctx, pCubby.Name, PolicyTypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pCubby.Name)
+	}
+
+	// Control-group policy checks
+	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	pControl, err := ps.GetPolicy(ctx, "control-group", PolicyTypeToken)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if pControl == nil {
+		t.Fatal("nil control-group policy")
+	}
+	if pControl.Raw != controlGroupPolicy {
+		t.Fatalf("bad: expected\n%s\ngot\n%s\n", controlGroupPolicy, pControl.Raw)
+	}
+	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	err = ps.SetPolicy(ctx, pControl)
+	if err == nil {
+		t.Fatalf("expected err setting %s", pControl.Name)
+	}
+	ctx = namespace.ContextWithNamespace(context.Background(), ns)
+	err = ps.DeletePolicy(ctx, pControl.Name, PolicyTypeACL)
+	if err == nil {
+		t.Fatalf("expected err deleting %s", pControl.Name)
 	}
 
 	// Root policy checks, behavior depending on namespace
@@ -717,32 +740,32 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 			// Verify namespace isolation
 			switch tt.name {
 			case "root-namespace":
-				require.NotContains(t, policies, "parent-policy", "parent policy should not appear in root namespace")
-				require.NotContains(t, policies, "child-policy", "child policy should not appear in root namespace")
+				assert.NotContains(t, policies, "parent-policy", "parent policy should not appear in root namespace")
+				assert.NotContains(t, policies, "child-policy", "child policy should not appear in root namespace")
 			case "parent-namespace":
-				require.NotContains(t, policies, "child-policy", "child policy should not appear in parent namespace")
+				assert.NotContains(t, policies, "child-policy", "child policy should not appear in parent namespace")
 			case "child-namespace":
-				require.NotContains(t, policies, "parent-policy", "parent policy should not appear in child namespace")
+				assert.NotContains(t, policies, "parent-policy", "parent policy should not appear in child namespace")
 			}
 		})
 	}
 
 	// Verify child namespace only sees its own policy
 	childPolicies, err := ps.ListPolicies(childCtx, PolicyTypeACL)
-	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"default", "child-policy"}, childPolicies,
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"default", "child-policy"}, childPolicies,
 		"child namespace should only contain its own policy and default")
 
 	// Verify parent namespace listing
 	parentPolicies, err := ps.ListPolicies(parentCtx, PolicyTypeACL)
-	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"default", "parent-policy"}, parentPolicies,
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"default", "parent-policy"}, parentPolicies,
 		"parent namespace should contain its own policy and default")
 
 	// Verify root namespace listing
 	rootPolicies, err := ps.ListPolicies(rootCtx, PolicyTypeACL)
-	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"default", "root-policy"}, rootPolicies,
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []string{"default", "root-policy"}, rootPolicies,
 		"root namespace should contain its own policy and default")
 }
 

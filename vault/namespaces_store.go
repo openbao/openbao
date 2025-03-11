@@ -92,7 +92,7 @@ func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
 		return NewBarrierView(barrier, "")
 	}
 
-	return NewBarrierView(barrier, path.Join("namespace", ne.UUID)+"/")
+	return NewBarrierView(barrier, path.Join("namespaces", ne.UUID)+"/")
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -368,7 +368,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntr
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone().Namespace)
 
 	// Create default policies for this namespace
-	if err := ns.createPolicyStore(nsCtx, entry); err != nil {
+	if err := ns.loadDefaultPolicies(nsCtx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
@@ -397,23 +397,21 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntr
 	return nil
 }
 
-// createPolicyStore creates a policy store for the specified namespace entry
-// and loads default policies for this namespace.
-func (ns *NamespaceStore) createPolicyStore(ctx context.Context, entry *NamespaceEntry) error {
-	// Create a context with the namespace we're working in
-	nsCtx := namespace.ContextWithNamespace(ctx, entry.Namespace)
-
-	// The policy store is namespaced via the namespace path, so we can
-	// use the core's policy store directly
-
+// loadDefaultPolicies loades default policies for the namespace in the provided context
+func (ns *NamespaceStore) loadDefaultPolicies(ctx context.Context) error {
 	// Load the default policy into the namespace
-	if err := ns.core.policyStore.loadACLPolicy(nsCtx, defaultPolicyName, defaultPolicy); err != nil {
-		return fmt.Errorf("failed to load default policy for namespace %q: %w", entry.Namespace.Path, err)
+	if err := ns.core.policyStore.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
+		return fmt.Errorf("failed to load default policy: %w", err)
 	}
 
 	// Load the response wrapping policy into the namespace
-	if err := ns.core.policyStore.loadACLPolicy(nsCtx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
-		return fmt.Errorf("failed to load response wrapping policy for namespace %q: %w", entry.Namespace.Path, err)
+	if err := ns.core.policyStore.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
+		return fmt.Errorf("failed to load response wrapping policy: %w", err)
+	}
+
+	// Load the control-group policy into the namespace
+	if err := ns.core.policyStore.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
+		return fmt.Errorf("failed to load control-group policy: %w", err)
 	}
 
 	return nil

@@ -35,6 +35,9 @@ const (
 	// responseWrappingPolicyName is the name of the fixed policy
 	responseWrappingPolicyName = "response-wrapping"
 
+	// controlGroupPolicyName is the name of the fixed policy
+	controlGroupPolicyName = "control-group"
+
 	// responseWrappingPolicy is the policy that ensures cubbyhole response
 	// wrapping can always succeed.
 	responseWrappingPolicy = `
@@ -135,15 +138,28 @@ path "identity/oidc/provider/+/authorize" {
     capabilities = ["read", "update"]
 }
 `
+
+	// controlGroupPolicy is the policy that ensures control group can always succeed.
+	controlGroupPolicy = `
+path "cubbyhole/control-group" {
+    capabilities = ["update", "create", "read"]
+}
+
+path "sys/wrapping/unwrap" {
+    capabilities = ["update"]
+}
+`
 )
 
 var (
 	immutablePolicies = []string{
 		"root",
 		responseWrappingPolicyName,
+		controlGroupPolicyName,
 	}
 	nonAssignablePolicies = []string{
 		responseWrappingPolicyName,
+		controlGroupPolicyName,
 	}
 )
 
@@ -225,6 +241,11 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	}
 	// Ensure that the response wrapping policy exists
 	if err := c.policyStore.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
+		return err
+	}
+
+	// Ensure that the control group policy exists
+	if err := c.policyStore.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
 		return err
 	}
 
@@ -366,9 +387,21 @@ func (ps *PolicyStore) GetNonEGPPolicyType(nsID string, name string) (*PolicyTyp
 // getACLView returns the ACL view for the root namespace or a subview for a non-root namespace.
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
 	if ns == nil || ns.ID == namespace.RootNamespaceID {
+		// For root namespace, use the original ACL view
 		return ps.aclView
 	}
-	return ps.aclView.SubView(ns.Path)
+
+	// First, get the namespace's entry from the namespace store
+	nsEntry, err := ps.core.namespaceStore.GetNamespaceByAccessor(context.Background(), ns.ID)
+	if err != nil || nsEntry == nil {
+		// If we can't find the namespace, fall back to the root view
+		ps.logger.Error("failed to find namespace entry, using root view", "namespace_id", ns.ID)
+		return ps.aclView
+	}
+
+	// Get the namespace's view and create a policy subview
+	nsView := nsEntry.View(ps.core.barrier)
+	return nsView.SubView("sys/policy/")
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.

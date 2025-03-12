@@ -515,12 +515,18 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootP, "unexpected policy found in root namespace")
 
 	// Check storage locations
-	nsBarrierView := ps.getACLView(ns)
+	nsBarrierView, err := ps.getACLView(ns)
+	require.NoError(t, err)
+	require.NotNil(t, nsBarrierView, "expected namespace storage")
+
 	out, err := nsBarrierView.Get(nsCtx, "test-policy")
 	require.NoError(t, err)
 	require.NotNil(t, out, "expected policy in namespace storage")
 
-	rootBarrierView := ps.getACLView(namespace.RootNamespace)
+	rootBarrierView, err := ps.getACLView(namespace.RootNamespace)
+	require.NoError(t, err)
+	require.NotNil(t, rootBarrierView, "expected root namespace storage")
+
 	rootOut, err := rootBarrierView.Get(ctx, "test-policy")
 	require.NoError(t, err)
 	assert.Nil(t, rootOut, "policy should not exist in root storage")
@@ -845,9 +851,14 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	assert.Contains(t, childP.Raw, `capabilities = ["read", "list", "create"]`)
 
 	// Verify storage locations by directly accessing the barrier views
-	rootView := ps.getACLView(namespace.RootNamespace)
-	parentView := ps.getACLView(parentNS)
-	childView := ps.getACLView(childNS)
+	rootView, err := ps.getACLView(namespace.RootNamespace)
+	require.NoError(t, err)
+
+	parentView, err := ps.getACLView(parentNS)
+	require.NoError(t, err)
+
+	childView, err := ps.getACLView(childNS)
+	require.NoError(t, err)
 
 	rootEntry, err := rootView.Get(ctx, "test-nested-policy")
 	require.NoError(t, err)

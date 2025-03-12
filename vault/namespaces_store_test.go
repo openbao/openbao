@@ -161,6 +161,10 @@ func TestNamespaceStore(t *testing.T) {
 		},
 	}
 
+	// Override the store.
+	s = c.namespaceStore
+	// After sealing and unsealing, the namespace stored in the core is replaced with a new one.
+	// owever, the s.SetNamespace function is still using the previous namespace.
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)

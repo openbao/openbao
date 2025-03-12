@@ -20,7 +20,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 	require.NoError(t, err, "unexpected error reading issuers config")
 	require.True(t, resp != nil && resp.IsError(), "expected error response when no default issuer is configured")
 
-	// create an issuer and set it as default
+	// create a default issuer
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/ca",
@@ -29,8 +29,8 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 			"generate_signing_key": true,
 		},
 	})
-	require.NoError(t, err, "cannot submit issuer")
-	require.False(t, resp != nil && resp.IsError(), "unexpected error response submitting issuer")
+	require.NoError(t, err, "cannot create default issuer")
+	require.False(t, resp != nil && resp.IsError(), "unexpected error response creating default issuer")
 
 	// parse default issuer's id
 	defaultIssuerId := resp.Data["issuer_id"]
@@ -83,7 +83,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 
 	require.Equal(t, testIssuerId, resp.Data["default"], "default issuer ID mismatch after update")
 
-	// update issuer's config with the default being directly the issuer's id
+	// try to set the default issuer to the same issuer should expect a warning
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "config/issuers",
@@ -92,10 +92,10 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		},
 		Storage: s,
 	})
-	require.NoError(t, err, "cannot update issuer's config")
-	require.False(t, resp != nil && resp.IsError(), "unexpected error response updating issuer's config")
-
-	require.Equal(t, testIssuerId, resp.Data["default"], "default issuer ID mismatch after update")
+	require.NoError(t, err, "unexpected error when setting the default issuer to the same issuer")
+	require.False(t, resp != nil && resp.IsError(), "expected error response when setting the default issuer to the same issuer")
+	require.Equal(t, 1, len(resp.Warnings), "expected 1 warning when setting the default issuer to the same issuer")
+	require.Equal(t, "The default issuer is already set to the specified issuer.", resp.Warnings[0], "warning message mismatch")
 
 	// try to set the keyword `default` as the default issuer should expect an error
 	resp, err = b.HandleRequest(context.Background(), &logical.Request{
@@ -104,6 +104,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		Data: map[string]interface{}{
 			"default": "default",
 		},
+		Storage: s,
 	})
 	require.NoError(t, err, "unexpected error when setting 'default' as the default issuer")
 	require.True(t, resp != nil && resp.IsError(), "expected error response when setting 'default' as the default issuer")
@@ -115,6 +116,7 @@ func TestSSH_ConfigIssuers(t *testing.T) {
 		Data: map[string]interface{}{
 			"default": "",
 		},
+		Storage: s,
 	})
 	require.NoError(t, err, "unexpected error when setting an empty string as the default issuer")
 	require.True(t, resp != nil && resp.IsError(), "expected error response when setting an empty string as the default issuer")

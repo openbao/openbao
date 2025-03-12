@@ -106,6 +106,12 @@ func (b *backend) pathWriteDefaultIssuerHandler(ctx context.Context, req *logica
 		return handleStorageContextErr(err, "unable to fetch existing issuers configuration")
 	}
 
+	response := &logical.Response{}
+	if parsedIssuer == config.DefaultIssuerID {
+		response.AddWarning("The default issuer is already set to the specified issuer.")
+		return response, nil
+	}
+
 	oldDefault := config.DefaultIssuerID
 	config.DefaultIssuerID = parsedIssuer
 
@@ -117,11 +123,10 @@ func (b *backend) pathWriteDefaultIssuerHandler(ctx context.Context, req *logica
 		return nil, err
 	}
 
-	response := &logical.Response{
-		Data: map[string]interface{}{
-			defaultRef: config.DefaultIssuerID,
-		},
+	response.Data = map[string]interface{}{
+		defaultRef: config.DefaultIssuerID,
 	}
+
 	if len(oldDefault) != 0 {
 		warningMessage := fmt.Sprintf("Previous default (%s) has been updated with the issuer '%s'", oldDefault, newDefault)
 		if parsedIssuer != newDefault {

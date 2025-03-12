@@ -295,7 +295,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, namespace *Nam
 		unlocked = true
 
 		// Create sys/ and token/ mounts for the new namespace.
-		if err := ns.createMounts(ctx, entry); err != nil {
+		if err := ns.initializeNamespace(ctx, entry); err != nil {
 			return err
 		}
 	} else {
@@ -360,36 +360,52 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 	}
 }
 
-// createMounts handles creation of sys/ and token/ mounts for this new
-// namespace.
-func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntry) error {
+// initializeNamespace initializes default policies and  sys/ and token/ mounts for a new namespace
+func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *NamespaceEntry) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone().Namespace)
 
-	// Create default policies for this namespace
-	if err := ns.core.policyStore.loadDefaultPolicies(nsCtx); err != nil {
-		return fmt.Errorf("error creating default policies: %w", err)
+	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
+		return err
 	}
 
-	mounts, err := ns.core.requiredMountTable(nsCtx)
+	if err := ns.createMounts(nsCtx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// initializeNamespacePolicies loads the default policies for the namespace store.
+func (ns *NamespaceStore) initializeNamespacePolicies(ctx context.Context) error {
+	if err := ns.core.policyStore.loadDefaultPolicies(ctx); err != nil {
+		return fmt.Errorf("error creating default policies: %w", err)
+	}
+	return nil
+}
+
+// createMounts handles creation of sys/ and token/ mounts for this new
+// namespace.
+func (ns *NamespaceStore) createMounts(ctx context.Context) error {
+	mounts, err := ns.core.requiredMountTable(ctx)
 	if err != nil {
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
 	for _, mount := range mounts.Entries {
-		if err := ns.core.mountInternal(nsCtx, mount, MountTableUpdateStorage); err != nil {
+		if err := ns.core.mountInternal(ctx, mount, MountTableUpdateStorage); err != nil {
 			return err
 		}
 	}
 
-	credentials, err := ns.core.defaultAuthTable(nsCtx)
+	credentials, err := ns.core.defaultAuthTable(ctx)
 	if err != nil {
 		return fmt.Errorf("for new namespace: %w", err)
 	}
 
 	for _, credential := range credentials.Entries {
-		if err := ns.core.enableCredentialInternal(nsCtx, credential, MountTableUpdateStorage); err != nil {
+		if err := ns.core.enableCredentialInternal(ctx, credential, MountTableUpdateStorage); err != nil {
 			return err
 		}
 	}

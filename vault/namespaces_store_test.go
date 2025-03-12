@@ -17,15 +17,7 @@ func TestNamespaceStore(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err := s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -48,20 +40,10 @@ func TestNamespaceStore(t *testing.T) {
 	itemPath := item.Namespace.Path
 
 	// We should now have one item.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemUUID)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemAccessor)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemPath)
+	require.Equal(t, ns[0].UUID, item.UUID)
 
 	// Modifying our copy shouldn't affect anything.
 	item.Namespace.CustomMetadata = map[string]string{"openbao": "true"}
@@ -100,35 +82,17 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemUUID)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemAccessor)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemPath)
+	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
 	err = s.DeleteNamespace(ctx, itemUUID)
 	require.NoError(t, err)
 
 	// Store should be empty.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -149,15 +113,7 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -189,7 +145,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err := s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 

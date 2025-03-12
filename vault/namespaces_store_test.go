@@ -95,6 +95,10 @@ func TestNamespaceStore(t *testing.T) {
 		}
 	}
 
+	// After sealing and unsealing, the namespace stored in the core is replaced with a new one.
+	// however, the s.SetNamespace function is still using the previous namespace.
+	s = c.namespaceStore
+
 	// We should still have one item.
 	ns, err = s.ListNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
@@ -141,6 +145,10 @@ func TestNamespaceStore(t *testing.T) {
 		}
 	}
 
+	// After sealing and unsealing, the namespace stored in the core is replaced with a new one,
+	// however, the s.SetNamespace function is still using the previous namespace.
+	s = c.namespaceStore
+
 	ns, err = s.ListNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
@@ -161,10 +169,6 @@ func TestNamespaceStore(t *testing.T) {
 		},
 	}
 
-	// Override the store.
-	s = c.namespaceStore
-	// After sealing and unsealing, the namespace stored in the core is replaced with a new one.
-	// owever, the s.SetNamespace function is still using the previous namespace.
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)

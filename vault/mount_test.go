@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
@@ -1117,5 +1118,125 @@ func TestCore_MountInitialize(t *testing.T) {
 		if !backend.isInitialized {
 			t.Fatal("backend is not initialized")
 		}
+	}
+}
+
+func TestCore_MountEntryView(t *testing.T) {
+	t.Parallel()
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	testMountEntryUUID := "mount-entry-uuid"
+	testNamespaceEntryUUID := "namespace-entry-uuid"
+
+	err := s.SetNamespace(ctx, &NamespaceEntry{UUID: testNamespaceEntryUUID, Namespace: &namespace.Namespace{Path: "ns1", ID: "ns-1"}})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		mountEntry *MountEntry
+
+		wantViewPrefix string
+		wantError      bool
+		wantPanic      bool
+	}{
+		{
+			// in real application it should never come to this
+			name: "entry without both type and mount table type leads to panic",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+			},
+
+			wantPanic: true,
+		},
+		{
+			name: "entry of 'system' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeSystem,
+			},
+
+			wantViewPrefix: systemBarrierPrefix,
+		},
+		{
+			name: "entry of 'token' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeToken,
+			},
+
+			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
+		},
+		{
+			name: "entry of 'credential' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Type:  "approle",
+				Table: credentialTableType,
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'audit' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: auditTableType,
+			},
+
+			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type and 'identity' type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeIdentity,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeNSCubbyhole,
+				NamespaceID: "ns-1",
+			},
+
+			wantViewPrefix: "namespace/" + testNamespaceEntryUUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeNSCubbyhole,
+				// does not exist in store
+				NamespaceID: "ns-2",
+			},
+
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			defer func() {
+				if r := recover(); (r == nil) && tt.wantPanic {
+					t.Errorf("expected execution to panic")
+				}
+			}()
+
+			gotView, err := c.mountEntryView(ctx, tt.mountEntry)
+
+			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
+			require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)
+		})
 	}
 }

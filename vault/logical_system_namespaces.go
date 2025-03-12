@@ -15,6 +15,43 @@ import (
 )
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
+	listOperation := &framework.PathOperation{
+		Callback: b.handleNamespacesList(),
+		Responses: map[int][]framework.Response{
+			http.StatusOK: {{
+				Description: "OK",
+				Fields: map[string]*framework.FieldSchema{
+					"keys":     {Type: framework.TypeStringSlice},
+					"key_info": {Type: framework.TypeMap},
+				},
+			}},
+		},
+		Summary: "List namespaces.",
+	}
+
+	namespaceSchema := map[string]*framework.FieldSchema{
+		"uuid": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Internal UUID of the namespace.",
+		},
+		"id": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Accessor ID of the namespace.",
+		},
+		"path": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Path of the namespace.",
+		},
+		"custom_metadata": {
+			Type:        framework.TypeMap,
+			Required:    true,
+			Description: "User provided key-value pairs.",
+		},
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "namespaces/?$",
@@ -25,44 +62,12 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleNamespacesList(),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"keys": {
-									Type:     framework.TypeStringSlice,
-									Required: true,
-								},
-								"namespaces": {
-									Type: framework.TypeStringSlice,
-								},
-							},
-						}},
-					},
-				},
-				logical.ListOperation: &framework.PathOperation{
-					Callback: b.handleNamespacesList(),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"keys": {
-									Type:     framework.TypeStringSlice,
-									Required: true,
-								},
-								"namespaces": {
-									Type: framework.TypeStringSlice,
-								},
-							},
-						}},
-					},
-				},
+				logical.ReadOperation: listOperation,
+				logical.ListOperation: listOperation,
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespace-list"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespace-list"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
 		},
 
 		{
@@ -70,21 +75,17 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
-				// OperationSuffix: "api-namespace2", // ??? this endpoint duplicates /sys/namespaces/api-lock
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"id": {
-					Type:        framework.TypeString,
-					Description: strings.TrimSpace(sysHelp["namespace-id"][0]),
-				},
 				"path": {
 					Type:        framework.TypeString,
-					Description: strings.TrimSpace(sysHelp["namespace-path"][0]),
+					Required:    true,
+					Description: "Path of the namespace.",
 				},
 				"custom_metadata": {
 					Type:        framework.TypeMap,
-					Description: strings.TrimSpace(sysHelp["namespace-custom_metadata"][0]),
+					Description: "User provided key-value pairs.",
 				},
 			},
 
@@ -92,60 +93,35 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesRead(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"id": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"path": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"custom_metadata": {
-									Type:     framework.TypeMap,
-									Required: false,
-								},
-							},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Retrieve the namespace body for the named path.",
+					Summary: "Retrieve a namespace.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesSet(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Add a new namespace.",
+					Summary: "Create or update a namespace.",
 				},
 				logical.PatchOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesPatch(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Update an existing namespace.",
+					Summary: "Update a namespace's custom metadata.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesDelete(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusNoContent: {{Description: "OK"}},
 					},
-					Summary: "Delete the namespace with the given name.",
+					Summary: "Delete a namespace.",
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespace"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespace"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
 		},
 	}
 }

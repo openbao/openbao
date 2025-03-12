@@ -194,7 +194,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	// This shouldn't contain response-wrapping and control-group since it's non-assignable
+	// This shouldn't contain response-wrapping since it's non-assignable
 	if len(out) != 1 || out[0] != "default" {
 		t.Fatalf("bad: %v", out)
 	}
@@ -220,29 +220,6 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	err = ps.DeletePolicy(ctx, pCubby.Name, PolicyTypeACL)
 	if err == nil {
 		t.Fatalf("expected err deleting %s", pCubby.Name)
-	}
-
-	// Control-group policy checks
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	pControl, err := ps.GetPolicy(ctx, "control-group", PolicyTypeToken)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if pControl == nil {
-		t.Fatal("nil control-group policy")
-	}
-	if pControl.Raw != controlGroupPolicy {
-		t.Fatalf("bad: expected\n%s\ngot\n%s\n", controlGroupPolicy, pControl.Raw)
-	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.SetPolicy(ctx, pControl)
-	if err == nil {
-		t.Fatalf("expected err setting %s", pControl.Name)
-	}
-	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.DeletePolicy(ctx, pControl.Name, PolicyTypeACL)
-	if err == nil {
-		t.Fatalf("expected err deleting %s", pControl.Name)
 	}
 
 	// Root policy checks, behavior depending on namespace

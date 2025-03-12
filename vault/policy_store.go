@@ -35,9 +35,6 @@ const (
 	// responseWrappingPolicyName is the name of the fixed policy
 	responseWrappingPolicyName = "response-wrapping"
 
-	// controlGroupPolicyName is the name of the fixed policy
-	controlGroupPolicyName = "control-group"
-
 	// responseWrappingPolicy is the policy that ensures cubbyhole response
 	// wrapping can always succeed.
 	responseWrappingPolicy = `
@@ -138,28 +135,15 @@ path "identity/oidc/provider/+/authorize" {
     capabilities = ["read", "update"]
 }
 `
-
-	// controlGroupPolicy is the policy that ensures control group can always succeed.
-	controlGroupPolicy = `
-path "cubbyhole/control-group" {
-    capabilities = ["update", "create", "read"]
-}
-
-path "sys/wrapping/unwrap" {
-    capabilities = ["update"]
-}
-`
 )
 
 var (
 	immutablePolicies = []string{
 		"root",
 		responseWrappingPolicyName,
-		controlGroupPolicyName,
 	}
 	nonAssignablePolicies = []string{
 		responseWrappingPolicyName,
-		controlGroupPolicyName,
 	}
 )
 
@@ -760,11 +744,6 @@ func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
 	// Load the response wrapping policy into the namespace
 	if err := ps.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
 		return fmt.Errorf("failed to load response wrapping policy: %w", err)
-	}
-
-	// Load the control-group policy into the namespace
-	if err := ps.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
-		return fmt.Errorf("failed to load control-group policy: %w", err)
 	}
 
 	return nil

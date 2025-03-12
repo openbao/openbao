@@ -368,7 +368,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntr
 	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone().Namespace)
 
 	// Create default policies for this namespace
-	if err := ns.loadDefaultPolicies(nsCtx); err != nil {
+	if err := ns.core.policyStore.loadDefaultPolicies(nsCtx); err != nil {
 		return fmt.Errorf("error creating default policies: %w", err)
 	}
 
@@ -392,26 +392,6 @@ func (ns *NamespaceStore) createMounts(ctx context.Context, entry *NamespaceEntr
 		if err := ns.core.enableCredentialInternal(nsCtx, credential, MountTableUpdateStorage); err != nil {
 			return err
 		}
-	}
-
-	return nil
-}
-
-// loadDefaultPolicies loades default policies for the namespace in the provided context
-func (ns *NamespaceStore) loadDefaultPolicies(ctx context.Context) error {
-	// Load the default policy into the namespace
-	if err := ns.core.policyStore.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
-		return fmt.Errorf("failed to load default policy: %w", err)
-	}
-
-	// Load the response wrapping policy into the namespace
-	if err := ns.core.policyStore.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
-		return fmt.Errorf("failed to load response wrapping policy: %w", err)
-	}
-
-	// Load the control-group policy into the namespace
-	if err := ns.core.policyStore.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
-		return fmt.Errorf("failed to load control-group policy: %w", err)
 	}
 
 	return nil

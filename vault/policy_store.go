@@ -236,16 +236,7 @@ func (c *Core) setupPolicyStore(ctx context.Context) error {
 	}
 
 	// Ensure that the default policy exists, and if not, create it
-	if err := c.policyStore.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
-		return err
-	}
-	// Ensure that the response wrapping policy exists
-	if err := c.policyStore.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
-		return err
-	}
-
-	// Ensure that the control group policy exists
-	if err := c.policyStore.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
+	if err := c.policyStore.loadDefaultPolicies(ctx); err != nil {
 		return err
 	}
 
@@ -384,7 +375,7 @@ func (ps *PolicyStore) GetNonEGPPolicyType(nsID string, name string) (*PolicyTyp
 	return &policyType, nil
 }
 
-// getACLView returns the ACL view for the root namespace or a subview for a non-root namespace.
+// getACLView returns the ACL view for the given namespace
 func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
 	if ns == nil || ns.ID == namespace.RootNamespaceID {
 		// For root namespace, use the original ACL view
@@ -752,4 +743,24 @@ func (ps *PolicyStore) sanitizeName(name string) string {
 
 func (ps *PolicyStore) cacheKey(ns *namespace.Namespace, name string) string {
 	return path.Join(ns.ID, name)
+}
+
+// loadDefaultPolicies loades default policies for the namespace in the provided context
+func (ps *PolicyStore) loadDefaultPolicies(ctx context.Context) error {
+	// Load the default policy into the namespace
+	if err := ps.loadACLPolicy(ctx, defaultPolicyName, defaultPolicy); err != nil {
+		return fmt.Errorf("failed to load default policy: %w", err)
+	}
+
+	// Load the response wrapping policy into the namespace
+	if err := ps.loadACLPolicy(ctx, responseWrappingPolicyName, responseWrappingPolicy); err != nil {
+		return fmt.Errorf("failed to load response wrapping policy: %w", err)
+	}
+
+	// Load the control-group policy into the namespace
+	if err := ps.loadACLPolicy(ctx, controlGroupPolicyName, controlGroupPolicy); err != nil {
+		return fmt.Errorf("failed to load control-group policy: %w", err)
+	}
+
+	return nil
 }

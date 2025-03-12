@@ -5795,7 +5795,10 @@ This path responds to the following HTTP methods.
 This path responds to the following HTTP methods.
 
 	LIST /
-		Returns a list of all namespaces.
+		List namespaces.
+
+	SCAN /
+		Scan (recursively list) namespaces.
 		`,
 	},
 	"namespaces": {

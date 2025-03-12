@@ -147,8 +147,10 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	// Sync values to the cache
 	entry.SyncCache()
 
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+	view, err := c.mountEntryView(ctx, entry)
+	if err != nil {
+		return err
+	}
 
 	origViewReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1034,10 +1036,11 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
 		var backend logical.Backend
 
-		// Create a barrier view using the UUID
-		viewPath := entry.ViewPath()
-
-		view := NewBarrierView(c.barrier, viewPath)
+		var view BarrierView
+		view, err = c.mountEntryView(ctx, entry)
+		if err != nil {
+			return err
+		}
 
 		origViewReadOnlyErr := view.GetReadOnlyErr()
 

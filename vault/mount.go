@@ -694,8 +694,10 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	// Sync values to the cache
 	entry.SyncCache()
 
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+	view, err := c.mountEntryView(ctx, entry)
+	if err != nil {
+		return err
+	}
 
 	origReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1752,10 +1754,11 @@ func (c *Core) setupMounts(ctx context.Context) error {
 	var err error
 	for _, entry := range c.mounts.sortEntriesByPathDepth().Entries {
 		// Initialize the backend, special casing for system
-		barrierPath := entry.ViewPath()
-
-		// Create a barrier storage view using the UUID
-		view := NewBarrierView(c.barrier, barrierPath)
+		var view BarrierView
+		view, err = c.mountEntryView(ctx, entry)
+		if err != nil {
+			return err
+		}
 
 		origReadOnlyErr := view.GetReadOnlyErr()
 
@@ -2189,4 +2192,39 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	}
 	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
 	return &migrationInfo
+}
+
+// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
+func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView, error) {
+	switch me.Type {
+	case mountTypeSystem:
+		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
+	case mountTypeToken:
+		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
+	}
+
+	switch me.Table {
+	case mountTableType:
+		// NSCubbyhole should be stored under the namespace prefix (UUID)
+		if me.Type == mountTypeNSCubbyhole {
+			nsEntry, err := c.namespaceStore.GetNamespaceByAccessor(ctx, me.NamespaceID)
+			// corrupted namespace store
+			if err != nil {
+				return nil, err
+			}
+
+			if nsEntry == nil {
+				return nil, errors.New("namespace not found")
+			}
+
+			return nsEntry.View(c.barrier).SubView(backendBarrierPrefix + me.UUID + "/"), nil
+		}
+		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
+	case credentialTableType:
+		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
+	case auditTableType:
+		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
+	}
+
+	panic("invalid mount entry")
 }

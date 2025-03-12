@@ -153,12 +153,19 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 // handleNamespacesList handles /sys/namespaces/ endpoints to provide the enabled namespaces
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		namespaces, err := b.Core.namespaceStore.ListNamespacePaths(ctx, false /* includeRoot */)
+		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
 		if err != nil {
 			return nil, err
 		}
 
-		return logical.ListResponse(namespaces), nil
+		var keys []string
+		keyInfo := make(map[string]interface{})
+		for _, ns := range namespaces {
+			keys = append(keys, ns.Path)
+			keyInfo[ns.Path] = ns
+		}
+
+		return logical.ListResponseWithInfo(keys, keyInfo), nil
 	}
 }
 

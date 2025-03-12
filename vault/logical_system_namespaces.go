@@ -211,15 +211,22 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		if err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			ns.Namespace.Path = path
 			ns.Namespace.CustomMetadata = metadata
 			return ns, nil
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return nil, nil
+		resp := &logical.Response{Data: map[string]interface{}{
+			"uuid":            ns.UUID,
+			"path":            ns.Namespace.Path,
+			"id":              ns.Namespace.ID,
+			"custom_metadata": ns.Namespace.CustomMetadata,
+		}}
+		return resp, nil
 	}
 }
 
@@ -243,7 +250,7 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
-		if err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			current := make(map[string]interface{})
 			for k, v := range ns.Namespace.CustomMetadata {
 				current[k] = v
@@ -261,11 +268,18 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 
 			ns.Namespace.CustomMetadata = patched
 			return ns, nil
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return nil, nil
+		resp := &logical.Response{Data: map[string]interface{}{
+			"uuid":            ns.UUID,
+			"path":            ns.Namespace.Path,
+			"id":              ns.Namespace.ID,
+			"custom_metadata": ns.Namespace.CustomMetadata,
+		}}
+		return resp, nil
 	}
 }
 

@@ -15,18 +15,15 @@ import (
 )
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
-	listOperation := &framework.PathOperation{
-		Callback: b.handleNamespacesList(),
-		Responses: map[int][]framework.Response{
-			http.StatusOK: {{
-				Description: "OK",
-				Fields: map[string]*framework.FieldSchema{
-					"keys":     {Type: framework.TypeStringSlice},
-					"key_info": {Type: framework.TypeMap},
-				},
-			}},
+	namespaceListSchema := map[string]*framework.FieldSchema{
+		"keys": {
+			Type:        framework.TypeStringSlice,
+			Description: "List of namespace paths.",
 		},
-		Summary: "List namespaces.",
+		"key_info": {
+			Type:        framework.TypeMap,
+			Description: "Map of namespace details by path.",
+		},
 	}
 
 	namespaceSchema := map[string]*framework.FieldSchema{
@@ -58,12 +55,16 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
-				OperationVerb:   "list",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: listOperation,
-				logical.ListOperation: listOperation,
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesList(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: namespaceListSchema}},
+					},
+					Summary: "List namespaces.",
+				},
 			},
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),

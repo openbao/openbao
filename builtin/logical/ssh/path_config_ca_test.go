@@ -14,6 +14,7 @@ import (
 )
 
 func TestSSH_ConfigCASubmitDefaultIssuer(t *testing.T) {
+	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
 	testKeyToSignPrivate := `-----BEGIN OPENSSH PRIVATE KEY-----
@@ -112,6 +113,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 }
 
 func TestSSH_ConfigCAKeyTypes(t *testing.T) {
+	t.Parallel()
 	var err error
 	b, s := CreateBackendWithStorage(t)
 
@@ -158,6 +160,7 @@ func TestSSH_ConfigCAKeyTypes(t *testing.T) {
 }
 
 func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
+	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
 	// submit multiple CA issuers
@@ -217,6 +220,7 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 }
 
 func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
+	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
 	// submit an issuer and set as default

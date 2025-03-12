@@ -9,6 +9,7 @@ import (
 )
 
 func TestSSH_ConfigIssuers(t *testing.T) {
+	t.Parallel()
 	b, s := CreateBackendWithStorage(t)
 
 	// reading the default issuer when no default has been configured should return a 400 error

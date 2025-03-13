@@ -124,6 +124,36 @@ SjOQL/GkH1nkRcDS9++aAAAAAmNhAQID
 	publicKeyECDSA256 = `ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBJsfOouYIjJNI23QJqaDsFTGukm21fRAMeGvKZDB59i5jnX1EubMH1AEjjzz4fgySUlyWKo+TS31rxU8kX3DDM4= demo@example.com`
 	publicKeyECDSA521 = `ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAEg73ORD4J3FV2CrL01gLSKREO2EHrZPlJCOeDL5OKD3M1GCHv3q8O452RW49Aw+8zFFFU5u6d1Ys3Qsj05zdaQwQDt/D3ceWLGVkWiKyLPQStfn0GGOZh3YFKEw5XmeW9jh6xudEHlKs4Pfv2FrroaUKZvM2SlxR/feOK0tCQyq3MN/g== demo@example.com`
 
+	testKeyToSignPrivate = `-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+NhAAAAAwEAAQAAAQEAwn1V2xd/EgJXIY53fBTtc20k/ajekqQngvkpFSwNHW63XNEQK8Ll
+FOCyGXoje9DUGxnYs3F/ohfsBBWkLNfU7fiENdSJL1pbkAgJ+2uhV9sLZjvYhikrXWoyJX
+LDKfY12LjpcBS2HeLMT04laZ/xSJrOBEJHGzHyr2wUO0NUQUQPUODAFhnHKgvvA4Uu79UY
+gcdThF4w83+EAnE4JzBZMKPMjzy4u1C0R/LoD8DuapHwX6NGWdEUvUZZ+XRcIWeCOvR0ne
+qGBRH35k1Mv7k65d7kkE0uvM5Z36erw3tdoszxPYf7AKnO1DpeU2uwMcym6xNwfwynKjhL
+qL/Mgi4uRwAAA8iAsY0zgLGNMwAAAAdzc2gtcnNhAAABAQDCfVXbF38SAlchjnd8FO1zbS
+T9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11Ikv
+WluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbB
+Q7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5q
+kfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/
+sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5HAAAAAwEAAQAAAQABns2yT5XNbpuPOgKg
+1APObGBchKWmDxwNKUpAVOefEScR7OP3mV4TOHQDZlMZWvoJZ8O4av+nOA/NUOjXPs0VVn
+azhBvIezY8EvUSVSk49Cg6J9F7/KfR1WqpiTU7CkQUlCXNuz5xLUyKdJo3MQ/vjOqeenbh
+MR9Wes4IWF1BVe4VOD6lxRsjwuIieIgmScW28FFh2rgsEfO2spzZ3AWOGExw+ih757hFz5
+4A2fhsQXP8m3r8m7iiqcjTLWXdxTUk4zot2kZEjbI4Avk0BL+wVeFq6f/y+G+g5edqSo7j
+uuSgzbUQtA9PMnGxhrhU2Ob7n3VGdya7WbGZkaKP8zJhAAAAgQC3bJurmOSLIi3KVhp7lD
+/FfxwXHwVBFALCgq7EyNlkTz6RDoMFM4eOTRMDvsgWxT+bSB8R8eg1sfgY8rkHOuvTAVI5
+3oEYco3H7NWE9X8Zt0lyhO1uaE49EENNSQ8hY7R3UIw5becyI+7ZZxs9HkBgCQCZzSjzA+
+SIyAoMKM261AAAAIEA+PCkcDRp3J0PaoiuetXSlWZ5WjP3CtwT2xrvEX9x+ZsDgXCDYQ5T
+osxvEKOGSfIrHUUhzZbFGvqWyfrziPe9ypJrtCM7RJT/fApBXnbWFcDZzWamkQvohst+0w
+XHYCmNoJ6/Y+roLv3pzyFUmqRNcrQaohex7TZmsvHJT513UakAAACBAMgBXxH8DyNYdniX
+mIXEto4GqMh4rXdNwCghfpyWdJE6vCyDt7g7bYMq7AQ2ynSKRtQDT/ZgQNfSbilUq3iXz7
+xNZn5U9ndwFs90VmEpBup/PmhfX+Gwt5hQZLbkKZcgQ9XrhSKdMxVm1yy/fk0U457enlz5
+cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
+-----END OPENSSH PRIVATE KEY-----
+`
+	testKeyToSignPublic = `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDCfVXbF38SAlchjnd8FO1zbST9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11IkvWluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbBQ7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5qkfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5H `
+
 	// testPublicKeyInstall is the public key that is installed in the
 	// admin account's authorized_keys
 	testPublicKeyInstall = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC9i+hFxZHGo6KblVme4zrAcJstR6I0PTJozW286X4WyvPnkMYDQ5mnhEYC7UWCvjoTWbPEXPX7NjhRtwQTGD67bV+lrxgfyzK1JZbUXK4PwgKJvQD+XyyWYMzDgGSQY61KUSqCxymSm/9NZkPU3ElaQ9xQuTzPpztM4ROfb8f2Yv6/ZESZsTo0MTAkp8Pcy+WkioI/uJ1H7zqs0EA4OMY4aDJRu0UtP4rTVeYNEAuRXdX+eH4aW3KMvhzpFTjMbaJHJXlEeUm2SaX5TNQyTOvghCeQILfYIL/Ca2ij8iwCmulwdV6eQGfd4VDu40PvSnmfoaE38o6HaPnX0kUcnKiT"
@@ -213,17 +243,7 @@ func testSSH(user, host string, auth ssh.AuthMethod, command string) error {
 }
 
 func TestBackend_AllowedUsers(t *testing.T) {
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	b, err := Backend(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	roleData := map[string]interface{}{
 		"key_type":      "otp",
@@ -235,7 +255,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 	roleReq := &logical.Request{
 		Operation: logical.UpdateOperation,
 		Path:      "roles/role1",
-		Storage:   config.StorageView,
+		Storage:   s,
 		Data:      roleData,
 	}
 
@@ -250,7 +270,7 @@ func TestBackend_AllowedUsers(t *testing.T) {
 	}
 	credsReq := &logical.Request{
 		Operation: logical.UpdateOperation,
-		Storage:   config.StorageView,
+		Storage:   s,
 		Path:      "creds/role1",
 		Data:      credsData,
 	}
@@ -846,42 +866,7 @@ func TestSSHBackend_CA(t *testing.T) {
 func testSSHBackend_CA(t *testing.T, dockerImageTag, caPublicKey, caPrivateKey, algorithmSigner string, expectError bool) {
 	cleanup, sshAddress := prepareTestContainer(t, dockerImageTag, caPublicKey)
 	defer cleanup()
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
-
-	testKeyToSignPrivate := `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
-NhAAAAAwEAAQAAAQEAwn1V2xd/EgJXIY53fBTtc20k/ajekqQngvkpFSwNHW63XNEQK8Ll
-FOCyGXoje9DUGxnYs3F/ohfsBBWkLNfU7fiENdSJL1pbkAgJ+2uhV9sLZjvYhikrXWoyJX
-LDKfY12LjpcBS2HeLMT04laZ/xSJrOBEJHGzHyr2wUO0NUQUQPUODAFhnHKgvvA4Uu79UY
-gcdThF4w83+EAnE4JzBZMKPMjzy4u1C0R/LoD8DuapHwX6NGWdEUvUZZ+XRcIWeCOvR0ne
-qGBRH35k1Mv7k65d7kkE0uvM5Z36erw3tdoszxPYf7AKnO1DpeU2uwMcym6xNwfwynKjhL
-qL/Mgi4uRwAAA8iAsY0zgLGNMwAAAAdzc2gtcnNhAAABAQDCfVXbF38SAlchjnd8FO1zbS
-T9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11Ikv
-WluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbB
-Q7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5q
-kfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/
-sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5HAAAAAwEAAQAAAQABns2yT5XNbpuPOgKg
-1APObGBchKWmDxwNKUpAVOefEScR7OP3mV4TOHQDZlMZWvoJZ8O4av+nOA/NUOjXPs0VVn
-azhBvIezY8EvUSVSk49Cg6J9F7/KfR1WqpiTU7CkQUlCXNuz5xLUyKdJo3MQ/vjOqeenbh
-MR9Wes4IWF1BVe4VOD6lxRsjwuIieIgmScW28FFh2rgsEfO2spzZ3AWOGExw+ih757hFz5
-4A2fhsQXP8m3r8m7iiqcjTLWXdxTUk4zot2kZEjbI4Avk0BL+wVeFq6f/y+G+g5edqSo7j
-uuSgzbUQtA9PMnGxhrhU2Ob7n3VGdya7WbGZkaKP8zJhAAAAgQC3bJurmOSLIi3KVhp7lD
-/FfxwXHwVBFALCgq7EyNlkTz6RDoMFM4eOTRMDvsgWxT+bSB8R8eg1sfgY8rkHOuvTAVI5
-3oEYco3H7NWE9X8Zt0lyhO1uaE49EENNSQ8hY7R3UIw5becyI+7ZZxs9HkBgCQCZzSjzA+
-SIyAoMKM261AAAAIEA+PCkcDRp3J0PaoiuetXSlWZ5WjP3CtwT2xrvEX9x+ZsDgXCDYQ5T
-osxvEKOGSfIrHUUhzZbFGvqWyfrziPe9ypJrtCM7RJT/fApBXnbWFcDZzWamkQvohst+0w
-XHYCmNoJ6/Y+roLv3pzyFUmqRNcrQaohex7TZmsvHJT513UakAAACBAMgBXxH8DyNYdniX
-mIXEto4GqMh4rXdNwCghfpyWdJE6vCyDt7g7bYMq7AQ2ynSKRtQDT/ZgQNfSbilUq3iXz7
-xNZn5U9ndwFs90VmEpBup/PmhfX+Gwt5hQZLbkKZcgQ9XrhSKdMxVm1yy/fk0U457enlz5
-cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
------END OPENSSH PRIVATE KEY-----
-`
-	testKeyToSignPublic := `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDCfVXbF38SAlchjnd8FO1zbST9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11IkvWluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbBQ7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5qkfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5H `
+	b, _ := CreateBackendWithStorage(t)
 
 	roleOptions := map[string]interface{}{
 		"allow_user_certificates": true,
@@ -957,42 +942,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 func TestSSHBackend_CAUpgradeAlgorithmSigner(t *testing.T) {
 	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, testCAPublicKey)
 	defer cleanup()
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
-
-	testKeyToSignPrivate := `-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
-NhAAAAAwEAAQAAAQEAwn1V2xd/EgJXIY53fBTtc20k/ajekqQngvkpFSwNHW63XNEQK8Ll
-FOCyGXoje9DUGxnYs3F/ohfsBBWkLNfU7fiENdSJL1pbkAgJ+2uhV9sLZjvYhikrXWoyJX
-LDKfY12LjpcBS2HeLMT04laZ/xSJrOBEJHGzHyr2wUO0NUQUQPUODAFhnHKgvvA4Uu79UY
-gcdThF4w83+EAnE4JzBZMKPMjzy4u1C0R/LoD8DuapHwX6NGWdEUvUZZ+XRcIWeCOvR0ne
-qGBRH35k1Mv7k65d7kkE0uvM5Z36erw3tdoszxPYf7AKnO1DpeU2uwMcym6xNwfwynKjhL
-qL/Mgi4uRwAAA8iAsY0zgLGNMwAAAAdzc2gtcnNhAAABAQDCfVXbF38SAlchjnd8FO1zbS
-T9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11Ikv
-WluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbB
-Q7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5q
-kfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/
-sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5HAAAAAwEAAQAAAQABns2yT5XNbpuPOgKg
-1APObGBchKWmDxwNKUpAVOefEScR7OP3mV4TOHQDZlMZWvoJZ8O4av+nOA/NUOjXPs0VVn
-azhBvIezY8EvUSVSk49Cg6J9F7/KfR1WqpiTU7CkQUlCXNuz5xLUyKdJo3MQ/vjOqeenbh
-MR9Wes4IWF1BVe4VOD6lxRsjwuIieIgmScW28FFh2rgsEfO2spzZ3AWOGExw+ih757hFz5
-4A2fhsQXP8m3r8m7iiqcjTLWXdxTUk4zot2kZEjbI4Avk0BL+wVeFq6f/y+G+g5edqSo7j
-uuSgzbUQtA9PMnGxhrhU2Ob7n3VGdya7WbGZkaKP8zJhAAAAgQC3bJurmOSLIi3KVhp7lD
-/FfxwXHwVBFALCgq7EyNlkTz6RDoMFM4eOTRMDvsgWxT+bSB8R8eg1sfgY8rkHOuvTAVI5
-3oEYco3H7NWE9X8Zt0lyhO1uaE49EENNSQ8hY7R3UIw5becyI+7ZZxs9HkBgCQCZzSjzA+
-SIyAoMKM261AAAAIEA+PCkcDRp3J0PaoiuetXSlWZ5WjP3CtwT2xrvEX9x+ZsDgXCDYQ5T
-osxvEKOGSfIrHUUhzZbFGvqWyfrziPe9ypJrtCM7RJT/fApBXnbWFcDZzWamkQvohst+0w
-XHYCmNoJ6/Y+roLv3pzyFUmqRNcrQaohex7TZmsvHJT513UakAAACBAMgBXxH8DyNYdniX
-mIXEto4GqMh4rXdNwCghfpyWdJE6vCyDt7g7bYMq7AQ2ynSKRtQDT/ZgQNfSbilUq3iXz7
-xNZn5U9ndwFs90VmEpBup/PmhfX+Gwt5hQZLbkKZcgQ9XrhSKdMxVm1yy/fk0U457enlz5
-cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
------END OPENSSH PRIVATE KEY-----
-`
-	testKeyToSignPublic := `ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDCfVXbF38SAlchjnd8FO1zbST9qN6SpCeC+SkVLA0dbrdc0RArwuUU4LIZeiN70NQbGdizcX+iF+wEFaQs19Tt+IQ11IkvWluQCAn7a6FX2wtmO9iGKStdajIlcsMp9jXYuOlwFLYd4sxPTiVpn/FIms4EQkcbMfKvbBQ7Q1RBRA9Q4MAWGccqC+8DhS7v1RiBx1OEXjDzf4QCcTgnMFkwo8yPPLi7ULRH8ugPwO5qkfBfo0ZZ0RS9Rln5dFwhZ4I69HSd6oYFEffmTUy/uTrl3uSQTS68zlnfp6vDe12izPE9h/sAqc7UOl5Ta7AxzKbrE3B/DKcqOEuov8yCLi5H `
+	b, _ := CreateBackendWithStorage(t)
 
 	// Old role entries between 1.4.3 and 1.5.2 had algorithm_signer default to
 	// ssh-rsa if not provided.
@@ -1075,12 +1025,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 }
 
 func TestBackend_AbleToRetrievePublicKey(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -1109,12 +1054,7 @@ func TestBackend_AbleToRetrievePublicKey(t *testing.T) {
 }
 
 func TestBackend_AbleToAutoGenerateSigningKeys(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	var expectedPublicKey string
 	testCase := logicaltest.TestCase{
@@ -1157,12 +1097,7 @@ func TestBackend_AbleToAutoGenerateSigningKeys(t *testing.T) {
 }
 
 func TestBackend_ValidPrincipalsValidatedForHostCertificates(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -1200,12 +1135,7 @@ func TestBackend_ValidPrincipalsValidatedForHostCertificates(t *testing.T) {
 }
 
 func TestBackend_OptionsOverrideDefaults(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -1248,12 +1178,8 @@ func TestBackend_OptionsOverrideDefaults(t *testing.T) {
 }
 
 func TestBackend_AllowedUserKeyLengths(t *testing.T) {
-	config := logical.TestBackendConfig()
+	b, _ := CreateBackendWithStorage(t)
 
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
 		Steps: []logicaltest.TestStep{
@@ -1420,12 +1346,7 @@ func TestBackend_AllowedUserKeyLengths(t *testing.T) {
 }
 
 func TestBackend_CustomKeyIDFormat(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -1469,12 +1390,7 @@ func TestBackend_CustomKeyIDFormat(t *testing.T) {
 }
 
 func TestBackend_DisallowUserProvidedKeyIDs(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -1735,12 +1651,8 @@ func TestBackend_DefExtTemplatingDisabled(t *testing.T) {
 }
 
 func TestSSHBackend_ValidateNotBeforeDuration(t *testing.T) {
-	config := logical.TestBackendConfig()
+	b, _ := CreateBackendWithStorage(t)
 
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
 		Steps: []logicaltest.TestStep{
@@ -1829,12 +1741,7 @@ func TestSSHBackend_ValidateNotBeforeDuration(t *testing.T) {
 }
 
 func TestSSHBackend_IssueSign(t *testing.T) {
-	config := logical.TestBackendConfig()
-
-	b, err := Factory(context.Background(), config)
-	if err != nil {
-		t.Fatalf("Cannot create backend: %s", err)
-	}
+	b, _ := CreateBackendWithStorage(t)
 
 	testCase := logicaltest.TestCase{
 		LogicalBackend: b,
@@ -2425,23 +2332,13 @@ func testCredsWrite(t *testing.T, roleName string, data map[string]interface{}, 
 }
 
 func TestBackend_CleanupDynamicHostKeys(t *testing.T) {
-	config := logical.TestBackendConfig()
-	config.StorageView = &logical.InmemStorage{}
-
-	b, err := Backend(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = b.Setup(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	b, s := CreateBackendWithStorage(t)
 
 	// Running on a clean mount shouldn't do anything.
 	cleanRequest := &logical.Request{
 		Operation: logical.DeleteOperation,
 		Path:      "tidy/dynamic-keys",
-		Storage:   config.StorageView,
+		Storage:   s,
 	}
 
 	resp, err := b.HandleRequest(context.Background(), cleanRequest)
@@ -2459,7 +2356,7 @@ func TestBackend_CleanupDynamicHostKeys(t *testing.T) {
 		}
 		entry, err := logical.StorageEntryJSON(fmt.Sprintf("%vexample-%v", keysStoragePrefix, i), &data)
 		require.NoError(t, err)
-		err = config.StorageView.Put(context.Background(), entry)
+		err = s.Put(context.Background(), entry)
 		require.NoError(t, err)
 	}
 
@@ -2738,18 +2635,24 @@ func TestProperAuthing(t *testing.T) {
 	// key := resp.Data["key"].(string)
 
 	paths := map[string]pathAuthChecker{
-		"config/ca":          shouldBeAuthed,
-		"config/zeroaddress": shouldBeAuthed,
-		"creds/test-otp":     shouldBeAuthed,
-		"issue/test-ca":      shouldBeAuthed,
-		"lookup":             shouldBeAuthed,
-		"public_key":         shouldBeUnauthedReadList,
-		"roles/test-ca":      shouldBeAuthed,
-		"roles/test-otp":     shouldBeAuthed,
-		"roles":              shouldBeAuthed,
-		"sign/test-ca":       shouldBeAuthed,
-		"tidy/dynamic-keys":  shouldBeAuthed,
-		"verify":             shouldBeUnauthedWriteOnly,
+		"config/ca":                 shouldBeAuthed,
+		"config/zeroaddress":        shouldBeAuthed,
+		"config/issuers":            shouldBeAuthed,
+		"creds/test-otp":            shouldBeAuthed,
+		"issue/test-ca":             shouldBeAuthed,
+		"lookup":                    shouldBeAuthed,
+		"public_key":                shouldBeUnauthedReadList,
+		"roles/test-ca":             shouldBeAuthed,
+		"roles/test-otp":            shouldBeAuthed,
+		"roles":                     shouldBeAuthed,
+		"sign/test-ca":              shouldBeAuthed,
+		"tidy/dynamic-keys":         shouldBeAuthed,
+		"verify":                    shouldBeUnauthedWriteOnly,
+		"issuers":                   shouldBeAuthed,
+		"issuers/import":            shouldBeAuthed,
+		"issuers/import/test":       shouldBeAuthed,
+		"issuer/default":            shouldBeAuthed,
+		"issuer/default/public_key": shouldBeUnauthedReadList,
 	}
 	for path, checkerType := range paths {
 		checker := pathAuthChckerMap[checkerType]
@@ -2787,6 +2690,12 @@ func TestProperAuthing(t *testing.T) {
 		if strings.Contains(raw_path, "{role}") && strings.Contains(raw_path, "creds") {
 			raw_path = strings.ReplaceAll(raw_path, "{role}", "test-otp")
 		}
+		if strings.Contains(raw_path, "{issuer_ref}") && (strings.Contains(raw_path, "issuer") || strings.Contains(raw_path, "issuers")) {
+			raw_path = strings.ReplaceAll(raw_path, "{issuer_ref}", "default")
+		}
+		if strings.Contains(raw_path, "{issuer_name}") && (strings.Contains(raw_path, "issuer") || strings.Contains(raw_path, "issuers")) {
+			raw_path = strings.ReplaceAll(raw_path, "{issuer_name}", "test")
+		}
 
 		handler, present := paths[raw_path]
 		if !present {
@@ -2819,4 +2728,770 @@ func TestProperAuthing(t *testing.T) {
 	if !validatedPath {
 		t.Fatal("Expected to have validated at least one path.")
 	}
+}
+
+func submitCAIssuerStep(issuerName string, parameters map[string]interface{}) logicaltest.TestStep {
+	path := "issuers/import"
+	if issuerName != "" {
+		path += "/" + issuerName
+	}
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      path,
+		Data:      parameters,
+	}
+}
+
+func updateIssuersConfigStep(parameters map[string]interface{}) logicaltest.TestStep {
+	return logicaltest.TestStep{
+		Operation: logical.UpdateOperation,
+		Path:      "config/issuers",
+		Data:      parameters,
+	}
+}
+
+// TestSSHBackend_IssuerLifecycle tests the complete lifecycle of issuers including
+// creation, configuration, updates, and deletion
+func TestSSHBackend_IssuerLifecycle(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// Test initial state
+	t.Run("initial_state", func(t *testing.T) {
+		// Reading default issuer should fail when none configured
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError(), "expected error when no default issuer configured")
+	})
+
+	// Test issuer creation and default behavior
+	t.Run("creation_and_default", func(t *testing.T) {
+		// Create first issuer - should become default automatically
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/first-issuer",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		firstIssuerId := resp.Data["issuer_id"].(string)
+
+		// Verify it's set as default
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, firstIssuerId, resp.Data["default"])
+
+		// Create second issuer with explicit default setting
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/second-issuer",
+			Data: map[string]interface{}{
+				"set_default": true,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		secondIssuerId := resp.Data["issuer_id"].(string)
+
+		// Verify second issuer is now default
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, secondIssuerId, resp.Data["default"])
+	})
+
+	// Test issuer name conflicts
+	t.Run("issuer_name_conflicts", func(t *testing.T) {
+		// Create first issuer with name
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-name",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Try to create second issuer with same name
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-name",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Error().Error(), "name already in use")
+	})
+
+	// Test issuer name update
+	t.Run("name_update", func(t *testing.T) {
+		// Create test issuer
+		issuerName := "test-issuer-name"
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Test name update
+		newName := "updated-name"
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuer/" + issuerId,
+			Data: map[string]interface{}{
+				"issuer_name": newName,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Verify old name fails and new name works
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + newName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuerId, resp.Data["issuer_id"])
+	})
+
+	// Test public key operations
+	t.Run("public_key_operations", func(t *testing.T) {
+		// Create issuer with known key material
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Test authenticated public key retrieval
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, testCAPublicKey, resp.Data["public_key"])
+
+		// Test unauthenticated public key retrieval
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId + "/public_key",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, []byte(testCAPublicKey), resp.Data[logical.HTTPRawBody])
+	})
+
+	// Test deletion and cleanup
+	t.Run("deletion_and_cleanup", func(t *testing.T) {
+		// Create test issuer
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/delete-test",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerId := resp.Data["issuer_id"].(string)
+
+		// Delete the issuer
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+
+		// Verify issuer is gone
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerId,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+
+		// Test bulk deletion via config/ca
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "config/ca",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+
+		// Verify all issuers are gone
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ListOperation,
+			Path:      "issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Data["keys"])
+
+		// Verify that there's no default issuer configured
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "config/issuers",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.Empty(t, resp.Data["default"])
+	})
+
+	t.Run("issuer_reference_resolution", func(t *testing.T) {
+		// Create issuer with name
+		issuerName := "ref-test"
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerID := resp.Data["issuer_id"].(string)
+
+		// Test referencing by ID
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerID,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Test referencing by name
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/" + issuerName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Test referencing by 'default' when it's the default
+		updateReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/issuers",
+			Data: map[string]interface{}{
+				"default": issuerID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), updateReq)
+		require.NoError(t, err)
+
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "issuer/default",
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+	})
+
+	t.Run("known_key_material", func(t *testing.T) {
+		// submit an issuer
+		req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		require.NotNil(t, resp.Data["issuer_id"])
+		require.NotNil(t, resp.Data["public_key"])
+
+		issuerId1 := resp.Data["issuer_id"].(string)
+		issuerPublicKey1 := resp.Data["public_key"]
+
+		// submit a new issuer with the same key material
+		req = &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.Data)
+		require.NotNil(t, resp.Data["issuer_id"])
+		require.NotNil(t, resp.Data["public_key"])
+
+		issuerId2 := resp.Data["issuer_id"]
+		issuerPublicKey2 := resp.Data["public_key"]
+
+		require.EqualValues(t, issuerId1, issuerId2, "expected issuer identifiers to match")
+		require.EqualValues(t, issuerPublicKey1, issuerPublicKey2, "expected public keys to match")
+	})
+}
+
+// TestSSHBackend_BasicIssuerOperations tests the basic creation and usage of issuers
+func TestSSHBackend_BasicIssuerOperations(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// create a role to perform operations against without a specific issuer configured
+	roleName := "test-role-1"
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "roles/" + roleName,
+		Data: map[string]interface{}{
+			"allow_user_certificates": true,
+			"allowed_users":           "*",
+			"key_type":                "ca",
+			"default_user":            testUserName,
+			"ttl":                     "30m0s",
+		},
+		Storage: s,
+	}
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
+	}
+
+	// try to sign a key with the role, should fail as there is no issuer configured
+	signReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "sign/" + roleName,
+		Data: map[string]interface{}{
+			"public_key":       testKeyToSignPublic,
+			"valid_principals": testUserName,
+		},
+		Storage: s,
+	}
+	resp, err = b.HandleRequest(context.Background(), signReq)
+	if err != nil || (resp != nil && !resp.IsError()) {
+		t.Fatalf("expected key signing to have failed as no issuer is configured, got resp: %+v, err: %v", resp, err)
+	}
+
+	// submit an issuer to be used by the role and don't set it explicity
+	// as the first issuer imported is set as default
+	importIssuerReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "issuers/import",
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
+	}
+
+	// get the issuer's public key
+	caPublicKey := strings.TrimSpace(resp.Data["public_key"].(string))
+	if caPublicKey == "" {
+		t.Fatalf("empty public key")
+	}
+
+	// prepare test container to test SSH
+	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, caPublicKey)
+	defer cleanup()
+
+	// try to sign a key with the role, should succeed as there is an issuer configured as default
+	resp, err = b.HandleRequest(context.Background(), signReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("expected key sign to succeed, got resp: %+v, err: %v", resp, err)
+	}
+
+	// validate the signed key
+	signedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
+	if signedKey == "" {
+		t.Fatal("empty signed key")
+	}
+
+	privateKey, err := ssh.ParsePrivateKey([]byte(testKeyToSignPrivate))
+	if err != nil {
+		t.Fatalf("error parsing private key, got err: %v", err)
+	}
+
+	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(signedKey))
+	if err != nil {
+		t.Fatalf("error parsing signed key, got err: %v", err)
+	}
+
+	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
+	if err != nil {
+		t.Fatalf("error creating cert signer, got err: %v", err)
+	}
+
+	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
+	if err != nil {
+		t.Fatalf("did not expect error, got err: %v", err)
+	}
+}
+
+// TestSSHBackend_DefaultIssuerBehavior tests default issuer mechanics
+func TestSSHBackend_DefaultIssuerBehavior(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	// First create a role and initial issuer (reusing setup from previous test)
+	roleName := "test-role-1"
+	setupInitialIssuerAndRole(t, b, s, roleName)
+
+	// create a second issuer which will override the current default
+	issuerName := "test-ca-2"
+	importIssuerReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "issuers/import/" + issuerName,
+		Data: map[string]interface{}{
+			"set_default": true,
+		},
+		Storage: s,
+	}
+	resp, err := b.HandleRequest(context.Background(), importIssuerReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("ca issuer should have been successfully submited, got: resp: %+v, err: %v", resp, err)
+	}
+
+	// issue a key with the new issuer's key material
+	issueReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "issue/" + roleName,
+		Data: map[string]interface{}{
+			"valid_principals": testUserName,
+		},
+		Storage: s,
+	}
+	resp, err = b.HandleRequest(context.Background(), issueReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("expected key issue to succeed, got resp: %+v, err: %v", resp, err)
+	}
+
+	// parse keys
+	issuedSignedKey := strings.TrimSpace(resp.Data["signed_key"].(string))
+	if issuedSignedKey == "" {
+		t.Fatalf("empty signed public key")
+	}
+
+	parsedKey, _, _, _, err := ssh.ParseAuthorizedKey([]byte(issuedSignedKey))
+	if err != nil {
+		t.Fatalf("error parsing signed key: %v", err)
+	}
+
+	issuedPrivateKey := strings.TrimSpace(resp.Data["private_key"].(string))
+	if issuedPrivateKey == "" {
+		t.Fatalf("empty private key")
+	}
+
+	privateKey, err := ssh.ParsePrivateKey([]byte(issuedPrivateKey))
+	if err != nil {
+		t.Fatalf("error parsing private key: %v", err)
+	}
+
+	certSigner, err := ssh.NewCertSigner(parsedKey.(*ssh.Certificate), privateKey)
+	if err != nil {
+		t.Fatalf("error creating cert signer: %v", err)
+	}
+
+	// SSH should fail since we're using a different issuer
+	cleanup, sshAddress := prepareTestContainer(t, dockerImageTagSupportsRSA1, "")
+	defer cleanup()
+
+	err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
+	if err == nil {
+		t.Fatalf("expected error but got none")
+	}
+}
+
+// TestSSHBackend_RoleIssuerBinding tests the relationship between roles and issuers
+func TestSSHBackend_RoleIssuerBinding(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	t.Run("explicit_role_issuer_binding", func(t *testing.T) {
+		// Create two issuers with known key material for better testing
+		issuer1Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer1",
+			Data: map[string]interface{}{
+				"public_key":  testCAPublicKey,
+				"private_key": testCAPrivateKey,
+			},
+			Storage: s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuer1Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer1ID := resp.Data["issuer_id"].(string)
+
+		// Create second issuer with different key material
+		issuer2Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer2",
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), issuer2Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer2ID := resp.Data["issuer_id"].(string)
+
+		require.NotEqual(t, issuer1ID, issuer2ID, "issuer IDs should be different")
+
+		// Create role with issuer1 explicity bound
+		role1Name := "role-with-issuer1"
+		role1Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + role1Name,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuer1ID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), role1Req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Verify role correctly stores issuer reference
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + role1Name,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuer1ID, resp.Data["issuer_ref"])
+
+		// Test signing with explicit issuer binding
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + role1Name,
+			Data: map[string]interface{}{
+				"public_key":       testKeyToSignPublic,
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotEmpty(t, resp.Data["signed_key"])
+	})
+
+	t.Run("issuer_deletion_impact", func(t *testing.T) {
+		// Create issuer and role
+		issuerReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/test-issuer",
+			Storage:   s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuerReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuerID := resp.Data["issuer_id"].(string)
+
+		roleName := "test-role"
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuerID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Sign a certificate before deletion
+		signReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "sign/" + roleName,
+			Data: map[string]interface{}{
+				"public_key":       testKeyToSignPublic,
+				"valid_principals": testUserName,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotEmpty(t, resp.Data["signed_key"])
+
+		// Delete the issuer
+		deleteReq := &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "issuer/" + issuerID,
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), deleteReq)
+		require.NoError(t, err)
+		// Response should contain warning about role references
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Warnings[0], "1 roles reference")
+
+		// Verify signing now fails
+		resp, err = b.HandleRequest(context.Background(), signReq)
+		require.NoError(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Error().Error(), fmt.Sprintf("unable to find issuer for reference: %s", issuerID))
+
+		// Verify role still exists but shows invalid issuer
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + roleName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuerID, resp.Data["issuer_ref"])
+	})
+
+	t.Run("role_issuer_update", func(t *testing.T) {
+		// Create two issuers
+		issuer3Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer3",
+			Storage:   s,
+		}
+		resp, err := b.HandleRequest(context.Background(), issuer3Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer3ID := resp.Data["issuer_id"].(string)
+
+		issuer4Req := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "issuers/import/issuer4",
+			Storage:   s,
+		}
+		resp, err = b.HandleRequest(context.Background(), issuer4Req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		issuer4ID := resp.Data["issuer_id"].(string)
+
+		// Create role with issuer3
+		roleName := "updateable-role"
+		roleReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "roles/" + roleName,
+			Data: map[string]interface{}{
+				"allow_user_certificates": true,
+				"allowed_users":           "*",
+				"key_type":                "ca",
+				"default_user":            testUserName,
+				"ttl":                     "30m0s",
+				"issuer_ref":              issuer3ID,
+			},
+			Storage: s,
+		}
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Update role to use issuer4
+		roleReq.Data["issuer_ref"] = issuer4ID
+		resp, err = b.HandleRequest(context.Background(), roleReq)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		// Verify role now uses issuer4
+		resp, err = b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.ReadOperation,
+			Path:      "roles/" + roleName,
+			Storage:   s,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, issuer4ID, resp.Data["issuer_ref"])
+	})
+}
+
+// Helper function to setup initial issuer and role
+func setupInitialIssuerAndRole(t *testing.T, b *backend, s logical.Storage, roleName string) {
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "roles/" + roleName,
+		Data: map[string]interface{}{
+			"allow_user_certificates": true,
+			"allowed_users":           "*",
+			"key_type":                "ca",
+			"default_user":            testUserName,
+			"ttl":                     "30m0s",
+		},
+		Storage: s,
+	}
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create role, got resp: %+v, err: %v", resp, err)
+	}
+
+	importIssuerReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "issuers/import",
+		Storage:   s,
+	}
+	resp, err = b.HandleRequest(context.Background(), importIssuerReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("cannot create issuer, got: resp: %+v, err: %v", resp, err)
+	}
+}
+
+func CreateBackendWithStorage(t testing.TB) (*backend, logical.Storage) {
+	t.Helper()
+
+	config := logical.TestBackendConfig()
+	config.StorageView = &logical.InmemStorage{}
+
+	b, err := Backend(config)
+	require.NoError(t, err, "cannot create backend")
+
+	err = b.Setup(context.Background(), config)
+	require.NoError(t, err, "cannot setup backend")
+
+	return b, config.StorageView
 }

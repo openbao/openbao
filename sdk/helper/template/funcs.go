@@ -6,6 +6,7 @@ package template
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -66,6 +67,15 @@ func encodeBase64(str string) string {
 
 func decodeBase64(str string) (string, error) {
 	data, err := base64.StdEncoding.DecodeString(str)
+	return string(data), err
+}
+
+func encodeHex(str string) string {
+	return hex.EncodeToString([]byte(str))
+}
+
+func decodeHex(str string) (string, error) {
+	data, err := hex.DecodeString(str)
 	return string(data), err
 }
 

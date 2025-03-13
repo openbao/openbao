@@ -2226,5 +2226,5 @@ func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView,
 		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
 	}
 
-	panic("invalid mount entry")
+	return nil, errors.New("invalid mount entry")
 }

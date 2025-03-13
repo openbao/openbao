@@ -1140,16 +1140,14 @@ func TestCore_MountEntryView(t *testing.T) {
 
 		wantViewPrefix string
 		wantError      bool
-		wantPanic      bool
 	}{
 		{
-			// in real application it should never come to this
-			name: "entry without both type and mount table type leads to panic",
+			name: "entry without type nor table type leading to error",
 			mountEntry: &MountEntry{
 				UUID: testMountEntryUUID,
 			},
 
-			wantPanic: true,
+			wantError: true,
 		},
 		{
 			name: "entry of 'system' mount type",
@@ -1227,16 +1225,12 @@ func TestCore_MountEntryView(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			defer func() {
-				if r := recover(); (r == nil) && tt.wantPanic {
-					t.Errorf("expected execution to panic")
-				}
-			}()
-
 			gotView, err := c.mountEntryView(ctx, tt.mountEntry)
 
 			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
-			require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)
+			if err == nil {
+				require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)
+			}
 		})
 	}
 }

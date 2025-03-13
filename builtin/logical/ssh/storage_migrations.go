@@ -112,10 +112,9 @@ func getMigrationLog(ctx context.Context, s logical.Storage) (*migrationLog, err
 	log := &migrationLog{}
 	err = entry.DecodeJSON(log)
 	if err != nil {
-		// If we can't decode our bundle, lets scrap it and assume a blank value,
-		// re-running the migration will at most bring back an older certificate/private key
 		return nil, nil
 	}
+
 	return log, nil
 }
 

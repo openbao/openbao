@@ -196,7 +196,7 @@ func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespac
 				filteredPolicies = append(filteredPolicies, policyName)
 				continue
 			}
-			if policyNS.HasParent(tokenNS) {
+			if policyNS.HasAncestor(tokenNS) {
 				filteredPolicies = append(filteredPolicies, policyName)
 			}
 		default:

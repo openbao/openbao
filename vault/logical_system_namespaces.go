@@ -15,54 +15,67 @@ import (
 )
 
 func (b *SystemBackend) namespacePaths() []*framework.Path {
+	namespaceListSchema := map[string]*framework.FieldSchema{
+		"keys": {
+			Type:        framework.TypeStringSlice,
+			Description: "List of namespace paths.",
+		},
+		"key_info": {
+			Type:        framework.TypeMap,
+			Description: "Map of namespace details by path.",
+		},
+	}
+
+	namespaceSchema := map[string]*framework.FieldSchema{
+		"uuid": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Internal UUID of the namespace.",
+		},
+		"id": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Accessor ID of the namespace.",
+		},
+		"path": {
+			Type:        framework.TypeString,
+			Required:    true,
+			Description: "Path of the namespace.",
+		},
+		"custom_metadata": {
+			Type:        framework.TypeMap,
+			Required:    true,
+			Description: "User provided key-value pairs.",
+		},
+	}
+
 	return []*framework.Path{
 		{
 			Pattern: "namespaces/?$",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
-				OperationVerb:   "list",
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
-				logical.ReadOperation: &framework.PathOperation{
-					Callback: b.handleNamespacesList(),
-					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"keys": {
-									Type:     framework.TypeStringSlice,
-									Required: true,
-								},
-								"namespaces": {
-									Type: framework.TypeStringSlice,
-								},
-							},
-						}},
-					},
-				},
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesList(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"keys": {
-									Type:     framework.TypeStringSlice,
-									Required: true,
-								},
-								"namespaces": {
-									Type: framework.TypeStringSlice,
-								},
-							},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceListSchema}},
 					},
+					Summary: "List namespaces.",
+				},
+				logical.ScanOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesScan(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: namespaceListSchema}},
+					},
+					Summary: "Scan (recursively list) namespaces.",
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespace-list"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespace-list"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
 		},
 
 		{
@@ -70,21 +83,17 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
-				// OperationSuffix: "api-namespace2", // ??? this endpoint duplicates /sys/namespaces/api-lock
 			},
 
 			Fields: map[string]*framework.FieldSchema{
-				"id": {
-					Type:        framework.TypeString,
-					Description: strings.TrimSpace(sysHelp["namespace-id"][0]),
-				},
 				"path": {
 					Type:        framework.TypeString,
-					Description: strings.TrimSpace(sysHelp["namespace-path"][0]),
+					Required:    true,
+					Description: "Path of the namespace.",
 				},
 				"custom_metadata": {
 					Type:        framework.TypeMap,
-					Description: strings.TrimSpace(sysHelp["namespace-custom_metadata"][0]),
+					Description: "User provided key-value pairs.",
 				},
 			},
 
@@ -92,77 +101,68 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesRead(),
 					Responses: map[int][]framework.Response{
-						http.StatusOK: {{
-							Description: "OK",
-							Fields: map[string]*framework.FieldSchema{
-								"id": {
-									Type:     framework.TypeString,
-									Required: false,
-								},
-								"path": {
-									Type:     framework.TypeString,
-									Required: true,
-								},
-								"custom_metadata": {
-									Type:     framework.TypeMap,
-									Required: false,
-								},
-							},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Retrieve the namespace body for the named path.",
+					Summary: "Retrieve a namespace.",
 				},
 				logical.UpdateOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesSet(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Add a new namespace.",
+					Summary: "Create or update a namespace.",
 				},
 				logical.PatchOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesPatch(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusOK: {{Description: "OK", Fields: namespaceSchema}},
 					},
-					Summary: "Update an existing namespace.",
+					Summary: "Update a namespace's custom metadata.",
 				},
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesDelete(),
 					Responses: map[int][]framework.Response{
-						http.StatusNoContent: {{
-							Description: "OK",
-							Fields:      map[string]*framework.FieldSchema{},
-						}},
+						http.StatusNoContent: {{Description: "OK"}},
 					},
-					Summary: "Delete the namespace with the given name.",
+					Summary: "Delete a namespace.",
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespace"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespace"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
 		},
 	}
 }
 
-// handleNamespacesList handles /sys/namespaces/ endpoints to provide the enabled namespaces
+// handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		namespaces, err := b.Core.namespaceStore.ListNamespacePaths(ctx, false /* includeRoot */)
+		// TODO(satoqz): Use ListNamespaceEntries once this can be rebased so we can also return the UUID fields.
+		namespaces, err := b.Core.namespaceStore.ListNamespaces(ctx, false /* includeRoot */)
 		if err != nil {
 			return nil, err
 		}
 
-		return logical.ListResponse(namespaces), nil
+		var keys []string
+		keyInfo := make(map[string]interface{})
+		for _, ns := range namespaces {
+			keys = append(keys, ns.Path)
+			keyInfo[ns.Path] = ns
+		}
+
+		return logical.ListResponseWithInfo(keys, keyInfo), nil
 	}
 }
 
-// handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace
+// handleNamespacesScan handles "/sys/namespaces" endpoint to scan the enabled namespaces.
+func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// TODO(satoqz): Implement scan once a clear API is available from NamespaceStore.
+		return nil, fmt.Errorf("scan is unimplemented")
+	}
+}
+
+// handleNamespacesRead handles the "/sys/namespaces/<path>" endpoints to read a namespace.
 func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -189,7 +189,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 	}
 }
 
-// handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace
+// handleNamespaceSet handles the "/sys/namespaces/<path>" endpoint to set a namespace.
 func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
@@ -204,15 +204,22 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		if err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
 			ns.Namespace.Path = path
 			ns.Namespace.CustomMetadata = metadata
 			return ns, nil
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return nil, nil
+		resp := &logical.Response{Data: map[string]interface{}{
+			"uuid":            ns.UUID,
+			"path":            ns.Namespace.Path,
+			"id":              ns.Namespace.ID,
+			"custom_metadata": ns.Namespace.CustomMetadata,
+		}}
+		return resp, nil
 	}
 }
 
@@ -232,11 +239,15 @@ func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]i
 	return metadata, nil
 }
 
-// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace
+// handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace's custom metadata.
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)
-		if err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+			if ns.UUID == "" {
+				return nil, fmt.Errorf("requested namespace does not exist")
+			}
+
 			current := make(map[string]interface{})
 			for k, v := range ns.Namespace.CustomMetadata {
 				current[k] = v
@@ -254,14 +265,22 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 
 			ns.Namespace.CustomMetadata = patched
 			return ns, nil
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return nil, nil
+		resp := &logical.Response{Data: map[string]interface{}{
+			"uuid":            ns.UUID,
+			"path":            ns.Namespace.Path,
+			"id":              ns.Namespace.ID,
+			"custom_metadata": ns.Namespace.CustomMetadata,
+		}}
+		return resp, nil
 	}
 }
 
+// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoints to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := data.Get("path").(string)

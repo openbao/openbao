@@ -477,18 +477,18 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 // ModifyNamespace is used to perform modifications to a namespace while
 // holding a write lock to prevent other changes to namespaces from occurring
 // at the same time.
-func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *NamespaceEntry) (*NamespaceEntry, error)) error {
+func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *NamespaceEntry) (*NamespaceEntry, error)) (*NamespaceEntry, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
-		return err
+		return nil, err
 	}
 
 	ns.lock.Lock()
 
 	path = namespace.Canonicalize(path)
 	if path == "" {
-		return errors.New("refusing to modify root namespace")
+		return nil, errors.New("refusing to modify root namespace")
 	}
 
 	var entry *NamespaceEntry
@@ -506,10 +506,14 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	var err error
 	entry, err = callback(ctx, entry)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return ns.setNamespaceLocked(ctx, entry)
+	if err := ns.setNamespaceLocked(ctx, entry); err != nil {
+		return nil, err
+	}
+
+	return entry.Clone(), nil
 }
 
 // ListNamespaces is used to list all available namespaces

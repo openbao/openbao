@@ -3,31 +3,6 @@
 
 package vault
 
-import (
-	"path"
-)
-
-// ViewPath returns storage prefix for the view
-func (e *MountEntry) ViewPath() string {
-	switch e.Type {
-	case mountTypeSystem:
-		return systemBarrierPrefix
-	case "token":
-		return path.Join(systemBarrierPrefix, tokenSubPath) + "/"
-	}
-
-	switch e.Table {
-	case mountTableType:
-		return backendBarrierPrefix + e.UUID + "/"
-	case credentialTableType:
-		return credentialBarrierPrefix + e.UUID + "/"
-	case auditTableType:
-		return auditBarrierPrefix + e.UUID + "/"
-	}
-
-	panic("invalid mount entry")
-}
-
 // mountEntrySysView creates a logical.SystemView from global and
 // mount-specific entries; because this should be called when setting
 // up a mountEntry, it doesn't check to ensure that me is not nil

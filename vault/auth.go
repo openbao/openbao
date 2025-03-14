@@ -147,8 +147,10 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	// Sync values to the cache
 	entry.SyncCache()
 
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+	view, err := c.mountEntryView(ctx, entry)
+	if err != nil {
+		return err
+	}
 
 	origViewReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1030,14 +1032,11 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
-	var err error
 	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
-		var backend logical.Backend
-
-		// Create a barrier view using the UUID
-		viewPath := entry.ViewPath()
-
-		view := NewBarrierView(c.barrier, viewPath)
+		view, err := c.mountEntryView(ctx, entry)
+		if err != nil {
+			return err
+		}
 
 		origViewReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1052,6 +1051,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 		// Initialize the backend
 		sysView := c.mountEntrySysView(entry)
 
+		var backend logical.Backend
 		backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
 		if err != nil {
 			c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)

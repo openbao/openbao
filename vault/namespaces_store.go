@@ -30,8 +30,14 @@ import (
 // See: https://developer.hashicorp.com/vault/api-docs/system/namespaces
 const namespaceIdLength = 6
 
-// Namespace storage location.
-const namespaceStoreRoot = "core/namespaces/"
+const (
+	// Namespace storage location.
+	namespaceStoreRoot = "core/namespaces/"
+
+	// namespaceBarrierPrefix is the prefix to the UUID of a namespaces
+	// used in the barrier view for the namespace-owned backends.
+	namespaceBarrierPrefix = "namespaces/"
+)
 
 // NamespaceStore is used to provide durable storage of namespace. It is
 // a singleton store across the Core and contains all child namespaces.
@@ -92,7 +98,7 @@ func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
 		return NewBarrierView(barrier, "")
 	}
 
-	return NewBarrierView(barrier, path.Join("namespaces", ne.UUID)+"/")
+	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ne.UUID)+"/")
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed

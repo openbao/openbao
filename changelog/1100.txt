@@ -1,3 +1,3 @@
 ```release-note:bug
-vault: fix a timing issue in OIDC_PeriodicFunc test
+vault: hopefully fix a timing issue in OIDC_PeriodicFunc test
 ```

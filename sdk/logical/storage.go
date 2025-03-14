@@ -28,6 +28,11 @@ var ErrSetupReadOnly = errors.New("cannot write to storage during setup")
 // for more information.
 const PBPWFClusterSentinel = "{{clusterId}}"
 
+// Default number of elements returned from a single call to ListPage. This
+// should roughly fit in 2MB of memory assuming a reasonable path length
+// (275 characters).
+const DefaultScanViewPageLimit = 7500
+
 // Storage is the way that logical backends are able read/write data.
 type Storage interface {
 	List(context.Context, string) ([]string, error)
@@ -67,8 +72,25 @@ type ClearableView interface {
 	Delete(context.Context, string) error
 }
 
+var _ ClearableView = Storage(nil)
+
+type PaginatedClearableView interface {
+	ClearableView
+	ListPage(context.Context, string, string, int) ([]string, error)
+}
+
+var _ PaginatedClearableView = Storage(nil)
+
 // ScanView is used to scan all the keys in a view iteratively
 func ScanView(ctx context.Context, view ClearableView, cb func(path string)) error {
+	// Prefer pagination if we have it.
+	if paginated, ok := view.(PaginatedClearableView); ok {
+		return ScanViewPaginated(ctx, paginated, DefaultScanViewPageLimit, func(page int, index int, path string) (cont bool, err error) {
+			cb(path)
+			return true, nil
+		})
+	}
+
 	frontier := []string{""}
 	for len(frontier) > 0 {
 		n := len(frontier)
@@ -92,6 +114,58 @@ func ScanView(ctx context.Context, view ClearableView, cb func(path string)) err
 				frontier = append(frontier, fullPath)
 			} else {
 				cb(fullPath)
+			}
+		}
+	}
+
+	return nil
+}
+
+func ScanViewPaginated(ctx context.Context, view PaginatedClearableView, pageSize int, cb func(page int, index int, path string) (cont bool, err error)) error {
+	frontier := []string{""}
+	for len(frontier) > 0 {
+		n := len(frontier)
+		current := frontier[n-1]
+		frontier = frontier[:n-1]
+
+		// List the contents using pagination.
+		var after string
+		var page int
+		for {
+			contents, err := view.ListPage(ctx, current, after, pageSize)
+			if err != nil {
+				return fmt.Errorf("list page %v failed at path %q: %w - %v / %v / %v", page, current, err, frontier, contents, after)
+			}
+
+			if len(contents) == 0 {
+				break
+			}
+
+			after = contents[len(contents)-1]
+			page += 1
+
+			// Handle the contents in the directory
+			for index, c := range contents {
+				// Exit if the context has been canceled
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				fullPath := current + c
+				if strings.HasSuffix(c, "/") {
+					frontier = append(frontier, fullPath)
+				} else {
+					cont, err := cb(page, index, fullPath)
+					if err != nil || !cont {
+						return err
+					}
+				}
+			}
+
+			if after == "" && len(contents) == 1 && pageSize > 1 {
+				// In this case, we likely had a mostly-empty "directory" with
+				// only a single entry, with the same name as this "directory".
+				// Exit out of it to avoid an infinite loop.
+				break
 			}
 		}
 	}
@@ -120,6 +194,19 @@ func CollectKeysWithPrefix(ctx context.Context, view ClearableView, prefix strin
 	return keys, nil
 }
 
+// CountKeys is used to identify how many keys exist in a view.
+func CountKeys(ctx context.Context, view ClearableView) (int, error) {
+	var count int
+
+	if err := ScanView(ctx, view, func(path string) {
+		count += 1
+	}); err != nil {
+		return -1, err
+	}
+
+	return count, nil
+}
+
 // ClearView is used to delete all the keys in a view
 func ClearView(ctx context.Context, view ClearableView) error {
 	return ClearViewWithLogging(ctx, view, nil)
@@ -134,6 +221,53 @@ func ClearViewWithLogging(ctx context.Context, view ClearableView, logger hclog.
 		logger = hclog.NewNullLogger()
 	}
 
+	if paginated, ok := view.(PaginatedClearableView); ok {
+		return clearViewWithPagination(ctx, paginated, logger)
+	}
+
+	return clearViewWithoutPagination(ctx, view, logger)
+}
+
+func clearViewWithPagination(ctx context.Context, view PaginatedClearableView, logger hclog.Logger) error {
+	countKeys, err := CountKeys(ctx, view)
+	if err != nil {
+		return fmt.Errorf("failed to count keys: %w", err)
+	}
+
+	logger.Debug("clearing paginated view", "total_keys", countKeys)
+
+	var pctDone int
+	var removedKeys int
+	if err := ScanViewPaginated(ctx, view, DefaultScanViewPageLimit, func(page int, index int, path string) (bool, error) {
+		// Rather than keep trying to do stuff with a canceled context, bail;
+		// storage will fail anyways
+		if ctx.Err() != nil {
+			return false, ctx.Err()
+		}
+
+		if err := view.Delete(ctx, path); err != nil {
+			return false, err
+		}
+
+		removedKeys += 1
+
+		newPctDone := removedKeys * 100.0 / countKeys
+		if int(newPctDone) > pctDone {
+			pctDone = int(newPctDone)
+			logger.Trace("view deletion progress", "percent", pctDone, "keys_deleted", removedKeys)
+		}
+
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	logger.Debug("paginated view cleared")
+
+	return nil
+}
+
+func clearViewWithoutPagination(ctx context.Context, view ClearableView, logger hclog.Logger) error {
 	// Collect all the keys
 	keys, err := CollectKeys(ctx, view)
 	if err != nil {

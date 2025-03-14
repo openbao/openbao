@@ -1751,11 +1751,9 @@ func (c *Core) setupMounts(ctx context.Context) error {
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
-	var err error
 	for _, entry := range c.mounts.sortEntriesByPathDepth().Entries {
 		// Initialize the backend, special casing for system
-		var view BarrierView
-		view, err = c.mountEntryView(ctx, entry)
+		view, err := c.mountEntryView(ctx, entry)
 		if err != nil {
 			return err
 		}
@@ -1770,8 +1768,8 @@ func (c *Core) setupMounts(ctx context.Context) error {
 			defer view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
-		var backend logical.Backend
 		// Create the new backend
+		var backend logical.Backend
 		sysView := c.mountEntrySysView(entry)
 		backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
 		if err != nil {

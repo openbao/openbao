@@ -1032,12 +1032,8 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	c.authLock.Lock()
 	defer c.authLock.Unlock()
 
-	var err error
 	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
-		var backend logical.Backend
-
-		var view BarrierView
-		view, err = c.mountEntryView(ctx, entry)
+		view, err := c.mountEntryView(ctx, entry)
 		if err != nil {
 			return err
 		}
@@ -1055,6 +1051,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 		// Initialize the backend
 		sysView := c.mountEntrySysView(entry)
 
+		var backend logical.Backend
 		backend, entry.RunningSha256, err = c.newCredentialBackend(ctx, entry, sysView, view)
 		if err != nil {
 			c.logger.Error("failed to create credential entry", "path", entry.Path, "error", err)

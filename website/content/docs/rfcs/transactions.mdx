@@ -112,13 +112,13 @@ Between 1 & 2, note that 2 doesn't fully guarantee exclusivity: if a write trans
 
 Thus 2 is excluded.
 
-This means it is between 1 & 3. 1's strict exclusion is sufficiently restrictive (one global writer, which may cause locking problems due to lock/transaction aquisition order) that we'll want to isolate it to only the lower layer. Allowing transactions to be disabled will allow users (who want to trade off performance/raft log size with unsafeness) to make a decision best suited for their environment.
+This means it is between 1 & 3. 1's strict exclusion is sufficiently restrictive (one global writer, which may cause locking problems due to lock/transaction acquisition order) that we'll want to isolate it to only the lower layer. Allowing transactions to be disabled will allow users (who want to trade off performance/raft log size with unsafeness) to make a decision best suited for their environment.
 
 This means, we'll implment 3.
 
 We have a few tricks for improving 3:
 
- 1. Use a read transaction rather than a write transaction, implementing the write visibility side ourselves. Beacuse we know we're going to rollback this transaction (in order to apply it through the Raft process), we don't benefit from grabbing the exclusive lock. This is more work to implement, but gives us better parallelism.
+ 1. Use a read transaction rather than a write transaction, implementing the write visibility side ourselves. Because we know we're going to rollback this transaction (in order to apply it through the Raft process), we don't benefit from grabbing the exclusive lock. This is more work to implement, but gives us better parallelism.
  2. Reads only need to be verified if they did not occur prior to a write (put/delete); otherwise, we know (through write verification and being in a transaction) that the state is the same. This delays the verification, but saves on operations in the Raft log.
  3. Rather than a per-operation hash, we could implement a single, running operation hash. Each Verify operation (written to the raft log) would only contain a path, but write the contents to a globally running has hoperation. At the end of a transaction, a `CommitIfHash` or `VerifyFinish` message would contain the hash itself, and the transaction would only be committed if the overall state matched. This is more work to implement, but would reduce the size of the Raft log in the future.
  4. We want each top-level Raft transaction to execute in its own lower-level bbolt transaction for simplicity. However, raft application today currently uses a single large transaction for all batched Commands. This means we'll want to intelligently drop+recreate the transaction (reusing transactions for batched operations, but using a dedicated transaction for any Raft-level transactions).
@@ -139,7 +139,7 @@ In particular, we introduce the following Raft log operation types:
 
 Lastly, we hijack the existing `FSMEntry` response to include a variant in which a sentinel key is used to send back a specific error message (commit failure).
 
-#### Verificaiton Hashes
+#### Verification Hashes
 
 Verification hash formatting takes the following, variable-length format:
 

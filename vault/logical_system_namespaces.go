@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -215,17 +216,47 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 	}
 }
 
+// customMetadataPatchPreprocessor is passed to framework.HandlePatchOperation within the handleNamespacesPatch handler.
+func customMetadataPatchPreprocessor(input map[string]interface{}) (map[string]interface{}, error) {
+	imetadata, ok := input["custom_metadata"]
+	var metadata map[string]interface{}
+	if ok {
+		metadata = imetadata.(map[string]interface{})
+		for _, v := range metadata {
+			// Allow nil values in addition to strings so keys can be removed.
+			if _, ok = v.(string); !ok && v != nil {
+				return nil, fmt.Errorf("custom_metadata values must be strings")
+			}
+		}
+	}
+	return metadata, nil
+}
+
 // handleNamespacesPatch handles the "/sys/namespace/<path>" endpoints to update a namespace
 func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-		// TODO(ascheel): Implement this in terms of get+set calls.
+		path := data.Get("path").(string)
+		if err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+			current := make(map[string]interface{})
+			for k, v := range ns.Namespace.CustomMetadata {
+				current[k] = v
+			}
 
-		/*path := data.Get("path").(string)
-		imetadata, ok := data.GetOk("custom_metadata")
-		var metadata map[string]string
-		if ok {
-			metadata = imetadata.(map[string]string)
-		}*/
+			patchedBytes, err := framework.HandlePatchOperation(data, current, customMetadataPatchPreprocessor)
+			if err != nil {
+				return nil, err
+			}
+
+			var patched map[string]string
+			if err = json.Unmarshal(patchedBytes, &patched); err != nil {
+				return nil, err
+			}
+
+			ns.Namespace.CustomMetadata = patched
+			return ns, nil
+		}); err != nil {
+			return nil, fmt.Errorf("failed to modify namespace: %w", err)
+		}
 
 		return nil, nil
 	}

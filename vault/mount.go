@@ -694,8 +694,10 @@ func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStora
 	// Sync values to the cache
 	entry.SyncCache()
 
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+	view, err := c.mountEntryView(ctx, entry)
+	if err != nil {
+		return err
+	}
 
 	origReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1749,13 +1751,12 @@ func (c *Core) setupMounts(ctx context.Context) error {
 	c.mountsLock.Lock()
 	defer c.mountsLock.Unlock()
 
-	var err error
 	for _, entry := range c.mounts.sortEntriesByPathDepth().Entries {
 		// Initialize the backend, special casing for system
-		barrierPath := entry.ViewPath()
-
-		// Create a barrier storage view using the UUID
-		view := NewBarrierView(c.barrier, barrierPath)
+		view, err := c.mountEntryView(ctx, entry)
+		if err != nil {
+			return err
+		}
 
 		origReadOnlyErr := view.GetReadOnlyErr()
 
@@ -1767,8 +1768,8 @@ func (c *Core) setupMounts(ctx context.Context) error {
 			defer view.SetReadOnlyErr(origReadOnlyErr)
 		}
 
-		var backend logical.Backend
 		// Create the new backend
+		var backend logical.Backend
 		sysView := c.mountEntrySysView(entry)
 		backend, entry.RunningSha256, err = c.newLogicalBackend(ctx, entry, sysView, view)
 		if err != nil {
@@ -2189,4 +2190,42 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	}
 	migrationInfo := migrationInfoRaw.(MountMigrationInfo)
 	return &migrationInfo
+}
+
+func (c *Core) namespaceMountEntryView(ctx context.Context, namespaceID, prefix string) (BarrierView, error) {
+	nsEntry, err := c.namespaceStore.GetNamespaceByAccessor(ctx, namespaceID)
+	// corrupted namespace store
+	if err != nil {
+		return nil, err
+	}
+
+	if nsEntry == nil {
+		return nil, errors.New("namespace not found")
+	}
+
+	return nsEntry.View(c.barrier).SubView(prefix), nil
+}
+
+// mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
+func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView, error) {
+	switch me.Type {
+	case mountTypeSystem:
+		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
+	case mountTypeToken:
+		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
+	// Namespace mounts should be stored under the namespace prefix (UUID)
+	case mountTypeNSCubbyhole:
+		return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")
+	}
+
+	switch me.Table {
+	case mountTableType:
+		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
+	case credentialTableType:
+		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
+	case auditTableType:
+		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil
+	}
+
+	return nil, errors.New("invalid mount entry")
 }

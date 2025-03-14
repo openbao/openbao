@@ -1205,7 +1205,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				NamespaceID: "ns-1",
 			},
 
-			wantViewPrefix: "namespace/" + testNamespaceEntryUUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespaceEntryUUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",

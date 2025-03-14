@@ -2194,6 +2194,20 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	return &migrationInfo
 }
 
+func (c *Core) namespaceMountEntryView(ctx context.Context, namespaceID, prefix string) (BarrierView, error) {
+	nsEntry, err := c.namespaceStore.GetNamespaceByAccessor(ctx, namespaceID)
+	// corrupted namespace store
+	if err != nil {
+		return nil, err
+	}
+
+	if nsEntry == nil {
+		return nil, errors.New("namespace not found")
+	}
+
+	return nsEntry.View(c.barrier).SubView(prefix), nil
+}
+
 // mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
 func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView, error) {
 	switch me.Type {
@@ -2201,24 +2215,13 @@ func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView,
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
 		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
+	// Namespace mounts should be stored under the namespace prefix (UUID)
+	case mountTypeNSCubbyhole:
+		return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")
 	}
 
 	switch me.Table {
 	case mountTableType:
-		// NSCubbyhole should be stored under the namespace prefix (UUID)
-		if me.Type == mountTypeNSCubbyhole {
-			nsEntry, err := c.namespaceStore.GetNamespaceByAccessor(ctx, me.NamespaceID)
-			// corrupted namespace store
-			if err != nil {
-				return nil, err
-			}
-
-			if nsEntry == nil {
-				return nil, errors.New("namespace not found")
-			}
-
-			return nsEntry.View(c.barrier).SubView(backendBarrierPrefix + me.UUID + "/"), nil
-		}
 		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
 	case credentialTableType:
 		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil

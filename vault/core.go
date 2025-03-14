@@ -1241,7 +1241,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	// Cubbyhole
 	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
-	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
+	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.cubbyholeBackend != nil {
 			return c.cubbyholeBackend, nil
 		}

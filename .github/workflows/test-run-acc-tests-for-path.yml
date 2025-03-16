@@ -28,7 +28,7 @@ jobs:
         env:
           INPUTS_NAME: ${{ inputs.name }}
           INPUTS_PATH: ${{ inputs.path }}
-        run: go test -v ./$INPUTS_PATH/... 2>&1 | tee $INPUTS_NAME.txt
+        run: go test -v "./$INPUTS_PATH/..." 2>&1 | tee "$INPUTS_NAME.txt"
       - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: ${{ inputs.name }}-output

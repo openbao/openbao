@@ -202,11 +202,11 @@ jobs:
           fi
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
-          GOARCH=$INPUTS_GO_ARCH \
+          GOARCH="$INPUTS_GO_ARCH" \
             gotestsum --format=short-verbose \
               --junitfile test-results/go-test/results-${{ matrix.id }}.xml \
               --jsonfile test-results/go-test/results-${{ matrix.id }}.json \
-              --jsonfile-timing-events failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json \
+              --jsonfile-timing-events "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \
               $RERUN_FAILS \
               --packages "$packages" \
               -- \
@@ -286,8 +286,8 @@ jobs:
           jq -r -n 'inputs
           | select(.Action == "fail")
           | "| $INPUTS_NAME | \(.Package) | \(.Test // "-") | \(.Elapsed) | ${{ matrix.id }} | [view test results :scroll:](${{ env.GH_JOB_URL }}) |"' \
-          failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json \
-          >> failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.md
+          "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.json" \
+          >> "failure-summary-${{ matrix.id }}${{ inputs.name != '' && '-' || '' }}$INPUTS_NAME.md"
       - name: Upload failure summary
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         if: success() || failure()

@@ -223,13 +223,18 @@ in the root of the TCP listener configuration.
 - `tls_acme_ca_directory` `(string: "https://acme-v02.api.letsencrypt.org/directory")` - Path
   to the ACME directory; defaults to Let's Encrypt's production CA.
 
-- `tls_acme_ca_directory` `(string: "")` - Path
-  to the ACME directory; defaults to Let's Encrypt's staging CA.
+- `tls_acme_test_ca_directory` `(string: "")` - Path
+  to the test ACME directory; defaults to Let's Encrypt's staging CA if
+  `tls_acme_ca_directory` is the Let's Encrypt production CA (otherwise defaults
+  to empty/disabled).
 
 - `tls_acme_cache_path` `(string: "~/.local/share/certmagic")` - Specifies the
   location of the ACME certificate and account information cache to reuse
   certificates. If this not writable, `/var/lib/openbao/certmagic` and then
   a temporary directory in `$TEMPDIR` will be used as fallback.
+
+  If issuing certificates for a shared cluster hostname, this must be shared
+  across all nodes.
 
 - `tls_acme_ca_root` `(string: "")` - Path to an optional Root CA to use to
   validate connections to the ACME directory. Defaults to all system

@@ -233,6 +233,9 @@ in the root of the TCP listener configuration.
   certificates. If this not writable, `/var/lib/openbao/certmagic` and then
   a temporary directory in `$TEMPDIR` will be used as fallback.
 
+  If issuing certificates for a shared cluster hostname, this must be shared
+  across all nodes.
+
 - `tls_acme_ca_root` `(string: "")` - Path to an optional Root CA to use to
   validate connections to the ACME directory. Defaults to all system
   certificates when empty.

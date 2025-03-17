@@ -2214,6 +2214,9 @@ func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView,
 	case mountTypeToken:
 		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
 	// Namespace mounts should be stored under the namespace prefix (UUID)
+	case mountTypeNSToken:
+		// Investigate: Should this impact token operations routing/storage?
+		return c.namespaceMountEntryView(ctx, me.NamespaceID, systemBarrierPrefix+tokenSubPath)
 	case mountTypeNSCubbyhole:
 		return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")
 	}

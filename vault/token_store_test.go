@@ -292,6 +292,8 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
+	ctx := namespace.RootContext(context.Background())
+
 	// Use a struct that does not have struct tags to store the items and
 	// check if the lookup code handles them properly while reading back
 	entry := &TokenEntryOld{
@@ -312,7 +314,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	saltedID, err := ts.SaltID(namespace.RootContext(nil), entry.ID)
+	saltedID, err := ts.SaltID(ctx, entry.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +323,12 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		Value: enc,
 	}
 
-	if err := ts.idView(namespace.RootNamespace).Put(namespace.RootContext(nil), le); err != nil {
+	view, err := ts.idView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := view.Put(ctx, le); err != nil {
 		t.Fatal(err)
 	}
 
@@ -348,11 +355,11 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NamespaceID:    namespace.RootNamespaceID,
 	}
 
-	if err := ts.expiration.RegisterAuth(namespace.RootContext(nil), registryEntry, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, registryEntry, auth, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err := ts.Lookup(namespace.RootContext(nil), entry.ID)
+	out, err := ts.Lookup(ctx, entry.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -379,7 +386,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUses:        10,
 		NamespaceID:    namespace.RootNamespaceID,
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(ctx, ent); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -393,11 +400,11 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(namespace.RootContext(nil), ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -424,7 +431,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated:        10,
 		NamespaceID:              namespace.RootNamespaceID,
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(ctx, ent); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -438,11 +445,11 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(namespace.RootContext(nil), ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -466,7 +473,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 10,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(ctx, ent); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -480,11 +487,11 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(namespace.RootContext(nil), ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -500,7 +507,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		NumUsesDeprecated: 5,
 		NamespaceID:       namespace.RootNamespaceID,
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	if err := ts.create(ctx, ent); err != nil {
 		t.Fatalf("err: %s", err)
 	}
 	auth = &logical.Auth{
@@ -514,11 +521,11 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		},
 		ClientToken: ent.ID,
 	}
-	if err := ts.expiration.RegisterAuth(namespace.RootContext(nil), ent, auth, ""); err != nil {
+	if err := ts.expiration.RegisterAuth(ctx, ent, auth, ""); err != nil {
 		t.Fatal(err)
 	}
 
-	out, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -774,17 +781,19 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 		testMakeServiceTokenViaBackend(t, ts, root, key, "60s", []string{"foo"})
 	}
 
+	ctx := namespace.RootContext(context.Background())
+
 	// Revoke root to make the number of accessors match
 	internalRoot, _ := c.DecodeSSCToken(root)
-	salted, err := ts.SaltID(namespace.RootContext(nil), internalRoot)
+	salted, err := ts.SaltID(ctx, internalRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ts.revokeInternal(namespace.RootContext(nil), salted, false)
+	ts.revokeInternal(ctx, salted, false)
 
 	req := logical.TestRequest(t, logical.ListOperation, "accessors/")
 
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -804,25 +813,31 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 
 	// Test upgrade from old struct method of accessor storage (of token id)
 	for _, accessor := range keys {
-		aEntry, err := ts.lookupByAccessor(namespace.RootContext(nil), accessor, false, false)
+		aEntry, err := ts.lookupByAccessor(ctx, accessor, false, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if aEntry.TokenID == "" || aEntry.AccessorID == "" {
 			t.Fatal("error, accessor entry looked up is empty, but no error thrown")
 		}
-		saltID, err := ts.SaltID(namespace.RootContext(nil), accessor)
+		saltID, err := ts.SaltID(ctx, accessor)
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		view, err := ts.accessorView(ctx, namespace.RootNamespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		le := &logical.StorageEntry{Key: saltID, Value: []byte(aEntry.TokenID)}
-		if err := ts.accessorView(namespace.RootNamespace).Put(namespace.RootContext(nil), le); err != nil {
+		if err := view.Put(ctx, le); err != nil {
 			t.Fatalf("failed to persist accessor index entry: %v", err)
 		}
 	}
 
 	// Do the lookup again, should get same result
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = ts.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -841,7 +856,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 	}
 
 	for _, accessor := range keys2 {
-		aEntry, err := ts.lookupByAccessor(namespace.RootContext(nil), accessor, false, false)
+		aEntry, err := ts.lookupByAccessor(ctx, accessor, false, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1417,49 +1432,55 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 	ts := c.tokenStore
 	root, children := buildTokenTree(t, ts, depth)
 
+	ctx := namespace.RootContext(context.Background())
+	parentView, err := ts.parentView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
 	var cyclePaths []string
 	if injectCycles {
 		// Make the root the parent of itself
-		saltedRoot, _ := ts.SaltID(namespace.RootContext(nil), root.ID)
+		saltedRoot, _ := ts.SaltID(ctx, root.ID)
 		key := fmt.Sprintf("%s/%s", saltedRoot, saltedRoot)
 		cyclePaths = append(cyclePaths, key)
 		le := &logical.StorageEntry{Key: key}
 
-		if err := ts.parentView(namespace.RootNamespace).Put(namespace.RootContext(nil), le); err != nil {
+		if err := parentView.Put(ctx, le); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 
 		// Make a deep child the parent of a shallow child
-		shallow, _ := ts.SaltID(namespace.RootContext(nil), children[0].ID)
-		deep, _ := ts.SaltID(namespace.RootContext(nil), children[len(children)-1].ID)
+		shallow, _ := ts.SaltID(ctx, children[0].ID)
+		deep, _ := ts.SaltID(ctx, children[len(children)-1].ID)
 		key = fmt.Sprintf("%s/%s", deep, shallow)
 		cyclePaths = append(cyclePaths, key)
 		le = &logical.StorageEntry{Key: key}
 
-		if err := ts.parentView(namespace.RootNamespace).Put(namespace.RootContext(nil), le); err != nil {
+		if err := parentView.Put(ctx, le); err != nil {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
-	err := ts.revokeTree(namespace.RootContext(nil), &leaseEntry{})
+	err = ts.revokeTree(ctx, &leaseEntry{})
 	if err.Error() != "cannot tree-revoke blank token" {
 		t.Fatal(err)
 	}
 
-	saltCtx := namespace.RootContext(nil)
+	saltCtx := ctx
 	saltedID, err := c.tokenStore.SaltID(saltCtx, root.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tokenLeaseID := path.Join(root.Path, saltedID)
 
-	tokenLease, err := ts.expiration.loadEntry(namespace.RootContext(nil), tokenLeaseID)
+	tokenLease, err := ts.expiration.loadEntry(ctx, tokenLeaseID)
 	if err != nil || tokenLease == nil {
 		t.Fatalf("err: %v, tokenLease: %#v", err, tokenLease)
 	}
 
 	// Nuke tree non recursively.
-	err = ts.revokeTree(namespace.RootContext(nil), tokenLease)
+	err = ts.revokeTree(ctx, tokenLease)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1467,7 +1488,7 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 	// deleted.
 	children = append(children, root)
 	for _, entry := range children {
-		out, err := ts.Lookup(namespace.RootContext(nil), entry.ID)
+		out, err := ts.Lookup(ctx, entry.ID)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -1477,7 +1498,7 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 	}
 
 	for _, path := range cyclePaths {
-		entry, err := ts.parentView(namespace.RootNamespace).Get(namespace.RootContext(nil), path)
+		entry, err := parentView.Get(ctx, path)
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -2326,12 +2347,14 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 	testMakeServiceTokenViaBackend(t, ts, root, "child", "60s", []string{"root", "foo"})
 	testMakeServiceTokenViaBackend(t, ts, "child", "sub-child", "50s", []string{"foo"})
 
+	ctx := namespace.RootContext(context.Background())
+
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-orphan")
 	req.Data = map[string]interface{}{
 		"token": "child",
 	}
 	req.ClientToken = root
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
@@ -2341,7 +2364,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
-	out, err := ts.Lookup(namespace.RootContext(nil), "child")
+	out, err := ts.Lookup(ctx, "child")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2350,11 +2373,17 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 	}
 
 	// Check that the parent entry is properly cleaned up
-	saltedID, err := ts.SaltID(namespace.RootContext(nil), "child")
+	saltedID, err := ts.SaltID(ctx, "child")
 	if err != nil {
 		t.Fatal(err)
 	}
-	children, err := ts.idView(namespace.RootNamespace).List(namespace.RootContext(nil), parentPrefix+saltedID+"/")
+
+	view, err := ts.idView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	children, err := view.List(ctx, parentPrefix+saltedID+"/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2363,7 +2392,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 	}
 
 	// Sub-child should exist!
-	out, err = ts.Lookup(namespace.RootContext(nil), "sub-child")
+	out, err = ts.Lookup(ctx, "sub-child")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2377,7 +2406,9 @@ func TestTokenStore_HandleRequest_RevokeOrphan_NonRoot(t *testing.T) {
 	ts := c.tokenStore
 	testMakeServiceTokenViaBackend(t, ts, root, "child", "60s", []string{"foo"})
 
-	out, err := ts.Lookup(namespace.RootContext(nil), "child")
+	ctx := namespace.RootContext(context.Background())
+
+	out, err := ts.Lookup(ctx, "child")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2390,7 +2421,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan_NonRoot(t *testing.T) {
 		"token": "child",
 	}
 	req.ClientToken = "child"
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != logical.ErrInvalidRequest {
 		t.Fatalf("did not get error when non-root revoking itself with orphan flag; resp is %#v", resp)
 	}
@@ -2398,7 +2429,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan_NonRoot(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Should still exist
-	out, err = ts.Lookup(namespace.RootContext(nil), "child")
+	out, err = ts.Lookup(ctx, "child")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -4413,7 +4444,13 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ts.rolesView(ns).Put(rootContext, jsonEntry); err != nil {
+
+		view, err := ts.rolesView(rootContext, ns)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := view.Put(rootContext, jsonEntry); err != nil {
 			t.Fatal(err)
 		}
 		// Read it back
@@ -5490,6 +5527,8 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
+	ctx := namespace.RootContext(context.Background())
+
 	// List the number of accessors. Since there is only root token
 	// present, the list operation should return only one key.
 	accessorListReq := &logical.Request{
@@ -5497,7 +5536,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		Path:        "accessors/",
 		ClientToken: root,
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+	resp, err = ts.HandleRequest(ctx, accessorListReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%v", err, resp)
 	}
@@ -5523,7 +5562,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		// Creation of another token should end up with incrementing
 		// the number of accessors
 		// the storage
-		resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+		resp, err = ts.HandleRequest(ctx, accessorListReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%v", err, resp)
 		}
@@ -5539,29 +5578,34 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		// cubbyhole and by not deleting its secondary index, its accessor and
 		// associated leases.
 
-		saltedTut, err := ts.SaltID(namespace.RootContext(nil), tut)
+		saltedTut, err := ts.SaltID(ctx, tut)
 		if err != nil {
 			t.Fatal(err)
 		}
-		te, err := ts.lookupInternal(namespace.RootContext(nil), saltedTut, true, true)
+		te, err := ts.lookupInternal(ctx, saltedTut, true, true)
 		if err != nil {
 			t.Fatalf("failed to lookup token: %v", err)
 		}
 
+		view, err := ts.idView(ctx, namespace.RootNamespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		// Destroy the token index
-		if ts.idView(namespace.RootNamespace).Delete(namespace.RootContext(nil), saltedTut); err != nil {
+		if view.Delete(ctx, saltedTut); err != nil {
 			t.Fatalf("failed to delete token entry: %v", err)
 		}
 
 		// Destroy the cubby space
-		err = ts.cubbyholeDestroyer(namespace.RootContext(nil), ts, te)
+		err = ts.cubbyholeDestroyer(ctx, ts, te)
 		if err != nil {
 			t.Fatalf("failed to destroyCubbyhole: %v", err)
 		}
 
 		// Leaking of accessor should have resulted in no change to the number
 		// of accessors
-		resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+		resp, err = ts.HandleRequest(ctx, accessorListReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%v", err, resp)
 		}
@@ -5577,7 +5621,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), tidyReq)
+	resp, err = ts.HandleRequest(ctx, tidyReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5592,7 +5636,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// Tidy should have removed all the dangling accessor entries
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+	resp, err = ts.HandleRequest(ctx, accessorListReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%v", err, resp)
 	}
@@ -5614,6 +5658,8 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
+	ctx := namespace.RootContext(context.Background())
+
 	// List the number of accessors. Since there is only root token
 	// present, the list operation should return only one key.
 	accessorListReq := &logical.Request{
@@ -5621,7 +5667,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 		Path:        "accessors/",
 		ClientToken: root,
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+	resp, err = ts.HandleRequest(ctx, accessorListReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%v", err, resp)
 	}
@@ -5657,7 +5703,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 
 		// Creation of another token should end up with incrementing the number of
 		// accessors the storage
-		resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+		resp, err = ts.HandleRequest(ctx, accessorListReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%v", err, resp)
 		}
@@ -5673,29 +5719,34 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 		// cubbyhole and by not deleting its secondary index, its accessor and
 		// associated leases.
 
-		saltedTut, err := ts.SaltID(namespace.RootContext(nil), tut)
+		saltedTut, err := ts.SaltID(ctx, tut)
 		if err != nil {
 			t.Fatal(err)
 		}
-		te, err := ts.lookupInternal(namespace.RootContext(nil), saltedTut, true, true)
+		te, err := ts.lookupInternal(ctx, saltedTut, true, true)
 		if err != nil {
 			t.Fatalf("failed to lookup token: %v", err)
 		}
 
+		view, err := ts.idView(ctx, namespace.RootNamespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		// Destroy the token index
-		if ts.idView(namespace.RootNamespace).Delete(namespace.RootContext(nil), saltedTut); err != nil {
+		if view.Delete(ctx, saltedTut); err != nil {
 			t.Fatalf("failed to delete token entry: %v", err)
 		}
 
 		// Destroy the cubby space
-		err = ts.cubbyholeDestroyer(namespace.RootContext(nil), ts, te)
+		err = ts.cubbyholeDestroyer(ctx, ts, te)
 		if err != nil {
 			t.Fatalf("failed to destroyCubbyhole: %v", err)
 		}
 
 		// Leaking of accessor should have resulted in no change to the number
 		// of accessors
-		resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+		resp, err = ts.HandleRequest(ctx, accessorListReq)
 		if err != nil || (resp != nil && resp.IsError()) {
 			t.Fatalf("err:%v resp:%v", err, resp)
 		}
@@ -5711,7 +5762,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 		Operation:   logical.UpdateOperation,
 		ClientToken: root,
 	}
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), tidyReq)
+	resp, err = ts.HandleRequest(ctx, tidyReq)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5726,7 +5777,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// Tidy should have removed all the dangling accessor entries
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), accessorListReq)
+	resp, err = ts.HandleRequest(ctx, accessorListReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%v", err, resp)
 	}
@@ -5746,7 +5797,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 			"accessor": accessor,
 		}
 
-		resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+		resp, err := ts.HandleRequest(ctx, req)
 		if err != nil {
 			t.Fatalf("err: %s", err)
 		}
@@ -5776,8 +5827,10 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	ctx := namespace.RootContext(context.Background())
+
 	// Create new token
-	root, err := ts.rootToken(namespace.RootContext(nil))
+	root, err := ts.rootToken(ctx)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -5787,7 +5840,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	req.ClientToken = root.ID
 	req.Data["policies"] = []string{"default"}
 
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
@@ -5805,13 +5858,13 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 		NamespaceID: namespace.RootNamespaceID,
 	}
 
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Verify token entry through lookup
-	testTokenEntry, err := ts.Lookup(namespace.RootContext(nil), resp.Auth.ClientToken)
+	testTokenEntry, err := ts.Lookup(ctx, resp.Auth.ClientToken)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5838,7 +5891,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	leases := []string{}
 
 	for i := 0; i < 10; i++ {
-		leaseID, err := exp.Register(namespace.RootContext(nil), req, resp, "")
+		leaseID, err := exp.Register(ctx, req, resp, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -5847,7 +5900,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 
 	sort.Strings(leases)
 
-	te, err = ts.lookupInternal(namespace.RootContext(nil), tut, false, true)
+	te, err = ts.lookupInternal(ctx, tut, false, true)
 	if err != nil {
 		t.Fatalf("failed to lookup token: %v", err)
 	}
@@ -5855,7 +5908,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 		t.Fatal("got nil token entry")
 	}
 
-	storedLeases, err := exp.lookupLeasesByToken(namespace.RootContext(nil), te)
+	storedLeases, err := exp.lookupLeasesByToken(ctx, te)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5865,11 +5918,11 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Now, delete the token entry. The leases should still exist.
-	saltedTut, err := ts.SaltID(namespace.RootContext(nil), tut)
+	saltedTut, err := ts.SaltID(ctx, tut)
 	if err != nil {
 		t.Fatal(err)
 	}
-	te, err = ts.lookupInternal(namespace.RootContext(nil), saltedTut, true, true)
+	te, err = ts.lookupInternal(ctx, saltedTut, true, true)
 	if err != nil {
 		t.Fatalf("failed to lookup token: %v", err)
 	}
@@ -5877,11 +5930,16 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 		t.Fatal("got nil token entry")
 	}
 
+	idView, err := ts.idView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Destroy the token index
-	if ts.idView(namespace.RootNamespace).Delete(namespace.RootContext(nil), saltedTut); err != nil {
+	if idView.Delete(ctx, saltedTut); err != nil {
 		t.Fatalf("failed to delete token entry: %v", err)
 	}
-	te, err = ts.lookupInternal(namespace.RootContext(nil), saltedTut, true, true)
+	te, err = ts.lookupInternal(ctx, saltedTut, true, true)
 	if err != nil {
 		t.Fatalf("failed to lookup token: %v", err)
 	}
@@ -5890,7 +5948,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Verify leases still exist
-	storedLeases, err = exp.lookupLeasesByToken(namespace.RootContext(nil), testTokenEntry)
+	storedLeases, err = exp.lookupLeasesByToken(ctx, testTokenEntry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -5900,12 +5958,12 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Call tidy
-	ts.handleTidy(namespace.RootContext(nil), &logical.Request{}, nil)
+	ts.handleTidy(ctx, &logical.Request{}, nil)
 
 	time.Sleep(200 * time.Millisecond)
 
 	// Verify leases are gone
-	storedLeases, err = exp.lookupLeasesByToken(namespace.RootContext(nil), testTokenEntry)
+	storedLeases, err = exp.lookupLeasesByToken(ctx, testTokenEntry)
 	if err != nil {
 		t.Fatal(err)
 	}

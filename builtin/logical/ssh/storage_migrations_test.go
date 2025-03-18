@@ -89,6 +89,14 @@ func TestMigrateStorage_CAConfigured(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, log.CreatedIssuer, entry.ID)
 
+	// Validate that key material stored in new paths is the same as the one
+	// stored in the old paths
+	entry, err = sc.fetchIssuerById(log.CreatedIssuer)
+	require.NotNil(t, entry)
+	require.NoError(t, err)
+	require.Equal(t, testCAPublicKey, entry.PublicKey)
+	require.Equal(t, testCAPrivateKey, entry.PrivateKey)
+
 	// Make sure if we attempt to re-run the migration nothing happens...
 	err = migrateStorage(ctx, b, s)
 	require.NoError(t, err)

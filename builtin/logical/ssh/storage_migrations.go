@@ -137,7 +137,7 @@ func fetchCAKeyMaterial(ctx context.Context, s logical.Storage) (publicKey strin
 		publicKey = publicKeyCaEntry.Key
 	}
 
-	privateKeyCaEntry, err := caKey(ctx, s, caPublicKey)
+	privateKeyCaEntry, err := caKey(ctx, s, caPrivateKey)
 	if err != nil {
 		return
 	}

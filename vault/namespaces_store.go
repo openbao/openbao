@@ -459,7 +459,7 @@ func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string)
 	return nil, nil
 }
 
-// GetNamespaceByPath is used to fetch the namespace with the given path.
+// GetNamespaceByPath is used to fetch the namespace with the given full path.
 func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (*NamespaceEntry, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_path"}, time.Now())
 
@@ -470,7 +470,15 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 	ns.lock.RLock()
 	defer ns.lock.RUnlock()
 
-	path = namespace.Canonicalize(path)
+	return ns.getNamespaceByPathLocked(ctx, path)
+}
+
+func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*NamespaceEntry, error) {
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	path = namespace.Canonicalize(parent.Path + path)
 	for _, item := range ns.namespaces {
 		if item.Namespace.Path == path {
 			return item.Clone(), nil
@@ -490,12 +498,17 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, err
 	}
 
-	ns.lock.Lock()
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	path = namespace.Canonicalize(path)
+	path = namespace.Canonicalize(parent.Path + path)
 	if path == "" {
 		return nil, errors.New("refusing to modify root namespace")
 	}
+
+	ns.lock.Lock()
 
 	var entry *NamespaceEntry
 	for _, item := range ns.namespaces {
@@ -506,12 +519,14 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	}
 
 	if entry == nil {
-		entry = &NamespaceEntry{Namespace: &namespace.Namespace{}}
+		entry = &NamespaceEntry{Namespace: &namespace.Namespace{
+			Path: path,
+		}}
 	}
 
-	var err error
 	entry, err = callback(ctx, entry)
 	if err != nil {
+		ns.lock.Unlock()
 		return nil, err
 	}
 
@@ -522,11 +537,25 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	return entry.Clone(), nil
 }
 
-// ListNamespaces is used to list all available namespaces
-func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
+// ListAllNamespaces lists all available namespaces, optionally including the
+// root namespace.
+func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
+	ctx = namespace.RootContext(ctx)
+	return ns.ListNamespaces(ctx, includeRoot, true)
+}
+
+// ListNamespaces is used to list namespaces below a parent namespace.
+// Optionally it can include the parent namespace itself and/or include all
+// decendents of the child namespaces.
+func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -535,7 +564,13 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 
 	entries := make([]*namespace.Namespace, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+		if !recursive && !item.Namespace.HasDirectParent(parent) {
+			continue
+		}
+		if !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -545,11 +580,25 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeRoot bool) 
 	return entries, nil
 }
 
-// ListNamespaceEntries is used to list all available namespace entries
-func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeRoot bool) ([]*NamespaceEntry, error) {
+// ListAllNamespaceEntries lists all available NamespaceEntries, optionally
+// including the root namespace.
+func (ns *NamespaceStore) ListAllNamespaceEntries(ctx context.Context, includeRoot bool) ([]*NamespaceEntry, error) {
+	ctx = namespace.RootContext(ctx)
+	return ns.ListNamespaceEntries(ctx, includeRoot, true)
+}
+
+// ListNamespaceEntries is used to list NamespaceEntries below a parent namespace.
+// Optionally it can include the parent namespace itself and/or include all
+// decendents of the child namespaces.
+func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeParent bool, recursive bool) ([]*NamespaceEntry, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -558,7 +607,13 @@ func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeRoot 
 
 	entries := make([]*NamespaceEntry, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+		if !recursive && !item.Namespace.HasDirectParent(parent) {
+			continue
+		}
+		if !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -568,11 +623,25 @@ func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeRoot 
 	return entries, nil
 }
 
-// ListNamespaceUUIDs is used to list the uuids of available namespaces
-func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bool) ([]string, error) {
+// ListAllNamespaceUUIDs lists all available namespace UUIDs, optionally
+// including the root namespace.
+func (ns *NamespaceStore) ListAllNamespaceUUIDs(ctx context.Context, includeRoot bool) ([]string, error) {
+	ctx = namespace.RootContext(ctx)
+	return ns.ListNamespaceUUIDs(ctx, includeRoot, true)
+}
+
+// ListNamespaceUUIDs is used to list namespace uuids below a parent namespace.
+// Optionally it can include the parent namespace itself and/or include all
+// decendents of the child namespaces.
+func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeParent bool, recursive bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_uuids"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -581,7 +650,13 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+		if !recursive && !item.Namespace.HasDirectParent(parent) {
+			continue
+		}
+		if !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -591,11 +666,25 @@ func (ns *NamespaceStore) ListNamespaceUUIDs(ctx context.Context, includeRoot bo
 	return entries, nil
 }
 
-// ListNamespaceAccessors is used to list the identifiers of available namespaces
-func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoot bool) ([]string, error) {
+// ListAllNamespaceAccessors lists all available namespace accessor ids,
+// optionally including the root namespace.
+func (ns *NamespaceStore) ListAllNamespaceAccessors(ctx context.Context, includeRoot bool) ([]string, error) {
+	ctx = namespace.RootContext(ctx)
+	return ns.ListNamespaceAccessors(ctx, includeRoot, true)
+}
+
+// ListNamespaceAccessors is used to list namespace accessor ids below a parent namespace.
+// Optionally it can include the parent namespace itself and/or include all
+// decendents of the child namespaces.
+func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeParent bool, recursive bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_accessors"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -604,7 +693,13 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+		if !recursive && !item.Namespace.HasDirectParent(parent) {
+			continue
+		}
+		if !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -614,11 +709,25 @@ func (ns *NamespaceStore) ListNamespaceAccessors(ctx context.Context, includeRoo
 	return entries, nil
 }
 
-// ListNamespacePaths is used to list the paths of all available namespaces
-func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeRoot bool) ([]string, error) {
+// ListAllNamespacePaths lists all available namespace paths,
+// optionally including the root namespace.
+func (ns *NamespaceStore) ListAllNamespacePaths(ctx context.Context, includeRoot bool) ([]string, error) {
+	ctx = namespace.RootContext(ctx)
+	return ns.ListNamespacePaths(ctx, includeRoot, true)
+}
+
+// ListNamespacePaths is used to list namespace paths ids below a parent
+// namespace. Optionally it can include the parent namespace itself and/or
+// include all decendents of the child namespaces.
+func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeParent bool, recursive bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_paths"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
+		return nil, err
+	}
+
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -627,7 +736,13 @@ func (ns *NamespaceStore) ListNamespacePaths(ctx context.Context, includeRoot bo
 
 	entries := make([]string, 0, len(ns.namespaces))
 	for _, item := range ns.namespaces {
-		if !includeRoot && item.Namespace.ID == namespace.RootNamespaceID {
+		if !includeParent && item.Namespace.ID == parent.ID {
+			continue
+		}
+		if !recursive && !item.Namespace.HasDirectParent(parent) {
+			continue
+		}
+		if !item.Namespace.HasParent(parent) {
 			continue
 		}
 
@@ -712,23 +827,28 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, h
 		return newCtx, parentNs, reqPath, err
 	}
 
-	paths, err := ns.ListNamespacePaths(newCtx, false)
+	paths, err := ns.ListAllNamespacePaths(newCtx, false)
 	if err != nil {
 		return newCtx, parentNs, reqPath, err
 	}
 
-	// TODO(ascheel): handle child namespaces properly
+	var longestPath string
 	for _, nsPath := range paths {
 		if strings.HasPrefix(reqPath, nsPath) {
-			childNs, err := ns.GetNamespaceByPath(newCtx, nsPath)
-			if err != nil {
-				return newCtx, parentNs, reqPath, err
+			// search for the longest namespace path prefix of reqPath
+			// skip if nsPath does not have currently longest path as prefix
+			if !strings.HasPrefix(nsPath, longestPath) {
+				continue
 			}
-			parentNs = childNs.Namespace
-			reqPath = reqPath[len(nsPath):]
-			break
+			longestPath = nsPath
 		}
 	}
+	parentEntry, err := ns.GetNamespaceByPath(newCtx, longestPath)
+	if err != nil {
+		return newCtx, parentNs, reqPath, err
+	}
+	parentNs = parentEntry.Namespace
+	reqPath = reqPath[len(longestPath):]
 
 	// TODO(ascheel): Fix global uses of comparison by pointer.
 	if parentNs.ID == namespace.RootNamespaceID {

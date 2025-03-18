@@ -14,18 +14,18 @@ func TestNamespaceStore(t *testing.T) {
 	c, keys, root := TestCoreUnsealed(t)
 	s := c.namespaceStore
 
-	ctx := context.TODO()
+	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListNamespaceUUIDs(ctx, false)
+	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespaceAccessors(ctx, false)
+	ns, err = s.ListAllNamespaceAccessors(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespacePaths(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -48,17 +48,17 @@ func TestNamespaceStore(t *testing.T) {
 	itemPath := item.Namespace.Path
 
 	// We should now have one item.
-	ns, err = s.ListNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemUUID)
 
-	ns, err = s.ListNamespaceAccessors(ctx, false)
+	ns, err = s.ListAllNamespaceAccessors(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemAccessor)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespacePaths(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemPath)
@@ -100,17 +100,17 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemUUID)
 
-	ns, err = s.ListNamespaceAccessors(ctx, false)
+	ns, err = s.ListAllNamespaceAccessors(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemAccessor)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespacePaths(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0], itemPath)
@@ -120,15 +120,15 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Store should be empty.
-	ns, err = s.ListNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespaceAccessors(ctx, false)
+	ns, err = s.ListAllNamespaceAccessors(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespacePaths(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -149,15 +149,15 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespaceAccessors(ctx, false)
+	ns, err = s.ListAllNamespaceAccessors(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
-	ns, err = s.ListNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespacePaths(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -178,4 +178,91 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
 	require.Equal(t, item.Namespace.Path, "ns1/")
 	require.Equal(t, item.Namespace.Path, itemPath)
+}
+
+func TestNamespaceHierarchy(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.TODO())
+
+	// Initial store should be empty.
+	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
+	require.NoError(t, err)
+	require.Empty(t, ns)
+
+	// Creating an item should save it, set IDs, and canonicalize path.
+	namespaces := []struct {
+		context.Context
+		*NamespaceEntry
+	}{
+		{
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1"}},
+		},
+		{
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns2"}},
+		},
+		{
+			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
+			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns3"}},
+		},
+	}
+
+	t.Run("SetNamespaces", func(t *testing.T) {
+		for idx, ns := range namespaces {
+			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+			require.NoError(t, err)
+			require.NotEmpty(t, ns.UUID)
+			require.NotEmpty(t, ns.Namespace.ID)
+			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
+		}
+	})
+
+	t.Run("ListNamespaces", func(t *testing.T) {
+		t.Run("no root namespace", func(t *testing.T) {
+			nsList, err := s.ListAllNamespaces(ctx, false)
+			require.NoError(t, err)
+			containsRoot := false
+			for _, nss := range nsList {
+				if (nss.Path == "") || (nss.Path == namespace.RootNamespaceID) {
+					containsRoot = true
+					break
+				}
+			}
+			require.Falsef(t, containsRoot, "ListAllNamespaces must not contain root namespace")
+			require.Equal(t, len(namespaces), len(nsList), "ListAllNamespaces must return all namespaces, excluding root")
+		})
+		t.Run("with root namespace", func(t *testing.T) {
+			nsList, err := s.ListAllNamespaces(ctx, true)
+			require.NoError(t, err)
+			containsRoot := false
+			for _, nss := range nsList {
+				if (nss.Path == "") || (nss.Path == namespace.RootNamespaceID) {
+					containsRoot = true
+					break
+				}
+			}
+			require.Truef(t, containsRoot, "ListAllNamespaces must contain root namespace")
+			require.Equal(t, len(namespaces)+1, len(nsList), "ListAllNamespaces must return all namespaces")
+		})
+		t.Run("list child namespaces", func(t *testing.T) {
+			ctx := namespace.ContextWithNamespace(ctx, namespaces[0].Namespace)
+			nsList, err := s.ListNamespaces(ctx, false, false)
+			require.NoError(t, err)
+			for _, nss := range nsList {
+				t.Logf("> ID  : %s\n", nss.ID)
+				t.Logf("> Path: %s\n", nss.Path)
+			}
+			require.Equal(t, 1, len(nsList))
+
+			ctx = namespace.ContextWithNamespace(ctx, namespaces[1].Namespace)
+			nsList, err = s.ListNamespaces(ctx, false, false)
+			require.NoError(t, err)
+			require.Equal(t, 0, len(nsList))
+		})
+	})
 }

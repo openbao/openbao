@@ -1246,7 +1246,7 @@ func (c *Core) loadMounts(ctx context.Context) error {
 
 // This function reads the transactional split mount table.
 func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Storage) error {
-	allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
+	allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
@@ -1652,7 +1652,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				// Delete this component if it exists. This signifies that
 				// we're removing this mount. We don't know which namespace
 				// this entry could belong to, so remove it from all.
-				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
+				allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
 				if err != nil {
 					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
@@ -1667,7 +1667,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 			}
 
 			if mount == "" {
-				allNamespaces, err := c.namespaceStore.ListNamespaceEntries(ctx, true /* includeRoot */)
+				allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
 				if err != nil {
 					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}

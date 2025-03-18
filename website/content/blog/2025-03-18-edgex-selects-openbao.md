@@ -14,6 +14,8 @@ For those unfamiliar, [EdgeX Foundry](https://www.edgexfoundry.org/) is an open-
 
 ![edgex-logo](https://www.edgexfoundry.org/cmsfiles/image/company-logo-lg.png)
 
+<!-- truncate -->
+
 ## The Need for Secret Storage
 Security is a top priority in EdgeX, and managing secrets—like API keys, passwords, and certificates—is crucial. Instead of reinventing the wheel, EdgeX has always integrated third-party open-source solutions for secret management. Until now, it relied on HashiCorp Vault for securely storing sensitive information.
 

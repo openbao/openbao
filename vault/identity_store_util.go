@@ -811,36 +811,24 @@ func (i *IdentityStore) MemDBAliasByFactorsInTxnWithContext(ctx context.Context,
 		tableName = groupAliasesTable
 	}
 
-	iter, err := txn.Get(tableName, "factors", mountAccessor, aliasName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch alias from memdb using factors: %w", err)
-	}
-
-	var alias *identity.Alias
-
-	// Get namespace from context
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get namespace from context: %w", err)
 	}
 
-	// Iterate through all matching aliases and find one for the current namespace
-	for raw := iter.Next(); raw != nil; raw = iter.Next() {
-		currAlias, ok := raw.(*identity.Alias)
-		if !ok {
-			return nil, errors.New("failed to declare the type of fetched alias")
-		}
-
-		// If alias has the same namespace ID as the request, use it
-		if currAlias.NamespaceID == ns.ID {
-			alias = currAlias
-			break
-		}
+	// Use compound index to look up alias by all 3 factors
+	aliasRaw, err := txn.First(tableName, "factors_ns", mountAccessor, aliasName, ns.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch alias from memdb using factors: %w", err)
 	}
 
-	// If no namespace-matching alias was found, we want to return nil
-	if alias == nil {
+	if aliasRaw == nil {
 		return nil, nil
+	}
+
+	alias, ok := aliasRaw.(*identity.Alias)
+	if !ok {
+		return nil, errors.New("failed to declare the type of fetched alias")
 	}
 
 	if clone {

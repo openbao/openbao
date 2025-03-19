@@ -2000,7 +2000,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	// be run at any time safely, but there is no need to invoke them (which
 	// might be somewhat expensive if there are many roles/keys) if we're not
 	// past any rotation/expiration TTLs.
-	if now.After(nextRun) {
+	if now.Equal(nextRun) || now.After(nextRun) {
 		// Initialize to a fairly distant next run time. This will be brought in
 		// based on key rotation times.
 		nextRun = now.Add(24 * time.Hour)

@@ -1137,7 +1137,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			i := 0
 			for currentCycle <= lastCycle {
 				// sleep for a rotation period
-				time.Sleep(testSet.namedKey.RotationPeriod + (10 * time.Millisecond))
+				time.Sleep(testSet.namedKey.RotationPeriod)
 				c.identityStore.oidcPeriodicFunc(ctx)
 				if currentCycle == testSet.testCases[i].cycle {
 					namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)

@@ -2404,13 +2404,13 @@ func (m *ExpirationManager) leaseAggregationMetrics(ctx context.Context, consts 
 		if nsLabel {
 			flattenedResults = append(flattenedResults,
 				metricsutil.GaugeLabelValues{
-					Labels: []metrics.Label{{"expiring", bucket.LabelName}, {"namespace", bucket.LabelNS}},
+					Labels: []metrics.Label{{Name: "expiring", Value: bucket.LabelName}, {Name: "namespace", Value: bucket.LabelNS}},
 					Value:  float32(count),
 				})
 		} else {
 			flattenedResults = append(flattenedResults,
 				metricsutil.GaugeLabelValues{
-					Labels: []metrics.Label{{"expiring", bucket.LabelName}},
+					Labels: []metrics.Label{{Name: "expiring", Value: bucket.LabelName}},
 					Value:  float32(count),
 				})
 		}

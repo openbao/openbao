@@ -156,11 +156,11 @@ DONELISTHANDLING:
 			// The type of the secret engine is not all that useful;
 			// we could use "token" but let's be more descriptive,
 			// even if it's not a real auth method.
-			{"auth_method", "response_wrapping"},
-			{"mount_point", mountPointWithoutNs},
-			{"creation_ttl", ttl_label},
+			{Name: "auth_method", Value: "response_wrapping"},
+			{Name: "mount_point", Value: mountPointWithoutNs},
+			{Name: "creation_ttl", Value: ttl_label},
 			// *Should* be service, but let's use whatever create() did..
-			{"token_type", te.Type.String()},
+			{Name: "token_type", Value: te.Type.String()},
 		},
 	)
 

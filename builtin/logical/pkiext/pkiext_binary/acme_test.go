@@ -1109,7 +1109,7 @@ func getDockerLog(t *testing.T) (func(s string), *pkiext.LogConsumerWriter, *pki
 		t.Log(s)
 	}
 
-	logStdout := &pkiext.LogConsumerWriter{logConsumer}
-	logStderr := &pkiext.LogConsumerWriter{logConsumer}
+	logStdout := &pkiext.LogConsumerWriter{Consumer: logConsumer}
+	logStderr := &pkiext.LogConsumerWriter{Consumer: logConsumer}
 	return logConsumer, logStdout, logStderr
 }

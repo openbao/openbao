@@ -304,7 +304,7 @@ func (rlq *RateLimitQuota) allow(ctx context.Context, req *Request) (Response, e
 	defer func() {
 		if !resp.Allowed {
 			resp.Headers[httplimit.HeaderRetryAfter] = retryAfter
-			rlq.metricSink.IncrCounterWithLabels([]string{"quota", "rate_limit", "violation"}, 1, []metrics.Label{{"name", rlq.Name}})
+			rlq.metricSink.IncrCounterWithLabels([]string{"quota", "rate_limit", "violation"}, 1, []metrics.Label{{Name: "name", Value: rlq.Name}})
 		}
 	}()
 

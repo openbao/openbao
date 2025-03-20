@@ -1142,9 +1142,9 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 				1,
 				[]metrics.Label{
 					metricsutil.NamespaceLabel(ns),
-					{"secret_engine", req.MountType},
-					{"mount_point", mountPointWithoutNs},
-					{"creation_ttl", ttl_label},
+					{Name: "secret_engine", Value: req.MountType},
+					{Name: "mount_point", Value: mountPointWithoutNs},
+					{Name: "creation_ttl", Value: ttl_label},
 				},
 			)
 		}
@@ -1708,10 +1708,10 @@ func (c *Core) LoginCreateToken(ctx context.Context, ns *namespace.Namespace, re
 		1,
 		[]metrics.Label{
 			metricsutil.NamespaceLabel(ns),
-			{"auth_method", mountEntry.Type},
-			{"mount_point", mountPointWithoutNs},
-			{"creation_ttl", ttl_label},
-			{"token_type", auth.TokenType.String()},
+			{Name: "auth_method", Value: mountEntry.Type},
+			{Name: "mount_point", Value: mountPointWithoutNs},
+			{Name: "creation_ttl", Value: ttl_label},
+			{Name: "token_type", Value: auth.TokenType.String()},
 		},
 	)
 

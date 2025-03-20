@@ -24,7 +24,7 @@ func TestSearch(t *testing.T) {
 
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldap: ldapClient}
@@ -75,7 +75,7 @@ func TestUpdateEntry(t *testing.T) {
 	conn.ModifyRequestToExpect.Replace("cn", []string{"Blue", "Red"})
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldapClient}
@@ -112,7 +112,7 @@ func TestUpdatePasswordOpenLDAP(t *testing.T) {
 	conn.ModifyRequestToExpect.Replace("userPassword", []string{testPass})
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldapClient}
@@ -152,7 +152,7 @@ func TestUpdatePasswordRACF(t *testing.T) {
 
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldapClient}
@@ -195,7 +195,7 @@ func TestUpdatePasswordAD(t *testing.T) {
 
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldapClient}
@@ -245,7 +245,7 @@ func TestUpdateRootPassword(t *testing.T) {
 	conn.ModifyRequestToExpect.Replace("userPassword", []string{testPass})
 	ldapClient := &ldaputil.Client{
 		Logger: hclog.NewNullLogger(),
-		LDAP:   &ldapifc.FakeLDAPClient{conn},
+		LDAP:   &ldapifc.FakeLDAPClient{ConnToReturn: conn},
 	}
 
 	client := &Client{ldapClient}

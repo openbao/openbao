@@ -44,7 +44,7 @@ func StartListener(lnConfig *configutil.Listener) (*ListenerBundle, error) {
 		if err != nil {
 			return nil, err
 		}
-		ln = &server.TCPKeepAliveListener{ln.(*net.TCPListener)}
+		ln = &server.TCPKeepAliveListener{TCPListener: ln.(*net.TCPListener)}
 
 	case "unix":
 		var uConfig *listenerutil.UnixSocketsConfig

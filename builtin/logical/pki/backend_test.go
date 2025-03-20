@@ -4463,6 +4463,8 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 
 	// maxAttempts is the number of times we will check for async completion
 	maxAttempts := 10
+	// sleepTime is the time to wait between attempts
+	sleepTime := 400 * time.Millisecond
 
 	// tidy metrics check
 	expectedGauges := map[string]float32{
@@ -4470,17 +4472,22 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 		"secrets.pki.tidy.cert_store_total_entries_remaining": 2, // The long-lived certs
 	}
 	for i := 1; i < maxAttempts; i++ {
+		allFound := true
 		for gauge, value := range expectedGauges {
 			mostRecentInterval := inmemSink.Data()[len(inmemSink.Data())-1]
 			metric, ok := mostRecentInterval.Gauges[gauge]
 			if ok && metric.Value == value {
 				break
 			}
+			allFound = false
 			if i == maxAttempts {
 				t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
 			}
-			time.Sleep(400 * time.Millisecond)
 		}
+		if allFound {
+			break
+		}
+		time.Sleep(sleepTime)
 	}
 
 	// Issue two certificates, a short-lived and a long-lived, then revoke them.
@@ -4539,35 +4546,40 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 				found = true
 				break
 			}
-			time.Sleep(400 * time.Millisecond)
 		}
 		if found {
 			break
 		}
+		time.Sleep(sleepTime)
 	}
 	if !found {
 		t.Fatalf("Long-lived certificate with serial %s should still be in the revoked store", certSerial2)
 	}
 
 	// Final tidy metrics check
-	expectedGauges2 := map[string]float32{
+	expectedGauges = map[string]float32{
 		"secrets.pki.tidy.revoked_cert_total_entries":           2, // All the revoked certs
 		"secrets.pki.tidy.revoked_cert_total_entries_remaining": 1, // The revoked long-lived cert
 		"secrets.pki.tidy.cert_store_total_entries":             5, // All the non-revoked certs
 		"secrets.pki.tidy.cert_store_total_entries_remaining":   2, // The non-revoked long-lived certs
 	}
 	for i := 1; i < maxAttempts; i++ {
-		for gauge, value := range expectedGauges2 {
-			mostRecentInterval2 := inmemSink.Data()[len(inmemSink.Data())-1]
-			metric, ok := mostRecentInterval2.Gauges[gauge]
+		allFound := true
+		for gauge, value := range expectedGauges {
+			mostRecentInterval := inmemSink.Data()[len(inmemSink.Data())-1]
+			metric, ok := mostRecentInterval.Gauges[gauge]
 			if ok && metric.Value == value {
 				break
 			}
+			allFound = false
 			if i == maxAttempts {
 				t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
 			}
-			time.Sleep(400 * time.Millisecond)
 		}
+		if allFound {
+			break
+		}
+		time.Sleep(sleepTime)
 	}
 }
 

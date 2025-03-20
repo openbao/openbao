@@ -162,10 +162,10 @@ func TestExpiration_Metrics(t *testing.T) {
 		t.Fatal("lease aggregation returns nil metrics")
 	}
 
-	labelOneHour := metrics.Label{"expiring", time.Now().Add(time.Hour).Round(time.Hour).String()}
-	labelTwoHours := metrics.Label{"expiring", time.Now().Add(2 * time.Hour).Round(time.Hour).String()}
-	nsLabel := metrics.Label{"namespace", "root"}
-	nsLabelNonRoot := metrics.Label{"namespace", "nsid"}
+	labelOneHour := metrics.Label{Name: "expiring", Value: time.Now().Add(time.Hour).Round(time.Hour).String()}
+	labelTwoHours := metrics.Label{Name: "expiring", Value: time.Now().Add(2 * time.Hour).Round(time.Hour).String()}
+	nsLabel := metrics.Label{Name: "namespace", Value: "root"}
+	nsLabelNonRoot := metrics.Label{Name: "namespace", Value: "nsid"}
 
 	foundLabelOne := false
 	foundLabelTwo := false

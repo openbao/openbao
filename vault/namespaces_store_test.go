@@ -212,15 +212,13 @@ func TestNamespaceHierarchy(t *testing.T) {
 		},
 	}
 
-	t.Run("SetNamespaces", func(t *testing.T) {
-		for idx, ns := range namespaces {
-			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
-			require.NoError(t, err)
-			require.NotEmpty(t, ns.UUID)
-			require.NotEmpty(t, ns.Namespace.ID)
-			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
-		}
-	})
+	for idx, ns := range namespaces {
+		err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+		require.NoError(t, err)
+		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.Namespace.ID)
+		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
+	}
 
 	t.Run("ListNamespaces", func(t *testing.T) {
 		t.Run("no root namespace", func(t *testing.T) {

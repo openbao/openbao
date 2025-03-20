@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
@@ -977,237 +978,274 @@ func createOrFetchEntityForNamespaceTest(ctx context.Context, i *IdentityStore, 
 }
 
 func TestIdentityStore_NamespaceAwareness(t *testing.T) {
-	// Test entity creation in different namespaces
 	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
 
-	// Create a namespace
-	ns := &namespace.Namespace{
-		ID:   "testns1",
-		Path: "testns1/",
-	}
-	// Create namespace entry
-	nsEntry := &NamespaceEntry{
-		Namespace: ns,
-		UUID:      "testns1-uuid",
-	}
-
-	// Set up the namespace in the store
-	err := c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), nsEntry)
-	if err != nil {
-		t.Fatalf("failed to set up test namespace: %v", err)
-	}
-
-	// Create a second namespace
-	ns2 := &namespace.Namespace{
-		ID:   "testns2",
-		Path: "testns2/",
-	}
-	// Create namespace entry
-	ns2Entry := &NamespaceEntry{
-		Namespace: ns2,
-		UUID:      "testns2-uuid",
-	}
-
-	// Set up the second namespace in the store
-	err = c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), ns2Entry)
-	if err != nil {
-		t.Fatalf("failed to set up second test namespace: %v", err)
-	}
-
-	// Create entities in different namespaces
+	// Setup namespaces first
 	rootCtx := namespace.RootContext(context.Background())
-	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	ns1, ns2 := setupNamespaces(t, c)
+
+	// Define test contexts
+	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
 	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
 
-	// Create entity in root namespace
-	rootEntity, err := c.identityStore.CreateEntity(rootCtx)
-	if err != nil {
-		t.Fatalf("failed to create entity in root namespace: %v", err)
-	}
+	t.Run("entity-creation", func(t *testing.T) {
+		tests := []struct {
+			name        string
+			ctx         context.Context
+			expectedNS  string
+			description string
+		}{
+			{
+				name:        "root-namespace",
+				ctx:         rootCtx,
+				expectedNS:  namespace.RootNamespaceID,
+				description: "Should create entity in root namespace",
+			},
+			{
+				name:        "testns1",
+				ctx:         ns1Ctx,
+				expectedNS:  "testns1",
+				description: "Should create entity in testns1",
+			},
+			{
+				name:        "testns2",
+				ctx:         ns2Ctx,
+				expectedNS:  "testns2",
+				description: "Should create entity in testns2",
+			},
+		}
 
-	// Validate entity namespace
-	if rootEntity.NamespaceID != namespace.RootNamespaceID {
-		t.Fatalf("expected root entity to have root namespace, got: %s", rootEntity.NamespaceID)
-	}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				entity, err := is.CreateEntity(tt.ctx)
+				require.NoError(t, err, tt.description)
+				assert.Equal(t, tt.expectedNS, entity.NamespaceID)
+			})
+		}
+	})
 
-	// Create entity in test namespace
-	ns1Entity, err := c.identityStore.CreateEntity(ns1Ctx)
-	if err != nil {
-		t.Fatalf("failed to create entity in test namespace: %v", err)
-	}
+	t.Run("entity-lookup-by-name", func(t *testing.T) {
+		// Create test entities in all namespaces
+		rootEntity := createEntity(t, is, rootCtx)
+		ns1Entity := createEntity(t, is, ns1Ctx)
+		// ns2Entity := createEntity(t, is, ns2Ctx)
 
-	// Validate entity namespace
-	if ns1Entity.NamespaceID != "testns1" {
-		t.Fatalf("expected test entity to have testns1 namespace, got: %s", ns1Entity.NamespaceID)
-	}
+		tests := []struct {
+			name          string
+			lookupCtx     context.Context
+			entityName    string
+			expectFound   bool
+			expectedNS    string
+			errorExpected bool
+		}{
+			{
+				name:          "root-from-root",
+				lookupCtx:     rootCtx,
+				entityName:    rootEntity.Name,
+				expectFound:   true,
+				expectedNS:    namespace.RootNamespaceID,
+				errorExpected: false,
+			},
+			{
+				name:          "ns1-from-root",
+				lookupCtx:     rootCtx,
+				entityName:    ns1Entity.Name,
+				expectFound:   false,
+				errorExpected: false,
+			},
+			{
+				name:          "ns1-from-ns1",
+				lookupCtx:     ns1Ctx,
+				entityName:    ns1Entity.Name,
+				expectFound:   true,
+				expectedNS:    "testns1",
+				errorExpected: false,
+			},
+		}
 
-	// Create entity in second test namespace
-	ns2Entity, err := c.identityStore.CreateEntity(ns2Ctx)
-	if err != nil {
-		t.Fatalf("failed to create entity in second test namespace: %v", err)
-	}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				entity, err := is.MemDBEntityByName(tt.lookupCtx, tt.entityName, false)
 
-	// Validate entity namespace
-	if ns2Entity.NamespaceID != "testns2" {
-		t.Fatalf("expected test entity to have testns2 namespace, got: %s", ns2Entity.NamespaceID)
-	}
+				if tt.errorExpected {
+					require.Error(t, err)
+					return
+				}
 
-	// Look up entity by name in root namespace
-	entityByName, err := c.identityStore.MemDBEntityByName(rootCtx, rootEntity.Name, false)
-	if err != nil {
-		t.Fatalf("failed to look up root entity by name: %v", err)
-	}
-	if entityByName == nil {
-		t.Fatal("expected root entity to be found in root namespace")
-	}
-	if entityByName.NamespaceID != namespace.RootNamespaceID {
-		t.Fatalf("expected found entity to have root namespace, got: %s", entityByName.NamespaceID)
-	}
+				require.NoError(t, err)
+				if tt.expectFound {
+					require.NotNil(t, entity, "Expected entity to be found")
+					assert.Equal(t, tt.expectedNS, entity.NamespaceID)
+				} else {
+					assert.Nil(t, entity, "Expected entity to not be found")
+				}
+			})
+		}
+	})
 
-	// Looking up ns1 entity from root namespace should fail
-	entityByName, err = c.identityStore.MemDBEntityByName(rootCtx, ns1Entity.Name, false)
-	if err != nil {
-		t.Fatalf("error looking up ns1 entity from root: %v", err)
-	}
-	if entityByName != nil {
-		t.Fatal("expected not to find ns1 entity from root namespace")
-	}
+	t.Run("alias-namespace-isolation", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			ctx           context.Context
+			aliasName     string
+			mountAccessor string
+			expectedNS    string
+		}{
+			{
+				name:          "root-alias",
+				ctx:           rootCtx,
+				aliasName:     "root-alias",
+				mountAccessor: "root-accessor",
+				expectedNS:    namespace.RootNamespaceID,
+			},
+			{
+				name:          "ns1-alias",
+				ctx:           ns1Ctx,
+				aliasName:     "ns1-alias",
+				mountAccessor: "ns1-accessor",
+				expectedNS:    "testns1",
+			},
+			{
+				name:          "ns2-alias",
+				ctx:           ns2Ctx,
+				aliasName:     "ns2-alias",
+				mountAccessor: "ns2-accessor",
+				expectedNS:    "testns2",
+			},
+		}
 
-	// Test alias namespace awareness
-	// For the namespace test, we'll use our custom function that bypasses mount validation
+		var entities []*identity.Entity
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				entity, err := createOrFetchEntityForNamespaceTest(tt.ctx, is, tt.aliasName, tt.mountAccessor)
+				require.NoError(t, err)
+				require.NotNil(t, entity)
 
-	// For simplicity in our test, we'll use standard auth mounts for testing
-	// Each alias will use the same mount accessor
-	// In real-world usage, these would have different mount accessors for different auth methods
-	// but for the namespace testing, one accessor works since we'll use context to differentiate
+				assert.Equal(t, tt.expectedNS, entity.NamespaceID)
+				assert.Len(t, entity.Aliases, 1, "Should have exactly one alias")
 
-	// Create entities with aliases in different namespaces using our custom test function
-	rootEntityWithAlias, err := createOrFetchEntityForNamespaceTest(rootCtx, c.identityStore, "root-alias", "mock-accessor")
-	if err != nil {
-		t.Fatalf("failed to create entity with alias in root namespace: %v", err)
-	}
+				alias := entity.Aliases[0]
+				assert.Equal(t, tt.expectedNS, alias.NamespaceID)
+				assert.Equal(t, tt.aliasName, alias.Name)
 
-	// Validate entity namespace and aliases
-	if rootEntityWithAlias.NamespaceID != namespace.RootNamespaceID {
-		t.Fatalf("expected entity with alias to have root namespace, got: %s", rootEntityWithAlias.NamespaceID)
-	}
+				entities = append(entities, entity)
+			})
+		}
 
-	if len(rootEntityWithAlias.Aliases) != 1 {
-		t.Fatalf("expected entity to have 1 alias, got: %d", len(rootEntityWithAlias.Aliases))
-	}
+		// Cross-namespace lookup tests
+		crossTests := []struct {
+			name          string
+			lookupCtx     context.Context
+			aliasName     string
+			mountAccessor string
+			expectedFound bool
+		}{
+			{
+				name:          "root-alias-from-ns1",
+				lookupCtx:     ns1Ctx,
+				aliasName:     "root-alias",
+				mountAccessor: "root-accessor",
+				expectedFound: false,
+			},
+			{
+				name:          "ns1-alias-from-root",
+				lookupCtx:     rootCtx,
+				aliasName:     "ns1-alias",
+				mountAccessor: "ns1-accessor",
+				expectedFound: false,
+			},
+		}
 
-	if rootEntityWithAlias.Aliases[0].Name != "root-alias" {
-		t.Fatalf("expected alias name to be root-alias, got: %s", rootEntityWithAlias.Aliases[0].Name)
-	}
+		for _, tt := range crossTests {
+			t.Run(tt.name, func(t *testing.T) {
+				entity, err := is.entityByAliasFactorsWithContext(tt.lookupCtx, tt.mountAccessor, tt.aliasName, false)
+				require.NoError(t, err)
 
-	if rootEntityWithAlias.Aliases[0].NamespaceID != namespace.RootNamespaceID {
-		t.Fatalf("expected alias to have root namespace, got: %s", rootEntityWithAlias.Aliases[0].NamespaceID)
-	}
+				if tt.expectedFound {
+					assert.NotNil(t, entity)
+				} else {
+					assert.Nil(t, entity)
+				}
+			})
+		}
+	})
 
-	// Create entity with alias in ns1
-	ns1EntityWithAlias, err := createOrFetchEntityForNamespaceTest(ns1Ctx, c.identityStore, "ns1-alias", "mock-accessor")
-	if err != nil {
-		t.Fatalf("failed to create entity with alias in ns1: %v", err)
-	}
+	t.Run("duplicate-aliases-different-namespaces", func(t *testing.T) {
+		// Create duplicate aliases in different namespaces with different accessors
+		rootEntity, err := createOrFetchEntityForNamespaceTest(rootCtx, is, "dupe-alias", "root-accessor")
+		require.NoError(t, err)
 
-	// Validate entity namespace and aliases
-	if ns1EntityWithAlias.NamespaceID != "testns1" {
-		t.Fatalf("expected entity to have testns1 namespace, got: %s", ns1EntityWithAlias.NamespaceID)
-	}
+		ns1Entity, err := createOrFetchEntityForNamespaceTest(ns1Ctx, is, "dupe-alias", "ns1-accessor")
+		require.NoError(t, err)
 
-	if len(ns1EntityWithAlias.Aliases) != 1 {
-		t.Fatalf("expected entity to have 1 alias, got: %d", len(ns1EntityWithAlias.Aliases))
-	}
+		assert.NotEqual(t, rootEntity.ID, ns1Entity.ID, "Entities with same alias name in different namespaces should be different")
 
-	if ns1EntityWithAlias.Aliases[0].NamespaceID != "testns1" {
-		t.Fatalf("expected alias to have testns1 namespace, got: %s", ns1EntityWithAlias.Aliases[0].NamespaceID)
-	}
+		// Verify lookups respect namespace boundaries
+		tests := []struct {
+			name          string
+			ctx           context.Context
+			accessor      string
+			aliasName     string
+			expectedID    string
+			errorExpected bool
+		}{
+			{
+				name:       "root-lookup",
+				ctx:        rootCtx,
+				accessor:   "root-accessor",
+				aliasName:  "dupe-alias",
+				expectedID: rootEntity.ID,
+			},
+			{
+				name:       "ns1-lookup",
+				ctx:        ns1Ctx,
+				accessor:   "ns1-accessor",
+				aliasName:  "dupe-alias",
+				expectedID: ns1Entity.ID,
+			},
+			{
+				name:          "cross-namespace-lookup",
+				ctx:           rootCtx,
+				accessor:      "ns1-accessor",
+				aliasName:     "dupe-alias",
+				expectedID:    "",
+				errorExpected: false,
+			},
+		}
 
-	// Create entity with alias in ns2
-	ns2EntityWithAlias, err := createOrFetchEntityForNamespaceTest(ns2Ctx, c.identityStore, "ns2-alias", "mock-accessor")
-	if err != nil {
-		t.Fatalf("failed to create entity with alias in ns2: %v", err)
-	}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				entity, err := is.entityByAliasFactorsWithContext(tt.ctx, tt.accessor, tt.aliasName, false)
+				require.NoError(t, err)
 
-	// Validate entity namespace and aliases
-	if ns2EntityWithAlias.NamespaceID != "testns2" {
-		t.Fatalf("expected entity to have testns2 namespace, got: %s", ns2EntityWithAlias.NamespaceID)
-	}
+				if tt.expectedID != "" {
+					require.NotNil(t, entity)
+					assert.Equal(t, tt.expectedID, entity.ID)
+				} else {
+					assert.Nil(t, entity)
+				}
+			})
+		}
+	})
+}
 
-	// Skip duplicate alias test as this is covered by our lookup test
-	// Use different accessors to avoid the merge error
-	rootDuplicateEntity, err := createOrFetchEntityForNamespaceTest(rootCtx, c.identityStore, "duplicate-alias", "root-duplicate-accessor")
-	if err != nil {
-		t.Fatalf("failed to create entity with duplicate alias in root namespace: %v", err)
-	}
+// Helper functions
+func setupNamespaces(t *testing.T, c *Core) (*namespace.Namespace, *namespace.Namespace) {
+	ns1 := &namespace.Namespace{ID: "testns1", Path: "testns1/"}
+	ns2 := &namespace.Namespace{ID: "testns2", Path: "testns2/"}
 
-	ns1DuplicateEntity, err := createOrFetchEntityForNamespaceTest(ns1Ctx, c.identityStore, "duplicate-alias", "ns1-duplicate-accessor")
-	if err != nil {
-		t.Fatalf("failed to create entity with duplicate alias in ns1: %v", err)
-	}
+	ns1Entry := &NamespaceEntry{Namespace: ns1, UUID: "testns1-uuid"}
+	ns2Entry := &NamespaceEntry{Namespace: ns2, UUID: "testns2-uuid"}
 
-	// Even with same name but different accessors, the entities should be different because they're in different namespaces
-	if rootDuplicateEntity.ID == ns1DuplicateEntity.ID {
-		t.Fatalf("expected different entities for duplicate aliases in different namespaces")
-	}
+	require.NoError(t, c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), ns1Entry))
+	require.NoError(t, c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), ns2Entry))
 
-	// Looking up entity by alias factors should respect namespace boundaries
-	// Root context should find root entity
-	entityByAlias, err := c.identityStore.entityByAliasFactorsWithContext(rootCtx, "root-duplicate-accessor", "duplicate-alias", false)
-	if err != nil {
-		t.Fatalf("failed to look up entity by alias factors: %v", err)
-	}
+	return ns1, ns2
+}
 
-	if entityByAlias == nil {
-		t.Fatal("expected to find entity by alias factors in root namespace")
-	}
-
-	if entityByAlias.ID != rootDuplicateEntity.ID {
-		t.Fatalf("expected to find root duplicate entity, got: %s", entityByAlias.ID)
-	}
-
-	// NS1 context should find NS1 entity
-	entityByAlias, err = c.identityStore.entityByAliasFactorsWithContext(ns1Ctx, "ns1-duplicate-accessor", "duplicate-alias", false)
-	if err != nil {
-		t.Fatalf("failed to look up entity by alias factors: %v", err)
-	}
-
-	if entityByAlias == nil {
-		t.Fatal("expected to find entity by alias factors in ns1")
-	}
-
-	if entityByAlias.ID != ns1DuplicateEntity.ID {
-		t.Fatalf("expected to find ns1 duplicate entity, got: %s", entityByAlias.ID)
-	}
-
-	// Looking up an alias from another namespace should return nil
-	entityByAlias, err = c.identityStore.entityByAliasFactorsWithContext(rootCtx, "mock-accessor", "ns1-alias", false)
-	if err != nil {
-		t.Fatalf("error looking up cross-namespace alias: %v", err)
-	}
-
-	if entityByAlias != nil {
-		t.Fatalf("expected nil when looking up ns1 alias from root context, got: %v", entityByAlias)
-	}
-
-	entityByAlias, err = c.identityStore.entityByAliasFactorsWithContext(ns1Ctx, "mock-accessor", "root-alias", false)
-	if err != nil {
-		t.Fatalf("error looking up cross-namespace alias: %v", err)
-	}
-
-	if entityByAlias != nil {
-		t.Fatalf("expected nil when looking up root alias from ns1 context, got: %v", entityByAlias)
-	}
-
-	// Look up entity by name in test namespace
-	entityByName, err = c.identityStore.MemDBEntityByName(ns1Ctx, ns1Entity.Name, false)
-	if err != nil {
-		t.Fatalf("failed to look up ns1 entity by name: %v", err)
-	}
-	if entityByName == nil {
-		t.Fatal("expected ns1 entity to be found in test namespace")
-	}
-	if entityByName.NamespaceID != "testns1" {
-		t.Fatalf("expected found entity to have test namespace, got: %s", entityByName.NamespaceID)
-	}
+func createEntity(t *testing.T, is *IdentityStore, ctx context.Context) *identity.Entity {
+	entity, err := is.CreateEntity(ctx)
+	require.NoError(t, err)
+	return entity
 }

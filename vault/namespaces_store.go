@@ -794,25 +794,25 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	return nil
 }
 
-// ResolveNamespaceFromRequestContext merges the given base context with
-// the namespace from httpCtx.
-func (ns *NamespaceStore) ResolveNamespaceFromRequestContext(baseCtx context.Context, httpCtx context.Context) (context.Context, *namespace.Namespace, error) {
-	rawNs, err := namespace.FromContext(httpCtx)
+// copyNamespaceFromCtx copies the namespace from fromCtx into intoCtx, ensuring that the namespace exists.
+func (ns *NamespaceStore) copyNamespaceFromCtx(intoCtx context.Context, fromCtx context.Context) (context.Context, *namespace.Namespace, error) {
+	rawNs, err := namespace.FromContext(fromCtx)
 	if err != nil {
-		return baseCtx, nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+		return intoCtx, nil, fmt.Errorf("could not parse namespace from http context: %w", err)
 	}
 
-	entry, err := ns.GetNamespaceByPath(baseCtx, rawNs.Path)
+	// in practice intoCtx should already have the root namespace set, but let's make it explicit that this is necessary here
+	entry, err := ns.GetNamespaceByPath(namespace.RootContext(intoCtx), rawNs.Path)
 	if err != nil {
-		return baseCtx, nil, fmt.Errorf("could not fetch namespace by path: %w", err)
+		return intoCtx, nil, fmt.Errorf("could not fetch namespace by path: %w", err)
 	}
 
 	if entry == nil {
-		return baseCtx, nil, fmt.Errorf("requested namespace was not found")
+		return intoCtx, nil, fmt.Errorf("requested namespace was not found")
 	}
 
-	newCtx := namespace.ContextWithNamespace(baseCtx, entry.Namespace)
-	return newCtx, entry.Namespace, nil
+	intoCtx = namespace.ContextWithNamespace(intoCtx, entry.Namespace)
+	return intoCtx, entry.Namespace, nil
 }
 
 // ResolveNamespaceFromRequest merges the given base context with the
@@ -822,7 +822,7 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequestContext(baseCtx context.Con
 // path again.
 func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, httpCtx context.Context, reqPath string) (context.Context, *namespace.Namespace, string, error) {
 	// We stack the namespace context ahead of any namespace in path.
-	newCtx, parentNs, err := ns.ResolveNamespaceFromRequestContext(baseCtx, httpCtx)
+	newCtx, parentNs, err := ns.copyNamespaceFromCtx(baseCtx, httpCtx)
 	if err != nil {
 		return newCtx, parentNs, reqPath, err
 	}

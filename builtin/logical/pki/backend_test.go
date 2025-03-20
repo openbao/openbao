@@ -4453,7 +4453,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	}
 
 	// Wait for the short-lived certificates to expire
-	time.Sleep(time.Until(lastTTL) + 2*time.Second)
+	time.Sleep(time.Until(lastTTL))
 
 	// Tidy the expired certificates
 	waitForManualTidy(t, client, map[string]interface{}{
@@ -4461,15 +4461,25 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 		"safety_buffer":   "1s",
 	})
 
+	// maxAttempts is the number of times we will check for async completion
+	maxAttempts := 10
+
 	// tidy metrics check
-	mostRecentInterval := inmemSink.Data()[len(inmemSink.Data())-1]
 	expectedGauges := map[string]float32{
 		"secrets.pki.tidy.cert_store_total_entries":           5, // All the certs
 		"secrets.pki.tidy.cert_store_total_entries_remaining": 2, // The long-lived certs
 	}
-	for gauge, value := range expectedGauges {
-		if metric, ok := mostRecentInterval.Gauges[gauge]; !ok || metric.Value != value {
-			t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
+	for i := 1; i < maxAttempts; i++ {
+		for gauge, value := range expectedGauges {
+			mostRecentInterval := inmemSink.Data()[len(inmemSink.Data())-1]
+			metric, ok := mostRecentInterval.Gauges[gauge]
+			if ok && metric.Value == value {
+				break
+			}
+			if i == maxAttempts {
+				t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
+			}
+			time.Sleep(400 * time.Millisecond)
 		}
 	}
 
@@ -4507,7 +4517,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	}
 
 	// Wait for the short-lived certificate to expire
-	time.Sleep(time.Until(cert1.NotAfter) + 2*time.Second)
+	time.Sleep(time.Until(cert1.NotAfter) + 50*time.Millisecond)
 
 	// Tidy the revoked certificates
 	waitForManualTidy(t, client, map[string]interface{}{
@@ -4516,16 +4526,23 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	})
 
 	// Verify that the revoked short-lived certificate has been tidied
-	crl := getParsedCrl(t, client, "pki")
-	revokedCerts := crl.TBSCertList.RevokedCertificates
 	found := false
-	for _, revoked := range revokedCerts {
-		serial := certutil.GetHexFormatted(revoked.SerialNumber.Bytes(), ":")
-		if serial == certSerial1 {
-			t.Fatalf("Short-lived certificate with serial %s should have been tidied", certSerial1)
+	for i := 1; i < maxAttempts; i++ {
+		crl := getParsedCrl(t, client, "pki")
+		revokedCerts := crl.TBSCertList.RevokedCertificates
+		for _, revoked := range revokedCerts {
+			serial := certutil.GetHexFormatted(revoked.SerialNumber.Bytes(), ":")
+			if serial == certSerial1 && i == maxAttempts {
+				t.Fatalf("Short-lived certificate with serial %s should have been tidied", certSerial1)
+			}
+			if serial == certSerial2 {
+				found = true
+				break
+			}
+			time.Sleep(400 * time.Millisecond)
 		}
-		if serial == certSerial2 {
-			found = true
+		if found {
+			break
 		}
 	}
 	if !found {
@@ -4533,16 +4550,23 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	}
 
 	// Final tidy metrics check
-	mostRecentInterval2 := inmemSink.Data()[len(inmemSink.Data())-1]
 	expectedGauges2 := map[string]float32{
 		"secrets.pki.tidy.revoked_cert_total_entries":           2, // All the revoked certs
 		"secrets.pki.tidy.revoked_cert_total_entries_remaining": 1, // The revoked long-lived cert
 		"secrets.pki.tidy.cert_store_total_entries":             5, // All the non-revoked certs
 		"secrets.pki.tidy.cert_store_total_entries_remaining":   2, // The non-revoked long-lived certs
 	}
-	for gauge, value := range expectedGauges2 {
-		if metric, ok := mostRecentInterval2.Gauges[gauge]; !ok || metric.Value != value {
-			t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
+	for i := 1; i < maxAttempts; i++ {
+		for gauge, value := range expectedGauges2 {
+			mostRecentInterval2 := inmemSink.Data()[len(inmemSink.Data())-1]
+			metric, ok := mostRecentInterval2.Gauges[gauge]
+			if ok && metric.Value == value {
+				break
+			}
+			if i == maxAttempts {
+				t.Fatalf("Expected gauge %s to have value %f, but got %f", gauge, value, metric.Value)
+			}
+			time.Sleep(400 * time.Millisecond)
 		}
 	}
 }

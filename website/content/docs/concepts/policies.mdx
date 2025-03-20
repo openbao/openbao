@@ -91,6 +91,18 @@ path "secret/foo" {
 }
 ```
 
+Equivalently in JSON, this would be:
+
+```json
+{
+  "paths": {
+    "secret/foo": {
+      "capabilities": ["read"]
+    }
+  }
+}
+```
+
 When this policy is assigned to a token, the token can read from `"secret/foo"`.
 However, the token cannot update or delete `"secret/foo"`, since the
 capabilities do not allow it. Because policies are **deny by default**, the
@@ -366,6 +378,18 @@ path "secret/data/{{identity.entity.aliases.auth_kubernetes_xxxx.metadata.servic
 In addition to the standard set of capabilities, OpenBao offers finer-grained
 control over permissions at a given path. The capabilities associated with a
 path take precedence over permissions on parameters.
+
+Each path can contain an optional, ignored field, `comment` which can be used
+to describe the contents.
+
+For instance:
+
+```hcl
+path "pki/*" {
+  capabilities = ["deny"]
+  comment = "explicitly deny access to PKI path based on discussion in TRACKER-12345."
+}
+```
 
 ### Parameter constraints
 

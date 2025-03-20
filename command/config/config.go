@@ -20,12 +20,12 @@ const (
 	DefaultConfigPath = "~/.bao"
 
 	// ConfigPathEnv is the environment variable that can be used to
-	// override where the Vault configuration is.
+	// override where the configuration file is.
 	ConfigPathEnv = "BAO_CONFIG_PATH"
 )
 
-// Config is the CLI configuration for Vault that can be specified via
-// a `$HOME/.vault` file which is HCL-formatted (therefore HCL or JSON).
+// Config is the CLI configuration for Bao that can be specified via
+// `$BAO_CONFIG_PATH=$HOME/.bao` file which is HCL-formatted (therefore HCL or JSON).
 type DefaultConfig struct {
 	// TokenHelper is the executable/command that is executed for storing
 	// and retrieving the authentication token for the Vault CLI. If this

@@ -34,6 +34,10 @@ Usage: bao namespace san [options]
 
       $ bao namespace scan
 
+  List enabled child namespaces relative to parent:
+
+      $ bao namespace scan -namespace=my-parent
+
 ` + c.Flags().Help()
 
 	return strings.TrimSpace(helpText)

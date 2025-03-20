@@ -47,6 +47,7 @@ import (
 	"github.com/openbao/openbao/physical/postgresql"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
+	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/file"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -1252,4 +1253,108 @@ func executeRandomTransactionalOps(t *testing.T, txBackends map[string]physical.
 	}
 
 	os.Remove(txOpsLogFile)
+}
+
+func BenchmarkClearView(b *testing.B) {
+	prefix := "this-is-a-really-long-path-with-a-uuid-199bae8c-01a4-49a2-8db9-cbddef706b27-plus-some-data-and-another-two-uuids-74ec38e9-b73b-4b7f-9148-809155e8dc91-3a0bc20a-2415-4dfb-a8a3-4d7c8d2bb66d"
+	size := 25
+
+	logger := logging.NewVaultLogger(log.Info)
+
+	b.Run("Inmem/WithoutPagination", func(b *testing.B) {
+		s := &logical.InmemStorage{}
+
+		randomData(b, s, "secrets-without-pagination/"+prefix, b.N, size)
+		count, err := logical.CountKeys(context.Background(), s)
+		require.NoError(b, err)
+		require.Equal(b, b.N, count)
+		b.ResetTimer()
+
+		b.Logf("Starting clear")
+		logical.ClearViewWithoutPagination(context.Background(), s, logger)
+		b.Logf("Ending clear")
+
+		count, err = logical.CountKeys(context.Background(), s)
+		require.NoError(b, err)
+		require.Equal(b, 0, count)
+	})
+
+	b.Run("Inmem/WithPagination", func(b *testing.B) {
+		s := &logical.InmemStorage{}
+
+		randomData(b, s, "secrets-with-pagination/"+prefix, b.N, size)
+		count, err := logical.CountKeys(context.Background(), s)
+		require.NoError(b, err)
+		require.Equal(b, b.N, count)
+		b.ResetTimer()
+
+		b.Logf("Starting clear")
+		logical.ClearViewWithPagination(context.Background(), s, logger)
+		b.Logf("Ending clear")
+
+		count, err = logical.CountKeys(context.Background(), s)
+		require.NoError(b, err)
+		require.Equal(b, 0, count)
+	})
+
+	b.Run("Raft/WithoutPagination", func(b *testing.B) {
+		raft, dir := raft.GetRaft(b, true, true)
+		defer os.RemoveAll(dir)
+
+		r := logical.NewLogicalStorage(raft)
+
+		randomData(b, r, "secrets-without-pagination/"+prefix, b.N, size)
+		count, err := logical.CountKeys(context.Background(), r)
+		require.NoError(b, err)
+		require.Equal(b, b.N, count)
+		b.ResetTimer()
+
+		b.Logf("Starting clear")
+		logical.ClearViewWithoutPagination(context.Background(), r, logger)
+		b.Logf("Ending clear")
+
+		count, err = logical.CountKeys(context.Background(), r)
+		require.NoError(b, err)
+		require.Equal(b, 0, count)
+	})
+
+	b.Run("Raft/WithPagination", func(b *testing.B) {
+		raft, dir := raft.GetRaft(b, true, true)
+		defer os.RemoveAll(dir)
+
+		r := logical.NewLogicalStorage(raft)
+
+		randomData(b, r, "secrets-with-pagination/"+prefix, b.N, size)
+		count, err := logical.CountKeys(context.Background(), r)
+		require.NoError(b, err)
+		require.Equal(b, b.N, count)
+		b.ResetTimer()
+
+		b.Logf("Starting clear")
+		logical.ClearViewWithPagination(context.Background(), r, logger)
+		b.Logf("Ending clear")
+
+		count, err = logical.CountKeys(context.Background(), r)
+		require.NoError(b, err)
+		require.Equal(b, 0, count)
+	})
+}
+
+func randomData(t testing.TB, s logical.Storage, prefix string, count int, size int) {
+	for i := 0; i < count; i++ {
+		contents := fmt.Sprintf("%d", i%10)
+		for len(contents) < size {
+			contents += contents
+		}
+		contents = contents[0:size]
+
+		entry := fmt.Sprintf("%v-%v", prefix, i)
+
+		if err := s.Put(context.Background(), &logical.StorageEntry{
+			Key:   entry,
+			Value: []byte(contents),
+		}); err != nil {
+			t.Fatal(err.Error())
+		}
+	}
 }

@@ -34,6 +34,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTokenStore_CreateOrphanResponse(t *testing.T) {
@@ -55,45 +56,36 @@ func TestTokenStore_CreateOrphanResponse(t *testing.T) {
 }
 
 // TestTokenStore_CubbyholeDeletion tests that a token's cubbyhole
-// can be used and that the cubbyhole is removed after the token is revoked.
+// can be used and that the cubbyhole storage is flushed after the token is revoked.
 func TestTokenStore_CubbyholeDeletion(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	testTokenStore_CubbyholeDeletion(t, c, root)
-}
 
-// TestTokenStore_CubbyholeDeletionSSCTokensDisabled tests that a legacy token's
-// cubbyhole can be used, and that the cubbyhole is removed after the token is revoked.
-func TestTokenStore_CubbyholeDeletionSSCTokensDisabled(t *testing.T) {
-	c, _, root := TestCoreUnsealed(t)
+	// test the legacy token's cubbyhole
 	c.disableSSCTokens = true
 	testTokenStore_CubbyholeDeletion(t, c, root)
 }
 
-func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, root string) {
+func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, rootToken string) {
 	ts := c.tokenStore
+	ctx := namespace.RootContext(context.Background())
+	view := c.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		// Create a token
 		tokenReq := &logical.Request{
 			Operation:   logical.UpdateOperation,
 			Path:        "create",
-			ClientToken: root,
+			ClientToken: rootToken,
 			Data: map[string]interface{}{
 				"ttl": "600s",
 			},
 		}
-		// Supplying token ID forces SHA1 hashing to be used
-		if i%2 == 0 {
-			tokenReq.Data = map[string]interface{}{
-				"id":  "testroot",
-				"ttl": "600s",
-			}
-		}
-		resp := testMakeTokenViaRequest(t, ts, tokenReq)
+
+		resp := testMakeTokenViaRequestContext(t, ctx, ts, tokenReq)
 		token := resp.Auth.ClientToken
 
-		// Write data in the token's cubbyhole
-		resp, err := c.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err := c.HandleRequest(ctx, &logical.Request{
 			ClientToken: token,
 			Operation:   logical.UpdateOperation,
 			Path:        "cubbyhole/sample/data",
@@ -106,7 +98,7 @@ func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, root string) {
 		}
 
 		// Revoke the token
-		resp, err = ts.HandleRequest(namespace.RootContext(nil), &logical.Request{
+		resp, err = ts.HandleRequest(ctx, &logical.Request{
 			ClientToken: token,
 			Path:        "revoke-self",
 			Operation:   logical.UpdateOperation,
@@ -116,8 +108,7 @@ func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, root string) {
 		}
 	}
 
-	// List the cubbyhole keys
-	cubbyholeKeys, err := ts.cubbyholeBackend.storageView.List(namespace.RootContext(nil), "")
+	cubbyholeKeys, err := view.List(ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,14 +121,24 @@ func testTokenStore_CubbyholeDeletion(t *testing.T, c *Core, root string) {
 
 func TestTokenStore_CubbyholeTidy(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
-	testTokenStore_CubbyholeTidy(t, c, root, namespace.RootContext(nil))
+	testTokenStore_CubbyholeTidy(t, c, root, namespace.RootNamespace)
 }
 
-func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx context.Context) {
-	ts := c.tokenStore
+func TestTokenStore_CubbyholeTidyNamespace(t *testing.T) {
+	c, _, root := TestCoreUnsealed(t)
+	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
+	err := TestCoreCreateNamespaces(c, ns)
+	require.NoError(t, err)
 
-	backend := c.router.MatchingBackend(nsCtx, mountPathCubbyhole)
-	view := c.router.MatchingStorageByAPIPath(nsCtx, mountPathCubbyhole)
+	testTokenStore_CubbyholeTidy(t, c, root, ns)
+}
+
+func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namespace.Namespace) {
+	ts := c.tokenStore
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+
+	backend := c.router.MatchingBackend(ctx, mountPathCubbyhole)
+	view := c.router.MatchingStorageByAPIPath(ctx, mountPathCubbyhole)
 
 	for i := 1; i <= 20; i++ {
 		// Create 20 tokens
@@ -150,16 +151,8 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 			},
 		}
 
-		resp := testMakeTokenViaRequestContext(t, nsCtx, ts, tokenReq)
+		resp := testMakeTokenViaRequestContext(t, ctx, ts, tokenReq)
 		token := resp.Auth.ClientToken
-
-		// Supplying token ID forces SHA1 hashing to be used
-		if i%3 == 0 {
-			tokenReq.Data = map[string]interface{}{
-				"id":  "testroot",
-				"ttl": "600s",
-			}
-		}
 
 		// Create 4 junk cubbyhole entries
 		if i%5 == 0 {
@@ -168,7 +161,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 				t.Fatal(err)
 			}
 
-			resp, err := backend.HandleRequest(nsCtx, &logical.Request{
+			resp, err := backend.HandleRequest(ctx, &logical.Request{
 				ClientToken: invalidToken,
 				Operation:   logical.UpdateOperation,
 				Path:        "cubbyhole/sample/data",
@@ -186,7 +179,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 		if i%2 == 0 {
 			continue
 		}
-		resp, err := c.HandleRequest(nsCtx, &logical.Request{
+		resp, err := c.HandleRequest(ctx, &logical.Request{
 			ClientToken: token,
 			Operation:   logical.UpdateOperation,
 			Path:        "cubbyhole/sample/data",
@@ -200,7 +193,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 	}
 
 	// List all the cubbyhole storage keys
-	cubbyholeKeys, err := view.List(nsCtx, "")
+	cubbyholeKeys, err := view.List(ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +203,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 	}
 
 	// Tidy cubbyhole storage
-	resp, err := ts.HandleRequest(nsCtx, &logical.Request{
+	resp, err := ts.HandleRequest(ctx, &logical.Request{
 		Path:      "tidy",
 		Operation: logical.UpdateOperation,
 	})
@@ -221,8 +214,24 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, nsCtx cont
 	// Wait for tidy operation to complete
 	time.Sleep(2 * time.Second)
 
+	// Verify that root view.List will not return appriopriate keys when
+	// root namespace context is passed
+	if ns != namespace.RootNamespace {
+		rootCtx := namespace.RootContext(context.Background())
+		rootView := c.router.MatchingStorageByAPIPath(rootCtx, mountPathCubbyhole)
+		cubbyholeKeysOnRootLevel, err := rootView.List(rootCtx, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Should be empty as we are using namespace cubbyhole
+		if len(cubbyholeKeysOnRootLevel) != 0 {
+			t.Fatalf("bad: len(cubbyholeKeysOnRootLevel); expected: 0, actual: %d", len(cubbyholeKeysOnRootLevel))
+		}
+	}
+
 	// List all the cubbyhole storage keys
-	cubbyholeKeys, err = view.List(nsCtx, "")
+	cubbyholeKeys, err = view.List(ctx, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -419,6 +428,64 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 	}
 	if out.NumUses != 10 {
 		t.Fatalf("bad: num_uses: expected: 10, actual: %d", out.NumUses)
+	}
+
+	// Test the token namespace case
+	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
+	err = TestCoreCreateNamespaces(c, ns)
+	require.NoError(t, err)
+	nsCtx := namespace.ContextWithNamespace(context.Background(), ns)
+	nsEntry, err := c.namespaceStore.GetNamespaceByAccessor(nsCtx, ns.ID)
+	require.NoError(t, err)
+
+	ent = &logical.TokenEntry{
+		DisplayName:    "test-namespace-display-name",
+		Path:           "test-namespace",
+		Policies:       []string{"dev", "ops"},
+		CreationTime:   time.Now().Unix(),
+		ExplicitMaxTTL: 100,
+		NumUses:        10,
+		NamespaceID:    ns.ID,
+	}
+	if err := ts.create(nsCtx, ent); err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	auth = &logical.Auth{
+		DisplayName:    ent.DisplayName,
+		CreationPath:   ent.Path,
+		Policies:       ent.Policies,
+		ExplicitMaxTTL: ent.ExplicitMaxTTL,
+		NumUses:        ent.NumUses,
+		LeaseOptions: logical.LeaseOptions{
+			TTL: time.Hour,
+		},
+		ClientToken: ent.ID,
+	}
+	if err := ts.expiration.RegisterAuth(nsCtx, ent, auth, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err = ts.Lookup(nsCtx, ent.ID)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	if out.DisplayName != "test-namespace-display-name" {
+		t.Fatalf("bad: display_name: expected: test-namespace-display-name, actual: %s", out.DisplayName)
+	}
+	if out.CreationTime == 0 {
+		t.Fatal("bad: expected a non-zero creation time")
+	}
+	if out.ExplicitMaxTTL != 100 {
+		t.Fatalf("bad: explicit_max_ttl: expected: 100, actual: %d", out.ExplicitMaxTTL)
+	}
+	if out.NumUses != 10 {
+		t.Fatalf("bad: num_uses: expected: 10, actual: %d", out.NumUses)
+	}
+	if out.NamespaceID != nsEntry.Namespace.ID {
+		t.Fatalf("bad: namespaceID: expected: %s, actual: %s", nsEntry.Namespace.ID, out.NamespaceID)
+	}
+	if !strings.HasSuffix(out.ID, nsEntry.Namespace.ID) {
+		t.Fatalf("bad: ID doesn't end with namespace ID: %s, actual ID: %s", nsEntry.Namespace.ID, out.ID)
 	}
 
 	// Fill in the deprecated fields and read out from proper fields

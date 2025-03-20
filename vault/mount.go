@@ -2151,7 +2151,6 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view B
 	case mountTypeCubbyhole:
 		ch := backend.(*CubbyholeBackend)
 		ch.saltUUID = entry.UUID
-		ch.storageView = view
 		c.cubbyholeBackend = ch
 	case mountTypeIdentity:
 		c.identityStore = backend.(*IdentityStore)

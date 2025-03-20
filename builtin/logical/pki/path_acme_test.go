@@ -1714,7 +1714,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-cn",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				Subject: pkix.Name{CommonName: "localhost"},
@@ -1724,7 +1724,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-san",
 			[]acme.AuthzID{
-				{"dns", "localhost"},
+				{Type: "dns", Value: "localhost"},
 			},
 			x509.CertificateRequest{
 				DNSNames: []string{"localhost"},
@@ -1734,7 +1734,7 @@ func TestACMEClientRequestLimits(t *testing.T) {
 		{
 			"validate-only-ip-address",
 			[]acme.AuthzID{
-				{"ip", "127.0.0.1"},
+				{Type: "ip", Value: "127.0.0.1"},
 			},
 			x509.CertificateRequest{
 				IPAddresses: []net.IP{{127, 0, 0, 1}},

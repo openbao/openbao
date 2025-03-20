@@ -2151,7 +2151,6 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view B
 	case mountTypeCubbyhole:
 		ch := backend.(*CubbyholeBackend)
 		ch.saltUUID = entry.UUID
-		ch.storageView = view
 		c.cubbyholeBackend = ch
 	case mountTypeIdentity:
 		c.identityStore = backend.(*IdentityStore)
@@ -2215,7 +2214,6 @@ func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView,
 		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
 	// Namespace mounts should be stored under the namespace prefix (UUID)
 	case mountTypeNSToken:
-		// Investigate: Should this impact token operations routing/storage?
 		return c.namespaceMountEntryView(ctx, me.NamespaceID, systemBarrierPrefix+tokenSubPath)
 	case mountTypeNSCubbyhole:
 		return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")

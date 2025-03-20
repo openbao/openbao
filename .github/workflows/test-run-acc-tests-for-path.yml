@@ -21,9 +21,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with: 
+          persist-credentials: false
       - uses: ./.github/actions/set-up-go
-      - run: go test -v ./${{ inputs.path }}/... 2>&1 | tee ${{ inputs.name }}.txt
-      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+      - name: Run go test
+        env:
+          INPUTS_NAME: ${{ inputs.name }}
+          INPUTS_PATH: ${{ inputs.path }}
+        run: go test -v "./$INPUTS_PATH/..." 2>&1 | tee "$INPUTS_NAME.txt"
+      - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: ${{ inputs.name }}-output
           path: ${{ inputs.name }}.txt

@@ -97,7 +97,7 @@ func outputError(ctx context.Context, newWarnings, listenerWarnings []string, ne
 	}
 	if newErr != nil {
 		errMsg := listenerID + ": " + newErr.Error()
-		listenerErrors = append(listenerErrors, fmt.Errorf(errMsg))
+		listenerErrors = append(listenerErrors, errors.New(errMsg))
 		Fail(ctx, errMsg)
 	}
 	return listenerWarnings, listenerErrors
@@ -353,7 +353,7 @@ func TLSCAFileCheck(CAFilePath string) ([]string, error) {
 
 	// Check for TLS Errors
 	if err = TLSErrorChecks(leafCerts, interCerts, rootCerts); err != nil {
-		return warningsSlc, fmt.Errorf(strings.ReplaceAll(err.Error(), "leaf", "root"))
+		return warningsSlc, errors.New(strings.ReplaceAll(err.Error(), "leaf", "root"))
 	}
 
 	return warningsSlc, err

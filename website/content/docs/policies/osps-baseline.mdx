@@ -1,0 +1,94 @@
+---
+sidebar_label: Open Source Project Security Baseline 
+description: |-
+  Overview of OSPS implementation in OpenBao project
+---
+
+# Open Source Project Security Baseline
+
+This pages tracks the implementation status of [Open Source Project Security Baseline](https://baseline.openssf.org) by OpenSSF.
+
+## Level 1
+
+| Control | Status |
+| ---- | ----------- |
+| [OSPS-AC-01.01](#osps-ac-01-01) | |
+| [OSPS-AC-02.01](#osps-ac-02-01) | |
+| [OSPS-AC-03.01](#osps-ac-03-01) | |
+| [OSPS-AC-03.02](#osps-ac-03-02) | |
+| [OSPS-BR-01.01](#osps-br-01-01) | |
+| [OSPS-BR-03.01](#osps-br-03-01) | |
+| [OSPS-DO-01.01](#osps-do-01-01) | |
+| [OSPS-DO-02.01](#osps-do-02-01) | |
+| [OSPS-GV-02.01](#osps-gv-02-01) | |
+| [OSPS-GV-03.01](#osps-gv-03-01) | |
+| [OSPS-LE-02.01](#osps-le-02-01) | |
+| [OSPS-LE-02.02](#osps-le-02-02) | |
+| [OSPS-LE-03.01](#osps-le-03-01) | |
+| [OSPS-LE-03.02](#osps-le-03-02) | |
+| [OSPS-QA-01.01](#osps-qa-01-01) | |
+| [OSPS-QA-01.02](#osps-qa-01-02) | |
+| [OSPS-QA-02.01](#osps-qa-02-01) | |
+| [OSPS-QA-04.01](#osps-qa-04-01) | |
+| [OSPS-QA-05.01](#osps-qa-05-01) | |
+| [OSPS-VM-02.01](#osps-vm-02-01) | |
+
+## OSPS-AC-01.01 {#osps-ac-01-01}
+When a user attempts to access a sensitive resource in the project's version control system, the system MUST require the user to complete a multi-factor authentication process.
+
+## OSPS-AC-02.01 {#osps-ac-02-01}
+When a new collaborator is added, the version control system MUST require manual permission assignment, or restrict the collaborator permissions to the lowest available privileges by default.
+
+## OSPS-AC-03.01 {#osps-ac-03-01}
+When a direct commit is attempted on the project's primary branch, an enforcement mechanism MUST prevent the change from being applied.
+
+## OSPS-AC-03.02 {#osps-ac-03-02}
+When an attempt is made to delete the project's primary branch, the version control system MUST treat this as a sensitive activity and require explicit confirmation of intent.
+
+## OSPS-BR-01.01 {#osps-br-01-01}
+When a CI/CD pipeline accepts an input parameter, that parameter MUST be sanitized and validated prior to use in the pipeline.
+
+## OSPS-BR-03.01 {#osps-br-03-01}
+When the project lists a URI as an official project channel, that URI MUST be exclusively delivered using encrypted channels.
+
+## OSPS-DO-01.01 {#osps-do-01-01}
+When the project has made a release, the project documentation MUST include user guides for all basic functionality.
+
+## OSPS-DO-02.01 {#osps-do-02-01}
+When the project has made a release, the project documentation MUST include a guide for reporting defects.
+
+## OSPS-GV-02.01 {#osps-gv-02-01}
+While active, the project MUST have one or more mechanisms for public discussions about proposed changes and usage obstacles.
+
+## OSPS-GV-03.01 {#osps-gv-03-01}
+While active, the project documentation MUST include an explanation of the contribution process.
+
+## OSPS-LE-02.01 {#osps-le-02-01}
+While active, the license for the source code MUST meet the OSI Open Source Definition or the FSF Free Software Definition.
+
+## OSPS-LE-02.02 {#osps-le-02-02}
+While active, the license for the released software assets MUST meet the OSI Open Source Definition or the FSF Free Software Definition.
+
+## OSPS-LE-03.01 {#osps-le-03-01}
+While active, the license for the source code MUST be maintained in the corresponding repository's LICENSE file, COPYING file, or LICENSE/ directory.
+
+## OSPS-LE-03.02 {#osps-le-03-02}
+While active, the license for the released software assets MUST be included in the released source code, or in a LICENSE file, COPYING file, or LICENSE/ directory alongside the corresponding release assets.
+
+## OSPS-QA-01.01 {#osps-qa-01-01}
+While active, the project's source code repository MUST be publicly readable at a static URL.
+
+## OSPS-QA-01.02 {#osps-qa-01-02}
+The version control system MUST contain a publicly readable record of all changes made, who made the changes, and when the changes were made.
+
+## OSPS-QA-02.01 {#osps-qa-02-01}
+When the package management system supports it, the source code repository MUST contain a dependency list that accounts for the direct language dependencies.
+
+## OSPS-QA-04.01 {#osps-qa-04-01}
+While active, the project documentation MUST contain a list of any codebases that are considered subprojects or additional repositories.
+
+## OSPS-QA-05.01 {#osps-qa-05-01}
+While active, the version control system MUST NOT contain generated executable artifacts.
+
+## OSPS-VM-02.01 {#osps-vm-02-01}
+While active, the project documentation MUST contain security contacts.

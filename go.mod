@@ -8,9 +8,7 @@ module github.com/openbao/openbao
 // The general policy for updating it is: when the Go major version used on the branch is
 // updated. If we choose not to do so at some point (e.g. because we don't want some new
 // semantic related to Go module handling), this comment should be updated to explain that.
-go 1.23.1
-
-toolchain go1.23.3
+go 1.24.0
 
 replace github.com/openbao/openbao/api/v2 => ./api
 
@@ -39,7 +37,7 @@ require (
 	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/gammazero/workerpool v1.1.3
 	github.com/go-errors/errors v1.5.1
-	github.com/go-jose/go-jose/v3 v3.0.3
+	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-ldap/ldap/v3 v3.4.9
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
 	github.com/go-sql-driver/mysql v1.8.1
@@ -49,9 +47,9 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
 	github.com/google/cel-go v0.22.1
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/go-metrics-stackdriver v0.2.0
-	github.com/hashicorp/cap v0.3.0
+	github.com/hashicorp/cap v0.9.0
 	github.com/hashicorp/cli v1.1.7
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cleanhttp v0.5.2
@@ -96,6 +94,7 @@ require (
 	github.com/kr/text v0.2.0
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.20
+	github.com/mediocregopher/radix/v4 v4.1.4
 	github.com/mholt/acmez/v3 v3.0.1
 	github.com/michaelklishin/rabbit-hole/v3 v3.1.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
@@ -107,23 +106,23 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/pointerstructure v1.2.1
 	github.com/mitchellh/reflectwalk v1.0.2
-	github.com/natefinch/atomic v0.0.0-20150920032501-a62ce929ffcc
+	github.com/natefinch/atomic v1.0.1
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.2.0
-	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250114185509-3fa7a3d31521
-	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0
 	github.com/openbao/openbao/api/auth/userpass/v2 v2.0.0
-	github.com/openbao/openbao/api/v2 v2.1.0
-	github.com/openbao/openbao/sdk/v2 v2.1.0
+	github.com/openbao/openbao/api/v2 v2.2.0
+	github.com/openbao/openbao/sdk/v2 v2.2.0
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pires/go-proxyproto v0.6.1
@@ -137,7 +136,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sasha-s/go-deadlock v0.3.5
 	github.com/sethvargo/go-limiter v1.0.0
-	github.com/shirou/gopsutil/v4 v4.24.12
+	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/stretchr/testify v1.10.0
 	github.com/tink-crypto/tink-go v0.0.0-20230613075026-d6de17e3f164
 	go.etcd.io/bbolt v1.3.11
@@ -147,14 +146,14 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.32.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
-	golang.org/x/net v0.34.0
-	golang.org/x/oauth2 v0.25.0
-	golang.org/x/sync v0.10.0
-	golang.org/x/sys v0.29.0
-	golang.org/x/term v0.28.0
-	golang.org/x/text v0.21.0
+	golang.org/x/net v0.36.0
+	golang.org/x/oauth2 v0.27.0
+	golang.org/x/sync v0.11.0
+	golang.org/x/sys v0.30.0
+	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0
 	golang.org/x/tools v0.29.0
 	google.golang.org/api v0.220.0
 	google.golang.org/grpc v1.70.0
@@ -226,7 +225,7 @@ require (
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
 	github.com/containerd/log v0.1.0 // indirect
-	github.com/coreos/go-oidc/v3 v3.5.0 // indirect
+	github.com/coreos/go-oidc/v3 v3.11.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba // indirect
 	github.com/digitalocean/godo v1.7.5 // indirect
@@ -237,7 +236,7 @@ require (
 	github.com/docker/docker v27.4.1+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/ebitengine/purego v0.8.1 // indirect
+	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -245,6 +244,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -344,6 +344,7 @@ require (
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162 // indirect
+	github.com/tilinna/clock v1.0.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/tv42/httpunix v0.0.0-20191220191345-2ba4b9c3382c // indirect

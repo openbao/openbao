@@ -1,0 +1,153 @@
+version: 2
+
+project_name: bao
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+    - make bootstrap
+
+env:
+  - NIGHTLY_RELEASE={{ if and (index .Env "NIGHTLY_RELEASE") (eq .Env.NIGHTLY_RELEASE "true") }}-nightly{{ end }}
+
+builds:
+  - id: builds-other
+    tags:
+      - ui
+    ldflags:
+      - -X github.com/openbao/openbao/version.fullVersion={{.Version}} -X github.com/openbao/openbao/version.GitCommit={{.Commit}} -X github.com/openbao/openbao/version.BuildDate={{ .Date }}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - freebsd
+      - illumos
+      - netbsd
+      - openbsd
+      - windows
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - riscv64
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: linux
+      - goos: darwin
+        goarm: "6"
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: riscv64
+      - goos: dragonfly
+        goarch: arm
+      - goos: dragonfly
+        goarch: arm64
+      - goos: dragonfly
+        goarch: riscv64
+      - goos: freebsd
+        goarm: "7"
+      - goos: illumos
+        goarch: arm
+      - goos: illumos
+        goarch: arm64
+      - goos: netbsd
+        goarch: riscv64
+      - goos: netbsd
+        goarm: "7"
+      - goos: openbsd
+        goarch: riscv64
+      - goos: openbsd
+        goarm: "7"
+      - goos: windows
+        goarch: arm
+        goarm: "7"
+      - goos: windows
+        goarch: riscv64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    skip: false
+
+report_sizes: true
+
+checksum:
+  name_template: "checksums-other.txt"
+  disable: false
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - "LICENSE"
+      - "README.md"
+      - "CHANGELOG.md"
+    builds_info:
+      group: root
+      owner: root
+      mode: 0755
+      # format is `time.RFC3339Nano`
+      mtime: 2008-01-02T15:04:05Z
+
+sboms:
+  - artifacts: archive
+  - id: binary
+    artifacts: binary
+  - id: package
+    artifacts: package
+
+changelog:
+  disable: "{{ if gt (len .Env.NIGHTLY_RELEASE) 0 }}true{{ end }}"
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+signs:
+  - id: cosign
+    artifacts: all
+    cmd: cosign
+    certificate: "${artifact}.pem"
+    args:
+      - "sign-blob"
+      - "--oidc-issuer=https://token.actions.githubusercontent.com"
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes" # needed on cosign 2.0.0+
+  - id: gpg
+    artifacts: all
+    signature: "${artifact}.gpgsig"
+    cmd: gpg
+    stdin: "{{ .Env.GPG_PASSWORD }}"
+    args:
+      - "--batch"
+      - "--default-key={{ .Env.GPG_FINGERPRINT }}"
+      - "--output=${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+
+release:
+  github:
+    owner: openbao
+    name: openbao{{ .Env.NIGHTLY_RELEASE }}
+
+  prerelease: auto
+  disable: false
+
+  draft: false
+  replace_existing_draft: false
+  replace_existing_artifacts: false

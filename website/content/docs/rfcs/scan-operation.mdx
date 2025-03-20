@@ -26,7 +26,7 @@ For operators, OpenBao will allow safely constraining these values by adding a n
 
 ## Technical Description
 
-`SCAN` behaves like `LIST` in that it returns all entries within the mount. Presuambly `SCAN` would only be used in plugins which support a `LIST` parameterized with a `:prefix` parameter usually in the URL for ACLing. SCAN would, like LIST, return all entries (albeit, recursively) even if they were not necessarily visible to the caller. The operator would grant explicit access to SCAN results, giving intent to recursively list all entries below the given path.
+`SCAN` behaves like `LIST` in that it returns all entries within the mount. Presumably `SCAN` would only be used in plugins which support a `LIST` parameterized with a `:prefix` parameter usually in the URL for ACLing. SCAN would, like LIST, return all entries (albeit, recursively) even if they were not necessarily visible to the caller. The operator would grant explicit access to SCAN results, giving intent to recursively list all entries below the given path.
 
 However, access to a given prefix's SCAN does not necessarily mean READ access was granted nor that SCAN was granted on sub-paths. E.g., if an operator had an ACL like:
 

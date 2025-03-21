@@ -391,6 +391,27 @@ path "pki/*" {
 }
 ```
 
+### Path expiration
+
+Specific paths in a policy can be set to automatically remove access at a
+point in time. This allows for lazy cleanup of policies: temporary access can
+be granted and long-term access guaranteed to be denied, without requiring
+cleanup and removal of the entire policy. When a policy is attached to an
+external authentication system's properties (e.g., LDAP groups or JWT claims)
+this is a useful additional control on top of expiring entire policies.
+
+- `expiration` `(string: <optional>)` - An optional expiration time for the
+  given path, in [`time.RFC3339` format](https://www.rfc-editor.org/rfc/rfc3339.html).
+
+For example:
+
+```hcl
+path "secret/data/in-case-of-emergency" {
+  capabilities = ["read"]
+  expiration = "2006-01-02T15:04:05Z"
+}
+```
+
 ### Parameter constraints
 
 :::danger

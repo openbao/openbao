@@ -6086,3 +6086,63 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 		}
 	}
 }
+
+func TestPolicyStore_Store(t *testing.T) {
+	t.Parallel()
+
+	core, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
+
+	t.Run("ttl", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/ttl-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+		req.Data["ttl"] = "10s"
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+
+		exp := resp.Data["expiration"].(time.Time)
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("expiration", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/expiration-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+
+		expectedExpiration := time.Now().Add(10 * time.Second).UTC()
+		req.Data["expiration"] = expectedExpiration.Format(time.RFC3339)
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+
+		exp := resp.Data["expiration"].(time.Time)
+		require.Equal(t, expectedExpiration.Format(time.RFC3339), exp.Format(time.RFC3339))
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+}

@@ -84,12 +84,13 @@ var cap2Int = map[string]uint32{
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name      string       `hcl:"name"`
-	Paths     []*PathRules `hcl:"-"`
-	Raw       string
-	Type      PolicyType
-	Templated bool
-	namespace *namespace.Namespace
+	Name       string       `hcl:"name"`
+	Paths      []*PathRules `hcl:"-"`
+	Raw        string
+	Type       PolicyType
+	Templated  bool
+	Expiration time.Time
+	namespace  *namespace.Namespace
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used

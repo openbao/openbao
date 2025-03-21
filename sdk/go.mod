@@ -32,11 +32,11 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/hashicorp/go-secure-stdlib/mlock v0.1.3
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.9
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
 	github.com/hashicorp/go-secure-stdlib/password v0.1.4
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.2
-	github.com/hashicorp/go-sockaddr v1.0.6
+	github.com/hashicorp/go-sockaddr v1.0.7
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/golang-lru/v2 v2.0.7
@@ -45,7 +45,7 @@ require (
 	github.com/mitchellh/go-testing-interface v1.14.1
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openbao/go-kms-wrapping/entropy/v2 v2.1.0
-	github.com/openbao/go-kms-wrapping/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/v2 v2.3.1-0.20250321181437-1a1c5b0c79b1
 	github.com/openbao/openbao/api/v2 v2.2.0
 	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/ryanuber/go-glob v1.0.0
@@ -56,7 +56,7 @@ require (
 	golang.org/x/net v0.36.0
 	golang.org/x/text v0.23.0
 	google.golang.org/grpc v1.70.0
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.5
 )
 
 require (

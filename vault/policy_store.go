@@ -169,10 +169,11 @@ type PolicyStore struct {
 
 // PolicyEntry is used to store a policy by name
 type PolicyEntry struct {
-	Version   int
-	Raw       string
-	Templated bool
-	Type      PolicyType
+	Version    int
+	Raw        string
+	Templated  bool
+	Type       PolicyType
+	Expiration time.Time
 }
 
 // NewPolicyStore creates a new PolicyStore that is backed
@@ -304,10 +305,11 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 
 	// Create the entry
 	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
-		Version:   2,
-		Raw:       p.Raw,
-		Type:      p.Type,
-		Templated: p.Templated,
+		Version:    2,
+		Raw:        p.Raw,
+		Type:       p.Type,
+		Templated:  p.Templated,
+		Expiration: p.Expiration,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create entry: %w", err)
@@ -410,8 +412,23 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	}
 
 	if cache != nil {
-		// Check for cached policy
+		// Check for cached policy.
 		if raw, ok := cache.Get(index); ok {
+			// Check for expiration of cached policy.
+			if !raw.Expiration.IsZero() && time.Now().After(raw.Expiration) {
+				// Only remove the entry from cache; we have not locked the
+				// store so a change might have modified it but hasn't yet
+				// invalidated the cache entry. This forces us to read it
+				// fresh next time or remove it from storage if no update
+				// occurred.
+				if err := view.Delete(ctx, raw.Name); err != nil {
+					return nil, fmt.Errorf("failed to remove expired policy: %w", err)
+				}
+
+				cache.Remove(index)
+				return nil, nil
+			}
+
 			return raw, nil
 		}
 	}
@@ -436,6 +453,17 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	// See if anything has added it since we got the lock
 	if cache != nil {
 		if raw, ok := cache.Get(index); ok {
+			// Check for expiration of cached policy.
+			if !raw.Expiration.IsZero() && time.Now().After(raw.Expiration) {
+				// This is an odd edge case. We have the entry in cache and we
+				// know nobody else has yet modified it in storage, otherwise
+				// we wouldn't have held the modifyLock. Remove it both from
+				// cache and from storage.
+				cache.Remove(index)
+
+				return nil, nil
+			}
+
 			return raw, nil
 		}
 	}
@@ -461,12 +489,22 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		return nil, fmt.Errorf("failed to parse policy: %w", err)
 	}
 
+	// Handle expiration, removing the entry if it is expired.
+	if !policy.Expiration.IsZero() && time.Now().After(policy.Expiration) {
+		if err := view.Delete(ctx, name); err != nil {
+			return nil, fmt.Errorf("failed to remove expired policy: %w", err)
+		}
+
+		return nil, nil
+	}
+
 	// Set these up here so that they're available for loading into
 	// Sentinel
 	policy.Name = name
 	policy.Raw = policyEntry.Raw
 	policy.Type = policyEntry.Type
 	policy.Templated = policyEntry.Templated
+	policy.Expiration = policyEntry.Expiration
 	policy.namespace = ns
 	switch policyEntry.Type {
 	case PolicyTypeACL:

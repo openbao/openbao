@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-multierror"
@@ -116,6 +117,11 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			var raw interface{}
 			var ok bool
 			var tree *radix.Tree
+
+			if !pc.Expiration.IsZero() && time.Now().After(pc.Expiration) {
+				// Skip adding expired paths.
+				continue
+			}
 
 			switch {
 			case pc.HasSegmentWildcards:

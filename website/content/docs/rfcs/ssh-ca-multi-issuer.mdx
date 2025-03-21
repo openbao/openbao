@@ -1,0 +1,97 @@
+---
+sidebar_label: SSH CA Multi-issuer
+description: |-
+    Adds support for multiple issuers on SSH secret engine mounts
+---
+
+# SSH CA Multi-issuer
+
+### Summary
+
+OpenBao’s SSH engine is limited to one Certificate Authority (CA) issuer per mount. This complicates the key rotation process, which is usually a desired feature for security and operational continuity. As previously done in the [PKI engine](https://github.com/hashicorp/vault/pull/15277), this document proposes an implementation to support multiple issuers per SSH mount. This proposal tries to stay consistent with the PKI implementation, having a ‘default’ issuer and a set of new endpoints to read/update it, and not break any backward compatibility with older versions of OpenBao or Upstream.
+
+### Problem Statement
+
+OpenBao’s current SSH engine design imposes limitations by allowing only one Certificate Authority (CA) issuer per mount. This restriction complicates the key rotation process, an important feature for security and operational continuity. To perform key rotation, new SSH mounts must be created, which necessitates duplicating all existing configurations (roles, ACLs, etc.) and updating all references to the new mounts or swapping the old and the new mount points via [two move operations](https://openbao.org/api-docs/system/remount/). This is not only time-consuming but prone to misconfigurations and errors.
+
+While an alternative approach–deleting and recreating the CA issuer within an existing mount–can be used, it introduces significant risks. During the gap between deleting the old key and creating a new one, any requests for issuing access certificates fail. If the import or generation of a new CA issuer fails, this leads to service disruption. Even if the new key is created quickly, it lacks trust, as it is a fresh random key that cannot be cross-signed like in PKI. The key distribution process to all hosts is not instantaneous, leaving a window where authentication requests will fail.
+
+This limitation highlights the need for a safer key rotation mechanism that ensures the system can securely fetch and trust new keys before the actual rotation occurs. Moreover, the ability to revert to a previous key in case of a failure or unexpected events would provide fallback capabilities.
+
+### User-facing description
+
+With this feature, OpenBao’s ‘privileged’ users can submit CA information for more than one issuer, having the ability to support multiple issuers in the same SSH mount. Besides the unique identifier, each issuer will optionally have a unique name that can be used to identify it. The concept of a ‘default’ issuer will be introduced to the existing endpoints, that use the issuer’s key material, stay backwards compatible. The ‘default’ issuer may be read/updated through the newly introduced endpoint, config/issuers. Roles allow the selection of an explicit issuer, allowing operators to choose issuers for users without them necessarily noticing the impact.
+The behavior of existing endpoints will be adapted to conform with this feature. New endpoints will also be added so operations on CA’s can be performed.
+
+### Technical Description
+
+The technical implementation of this feature can be understood in two main parts: storage and endpoints.
+- Storage: This part focuses on how the existing storage system will be used to save and manage the necessary data for multiple issuers. It explains how the current storage interface can be leveraged to ensure the new functionality is efficiently integrated.
+- Endpoints: This section covers which API endpoints need to be modified or added to support operations with multiple issuers. It ensures compatibility with existing systems and details the changes required to handle interactions involving multiple CA issuers.
+
+**Storage**
+
+Once set, the existing SSH engine’s CA’s public and private keys are stored with the keys `config/ca_public_key` and `config/ca_private_key`, respectively. As there are no versions, these are the only keys to store the CA’s key material.
+
+With the new SSH system, the following keys will be used to store CA’s key material and the default configuration:
+- `config/issuer/{uuid}`: Stores the CA’s public and private keys. Additional information such as `name` might also be stored as needed.
+- `config/issuers`: Stores an object that contains the identifier of the CA that is currently set as the default and any other additional information.
+
+To allow a pre-submitted CA to be used once this feature is released, the values of `config/ca_private_key` and `config/ca_public_key` will be checked and, if set, stored in the new format as set as the default CA.
+
+**Endpoints**
+
+With this new "system", the existing endpoints to configure a CA cannot exist anymore in their current form so have to be updated. The following details which endpoints will be updated and how:
+- [Create/Update Role](https://openbao.org/api-docs/secret/ssh/#createupdate-role) (`POST ssh/roles/:name`): A new parameter `issuer_ref` added so operations performed through the role use the selected CA’s key material. If not set, `default` will be assumed. The CA can be referenced by name or ID.
+- [Delete CA Information](https://openbao.org/api-docs/secret/ssh/#delete-ca-information) (`DELETE ssh/config/ca`): Removes all pre-submitted/generated issuers, including the one referenced as `default`.
+- [Submit CA Information](https://openbao.org/api-docs/secret/ssh/#submit-ca-information) (`POST ssh/config/ca`): Creates a new CA’s configuration and set it as ‘default’. If another key is selected as ‘default’, it will be replaced.
+- [Read public key (Authenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-authenticated) (`GET /ssh/config/ca`): Returns the `default` issuer's unique identifier, public_key and optional name. If a default isn't configured, a `400` response is returned.
+- [Read public key (Unauthenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-unauthenticated) (`GET /ssh/public_key`) - Returns the `default` issuer's configured/generated public key in plain text.
+
+The following added:
+
+- Set Default CA Configuration (`POST /ssh/config/issuers`): Accepts a `default` parameter with either the name or ID of a pre-submitted CA and sets it as the default.
+- Read Default CA Configuration (`GET /ssh/config/issuers`): Returns the 'default' issuer, if configured.
+- List CA (`LIST /ssh/issuers`): This endpoint returns a list of all issuers in the mount, including their name and UUID.
+- Update CA (`POST /ssh/issuer/:issuer_ref`): This endpoint accepts an additional `issuer_ref` parameter to modify the CA name reference.
+- Read CA (`GET /ssh/issuer/:issuer_ref`): This is an extension of the existing ‘[Read Public Key (Authenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-authenticated)’ endpoint but accepts the name of the CA from which the name, identifier and public key will be returned. If no `issuer_ref` is provided, the default CA is returned.
+- Read CA public key (`GET /ssh/issuer/:issuer_ref/public_key`): This is an extension of the existing ‘[Read public key (Unauthenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-unauthenticated)’ endpoint but expects a reference of the CA from which public key, in plain text, will be returned.
+- Delete CA (`DELETE ssh/issuer/:issuer_ref`): Given an `issuer_ref`, either CA’s name or ID, deletes a CA’s configuration. A warning will be issued if it’s set as default and referenced by a role.
+- Submit CA with Name (`POST /ssh/issuers/import/:issuer_name`): This is an extension of the ‘Submit CA Information’ endpoint but accepts an optional `issuer_name` parameter so the CA information has a name reference. If the name is left empty, a Unix timestamp will be used instead and an actual name can then be set using the 'Update CA' endpoint.
+
+These new APIs should be considered privileged and adequately ACL'd.
+
+### Rationale and alternatives
+
+No alternatives were explored.
+
+### Downsides
+
+Downgrades to a previous version of Bao or the Upstream wouldn’t break anything but any newly configured CA’s keys wouldn’t be reachable.
+
+### Security Implications
+
+So far, no new security implications are expected as a result of this change.
+
+### User/Developer Experience
+
+To the privileged user or administrator of OpenBao, no changes are expected if the user has no desire to leverage the support for having multiple CA’s configured. If a CA is submitted through the existing endpoint, it is automatically set as ‘default’ and roles will be bound to the default CA if no name is provided. With that, all operations will be performed with this CA’s keys.
+
+To leverage the feature of submitting and using multiple issuers, new endpoints are available and must be used.
+
+
+### Unresolved Questions
+
+Currently none, might arise given the feedback.
+
+### Related Issues
+
+OpenBao:
+- https://github.com/openbao/openbao/issues/488
+
+Upstream:
+- https://github.com/hashicorp/vault/issues/17189
+
+### Proof of Concept
+
+https://github.com/openbao/openbao/pull/880 (Feature branch)

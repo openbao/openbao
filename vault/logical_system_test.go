@@ -6060,8 +6060,27 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.Contains(t, resp.Data, "expiration")
-
+		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
+		modified := resp.Data["modified"].(time.Time)
+		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+
+		time.Sleep(2 * time.Second)
+
+		if time.Now().Before(exp) {
+			req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+			resp, err = core.systemBackend.HandleRequest(ctx, req)
+
+			if time.Now().Before(exp) {
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.Contains(t, resp.Data, "expiration")
+				require.Contains(t, resp.Data, "modified")
+
+				// Modified should not change.
+				require.Equal(t, modified, resp.Data["modified"])
+			}
+		}
 
 		time.Sleep(time.Until(exp) + 10*time.Millisecond)
 

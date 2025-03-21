@@ -174,6 +174,7 @@ type PolicyEntry struct {
 	Templated  bool
 	Type       PolicyType
 	Expiration time.Time
+	Modified   time.Time
 }
 
 // NewPolicyStore creates a new PolicyStore that is backed
@@ -311,6 +312,8 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 		return fmt.Errorf("unable to get the barrier subview for policy type %q", p.Type)
 	}
 
+	p.Modified = time.Now()
+
 	// Create the entry
 	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
 		Version:    2,
@@ -318,6 +321,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 		Type:       p.Type,
 		Templated:  p.Templated,
 		Expiration: p.Expiration,
+		Modified:   p.Modified,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create entry: %w", err)
@@ -498,6 +502,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	policy.Type = policyEntry.Type
 	policy.Templated = policyEntry.Templated
 	policy.Expiration = policyEntry.Expiration
+	policy.Modified = policyEntry.Modified
 	policy.namespace = ns
 	switch policyEntry.Type {
 	case PolicyTypeACL:

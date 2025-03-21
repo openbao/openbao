@@ -118,6 +118,10 @@ path "paginated-kv/metadata" {
 path "unpaginated-kv/metadata" {
 	capabilities = ["list"]
 }
+path "some-expired-path" {
+	capabilities = ["list"]
+	expiration = "2006-01-02T15:04:05Z"
+}
 `)
 
 func TestPolicy_Parse(t *testing.T) {

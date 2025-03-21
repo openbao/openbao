@@ -57,7 +57,7 @@ The following added:
 - Read CA (`GET /ssh/issuer/:issuer_ref`): This is an extension of the existing ‘[Read Public Key (Authenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-authenticated)’ endpoint but accepts the name of the CA from which the name, identifier and public key will be returned. If no `issuer_ref` is provided, the default CA is returned.
 - Read CA public key (`GET /ssh/issuer/:issuer_ref/public_key`): This is an extension of the existing ‘[Read public key (Unauthenticated)](https://openbao.org/api-docs/secret/ssh/#read-public-key-unauthenticated)’ endpoint but expects a reference of the CA from which public key, in plain text, will be returned.
 - Delete CA (`DELETE ssh/issuer/:issuer_ref`): Given an `issuer_ref`, either CA’s name or ID, deletes a CA’s configuration. A warning will be issued if it’s set as default and referenced by a role.
-- Submit CA with Name (`POST /ssh/issuers/import/:issuer_name`): This is an extension of the ‘Submit CA Information’ endpoint but accepts an optional `issuer_name` parameter so the CA information has a name reference. If the name is left empty, a Unix timestamp will be used instead and an actual name can then be set using the 'Update CA' endpoint.
+- Submit CA with Name (`POST /ssh/issuers/import/:issuer_name`): This is an extension of the ‘Submit CA Information’ endpoint but accepts an optional `issuer_name` parameter so the CA information has a name reference.
 
 These new APIs should be considered privileged and adequately ACL'd.
 

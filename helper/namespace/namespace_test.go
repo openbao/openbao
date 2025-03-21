@@ -388,3 +388,61 @@ func TestParentPath(t *testing.T) {
 		require.Equal(t, test.ok, ok)
 	}
 }
+
+func TestValidate(t *testing.T) {
+	tcases := []struct {
+		namespace *Namespace
+		wantError bool
+	}{
+		{
+			RootNamespace,
+			true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   RootNamespaceID,
+				Path: "test",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "root",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "cubbyhole",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "sys",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "comsys",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "path with space",
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range tcases {
+		gotErr := tc.namespace.Validate()
+		require.Equal(t, tc.wantError, (gotErr != nil))
+	}
+}

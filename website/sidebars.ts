@@ -94,6 +94,7 @@ const sidebars: SidebarsConfig = {
                         "configuration/seal/awskms",
                         "configuration/seal/azurekeyvault",
                         "configuration/seal/gcpckms",
+                        "configuration/seal/kmip",
                         "configuration/seal/ocikms",
                         "configuration/seal/pkcs11",
                         "configuration/seal/transit",

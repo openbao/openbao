@@ -439,6 +439,21 @@ func TestValidate(t *testing.T) {
 			},
 			wantError: true,
 		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
+				// valid as team_1 comes from header/context specification
+				Path: "team_1/team_2",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
+				// invalid as last segment is incorrect
+				Path: "team_1/team_2/team 3",
+			},
+			wantError: true,
+		},
 	}
 
 	for _, tc := range tcases {

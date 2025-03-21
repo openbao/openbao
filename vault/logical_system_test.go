@@ -2383,6 +2383,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Create the policy
+	beforeWrite := time.Now()
 	rules := `path "foo/" { policy = "read" }`
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/Foo")
 	req.Data["rules"] = rules
@@ -2417,6 +2418,12 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 		true,
 	)
 
+	// Validate date was reasonably in the past.
+	require.Contains(t, resp.Data, "modified")
+	modified := resp.Data["modified"].(time.Time)
+	require.True(t, modified.After(beforeWrite))
+	delete(resp.Data, "modified")
+
 	exp := map[string]interface{}{
 		"name":  "foo",
 		"rules": rules,
@@ -2431,6 +2438,11 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+
+	// No change; modified should be the same.
+	require.Contains(t, resp.Data, "modified")
+	require.Equal(t, resp.Data["modified"].(time.Time), modified)
+	delete(resp.Data, "modified")
 
 	exp = map[string]interface{}{
 		"name":  "foo",
@@ -6107,8 +6119,27 @@ func TestPolicyStore_Store(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		require.Contains(t, resp.Data, "expiration")
-
+		require.Contains(t, resp.Data, "modified")
 		exp := resp.Data["expiration"].(time.Time)
+		modified := resp.Data["modified"].(time.Time)
+		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+
+		time.Sleep(2 * time.Second)
+
+		if time.Now().Before(exp) {
+			req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+			resp, err = core.systemBackend.HandleRequest(ctx, req)
+
+			if time.Now().Before(exp) {
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.Contains(t, resp.Data, "expiration")
+				require.Contains(t, resp.Data, "modified")
+
+				// Modified should not change.
+				require.Equal(t, modified, resp.Data["modified"])
+			}
+		}
 
 		time.Sleep(time.Until(exp) + 10*time.Millisecond)
 

@@ -3750,6 +3750,10 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Type:     framework.TypeTime,
 									Required: false,
 								},
+								"modified": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
 							},
 						}},
 					},
@@ -3877,6 +3881,10 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 									Required: false,
 								},
 								"expiration": {
+									Type:     framework.TypeTime,
+									Required: false,
+								},
+								"modified": {
 									Type:     framework.TypeTime,
 									Required: false,
 								},

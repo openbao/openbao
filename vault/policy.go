@@ -90,6 +90,7 @@ type Policy struct {
 	Type       PolicyType
 	Templated  bool
 	Expiration time.Time
+	Modified   time.Time
 	namespace  *namespace.Namespace
 }
 

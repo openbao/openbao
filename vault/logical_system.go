@@ -2725,6 +2725,10 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			resp.Data["expiration"] = policy.Expiration
 		}
 
+		if !policy.Modified.IsZero() {
+			resp.Data["modified"] = policy.Modified
+		}
+
 		return resp, nil
 	}
 }

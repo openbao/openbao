@@ -479,6 +479,20 @@ func TestValidate(t *testing.T) {
 				Path: "test/1_cubbyhole_1",
 			},
 		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/cubbyhole/test2",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "sys/test",
+			},
+			wantError: true,
+		},
 	}
 
 	for _, tc := range tcases {

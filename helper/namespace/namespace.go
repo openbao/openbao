@@ -47,17 +47,13 @@ func (n *Namespace) Validate() error {
 		return errors.New("cannot reuse root namespace identifier")
 	}
 
-	// path depending on the nesting level of the namespace will have multiple segments
-	// so we need to retrieve last segment which ends at "/"
-	indexOfNsName := strings.Count(n.Path, "/") - 1
-	namespaceName := strings.Split(n.Path, "/")[indexOfNsName]
-
-	if strings.Contains(namespaceName, " ") {
-		return fmt.Errorf("%q contains space characters and cannot be used as a namespace name", namespaceName)
-	}
-
-	if slices.Contains(reservedNames, namespaceName) {
-		return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", namespaceName)
+	for segment := range strings.SplitSeq(n.Path, "/") {
+		if strings.Contains(segment, " ") {
+			return fmt.Errorf("%q contains space characters and cannot be used as a namespace name", segment)
+		}
+		if slices.Contains(reservedNames, segment) {
+			return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", segment)
+		}
 	}
 
 	return nil

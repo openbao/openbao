@@ -501,6 +501,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/scan-operation",
                 "rfcs/acme-tls-listeners",
                 "rfcs/acl-paginated-lists",
+                "rfcs/ssh-ca-multi-issuer",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

@@ -126,7 +126,7 @@ const VersionSelect = () => {
     );
 };
 
-const Asset = ({ urls }) => {
+function GetAsset(key, urls): Asset {
     let asset: string;
     let gpgSig: string;
     let coCert: string;
@@ -158,9 +158,13 @@ const Asset = ({ urls }) => {
     }
 
     if (asset === undefined) {
-        return;
+        return null;
     }
 
+    return <Asset key={ key } asset={ asset } gpgSig={ gpgSig } coCert={ coCert } coSig={ coSig } name={ name } />;
+}
+
+const Asset = ({ asset, gpgSig, coCert, coSig, name }) => {
     const { selectedItem } = useOptions();
     return (
         <div className="card download-card">
@@ -201,38 +205,72 @@ const Asset = ({ urls }) => {
 
 const Docker = ({ version, name }) => {
     const { options } = useOptions();
+    let registry = `openbao/openbao`;
+    if (name == "hsm") {
+        registry += "-hsm";
+    }
+
     return (
         <Tabs>
             <TabItem value="quay" label="quay.io">
+                { name != "hsm" &&
+                    <>
+                        <CodeBlock language="shell">
+                            {`docker pull quay.io/${registry}:${version.slice(1)}`}
+                        </CodeBlock>
+                        <p>or</p>
+                    </>
+                }
                 <CodeBlock language="shell">
-                    {`docker pull quay.io/openbao/openbao:${version.slice(1)}`}
-                </CodeBlock>
-                <p>or</p>
-                <CodeBlock language="shell">
-                    {`docker pull quay.io/openbao/openbao-ubi:${version.slice(1)}`}
+                    {`docker pull quay.io/${registry}-ubi:${version.slice(1)}`}
                 </CodeBlock>
             </TabItem>
             <TabItem value="ghcr" label="ghcr.io">
+                { name != "hsm" &&
+                    <>
+                        <CodeBlock language="shell">
+                            {`docker pull ghcr.io/${registry}:${version.slice(1)}`}
+                        </CodeBlock>
+                        <p>or</p>
+                    </>
+                }
                 <CodeBlock language="shell">
-                    {`docker pull ghcr.io/openbao/openbao:${version.slice(1)}`}
-                </CodeBlock>
-                <p>or</p>
-                <CodeBlock language="shell">
-                    {`docker pull ghcr.io/openbao/openbao-ubi:${version.slice(1)}`}
+                    {`docker pull ghcr.io/${registry}-ubi:${version.slice(1)}`}
                 </CodeBlock>
             </TabItem>
             <TabItem value="docker" label="docker.io">
+                { name != "hsm" &&
+                    <>
+                        <CodeBlock language="shell">
+                            {`docker pull docker.io/${registry}:${version.slice(1)}`}
+                        </CodeBlock>
+                        <p>or</p>
+                    </>
+                }
                 <CodeBlock language="shell">
-                    {`docker pull docker.io/openbao/openbao:${version.slice(1)}`}
-                </CodeBlock>
-                <p>or</p>
-                <CodeBlock language="shell">
-                    {`docker pull docker.io/openbao/openbao-ubi:${version.slice(1)}`}
+                    {`docker pull docker.io/${registry}-ubi:${version.slice(1)}`}
                 </CodeBlock>
             </TabItem>
         </Tabs>
     );
 };
+
+const ArchSelector = ({ arches, tabBody }) => {
+    let tabs: JSX.Element[] = [];
+    for (let arch of arches) {
+        tabs.push(
+            <TabItem value={ arch }>
+                { tabBody(arch) }
+            </TabItem>
+        );
+    }
+
+    return (
+        <Tabs>
+            { tabs }
+        </Tabs>
+    )
+}
 
 const LinuxPackage = ({ version, name }) => {
     const { options } = useOptions();
@@ -246,7 +284,7 @@ const LinuxPackage = ({ version, name }) => {
                         Object(options)[version]["assets"][name]["deb"] &&
                         ArchPackageMapApply(
                             Object(options)[version]["assets"][name]["deb"],
-                            (props, idx) => <Asset key={idx} urls={props} />,
+                            (props, idx) => GetAsset(idx, props),
                         )}
                 </nav>
             </TabItem>
@@ -258,7 +296,7 @@ const LinuxPackage = ({ version, name }) => {
                         Object(options)[version]["assets"][name]["rpm"] &&
                         ArchPackageMapApply(
                             Object(options)[version]["assets"][name]["rpm"],
-                            (props, idx) => <Asset key={idx} urls={props} />,
+                            (props, idx) => GetAsset(idx, props),
                         )}
                 </nav>
             </TabItem>
@@ -270,7 +308,7 @@ const LinuxPackage = ({ version, name }) => {
                         Object(options)[version]["assets"][name]["pkg"] &&
                         ArchPackageMapApply(
                             Object(options)[version]["assets"][name]["pkg"],
-                            (props, idx) => <Asset key={idx} urls={props} />,
+                            (props, idx) => GetAsset(idx, props),
                         )}
                 </nav>
             </TabItem>
@@ -286,6 +324,7 @@ const OS = ({ name }) => {
     } else {
         version = selectedItem;
     }
+
     return (
         <div className="col col-12 margin-vert--md">
             <div className="card">
@@ -293,7 +332,7 @@ const OS = ({ name }) => {
                     <h2>{OsPrettyPrint(name)}</h2>
                 </div>
                 <div className="card__body">
-                    {name == "linux" ? (
+                    {name == "linux" || name == "hsm" ? (
                         <>
                             <h4>Docker</h4>
                             <Docker version={version} name={name} />
@@ -313,9 +352,7 @@ const OS = ({ name }) => {
                             ] &&
                             ArchPackageMapApply(
                                 Object(options)[version]["assets"][name]["binary"],
-                                (props, idx) => (
-                                    <Asset key={idx} urls={props} />
-                                )
+                                (props, idx) => GetAsset(idx, props)
                             )}
                     </nav>
                 </div>

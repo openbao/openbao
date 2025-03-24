@@ -26,7 +26,7 @@ func (c *NamespaceScanCommand) Synopsis() string {
 
 func (c *NamespaceScanCommand) Help() string {
 	helpText := `
-Usage: bao namespace san [options]
+Usage: bao namespace scan [options]
 
   Lists the enabled child namespaces recursively.
 

@@ -245,8 +245,9 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 func TestTokenStore_Salting(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
+	ctx := namespace.RootContext(context.Background())
 
-	saltedID, err := ts.SaltID(namespace.RootContext(nil), "foo")
+	saltedID, err := ts.SaltID(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +255,7 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal("expected sha1 hash; got sha2-256 hmac")
 	}
 
-	saltedID, err = ts.SaltID(namespace.RootContext(nil), "hvs.foo")
+	saltedID, err = ts.SaltID(ctx, "hvs.foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,10 @@ func TestTokenStore_Salting(t *testing.T) {
 		t.Fatal("expected sha2-256 hmac; got sha1 hash")
 	}
 
-	nsCtx := namespace.ContextWithNamespace(context.Background(), &namespace.Namespace{ID: "testid", Path: "ns1"})
+	ns := &namespace.Namespace{ID: "testid", Path: "ns1"}
+	TestCoreCreateNamespaces(c, ns)
+
+	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 	saltedID, err = ts.SaltID(nsCtx, "foo")
 	if err != nil {
 		t.Fatal(err)

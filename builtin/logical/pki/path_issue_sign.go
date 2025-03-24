@@ -274,6 +274,26 @@ func pathSign(b *backend) *framework.Path {
 func pathCelSign(b *backend) *framework.Path {
 	fields := getCsrSignVerbatimSchemaFields()
 
+	fields["policy_identifiers"] = &framework.FieldSchema{
+		Type:    framework.TypeCommaStringSlice,
+		Default: []string{},
+		Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
+		information, which must include an oid, and may include a notice and/or cps url, using the form 
+		[{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.44947.1.2.4 ","cps"="https://example.com"}].`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "Policy Identifiers",
+		},
+	}
+
+	fields["not_before_duration"] = &framework.FieldSchema{
+		Type:        framework.TypeInt64,
+		Default:     30,
+		Description: `The duration in seconds before now which the certificate needs to be backdated by.`,
+		DisplayAttrs: &framework.DisplayAttributes{
+			Value: "Not Before Duration",
+		},
+	}
+
 	return &framework.Path{
 		Pattern: "cel/sign/" + framework.GenericNameRegex("role"),
 
@@ -812,6 +832,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	// Additional variables and evaluated results will be added dynamically during processing.
 	evaluationData := map[string]interface{}{
 		"request": data.Raw,
+		"now":     time.Now(),
 	}
 
 	// Parse then add the CSR to the evaluationData
@@ -867,7 +888,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	// Fetch issuer information
-	signingBundle, sc, err := b.fetchCaSigningBundle(ctx, req, data, celRole.ValidationProgram.Expressions.Issuer)
+	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, celRole.ValidationProgram.Expressions.Issuer)
 	if err != nil {
 		return nil, err
 	}
@@ -886,9 +907,19 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			data.Raw["key_bits"] = 2048
 		}
 
-		parsedBundle, warnings, err = generateBasicCert(sc, data, signingBundle, false, rand.Reader)
+		parsedBundle, err = generateCELCert(env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle, rand.Reader)
 	} else {
-		parsedBundle, warnings, err = signBasicCert(b, data, signingBundle, false, false)
+		parsedBundle, err = signCELCert(env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle)
+	}
+	if err != nil {
+		switch err.(type) {
+		case errutil.UserError:
+			return logical.ErrorResponse(err.Error()), nil
+		case errutil.InternalError:
+			return nil, err
+		default:
+			return nil, fmt.Errorf("error signing/generating certificate: %w", err)
+		}
 	}
 
 	signingCB, err := signingBundle.ToCertBundle()
@@ -1003,7 +1034,7 @@ func (cac *caChainOutput) derEncodedChain() []string {
 	return derCaChain
 }
 
-func (b *backend) fetchAndValidateCelRole(ctx context.Context, req *logical.Request, data *framework.FieldData) (*celRoleEntry, error) {
+func (b *backend) fetchAndValidateCelRole(ctx context.Context, req *logical.Request, data *framework.FieldData) (*CELRoleEntry, error) {
 	roleName, ok := data.GetOk("role")
 	if !ok || roleName.(string) == "" {
 		return nil, fmt.Errorf("missing CEL role name")
@@ -1080,12 +1111,12 @@ func evaluateCelBooleanExpression(env *celgo.Env, expression string, evaluationD
 func csrToMap(csrPEM string) (map[string]interface{}, error) {
 	block, _ := pem.Decode([]byte(csrPEM))
 	if block == nil || block.Type != "CERTIFICATE REQUEST" {
-		return nil, fmt.Errorf("Invalid CSR format")
+		return nil, fmt.Errorf("invalid CSR format")
 	}
 
 	csr, err := x509.ParseCertificateRequest(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse CSR")
+		return nil, fmt.Errorf("failed to parse CSR")
 	}
 
 	// Convert Extensions to a readable map

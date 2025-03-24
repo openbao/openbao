@@ -5,7 +5,6 @@ package pki
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"net/http"
 
@@ -21,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-type celRoleEntry struct {
+type CELRoleEntry struct {
 	// Required, the name of the role
 	Name string `json:"name"`
 	// Required, defines validation logic
@@ -44,13 +43,45 @@ type Variable struct {
 	Expression string
 }
 
+type CertificateTemplate struct {
+	CommonName         string `json:"common_name"`
+	SerialNumber       string `json:"serial_number,omitempty"`
+	Country            string `json:"country,omitempty"`
+	Organization       string `json:"organization,omitempty"`
+	OrganizationalUnit string `json:"organizational_unit,omitempty"`
+	Locality           string `json:"locality,omitempty"`
+	Province           string `json:"province,omitempty"`
+	StreetAddress      string `json:"street_address,omitempty"`
+	PostalCode         string `json:"postal_code,omitempty"`
+	AltNames           string `json:"alt_names,omitempty"`
+	DNSNames           string `json:"dns_names,omitempty"`
+	EmailAddresses     string `json:"email_addresses,omitempty"`
+	IPAddresses        string `json:"ip_addresses,omitempty"`
+	URIs               string `json:"uris,omitempty"`
+	OtherSANs          string `json:"other_sans,omitempty"`
+	IsCA               string `json:"is_ca"`
+	KeyType            string `json:"key_type,omitempty"`
+	KeyBits            string `json:"key_bits,omitempty"`
+	NotBefore          string `json:"not_before,omitempty"`
+	NotAfter           string `json:"not_after,omitempty"`
+	KeyUsage           string `json:"key_usage,omitempty"`
+	ExtKeyUsage        string `json:"ext_key_usage,omitempty"`
+	PolicyIdentifiers  string `json:"policy_identifiers,omitempty"`
+	SignatureBits      string `json:"signature_bits,omitempty"`
+	NotBeforeDuration  string `json:"not_before_duration,omitempty"`
+	SKID               string `json:"skid,omitempty"`
+	UsePSS             string `json:"use_pss,omitempty"`
+	CSR                string `json:"csr,omitempty"`
+	TTL                string `json:"ttl,omitempty"`
+}
+
 type Expressions struct {
 	// The unique identifier from the request. Used for tracking purposes.
 	RequestID string
 	// Status of the request. True if the request was validated else false if it was rejected due to validation errors .
 	Success string
 	// The Certificate template defined by the CEL Author. Only included if status is success.
-	Certificate x509.Certificate
+	Certificate CertificateTemplate
 	// Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
 	GenerateLease string
 	// If set, certificates issued/signed against this role will not be stored in the storage backend.
@@ -219,7 +250,7 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 		return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 	}
 
-	entry := &celRoleEntry{
+	entry := &CELRoleEntry{
 		Name:              name,
 		ValidationProgram: validationProgram,
 		Message:           data.Get("message").(string),
@@ -291,7 +322,7 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 	}
 
 	// Initialize the new entry with existing values
-	entry := &celRoleEntry{
+	entry := &CELRoleEntry{
 		Name:              oldEntry.Name,
 		ValidationProgram: oldEntry.ValidationProgram,
 		Message:           oldEntry.Message,
@@ -342,7 +373,7 @@ func (b *backend) pathCelRoleDelete(ctx context.Context, req *logical.Request, d
 	return nil, nil
 }
 
-func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*celRoleEntry, error) {
+func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*CELRoleEntry, error) {
 	entry, err := s.Get(ctx, "cel/role/"+roleName)
 	if err != nil {
 		return nil, err
@@ -351,7 +382,7 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 		return nil, nil
 	}
 
-	var result celRoleEntry
+	var result CELRoleEntry
 	if err := entry.DecodeJSON(&result); err != nil {
 		return nil, err
 	}
@@ -361,7 +392,7 @@ func (b *backend) getCelRole(ctx context.Context, s logical.Storage, roleName st
 	return &result, nil
 }
 
-func validateCelRoleCreation(entry *celRoleEntry) (*logical.Response, error) {
+func validateCelRoleCreation(entry *CELRoleEntry) (*logical.Response, error) {
 	resp := &logical.Response{}
 
 	_, err := validateCelExpressions(entry.ValidationProgram)
@@ -380,7 +411,7 @@ const (
 	pathCelRoleHelpDesc = `This path lets you manage the cel roles that can be created with this backend.`
 )
 
-func (r *celRoleEntry) ToResponseData() map[string]interface{} {
+func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name": r.Name,
 		"validation_program": map[string]interface{}{
@@ -458,14 +489,6 @@ func validateWithK8sValidator(ctx context.Context, schema *schema.Structural) er
 	return nil
 }
 
-func (b *backend) storeCelRole(ctx context.Context, storage logical.Storage, entry *celRoleEntry) error {
-	jsonEntry, err := logical.StorageEntryJSON("cel/role/"+entry.Name, entry)
-	if err != nil {
-		return err
-	}
-	return storage.Put(ctx, jsonEntry)
-}
-
 func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {
 	var decls []celgo.EnvOption
 	for name := range variables {
@@ -477,7 +500,7 @@ func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {
 func compileExpression(env *celgo.Env, expression string) (celgo.Program, error) {
 	ast, issues := env.Parse(expression)
 	if issues.Err() != nil {
-		return nil, fmt.Errorf("invalid CEL syntax for expression: %v", issues.Err())
+		return nil, fmt.Errorf("%v for expression: %v", issues.Err(), expression)
 	}
 	prog, err := env.Program(ast)
 	if err != nil {

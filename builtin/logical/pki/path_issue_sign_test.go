@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"net"
 	"testing"
 	"time"
 
@@ -58,13 +59,19 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 		t.Fatalf("Failed to parse certificate: %v", err)
 	}
 
+	// Modify our issuer to set custom AIAs
+	resp0, err := CBPatch(b, storage, "issuer/default", map[string]interface{}{
+		"ocsp_servers": "http://localhost/c",
+	})
+	requireSuccessNonNilResponse(t, resp0, err, "failed setting up issuer")
+
 	// Create a CEL role
 	roleData := map[string]interface{}{
 		"validation_program": map[string]interface{}{
 			"variables": []map[string]interface{}{
 				{
 					"name":       "validate_cn",
-					"expression": `has(request.common_name) && request.common_name == "example2.com"`,
+					"expression": `has(request.common_name) && request.common_name == "example.com"`,
 				},
 				{
 					"name":       "small_ttl",
@@ -75,13 +82,19 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					"expression": "request.common_name",
 				},
 			},
-			"expressions": map[string]interface{}{
+			"expressions": map[string]any{
 				"requestId": "123",
 				"success":   "validate_cn",
-				"certificate": map[string]interface{}{
-					"subject": map[string]interface{}{
-						"common_name": "cn_value",
-					},
+				"certificate": map[string]any{
+					"CommonName":        "cn_value",
+					"Country":           "['Zimbabwe', 'America']",
+					"NotBefore":         "now",
+					"NotAfter":          "now + duration('1h')",
+					"IPAddresses":       "['10.0.0.0']",
+					"NotBeforeDuration": "76",
+					"PolicyIdentifiers": `["1.3.6.1.4.1.1.1"]`,
+					"KeyType":           "'rsa'",
+					"KeyBits":           "2048",
 				},
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
@@ -107,11 +120,9 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	// Issue a certificate using the CEL role
 	issueData := map[string]interface{}{
 		"format":              "pem",
-		"common_name":         "example2.com",
+		"common_name":         "example.com",
 		"ttl":                 "1h",
 		"ip_sans":             "192.168.1.1,10.0.0.1",
-		"key_usage":           "certsign",
-		"ext_key_usage":       "ClientAuth",
 		"policy_identifiers":  "1.3.6.1.4.1.1.1",
 		"not_before_duration": 60,
 	}
@@ -151,6 +162,12 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
 	}
 
+	// Validate that only the IP Address specified in the template is in the final certificate      g
+	expectedIP := net.ParseIP("10.0.0.0")
+	if len(cert.IPAddresses) != 1 || !cert.IPAddresses[0].Equal(expectedIP) {
+		t.Fatalf("Expected IP address %v, but got: %v", expectedIP, cert.IPAddresses)
+	}
+
 	// check generate_lease works
 	if resp.Secret == nil {
 		t.Fatalf("expected a response that contains a secret")
@@ -169,22 +186,6 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 	// check no_store works
 	if len(listResp.Data["keys"].([]string)) != 2 {
 		t.Fatalf("Both the CA and end certificate should be stored: %#v", listResp)
-	}
-
-	// Validate KeyUsage
-	expectedKeyUsage := x509.KeyUsageCertSign
-	if cert.KeyUsage&expectedKeyUsage == 0 {
-		t.Fatalf("Certificate does not have expected KeyUsageCertSign: %v", cert.KeyUsage)
-	}
-
-	// Validate ExtKeyUsage
-	if len(cert.ExtKeyUsage) != 1 {
-		t.Fatalf("expected 1 ExtKeyUsage got %v: %v", len(cert.ExtKeyUsage), cert.ExtKeyUsage)
-	}
-
-	expectedExtKeyUsage := x509.ExtKeyUsageClientAuth
-	if cert.ExtKeyUsage[0] != expectedExtKeyUsage {
-		t.Fatalf("Certificate does not have expected ExtKeyUsageClientAuth: %v", cert.KeyUsage)
 	}
 }
 
@@ -222,7 +223,17 @@ func TestCelRoleSign(t *testing.T) {
 				},
 			},
 			"expressions": map[string]interface{}{
-				"success":       "validate_cn",
+				"success": "validate_cn",
+				"certificate": map[string]any{
+					"CommonName":        "request.common_name",
+					"NotBefore":         "now",
+					"NotAfter":          "now + duration('3h')",
+					"IPAddresses":       "['10.0.0.0']",
+					"NotBeforeDuration": "120",
+					"KeyUsage":          "['certsign']",
+					"ExtKeyUsage":       "['ClientAuth']",
+					"CSR":               "request.csr",
+				},
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
@@ -247,6 +258,7 @@ func TestCelRoleSign(t *testing.T) {
 	identifiers := []string{"example.com"}
 	goodCr := &x509.CertificateRequest{DNSNames: []string{identifiers[0]}}
 	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err, "failed generating ecdsa key")
 	csr, err := x509.CreateCertificateRequest(rand.Reader, goodCr, csrKey)
 	require.NoError(t, err, "failed generating csr")
 
@@ -403,10 +415,10 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 			"expressions": map[string]interface{}{
 				"requestId": "123",
 				"success":   "validate_cn",
-				"certificate": map[string]interface{}{
-					"subject": map[string]interface{}{
-						"common_name": "cn_value",
-					},
+				"certificate": map[string]any{
+					"CommonName": "request.common_name",
+					"NotBefore":  "now",
+					"NotAfter":   "now + duration('3h')",
 				},
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
@@ -464,6 +476,13 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 		t.Fatalf("Failed to parse certificate: %v", err)
 	}
 
+	// Validate the TTL
+	expectedTTL := 3 * time.Hour
+	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
+	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
+		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
+	}
+
 	// Validate the issuer (should be second_root)
 	if cert.Issuer.CommonName != "root2.com" {
 		t.Fatalf("Expected issuer to be root2.com, but got: %s", cert.Issuer.CommonName)
@@ -519,7 +538,13 @@ func TestCelParsedCsr(t *testing.T) {
 				},
 			},
 			"expressions": map[string]interface{}{
-				"success":       "validate_cn",
+				"success": "validate_cn",
+				"certificate": map[string]any{
+					"CommonName": "parsed_csr.Subject.CommonName",
+					"CSR":        "request.csr",
+					"NotBefore":  "now",
+					"NotAfter":   "now + duration('3h')",
+				},
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
@@ -548,6 +573,7 @@ func TestCelParsedCsr(t *testing.T) {
 		},
 	}
 	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err, "failed generating ecdsa key")
 	csr, err := x509.CreateCertificateRequest(rand.Reader, goodCr, csrKey)
 	require.NoError(t, err, "failed generating csr")
 
@@ -572,6 +598,27 @@ func TestCelParsedCsr(t *testing.T) {
 	resp, err = b.HandleRequest(context.Background(), signReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to sign certificate with CSR: err: %v, \nresp: %v", err, resp)
+	}
+
+	// Validate the response
+	certPEM, ok := resp.Data["certificate"].(string)
+	if !ok || certPEM == "" {
+		t.Fatalf("Certificate not found in response: %v", resp.Data)
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil || block.Type != "CERTIFICATE" {
+		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("Failed to parse signed certificate: %v", err)
+	}
+
+	// Validate common_name is as in the CSR
+	if cert.Subject.CommonName != "example.com" {
+		t.Fatalf("Certificate should have common_name: 'example.com' instead has: '%v'", cert.Subject.CommonName)
 	}
 }
 
@@ -628,10 +675,10 @@ func TestCelCustomFunction(t *testing.T) {
 				"requestId": "123",
 				"success":   "valid_emails",
 				"certificate": map[string]interface{}{
-					"subject": map[string]interface{}{
-						"common_name": "request.common_name",
-					},
-					"email_addresses": "request.email_addresses",
+					"CommonName":     "request.common_name",
+					"EmailAddresses": "[request.alt_names]",
+					"NotBefore":      "now",
+					"NotAfter":       "now + duration('3h')",
 				},
 				"issuer":   "default",
 				"warnings": "warning",
@@ -687,6 +734,7 @@ func TestCelCustomFunction(t *testing.T) {
 		t.Fatalf("Failed to parse certificate: %v", err)
 	}
 
+	require.Equal(t, "example@gmail.com", cert.EmailAddresses[0], "Email Address should be example@gmail.com")
 	require.Equal(t, "example.com", cert.Subject.CommonName, "Common Name should be example.com")
 }
 

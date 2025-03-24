@@ -442,6 +442,14 @@ func TestValidate(t *testing.T) {
 		{
 			namespace: &Namespace{
 				ID: "nsid",
+				// empty second segment, as after canonicalize its "/e/"
+				Path: "//e",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
 				// valid as team_1 comes from header/context specification
 				Path: "team_1/team_2",
 			},

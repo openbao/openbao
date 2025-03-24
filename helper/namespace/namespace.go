@@ -47,7 +47,11 @@ func (n *Namespace) Validate() error {
 		return errors.New("cannot reuse root namespace identifier")
 	}
 
-	for segment := range strings.SplitSeq(n.Path, "/") {
+	// canonicalize adds a trailing slash, we don't need to consider it here
+	for segment := range strings.SplitSeq(n.Path[:len(n.Path)-1], "/") {
+		if segment == "" {
+			return fmt.Errorf("namespace name cannot be empty")
+		}
 		if strings.Contains(segment, " ") {
 			return fmt.Errorf("%q contains space characters and cannot be used as a namespace name", segment)
 		}

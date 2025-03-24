@@ -31,7 +31,7 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 		code int
 	}{
 		{
-			"fine",
+			"no_entries",
 			[]string{},
 			"No entries found",
 			2,
@@ -68,5 +68,10 @@ func TestNamespaceScanCommand_Run(t *testing.T) {
 		})
 	}
 
-	t.Run("", func(t *testing.T) {})
+	t.Run("no_tabs", func(t *testing.T) {
+		t.Parallel()
+
+		_, cmd := testNamespaceScanCommand(t)
+		assertNoTabs(t, cmd)
+	})
 }

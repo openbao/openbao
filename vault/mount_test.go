@@ -1129,9 +1129,12 @@ func TestCore_MountEntryView(t *testing.T) {
 	s := c.namespaceStore
 
 	testMountEntryUUID := "mount-entry-uuid"
-	testNamespaceEntryUUID := "namespace-entry-uuid"
+	testNamespace1 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
+	testNamespace2 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
 
-	err := s.SetNamespace(ctx, &NamespaceEntry{UUID: testNamespaceEntryUUID, Namespace: &namespace.Namespace{Path: "ns1", ID: "ns-1"}})
+	err := s.SetNamespace(ctx, testNamespace1)
+	require.NoError(t, err)
+	err = s.SetNamespace(ctx, testNamespace2)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -1202,10 +1205,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeNSCubbyhole,
-				NamespaceID: "ns-1",
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespaceEntryUUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
@@ -1215,9 +1219,78 @@ func TestCore_MountEntryView(t *testing.T) {
 				Type:  mountTypeNSCubbyhole,
 				// does not exist in store
 				NamespaceID: "ns-2",
+				namespace:   testNamespace1.Namespace,
 			},
 
 			wantError: true,
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace2.Namespace.ID,
+				namespace:   testNamespace2.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeKV,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace2.Namespace.ID,
+				namespace:   testNamespace2.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: credentialTableType,
+				Type:  "userpass",
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 	}
 

@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/common/types/ref"
@@ -22,8 +24,17 @@ import (
 type celRoleEntry struct {
 	Name          string `json:"name"`                     // Required
 	AuthProgram   string `json:"auth_program"`             // Required
-	FailurePolicy string `json:"failure_policy,omitempty"` // Defaults to "Deny"
+	FailurePolicy string `json:"failure_policy,omitempty"` // Default: Deny
 	Message       string `json:"message,omitempty"`
+
+	// Duration of leeway for expiration to account for clock skew
+	ExpirationLeeway time.Duration `json:"expiration_leeway"`
+	// Duration of leeway for not before to account for clock skew
+	NotBeforeLeeway time.Duration `json:"not_before_leeway"`
+	// Duration of leeway for all claims to account for clock skew
+	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
+	// Role binding properties
+	BoundAudiences []string `json:"bound_audiences"`
 }
 
 type celRole struct {
@@ -92,6 +103,28 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Type:        framework.TypeString,
 			Description: "Static error message if validation fails",
 		},
+		"expiration_leeway": {
+			Type: framework.TypeSignedDurationSecond,
+			Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+			Default: claimDefaultLeeway,
+		},
+		"not_before_leeway": {
+			Type: framework.TypeSignedDurationSecond,
+			Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+			Default: claimDefaultLeeway,
+		},
+		"clock_skew_leeway": {
+			Type: framework.TypeSignedDurationSecond,
+			Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
+Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
+			Default: jwt.DefaultLeeway,
+		},
+		"bound_audiences": {
+			Type:        framework.TypeCommaStringSlice,
+			Description: `Comma-separated list of 'aud' claims that are valid for login; any match is sufficient`,
+		},
 	}
 
 	return &framework.Path{
@@ -118,6 +151,28 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			"message": {
 				Type:        framework.TypeString,
 				Description: "Static error message if validation fails",
+			},
+			"expiration_leeway": {
+				Type: framework.TypeSignedDurationSecond,
+				Description: `Duration in seconds of leeway when validating expiration of a token to account for clock skew. 
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+				Default: claimDefaultLeeway,
+			},
+			"not_before_leeway": {
+				Type: framework.TypeSignedDurationSecond,
+				Description: `Duration in seconds of leeway when validating not before values of a token to account for clock skew. 
+Defaults to 150 (2.5 minutes) if set to 0 and can be disabled if set to -1.`,
+				Default: claimDefaultLeeway,
+			},
+			"clock_skew_leeway": {
+				Type: framework.TypeSignedDurationSecond,
+				Description: `Duration in seconds of leeway when validating all claims to account for clock skew. 
+Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
+				Default: jwt.DefaultLeeway,
+			},
+			"bound_audiences": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: `Comma-separated list of 'aud' claims that are valid for login; any match is sufficient`,
 			},
 		},
 
@@ -196,11 +251,35 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 		}
 	}
 
+	expirationLeeway := time.Duration(claimDefaultLeeway) * time.Second
+	if tokenExpLeewayRaw, ok := data.GetOk("expiration_leeway"); ok {
+		expirationLeeway = time.Duration(tokenExpLeewayRaw.(int)) * time.Second
+	}
+
+	notBeforeLeeway := time.Duration(claimDefaultLeeway) * time.Second
+	if tokenNotBeforeLeewayRaw, ok := data.GetOk("not_before_leeway"); ok {
+		notBeforeLeeway = time.Duration(tokenNotBeforeLeewayRaw.(int)) * time.Second
+	}
+
+	clockSkewLeeway := jwt.DefaultLeeway
+	if tokenClockSkewLeeway, ok := data.GetOk("clock_skew_leeway"); ok {
+		clockSkewLeeway = time.Duration(tokenClockSkewLeeway.(int)) * time.Second
+	}
+
+	boundAudiences := []string{}
+	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
+		boundAudiences = boundAudiences.([]string)
+	}
+
 	entry := &celRoleEntry{
-		Name:          name,
-		AuthProgram:   authProgram,
-		FailurePolicy: failurePolicy,
-		Message:       data.Get("message").(string),
+		Name:             name,
+		AuthProgram:      authProgram,
+		FailurePolicy:    failurePolicy,
+		Message:          data.Get("message").(string),
+		BoundAudiences:   boundAudiences,
+		ExpirationLeeway: expirationLeeway,
+		NotBeforeLeeway:  notBeforeLeeway,
+		ClockSkewLeeway:  clockSkewLeeway,
 	}
 
 	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
@@ -573,9 +652,13 @@ const (
 
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
-		"name":           r.Name,
-		"auth_program":   r.AuthProgram,
-		"failure_policy": r.FailurePolicy,
-		"message":        r.Message,
+		"name":              r.Name,
+		"auth_program":      r.AuthProgram,
+		"failure_policy":    r.FailurePolicy,
+		"message":           r.Message,
+		"expiration_leeway": int64(r.ExpirationLeeway.Seconds()),
+		"not_before_leeway": int64(r.NotBeforeLeeway.Seconds()),
+		"clock_skew_leeway": int64(r.ClockSkewLeeway.Seconds()),
+		"bound_audiences":   r.BoundAudiences,
 	}
 }

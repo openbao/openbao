@@ -150,6 +150,10 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	expected := jwt.Expected{
 		Issuer:            config.BoundIssuer,
 		SigningAlgorithms: signingAlgorithms,
+		Audiences:         celRoleEntry.BoundAudiences,
+		NotBeforeLeeway:   celRoleEntry.NotBeforeLeeway,
+		ExpirationLeeway:  celRoleEntry.ExpirationLeeway,
+		ClockSkewLeeway:   celRoleEntry.ClockSkewLeeway,
 	}
 
 	// Validate the JWT by verifying its signature and asserting expected claims values

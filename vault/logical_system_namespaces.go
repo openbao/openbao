@@ -205,7 +205,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 
 		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
 		if err != nil {
-			return handleError(err)
+			return nil, err
 		}
 
 		if ns == nil {

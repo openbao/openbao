@@ -78,13 +78,6 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	}
 }
 
-// HasDirectParent returns true if possibleParent is the direct parent of n. Otherwise
-// it returns false.
-func (n *Namespace) HasDirectParent(possibleParent *Namespace) bool {
-	parentPath, ok := n.ParentPath()
-	return ok && parentPath == possibleParent.Path
-}
-
 // ParentPath returns the path of the parent namespace. n.Path must be a
 // canonicalized path.
 func (n *Namespace) ParentPath() (string, bool) {

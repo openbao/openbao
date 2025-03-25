@@ -2,8 +2,10 @@ package vault
 
 import (
 	"context"
+	"strconv"
 	"testing"
 
+	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/stretchr/testify/require"
 )
@@ -17,15 +19,7 @@ func TestNamespaceStore(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err := s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -48,20 +42,10 @@ func TestNamespaceStore(t *testing.T) {
 	itemPath := item.Namespace.Path
 
 	// We should now have one item.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemUUID)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemAccessor)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemPath)
+	require.Equal(t, ns[0].UUID, item.UUID)
 
 	// Modifying our copy shouldn't affect anything.
 	item.Namespace.CustomMetadata = map[string]string{"openbao": "true"}
@@ -100,35 +84,17 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemUUID)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemAccessor)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0], itemPath)
+	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
 	err = s.DeleteNamespace(ctx, itemUUID)
 	require.NoError(t, err)
 
 	// Store should be empty.
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -149,15 +115,7 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListAllNamespaceUUIDs(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespaceAccessors(ctx, false)
-	require.NoError(t, err)
-	require.Empty(t, ns)
-
-	ns, err = s.ListAllNamespacePaths(ctx, false)
+	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -189,7 +147,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceUUIDs(ctx, false)
+	ns, err := s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -212,15 +170,13 @@ func TestNamespaceHierarchy(t *testing.T) {
 		},
 	}
 
-	t.Run("SetNamespaces", func(t *testing.T) {
-		for idx, ns := range namespaces {
-			err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
-			require.NoError(t, err)
-			require.NotEmpty(t, ns.UUID)
-			require.NotEmpty(t, ns.Namespace.ID)
-			require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
-		}
-	})
+	for idx, ns := range namespaces {
+		err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+		require.NoError(t, err)
+		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.Namespace.ID)
+		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
+	}
 
 	t.Run("ListNamespaces", func(t *testing.T) {
 		t.Run("no root namespace", func(t *testing.T) {
@@ -265,4 +221,225 @@ func TestNamespaceHierarchy(t *testing.T) {
 			require.Equal(t, 0, len(nsList))
 		})
 	})
+}
+
+func TestNamespaceTree(t *testing.T) {
+	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
+	tree := newNamespaceTree(rootNs)
+
+	namespaces1 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns1/", ID: "00001"}, UUID: "00001"},
+		{Namespace: &namespace.Namespace{Path: "ns1/ns2/", ID: "00002"}, UUID: "00002"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns4/", ID: "00004"}, UUID: "00004"},
+		{Namespace: &namespace.Namespace{Path: "ns3/", ID: "00003"}, UUID: "00003"},
+	}
+
+	for _, entry := range namespaces1 {
+		tree.unsafeInsert(entry)
+	}
+	err := tree.validate()
+	require.NoError(t, err)
+
+	namespaces2 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007"}, UUID: "00007"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/ns9/", ID: "00009"}, UUID: "00009"},
+	}
+
+	for _, entry := range namespaces2 {
+		tree.unsafeInsert(entry)
+	}
+	err = tree.validate()
+	require.Error(t, err)
+
+	namespaces3 := []*NamespaceEntry{
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006"}, UUID: "00006"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/", ID: "00008"}, UUID: "00008"},
+		{Namespace: &namespace.Namespace{Path: "ns9/ns10/", ID: "00010"}, UUID: "00010"},
+	}
+
+	err = tree.Insert(namespaces3[0])
+	require.NoError(t, err)
+	err = tree.Insert(namespaces3[1])
+	require.NoError(t, err)
+	err = tree.Insert(namespaces3[2])
+	require.Error(t, err)
+
+	err = tree.validate()
+	require.NoError(t, err)
+
+	beforeSize := tree.size
+	err = tree.Delete("ns9/ns10/")
+	require.NoError(t, err)
+	require.Equal(t, beforeSize, tree.size)
+
+	err = tree.Delete("ns3/")
+	require.Error(t, err)
+	require.Equal(t, beforeSize, tree.size)
+
+	err = tree.Delete("ns1/ns2/")
+	require.NoError(t, err)
+	require.Equal(t, beforeSize-1, tree.size)
+
+	entries, err := tree.List("", false, false)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(entries))
+
+	entries, err = tree.List("", false, true)
+	require.NoError(t, err)
+	require.Equal(t, tree.size, len(entries))
+
+	entry := tree.Get("ns1/")
+	require.NotNil(t, entry)
+	require.Equal(t, namespaces1[0], entry)
+
+	entry = tree.Get("ns3/ns4/foobar")
+	require.Nil(t, entry)
+
+	namespacePrefix, entry, pathSuffix := tree.LongestPrefix("ns3/ns4/foobar")
+	require.NotNil(t, entry)
+	require.Equal(t, "ns3/ns4/", namespacePrefix)
+	require.Equal(t, "foobar", pathSuffix)
+}
+
+func randomNamespace(ns *NamespaceStore) *NamespaceEntry {
+	// make use of random map iteration order
+	for _, item := range ns.namespacesByUUID {
+		return item
+	}
+	return nil
+}
+
+func BenchmarkNamespaceStore(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	n := 1_000
+
+	for i := range n {
+		parent := randomNamespace(s)
+		ctx := namespace.ContextWithNamespace(ctx, parent.Namespace)
+		item := &NamespaceEntry{
+			Namespace: &namespace.Namespace{
+				Path: parent.Namespace.Path + "ns" + strconv.Itoa(i) + "/",
+			},
+		}
+		err := s.SetNamespace(ctx, item)
+		require.NoError(b, err)
+	}
+
+	require.Equal(b, n+1, len(s.namespacesByUUID))
+
+	b.Run("GetNamespace", func(b *testing.B) {
+		for b.Loop() {
+			uuid := randomNamespace(s).UUID
+			s.GetNamespace(ctx, uuid)
+		}
+	})
+
+	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
+		for b.Loop() {
+			accessor := randomNamespace(s).Namespace.ID
+			s.GetNamespaceByAccessor(ctx, accessor)
+		}
+	})
+
+	b.Run("GetNamespaceByPath", func(b *testing.B) {
+		for b.Loop() {
+			path := randomNamespace(s).Namespace.Path
+			s.GetNamespaceByPath(ctx, path)
+		}
+	})
+
+	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
+		for b.Loop() {
+			path := randomNamespace(s).Namespace.Path
+			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
+		}
+	})
+
+	b.Run("ListAllNamespaces", func(b *testing.B) {
+		for b.Loop() {
+			s.ListAllNamespaces(ctx, false)
+		}
+	})
+
+	b.Run("ListNamespaces non-recursive", func(b *testing.B) {
+		for b.Loop() {
+			parent := randomNamespace(s).Namespace
+			ctx = namespace.ContextWithNamespace(ctx, parent)
+			s.ListNamespaces(ctx, false, false)
+		}
+	})
+
+	b.Run("ListNamespaces recursive", func(b *testing.B) {
+		for b.Loop() {
+			parent := randomNamespace(s).Namespace
+			ctx = namespace.ContextWithNamespace(ctx, parent)
+			s.ListNamespaces(ctx, false, true)
+		}
+	})
+
+	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
+		rootCtx := namespace.RootContext(context.TODO())
+		for b.Loop() {
+			ns := randomNamespace(s).Namespace
+			ctx := namespace.ContextWithNamespace(rootCtx, ns)
+			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
+		}
+	})
+
+	b.Run("DeleteNamespace", func(b *testing.B) {
+		for b.Loop() {
+			uuid := randomNamespace(s).UUID
+			s.DeleteNamespace(ctx, uuid)
+		}
+	})
+}
+
+func testModifyNamespace(_ context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+	uuid := ns.UUID
+	accessor := ns.Namespace.ID
+	ns.Namespace.CustomMetadata["uuid"] = uuid
+	ns.Namespace.CustomMetadata["accessor"] = accessor
+
+	return ns, nil
+}
+
+func BenchmarkNamespaceSet(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	item := &NamespaceEntry{
+		Namespace: &namespace.Namespace{},
+	}
+
+	var i int
+	for b.Loop() {
+		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		s.SetNamespace(ctx, item)
+		i += 1
+	}
+}
+
+func BenchmarkNamespaceSetLocked(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+
+	ctx := namespace.RootContext(context.Background())
+
+	item := &NamespaceEntry{
+		Namespace: &namespace.Namespace{},
+	}
+
+	var i int
+	for b.Loop() {
+		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		s.lock.Lock()
+		s.setNamespaceLocked(ctx, item)
+		i += 1
+	}
 }

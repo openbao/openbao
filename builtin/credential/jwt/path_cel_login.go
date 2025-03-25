@@ -23,7 +23,7 @@ const (
 
 func pathCelLogin(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: `cel/login/?`,
+		Pattern: `cel/login$`,
 
 		DisplayAttrs: &framework.DisplayAttributes{
 			OperationPrefix: operationPrefixJWT,

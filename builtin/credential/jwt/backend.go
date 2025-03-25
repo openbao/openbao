@@ -60,6 +60,7 @@ func backend() *jwtAuthBackend {
 		PathsSpecial: &logical.Paths{
 			Unauthenticated: []string{
 				"login",
+				"cel/login",
 				"oidc/auth_url",
 				"oidc/callback",
 				"oidc/poll",

@@ -31,6 +31,10 @@ Usage: bao namespace <subcommand> [options] [args]
 
       $ bao namespace list
 
+  List enabled child namespaces recursively:
+
+      $ bao namespace scan
+
   Look up an existing namespace:
 
       $ bao namespace lookup

@@ -267,8 +267,8 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 
 	boundAudiences := []string{}
-	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
-		boundAudiences = boundAudiences.([]string)
+	if tokenBoundAudiences, ok := data.GetOk("bound_audiences"); ok {
+		boundAudiences = tokenBoundAudiences.([]string)
 	}
 
 	entry := &celRoleEntry{

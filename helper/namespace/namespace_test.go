@@ -287,3 +287,123 @@ func TestParentPath(t *testing.T) {
 		require.Equal(t, test.ok, ok)
 	}
 }
+
+func TestValidate(t *testing.T) {
+	tcases := []struct {
+		namespace *Namespace
+		wantError bool
+	}{
+		{
+			RootNamespace,
+			true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   RootNamespaceID,
+				Path: "test",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "root",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "cubbyhole",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "sys",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "comsys",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "path with space",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
+				// empty second segment, as after canonicalize its "/e/"
+				Path: "//e",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
+				// valid as team_1 comes from header/context specification
+				Path: "team_1/team_2",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID: "nsid",
+				// invalid as last segment is incorrect
+				Path: "team_1/team_2/team 3",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/cubbyhole",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/cubbyhole_1",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/1_cubbyhole",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/1_cubbyhole_1",
+			},
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "test/cubbyhole/test2",
+			},
+			wantError: true,
+		},
+		{
+			namespace: &Namespace{
+				ID:   "nsid",
+				Path: "sys/test",
+			},
+			wantError: true,
+		},
+	}
+
+	for _, tc := range tcases {
+		gotErr := tc.namespace.Validate()
+		require.Equal(t, tc.wantError, (gotErr != nil))
+	}
+}

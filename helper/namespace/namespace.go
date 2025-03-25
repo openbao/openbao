@@ -8,13 +8,16 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
-	"github.com/openbao/openbao/sdk/v2/helper/strutil"
 )
 
-var immutableNamespaces = []string{
+// reservedNames is the list of string names that
+// shouldn't be used as namespace name, hence are forbidden to use
+var reservedNames = []string{
+	"root",
 	"sys",
 	"audit",
 	"auth",
@@ -44,8 +47,17 @@ func (n *Namespace) Validate() error {
 		return errors.New("cannot reuse root namespace identifier")
 	}
 
-	if strutil.StrListContains(immutableNamespaces, n.Path) {
-		return fmt.Errorf("%v is a reserved path and cannot be used as a namespace", n.Path)
+	// canonicalize adds a trailing slash, we don't need to consider it here
+	for segment := range strings.SplitSeq(n.Path[:len(n.Path)-1], "/") {
+		if segment == "" {
+			return fmt.Errorf("namespace name cannot be empty")
+		}
+		if strings.Contains(segment, " ") {
+			return fmt.Errorf("%q contains space characters and cannot be used as a namespace name", segment)
+		}
+		if slices.Contains(reservedNames, segment) {
+			return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", segment)
+		}
 	}
 
 	return nil

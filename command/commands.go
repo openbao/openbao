@@ -307,6 +307,11 @@ func initCommands(ui, serverCmdUi cli.Ui, runOpts *RunOptions) map[string]cli.Co
 				BaseCommand: getBaseCommand(),
 			}, nil
 		},
+		"namespace scan": func() (cli.Command, error) {
+			return &NamespaceScanCommand{
+				BaseCommand: getBaseCommand(),
+			}, nil
+		},
 		"namespace lookup": func() (cli.Command, error) {
 			return &NamespaceLookupCommand{
 				BaseCommand: getBaseCommand(),

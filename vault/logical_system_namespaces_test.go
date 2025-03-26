@@ -51,6 +51,72 @@ func TestNamespaceBackend_Set(t *testing.T) {
 			"read custom_metadata does not match original custom_metadata")
 	})
 
+	t.Run("create namespace name validation", func(t *testing.T) {
+		nsTeam1 := testCreateNamespace(t, rootCtx, b, "team_1", map[string]string{})
+		tcases := []struct {
+			path      string
+			wantPath  string
+			namespace *namespace.Namespace
+			wantError bool
+		}{
+			{
+				// this works as ultimately extra '/' get stripped
+				path:     "test////",
+				wantPath: "test/",
+			},
+			{
+				path:      "test/child",
+				wantError: true,
+			},
+			{
+				path:      "root",
+				wantError: true,
+			},
+			{
+				path:      "cubbyhole",
+				wantError: true,
+			},
+			{
+				path:      "cubbyhole",
+				wantError: true,
+			},
+			{
+				namespace: nsTeam1,
+				path:      "team_1.1",
+				wantPath:  "team_1/team_1.1/",
+			},
+			{
+				namespace: nsTeam1,
+				path:      "cubbyhole",
+				wantError: true,
+			},
+			{
+				namespace: nsTeam1,
+				path:      "team_1 1",
+				wantError: true,
+			},
+		}
+
+		for _, tc := range tcases {
+			ctx := namespace.RootContext(context.Background())
+			if tc.namespace != nil {
+				ctx = namespace.ContextWithNamespace(ctx, tc.namespace)
+			}
+
+			req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/"+tc.path)
+			res, err := b.HandleRequest(ctx, req)
+
+			if tc.wantError {
+				require.Error(t, err)
+			} else {
+				fmt.Printf("%s", res.Data["path"].(string))
+				require.Equal(t, tc.wantPath, res.Data["path"].(string))
+				require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
+				require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
+			}
+		}
+	})
+
 	t.Run("update namespace metadata", func(t *testing.T) {
 		customMetadata := map[string]string{"abc": "def"}
 		testCreateNamespace(t, rootCtx, b, "bar", customMetadata)

@@ -2213,15 +2213,18 @@ func (c *Core) mountEntryView(ctx context.Context, me *MountEntry) (BarrierView,
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
 		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil
-	// Namespace mounts should be stored under the namespace prefix (UUID)
-	case mountTypeNSCubbyhole:
-		return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")
 	}
 
 	switch me.Table {
 	case mountTableType:
+		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
+			return c.namespaceMountEntryView(ctx, me.NamespaceID, backendBarrierPrefix+me.UUID+"/")
+		}
 		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
 	case credentialTableType:
+		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
+			return c.namespaceMountEntryView(ctx, me.NamespaceID, credentialBarrierPrefix+me.UUID+"/")
+		}
 		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
 	case auditTableType:
 		return NewBarrierView(c.barrier, auditBarrierPrefix+me.UUID+"/"), nil

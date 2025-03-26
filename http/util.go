@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -71,28 +70,25 @@ var (
 		"sys/rekey/",
 	}
 
-	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {
+	adjustRequest = func(r *http.Request) (*http.Request, int) {
 		u := r.URL
 		p := u.Path[3:]
 
-		nsHeaderPath := namespace.Canonicalize(r.Header.Get(consts.NamespaceHeaderName))
+		ns, err := namespace.FromContext(r.Context())
+		if err != nil || ns == namespace.RootNamespace {
+			return r, 0
+		}
+
 		for _, api := range restrictedAPIs {
-			if strings.HasSuffix(p, api) && (p != "/"+api || nsHeaderPath != "") {
+			if strings.HasSuffix(p, api) {
 				return r, http.StatusBadRequest
 			}
 		}
 
 		for _, api := range containsAPIs {
-			if strings.Contains(p, api) && (!strings.HasPrefix(p, "/"+api) && nsHeaderPath != "") {
+			if strings.Contains(p, api) {
 				return r, http.StatusBadRequest
 			}
-		}
-
-		// TODO(ascheel): Consider if we can combine header with actual request path here without triggering redirect logic.
-		if nsHeaderPath != "" {
-			r = r.WithContext(namespace.ContextWithNamespace(r.Context(), &namespace.Namespace{
-				Path: nsHeaderPath,
-			}))
 		}
 
 		return r, 0

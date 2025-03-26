@@ -344,8 +344,17 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
+		ns := namespace.RootNamespace
+		if nsHeader != "" {
+			ns = &namespace.Namespace{Path: namespace.Canonicalize(nsHeader)}
+			// Setting the namespace in the header to be included in the response
+			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
+
+		}
+		ctx = namespace.ContextWithNamespace(ctx, ns)
 		r = r.WithContext(ctx)
-		r = r.WithContext(namespace.ContextWithNamespace(r.Context(), namespace.RootNamespace))
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
 		if core.RaftNodeIDHeaderEnabled() {
@@ -361,9 +370,9 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			newR, status := adjustRequest(core, r)
+			newR, status := adjustRequest(r)
 			if status != 0 {
-				respondError(nw, status, nil)
+				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s) from namespace [%s]", r.Method, r.URL.Path, ns.Path))
 				cancelFunc()
 				return
 			}
@@ -425,12 +434,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			// Not expecting this fail, so skipping the assertion check
 			core.FinalizeInFlightReqData(inFlightReqID, nw.StatusCode)
 		}()
-
-		// Setting the namespace in the header to be included in the error message
-		ns := r.Header.Get(consts.NamespaceHeaderName)
-		if ns != "" {
-			nw.Header().Set(consts.NamespaceHeaderName, ns)
-		}
 
 		h.ServeHTTP(nw, r)
 

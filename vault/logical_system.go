@@ -2717,6 +2717,8 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"name":             policy.Name,
+				"version":          policy.DataVersion,
+				"cas_required":     policy.CASRequired,
 				respDataPolicyName: policy.Raw,
 			},
 		}
@@ -2800,8 +2802,18 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			return logical.ErrorResponse("unknown policy type"), nil
 		}
 
+		var cas *int
+		casRaw, casOk := data.GetOk("cas")
+		if casOk {
+			cas = new(int)
+			*cas = casRaw.(int)
+		}
+
+		casRequired := data.Get("cas_required").(bool)
+		policy.CASRequired = casRequired
+
 		// Update the policy
-		if err := b.Core.policyStore.SetPolicy(ctx, policy); err != nil {
+		if err := b.Core.policyStore.SetPolicy(ctx, policy, cas); err != nil {
 			return handleError(err)
 		}
 

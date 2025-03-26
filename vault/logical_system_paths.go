@@ -3725,6 +3725,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeDurationSecond,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"cas": {
+					Type:        framework.TypeInt,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas_required": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3753,6 +3761,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 								"modified": {
 									Type:     framework.TypeTime,
 									Required: false,
+								},
+								"version": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
 								},
 							},
 						}},
@@ -3859,6 +3875,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 					Type:        framework.TypeDurationSecond,
 					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
 				},
+				"cas": {
+					Type:        framework.TypeInt,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
+				"cas_required": {
+					Type:        framework.TypeBool,
+					Description: strings.TrimSpace(sysHelp["policy-rules"][0]),
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -3887,6 +3911,14 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 								"modified": {
 									Type:     framework.TypeTime,
 									Required: false,
+								},
+								"version": {
+									Type:     framework.TypeInt,
+									Required: true,
+								},
+								"cas_required": {
+									Type:     framework.TypeBool,
+									Required: true,
 								},
 							},
 						}},

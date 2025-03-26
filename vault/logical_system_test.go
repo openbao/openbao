@@ -511,7 +511,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	core, b, rootToken := testCoreSystemBackend(t)
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -720,7 +720,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -776,7 +776,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2421,14 +2421,16 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	delete(resp.Data, "modified")
 
 	exp := map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
 	}
 
-	// Read, and make sure that case has been normalized
+	// Read, and make sure that case has been normalized.
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/Foo")
 	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
@@ -2441,8 +2443,10 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	delete(resp.Data, "modified")
 
 	exp = map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
@@ -3245,7 +3249,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		Type:      PolicyTypeACL,
 		namespace: namespace.RootNamespace,
 	}
-	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p)
+	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

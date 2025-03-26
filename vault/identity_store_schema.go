@@ -233,6 +233,23 @@ func groupAliasesTableSchema(lowerCaseName bool) *memdb.TableSchema {
 					},
 				},
 			},
+			"factors_ns": {
+				Name: "factors_ns",
+				Indexer: &memdb.CompoundIndex{
+					Indexes: []memdb.Indexer{
+						&memdb.StringFieldIndex{
+							Field: "MountAccessor",
+						},
+						&memdb.StringFieldIndex{
+							Field:     "Name",
+							Lowercase: lowerCaseName,
+						},
+						&memdb.StringFieldIndex{
+							Field: "NamespaceID",
+						},
+					},
+				},
+			},
 			"namespace_id": {
 				Name: "namespace_id",
 				Indexer: &memdb.StringFieldIndex{

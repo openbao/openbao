@@ -938,7 +938,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	is := c.identityStore
 	rootCtx := namespace.RootContext(context.Background())
-	ns1, ns2 := setupNamespaces(t, c)
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
 
 	// Create namespace contexts
 	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
@@ -1206,7 +1206,7 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 	t.Run("namespace_hierarchy_isolation", func(t *testing.T) {
 		// Create a child namespace under ns1
 		childNs := &namespace.Namespace{ID: "childns", Path: "testns1/childns/"}
-		childNsEntry := &NamespaceEntry{Namespace: childNs, UUID: "childns-uuid"}
+		childNsEntry := &NamespaceEntry{Namespace: childNs}
 		require.NoError(t, c.namespaceStore.SetNamespace(rootCtx, childNsEntry))
 
 		childCtx := namespace.ContextWithNamespace(context.Background(), childNs)
@@ -1270,7 +1270,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	is := c.identityStore
 	rootCtx := namespace.RootContext(context.Background())
-	ns1, ns2 := setupNamespaces(t, c)
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
 
 	// Define namespace contexts
 	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
@@ -1568,15 +1568,15 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 }
 
 // Helper function to setup namespaces for testing
-func setupNamespaces(t *testing.T, c *Core) (*namespace.Namespace, *namespace.Namespace) {
+func setupNamespaces(t *testing.T, c *Core, ctx context.Context) (*namespace.Namespace, *namespace.Namespace) {
 	ns1 := &namespace.Namespace{ID: "testns1", Path: "testns1/"}
 	ns2 := &namespace.Namespace{ID: "testns2", Path: "testns2/"}
 
-	ns1Entry := &NamespaceEntry{Namespace: ns1, UUID: "testns1-uuid"}
-	ns2Entry := &NamespaceEntry{Namespace: ns2, UUID: "testns2-uuid"}
+	ns1Entry := &NamespaceEntry{Namespace: ns1}
+	ns2Entry := &NamespaceEntry{Namespace: ns2}
 
-	require.NoError(t, c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), ns1Entry))
-	require.NoError(t, c.namespaceStore.SetNamespace(namespace.RootContext(context.Background()), ns2Entry))
+	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns1Entry))
+	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns2Entry))
 
 	return ns1, ns2
 }
@@ -1592,7 +1592,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	is := c.identityStore
 	rootCtx := namespace.RootContext(context.Background())
-	ns1, ns2 := setupNamespaces(t, c)
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
 
 	// Create namespace contexts
 	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)

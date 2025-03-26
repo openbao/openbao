@@ -541,7 +541,7 @@ func issueCertFromCsr(ac *acmeContext, csr *x509.CertificateRequest) (*certutil.
 		role:    ac.role,
 	}
 
-	normalNotAfter, _, err := getNotAfter(ac.sc.Backend, input, signingBundle)
+	normalNotAfter, _, err := getCertificateNotAfter(ac.sc.Backend, input, signingBundle)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed computing certificate TTL from role/mount: %v: %w", err, ErrMalformed)
 	}

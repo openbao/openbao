@@ -246,7 +246,7 @@ func TestPki_getCertificateNotBefore(t *testing.T) {
 
 	expectedNotBefore := "2024-12-31 23:59:59 +0000 UTC"
 
-	notBefore, err := getNotBefore(&data)
+	notBefore, err := getCertificateNotBefore(&data)
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}

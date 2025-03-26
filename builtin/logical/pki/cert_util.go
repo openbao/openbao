@@ -1515,13 +1515,13 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 		PostalCode:         strutil.RemoveDuplicatesStable(data.role.PostalCode, false),
 	}
 	// Get certificate's Not Before
-	notBefore, err := getNotBefore(data)
+	notBefore, err := getCertificateNotBefore(data)
 	if err != nil {
 		return nil, warnings, err
 	}
 
 	// Get the TTL and verify it against the max allowed
-	notAfter, ttlWarnings, err := getNotAfter(b, data, caSign)
+	notAfter, ttlWarnings, err := getCertificateNotAfter(b, data, caSign)
 	if err != nil {
 		return nil, warnings, err
 	}
@@ -1837,9 +1837,30 @@ func generateCELCreationBundle(b *backend, env *celgo.Env, template CertificateT
 	if err != nil {
 		return nil, fmt.Errorf("error converting KeyBits to int: %w", err)
 	}
-	if keyType == "" {
-		keyType = "rsa"
-		keyBits = 2048
+
+	if keyType == "" || keyBits == 0 {
+		if keyType == "" {
+			keyType = "rsa"
+		}
+		switch keyType {
+		case "rsa":
+			if keyBits == 0 {
+				keyBits = 2048
+			}
+		case "ec":
+			if keyBits == 0 {
+				keyBits = 256
+			}
+		case "ed25519":
+			// Ed25519 doesn't require setting keyBits
+		default:
+			return nil, fmt.Errorf("key type not recognized: %v", keyType)
+		}
+	}
+
+	err = certutil.ValidateKeyTypeLength(keyType.(string), keyBits)
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
 	}
 
 	signatureBits, err := evaluateCELStringToInt(template.SignatureBits, evaluateField, "SignatureBits")
@@ -1952,26 +1973,15 @@ func generateCELCreationBundle(b *backend, env *celgo.Env, template CertificateT
 	return creation, nil
 }
 
-func getNotBefore(data *inputBundle) (time.Time, error) {
+// compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
+func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time
 	var err error
 
 	notBeforeAlt := data.role.NotBefore
 
-	notBefore, err = getCertificateNotBefore(data.apiData, notBeforeAlt)
-	if err != nil {
-		return notBefore, err
-	}
-
-	return notBefore, nil
-}
-
-func getCertificateNotBefore(apiData *framework.FieldData, notBeforeAlt string) (time.Time, error) {
-	var notBefore time.Time
-	var err error
-
 	if notBeforeAlt == "" {
-		notBeforeAltRaw, ok := apiData.GetOk("not_before")
+		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
 		if ok {
 			notBeforeAlt = notBeforeAltRaw.(string)
 		}
@@ -1987,32 +1997,18 @@ func getCertificateNotBefore(apiData *framework.FieldData, notBeforeAlt string) 
 	return notBefore, err
 }
 
-// getNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input
+// getCertificateNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input
 // api data being sent. Returns a NotAfter time, a set of warnings or an error.
-func getNotAfter(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle) (time.Time, []string, error) {
-	var roleTTL, roleMaxTTL time.Duration
-	notAfterAlt := data.role.NotAfter
-
-	// Fetch TTL and MaxTTL from the role if available
-	if data.role.TTL > 0 {
-		roleTTL = data.role.TTL
-	}
-	if data.role.MaxTTL > 0 {
-		roleMaxTTL = data.role.MaxTTL
-	}
-
-	return getCertificateNotAfter(b, data.apiData, caSign, notAfterAlt, roleTTL, roleMaxTTL)
-}
-
-func getCertificateNotAfter(b *backend, apiData *framework.FieldData, caSign *certutil.CAInfoBundle, notAfterAlt string, roleTTL time.Duration, roleMaxTTL time.Duration) (time.Time, []string, error) {
+func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle) (time.Time, []string, error) {
 	var warnings []string
 	var maxTTL time.Duration
 	var notAfter time.Time
 	var err error
 
-	ttl := time.Duration(apiData.Get("ttl").(int)) * time.Second
+	ttl := time.Duration(data.apiData.Get("ttl").(int)) * time.Second
+	notAfterAlt := data.role.NotAfter
 	if notAfterAlt == "" {
-		notAfterAltRaw, ok := apiData.GetOk("not_after")
+		notAfterAltRaw, ok := data.apiData.GetOk("not_after")
 		if ok {
 			notAfterAlt = notAfterAltRaw.(string)
 		}
@@ -2021,12 +2017,12 @@ func getCertificateNotAfter(b *backend, apiData *framework.FieldData, caSign *ce
 		return time.Time{}, warnings, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
 
-	if ttl == 0 && roleTTL > 0 {
-		ttl = roleTTL
+	if ttl == 0 && data.role.TTL > 0 {
+		ttl = data.role.TTL
 	}
 
-	if roleMaxTTL > 0 {
-		maxTTL = roleMaxTTL
+	if data.role.MaxTTL > 0 {
+		maxTTL = data.role.MaxTTL
 	}
 
 	if ttl == 0 {

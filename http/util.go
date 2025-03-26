@@ -80,7 +80,8 @@ var (
 		}
 
 		for _, api := range restrictedAPIs {
-			if strings.HasSuffix(p, api) {
+			// exclude any occurences of possible restriced APIs paths when prefix indicates it's a policy name
+			if strings.HasSuffix(p, api) && !strings.HasPrefix(p, "/sys/policies") {
 				return r, http.StatusBadRequest
 			}
 		}

@@ -64,7 +64,7 @@ func testPolicyRoot(t *testing.T, ps *PolicyStore, ns *namespace.Namespace, expe
 
 	// Set should fail
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.SetPolicy(ctx, p)
+	err = ps.SetPolicy(ctx, p, nil)
 	if err.Error() != `cannot update "root" policy` {
 		t.Fatalf("err: %v", err)
 	}
@@ -122,7 +122,7 @@ func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace)
 	// Set should work
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
 	policy, _ := ParseACLPolicy(ns, aclPolicy)
-	err = ps.SetPolicy(ctx, policy)
+	err = ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -213,7 +213,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 		t.Fatalf("bad: expected\n%s\ngot\n%s\n", responseWrappingPolicy, pCubby.Raw)
 	}
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.SetPolicy(ctx, pCubby)
+	err = ps.SetPolicy(ctx, pCubby, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pCubby.Name)
 	}
@@ -242,7 +242,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 		}
 	}
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	err = ps.SetPolicy(ctx, pRoot)
+	err = ps.SetPolicy(ctx, pRoot, nil)
 	if err == nil {
 		t.Fatalf("expected err setting %s", pRoot.Name)
 	}
@@ -263,13 +263,13 @@ func TestPolicyStore_ACL(t *testing.T) {
 func testPolicyStoreACL(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	policy, _ := ParseACLPolicy(ns, aclPolicy)
-	err := ps.SetPolicy(ctx, policy)
+	err := ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
 	policy, _ = ParseACLPolicy(ns, aclPolicy2)
-	err = ps.SetPolicy(ctx, policy)
+	err = ps.SetPolicy(ctx, policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -905,7 +905,7 @@ func TestPolicyStore_Expiration(t *testing.T) {
 	p.Name = "testing"
 	p.Expiration = time.Now().Add(15 * time.Second)
 
-	err = ps.SetPolicy(ctx, p)
+	err = ps.SetPolicy(ctx, p, nil)
 	require.NoError(t, err)
 
 	p1, err := ps.GetPolicy(ctx, p.Name, p.Type)
@@ -918,4 +918,35 @@ func TestPolicyStore_Expiration(t *testing.T) {
 	p2, err := ps.GetPolicy(ctx, p.Name, p.Type)
 	require.NoError(t, err)
 	require.Nil(t, p2)
+}
+
+// Validate that check-and-set logic works.
+func TestPolicyStore_CAS(t *testing.T) {
+	t.Parallel()
+	_, ps := mockPolicyWithCore(t, false)
+
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
+	require.NoError(t, err)
+	require.NotNil(t, p)
+
+	p.Name = "testing"
+
+	// Create a policy with high explicit cas fails.
+	cas := 3
+	err = ps.SetPolicy(ctx, p, &cas)
+	require.Error(t, err)
+
+	// Create a policy with -1 works.
+	cas = -1
+	err = ps.SetPolicy(ctx, p, &cas)
+	require.NoError(t, err)
+
+	require.Equal(t, 1, p.DataVersion)
+
+	p1, err := ps.GetPolicy(ctx, p.Name, p.Type)
+	require.NoError(t, err)
+	require.NotNil(t, p1)
+	require.Equal(t, p, p1)
 }

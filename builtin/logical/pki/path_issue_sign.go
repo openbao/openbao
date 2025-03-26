@@ -907,9 +907,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			data.Raw["key_bits"] = 2048
 		}
 
-		parsedBundle, err = generateCELCert(env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle, rand.Reader)
+		parsedBundle, err = generateCELCert(b, env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle, rand.Reader)
 	} else {
-		parsedBundle, err = signCELCert(env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle)
+		parsedBundle, err = signCELCert(b, env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle)
 	}
 	if err != nil {
 		switch err.(type) {

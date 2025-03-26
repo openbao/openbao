@@ -677,8 +677,7 @@ func TestCelCustomFunction(t *testing.T) {
 				"certificate": map[string]interface{}{
 					"CommonName":     "request.common_name",
 					"EmailAddresses": "[request.alt_names]",
-					"NotBefore":      "now",
-					"NotAfter":       "now + duration('3h')",
+					"TTL":            "duration('5h')",
 				},
 				"issuer":   "default",
 				"warnings": "warning",

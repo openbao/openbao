@@ -828,6 +828,7 @@ func generateCert(sc *storageContext,
 
 // Generate a certificate evaluating params against CEL role
 func generateCELCert(
+	b *backend,
 	env *celgo.Env,
 	template CertificateTemplate,
 	evaluationData map[string]interface{},
@@ -835,7 +836,7 @@ func generateCELCert(
 	randomSource io.Reader,
 ) (*certutil.ParsedCertBundle, error) {
 	// Generate creation bundle against CEL role rules
-	data, err := generateCELCreationBundle(env, template, evaluationData, caSign, nil)
+	data, err := generateCELCreationBundle(b, env, template, evaluationData, caSign, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -853,6 +854,7 @@ func generateCELCert(
 
 // Generate a certificate evaluating params against CEL role
 func signCELCert(
+	b *backend,
 	env *celgo.Env,
 	template CertificateTemplate,
 	evaluationData map[string]interface{},
@@ -887,7 +889,7 @@ func signCELCert(
 	}
 
 	// Generate creation bundle against CEL role rules
-	data, err := generateCELCreationBundle(env, template, evaluationData, caSign, csr)
+	data, err := generateCELCreationBundle(b, env, template, evaluationData, caSign, csr)
 	if err != nil {
 		return nil, err
 	}
@@ -1708,7 +1710,7 @@ func evaluateCELStringToList(expression string, evaluateField func(string) (any,
 // generateCELCreationBundle evaluates each field in the certificate template defined by
 // the CEL Role Author using the provided CEL environment and evaluation context. It returns a
 // CreationBundle containing all parameters necessary to issue or sign a certificate.
-func generateCELCreationBundle(env *celgo.Env, template CertificateTemplate, evaluationData map[string]interface{}, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, error) {
+func generateCELCreationBundle(b *backend, env *celgo.Env, template CertificateTemplate, evaluationData map[string]interface{}, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, error) {
 	// Helper function to evaluate CEL expression in the CertificateTemplate's fields
 	evaluateField := func(expression string) (any, error) {
 		if expression == "" {
@@ -1865,8 +1867,22 @@ func generateCELCreationBundle(env *celgo.Env, template CertificateTemplate, eva
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating NotAfter: %w", err)
 	}
+
+	ttlValue, err := evaluateField(template.TTL)
+	if err != nil {
+		return nil, fmt.Errorf("error evaluating TTL: %w", err)
+	}
+
+	// If the TTL is not specified or is zero, default to System value
+	ttlStr, ok := ttlValue.(string)
+	ttlTime, ok2 := ttlValue.(time.Duration)
+	if (ok && ttlStr == "") || (ok2 && ttlTime == 0) {
+		ttlValue = b.System().DefaultLeaseTTL()
+	}
+
+	// If notAfter not specified, use TTL
 	if str, ok := notAfter.(string); ok && str == "" {
-		notAfter = time.Time{}
+		notAfter = time.Now().Add(ttlValue.(time.Duration))
 	}
 
 	// Verify that notBefore is older than notAfter.

@@ -1153,6 +1153,28 @@ func TestCore_MountEntryView(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name: "entry of 'ns_system' mount type",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Type:        mountTypeNSSystem,
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + systemBarrierPrefix,
+		},
+		{
+			name: "entry of 'ns_system' mount type for nested namespace",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Type:        mountTypeNSSystem,
+				NamespaceID: testNamespace2.Namespace.ID,
+				namespace:   testNamespace2.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + systemBarrierPrefix,
+		},
+		{
 			name: "entry of 'system' mount type",
 			mountEntry: &MountEntry{
 				UUID: testMountEntryUUID,

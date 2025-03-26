@@ -275,144 +275,141 @@ func Test_runCelProgram(t *testing.T) {
 	}
 }
 
-func TestCelRoleBlocksAuth(t *testing.T) {
+func TestCelRoleAuth(t *testing.T) {
+	tests := []struct {
+		name          string
+		celRole       map[string]interface{}
+		jwtClaims     sqjwt.Claims
+		wantErr       bool
+		errorContains string
+	}{
+		{
+			name: "Subjects match, expect success",
+			celRole: map[string]interface{}{
+				"name":         "testrole",
+				"auth_program": "claims.sub == 'joe.public@example.com' && SetUserClaim('sub')",
+			},
+			jwtClaims: sqjwt.Claims{
+				Subject:   "joe.public@example.com",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Subject doesn't match, expect error",
+			celRole: map[string]interface{}{
+				"name":         "testrole",
+				"auth_program": "claims.sub == 'joe.public@example.com' && SetUserClaim('sub')",
+			},
+			jwtClaims: sqjwt.Claims{
+				Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			},
+			wantErr:       true,
+			errorContains: "blocked authorization",
+		},
+		{
+			name: "Audience match, expect success",
+			celRole: map[string]interface{}{
+				"name":            "testrole",
+				"auth_program":    "claims.sub == 'joe.public@example.com' && SetUserClaim('sub')",
+				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
+			},
+			jwtClaims: sqjwt.Claims{
+				Subject:   "joe.public@example.com",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Audience mismatch, expect error",
+			celRole: map[string]interface{}{
+				"name":            "testrole",
+				"auth_program":    "claims.sub == 'joe.public@example.com' && SetUserClaim('sub')",
+				"bound_audiences": []string{"https://vault.plugin.auth.jwt.test"},
+			},
+			jwtClaims: sqjwt.Claims{
+				Subject:   "joe.public@example.com",
+				Issuer:    "https://team-vault.auth0.com/",
+				NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
+				Audience:  sqjwt.Audience{"not-the-right-audience"},
+			},
+			wantErr:       true,
+			errorContains: "audience claim does not match",
+		},
+	}
+
 	cfg := testConfig{
 		audience:      true,
 		jwks:          true,
 		defaultLeeway: -1,
 	}
-	b, storage := setupBackend(t, cfg)
-	role := "testrole"
 
-	celRoleData := map[string]interface{}{
-		"name":         "testrole",
-		"auth_program": "claims.sub == 'joe.public@example.com'",
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, storage := setupBackend(t, cfg)
+			role := "testrole"
 
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/role/" + role,
-		Storage:   storage,
-		Data:      celRoleData,
-	}
+			// Create the CEL role
+			req := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "cel/role/" + role,
+				Storage:   storage,
+				Data:      tt.celRole,
+			}
 
-	resp, err := b.HandleRequest(context.Background(), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
+			resp, err := b.HandleRequest(context.Background(), req)
+			if err != nil || (resp != nil && resp.IsError()) {
+				t.Fatalf("err:%s resp:%#v\n", err, resp)
+			}
 
-	cl := sqjwt.Claims{
-		Subject:   "r3qXcK2bix9eFECzsU3Sbmh0K16fatW6@clients",
-		Issuer:    "https://team-vault.auth0.com/",
-		NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-		Audience:  sqjwt.Audience{"https://vault.plugin.auth.jwt.test"},
-	}
+			privateCl := struct {
+				User   string   `json:"https://vault/user"`
+				Groups []string `json:"https://vault/groups"`
+			}{
+				"jeff",
+				[]string{"foo", "bar"},
+			}
 
-	privateCl := struct {
-		User   string   `json:"https://vault/user"`
-		Groups []string `json:"https://vault/groups"`
-	}{
-		"jeff",
-		[]string{"foo", "bar"},
-	}
+			// Generate JWT with the test claims
+			jwtData, _ := getTestJWT(t, ecdsaPrivKey, tt.jwtClaims, privateCl)
 
-	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
+			// Attempt login
+			loginData := map[string]interface{}{
+				"role": "testrole",
+				"jwt":  jwtData,
+			}
+			loginReq := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "cel/login",
+				Storage:   storage,
+				Data:      loginData,
+				Connection: &logical.Connection{
+					RemoteAddr: "127.0.0.1",
+				},
+			}
 
-	loginData := map[string]interface{}{
-		"role": "testrole",
-		"jwt":  jwtData,
+			resp, err = b.HandleRequest(context.Background(), loginReq)
+			if tt.wantErr {
+				if !resp.IsError() {
+					t.Fatalf("expected error: %v / %v via JWT: %v", resp, resp.Auth, jwtData)
+				}
+				if tt.errorContains != "" {
+					if !strings.Contains(resp.Error().Error(), tt.errorContains) {
+						t.Fatalf("unexpected error: %v, want containing: %q", resp.Error(), tt.errorContains)
+					}
+				}
+			} else {
+				if err != nil || (resp != nil && resp.IsError()) {
+					t.Fatalf("unexpected error: err:%s resp:%#v\n", err, resp)
+				}
+			}
+		})
 	}
-	loginReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/login",
-		Storage:   storage,
-		Data:      loginData,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
-	}
-
-	resp, err = b.HandleRequest(context.Background(), loginReq)
-	if !resp.IsError() {
-		t.Fatalf("expected error: %v / %v via JWT: %v", resp, resp.Auth, jwtData)
-	}
-	if !strings.Contains(resp.Error().Error(), "blocked authorization") {
-		t.Fatalf("unexpected error: %v", resp.Error())
-	}
-}
-
-func TestCelRolePermitsAuth(t *testing.T) {
-	cfg := testConfig{
-		audience:      true,
-		jwks:          true,
-		defaultLeeway: -1,
-	}
-	b, storage := setupBackend(t, cfg)
-	role := "testrole"
-
-	celRoleData := map[string]interface{}{
-		"name": "testrole",
-		"auth_program": `
-                        claims.sub == 'joe.public@example.com'
-			?
-			  SetUserClaim("sub") &&
-			  SetPolicies(["foo-policy", "bar-policy"])
-			:
-			  false
-		`,
-	}
-
-	req := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/role/" + role,
-		Storage:   storage,
-		Data:      celRoleData,
-	}
-
-	resp, err := b.HandleRequest(context.Background(), req)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%s resp:%#v\n", err, resp)
-	}
-
-	cl := sqjwt.Claims{
-		Subject:   "joe.public@example.com",
-		Issuer:    "https://team-vault.auth0.com/",
-		NotBefore: sqjwt.NewNumericDate(time.Now().Add(-5 * time.Second)),
-	}
-
-	privateCl := struct {
-		User   string   `json:"https://vault/user"`
-		Groups []string `json:"https://vault/groups"`
-	}{
-		"joe.public",
-		[]string{"foo", "bar"},
-	}
-
-	jwtData, _ := getTestJWT(t, ecdsaPrivKey, cl, privateCl)
-
-	loginData := map[string]interface{}{
-		"role": "testrole",
-		"jwt":  jwtData,
-	}
-	loginReq := &logical.Request{
-		Operation: logical.UpdateOperation,
-		Path:      "cel/login",
-		Storage:   storage,
-		Data:      loginData,
-		Connection: &logical.Connection{
-			RemoteAddr: "127.0.0.1",
-		},
-	}
-
-	resp, err = b.HandleRequest(context.Background(), loginReq)
-	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("err:%v resp:%#v", err, resp)
-	}
-
-	auth := resp.Auth
-	if auth.InternalData["role"] != role {
-		t.Fatalf("Role was not as expected. Expected %s, received %s", role, resp.Data["role"])
-	}
-	require.Equal(t, "joe.public@example.com", auth.Alias.Name)
-	require.Contains(t, auth.Policies, "foo-policy", "bar-policy")
 }

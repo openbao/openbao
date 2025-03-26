@@ -2206,6 +2206,8 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	}
 
 	switch me.Type {
+	case mountTypeNSSystem:
+		return c.namespaceMountEntryView(ctx, me.NamespaceID, systemBarrierPrefix)
 	case mountTypeSystem:
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:

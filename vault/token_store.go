@@ -838,31 +838,39 @@ func (ts *TokenStore) baseView(ctx context.Context, ns *namespace.Namespace) (Ba
 }
 
 func (ts *TokenStore) idView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	if ns.ID == namespace.RootNamespaceID {
-		return ts.core.systemBarrierView.SubView(tokenSubPath + idPrefix), nil
+	baseView, err := ts.baseView(ctx, ns)
+	if err != nil {
+		return nil, err
 	}
-	return ts.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+tokenSubPath+idPrefix)
+
+	return baseView.SubView(idPrefix), nil
 }
 
 func (ts *TokenStore) accessorView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	if ns.ID == namespace.RootNamespaceID {
-		return ts.core.systemBarrierView.SubView(tokenSubPath + accessorPrefix), nil
+	baseView, err := ts.baseView(ctx, ns)
+	if err != nil {
+		return nil, err
 	}
-	return ts.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+tokenSubPath+accessorPrefix)
+
+	return baseView.SubView(accessorPrefix), nil
 }
 
 func (ts *TokenStore) parentView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	if ns.ID == namespace.RootNamespaceID {
-		return ts.core.systemBarrierView.SubView(tokenSubPath + parentPrefix), nil
+	baseView, err := ts.baseView(ctx, ns)
+	if err != nil {
+		return nil, err
 	}
-	return ts.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+tokenSubPath+parentPrefix)
+
+	return baseView.SubView(parentPrefix), nil
 }
 
 func (ts *TokenStore) rolesView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	if ns.ID == namespace.RootNamespaceID {
-		return ts.core.systemBarrierView.SubView(tokenSubPath + rolesPrefix), nil
+	baseView, err := ts.baseView(ctx, ns)
+	if err != nil {
+		return nil, err
 	}
-	return ts.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+tokenSubPath+rolesPrefix)
+
+	return baseView.SubView(rolesPrefix), nil
 }
 
 func (ts *TokenStore) Invalidate(ctx context.Context, key string) {

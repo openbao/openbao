@@ -36,9 +36,11 @@ export default Component.extend({
     const reader = new FileReader();
     // raft-snapshot-restore test was failing on CI trying to send action on destroyed object
     // ensure that the component has not been torn down prior to sending onChange action
-    if (!this.isDestroyed && !this.isDestroying) {
-      reader.onload = () => this.send('onChange', reader.result, file);
-    }
+    reader.onload = () => {
+      if (!this.isDestroyed && !this.isDestroying) {
+        this.send('onChange', reader.result, file);
+      }
+    };
     reader.readAsArrayBuffer(file);
   },
 

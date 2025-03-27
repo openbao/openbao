@@ -98,7 +98,7 @@ func Test_StrictIPBinding(t *testing.T) {
 		NetworkName:   vaultNetwork,
 		Entrypoint:    []string{"sleep", sleepTimer},
 		LogConsumer: func(s string) {
-			t.Logf(s)
+			t.Log(s)
 		},
 	})
 	require.NoError(t, err, "failed creating cURL service runner")

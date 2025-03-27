@@ -88,7 +88,7 @@ if [ "$1" = 'bao' ]; then
         fi
     fi
 
-    if [ "$(id -u)" = '0' ]; then
+    if [ "$(id -u)" = '0' ] && [ -z "$BAO_SKIP_DROP_ROOT" ]; then
       set -- su-exec openbao "$@"
     fi
 fi

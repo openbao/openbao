@@ -49,6 +49,12 @@ func pathCreds(b *backend) *framework.Path {
 
 // Issues the credential based on the role name
 func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	name := d.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("missing name"), nil
@@ -212,6 +218,10 @@ func (b *backend) pathCredsRead(ctx context.Context, req *logical.Request, d *fr
 	if lease != nil {
 		response.Secret.TTL = lease.TTL
 		response.Secret.MaxTTL = lease.MaxTTL
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return response, nil

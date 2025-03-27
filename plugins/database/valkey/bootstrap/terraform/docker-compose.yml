@@ -1,0 +1,21 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+version: '3.9'
+volumes:
+  valkey_data: {}
+networks:
+  valkey:
+    driver: bridge
+services:
+  valkey:
+    image: valkey/valkey-stack-server:latest
+    container_name: valkey
+    networks:
+      - valkey
+    restart: always
+    command: "valkey-server --requirepass default-pa55w0rd --user us4rn4m3 on >user-pa55w0rd ~* allcommands"
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/valkey:/data

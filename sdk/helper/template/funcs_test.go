@@ -326,6 +326,38 @@ func TestBase64(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestHex(t *testing.T) {
+	type testCase struct {
+		input    string
+		expected string
+	}
+
+	tests := map[string]testCase{
+		"empty string": {
+			input:    "",
+			expected: "",
+		},
+		"cipherboy": {
+			input:    "cipherboy",
+			expected: "636970686572626f79",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := encodeHex(test.input)
+			require.Equal(t, test.expected, actual)
+
+			actual, err := decodeHex(test.expected)
+			require.NoError(t, err)
+			require.Equal(t, test.input, actual)
+		})
+	}
+
+	_, err := decodeHex("invalid: *")
+	require.Error(t, err)
+}
+
 func TestReplace(t *testing.T) {
 	type testCase struct {
 		input    string

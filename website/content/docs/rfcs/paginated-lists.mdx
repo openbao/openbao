@@ -8,6 +8,12 @@ description: |-
 
 **Status**: this landed in [PR #170](https://github.com/openbao/openbao/pull/170).
 
+:::info
+
+This RFC was updated by [safely limiting pagination via ACL policies](/docs/rfcs/acl-paginated-lists).
+
+:::
+
 ## Summary
 
 OpenBao's `LIST` Plugin APIs presently only supports returning all keys within a tree, resulting in many performance issues (memory and compute). By implementing pagination, the caller can limit the number of responses and thus reduce both the client's and server's instantaneous resource consumption.

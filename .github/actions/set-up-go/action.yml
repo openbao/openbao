@@ -25,7 +25,7 @@ runs:
     - id: go-version
       shell: bash
       run: echo "go-version=$(cat ./.go-version)" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
       with:
         go-version: ${{ steps.go-version.outputs.go-version }}
         cache: false # We use our own caching strategy
@@ -35,7 +35,7 @@ runs:
         echo "cache-path=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
         echo "cache-key=go-modules-${{ hashFiles('**/go.sum') }}" >> "$GITHUB_OUTPUT"
     - id: cache-modules
-      uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+      uses: actions/cache@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
       with:
         enableCrossOsArchive: true
         lookup-only: ${{ inputs.no-restore }}

@@ -27,3 +27,15 @@ Steering Committee.
  - [SCAN operation](/docs/rfcs/scan-operation), for supporting recursive
    lists as a native operation and as an ACL capability. This landed in
    [PR #763](https://github.com/openbao/openbao/pull/763).
+ - [ACME TLS Listeners](/docs/rfcs/acme-tls-listeners), for supporting
+   just-in-time certificate acquisition for TLS-enabled listeners via the
+   ACME protocol.
+ - [Safely limit pagination via ACL policies](/docs/rfcs/acl-paginated-lists),
+   adding a new ACL policy parameter, `pagination_limit`, to restrict the size
+   of list and scan operation requests.
+ - [Split the mount table using transactional storage](/docs/rfcs/split-mount-tables),
+   removes mount table limits, allowing potentially hundreds of thousands of
+   mounts on a single scaled-up server. This landed in
+   [622](https://github.com/openbao/openbao/pull/622).
+ - [SSH CA Multi-issuer](/docs/rfcs/ssh-ca-multi-issuer), adds support for multiple issuers on SSH secret engine mounts.
+    Landed in [880](https://github.com/openbao/openbao/pull/880).

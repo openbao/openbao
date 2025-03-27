@@ -38,7 +38,7 @@ fi
 # BAO_CONFIG_DIR isn't exposed as a volume but you can compose additional
 # config files in there if you use this image as a base, or use
 # BAO_LOCAL_CONFIG below.
-BAO_CONFIG_DIR=/openbao/config
+BAO_CONFIG_DIR=${BAO_CONFIG_DIR:-/openbao/config}
 
 # You can also set the BAO_LOCAL_CONFIG environment variable to pass some
 # OpenBao configuration JSON without having to bind any volumes.

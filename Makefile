@@ -286,7 +286,7 @@ assetcheck:
 
 spellcheck:
 	@echo "==> Spell checking website..."
-	$(GO_CMD) run github.com/client9/misspell/cmd/misspell@latest -error -source=text website/source
+	$(GO_CMD) run github.com/golangci/misspell/cmd/misspell@latest -w -source=text website/content
 
 mysql-database-plugin:
 	@CGO_ENABLED=0 $(GO_CMD) build -o bin/mysql-database-plugin ./plugins/database/mysql/mysql-database-plugin
@@ -368,8 +368,13 @@ dev-gorelease:
 goreleaser-check:
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
 	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
 	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
 	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
+	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
+	@$(SED) -i 's/^#HSMONLY#//g' $(CURDIR)/.goreleaser.yaml
 	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
 
 .PHONY: sync-deps

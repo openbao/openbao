@@ -312,6 +312,7 @@ const sidebars: SidebarsConfig = {
                         "secrets/databases/influxdb",
                         "secrets/databases/mysql-maria",
                         "secrets/databases/postgresql",
+                        "secrets/databases/valkey",
                     ],
                     Identity: [
                         "secrets/identity/index",
@@ -463,11 +464,12 @@ const sidebars: SidebarsConfig = {
             ],
             "Upgrade Guides": [
                 "upgrading/index",
-                "upgrading/vault-ha-upgrade",
+                "upgrading/ha-upgrade",
                 "upgrading/plugins",
             ],
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-2-0",
                 "release-notes/2-1-0",
                 "release-notes/2-0-0",
             ],
@@ -477,6 +479,7 @@ const sidebars: SidebarsConfig = {
             "Deprecation Notices": ["deprecation/index", "deprecation/faq"],
             Policies: [
                 "policies/index",
+                "policies/brand",
                 "policies/deprecation",
                 "policies/migration",
                 "policies/plugins",
@@ -496,6 +499,9 @@ const sidebars: SidebarsConfig = {
                 "rfcs/transactions",
                 "rfcs/split-mount-tables",
                 "rfcs/scan-operation",
+                "rfcs/acme-tls-listeners",
+                "rfcs/acl-paginated-lists",
+                "rfcs/ssh-ca-multi-issuer",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

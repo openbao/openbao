@@ -116,10 +116,6 @@ func (b *backend) pathConfigZeroAddressWrite(ctx context.Context, req *logical.R
 		return nil, err
 	}
 
-	if err := logical.EndTxStorage(ctx, req); err != nil {
-		return nil, err
-	}
-
 	return nil, nil
 }
 

@@ -147,7 +147,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	// Sync values to the cache
 	entry.SyncCache()
 
-	view, err := c.mountEntryView(ctx, entry)
+	view, err := c.mountEntryView(entry)
 	if err != nil {
 		return err
 	}
@@ -564,7 +564,7 @@ func (c *Core) loadCredentials(ctx context.Context) error {
 
 // This function reads the transactional split auth (credential) table.
 func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical.Storage) error {
-	allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
+	allNamespaces, err := c.ListNamespaces(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list namespaces: %w", err)
 	}
@@ -573,20 +573,20 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		view := ns.View(barrier)
+		view := NamespaceView(barrier, ns)
 
 		nsGlobal, nsLocal, err := c.listTransactionalCredentialsForNamespace(ctx, view)
 		if err != nil {
-			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.Namespace.ID)
+			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
 			return err
 		}
 
 		if len(nsGlobal) > 0 {
-			globalEntries[ns.Namespace.ID] = nsGlobal
+			globalEntries[ns.ID] = nsGlobal
 		}
 
 		if len(nsLocal) > 0 {
-			localEntries[ns.Namespace.ID] = nsLocal
+			localEntries[ns.ID] = nsLocal
 		}
 	}
 
@@ -605,11 +605,11 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := ns.View(barrier)
-			for index, uuid := range globalEntries[ns.Namespace.ID] {
+			view := NamespaceView(barrier, ns)
+			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreAuthConfigPath, uuid)
 				if err != nil {
-					return fmt.Errorf("error loading auth mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+					return fmt.Errorf("error loading auth mount table entry (%v (%v)/%v/%v): %w", ns.ID, nsIndex, index, uuid, err)
 				}
 
 				if entry != nil {
@@ -622,12 +622,12 @@ func (c *Core) loadTransactionalCredentials(ctx context.Context, barrier logical
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := ns.View(barrier)
+			view := NamespaceView(barrier, ns)
 
-			for index, uuid := range localEntries[ns.Namespace.ID] {
+			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalAuthConfigPath, uuid)
 				if err != nil {
-					return fmt.Errorf("error loading local auth mount table entry (%v (%v)/%v/%v): %w", ns.Namespace.ID, nsIndex, index, uuid, err)
+					return fmt.Errorf("error loading local auth mount table entry (%v (%v)/%v/%v): %w", ns.ID, nsIndex, index, uuid, err)
 				}
 
 				if entry != nil {
@@ -893,17 +893,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 					continue
 				}
 
-				ne, err := c.namespaceStore.GetNamespaceByAccessor(ctx, mtEntry.NamespaceID)
-				if err != nil {
-					return -1, err
-				}
-
-				// Namespace might've been removed.
-				if ne == nil {
-					continue
-				}
-
-				view := ne.View(barrier)
+				view := NamespaceView(barrier, mtEntry.Namespace())
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -936,33 +926,33 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 				// Delete this component if it exists. This signifies that
 				// we're removing this mount. We don't know which namespace
 				// this entry could belong to, so remove it from all.
-				allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
+				allNamespaces, err := c.ListNamespaces(ctx)
 				if err != nil {
 					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := ns.View(barrier)
+					view := NamespaceView(barrier, ns)
 					path := path.Join(prefix, mount)
 					if err := view.Delete(ctx, path); err != nil {
-						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.Namespace.ID, nsIndex, err)
+						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
 					}
 				}
 			}
 
 			if mount == "" {
-				allNamespaces, err := c.namespaceStore.ListAllNamespaceEntries(ctx, true)
+				allNamespaces, err := c.ListNamespaces(ctx)
 				if err != nil {
 					return -1, fmt.Errorf("failed to list namespaces: %w", err)
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := ns.View(barrier)
+					view := NamespaceView(barrier, ns)
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")
 					if err != nil {
-						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.Namespace.ID, nsIndex, err)
+						return -1, fmt.Errorf("failed to list entries in namespace %v (%v) for removal: %w", ns.ID, nsIndex, err)
 					}
 
 					for index, presentEntry := range presentEntries {
@@ -971,7 +961,7 @@ func (c *Core) persistAuth(ctx context.Context, barrier logical.Storage, table *
 						}
 
 						if err := view.Delete(ctx, prefix+"/"+presentEntry); err != nil {
-							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v (%v): %w", presentEntry, index, ns.Namespace.ID, nsIndex, err)
+							return -1, fmt.Errorf("failed to remove deleted mount %v (%d) in namespace %v (%v): %w", presentEntry, index, ns.ID, nsIndex, err)
 						}
 					}
 				}
@@ -1033,7 +1023,7 @@ func (c *Core) setupCredentials(ctx context.Context) error {
 	defer c.authLock.Unlock()
 
 	for _, entry := range c.auth.sortEntriesByPathDepth().Entries {
-		view, err := c.mountEntryView(ctx, entry)
+		view, err := c.mountEntryView(entry)
 		if err != nil {
 			return err
 		}

@@ -368,13 +368,13 @@ func (ps *PolicyStore) getACLView(ns *namespace.Namespace) (BarrierView, error) 
 	}
 
 	// First, get the namespace's entry from the namespace store
-	nsEntry, err := ps.core.namespaceStore.GetNamespaceByAccessor(context.Background(), ns.ID)
-	if err != nil || nsEntry == nil {
+	ns, err := ps.core.NamespaceByID(context.Background(), ns.ID)
+	if err != nil || ns == nil {
 		ps.logger.Error("failed to find namespace entry", "namespace_id", ns.ID)
 		return nil, fmt.Errorf("failed to find namespace entry for %q", ns.ID)
 	}
 
-	nsView := nsEntry.View(ps.core.barrier)
+	nsView := NamespaceView(ps.core.barrier, ns)
 	return nsView.SubView(path.Join("sys", policyACLSubPath) + "/"), nil
 }
 

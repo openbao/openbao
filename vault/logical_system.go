@@ -2203,7 +2203,11 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	view := b.Core.expiration.leaseView(ns)
+	view, err := b.Core.expiration.leaseView(ctx, ns)
+	if err != nil {
+		return nil, err
+	}
+
 	keys, err := view.List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)

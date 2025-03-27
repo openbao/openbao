@@ -830,47 +830,27 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 	return t, nil
 }
 
-func (ts *TokenStore) baseView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
+func (ts *TokenStore) baseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
 	if ns.ID == namespace.RootNamespaceID {
-		return ts.core.systemBarrierView.SubView(tokenSubPath), nil
+		return ts.core.systemBarrierView.SubView(tokenSubPath)
 	}
-	return ts.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+tokenSubPath)
+	return ts.core.namespaceMountEntryView(ns, systemBarrierPrefix+tokenSubPath)
 }
 
-func (ts *TokenStore) idView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	baseView, err := ts.baseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return baseView.SubView(idPrefix), nil
+func (ts *TokenStore) idView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ctx, ns).SubView(idPrefix)
 }
 
-func (ts *TokenStore) accessorView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	baseView, err := ts.baseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return baseView.SubView(accessorPrefix), nil
+func (ts *TokenStore) accessorView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ctx, ns).SubView(accessorPrefix)
 }
 
-func (ts *TokenStore) parentView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	baseView, err := ts.baseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return baseView.SubView(parentPrefix), nil
+func (ts *TokenStore) parentView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ctx, ns).SubView(parentPrefix)
 }
 
-func (ts *TokenStore) rolesView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
-	baseView, err := ts.baseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	return baseView.SubView(rolesPrefix), nil
+func (ts *TokenStore) rolesView(ctx context.Context, ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ctx, ns).SubView(rolesPrefix)
 }
 
 func (ts *TokenStore) Invalidate(ctx context.Context, key string) {
@@ -900,10 +880,7 @@ func (ts *TokenStore) Salt(ctx context.Context) (*salt.Salt, error) {
 		return salt, nil
 	}
 
-	view, err := ts.baseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
+	view := ts.baseView(ctx, ns)
 
 	salt, err := salt.NewSalt(ctx, view, &salt.Config{
 		HashFunc: salt.SHA1Hash,
@@ -1022,12 +999,7 @@ func (ts *TokenStore) tokenStoreAccessorList(ctx context.Context, req *logical.R
 	}
 	nsID := ns.ID
 
-	view, err := ts.accessorView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	entries, err := view.List(ctx, "")
+	entries, err := ts.accessorView(ctx, ns).List(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -1103,13 +1075,8 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 		return fmt.Errorf("failed to marshal accessor index entry: %w", err)
 	}
 
-	view, err := ts.accessorView(ctx, tokenNS)
-	if err != nil {
-		return err
-	}
-
 	le := &logical.StorageEntry{Key: saltID, Value: aEntryBytes}
-	if err := view.Put(ctx, le); err != nil {
+	if err := ts.accessorView(ctx, tokenNS).Put(ctx, le); err != nil {
 		return fmt.Errorf("failed to persist accessor index entry: %w", err)
 	}
 	return nil
@@ -1411,13 +1378,8 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 				path = fmt.Sprintf("%s.%s", path, tokenNS.ID)
 			}
 
-			view, err := ts.parentView(ctx, parentNS)
-			if err != nil {
-				return err
-			}
-
 			le := &logical.StorageEntry{Key: path}
-			if err := view.Put(ctx, le); err != nil {
+			if err := ts.parentView(ctx, parentNS).Put(ctx, le); err != nil {
 				return fmt.Errorf("failed to persist entry: %w", err)
 			}
 		}
@@ -1429,12 +1391,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 		le.SealWrap = true
 	}
 
-	view, err := ts.idView(ctx, tokenNS)
-	if err != nil {
-		return err
-	}
-
-	if err := view.Put(ctx, le); err != nil {
+	if err := ts.idView(ctx, tokenNS).Put(ctx, le); err != nil {
 		return fmt.Errorf("failed to persist entry: %w", err)
 	}
 	return nil
@@ -1662,12 +1619,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		}
 	}
 
-	view, err := ts.idView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	raw, err = view.Get(ctx, lookupID)
+	raw, err = ts.idView(ctx, ns).Get(ctx, lookupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read entry: %w", err)
 	}
@@ -1867,12 +1819,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		// If we succeeded in all other revocation operations after this defer and
 		// before we return, we can remove the token store entry
 		if ret == nil {
-			view, err := ts.idView(ctx, tokenNS)
-			if err != nil {
-				ret = err
-			}
-
-			if err := view.Delete(ctx, saltedID); err != nil {
+			if err := ts.idView(ctx, tokenNS).Delete(ctx, saltedID); err != nil {
 				ret = fmt.Errorf("failed to delete entry: %w", err)
 			}
 		}
@@ -1932,12 +1879,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			path = fmt.Sprintf("%s.%s", path, tokenNS.ID)
 		}
 
-		view, err := ts.parentView(ctx, parentNS)
-		if err != nil {
-			return err
-		}
-
-		if err = view.Delete(ctx, path); err != nil {
+		if err = ts.parentView(ctx, parentNS).Delete(ctx, path); err != nil {
 			return fmt.Errorf("failed to delete entry: %w", err)
 		}
 	}
@@ -1949,12 +1891,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			return err
 		}
 
-		view, err := ts.accessorView(ctx, tokenNS)
-		if err != nil {
-			return err
-		}
-
-		if err = view.Delete(ctx, accessorSaltedID); err != nil {
+		if err = ts.accessorView(ctx, tokenNS).Delete(ctx, accessorSaltedID); err != nil {
 			return fmt.Errorf("failed to delete entry: %w", err)
 		}
 	}
@@ -1967,12 +1904,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		// revokeTreeInternal to avoid unnecessary view.List operations. Since
 		// the deletion occurs in a DFS fashion we don't need to perform a delete
 		// on child prefixes as there will be none (as saltedID entry is a leaf node).
-		view, err := ts.parentView(ctx, tokenNS)
-		if err != nil {
-			return err
-		}
-
-		children, err := view.List(ctx, saltedID+"/")
+		children, err := ts.parentView(ctx, tokenNS).List(ctx, saltedID+"/")
 		if err != nil {
 			return fmt.Errorf("failed to scan for children: %w", err)
 		}
@@ -1998,12 +1930,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			}
 			if entry == nil {
 				// Seems it's already revoked, so nothing to do here except delete the index
-				view, err := ts.parentView(ctx, tokenNS)
-				if err != nil {
-					return err
-				}
-
-				err = view.Delete(ctx, child)
+				err = ts.parentView(ctx, tokenNS).Delete(ctx, child)
 				if err != nil {
 					return fmt.Errorf("failed to delete child entry: %w", err)
 				}
@@ -2025,13 +1952,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			// paths are not deeply nested (i.e. they are simply
 			// parentPrefix/<parentID>/<childID>), we can simply call view.Delete instead
 			// of logical.ClearView
-
-			view, err := ts.parentView(ctx, tokenNS)
-			if err != nil {
-				return err
-			}
-
-			err = view.Delete(ctx, child)
+			err = ts.parentView(ctx, tokenNS).Delete(ctx, child)
 			if err != nil {
 				return fmt.Errorf("failed to delete child entry: %w", err)
 			}
@@ -2113,13 +2034,8 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 			saltedCtx = namespace.ContextWithNamespace(ctx, saltedNS)
 		}
 
-		view, err := ts.parentView(ctx, saltedNS)
-		if err != nil {
-			return err
-		}
-
 		path := saltedID + "/"
-		childrenRaw, err := view.List(saltedCtx, path)
+		childrenRaw, err := ts.parentView(ctx, saltedNS).List(saltedCtx, path)
 		if err != nil {
 			return fmt.Errorf("failed to scan for children: %w", err)
 		}
@@ -2131,12 +2047,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 			if _, seen := seenIDs[child]; !seen {
 				children = append(children, child)
 			} else {
-				view, err := ts.parentView(ctx, saltedNS)
-				if err != nil {
-					return err
-				}
-
-				if err = view.Delete(saltedCtx, path+child); err != nil {
+				if err = ts.parentView(ctx, saltedNS).Delete(saltedCtx, path+child); err != nil {
 					return fmt.Errorf("failed to delete entry: %w", err)
 				}
 
@@ -2219,12 +2130,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 		}
 	}
 
-	view, err := ts.accessorView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	entry, err := view.Get(ctx, lookupID)
+	entry, err := ts.accessorView(ctx, ns).Get(ctx, lookupID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read index using accessor: %w", err)
 	}
@@ -2285,22 +2191,14 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 			quitCtx := namespace.ContextWithNamespace(ts.quitContext, ns)
 
+			accessorView := ts.accessorView(ctx, ns)
 			// List out all the accessors
-			accessorView, err := ts.accessorView(ctx, ns)
-			if err != nil {
-				return err
-			}
-
 			saltedAccessorList, err := accessorView.List(quitCtx, "")
 			if err != nil {
 				return fmt.Errorf("failed to fetch accessor index entries: %w", err)
 			}
 
-			parentView, err := ts.parentView(ctx, ns)
-			if err != nil {
-				return err
-			}
-
+			parentView := ts.parentView(ctx, ns)
 			// First, clean up secondary index entries that are no longer valid
 			parentList, err := parentView.List(quitCtx, "")
 			if err != nil {
@@ -3601,12 +3499,7 @@ func (ts *TokenStore) tokenStoreRole(ctx context.Context, name string) (*tsRoleE
 		return nil, err
 	}
 
-	view, err := ts.rolesView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	entry, err := view.Get(ctx, name)
+	entry, err := ts.rolesView(ctx, ns).Get(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -3644,12 +3537,7 @@ func (ts *TokenStore) tokenStoreRoleList(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 
-	view, err := ts.rolesView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	entries, err := view.List(ctx, "")
+	entries, err := ts.rolesView(ctx, ns).List(ctx, "")
 	if err != nil {
 		return nil, err
 	}
@@ -3668,12 +3556,7 @@ func (ts *TokenStore) tokenStoreRoleDelete(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 
-	view, err := ts.rolesView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	err = view.Delete(ctx, data.Get("role_name").(string))
+	err = ts.rolesView(ctx, ns).Delete(ctx, data.Get("role_name").(string))
 	if err != nil {
 		return nil, err
 	}
@@ -3976,12 +3859,7 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 		return nil, err
 	}
 
-	view, err := ts.rolesView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := view.Put(ctx, jsonEntry); err != nil {
+	if err := ts.rolesView(ctx, ns).Put(ctx, jsonEntry); err != nil {
 		return nil, err
 	}
 

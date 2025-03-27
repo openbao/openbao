@@ -32,12 +32,12 @@ func TestNamespaceStore(t *testing.T) {
 
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
-	require.NotEmpty(t, item.UUID)
+	require.NotEmpty(t, item.Namespace.UUID)
 	require.NotEmpty(t, item.Namespace.ID)
 	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
 	require.Equal(t, item.Namespace.Path, "ns1/")
 
-	itemUUID := item.UUID
+	itemUUID := item.Namespace.UUID
 	itemAccessor := item.Namespace.ID
 	itemPath := item.Namespace.Path
 
@@ -45,24 +45,24 @@ func TestNamespaceStore(t *testing.T) {
 	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0].UUID, item.UUID)
+	require.Equal(t, ns[0].Namespace.UUID, item.Namespace.UUID)
 
 	// Modifying our copy shouldn't affect anything.
 	item.Namespace.CustomMetadata = map[string]string{"openbao": "true"}
 	item.Namespace.Path = "modified"
 	item.Namespace.ID = "modified"
-	item.UUID = "modified"
+	item.Namespace.UUID = "modified"
 
 	fetched, err := s.GetNamespace(ctx, itemUUID)
 	require.NoError(t, err)
 	require.NotNil(t, fetched)
-	require.Equal(t, fetched.UUID, itemUUID)
+	require.Equal(t, fetched.Namespace.UUID, itemUUID)
 	require.Equal(t, fetched.Namespace.ID, itemAccessor)
 	require.Equal(t, fetched.Namespace.Path, itemPath)
 	require.Empty(t, fetched.Namespace.CustomMetadata)
 
 	// Fetching the modified ID should fail.
-	fetched, err = s.GetNamespace(ctx, item.UUID)
+	fetched, err = s.GetNamespace(ctx, item.Namespace.UUID)
 	require.NoError(t, err)
 	require.Nil(t, fetched)
 
@@ -87,7 +87,7 @@ func TestNamespaceStore(t *testing.T) {
 	ns, err = s.ListAllNamespaceEntries(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
-	require.Equal(t, ns[0].UUID, itemUUID)
+	require.Equal(t, ns[0].Namespace.UUID, itemUUID)
 
 	// Delete that item.
 	err = s.DeleteNamespace(ctx, itemUUID)
@@ -129,8 +129,8 @@ func TestNamespaceStore(t *testing.T) {
 
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
-	require.NotEmpty(t, item.UUID)
-	require.NotEqual(t, item.UUID, itemUUID)
+	require.NotEmpty(t, item.Namespace.UUID)
+	require.NotEqual(t, item.Namespace.UUID, itemUUID)
 	require.NotEmpty(t, item.Namespace.ID)
 	require.NotEqual(t, item.Namespace.ID, itemAccessor)
 	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
@@ -173,7 +173,7 @@ func TestNamespaceHierarchy(t *testing.T) {
 	for idx, ns := range namespaces {
 		err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
 		require.NoError(t, err)
-		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.Namespace.UUID)
 		require.NotEmpty(t, ns.Namespace.ID)
 		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
 	}
@@ -228,10 +228,10 @@ func TestNamespaceTree(t *testing.T) {
 	tree := newNamespaceTree(rootNs)
 
 	namespaces1 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns1/", ID: "00001"}, UUID: "00001"},
-		{Namespace: &namespace.Namespace{Path: "ns1/ns2/", ID: "00002"}, UUID: "00002"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns4/", ID: "00004"}, UUID: "00004"},
-		{Namespace: &namespace.Namespace{Path: "ns3/", ID: "00003"}, UUID: "00003"},
+		{Namespace: &namespace.Namespace{Path: "ns1/", ID: "00001", UUID: "00001"}},
+		{Namespace: &namespace.Namespace{Path: "ns1/ns2/", ID: "00002", UUID: "00002"}},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns4/", ID: "00004", UUID: "00004"}},
+		{Namespace: &namespace.Namespace{Path: "ns3/", ID: "00003", UUID: "00003"}},
 	}
 
 	for _, entry := range namespaces1 {
@@ -241,8 +241,8 @@ func TestNamespaceTree(t *testing.T) {
 	require.NoError(t, err)
 
 	namespaces2 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007"}, UUID: "00007"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns8/ns9/", ID: "00009"}, UUID: "00009"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007", UUID: "00007"}},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/ns9/", ID: "00009", UUID: "00009"}},
 	}
 
 	for _, entry := range namespaces2 {
@@ -252,9 +252,9 @@ func TestNamespaceTree(t *testing.T) {
 	require.Error(t, err)
 
 	namespaces3 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006"}, UUID: "00006"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns8/", ID: "00008"}, UUID: "00008"},
-		{Namespace: &namespace.Namespace{Path: "ns9/ns10/", ID: "00010"}, UUID: "00010"},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006", UUID: "00006"}},
+		{Namespace: &namespace.Namespace{Path: "ns3/ns8/", ID: "00008", UUID: "00008"}},
+		{Namespace: &namespace.Namespace{Path: "ns9/ns10/", ID: "00010", UUID: "00010"}},
 	}
 
 	err = tree.Insert(namespaces3[0])
@@ -333,7 +333,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("GetNamespace", func(b *testing.B) {
 		for b.Loop() {
-			uuid := randomNamespace(s).UUID
+			uuid := randomNamespace(s).Namespace.UUID
 			s.GetNamespace(ctx, uuid)
 		}
 	})
@@ -392,14 +392,14 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("DeleteNamespace", func(b *testing.B) {
 		for b.Loop() {
-			uuid := randomNamespace(s).UUID
+			uuid := randomNamespace(s).Namespace.UUID
 			s.DeleteNamespace(ctx, uuid)
 		}
 	})
 }
 
 func testModifyNamespace(_ context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
-	uuid := ns.UUID
+	uuid := ns.Namespace.UUID
 	accessor := ns.Namespace.ID
 	ns.Namespace.CustomMetadata["uuid"] = uuid
 	ns.Namespace.CustomMetadata["accessor"] = accessor

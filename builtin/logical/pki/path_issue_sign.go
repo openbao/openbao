@@ -870,9 +870,23 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
 	}
 
-	// Check if CEL validation against the request was successful
+	// If CEL validation against the request is not successful, evaluate and return Error message
 	if !success {
-		return nil, fmt.Errorf("%s", celRole.ValidationProgram.Expressions.Error)
+		errorExpression, err := compileExpression(env, celRole.ValidationProgram.Expressions.Error)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile CEL Error expression: %w", err)
+		}
+		evalResult, _, err := errorExpression.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate CEL Error expression: %w", err)
+		}
+
+		// Ensure result is a string
+		if evalResult.Type() != celgo.StringType {
+			return nil, fmt.Errorf("CEL Error expression did not evaluate to a String")
+		}
+
+		return nil, fmt.Errorf("%s", evalResult.Value().(string))
 	}
 
 	// Evaluate generate_lease
@@ -894,7 +908,6 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	}
 
 	var parsedBundle *certutil.ParsedCertBundle
-	var warnings []string
 	if !useCSR {
 		_, ok := data.GetOk("key_type")
 		if !ok {
@@ -985,7 +998,20 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		}
 	}
 
-	resp = addWarnings(resp, warnings)
+	// Compile and add warnings to response
+	warningsExpression, err := compileExpression(env, celRole.ValidationProgram.Expressions.Warnings)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile CEL Warnings expression: %w", err)
+	}
+	evalResult, _, err := warningsExpression.Eval(evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate CEL Warnings expression: %w", err)
+	}
+	if evalResult.Type() != celgo.StringType {
+		return nil, fmt.Errorf("CEL Warnings expression did not evaluate to a String")
+	}
+
+	resp.AddWarning(evalResult.Value().(string))
 
 	return resp, nil
 }

@@ -99,8 +99,8 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
 				"issuer":        "default",
-				"warnings":      "warning",
-				"error":         "error!",
+				"warnings":      "small_ttl ? 'generate_lease is true' : 'no_store is true'",
+				"error":         "'Request should have Common name: ' + cn_value",
 			},
 		},
 	}
@@ -237,7 +237,8 @@ func TestCelRoleSign(t *testing.T) {
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
-				"error":         "error!",
+				"error":         "'Request should have Common name: ' + request.common_name",
+				"Warnings":      "''",
 			},
 		},
 	}
@@ -423,8 +424,8 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
 				"issuer":        "second_root",
-				"warnings":      "warning",
-				"error":         "error!",
+				"error":         "'Request should have Common name: ' + request.common_name",
+				"Warnings":      "''",
 			},
 		},
 	}
@@ -548,7 +549,8 @@ func TestCelParsedCsr(t *testing.T) {
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
-				"error":         "CommonName in CSR should be example.com",
+				"error":         "'CSR should have Common name: ' + parsed_csr.Subject.CommonName",
+				"Warnings":      "''",
 			},
 		},
 	}
@@ -680,8 +682,8 @@ func TestCelCustomFunction(t *testing.T) {
 					"TTL":            "duration('5h')",
 				},
 				"issuer":   "default",
-				"warnings": "warning",
-				"error":    "Error: common_name should be a valid email!",
+				"warnings": "has(request.ttl) ? '' : 'ttl of 5h has been added.'",
+				"error":    "'common_name should be a valid email.'",
 			},
 		},
 	}
@@ -697,11 +699,11 @@ func TestCelCustomFunction(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
 	}
+	t.Logf("\n\n resp:%v", resp)
 
 	// Issue a certificate using the CEL role
 	issueData := map[string]interface{}{
 		"common_name": "example.com",
-		"ttl":         "1h",
 		"alt_names":   "example@gmail.com",
 	}
 
@@ -716,6 +718,7 @@ func TestCelCustomFunction(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
 	}
+	t.Logf("\n\n resp:%v", resp)
 
 	// Validate the response
 	certPEM, ok := resp.Data["certificate"].(string)

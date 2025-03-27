@@ -60,6 +60,12 @@ func (b *backend) pathBYOKExportKeys() *framework.Path {
 }
 
 func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	dst := d.Get("destination").(string)
 	src := d.Get("source").(string)
 	version := d.Get("version").(string)
@@ -73,7 +79,7 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 	if dstP == nil {
-		return nil, fmt.Errorf("no such destination key to export to")
+		return nil, errors.New("no such destination key to export to")
 	}
 	if !b.System().CachingDisabled() {
 		dstP.Lock(false)
@@ -92,7 +98,7 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 		return nil, err
 	}
 	if srcP == nil {
-		return nil, fmt.Errorf("no such source key for export")
+		return nil, errors.New("no such source key for export")
 	}
 	if !b.System().CachingDisabled() {
 		srcP.Lock(false)
@@ -152,6 +158,10 @@ func (b *backend) pathPolicyBYOKExportRead(ctx context.Context, req *logical.Req
 			"type": srcP.Type.String(),
 			"keys": retKeys,
 		},
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return resp, nil

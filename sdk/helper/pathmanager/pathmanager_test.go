@@ -33,7 +33,7 @@ func TestPathManager(t *testing.T) {
 		t.Fatalf("bad: path length expect 3, got %d", len(m.Paths()))
 	}
 	if !reflect.DeepEqual(paths, m.Paths()) {
-		t.Fatalf("mismatch in paths")
+		t.Fatal("mismatch in paths")
 	}
 	for _, path := range paths {
 		if !m.HasPath(path) {
@@ -76,7 +76,7 @@ func TestPathManager_RemovePrefix(t *testing.T) {
 		t.Fatalf("bad: path length expect 3, got %d", len(m.Paths()))
 	}
 	if !reflect.DeepEqual(paths, m.Paths()) {
-		t.Fatalf("mismatch in paths")
+		t.Fatal("mismatch in paths")
 	}
 	for _, path := range paths {
 		if !m.HasPath(path) {

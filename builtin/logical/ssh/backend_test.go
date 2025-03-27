@@ -439,7 +439,7 @@ func TestBackend_DefaultUserTemplateFalse_AllowedUsersTemplateTrue(t *testing.T)
 		"public_key": testCAPublicKey,
 	})
 	if err == nil {
-		t.Errorf("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
+		t.Error("signing request should fail when default_user is not in the allowed_users list, because allowed_users_template is true and default_user_template is not")
 	}
 
 	expectedErrStr := "{{identity.entity.metadata.ssh_username}} is not a valid value for valid_principals"
@@ -939,7 +939,7 @@ cKumubUxOfFdy1ZvAAAAEm5jY0BtYnAudWJudC5sb2NhbA==
 
 					err = testSSH(testUserName, sshAddress, ssh.PublicKeys(certSigner), "date")
 					if expectError && err == nil {
-						return fmt.Errorf("expected error but got none")
+						return errors.New("expected error but got none")
 					}
 					if !expectError && err != nil {
 						return err
@@ -1125,7 +1125,7 @@ func TestBackend_AbleToAutoGenerateSigningKeys(t *testing.T) {
 				Path:      "config/ca",
 				Check: func(resp *logical.Response) error {
 					if resp.Data["public_key"].(string) == "" {
-						return fmt.Errorf("public_key empty")
+						return errors.New("public_key empty")
 					}
 					expectedPublicKey = resp.Data["public_key"].(string)
 					return nil
@@ -2282,7 +2282,7 @@ func testVerifyWrite(t *testing.T, data map[string]interface{}, expected map[str
 			}
 
 			if !reflect.DeepEqual(ac, ex) {
-				return fmt.Errorf("invalid response")
+				return errors.New("invalid response")
 			}
 			return nil
 		},
@@ -2296,7 +2296,7 @@ func testLookupRead(t *testing.T, data map[string]interface{}, expected []string
 		Data:      data,
 		Check: func(resp *logical.Response) error {
 			if resp.Data == nil || resp.Data["roles"] == nil {
-				return fmt.Errorf("missing roles information")
+				return errors.New("missing roles information")
 			}
 			if !reflect.DeepEqual(resp.Data["roles"].([]string), expected) {
 				return fmt.Errorf("Invalid response: \nactual:%#v\nexpected:%#v", resp.Data["roles"].([]string), expected)
@@ -2320,10 +2320,10 @@ func testRoleList(t *testing.T, expected map[string]interface{}) logicaltest.Tes
 		Path:      "roles",
 		Check: func(resp *logical.Response) error {
 			if resp == nil {
-				return fmt.Errorf("nil response")
+				return errors.New("nil response")
 			}
 			if resp.Data == nil {
-				return fmt.Errorf("nil data")
+				return errors.New("nil data")
 			}
 			if !reflect.DeepEqual(resp.Data, expected) {
 				return fmt.Errorf("Invalid response:\nactual:%#v\nexpected is %#v", resp.Data, expected)
@@ -2376,10 +2376,10 @@ func testCredsWrite(t *testing.T, roleName string, data map[string]interface{}, 
 		ErrorOk:   expectError,
 		Check: func(resp *logical.Response) error {
 			if resp == nil {
-				return fmt.Errorf("response is nil")
+				return errors.New("response is nil")
 			}
 			if resp.Data == nil {
-				return fmt.Errorf("data is nil")
+				return errors.New("data is nil")
 			}
 			if expectError {
 				var e struct {
@@ -2389,7 +2389,7 @@ func testCredsWrite(t *testing.T, roleName string, data map[string]interface{}, 
 					return err
 				}
 				if len(e.Error) == 0 {
-					return fmt.Errorf("expected error, but write succeeded")
+					return errors.New("expected error, but write succeeded")
 				}
 				return nil
 			}
@@ -2401,22 +2401,22 @@ func testCredsWrite(t *testing.T, roleName string, data map[string]interface{}, 
 					return err
 				}
 				if d.Key == "" {
-					return fmt.Errorf("generated key is an empty string")
+					return errors.New("generated key is an empty string")
 				}
 				// Checking only for a parsable key
 				privKey, err := ssh.ParsePrivateKey([]byte(d.Key))
 				if err != nil {
-					return fmt.Errorf("generated key is invalid")
+					return errors.New("generated key is invalid")
 				}
 				if err := testSSH(data["username"].(string), address, ssh.PublicKeys(privKey), "date"); err != nil {
 					return fmt.Errorf("unable to SSH with new key (%s): %w", d.Key, err)
 				}
 			} else {
 				if resp.Data["key_type"] != KeyTypeOTP {
-					return fmt.Errorf("incorrect key_type")
+					return errors.New("incorrect key_type")
 				}
 				if resp.Data["key"] == nil {
-					return fmt.Errorf("invalid key")
+					return errors.New("invalid key")
 				}
 			}
 			return nil
@@ -2763,7 +2763,7 @@ func TestProperAuthing(t *testing.T) {
 	}
 
 	if len(openAPIResp.Data["paths"].(map[string]interface{})) == 0 {
-		t.Fatalf("expected to get response from OpenAPI; got empty path list")
+		t.Fatal("expected to get response from OpenAPI; got empty path list")
 	}
 
 	validatedPath := false
@@ -2811,12 +2811,12 @@ func TestProperAuthing(t *testing.T) {
 
 		if handler == shouldBeUnauthedReadList {
 			if hasPost || hasDelete {
-				t.Fatalf("Unauthed read-only endpoints should not have POST/DELETE capabilities")
+				t.Fatal("Unauthed read-only endpoints should not have POST/DELETE capabilities")
 			}
 		}
 	}
 
 	if !validatedPath {
-		t.Fatalf("Expected to have validated at least one path.")
+		t.Fatal("Expected to have validated at least one path.")
 	}
 }

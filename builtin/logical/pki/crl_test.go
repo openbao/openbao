@@ -880,7 +880,7 @@ func TestIssuerRevocation(t *testing.T) {
 	requireSerialNumberInCRL(t, crl.TBSCertList, intCertSerial)
 	crl = getParsedCrlFromBackend(t, b, s, "issuer/root/crl/delta/der")
 	if requireSerialNumberInCRL(nil, crl.TBSCertList, intCertSerial) {
-		t.Fatalf("expected intermediate serial NOT to appear on root's delta CRL, but did")
+		t.Fatal("expected intermediate serial NOT to appear on root's delta CRL, but did")
 	}
 
 	// Ensure we can still revoke the issued leaf.
@@ -1083,7 +1083,7 @@ func TestAutoRebuild(t *testing.T) {
 			t.Fatalf("expected newly generated certificate with serial %v not to appear on this CRL but it did, prematurely: %v", newLeafSerial, crl)
 		}
 
-		t.Fatalf("shouldn't be here")
+		t.Fatal("shouldn't be here")
 	}
 
 	// This serial should exist in the delta WAL section for the mount...

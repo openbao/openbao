@@ -372,17 +372,23 @@ func (c *ServerCommand) parseConfig() (*server.Config, []configutil.ConfigError,
 	// Load the configuration
 	var config *server.Config
 	for _, path := range c.flagConfigs {
-		current, err := server.LoadConfig(path)
+		current, err := server.LoadConfig(path, c.flagConfigs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error loading configuration from %s: %w", path, err)
 		}
 
-		configErrors = append(configErrors, current.Validate(path)...)
+		// While current may be nil, we'll never get a nil configuration as a
+		// result of ignoring a configuration file present in a directory.
+		if current != nil {
+			configErrors = append(configErrors, current.Validate(path)...)
 
-		if config == nil {
-			config = current
+			if config == nil {
+				config = current
+			} else {
+				config = config.Merge(current)
+			}
 		} else {
-			config = config.Merge(current)
+			c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
 		}
 	}
 
@@ -813,7 +819,7 @@ func (c *ServerCommand) InitListeners(config *server.Config, disableClustering b
 			} else {
 				tcpAddr, ok := ln.Addr().(*net.TCPAddr)
 				if !ok {
-					errMsg = fmt.Errorf("Failed to parse tcp listener")
+					errMsg = errors.New("Failed to parse tcp listener")
 					return 1, nil, nil, errMsg
 				}
 				clusterAddr := &net.TCPAddr{
@@ -1464,18 +1470,22 @@ func (c *ServerCommand) Run(args []string) int {
 			var config *server.Config
 			var configErrors []configutil.ConfigError
 			for _, path := range c.flagConfigs {
-				current, err := server.LoadConfig(path)
+				current, err := server.LoadConfig(path, c.flagConfigs)
 				if err != nil {
 					c.logger.Error("could not reload config", "path", path, "error", err)
 					goto RUNRELOADFUNCS
 				}
 
-				configErrors = append(configErrors, current.Validate(path)...)
+				if current != nil {
+					configErrors = append(configErrors, current.Validate(path)...)
 
-				if config == nil {
-					config = current
+					if config == nil {
+						config = current
+					} else {
+						config = config.Merge(current)
+					}
 				} else {
-					config = config.Merge(current)
+					c.UI.Warn(fmt.Sprintf("WARNING: ignoring duplicate configuration found in directory: %v", path))
 				}
 			}
 
@@ -1707,7 +1717,7 @@ func (c *ServerCommand) enableDev(core *vault.Core, coreConfig *vault.CoreConfig
 			return nil, err
 		}
 		if !unsealed {
-			return nil, fmt.Errorf("failed to unseal Vault for dev mode")
+			return nil, errors.New("failed to unseal Vault for dev mode")
 		}
 	}
 
@@ -2353,11 +2363,11 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 	var ok bool
 	if config.HAStorage != nil {
 		if config.Storage.Type == storageTypeRaft && config.HAStorage.Type == storageTypeRaft {
-			return false, fmt.Errorf("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
+			return false, errors.New("Raft cannot be set both as 'storage' and 'ha_storage'. Setting 'storage' to 'raft' will automatically set it up for HA operations as well")
 		}
 
 		if config.Storage.Type == storageTypeRaft {
-			return false, fmt.Errorf("HA storage cannot be declared when Raft is the storage type")
+			return false, errors.New("HA storage cannot be declared when Raft is the storage type")
 		}
 
 		factory, exists := c.PhysicalBackends[config.HAStorage.Type]
@@ -2373,18 +2383,18 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 		}
 
 		if coreConfig.HAPhysical, ok = habackend.(physical.HABackend); !ok {
-			return false, fmt.Errorf("Specified HA storage does not support HA")
+			return false, errors.New("Specified HA storage does not support HA")
 		}
 
 		if !coreConfig.HAPhysical.HAEnabled() {
-			return false, fmt.Errorf("Specified HA storage has HA support disabled; please consult documentation")
+			return false, errors.New("Specified HA storage has HA support disabled; please consult documentation")
 		}
 
 		coreConfig.RedirectAddr = config.HAStorage.RedirectAddr
 		disableClustering := config.HAStorage.DisableClustering
 
 		if config.HAStorage.Type == storageTypeRaft && disableClustering {
-			return disableClustering, fmt.Errorf("Disable clustering cannot be set to true when Raft is the HA storage type")
+			return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the HA storage type")
 		}
 
 		if !disableClustering {
@@ -2396,7 +2406,7 @@ func initHaBackend(c *ServerCommand, config *server.Config, coreConfig *vault.Co
 			disableClustering := config.Storage.DisableClustering
 
 			if (config.Storage.Type == storageTypeRaft) && disableClustering {
-				return disableClustering, fmt.Errorf("Disable clustering cannot be set to true when Raft is the storage type")
+				return disableClustering, errors.New("Disable clustering cannot be set to true when Raft is the storage type")
 			}
 
 			if !disableClustering {
@@ -2436,7 +2446,7 @@ func determineRedirectAddr(c *ServerCommand, coreConfig *vault.CoreConfig, confi
 		if err != nil {
 			retErr = fmt.Errorf("Error detecting api address: %s", err)
 		} else if redirect == "" {
-			retErr = fmt.Errorf("Failed to detect api address")
+			retErr = errors.New("Failed to detect api address")
 		} else {
 			coreConfig.RedirectAddr = redirect
 		}
@@ -2754,7 +2764,7 @@ func initDevCore(c *ServerCommand, coreConfig *vault.CoreConfig, config *server.
 func startHttpServers(c *ServerCommand, core *vault.Core, config *server.Config, lns []listenerutil.Listener) error {
 	for _, ln := range lns {
 		if ln.Config == nil {
-			return fmt.Errorf("Found nil listener config after parsing")
+			return errors.New("Found nil listener config after parsing")
 		}
 
 		if err := config2.IsValidListener(ln.Config); err != nil {

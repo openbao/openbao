@@ -192,7 +192,7 @@ func (b *backend) rollBackPassword(ctx context.Context, config *config, oldPassw
 		case <-timer.C:
 		case <-ctx.Done():
 			// Outer environment is closing.
-			return fmt.Errorf("unable to roll back password because enclosing environment is shutting down")
+			return errors.New("unable to roll back password because enclosing environment is shutting down")
 		}
 		if err = b.client.UpdateDNPassword(config.LDAP, config.LDAP.BindDN, oldPassword); err == nil {
 			// Success.

@@ -277,7 +277,7 @@ func TestBackend_StaticRole_Rotate_NonStaticError(t *testing.T) {
 	// expect resp to be an error
 	resp, _ = b.HandleRequest(namespace.RootContext(nil), req)
 	if !resp.IsError() {
-		t.Fatalf("expected error rotating non-static role")
+		t.Fatal("expected error rotating non-static role")
 	}
 
 	if resp.Error().Error() != "no static role found for role name" {
@@ -654,7 +654,7 @@ func TestBackend_Static_QueueWAL_discard_role_newer_rotation_date(t *testing.T) 
 
 	password := resp.Data["password"].(string)
 	if password == walPassword {
-		t.Fatalf("expected password to not be changed by WAL, but was")
+		t.Fatal("expected password to not be changed by WAL, but was")
 	}
 }
 

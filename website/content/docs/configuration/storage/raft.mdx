@@ -17,10 +17,19 @@ all the nodes in an OpenBao cluster will have a replicated copy of OpenBao's dat
 Data gets replicated across all the nodes via the [Raft Consensus
 Algorithm][raft].
 
-- **High Availability** – the Integrated Storage backend supports High Availability.
 
-- **HashiCorp Supported** – the Integrated Storage backend is officially supported
-  by HashiCorp.
+:::tip
+
+**High Availability** – the Integrated Storage (Raft) backend supports High Availability.
+
+:::
+
+:::tip
+
+**Production Ready** – the Integrated Storage (Raft) backend is considered
+production ready and supports paginated lists and transactional storage.
+
+:::
 
 ```hcl
 storage "raft" {

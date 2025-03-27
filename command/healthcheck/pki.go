@@ -6,6 +6,7 @@ package healthcheck
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -23,7 +24,7 @@ func pkiFetchIssuersList(e *Executor, versionError func()) (bool, *PathFetch, []
 		}
 
 		if issuersRet.Is404NotFound() {
-			return true, issuersRet, nil, fmt.Errorf("this mount lacks any configured issuers, limiting health check usefulness")
+			return true, issuersRet, nil, errors.New("this mount lacks any configured issuers, limiting health check usefulness")
 		}
 
 		return true, issuersRet, nil, nil
@@ -44,7 +45,7 @@ func parsePEM(contents string) ([]byte, error) {
 	// Need to parse out the issuer from its PEM format.
 	pemBlock, _ := pem.Decode([]byte(contents))
 	if pemBlock == nil {
-		return nil, fmt.Errorf("invalid PEM block")
+		return nil, errors.New("invalid PEM block")
 	}
 
 	return pemBlock.Bytes, nil

@@ -114,7 +114,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	}
 	err := c.RekeyInit(badConf, recovery)
 	if err == nil {
-		t.Fatalf("should fail")
+		t.Fatal("should fail")
 	}
 
 	// Start a rekey
@@ -137,7 +137,7 @@ func testCore_Rekey_Init_Common(t *testing.T, c *Core, recovery bool) {
 	// Second should fail
 	err = c.RekeyInit(newConf, recovery)
 	if err == nil {
-		t.Fatalf("should fail")
+		t.Fatal("should fail")
 	}
 }
 
@@ -176,7 +176,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatalf("err: %v", hErr)
 	}
 	if rkconf == nil {
-		t.Fatalf("bad: no rekey config received")
+		t.Fatal("bad: no rekey config received")
 	}
 
 	// Provide the root/recovery keys
@@ -247,7 +247,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 			}
 		}
 		if c.Sealed() {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -269,7 +269,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 		t.Fatalf("err: %v", err)
 	}
 	if rkconf == nil {
-		t.Fatalf("bad: no rekey config received")
+		t.Fatal("bad: no rekey config received")
 	}
 
 	// Provide the parts root
@@ -306,7 +306,7 @@ func testCore_Rekey_Update_Common(t *testing.T, c *Core, keys [][]byte, root str
 			t.Fatalf("err: %v", err)
 		}
 		if !unseal {
-			t.Fatalf("should be unsealed")
+			t.Fatal("should be unsealed")
 		}
 	}
 
@@ -355,13 +355,13 @@ func testCore_Rekey_Invalid_Common(t *testing.T, c *Core, keys [][]byte, recover
 		t.Fatalf("err: %v", err)
 	}
 	if rkconf == nil {
-		t.Fatalf("bad: no rekey config received")
+		t.Fatal("bad: no rekey config received")
 	}
 
 	// Provide the nonce (invalid)
 	_, err = c.RekeyUpdate(context.Background(), keys[0], "abcd", recovery)
 	if err == nil {
-		t.Fatalf("expected error")
+		t.Fatal("expected error")
 	}
 
 	// Provide the key (invalid)
@@ -451,7 +451,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if rkconf == nil {
-		t.Fatalf("bad: no rekey config received")
+		t.Fatal("bad: no rekey config received")
 	}
 	var rekeyResult *RekeyResult
 	for _, key := range keys {
@@ -461,7 +461,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		}
 	}
 	if rekeyResult == nil {
-		t.Fatalf("rekey failed")
+		t.Fatal("rekey failed")
 	}
 
 	// Seal the first core, should step down
@@ -484,7 +484,7 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	if rkconf == nil {
-		t.Fatalf("bad: no rekey config received")
+		t.Fatal("bad: no rekey config received")
 	}
 	var rekeyResult2 *RekeyResult
 	for _, key := range rekeyResult.SecretShares {
@@ -494,14 +494,14 @@ func TestCore_Rekey_Standby(t *testing.T) {
 		}
 	}
 	if rekeyResult2 == nil {
-		t.Fatalf("rekey failed")
+		t.Fatal("rekey failed")
 	}
 
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if rekeyResult2 == nil {
-		t.Fatalf("rekey failed")
+		t.Fatal("rekey failed")
 	}
 }
 

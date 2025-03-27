@@ -45,7 +45,7 @@ func TestPassthroughBackend_Write(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 		if out == nil {
-			t.Fatalf("failed to write to view")
+			t.Fatal("failed to write to view")
 		}
 	}
 	b := testPassthroughBackend()

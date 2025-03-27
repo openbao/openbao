@@ -108,8 +108,11 @@ func (b *backend) pathConfigZeroAddressWrite(ctx context.Context, req *logical.R
 		}
 	}
 
-	err = b.putZeroAddressRoles(ctx, req.Storage, roles)
-	if err != nil {
+	if err := b.putZeroAddressRoles(ctx, req.Storage, roles); err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 

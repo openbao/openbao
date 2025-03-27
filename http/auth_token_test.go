@@ -48,7 +48,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Errorf("expected 1h, got %q", secret.Auth.LeaseDuration)
 	}
 	if secret.Auth.Renewable {
-		t.Errorf("expected non-renewable token")
+		t.Error("expected non-renewable token")
 	}
 
 	*renewCreateRequest.Renewable = true
@@ -60,7 +60,7 @@ func TestAuthTokenCreate(t *testing.T) {
 		t.Errorf("expected 1h, got %q", secret.Auth.LeaseDuration)
 	}
 	if !secret.Auth.Renewable {
-		t.Errorf("expected renewable token")
+		t.Error("expected renewable token")
 	}
 
 	explicitMaxCreateRequest := &api.TokenCreateRequest{

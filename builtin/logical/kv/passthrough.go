@@ -3,6 +3,7 @@ package kv
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -104,7 +105,7 @@ func LeaseSwitchedPassthroughBackend(ctx context.Context, conf *logical.BackendC
 	}
 
 	if conf == nil {
-		return nil, fmt.Errorf("Configuation passed into backend is nil")
+		return nil, errors.New("Configuation passed into backend is nil")
 	}
 	backend.Setup(ctx, conf)
 	b.Backend = backend

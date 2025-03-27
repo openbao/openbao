@@ -293,7 +293,7 @@ func TestRaft_Join(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !resp.Joined {
-			t.Fatalf("failed to join raft cluster")
+			t.Fatal("failed to join raft cluster")
 		}
 	}
 
@@ -408,7 +408,7 @@ func TestRaft_NodeIDHeader(t *testing.T) {
 					t.Fatalf("err: %s", err)
 				}
 				if resp == nil {
-					t.Fatalf("nil response")
+					t.Fatal("nil response")
 				}
 
 				rniHeader := resp.Header.Get("X-Vault-Raft-Node-ID")
@@ -1088,7 +1088,7 @@ func TestRaft_Join_InitStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !resp.Joined {
-			t.Fatalf("failed to join raft cluster")
+			t.Fatal("failed to join raft cluster")
 		}
 	}
 

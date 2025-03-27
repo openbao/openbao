@@ -465,7 +465,7 @@ func (kv *KVv2) Rollback(ctx context.Context, secretPath string, toVersion int) 
 
 	// Verify metadata found
 	if latest.VersionMetadata == nil {
-		return nil, fmt.Errorf("no metadata found; rollback can only be used on existing data")
+		return nil, errors.New("no metadata found; rollback can only be used on existing data")
 	}
 
 	// Now run it again and read the version we want to roll back to
@@ -516,7 +516,7 @@ func extractDataAndVersionMetadata(secret *Secret) (*KVSecret, error) {
 	if secret.Data != nil {
 		dataInterface, ok := secret.Data["data"]
 		if !ok {
-			return nil, fmt.Errorf("missing expected 'data' element")
+			return nil, errors.New("missing expected 'data' element")
 		}
 
 		if dataInterface != nil {
@@ -630,26 +630,26 @@ func extractFullMetadata(secret *Secret) (*KVMetadata, error) {
 func validateRollbackVersion(rollbackVersion *KVSecret) error {
 	// Make sure a value already exists
 	if rollbackVersion == nil || rollbackVersion.Data == nil {
-		return fmt.Errorf("no secret found")
+		return errors.New("no secret found")
 	}
 
 	// Verify metadata found
 	if rollbackVersion.VersionMetadata == nil {
-		return fmt.Errorf("no version metadata found; rollback only works on existing data")
+		return errors.New("no version metadata found; rollback only works on existing data")
 	}
 
 	// Verify it hasn't been deleted
 	if !rollbackVersion.VersionMetadata.DeletionTime.IsZero() {
-		return fmt.Errorf("cannot roll back to a version that has been deleted")
+		return errors.New("cannot roll back to a version that has been deleted")
 	}
 
 	if rollbackVersion.VersionMetadata.Destroyed {
-		return fmt.Errorf("cannot roll back to a version that has been destroyed")
+		return errors.New("cannot roll back to a version that has been destroyed")
 	}
 
 	// Verify old data found
 	if rollbackVersion.Data == nil {
-		return fmt.Errorf("no data found; rollback only works on existing data")
+		return errors.New("no data found; rollback only works on existing data")
 	}
 
 	return nil

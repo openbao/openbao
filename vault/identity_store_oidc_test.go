@@ -945,7 +945,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		}
 	}
 	if errorCount == keyCount {
-		t.Fatalf("unable to validate signed token with any of the .well-known keys")
+		t.Fatal("unable to validate signed token with any of the .well-known keys")
 	}
 }
 
@@ -984,12 +984,12 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 	}
 	s := c.router.MatchingStorageByAPIPath(ctx, "identity/oidc")
 	if err := namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), s); err != nil {
-		t.Fatalf("failed to set next signing key")
+		t.Fatal("failed to set next signing key")
 	}
 	// Store namedKey
 	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+namedKey.name, namedKey)
 	if err := s.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Create a test role "test-role" -- expect no warning
@@ -1112,12 +1112,12 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			if testSet.setSigningKey {
 				if err := testSet.namedKey.generateAndSetKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatalf("failed to set signing key")
+					t.Fatal("failed to set signing key")
 				}
 			}
 			if testSet.setNextSigningKey {
 				if err := testSet.namedKey.generateAndSetNextKey(ctx, hclog.NewNullLogger(), storage); err != nil {
-					t.Fatalf("failed to set next signing key")
+					t.Fatal("failed to set next signing key")
 				}
 			}
 			testSet.namedKey.NextRotation = time.Now().Add(testSet.namedKey.RotationPeriod)
@@ -1125,7 +1125,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			// Store namedKey
 			entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+testSet.namedKey.name, testSet.namedKey)
 			if err := storage.Put(ctx, entry); err != nil {
-				t.Fatalf("writing to in mem storage failed")
+				t.Fatal("writing to in mem storage failed")
 			}
 
 			currentCycle := 1
@@ -1184,7 +1184,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			}
 
 			if err := storage.Delete(ctx, namedKeyConfigPath+testSet.namedKey.name); err != nil {
-				t.Fatalf("deleting from in mem storage failed")
+				t.Fatal("deleting from in mem storage failed")
 			}
 		})
 	}
@@ -1287,7 +1287,7 @@ func TestOIDC_pathOIDCKeyExistenceCheck(t *testing.T) {
 	namedKey := &namedKey{}
 	entry, _ := logical.StorageEntryJSON(namedKeyConfigPath+keyName, namedKey)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage
@@ -1347,7 +1347,7 @@ func TestOIDC_pathOIDCRoleExistenceCheck(t *testing.T) {
 	role := &role{}
 	entry, _ := logical.StorageEntryJSON(roleConfigPath+roleName, role)
 	if err := storage.Put(ctx, entry); err != nil {
-		t.Fatalf("writing to in mem storage failed")
+		t.Fatal("writing to in mem storage failed")
 	}
 
 	// Expect true with a populated storage

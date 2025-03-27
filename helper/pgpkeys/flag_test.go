@@ -22,7 +22,7 @@ func TestPubKeyFilesFlag_implements(t *testing.T) {
 	var raw interface{}
 	raw = new(PubKeyFilesFlag)
 	if _, ok := raw.(flag.Value); !ok {
-		t.Fatalf("PubKeysFilesFlag should be a Value")
+		t.Fatal("PubKeysFilesFlag should be a Value")
 	}
 }
 
@@ -67,7 +67,7 @@ func TestPubKeyFilesFlagSetBinary(t *testing.T) {
 
 	err = pkf.Set(tempDir + "/pubkey3")
 	if err == nil {
-		t.Fatalf("err: should not have been able to set a second value")
+		t.Fatal("err: should not have been able to set a second value")
 	}
 
 	expected := []string{strings.ReplaceAll(pubKey1, "\n", ""), strings.ReplaceAll(pubKey2, "\n", "")}
@@ -104,7 +104,7 @@ func TestPubKeyFilesFlagSetB64(t *testing.T) {
 
 	err = pkf.Set(tempDir + "/pubkey3")
 	if err == nil {
-		t.Fatalf("err: should not have been able to set a second value")
+		t.Fatal("err: should not have been able to set a second value")
 	}
 
 	expected := []string{pubKey1, pubKey2}
@@ -143,7 +143,7 @@ func TestPubKeyFilesFlagSetKeybase(t *testing.T) {
 			t.Fatalf("bad: %v", err)
 		}
 		if entity == nil {
-			t.Fatalf("nil entity encountered")
+			t.Fatal("nil entity encountered")
 		}
 		fingerprints = append(fingerprints, hex.EncodeToString(entity.PrimaryKey.Fingerprint[:]))
 	}

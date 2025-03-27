@@ -204,7 +204,7 @@ func parseDecryptAndTestUnsealKeys(t *testing.T,
 				t.Fatalf("Error using unseal key %s: %s", unsealKey, err)
 			}
 			if i >= 2 && !unsealed {
-				t.Fatalf("Error: Provided two unseal keys but core is not unsealed")
+				t.Fatal("Error: Provided two unseal keys but core is not unsealed")
 			}
 		}
 	}

@@ -229,7 +229,7 @@ func getSubjKeyID(t *testing.T, privateKey crypto.Signer) []byte {
 	t.Helper()
 
 	if privateKey == nil {
-		t.Fatalf("passed-in private key is nil")
+		t.Fatal("passed-in private key is nil")
 	}
 
 	marshaledKey, err := x509.MarshalPKIXPublicKey(privateKey.Public())

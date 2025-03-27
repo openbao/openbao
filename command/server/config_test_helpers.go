@@ -30,7 +30,7 @@ func boolPointer(x bool) *bool {
 }
 
 func testConfigRaftRetryJoin(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/raft_retry_join.hcl")
+	config, err := LoadConfigFile("./test-fixtures/raft_retry_join.hcl", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func testConfigRaftRetryJoin(t *testing.T) {
 }
 
 func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
-	config, err := LoadConfigFile("./test-fixtures/config2.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config2.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -175,7 +175,7 @@ func testLoadConfigFile_topLevel(t *testing.T, entropy *configutil.Entropy) {
 }
 
 func testLoadConfigFile_json2(t *testing.T, entropy *configutil.Entropy) {
-	config, err := LoadConfigFile("./test-fixtures/config2.hcl.json")
+	config, err := LoadConfigFile("./test-fixtures/config2.hcl.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -275,7 +275,7 @@ func testLoadConfigFileIntegerAndBooleanValuesJson(t *testing.T) {
 }
 
 func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) {
-	config, err := LoadConfigFile(path)
+	config, err := LoadConfigFile(path, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -322,7 +322,7 @@ func testLoadConfigFileIntegerAndBooleanValuesCommon(t *testing.T, path string) 
 }
 
 func testLoadConfigFile(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -421,7 +421,7 @@ func testLoadConfigFile(t *testing.T) {
 }
 
 func testUnknownFieldValidationStorageAndListener(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/storage-listener-config.json")
+	config, err := LoadConfigFile("./test-fixtures/storage-listener-config.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -431,7 +431,7 @@ func testUnknownFieldValidationStorageAndListener(t *testing.T) {
 }
 
 func testUnknownFieldValidation(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -483,7 +483,7 @@ func testUnknownFieldValidation(t *testing.T) {
 // errors. Prior to VAULT-8519, it reported errors even with a valid config that was
 // parsed properly.
 func testUnknownFieldValidationJson(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config_small.json")
+	config, err := LoadConfigFile("./test-fixtures/config_small.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -499,7 +499,7 @@ func testUnknownFieldValidationJson(t *testing.T) {
 // with a valid config that was parsed properly.
 // In short, this ensures the same for HCL as we test in testUnknownFieldValidationJson
 func testUnknownFieldValidationHcl(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config_small.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config_small.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -512,7 +512,7 @@ func testUnknownFieldValidationHcl(t *testing.T) {
 
 // testConfigWithAdministrativeNamespaceJson tests that a config with a valid administrative namespace path is correctly validated and loaded.
 func testConfigWithAdministrativeNamespaceJson(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config_with_valid_admin_ns.json")
+	config, err := LoadConfigFile("./test-fixtures/config_with_valid_admin_ns.json", nil)
 	require.NoError(t, err)
 
 	configErrors := config.Validate("./test-fixtures/config_with_valid_admin_ns.json")
@@ -523,7 +523,7 @@ func testConfigWithAdministrativeNamespaceJson(t *testing.T) {
 
 // testConfigWithAdministrativeNamespaceHcl tests that a config with a valid administrative namespace path is correctly validated and loaded.
 func testConfigWithAdministrativeNamespaceHcl(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config_with_valid_admin_ns.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config_with_valid_admin_ns.hcl", nil)
 	require.NoError(t, err)
 
 	configErrors := config.Validate("./test-fixtures/config_with_valid_admin_ns.hcl")
@@ -533,7 +533,7 @@ func testConfigWithAdministrativeNamespaceHcl(t *testing.T) {
 }
 
 func testLoadConfigFile_json(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config.hcl.json")
+	config, err := LoadConfigFile("./test-fixtures/config.hcl.json", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -682,7 +682,7 @@ func testLoadConfigDir(t *testing.T) {
 }
 
 func testConfig_Sanitized(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config3.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config3.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -824,11 +824,11 @@ listener "tcp" {
 	configutil.ParseListeners(config.SharedConfig, objList)
 	listeners := config.Listeners
 	if len(listeners) == 0 {
-		t.Fatalf("expected at least one listener in the config")
+		t.Fatal("expected at least one listener in the config")
 	}
 	listener := listeners[0]
 	if listener.Type != "tcp" {
-		t.Fatalf("expected tcp listener in the config")
+		t.Fatal("expected tcp listener in the config")
 	}
 
 	expected := &Config{
@@ -1018,7 +1018,7 @@ ha_storage "consul" {
 }
 
 func testParseSeals(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config_seals.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config_seals.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1081,7 +1081,7 @@ func testParseSeals(t *testing.T) {
 }
 
 func testLoadConfigFileLeaseMetrics(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/config5.hcl")
+	config, err := LoadConfigFile("./test-fixtures/config5.hcl", nil)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1172,7 +1172,7 @@ func testLoadConfigFileLeaseMetrics(t *testing.T) {
 }
 
 func testConfigRaftAutopilot(t *testing.T) {
-	config, err := LoadConfigFile("./test-fixtures/raft_autopilot.hcl")
+	config, err := LoadConfigFile("./test-fixtures/raft_autopilot.hcl", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

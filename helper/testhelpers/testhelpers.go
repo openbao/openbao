@@ -193,14 +193,14 @@ func AttemptUnsealCore(c *vault.TestCluster, core *vault.TestClusterCore) error 
 			}
 		}
 		if statusResp == nil {
-			return fmt.Errorf("nil status response during unseal")
+			return errors.New("nil status response during unseal")
 		}
 		if !statusResp.Sealed {
 			break
 		}
 	}
 	if core.Sealed() {
-		return fmt.Errorf("core is still sealed")
+		return errors.New("core is still sealed")
 	}
 	return nil
 }
@@ -353,7 +353,7 @@ func WaitForActiveNode(t testing.T, cluster *vault.TestCluster) *vault.TestClust
 		time.Sleep(time.Second)
 	}
 
-	t.Fatalf("node did not become active")
+	t.Fatal("node did not become active")
 	return nil
 }
 
@@ -370,7 +370,7 @@ func WaitForStandbyNode(t testing.T, core *vault.TestClusterCore) {
 		time.Sleep(time.Second)
 	}
 
-	t.Fatalf("node did not become standby")
+	t.Fatal("node did not become standby")
 }
 
 func RekeyCluster(t testing.T, cluster *vault.TestCluster, recovery bool) [][]byte {
@@ -576,7 +576,7 @@ func WaitForRaftApply(t testing.T, core *vault.TestClusterCore, index uint64) {
 		time.Sleep(time.Second)
 	}
 
-	t.Fatalf("node did not apply index")
+	t.Fatal("node did not apply index")
 }
 
 // AwaitLeader waits for one of the cluster's nodes to become leader.
@@ -601,7 +601,7 @@ func AwaitLeader(t testing.T, cluster *vault.TestCluster) (int, error) {
 		time.Sleep(time.Second)
 	}
 
-	return 0, fmt.Errorf("timeout waiting leader")
+	return 0, errors.New("timeout waiting leader")
 }
 
 func GenerateDebugLogs(t testing.T, client *api.Client) chan struct{} {
@@ -770,7 +770,7 @@ func SetNonRootToken(client *api.Client) error {
 	}
 
 	if secret == nil || secret.Auth == nil || secret.Auth.ClientToken == "" {
-		return fmt.Errorf("missing token auth data")
+		return errors.New("missing token auth data")
 	}
 
 	client.SetToken(secret.Auth.ClientToken)
@@ -872,7 +872,7 @@ func SetupTOTPMethod(t testing.T, client *api.Client, config map[string]interfac
 
 	methodID := resp1.Data["method_id"].(string)
 	if methodID == "" {
-		t.Fatalf("method ID is empty")
+		t.Fatal("method ID is empty")
 	}
 
 	return methodID
@@ -884,7 +884,7 @@ func SetupMFALoginEnforcement(t testing.T, client *api.Client, config map[string
 	t.Helper()
 	enfName, ok := config["name"]
 	if !ok {
-		t.Fatalf("couldn't find name in login-enforcement config")
+		t.Fatal("couldn't find name in login-enforcement config")
 	}
 	_, err := client.Logical().WriteWithContext(context.Background(), fmt.Sprintf("identity/mfa/login-enforcement/%s", enfName), config)
 	if err != nil {
@@ -910,7 +910,7 @@ func SetupUserpassMountAccessor(t testing.T, client *api.Client) string {
 		t.Fatalf("failed to list auth methods: %v", err)
 	}
 	if auths == nil || auths["userpass/"] == nil {
-		t.Fatalf("failed to get userpass mount accessor")
+		t.Fatal("failed to get userpass mount accessor")
 	}
 
 	return auths["userpass/"].Accessor
@@ -945,7 +945,7 @@ func RegisterEntityInTOTPEngine(t testing.T, client *api.Client, entityID, metho
 		"mfa_method_ids":      []string{methodID},
 	})
 	if err != nil {
-		t.Fatalf("failed to create login enforcement")
+		t.Fatal("failed to create login enforcement")
 	}
 
 	return totpGenName

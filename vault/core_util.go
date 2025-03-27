@@ -5,7 +5,7 @@ package vault
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -29,7 +29,7 @@ func coreInit(c *Core, conf *CoreConfig) error {
 
 func (c *Core) barrierViewForNamespace(namespaceId string) (BarrierView, error) {
 	if namespaceId != namespace.RootNamespaceID {
-		return nil, fmt.Errorf("failed to find barrier view for non-root namespace")
+		return nil, errors.New("failed to find barrier view for non-root namespace")
 	}
 
 	return c.systemBarrierView, nil

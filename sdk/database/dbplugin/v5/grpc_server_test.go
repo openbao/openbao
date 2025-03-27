@@ -6,7 +6,6 @@ package dbplugin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -113,7 +112,7 @@ func TestGRPCServer_Initialize(t *testing.T) {
 			resp, err := g.Initialize(idCtx, test.req)
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -283,7 +282,7 @@ func TestGRPCServer_NewUser(t *testing.T) {
 			resp, err := g.NewUser(idCtx, test.req)
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -388,7 +387,7 @@ func TestGRPCServer_UpdateUser(t *testing.T) {
 			resp, err := g.UpdateUser(idCtx, test.req)
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -451,7 +450,7 @@ func TestGRPCServer_DeleteUser(t *testing.T) {
 			resp, err := g.DeleteUser(idCtx, test.req)
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -504,7 +503,7 @@ func TestGRPCServer_Type(t *testing.T) {
 			resp, err := g.Type(idCtx, &proto.Empty{})
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -548,7 +547,7 @@ func TestGRPCServer_Close(t *testing.T) {
 			grpcSetupFunc: testGrpcServer,
 			assertFunc: func(t *testing.T, g gRPCServer) {
 				if len(g.instances) != 0 {
-					t.Fatalf("err expected instances map to be empty")
+					t.Fatal("err expected instances map to be empty")
 				}
 			},
 		},
@@ -567,7 +566,7 @@ func TestGRPCServer_Close(t *testing.T) {
 			_, err := g.Close(idCtx, &proto.Empty{})
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -616,7 +615,7 @@ func TestGRPCServer_Version(t *testing.T) {
 			resp, err := g.Version(idCtx, &logical.Empty{})
 
 			if test.expectErr && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if !test.expectErr && err != nil {
 				t.Fatalf("no error expected, got: %s", err)
@@ -687,11 +686,11 @@ func marshal(t *testing.T, m map[string]interface{}) *structpb.Struct {
 type badJSONValue struct{}
 
 func (badJSONValue) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("this cannot be marshalled to JSON")
+	return nil, errors.New("this cannot be marshalled to JSON")
 }
 
 func (badJSONValue) UnmarshalJSON([]byte) error {
-	return fmt.Errorf("this cannot be unmarshalled from JSON")
+	return errors.New("this cannot be unmarshalled from JSON")
 }
 
 var _ Database = fakeDatabase{}

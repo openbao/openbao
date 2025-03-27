@@ -79,7 +79,7 @@ func TestNewPluginClient(t *testing.T) {
 
 			resp, err := NewPluginClient(ctx, mockWrapper, test.config)
 			if test.expectedErr != nil && err == nil {
-				t.Fatalf("err expected, got nil")
+				t.Fatal("err expected, got nil")
 			}
 			if test.expectedErr == nil && err != nil {
 				t.Fatalf("no error expected, got: %s", err)

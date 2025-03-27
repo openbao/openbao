@@ -139,7 +139,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 
 			mountInfo, ok = auths["my-auth/"]
 			if !ok {
-				t.Fatalf("expected auth to exist")
+				t.Fatal("expected auth to exist")
 			}
 			if exp := "new description"; mountInfo.Description != exp {
 				t.Errorf("expected %q to be %q", mountInfo.Description, exp)
@@ -208,7 +208,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 
 				mountInfo, ok := auths["my-auth/"]
 				if !ok {
-					t.Fatalf("expected auth to exist")
+					t.Fatal("expected auth to exist")
 				}
 				if exp := "initial description"; mountInfo.Description != exp {
 					t.Errorf("expected %q to be %q", mountInfo.Description, exp)
@@ -251,7 +251,7 @@ func TestAuthTuneCommand_Run(t *testing.T) {
 
 				mountInfo, ok := auths["my-auth/"]
 				if !ok {
-					t.Fatalf("expected auth to exist")
+					t.Fatal("expected auth to exist")
 				}
 				if exp := ""; mountInfo.Description != exp {
 					t.Errorf("expected %q to be %q", mountInfo.Description, exp)

@@ -363,7 +363,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 
 	group, err = identityStore.MemDBGroupByID(adminStaffGroupID, true)
@@ -384,7 +384,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 
 	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
@@ -405,7 +405,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 
 	_, err = client.Auth().Token().Renew(token, 0)
@@ -439,7 +439,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	if group.MemberEntityIDs != nil {
-		t.Fatalf("failed to remove entity ID from the group")
+		t.Fatal("failed to remove entity ID from the group")
 	}
 }
 
@@ -632,7 +632,7 @@ func assertMember(t *testing.T, client *api.Client, entityID, groupName, groupID
 
 	groupEntityMembers, ok := groupMap["member_entity_ids"].([]interface{})
 	if !ok && expectFound {
-		t.Fatalf("expected member_entity_ids not to be nil")
+		t.Fatal("expected member_entity_ids not to be nil")
 	}
 
 	// if type assertion fails and expectFound is false, groupEntityMembers

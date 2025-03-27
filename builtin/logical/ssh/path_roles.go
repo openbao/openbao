@@ -5,6 +5,7 @@ package ssh
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -732,7 +733,7 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 			"not_before_duration":         int64(role.NotBeforeDuration.Seconds()),
 		}
 	case KeyTypeDynamic:
-		return nil, fmt.Errorf("dynamic key type roles are no longer supported")
+		return nil, errors.New("dynamic key type roles are no longer supported")
 	default:
 		return nil, fmt.Errorf("invalid key type: %v", role.KeyType)
 	}
@@ -741,6 +742,12 @@ func (b *backend) parseRole(role *sshRole) (map[string]interface{}, error) {
 }
 
 func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	after := data.Get("after").(string)
 	limit := data.Get("limit").(int)
 	if limit <= 0 {
@@ -785,6 +792,10 @@ func (b *backend) pathRoleList(ctx context.Context, req *logical.Request, data *
 		}
 	}
 
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
 	return logical.ListResponseWithInfo(entries, keyInfo), nil
 }
 
@@ -819,13 +830,11 @@ func (b *backend) pathRoleDelete(ctx context.Context, req *logical.Request, d *f
 	// If the role was given privilege to accept any IP address, there will
 	// be an entry for this role in zero-address roles list. Before the role
 	// is removed, the entry in the list has to be removed.
-	err = b.removeZeroAddressRole(ctx, req.Storage, roleName)
-	if err != nil {
+	if err := b.removeZeroAddressRole(ctx, req.Storage, roleName); err != nil {
 		return nil, err
 	}
 
-	err = req.Storage.Delete(ctx, fmt.Sprintf("roles/%s", roleName))
-	if err != nil {
+	if err := req.Storage.Delete(ctx, fmt.Sprintf("roles/%s", roleName)); err != nil {
 		return nil, err
 	}
 

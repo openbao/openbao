@@ -81,7 +81,7 @@ func testRaftHANewCluster(t *testing.T, bundler teststorage.PhysicalBackendBundl
 			t.Fatal(err)
 		}
 		if !resp.Joined {
-			t.Fatalf("failed to join raft cluster")
+			t.Fatal("failed to join raft cluster")
 		}
 	}
 
@@ -221,7 +221,7 @@ func TestRaft_HA_ExistingCluster(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !resp.Joined {
-				t.Fatalf("failed to join raft cluster")
+				t.Fatal("failed to join raft cluster")
 			}
 		}
 

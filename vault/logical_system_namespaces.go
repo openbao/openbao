@@ -154,7 +154,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 			p := parent.TrimmedPath(entry.Namespace.Path)
 			keys = append(keys, p)
 			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
+				"uuid":            entry.Namespace.UUID,
 				"id":              entry.Namespace.ID,
 				"path":            entry.Namespace.Path,
 				"custom_metadata": entry.Namespace.CustomMetadata,
@@ -183,7 +183,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 			p := parent.TrimmedPath(entry.Namespace.Path)
 			keys = append(keys, p)
 			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
+				"uuid":            entry.Namespace.UUID,
 				"id":              entry.Namespace.ID,
 				"path":            entry.Namespace.Path,
 				"custom_metadata": entry.Namespace.CustomMetadata,
@@ -214,7 +214,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 
 		resp := &logical.Response{
 			Data: map[string]interface{}{
-				"uuid":            ns.UUID,
+				"uuid":            ns.Namespace.UUID,
 				"id":              ns.Namespace.ID,
 				"path":            ns.Namespace.Path,
 				"custom_metadata": ns.Namespace.CustomMetadata,
@@ -254,7 +254,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            entry.UUID,
+			"uuid":            entry.Namespace.UUID,
 			"path":            entry.Namespace.Path,
 			"id":              entry.Namespace.ID,
 			"custom_metadata": entry.Namespace.CustomMetadata,
@@ -289,7 +289,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 		}
 
 		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
-			if ns.UUID == "" {
+			if ns.Namespace.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
 
@@ -316,7 +316,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            ns.UUID,
+			"uuid":            ns.Namespace.UUID,
 			"path":            ns.Namespace.Path,
 			"id":              ns.Namespace.ID,
 			"custom_metadata": ns.Namespace.CustomMetadata,
@@ -345,7 +345,7 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return resp, nil
 		}
 
-		if err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID); err != nil {
+		if err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.Namespace.UUID); err != nil {
 			return handleError(err)
 		}
 

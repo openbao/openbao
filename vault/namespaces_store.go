@@ -66,7 +66,6 @@ type NamespaceStore struct {
 // in case there is additional data we wish to store that isn't relevant to
 // a namespace instance.
 type NamespaceEntry struct {
-	UUID      string               `json:"uuid"`
 	Namespace *namespace.Namespace `json:"namespace"`
 }
 
@@ -77,9 +76,9 @@ func (ne *NamespaceEntry) Clone() *NamespaceEntry {
 		meta[k] = v
 	}
 	return &NamespaceEntry{
-		UUID: ne.UUID,
 		Namespace: &namespace.Namespace{
 			ID:             ne.Namespace.ID,
+			UUID:           ne.Namespace.UUID,
 			Path:           ne.Namespace.Path,
 			CustomMetadata: meta,
 		},
@@ -92,14 +91,6 @@ func (ne *NamespaceEntry) Validate() error {
 	}
 
 	return ne.Namespace.Validate()
-}
-
-func (ne *NamespaceEntry) View(barrier logical.Storage) BarrierView {
-	if ne.Namespace.ID == namespace.RootNamespaceID {
-		return NewBarrierView(barrier, "")
-	}
-
-	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ne.UUID)+"/")
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -155,7 +146,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	namespacesByPath := newNamespaceTree(rootNs)
 	namespacesByUUID := make(map[string]*NamespaceEntry, len(ns.namespacesByUUID)+1)
 	namespacesByAccessor := make(map[string]*NamespaceEntry, len(ns.namespacesByAccessor)+1)
-	namespacesByUUID[rootNs.UUID] = rootNs
+	namespacesByUUID[rootNs.Namespace.UUID] = rootNs
 	namespacesByAccessor[rootNs.Namespace.ID] = rootNs
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
@@ -177,7 +168,7 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 			}
 
 			namespacesByPath.unsafeInsert(&namespace)
-			namespacesByUUID[namespace.UUID] = &namespace
+			namespacesByUUID[namespace.Namespace.UUID] = &namespace
 			namespacesByAccessor[namespace.Namespace.ID] = &namespace
 
 			return true, nil
@@ -277,20 +268,20 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 	}
 
 	var exists bool
-	if entry.UUID == "" {
+	if entry.Namespace.UUID == "" {
 		id, err := ns.assignIdentifier(entry.Namespace.Path)
 		if err != nil {
 			return err
 		}
 
 		entry.Namespace.ID = id
-		entry.UUID, err = uuid.GenerateUUID()
+		entry.Namespace.UUID, err = uuid.GenerateUUID()
 		if err != nil {
 			return err
 		}
 	} else {
 		var existing *NamespaceEntry
-		existing, exists = ns.namespacesByUUID[entry.UUID]
+		existing, exists = ns.namespacesByUUID[entry.Namespace.UUID]
 		if !exists {
 			return errors.New("trying to update a non-existent namespace")
 		}
@@ -330,11 +321,11 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 	ns.namespacesByPath.Insert(entry)
-	ns.namespacesByUUID[entry.UUID] = entry
+	ns.namespacesByUUID[entry.Namespace.UUID] = entry
 	ns.namespacesByAccessor[entry.Namespace.ID] = entry
 
 	// Since the write succeeded, copy back any potentially changed values.
-	nsEntry.UUID = entry.UUID
+	nsEntry.Namespace.UUID = entry.Namespace.UUID
 	nsEntry.Namespace.ID = entry.Namespace.ID
 	nsEntry.Namespace.Path = entry.Namespace.Path
 
@@ -354,7 +345,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *NamespaceEntry) error {
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		storagePath := path.Join(namespaceStoreRoot, entry.UUID)
+		storagePath := path.Join(namespaceStoreRoot, entry.Namespace.UUID)
 		item, err := logical.StorageEntryJSON(storagePath, &entry)
 		if err != nil {
 			return fmt.Errorf("error marshalling storage entry: %w", err)

@@ -19,9 +19,12 @@ See the information about community membership roles to learn about the role of 
 
 ## Organization-Level Moderators
 
-| Name         | GitHub                                       |
-| ------------ | -------------------------------------------- |
-| Fatima Patel | [@fatima2003](https://github.com/fatima2003) |
+| Name            | GitHub                                                   |
+| --------------- | -------------------------------------------------------- |
+| Fatima Patel    | [@fatima2003](https://github.com/fatima2003)             |
+| Christoph Voigt | [@voigt](https://github.com/voigt)                       |
+| Gabriel Santos  | [@Gabrielopesantos](https://github.com/Gabrielopesantos) |
+| Michael Hofer   | [@karras](https://github.com/karras)                     |
 
 # OpenBao Community Roles
 

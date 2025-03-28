@@ -684,14 +684,14 @@ func testMakeTokenViaRequestContext(t testing.TB, ctx context.Context, ts *Token
 	return resp
 }
 
-func testMakeTokenDirectly(t testing.TB, ts *TokenStore, te *logical.TokenEntry) {
+func testMakeTokenDirectly(t testing.TB, ctx context.Context, ts *TokenStore, te *logical.TokenEntry) {
 	if te.NamespaceID == "" {
 		te.NamespaceID = namespace.RootNamespaceID
 	}
 	if te.CreationTime == 0 {
 		te.CreationTime = time.Now().Unix()
 	}
-	if err := ts.create(namespace.RootContext(nil), te); err != nil {
+	if err := ts.create(ctx, te); err != nil {
 		t.Fatal(err)
 	}
 	if te.Type == logical.TokenTypeDefault {
@@ -714,7 +714,7 @@ func testMakeTokenDirectly(t testing.TB, ts *TokenStore, te *logical.TokenEntry)
 		CreationPath:   te.Path,
 		TokenType:      te.Type,
 	}
-	err := ts.expiration.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err := ts.expiration.RegisterAuth(ctx, te, auth, "")
 	switch err {
 	case nil:
 		if te.Type == logical.TokenTypeBatch {
@@ -770,9 +770,10 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	ctx := namespace.RootContext(context.Background())
+	testMakeTokenDirectly(t, ctx, ts, ent)
 
-	out, err := ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err := ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -782,7 +783,7 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 		t.Fatalf("bad: %#v", out)
 	}
 
-	aEntry, err := ts.lookupByAccessor(namespace.RootContext(nil), out.Accessor, false, false)
+	aEntry, err := ts.lookupByAccessor(ctx, out.Accessor, false, false)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -794,9 +795,9 @@ func TestTokenStore_AccessorIndex(t *testing.T) {
 
 	// Make sure a batch token doesn't get an accessor
 	ent.Type = logical.TokenTypeBatch
-	testMakeTokenDirectly(t, ts, ent)
+	testMakeTokenDirectly(t, ctx, ts, ent)
 
-	out, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -1136,6 +1137,7 @@ func TestTokenStore_NoRootBatch(t *testing.T) {
 func TestTokenStore_CreateLookup(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
+	ctx := namespace.RootContext(context.Background())
 
 	ent := &logical.TokenEntry{
 		NamespaceID: namespace.RootNamespaceID,
@@ -1143,26 +1145,26 @@ func TestTokenStore_CreateLookup(t *testing.T) {
 		Policies:    []string{"dev", "ops"},
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	testMakeTokenDirectly(t, ctx, ts, ent)
 	if ent.ID == "" {
 		t.Fatal("missing ID")
 	}
 
-	out, err := ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err := ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	deepEqualTokenEntries(t, out, ent)
 
 	// New store should share the salt
-	ts2, err := NewTokenStore(namespace.RootContext(nil), hclog.New(&hclog.LoggerOptions{}), c, getBackendConfig(c))
+	ts2, err := NewTokenStore(ctx, hclog.New(&hclog.LoggerOptions{}), c, getBackendConfig(c))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	ts2.SetExpirationManager(c.expiration)
 
 	// Should still match
-	out, err = ts2.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts2.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1180,29 +1182,30 @@ func TestTokenStore_CreateLookup_ProvidedID(t *testing.T) {
 		Policies:    []string{"dev", "ops"},
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	ctx := namespace.RootContext(context.Background())
+	testMakeTokenDirectly(t, ctx, ts, ent)
 	if ent.ID != "foobarbaz" {
 		t.Fatalf("bad: ent.ID: expected:\"foobarbaz\"\n actual:%s", ent.ID)
 	}
-	if err := ts.create(namespace.RootContext(nil), ent); err == nil {
+	if err := ts.create(ctx, ent); err == nil {
 		t.Fatal("expected error creating token with the same ID")
 	}
 
-	out, err := ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err := ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	deepEqualTokenEntries(t, out, ent)
 
 	// New store should share the salt
-	ts2, err := NewTokenStore(namespace.RootContext(nil), hclog.New(&hclog.LoggerOptions{}), c, getBackendConfig(c))
+	ts2, err := NewTokenStore(ctx, hclog.New(&hclog.LoggerOptions{}), c, getBackendConfig(c))
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	ts2.SetExpirationManager(c.expiration)
 
 	// Should still match
-	out, err = ts2.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err = ts2.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1282,15 +1285,16 @@ func TestTokenStore_CreateLookup_ExpirationInRestoreMode(t *testing.T) {
 func TestTokenStore_UseToken(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ts := c.tokenStore
+	ctx := namespace.RootContext(context.Background())
 
 	// Lookup the root token
-	ent, err := ts.Lookup(namespace.RootContext(nil), root)
+	ent, err := ts.Lookup(ctx, root)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	// Root is an unlimited use token, should be a no-op
-	te, err := ts.UseToken(namespace.RootContext(nil), ent)
+	te, err := ts.UseToken(ctx, ent)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1299,7 +1303,7 @@ func TestTokenStore_UseToken(t *testing.T) {
 	}
 
 	// Lookup the root token again
-	ent2, err := ts.Lookup(namespace.RootContext(nil), root)
+	ent2, err := ts.Lookup(ctx, root)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1316,10 +1320,10 @@ func TestTokenStore_UseToken(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	testMakeTokenDirectly(t, ctx, ts, ent)
 
 	// Use the token
-	te, err = ts.UseToken(namespace.RootContext(nil), ent)
+	te, err = ts.UseToken(ctx, ent)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1328,7 +1332,7 @@ func TestTokenStore_UseToken(t *testing.T) {
 	}
 
 	// Lookup the token
-	ent2, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	ent2, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1339,7 +1343,7 @@ func TestTokenStore_UseToken(t *testing.T) {
 	}
 
 	// Use the token
-	te, err = ts.UseToken(namespace.RootContext(nil), ent)
+	te, err = ts.UseToken(ctx, ent)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1349,10 +1353,10 @@ func TestTokenStore_UseToken(t *testing.T) {
 	if te.NumUses != tokenRevocationPending {
 		t.Fatal("token entry after use #2 did not have revoke flag")
 	}
-	ts.revokeOrphan(namespace.RootContext(nil), te.ID)
+	ts.revokeOrphan(ctx, te.ID)
 
 	// Lookup the token
-	ent2, err = ts.Lookup(namespace.RootContext(nil), ent.ID)
+	ent2, err = ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1366,27 +1370,96 @@ func TestTokenStore_UseToken(t *testing.T) {
 func TestTokenStore_Revoke(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
+	ns1 := &namespace.Namespace{
+		Path: "ns1",
+	}
+	ns2 := &namespace.Namespace{
+		Path: "ns1/ns2",
+	}
+	TestCoreCreateNamespaces(c, ns1, ns2)
+	ctx := namespace.RootContext(context.Background())
 
-	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
-	if err := ts.create(namespace.RootContext(nil), ent); err != nil {
+	// there has to be root token
+	testTokenStore_VerifyNumOfTokens(t, ts, namespace.RootNamespace, 1)
+	// ensure there are no tokens currently on both namespaces
+	testTokenStore_VerifyNumOfTokens(t, ts, ns1, 0)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns2, 0)
+
+	// Create a single token on root, ns1 and ns2
+	entRoot := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: namespace.RootNamespaceID}
+	if err := ts.create(ctx, entRoot); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err := ts.revokeOrphan(namespace.RootContext(nil), "")
+	entNS1 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns1.ID}
+	if err := ts.create(namespace.ContextWithNamespace(ctx, ns1), entNS1); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	entNS2 := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns2.ID}
+	if err := ts.create(namespace.ContextWithNamespace(ctx, ns2), entNS2); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	testTokenStore_VerifyNumOfTokens(t, ts, namespace.RootNamespace, 2)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns1, 1)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns2, 1)
+
+	// create & revoke token on root
+	testTokenStore_Revoke(t, ts, namespace.RootNamespace, 2)
+	// create & revoke token on ns1
+	testTokenStore_Revoke(t, ts, ns1, 1)
+	// create & revoke token on ns2
+	testTokenStore_Revoke(t, ts, ns2, 1)
+
+	testTokenStore_VerifyNumOfTokens(t, ts, namespace.RootNamespace, 2)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns1, 1)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns2, 1)
+}
+
+func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace, desiredNumOfTokens int) {
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+
+	ent := &logical.TokenEntry{Path: "test", Policies: []string{"dev", "ops"}, NamespaceID: ns.ID}
+	if err := ts.create(ctx, ent); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	err := ts.revokeOrphan(ctx, "")
 	if err.Error() != "cannot revoke blank token" {
 		t.Fatalf("err: %v", err)
 	}
-	err = ts.revokeOrphan(namespace.RootContext(nil), ent.ID)
+	err = ts.revokeOrphan(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	out, err := ts.Lookup(namespace.RootContext(nil), ent.ID)
+	out, err := ts.Lookup(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if out != nil {
 		t.Fatalf("bad: %#v", out)
+	}
+
+	// tidy is required here, as otherwise the revoked token is still stored until deletion
+	ts.handleTidy(ctx, &logical.Request{}, nil)
+	// waiting on the tidy operation
+	time.Sleep(100 * time.Millisecond)
+	testTokenStore_VerifyNumOfTokens(t, ts, ns, desiredNumOfTokens)
+}
+
+func testTokenStore_VerifyNumOfTokens(t *testing.T, ts *TokenStore, ns *namespace.Namespace, desiredCount int) {
+	ctx := namespace.ContextWithNamespace(context.Background(), ns)
+	view, err := ts.idView(ctx, ns)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	tokenKeys, err := view.List(ctx, "")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if len(tokenKeys) != desiredCount {
+		t.Fatalf("invalid number of token keys (%d) on namespace [%s], should be (%d)", len(tokenKeys), ns.Path, desiredCount)
 	}
 }
 
@@ -1453,27 +1526,28 @@ func TestTokenStore_Revoke_Orphan(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ts := c.tokenStore
 
+	ctx := namespace.RootContext(context.Background())
 	ent := &logical.TokenEntry{
 		NamespaceID: namespace.RootNamespaceID,
 		Path:        "test",
 		Policies:    []string{"dev", "ops"},
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	testMakeTokenDirectly(t, ctx, ts, ent)
 
 	ent2 := &logical.TokenEntry{
 		NamespaceID: namespace.RootNamespaceID,
 		Parent:      ent.ID,
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, ent2)
+	testMakeTokenDirectly(t, ctx, ts, ent2)
 
-	err := ts.revokeOrphan(namespace.RootContext(nil), ent.ID)
+	err := ts.revokeOrphan(ctx, ent.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	out, err := ts.Lookup(namespace.RootContext(nil), ent2.ID)
+	out, err := ts.Lookup(ctx, ent2.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1501,9 +1575,9 @@ func TestTokenStore_RevokeTree(t *testing.T) {
 func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCycles bool) {
 	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(t))
 	ts := c.tokenStore
-	root, children := buildTokenTree(t, ts, depth)
-
 	ctx := namespace.RootContext(context.Background())
+	root, children := buildTokenTree(t, ctx, ts, depth)
+
 	parentView, err := ts.parentView(ctx, namespace.RootNamespace)
 	if err != nil {
 		t.Fatalf("err: %v", err)
@@ -1594,12 +1668,12 @@ func BenchmarkTokenStore_RevokeTree(b *testing.B) {
 
 // Builds a TokenTree of a specified depth, so that
 // we may run revoke tests on it.
-func buildTokenTree(t testing.TB, ts *TokenStore, depth uint64) (root *logical.TokenEntry, children []*logical.TokenEntry) {
+func buildTokenTree(t testing.TB, ctx context.Context, ts *TokenStore, depth uint64) (root *logical.TokenEntry, children []*logical.TokenEntry) {
 	root = &logical.TokenEntry{
 		NamespaceID: namespace.RootNamespaceID,
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, root)
+	testMakeTokenDirectly(t, ctx, ts, root)
 
 	frontier := []*logical.TokenEntry{root}
 	current := uint64(0)
@@ -1611,14 +1685,14 @@ func buildTokenTree(t testing.TB, ts *TokenStore, depth uint64) (root *logical.T
 				TTL:         time.Hour,
 				NamespaceID: namespace.RootNamespaceID,
 			}
-			testMakeTokenDirectly(t, ts, left)
+			testMakeTokenDirectly(t, ctx, ts, left)
 
 			right := &logical.TokenEntry{
 				Parent:      node.ID,
 				TTL:         time.Hour,
 				NamespaceID: namespace.RootNamespaceID,
 			}
-			testMakeTokenDirectly(t, ts, right)
+			testMakeTokenDirectly(t, ctx, ts, right)
 
 			children = append(children, left, right)
 			next = append(next, left, right)
@@ -1634,37 +1708,39 @@ func TestTokenStore_RevokeSelf(t *testing.T) {
 	exp := mockExpiration(t)
 	ts := exp.tokenStore
 
+	ctx := namespace.RootContext(context.Background())
+
 	ent1 := &logical.TokenEntry{
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent1)
+	testMakeTokenDirectly(t, ctx, ts, ent1)
 
 	ent2 := &logical.TokenEntry{
 		Parent:      ent1.ID,
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent2)
+	testMakeTokenDirectly(t, ctx, ts, ent2)
 
 	ent3 := &logical.TokenEntry{
 		Parent:      ent2.ID,
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent3)
+	testMakeTokenDirectly(t, ctx, ts, ent3)
 
 	ent4 := &logical.TokenEntry{
 		Parent:      ent2.ID,
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, ent4)
+	testMakeTokenDirectly(t, ctx, ts, ent4)
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-self")
 	req.ClientToken = ent1.ID
 
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
@@ -1674,7 +1750,7 @@ func TestTokenStore_RevokeSelf(t *testing.T) {
 	for _, id := range lookup {
 		var found bool
 		for i := 0; i < 10; i++ {
-			out, err = ts.Lookup(namespace.RootContext(nil), id)
+			out, err = ts.Lookup(ctx, id)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -1998,7 +2074,8 @@ func TestTokenStore_HandleRequest_CreateToken_NonRoot_Subset(t *testing.T) {
 	req.ClientToken = "client"
 	req.Data["policies"] = []string{"foo"}
 
-	resp, err := ts.HandleRequest(namespace.RootContext(nil), req)
+	ctx := namespace.RootContext(context.Background())
+	resp, err := ts.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}
@@ -2012,9 +2089,9 @@ func TestTokenStore_HandleRequest_CreateToken_NonRoot_Subset(t *testing.T) {
 		Policies:    []string{"foo", "bar"},
 		TTL:         time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, ent)
+	testMakeTokenDirectly(t, ctx, ts, ent)
 	req.ClientToken = ent.ID
-	resp, err = ts.HandleRequest(namespace.RootContext(nil), req)
+	resp, err = ts.HandleRequest(ctx, req)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err: %v\nresp: %#v", err, resp)
 	}

@@ -1187,19 +1187,11 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 		return nil, err
 	}
 
-	// Emit a metric for the new entity
-	nsForMetrics, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-	var nsLabel metrics.Label
-	if err != nil {
-		nsLabel = metrics.Label{"namespace", "unknown"}
-	} else {
-		nsLabel = metricsutil.NamespaceLabel(nsForMetrics)
-	}
 	i.metrics.IncrCounterWithLabels(
 		[]string{"identity", "entity", "creation"},
 		1,
 		[]metrics.Label{
-			nsLabel,
+			metricsutil.NamespaceLabel(ns),
 		})
 
 	return entity.Clone()
@@ -1315,20 +1307,11 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			newAlias,
 		}
 
-		// Emit a metric for the new entity
-		// Emit a metric for the new entity
-		nsForMetrics, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-		var nsLabel metrics.Label
-		if err != nil {
-			nsLabel = metrics.Label{"namespace", "unknown"}
-		} else {
-			nsLabel = metricsutil.NamespaceLabel(nsForMetrics)
-		}
 		i.metrics.IncrCounterWithLabels(
 			[]string{"identity", "entity", "creation"},
 			1,
 			[]metrics.Label{
-				nsLabel,
+				metricsutil.NamespaceLabel(ns),
 				{"auth_method", newAlias.MountType},
 				{"mount_point", newAlias.MountPath},
 			})

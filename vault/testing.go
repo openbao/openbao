@@ -360,7 +360,7 @@ func TestCoreSeal(core *Core) error {
 
 func TestCoreCreateNamespaces(core *Core, namespaces ...*namespace.Namespace) error {
 	for _, ns := range namespaces {
-		err := core.namespaceStore.SetNamespace(context.Background(), &NamespaceEntry{Namespace: ns})
+		err := core.namespaceStore.SetNamespace(context.Background(), ns)
 		if err != nil {
 			return err
 		}

@@ -1,0 +1,3 @@
+```release-note:bug
+oidc: add some buffer time to sleep during test, to prevent flakiness
+```

@@ -111,6 +111,20 @@ func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
 }
 
+func (n *Namespace) Clone() *Namespace {
+	meta := make(map[string]string, len(n.CustomMetadata))
+	for k, v := range n.CustomMetadata {
+		meta[k] = v
+	}
+
+	return &Namespace{
+		ID:             n.ID,
+		UUID:           n.UUID,
+		Path:           n.Path,
+		CustomMetadata: meta,
+	}
+}
+
 // ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)

@@ -55,42 +55,11 @@ type NamespaceStore struct {
 	// instance. Entries should not be returned directly but instead be
 	// copied to prevent modification.
 	namespacesByPath     *namespaceTree
-	namespacesByUUID     map[string]*NamespaceEntry
-	namespacesByAccessor map[string]*NamespaceEntry
+	namespacesByUUID     map[string]*namespace.Namespace
+	namespacesByAccessor map[string]*namespace.Namespace
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
-}
-
-// NamespaceEntry is used to store a namespace. We wrap namespace.Namespace
-// in case there is additional data we wish to store that isn't relevant to
-// a namespace instance.
-type NamespaceEntry struct {
-	Namespace *namespace.Namespace `json:"namespace"`
-}
-
-// Clone performs a deep copy of the given entry.
-func (ne *NamespaceEntry) Clone() *NamespaceEntry {
-	meta := make(map[string]string, len(ne.Namespace.CustomMetadata))
-	for k, v := range ne.Namespace.CustomMetadata {
-		meta[k] = v
-	}
-	return &NamespaceEntry{
-		Namespace: &namespace.Namespace{
-			ID:             ne.Namespace.ID,
-			UUID:           ne.Namespace.UUID,
-			Path:           ne.Namespace.Path,
-			CustomMetadata: meta,
-		},
-	}
-}
-
-func (ne *NamespaceEntry) Validate() error {
-	if ne.Namespace == nil {
-		return errors.New("interior namespace object is nil")
-	}
-
-	return ne.Namespace.Validate()
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -101,8 +70,8 @@ func NewNamespaceStore(ctx context.Context, core *Core, logger hclog.Logger) (*N
 		storage:              core.barrier,
 		logger:               logger,
 		namespacesByPath:     newNamespaceTree(nil),
-		namespacesByUUID:     make(map[string]*NamespaceEntry),
-		namespacesByAccessor: make(map[string]*NamespaceEntry),
+		namespacesByUUID:     make(map[string]*namespace.Namespace),
+		namespacesByAccessor: make(map[string]*namespace.Namespace),
 	}
 
 	// Add namespaces from storage to our table. We can do this without
@@ -142,12 +111,11 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	// invalidation this will pre-allocate enough space to reload everything
 	// as we'll likely be essentially in sync already. However, at startup, this
 	// will mostly just give us space for the root namespace.
-	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
-	namespacesByPath := newNamespaceTree(rootNs)
-	namespacesByUUID := make(map[string]*NamespaceEntry, len(ns.namespacesByUUID)+1)
-	namespacesByAccessor := make(map[string]*NamespaceEntry, len(ns.namespacesByAccessor)+1)
-	namespacesByUUID[rootNs.Namespace.UUID] = rootNs
-	namespacesByAccessor[rootNs.Namespace.ID] = rootNs
+	namespacesByPath := newNamespaceTree(namespace.RootNamespace)
+	namespacesByUUID := make(map[string]*namespace.Namespace, len(ns.namespacesByUUID)+1)
+	namespacesByAccessor := make(map[string]*namespace.Namespace, len(ns.namespacesByAccessor)+1)
+	namespacesByUUID[namespace.RootNamespaceUUID] = namespace.RootNamespace
+	namespacesByAccessor[namespace.RootNamespaceID] = namespace.RootNamespace
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		if err := logical.HandleListPage(s, namespaceStoreRoot, 100, func(page int, index int, entry string) (bool, error) {
@@ -162,14 +130,14 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 				return false, fmt.Errorf("%v has an empty namespace definition (page %v / index %v)", path, page, index)
 			}
 
-			var namespace NamespaceEntry
+			var namespace namespace.Namespace
 			if err := item.DecodeJSON(&namespace); err != nil {
 				return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", path, page, index, err)
 			}
 
 			namespacesByPath.unsafeInsert(&namespace)
-			namespacesByUUID[namespace.Namespace.UUID] = &namespace
-			namespacesByAccessor[namespace.Namespace.ID] = &namespace
+			namespacesByUUID[namespace.UUID] = &namespace
+			namespacesByAccessor[namespace.ID] = &namespace
 
 			return true, nil
 		}, nil); err != nil {
@@ -223,7 +191,7 @@ func (ns *NamespaceStore) invalidate(ctx context.Context, path string) error {
 }
 
 // SetNamespace is used to create or update a given namespace
-func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *NamespaceEntry) error {
+func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *namespace.Namespace) error {
 	defer metrics.MeasureSince([]string{"namespace", "set_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -237,7 +205,7 @@ func (ns *NamespaceStore) SetNamespace(ctx context.Context, namespace *Namespace
 
 // setNamespaceLocked must be called while holding a write lock over the
 // NamespaceStore. This function unlocks the lock once finished.
-func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *NamespaceEntry) error {
+func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *namespace.Namespace) error {
 	// If we are creating a net-new namespace, we have to unlock before
 	// creating required mounts as the mount type will call
 	// GetNamespaceByAccessor. In that case, we will manually call
@@ -268,29 +236,29 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 	}
 
 	var exists bool
-	if entry.Namespace.UUID == "" {
-		id, err := ns.assignIdentifier(entry.Namespace.Path)
+	if entry.UUID == "" {
+		id, err := ns.assignIdentifier(entry.Path)
 		if err != nil {
 			return err
 		}
 
-		entry.Namespace.ID = id
-		entry.Namespace.UUID, err = uuid.GenerateUUID()
+		entry.ID = id
+		entry.UUID, err = uuid.GenerateUUID()
 		if err != nil {
 			return err
 		}
 	} else {
-		var existing *NamespaceEntry
-		existing, exists = ns.namespacesByUUID[entry.Namespace.UUID]
+		var existing *namespace.Namespace
+		existing, exists = ns.namespacesByUUID[entry.UUID]
 		if !exists {
 			return errors.New("trying to update a non-existent namespace")
 		}
 
-		if existing.Namespace.ID != entry.Namespace.ID {
+		if existing.ID != entry.ID {
 			return errors.New("accessor ID does not match")
 		}
 
-		if existing.Namespace.Path != entry.Namespace.Path {
+		if existing.Path != entry.Path {
 			return errors.New("unable to remount namespace at new path")
 		}
 	}
@@ -302,13 +270,13 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		// path component of this new namespace; while mount paths can have
 		// any number of components, our namespace only has one and is relative
 		// to some parent path.
-		path := entry.Namespace.Path
+		path := entry.Path
 		if parent.ID != namespace.RootNamespaceID {
-			if !entry.Namespace.HasParent(parent) {
+			if !entry.HasParent(parent) {
 				return errors.New("namespace path lacks parent as a prefix")
 			}
 
-			path = namespace.Canonicalize(parent.TrimmedPath(entry.Namespace.Path))
+			path = namespace.Canonicalize(parent.TrimmedPath(entry.Path))
 		}
 
 		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
@@ -321,13 +289,13 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		return fmt.Errorf("failed to persist namespace: %w", err)
 	}
 	ns.namespacesByPath.Insert(entry)
-	ns.namespacesByUUID[entry.Namespace.UUID] = entry
-	ns.namespacesByAccessor[entry.Namespace.ID] = entry
+	ns.namespacesByUUID[entry.UUID] = entry
+	ns.namespacesByAccessor[entry.ID] = entry
 
 	// Since the write succeeded, copy back any potentially changed values.
-	nsEntry.Namespace.UUID = entry.Namespace.UUID
-	nsEntry.Namespace.ID = entry.Namespace.ID
-	nsEntry.Namespace.Path = entry.Namespace.Path
+	nsEntry.UUID = entry.UUID
+	nsEntry.ID = entry.ID
+	nsEntry.Path = entry.Path
 
 	if !exists {
 		// unlock before initializeNamespace since that will re-acquire the lock
@@ -343,9 +311,9 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 	return nil
 }
 
-func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *NamespaceEntry) error {
+func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		storagePath := path.Join(namespaceStoreRoot, entry.Namespace.UUID)
+		storagePath := path.Join(namespaceStoreRoot, entry.UUID)
 		item, err := logical.StorageEntryJSON(storagePath, &entry)
 		if err != nil {
 			return fmt.Errorf("error marshalling storage entry: %w", err)
@@ -385,10 +353,10 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 }
 
 // initializeNamespace initializes default policies and  sys/ and token/ mounts for a new namespace
-func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *NamespaceEntry) error {
+func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
-	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone().Namespace)
+	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone())
 
 	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
 		return err
@@ -438,7 +406,7 @@ func (ns *NamespaceStore) createMounts(ctx context.Context) error {
 }
 
 // GetNamespace is used to fetch the namespace with the given uuid.
-func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*NamespaceEntry, error) {
+func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -457,7 +425,7 @@ func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*Names
 }
 
 // GetNamespaceByAccessor is used to fetch the namespace with the given accessor.
-func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string) (*NamespaceEntry, error) {
+func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_accessor"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -476,7 +444,7 @@ func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string)
 }
 
 // GetNamespaceByPath is used to fetch the namespace with the given full path.
-func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (*NamespaceEntry, error) {
+func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "get_namespace_by_path"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -489,7 +457,7 @@ func (ns *NamespaceStore) GetNamespaceByPath(ctx context.Context, path string) (
 	return ns.getNamespaceByPathLocked(ctx, path)
 }
 
-func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*NamespaceEntry, error) {
+func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path string) (*namespace.Namespace, error) {
 	parent, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -506,7 +474,7 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 // ModifyNamespace is used to perform modifications to a namespace while
 // holding a write lock to prevent other changes to namespaces from occurring
 // at the same time.
-func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *NamespaceEntry) (*NamespaceEntry, error)) (*NamespaceEntry, error) {
+func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string, callback func(context.Context, *namespace.Namespace) (*namespace.Namespace, error)) (*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "modify_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -529,10 +497,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 	if entry != nil {
 		entry = entry.Clone()
 	} else {
-		entry = &NamespaceEntry{Namespace: &namespace.Namespace{
+		entry = &namespace.Namespace{
 			Path:           path,
 			CustomMetadata: make(map[string]string),
-		}}
+		}
 	}
 
 	if callback != nil {
@@ -558,10 +526,10 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 
 	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
 	for _, entry := range ns.namespacesByUUID {
-		if !includeRoot && entry.Namespace.ID == namespace.RootNamespaceID {
+		if !includeRoot && entry.ID == namespace.RootNamespaceID {
 			continue
 		}
-		namespaces = append(namespaces, entry.Clone().Namespace)
+		namespaces = append(namespaces, entry.Clone())
 	}
 
 	return namespaces, nil
@@ -571,41 +539,6 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 // Optionally it can include the parent namespace itself and/or include all
 // decendents of the child namespaces.
 func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
-	defer metrics.MeasureSince([]string{"namespace", "list_namespaces"}, time.Now())
-
-	entries, err := ns.ListNamespaceEntries(ctx, includeParent, recursive)
-	if err != nil {
-		return nil, err
-	}
-
-	namespaces := make([]*namespace.Namespace, 0, len(entries))
-	for _, item := range entries {
-		namespaces = append(namespaces, item.Namespace)
-	}
-
-	return namespaces, nil
-}
-
-// ListAllNamespaceEntries lists all available NamespaceEntries, optionally
-// including the root namespace.
-func (ns *NamespaceStore) ListAllNamespaceEntries(ctx context.Context, includeRoot bool) ([]*NamespaceEntry, error) {
-	defer metrics.MeasureSince([]string{"namespace", "list_all_namespace_entries"}, time.Now())
-
-	entries := make([]*NamespaceEntry, 0, len(ns.namespacesByUUID))
-	for _, entry := range ns.namespacesByUUID {
-		if !includeRoot && entry.Namespace.ID == namespace.RootNamespaceID {
-			continue
-		}
-		entries = append(entries, entry.Clone())
-	}
-
-	return entries, nil
-}
-
-// ListNamespaceEntries is used to list NamespaceEntries below a parent namespace.
-// Optionally it can include the parent namespace itself and/or include all
-// decendents of the child namespaces.
-func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeParent bool, recursive bool) ([]*NamespaceEntry, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_namespace_entries"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -636,7 +569,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return nil
 	}
 
-	if item.Namespace.ID == namespace.RootNamespaceID {
+	if item.ID == namespace.RootNamespaceID {
 		return errors.New("unable to delete root namespace")
 	}
 
@@ -644,12 +577,12 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
-	err := ns.namespacesByPath.Delete(item.Namespace.Path)
+	err := ns.namespacesByPath.Delete(item.Path)
 	if err != nil {
 		return err
 	}
 	delete(ns.namespacesByUUID, uuid)
-	delete(ns.namespacesByAccessor, item.Namespace.ID)
+	delete(ns.namespacesByAccessor, item.ID)
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		storagePath := path.Join(namespaceStoreRoot, uuid)
@@ -678,8 +611,8 @@ func (ns *NamespaceStore) copyNamespaceFromCtx(intoCtx context.Context, fromCtx 
 		return intoCtx, nil, fmt.Errorf("requested namespace was not found")
 	}
 
-	intoCtx = namespace.ContextWithNamespace(intoCtx, entry.Namespace)
-	return intoCtx, entry.Namespace, nil
+	intoCtx = namespace.ContextWithNamespace(intoCtx, entry)
+	return intoCtx, entry, nil
 }
 
 // ResolveNamespaceFromRequest merges the given base context with the
@@ -697,10 +630,9 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, h
 	// prepend namespace path from request context
 	reqPath = parentNs.Path + reqPath
 	// find namespace that matches the longest prefix of reqPath
-	nsPath, entry, _ := ns.namespacesByPath.LongestPrefix(reqPath)
+	nsPath, parentNs, _ := ns.namespacesByPath.LongestPrefix(reqPath)
 	// trim matched prefix from reqPath
 	reqPath = reqPath[len(nsPath):]
-	parentNs = entry.Namespace
 
 	// TODO(ascheel): Fix global uses of comparison by pointer.
 	if parentNs.ID == namespace.RootNamespaceID {

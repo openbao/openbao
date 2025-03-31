@@ -315,7 +315,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		ns.lock.Unlock()
 		unlocked = true
 
-		// Create sys/ and token/ mounts for the new namespace.
+		// Create sys/, token/ mounts and policies for the new namespace.
 		if err := ns.initializeNamespace(ctx, entry); err != nil {
 			return err
 		}

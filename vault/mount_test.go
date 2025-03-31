@@ -1129,8 +1129,8 @@ func TestCore_MountEntryView(t *testing.T) {
 	s := c.namespaceStore
 
 	testMountEntryUUID := "mount-entry-uuid"
-	testNamespace1 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
-	testNamespace2 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
+	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
+	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
 
 	err := s.SetNamespace(ctx, testNamespace1)
 	require.NoError(t, err)
@@ -1157,22 +1157,22 @@ func TestCore_MountEntryView(t *testing.T) {
 			mountEntry: &MountEntry{
 				UUID:        testMountEntryUUID,
 				Type:        mountTypeNSSystem,
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.Namespace.UUID + "/" + systemBarrierPrefix,
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + systemBarrierPrefix,
 		},
 		{
 			name: "entry of 'ns_system' mount type for nested namespace",
 			mountEntry: &MountEntry{
 				UUID:        testMountEntryUUID,
 				Type:        mountTypeNSSystem,
-				NamespaceID: testNamespace2.Namespace.ID,
-				namespace:   testNamespace2.Namespace,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.Namespace.UUID + "/" + systemBarrierPrefix,
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + systemBarrierPrefix,
 		},
 		{
 			name: "entry of 'system' mount type",
@@ -1227,11 +1227,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeNSCubbyhole,
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.Namespace.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
@@ -1241,7 +1241,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Type:  mountTypeNSCubbyhole,
 				// does not exist in store
 				NamespaceID: "ns-2",
-				namespace:   testNamespace1.Namespace,
+				namespace:   testNamespace1,
 			},
 
 			wantError: true,
@@ -1252,11 +1252,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeKV,
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.Namespace.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
@@ -1264,11 +1264,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeKV,
-				NamespaceID: testNamespace2.Namespace.ID,
-				namespace:   testNamespace2.Namespace,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.Namespace.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'mount' table, and 'kv' type without namespace present",
@@ -1286,11 +1286,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       credentialTableType,
 				Type:        "userpass",
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.Namespace.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
@@ -1298,11 +1298,11 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       credentialTableType,
 				Type:        "userpass",
-				NamespaceID: testNamespace2.Namespace.ID,
-				namespace:   testNamespace2.Namespace,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
 			},
 
-			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.Namespace.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
 		},
 		{
 			name: "entry of 'auth' table, and 'userpass' type without namespace present",

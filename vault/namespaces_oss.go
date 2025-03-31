@@ -17,11 +17,7 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Names
 		return nil, err
 	}
 
-	if ns == nil {
-		return nil, nil
-	}
-
-	return ns.Namespace, nil
+	return ns, nil
 }
 
 func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {

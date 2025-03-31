@@ -2000,7 +2000,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	// be run at any time safely, but there is no need to invoke them (which
 	// might be somewhat expensive if there are many roles/keys) if we're not
 	// past any rotation/expiration TTLs.
-	if now.Equal(nextRun) || now.After(nextRun) {
+	if timeNear(now, nextRun, (1*time.Second)) || now.After(nextRun) {
 		// Initialize to a fairly distant next run time. This will be brought in
 		// based on key rotation times.
 		nextRun = now.Add(24 * time.Hour)
@@ -2063,6 +2063,12 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 		}
 
 	}
+}
+
+// timeNear checks if 2 times are within a duration
+func timeNear(t1, t2 time.Time, d time.Duration) bool {
+	diff := t1.Sub(t2).Abs()
+	return diff <= d
 }
 
 func newOIDCCache(defaultExpiration, cleanupInterval time.Duration) *oidcCache {

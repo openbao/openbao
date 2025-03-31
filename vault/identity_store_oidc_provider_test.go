@@ -478,7 +478,7 @@ func TestOIDC_Path_OIDC_Token(t *testing.T) {
 				TTL:          time.Hour * 24,
 				CreationTime: creationTime.Unix(),
 			}
-			testMakeTokenDirectly(t, c.tokenStore, te)
+			testMakeTokenDirectly(t, ctx, c.tokenStore, te)
 			require.NotEmpty(t, te.ID)
 
 			// Reset any configuration modifications
@@ -1105,7 +1105,7 @@ func TestOIDC_Path_OIDC_Authorize(t *testing.T) {
 				TTL:          time.Hour * 24,
 				CreationTime: creationTime.Unix(),
 			}
-			testMakeTokenDirectly(t, c.tokenStore, te)
+			testMakeTokenDirectly(t, ctx, c.tokenStore, te)
 			require.NotEmpty(t, te.ID)
 
 			// Update the assignment

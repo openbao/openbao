@@ -1219,7 +1219,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
-	credentialBackends[mountTypeNSToken] = credentialBackends[mountTypeToken]
+	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.tokenStore != nil {
+			return c.tokenStore, nil
+		}
+		return nil, errors.New("token store does not exist")
+	}
 
 	c.credentialBackends = credentialBackends
 }

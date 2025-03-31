@@ -466,7 +466,7 @@ func TestIdentityStore_WrapInfoInheritance(t *testing.T) {
 		EntityID: entityID,
 		TTL:      time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
 	wrapReq := &logical.Request{
 		Path:        "sys/wrapping/wrap",
@@ -505,7 +505,8 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 		EntityID: "testentityid",
 		TTL:      time.Hour,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	ctx := namespace.RootContext(nil)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
 	// Create a child token; this should inherit the EntityID
 	tokenReq := &logical.Request{
@@ -514,7 +515,6 @@ func TestIdentityStore_TokenEntityInheritance(t *testing.T) {
 		ClientToken: te.ID,
 	}
 
-	ctx := namespace.RootContext(nil)
 	resp, err := ts.HandleRequest(ctx, tokenReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("bad: resp: %#v err: %v", err, resp)

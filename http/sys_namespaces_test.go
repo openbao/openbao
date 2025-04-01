@@ -55,33 +55,31 @@ func FuzzNamespaceName(f *testing.F) {
 		case name == "":
 			expect = http.StatusBadRequest
 		case name == "sys":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case name == "cubbyhole":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case name == "root":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case name == "audit":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case name == "auth":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case name == "identity":
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 
 		// 400
 		case strings.ContainsFunc(name, not(unicode.IsPrint)):
 			expect = http.StatusBadRequest
 		case strings.HasSuffix(name, "/"):
 			expect = http.StatusBadRequest
-
-		// 500
 		case strings.Contains(name, " "):
-			expect = http.StatusInternalServerError
+			expect = http.StatusBadRequest
 		case strings.Contains(name, "/"):
-			expect = http.StatusInternalServerError
-		case strings.Contains(name, "+*"):
-			expect = http.StatusInternalServerError
-
-		// 400 again
+			expect = http.StatusBadRequest
+		case strings.Contains(name, "+"):
+			expect = http.StatusBadRequest
+		case strings.Contains(name, "*"):
+			expect = http.StatusBadRequest
 		case !utf8.ValidString(name):
 			expect = http.StatusBadRequest
 		}

@@ -231,7 +231,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		path := namespace.Canonicalize(data.Get("path").(string))
 
 		if len(path) > 0 && strings.Contains(path[:len(path)-1], "/") {
-			return nil, errors.New("path must not contain /")
+			return logical.ErrorResponse("path must not contain /"), logical.ErrInvalidRequest
 		}
 
 		imetadata, ok := data.GetOk("custom_metadata")
@@ -240,7 +240,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			metadata = make(map[string]string)
 			for k, v := range imetadata.(map[string]interface{}) {
 				if metadata[k], ok = v.(string); !ok {
-					return nil, fmt.Errorf("custom_metadata values must be strings")
+					return logical.ErrorResponse("custom_metadata values must be strings"), logical.ErrInvalidRequest
 				}
 			}
 		}
@@ -250,7 +250,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return ns, nil
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to modify namespace: %w", err)
+			return handleError(err)
 		}
 
 		resp := &logical.Response{Data: map[string]interface{}{

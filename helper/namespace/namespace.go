@@ -10,6 +10,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
@@ -17,6 +19,9 @@ import (
 // reservedNames is the list of string names that
 // shouldn't be used as namespace name, hence are forbidden to use
 var reservedNames = []string{
+	"",
+	".",
+	"..",
 	"root",
 	"sys",
 	"audit",
@@ -52,11 +57,21 @@ func (n *Namespace) Validate() error {
 		if segment == "" {
 			return fmt.Errorf("namespace name cannot be empty")
 		}
-		if strings.Contains(segment, " ") {
-			return fmt.Errorf("%q contains space characters and cannot be used as a namespace name", segment)
-		}
 		if slices.Contains(reservedNames, segment) {
 			return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", segment)
+		}
+
+		for _, r := range segment {
+			switch {
+			case !utf8.ValidRune(r):
+				return fmt.Errorf("%q contains invalid utf-8 characters that cannot be used in a namespace name: %q", segment, r)
+			case !unicode.IsGraphic(r):
+				return fmt.Errorf("%q contains unicode characters that cannot be used in a namespace name: %q", segment, r)
+			case unicode.IsSpace(r):
+				return fmt.Errorf("%q contains space characters that cannot be used in a namespace name", segment)
+			case r == '+' || r == '*':
+				return fmt.Errorf("%q contains wildcard characters that cannot be used in a namespace name: %q", segment, r)
+			}
 		}
 	}
 

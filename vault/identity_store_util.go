@@ -2150,7 +2150,7 @@ func (i *IdentityStore) refreshExternalGroupMembershipsByEntityID(ctx context.Co
 		var newGroups []*identity.Group
 		var validAliases []*logical.Alias
 		for _, alias := range groupAliases {
-			aliasByFactors, err := i.MemDBAliasByFactorsInTxn(txn, alias.MountAccessor, alias.Name, true, true)
+			aliasByFactors, err := i.MemDBAliasByFactorsInTxnWithContext(ctx, txn, alias.MountAccessor, alias.Name, true, true)
 			if err != nil {
 				return false, nil, err
 			}

@@ -1757,4 +1757,201 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 			t.Fatal("Should not find root entity from NS1 context by name")
 		}
 	})
+
+	// === GROUP ALIASES ===
+	// ------------------------------------
+	// Test group aliases across namespaces
+	t.Run("group_alias_namespace_isolation", func(t *testing.T) {
+		commonAliasName := "common-group-alias"
+
+		// --- Setup test data ---
+		// -------------------------------------
+		// Create groups in each namespace first
+		groups := make(map[string]struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		})
+
+		// Root namespace group
+		rootGroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-root",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err := is.HandleRequest(rootCtx, rootGroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create root group: %v", resp.Error())
+
+		groups["root"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      rootCtx,
+			id:       resp.Data["id"].(string),
+			ns:       namespace.RootNamespace,
+			accessor: rootAccessor,
+		}
+
+		// NS1 namespace group
+		ns1GroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-ns1",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err = is.HandleRequest(ns1Ctx, ns1GroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create ns1 group: %v", resp.Error())
+
+		groups["ns1"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      ns1Ctx,
+			id:       resp.Data["id"].(string),
+			ns:       ns1,
+			accessor: ns1Accessor,
+		}
+
+		// NS2 namespace group
+		ns2GroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-ns2",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err = is.HandleRequest(ns2Ctx, ns2GroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create ns2 group: %v", resp.Error())
+
+		groups["ns2"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      ns2Ctx,
+			id:       resp.Data["id"].(string),
+			ns:       ns2,
+			accessor: ns2Accessor,
+		}
+
+		//  === Create aliases with the same name in each namespace ===
+		// -------------------------------------------------------------
+		for name, group := range groups {
+			aliasReq := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "group-alias",
+				Data: map[string]interface{}{
+					"name":           commonAliasName,
+					"canonical_id":   group.id,
+					"mount_accessor": group.accessor,
+				},
+			}
+			resp, err = is.HandleRequest(group.ctx, aliasReq)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.False(t, resp.IsError(), "Failed to create %s group alias: %v", name, resp.Error())
+		}
+
+		// === Verify groups have their aliases and correct namespace IDs ===
+		// -------------------------------------------------------------------
+		for name, group := range groups {
+			updatedGroup, err := is.MemDBGroupByID(group.id, true)
+			require.NoError(t, err)
+			require.NotNil(t, updatedGroup)
+			require.NotNil(t, updatedGroup.Alias, "%s group alias should not be nil", name)
+			require.Equal(t, commonAliasName, updatedGroup.Alias.Name)
+			require.Equal(t, group.ns.ID, updatedGroup.Alias.NamespaceID,
+				"%s alias should have %s namespace ID", name, name)
+		}
+
+		// ===  Test namespace-aware lookups ===
+		// --------------------------------------------------------------
+		// Table 1: Valid lookups within the correct namespace
+		validLookups := []struct {
+			name       string
+			ctx        context.Context
+			accessor   string
+			expectedNS string
+		}{
+			{"root lookup", rootCtx, rootAccessor, namespace.RootNamespaceID},
+			{"ns1 lookup", ns1Ctx, ns1Accessor, ns1.ID},
+			{"ns2 lookup", ns2Ctx, ns2Accessor, ns2.ID},
+		}
+
+		for _, test := range validLookups {
+			t.Run(test.name, func(t *testing.T) {
+				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
+					test.ctx,
+					is.db.Txn(false),
+					test.accessor,
+					commonAliasName,
+					false,
+					true,
+				)
+				require.NoError(t, err)
+				require.NotNil(t, aliasLookup, "%s should find the alias", test.name)
+				require.Equal(t, test.expectedNS, aliasLookup.NamespaceID,
+					"%s should have correct namespace ID", test.name)
+
+				// Verify group lookup by alias ID works
+				groupByAlias, err := is.MemDBGroupByAliasID(aliasLookup.ID, true)
+				require.NoError(t, err)
+				require.NotNil(t, groupByAlias)
+				require.Equal(t, test.expectedNS, groupByAlias.NamespaceID,
+					"Group from %s should have correct namespace ID", test.name)
+			})
+		}
+
+		// Table 2: Cross-namespace lookups that should all return nil
+		crossLookups := []struct {
+			name      string
+			ctx       context.Context
+			accessor  string
+			expectNil bool
+		}{
+			{"root→ns1", rootCtx, ns1Accessor, true},
+			{"root→ns2", rootCtx, ns2Accessor, true},
+			{"ns1→root", ns1Ctx, rootAccessor, true},
+			{"ns1→ns2", ns1Ctx, ns2Accessor, true},
+			{"ns2→root", ns2Ctx, rootAccessor, true},
+			{"ns2→ns1", ns2Ctx, ns1Accessor, true},
+		}
+
+		for _, test := range crossLookups {
+			t.Run(test.name, func(t *testing.T) {
+				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
+					test.ctx,
+					is.db.Txn(false),
+					test.accessor,
+					commonAliasName,
+					false,
+					true,
+				)
+				require.NoError(t, err)
+				require.Nil(t, aliasLookup,
+					"%s should not find alias across namespace boundaries", test.name)
+			})
+		}
+	})
 }

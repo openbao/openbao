@@ -415,7 +415,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	entity, err := is.entityByAliasFactors(ghAccessor, "alias_name", false)
+	entity, err := is.entityByAliasFactors(ctx, ghAccessor, "alias_name", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1075,17 +1075,17 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.NotEqual(t, ns1Entity.ID, ns2Entity.ID, "NS1 and NS2 entities should be different")
 
 		// Verify entity lookup by alias works correctly in each namespace
-		fetchedRoot, err := is.entityByAliasFactorsWithContext(rootCtx, rootAccessor, commonUserName, false)
+		fetchedRoot, err := is.entityByAliasFactors(rootCtx, rootAccessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedRoot)
 		require.Equal(t, rootEntity.ID, fetchedRoot.ID)
 
-		fetchedNS1, err := is.entityByAliasFactorsWithContext(ns1Ctx, ns1Accessor, commonUserName, false)
+		fetchedNS1, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedNS1)
 		require.Equal(t, ns1Entity.ID, fetchedNS1.ID)
 
-		fetchedNS2, err := is.entityByAliasFactorsWithContext(ns2Ctx, ns2Accessor, commonUserName, false)
+		fetchedNS2, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, commonUserName, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedNS2)
 		require.Equal(t, ns2Entity.ID, fetchedNS2.ID)
@@ -1117,11 +1117,11 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.Len(t, ns1Entity.Aliases, 1, "NS1 entity should have 1 alias")
 
 		// Cross-namespace lookups should return nil, not error
-		crossEntity, err := is.entityByAliasFactorsWithContext(rootCtx, ns1Accessor, userName, false)
+		crossEntity, err := is.entityByAliasFactors(rootCtx, ns1Accessor, userName, false)
 		require.NoError(t, err)
 		require.Nil(t, crossEntity, "Should not find NS1 entity from root context")
 
-		crossEntity, err = is.entityByAliasFactorsWithContext(ns1Ctx, rootAccessor, userName, false)
+		crossEntity, err = is.entityByAliasFactors(ns1Ctx, rootAccessor, userName, false)
 		require.NoError(t, err)
 		require.Nil(t, crossEntity, "Should not find root entity from NS1 context")
 
@@ -1189,13 +1189,13 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.Equal(t, "ns1-new", updatedNs1Entity.Aliases[0].Metadata["added"])
 
 		// Verify updates didn't cross namespaces
-		fetchedRootEntity, err := is.entityByAliasFactorsWithContext(rootCtx, rootAccessor, metadataUser, false)
+		fetchedRootEntity, err := is.entityByAliasFactors(rootCtx, rootAccessor, metadataUser, false)
 		require.NoError(t, err)
 		require.Equal(t, "root-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
 		require.Equal(t, "root-new", fetchedRootEntity.Aliases[0].Metadata["added"])
 		require.NotEqual(t, "ns1-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
 
-		fetchedNs1Entity, err := is.entityByAliasFactorsWithContext(ns1Ctx, ns1Accessor, metadataUser, false)
+		fetchedNs1Entity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, metadataUser, false)
 		require.NoError(t, err)
 		require.Equal(t, "ns1-updated", fetchedNs1Entity.Aliases[0].Metadata["initial"])
 		require.Equal(t, "ns1-new", fetchedNs1Entity.Aliases[0].Metadata["added"])
@@ -1249,12 +1249,12 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.NotEqual(t, parentEntity.ID, childEntity.ID)
 
 		// Child namespace should not see parent's entity
-		fetchedInChild, err := is.entityByAliasFactorsWithContext(childCtx, ns1Accessor, hierarchyUser, false)
+		fetchedInChild, err := is.entityByAliasFactors(childCtx, ns1Accessor, hierarchyUser, false)
 		require.NoError(t, err)
 		require.Nil(t, fetchedInChild, "Child namespace should not see parent's entity")
 
 		// Parent namespace should not see child's entity
-		fetchedInParent, err := is.entityByAliasFactorsWithContext(ns1Ctx, childAccessor, hierarchyUser, false)
+		fetchedInParent, err := is.entityByAliasFactors(ns1Ctx, childAccessor, hierarchyUser, false)
 		require.NoError(t, err)
 		require.Nil(t, fetchedInParent, "Parent namespace should not see child's entity")
 	})
@@ -1395,12 +1395,12 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		require.Nil(t, deletedEntity, "Entity should be deleted")
 
 		// Try to fetch by the alias - should return nil not error
-		orphanedEntity, err := is.entityByAliasFactorsWithContext(ns1Ctx, ns1Accessor, aliasName, false)
+		orphanedEntity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, aliasName, false)
 		require.NoError(t, err, "Should not error when alias points to deleted entity")
 		require.Nil(t, orphanedEntity, "Should not return entity for orphaned alias")
 
 		// Verify the ns2 entity is still intact
-		ns2Lookup, err := is.entityByAliasFactorsWithContext(ns2Ctx, ns2Accessor, aliasName, false)
+		ns2Lookup, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, aliasName, false)
 		require.NoError(t, err)
 		require.NotNil(t, ns2Lookup, "NS2 entity should still exist")
 		require.Equal(t, ns2Entity.ID, ns2Lookup.ID)
@@ -1685,7 +1685,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 	for _, test := range crossLookups {
 		t.Run(test.name, func(t *testing.T) {
-			entity, err := is.entityByAliasFactorsWithContext(test.ctx, test.accessor, commonUser, false)
+			entity, err := is.entityByAliasFactors(test.ctx, test.accessor, commonUser, false)
 			require.NoError(t, err)
 
 			if test.expectNil {

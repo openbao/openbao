@@ -1104,22 +1104,10 @@ func (i *IdentityStore) parseGroupFromBucketItem(item *storagepacker.Item) (*ide
 }
 
 // entityByAliasFactors fetches the entity based on factors of alias, i.e mount
-// accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactors(mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
-	// Use root context as a fallback
-	return i.entityByAliasFactorsWithContext(namespace.RootContext(nil), mountAccessor, aliasName, clone)
-}
-
-// entityByAliasFactorsWithContext fetches the entity based on factors of alias, using the given context.
+// accessor and the alias name, using the given context.
 // This function respects namespace boundaries and will only return an entity that belongs to the
-// same namespace as the context. If an alias with matching factors exists in a different namespace,
-// this function will return nil instead of the entity from another namespace.
-//
-// This namespace awareness is crucial for maintaining proper isolation between namespaces and
-// preventing information leakage across namespace boundaries. It ensures that entities in one
-// namespace cannot be accessed from another namespace, even if they have aliases with identical
-// mount accessors and names.
-func (i *IdentityStore) entityByAliasFactorsWithContext(ctx context.Context, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+// same namespace as the context.
+func (i *IdentityStore) entityByAliasFactors(ctx context.Context, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if mountAccessor == "" {
 		return nil, errors.New("missing mount accessor")
 	}
@@ -1130,18 +1118,12 @@ func (i *IdentityStore) entityByAliasFactorsWithContext(ctx context.Context, mou
 
 	txn := i.db.Txn(false)
 
-	return i.entityByAliasFactorsInTxnWithContext(ctx, txn, mountAccessor, aliasName, clone)
+	return i.entityByAliasFactorsInTxn(ctx, txn, mountAccessor, aliasName, clone)
 }
 
 // entityByAliasFactorsInTxn fetches the entity based on factors of alias, i.e
 // mount accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactorsInTxn(txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
-	// Use root context as a fallback
-	return i.entityByAliasFactorsInTxnWithContext(namespace.RootContext(nil), txn, mountAccessor, aliasName, clone)
-}
-
-// entityByAliasFactorsInTxnWithContext fetches the entity based on factors of alias with the given context
-func (i *IdentityStore) entityByAliasFactorsInTxnWithContext(ctx context.Context, txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+func (i *IdentityStore) entityByAliasFactorsInTxn(ctx context.Context, txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
@@ -1197,15 +1179,9 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 	return entity.Clone()
 }
 
-// CreateOrFetchEntity creates a new entity or returns an existing entity.
-// This is used by core to associate each login attempt by an alias to a
-// unified entity in Vault.
-//
-// Namespace awareness: This function respects namespace boundaries. If an entity
-// with a matching alias exists in a different namespace, a new entity will be created
-// in the current namespace instead of returning the existing entity. This ensures
-// proper isolation between namespaces. Entities and aliases are always created in
-// the namespace from which the request originated.
+// CreateOrFetchEntity creates a new entity or returns an existing entity based on the alias,
+// respecting namespace boundaries defined by the context.
+// Entities and aliases are always created in the namespace from which the request originated (derived from ctx).
 func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.Alias) (*identity.Entity, bool, error) {
 	defer metrics.MeasureSince([]string{"identity", "create_or_fetch_entity"}, time.Now())
 
@@ -1238,7 +1214,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	}
 
 	// Check if an entity already exists for the given alias
-	entity, err = i.entityByAliasFactorsWithContext(ctx, alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactors(ctx, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1255,7 +1231,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	defer txn.Abort()
 
 	// Check if an entity was created before acquiring the lock
-	entity, err = i.entityByAliasFactorsInTxnWithContext(ctx, txn, alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactorsInTxn(ctx, txn, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}

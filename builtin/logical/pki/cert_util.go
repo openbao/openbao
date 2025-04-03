@@ -1586,11 +1586,13 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, []string, error) {
 
 	if notBeforeAlt == "" {
 		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
-		if ok && notBeforeBound == certutil.PermitNotBeforeBound.String() {
-			notBeforeAlt = notBeforeAltRaw.(string)
-		}
-		if ok && notBeforeBound == certutil.ForbidNotBeforeBound.String() {
-			return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
+		if ok {
+			switch notBeforeBound {
+			case certutil.PermitNotBeforeBound.String():
+				notBeforeAlt = notBeforeAltRaw.(string)
+			case certutil.ForbidNotBeforeBound.String():
+				return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
+			}
 		}
 	}
 

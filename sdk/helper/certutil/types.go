@@ -723,19 +723,19 @@ func (n notBeforeBound) String() string {
 	return "unknown"
 }
 
-type NotAfterBound int
+type notAfterBound int
 
 const (
-	ForbidNotAfterBound NotAfterBound = iota
+	ForbidNotAfterBound notAfterBound = iota
 	TTLNotAfterBound
 )
 
-var notAfterBoundNames = map[NotAfterBound]string{
+var notAfterBoundNames = map[notAfterBound]string{
 	ForbidNotAfterBound: "forbid",
 	TTLNotAfterBound:    "ttl-limited",
 }
 
-func (n NotAfterBound) String() string {
+func (n notAfterBound) String() string {
 	if name, ok := notAfterBoundNames[n]; ok && len(name) > 0 {
 		return name
 	}

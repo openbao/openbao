@@ -1675,7 +1675,7 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 	}
 
 	if ttlLimitedBound && notAfter.After(time.Now().Add(ttl)) {
-		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the TTL of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), ttl)}
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot satisfy request as that would result in notAfter of %s that is beyond the TTL of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), ttl)}
 	}
 
 	if notAfterAlt != "" {

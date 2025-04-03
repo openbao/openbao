@@ -1435,7 +1435,7 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	}
 
 	// Get certificate's Not Before
-	notBefore, warnings, err := getCertificateNotBefore(data)
+	notBefore, err := getCertificateNotBefore(data)
 	if err != nil {
 		return nil, warnings, err
 	}
@@ -1576,9 +1576,8 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 }
 
 // compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
-func getCertificateNotBefore(data *inputBundle) (time.Time, []string, error) {
+func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time
-	var warnings []string
 	var err error
 
 	notBeforeBound := data.role.NotBeforeBound
@@ -1591,7 +1590,7 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, []string, error) {
 			case certutil.PermitNotBeforeBound.String():
 				notBeforeAlt = notBeforeAltRaw.(string)
 			case certutil.ForbidNotBeforeBound.String():
-				return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
+				return time.Time{}, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
 			}
 		}
 	}
@@ -1599,11 +1598,11 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, []string, error) {
 	if notBeforeAlt != "" {
 		notBefore, err = time.Parse(time.RFC3339, notBeforeAlt)
 		if err != nil {
-			return notBefore, warnings, errutil.UserError{Err: err.Error()}
+			return notBefore, errutil.UserError{Err: err.Error()}
 		}
 	}
 
-	return notBefore, warnings, err
+	return notBefore, err
 }
 
 // getCertificateNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input

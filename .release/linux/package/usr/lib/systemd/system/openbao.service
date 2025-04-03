@@ -26,7 +26,6 @@ KillSignal=SIGINT
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
-LimitNOFILE=65536
 MemorySwapMax=0
 
 [Install]

@@ -5,11 +5,14 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
@@ -412,7 +415,7 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 		t.Fatal("expected a non-nil response")
 	}
 
-	entity, err := is.entityByAliasFactors(ghAccessor, "alias_name", false)
+	entity, err := is.entityByAliasFactors(ctx, ghAccessor, "alias_name", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,6 +424,9 @@ func TestIdentityStore_EntityByAliasFactors(t *testing.T) {
 	}
 	if entity.ID != entityID {
 		t.Fatalf("bad: entity ID; expected: %q actual: %q", entityID, entity.ID)
+	}
+	if entity.NamespaceID != namespace.RootNamespaceID {
+		t.Fatalf("bad: entity namespace ID; expected: %q actual: %q", namespace.RootNamespaceID, entity.NamespaceID)
 	}
 }
 
@@ -920,4 +926,1032 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	if storageEntry != nil {
 		t.Fatal("bad: expected no entry for casesensitivity key")
 	}
+}
+
+func TestIdentityStore_NamespaceIsolation(t *testing.T) {
+	// Register the userpass auth method
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
+	rootCtx := namespace.RootContext(context.Background())
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
+
+	// Create namespace contexts
+	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+
+	// Enable userpass auth in root namespace
+	rootMount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in root",
+	}
+	err = c.enableCredential(rootCtx, rootMount)
+	require.NoError(t, err)
+	rootAccessor := rootMount.Accessor
+
+	// Enable userpass auth in namespace 1
+	ns1Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns1",
+	}
+	err = c.enableCredential(ns1Ctx, ns1Mount)
+	require.NoError(t, err)
+	ns1Accessor := ns1Mount.Accessor
+
+	// Enable userpass auth in namespace 2
+	ns2Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns2",
+	}
+	err = c.enableCredential(ns2Ctx, ns2Mount)
+	require.NoError(t, err)
+	ns2Accessor := ns2Mount.Accessor
+
+	// Test entity creation in different namespaces
+	t.Run("entity_creation_in_namespaces", func(t *testing.T) {
+		// Test cases for different namespaces
+		testCases := []struct {
+			name        string
+			ctx         context.Context
+			expectedNS  string
+			accessor    string
+			description string
+		}{
+			{
+				name:        "root-namespace",
+				ctx:         rootCtx,
+				expectedNS:  namespace.RootNamespaceID,
+				accessor:    rootAccessor,
+				description: "Entity creation in root namespace",
+			},
+			{
+				name:        "namespace1",
+				ctx:         ns1Ctx,
+				expectedNS:  ns1.ID,
+				accessor:    ns1Accessor,
+				description: "Entity creation in namespace 1",
+			},
+			{
+				name:        "namespace2",
+				ctx:         ns2Ctx,
+				expectedNS:  ns2.ID,
+				accessor:    ns2Accessor,
+				description: "Entity creation in namespace 2",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				// Create a unique user for this test case
+				userName := fmt.Sprintf("user-%s", tc.name)
+
+				// Create an entity with alias
+				alias := &logical.Alias{
+					Name:          userName,
+					MountAccessor: tc.accessor,
+					MountType:     "userpass",
+				}
+
+				entity, _, err := is.CreateOrFetchEntity(tc.ctx, alias)
+				require.NoError(t, err, tc.description)
+				assert.Equal(t, tc.expectedNS, entity.NamespaceID, "Entity namespace ID should match context namespace")
+
+				// Verify the alias is also in the correct namespace
+				require.Len(t, entity.Aliases, 1, "Entity should have one alias")
+				assert.Equal(t, tc.expectedNS, entity.Aliases[0].NamespaceID, "Alias namespace ID should match context namespace")
+				assert.Equal(t, tc.accessor, entity.Aliases[0].MountAccessor, "Alias should have correct mount accessor")
+			})
+		}
+	})
+
+	// Test alias creation with the same username in different namespaces
+	t.Run("same_username_different_namespaces", func(t *testing.T) {
+		// Create entities with aliases having the same name across namespaces
+		commonUserName := "common-user"
+
+		// Create in root namespace
+		rootAlias := &logical.Alias{
+			Name:          commonUserName,
+			MountAccessor: rootAccessor,
+			MountType:     "userpass",
+		}
+		rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+		require.NoError(t, err)
+		require.Equal(t, namespace.RootNamespaceID, rootEntity.NamespaceID)
+
+		// Create in namespace 1
+		ns1Alias := &logical.Alias{
+			Name:          commonUserName,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+		require.Equal(t, ns1.ID, ns1Entity.NamespaceID)
+
+		// Create in namespace 2
+		ns2Alias := &logical.Alias{
+			Name:          commonUserName,
+			MountAccessor: ns2Accessor,
+			MountType:     "userpass",
+		}
+		ns2Entity, _, err := is.CreateOrFetchEntity(ns2Ctx, ns2Alias)
+		require.NoError(t, err)
+		require.Equal(t, ns2.ID, ns2Entity.NamespaceID)
+
+		// Verify all three entities are different despite having same alias name
+		require.NotEqual(t, rootEntity.ID, ns1Entity.ID, "Root and NS1 entities should be different")
+		require.NotEqual(t, rootEntity.ID, ns2Entity.ID, "Root and NS2 entities should be different")
+		require.NotEqual(t, ns1Entity.ID, ns2Entity.ID, "NS1 and NS2 entities should be different")
+
+		// Verify entity lookup by alias works correctly in each namespace
+		fetchedRoot, err := is.entityByAliasFactors(rootCtx, rootAccessor, commonUserName, false)
+		require.NoError(t, err)
+		require.NotNil(t, fetchedRoot)
+		require.Equal(t, rootEntity.ID, fetchedRoot.ID)
+
+		fetchedNS1, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, commonUserName, false)
+		require.NoError(t, err)
+		require.NotNil(t, fetchedNS1)
+		require.Equal(t, ns1Entity.ID, fetchedNS1.ID)
+
+		fetchedNS2, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, commonUserName, false)
+		require.NoError(t, err)
+		require.NotNil(t, fetchedNS2)
+		require.Equal(t, ns2Entity.ID, fetchedNS2.ID)
+	})
+
+	// Test cross-namespace lookups
+	t.Run("cross_namespace_lookups", func(t *testing.T) {
+		userName := "cross-lookup-user"
+
+		// Create entities in each namespace
+		rootAlias := &logical.Alias{
+			Name:          userName,
+			MountAccessor: rootAccessor,
+			MountType:     "userpass",
+		}
+		rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+		require.NoError(t, err)
+
+		ns1Alias := &logical.Alias{
+			Name:          userName,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+
+		// Verify entities have aliases
+		require.Len(t, rootEntity.Aliases, 1, "Root entity should have 1 alias")
+		require.Len(t, ns1Entity.Aliases, 1, "NS1 entity should have 1 alias")
+
+		// Cross-namespace lookups should return nil, not error
+		crossEntity, err := is.entityByAliasFactors(rootCtx, ns1Accessor, userName, false)
+		require.NoError(t, err)
+		require.Nil(t, crossEntity, "Should not find NS1 entity from root context")
+
+		crossEntity, err = is.entityByAliasFactors(ns1Ctx, rootAccessor, userName, false)
+		require.NoError(t, err)
+		require.Nil(t, crossEntity, "Should not find root entity from NS1 context")
+
+		// Test looking up by ID directly - this should be namespace-aware
+		fetchedRootEntity, err := is.MemDBEntityByID(rootEntity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, fetchedRootEntity, "Should be able to fetch root entity by ID")
+
+		fetchedNS1Entity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, fetchedNS1Entity, "Should be able to fetch NS1 entity by ID")
+	})
+
+	// Test updating alias metadata in namespace-specific ways
+	t.Run("update_alias_metadata_per_namespace", func(t *testing.T) {
+		// Create aliases with initial metadata
+		metadataUser := "metadata-user"
+
+		rootAlias := &logical.Alias{
+			Name:          metadataUser,
+			MountAccessor: rootAccessor,
+			MountType:     "userpass",
+			Metadata: map[string]string{
+				"initial": "root-value",
+			},
+		}
+
+		ns1Alias := &logical.Alias{
+			Name:          metadataUser,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+			Metadata: map[string]string{
+				"initial": "ns1-value",
+			},
+		}
+
+		rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+		require.NoError(t, err)
+
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+
+		// Update metadata in root namespace
+		rootAlias.Metadata = map[string]string{
+			"initial": "root-updated",
+			"added":   "root-new",
+		}
+
+		updatedRootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+		require.NoError(t, err)
+		require.Equal(t, rootEntity.ID, updatedRootEntity.ID)
+		require.Equal(t, "root-updated", updatedRootEntity.Aliases[0].Metadata["initial"])
+		require.Equal(t, "root-new", updatedRootEntity.Aliases[0].Metadata["added"])
+
+		// Update metadata in ns1 namespace
+		ns1Alias.Metadata = map[string]string{
+			"initial": "ns1-updated",
+			"added":   "ns1-new",
+		}
+
+		updatedNs1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+		require.Equal(t, ns1Entity.ID, updatedNs1Entity.ID)
+		require.Equal(t, "ns1-updated", updatedNs1Entity.Aliases[0].Metadata["initial"])
+		require.Equal(t, "ns1-new", updatedNs1Entity.Aliases[0].Metadata["added"])
+
+		// Verify updates didn't cross namespaces
+		fetchedRootEntity, err := is.entityByAliasFactors(rootCtx, rootAccessor, metadataUser, false)
+		require.NoError(t, err)
+		require.Equal(t, "root-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
+		require.Equal(t, "root-new", fetchedRootEntity.Aliases[0].Metadata["added"])
+		require.NotEqual(t, "ns1-updated", fetchedRootEntity.Aliases[0].Metadata["initial"])
+
+		fetchedNs1Entity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, metadataUser, false)
+		require.NoError(t, err)
+		require.Equal(t, "ns1-updated", fetchedNs1Entity.Aliases[0].Metadata["initial"])
+		require.Equal(t, "ns1-new", fetchedNs1Entity.Aliases[0].Metadata["added"])
+		require.NotEqual(t, "root-updated", fetchedNs1Entity.Aliases[0].Metadata["initial"])
+	})
+
+	// Test namespace hierarchy isolation
+	t.Run("namespace_hierarchy_isolation", func(t *testing.T) {
+		// Create a child namespace under ns1
+		childNs := &namespace.Namespace{ID: "childns", Path: "testns1/childns/"}
+		childNsEntry := &NamespaceEntry{Namespace: childNs}
+		require.NoError(t, c.namespaceStore.SetNamespace(rootCtx, childNsEntry))
+
+		childCtx := namespace.ContextWithNamespace(context.Background(), childNs)
+
+		// Enable userpass auth in child namespace
+		childMount := &MountEntry{
+			Table:       credentialTableType,
+			Path:        "userpass/",
+			Type:        "userpass",
+			Description: "userpass auth in child",
+		}
+		err = c.enableCredential(childCtx, childMount)
+		require.NoError(t, err)
+		childAccessor := childMount.Accessor
+
+		// Create entities in parent and child
+		hierarchyUser := "hierarchy-user"
+
+		parentAlias := &logical.Alias{
+			Name:          hierarchyUser,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+
+		childAlias := &logical.Alias{
+			Name:          hierarchyUser,
+			MountAccessor: childAccessor,
+			MountType:     "userpass",
+		}
+
+		parentEntity, _, err := is.CreateOrFetchEntity(ns1Ctx, parentAlias)
+		require.NoError(t, err)
+
+		childEntity, _, err := is.CreateOrFetchEntity(childCtx, childAlias)
+		require.NoError(t, err)
+
+		// Entities should be in different namespaces
+		require.Equal(t, ns1.ID, parentEntity.NamespaceID)
+		require.Equal(t, childNs.ID, childEntity.NamespaceID)
+		require.NotEqual(t, parentEntity.ID, childEntity.ID)
+
+		// Child namespace should not see parent's entity
+		fetchedInChild, err := is.entityByAliasFactors(childCtx, ns1Accessor, hierarchyUser, false)
+		require.NoError(t, err)
+		require.Nil(t, fetchedInChild, "Child namespace should not see parent's entity")
+
+		// Parent namespace should not see child's entity
+		fetchedInParent, err := is.entityByAliasFactors(ns1Ctx, childAccessor, hierarchyUser, false)
+		require.NoError(t, err)
+		require.Nil(t, fetchedInParent, "Parent namespace should not see child's entity")
+	})
+}
+
+func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
+	// Register auth backend
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
+	rootCtx := namespace.RootContext(context.Background())
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
+
+	// Define namespace contexts
+	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+
+	// Enable auth methods in different namespaces
+	rootMount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in root",
+	}
+	err = c.enableCredential(rootCtx, rootMount)
+	require.NoError(t, err)
+	rootAccessor := rootMount.Accessor
+
+	ns1Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns1",
+	}
+	err = c.enableCredential(ns1Ctx, ns1Mount)
+	require.NoError(t, err)
+	ns1Accessor := ns1Mount.Accessor
+
+	ns2Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns2",
+	}
+	err = c.enableCredential(ns2Ctx, ns2Mount)
+	require.NoError(t, err)
+	ns2Accessor := ns2Mount.Accessor
+
+	t.Run("invalid_context", func(t *testing.T) {
+		// Create a context with a nil namespace value (this is not the same as root namespace)
+		invalidCtx := context.WithValue(context.Background(), "nil", nil)
+
+		// Test entity creation with invalid context
+		_, err := is.CreateEntity(invalidCtx)
+		require.Error(t, err, "Expected error with invalid namespace context")
+
+		// Test entity lookup with invalid context
+		_, err = is.MemDBEntityByName(invalidCtx, "test-entity", false)
+		require.Error(t, err, "Expected error with invalid namespace context")
+	})
+
+	t.Run("namespace_mismatch_with_real_mounts", func(t *testing.T) {
+		// Create entity in ns1
+		mismatchUser := "mismatch-user"
+		ns1Alias := &logical.Alias{
+			Name:          mismatchUser,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+		require.Equal(t, ns1.ID, ns1Entity.NamespaceID)
+
+		// Now try to add an alias from ns2 to this entity
+		// Direct attempt to create an entity alias in the wrong namespace
+		aliasReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "entity-alias",
+			Data: map[string]interface{}{
+				"name":           "mismatch-user-2",
+				"canonical_id":   ns1Entity.ID, // Entity from ns1
+				"mount_accessor": ns2Accessor,  // Accessor from ns2
+			},
+		}
+
+		resp, err := is.HandleRequest(ns1Ctx, aliasReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatal("Expected error when creating alias with mismatched namespace accessor")
+		}
+
+		// Verify entity doesn't have the alias from the wrong namespace
+		updatedEntity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.Len(t, updatedEntity.Aliases, 1, "Entity should still have only one alias")
+		require.Equal(t, ns1Accessor, updatedEntity.Aliases[0].MountAccessor, "Entity should only have alias from its own namespace")
+	})
+
+	t.Run("orphaned_alias_handling", func(t *testing.T) {
+		// Create an entity with alias in ns1
+		aliasName := "orphaned-alias-user"
+		ns1Alias := &logical.Alias{
+			Name:          aliasName,
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+
+		// Create a similar entity in ns2
+		ns2Alias := &logical.Alias{
+			Name:          aliasName, // Same alias name
+			MountAccessor: ns2Accessor,
+			MountType:     "userpass",
+		}
+
+		ns2Entity, _, err := is.CreateOrFetchEntity(ns2Ctx, ns2Alias)
+		require.NoError(t, err)
+
+		// Verify both exist and are separate
+		require.NotEqual(t, ns1Entity.ID, ns2Entity.ID, "Entities should be different across namespaces")
+
+		// Delete the entity but not alias in ns1
+		_, err = is.HandleRequest(ns1Ctx, &logical.Request{
+			Operation: logical.DeleteOperation,
+			Path:      "entity/id/" + ns1Entity.ID,
+		})
+		require.NoError(t, err)
+
+		// Verify entity is gone
+		deletedEntity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.Nil(t, deletedEntity, "Entity should be deleted")
+
+		// Try to fetch by the alias - should return nil not error
+		orphanedEntity, err := is.entityByAliasFactors(ns1Ctx, ns1Accessor, aliasName, false)
+		require.NoError(t, err, "Should not error when alias points to deleted entity")
+		require.Nil(t, orphanedEntity, "Should not return entity for orphaned alias")
+
+		// Verify the ns2 entity is still intact
+		ns2Lookup, err := is.entityByAliasFactors(ns2Ctx, ns2Accessor, aliasName, false)
+		require.NoError(t, err)
+		require.NotNil(t, ns2Lookup, "NS2 entity should still exist")
+		require.Equal(t, ns2Entity.ID, ns2Lookup.ID)
+	})
+
+	t.Run("cross_namespace_merge_attempt", func(t *testing.T) {
+		// Create an entity in the root namespace
+		rootAlias := &logical.Alias{
+			Name:          "merge-test-user",
+			MountAccessor: rootAccessor,
+			MountType:     "userpass",
+		}
+
+		rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+		require.NoError(t, err)
+
+		// Now try to merge with an entity from ns1
+		ns1Alias := &logical.Alias{
+			Name:          "merge-victim-user",
+			MountAccessor: ns1Accessor,
+			MountType:     "userpass",
+		}
+
+		ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+		require.NoError(t, err)
+
+		// Attempt to merge entities across namespaces
+		mergeReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "entity/merge",
+			Data: map[string]interface{}{
+				"from_entity_ids": []string{ns1Entity.ID},
+				"to_entity_id":    rootEntity.ID,
+			},
+		}
+
+		resp, err := is.HandleRequest(rootCtx, mergeReq)
+		if err == nil && (resp == nil || !resp.IsError()) {
+			t.Fatal("Expected error when merging entities across namespaces")
+		}
+
+		// Verify both entities still exist separately
+		rootCheck, err := is.MemDBEntityByID(rootEntity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, rootCheck, "Root entity should still exist")
+
+		ns1Check, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, ns1Check, "NS1 entity should still exist")
+	})
+
+	t.Run("entity_without_namespace", func(t *testing.T) {
+		// Create an entity with no namespace ID to test sanitization
+		entity := &identity.Entity{
+			ID:       "test-no-namespace",
+			Name:     "test-no-namespace",
+			Policies: []string{"default"},
+		}
+
+		// Use root context but the entity lacks a namespace ID
+		err := is.sanitizeEntity(rootCtx, entity)
+		require.NoError(t, err)
+		require.Equal(t, namespace.RootNamespaceID, entity.NamespaceID, "Entity should get root namespace ID")
+	})
+
+	t.Run("alias_without_namespace", func(t *testing.T) {
+		// Create an alias with no namespace ID
+		alias := &identity.Alias{
+			ID:            "test-alias-no-namespace",
+			CanonicalID:   "test-entity-id",
+			MountType:     "userpass",
+			MountAccessor: rootAccessor, // Use a valid accessor that exists in the root namespace
+			Name:          "test-name",
+		}
+
+		// Sanitize should add the namespace from context
+		err := is.sanitizeAlias(ns1Ctx, alias)
+		require.NoError(t, err)
+		require.Equal(t, ns1.ID, alias.NamespaceID, "Alias should get namespace ID from context")
+	})
+
+	t.Run("namespace_mismatch", func(t *testing.T) {
+		// Create an entity in ns1
+		entity := &identity.Entity{
+			ID:          "mismatch-entity",
+			Name:        "mismatch-entity",
+			NamespaceID: ns1.ID,
+		}
+
+		// Try to use this entity in ns2 context
+		err := is.sanitizeEntity(ns2Ctx, entity)
+		require.Error(t, err, "Should error when entity namespace doesn't match context namespace")
+		require.Contains(t, err.Error(), "not belong to this namespace", "Error should mention namespace mismatch")
+	})
+
+	t.Run("concurrent_entity_creation", func(t *testing.T) {
+		var wg sync.WaitGroup
+		errorChan := make(chan error, 20)
+		entityIDs := make(chan string, 20)
+
+		// Create 10 entities concurrently in each namespace
+		for i := 0; i < 10; i++ {
+			// Root namespace
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				alias := &logical.Alias{
+					Name:          fmt.Sprintf("concurrent-user-root-%d", index),
+					MountAccessor: rootAccessor,
+					MountType:     "userpass",
+				}
+
+				entity, _, err := is.CreateOrFetchEntity(rootCtx, alias)
+				if err != nil {
+					errorChan <- fmt.Errorf("root namespace error: %v", err)
+					return
+				}
+				entityIDs <- entity.ID
+			}(i)
+
+			// NS1 namespace
+			wg.Add(1)
+			go func(index int) {
+				defer wg.Done()
+				alias := &logical.Alias{
+					Name:          fmt.Sprintf("concurrent-user-ns1-%d", index),
+					MountAccessor: ns1Accessor,
+					MountType:     "userpass",
+				}
+
+				entity, _, err := is.CreateOrFetchEntity(ns1Ctx, alias)
+				if err != nil {
+					errorChan <- fmt.Errorf("ns1 namespace error: %v", err)
+					return
+				}
+				entityIDs <- entity.ID
+			}(i)
+		}
+
+		wg.Wait()
+		close(errorChan)
+		close(entityIDs)
+
+		// Check for errors
+		errors := make([]error, 0)
+		for err := range errorChan {
+			errors = append(errors, err)
+		}
+		require.Empty(t, errors, "No errors should occur during concurrent entity creation")
+
+		// Count entities
+		ids := make([]string, 0)
+		for id := range entityIDs {
+			ids = append(ids, id)
+		}
+		require.Len(t, ids, 20, "Expected 20 entities to be created")
+
+		// Verify uniqueness - all IDs should be unique
+		uniqueIDs := make(map[string]bool)
+		for _, id := range ids {
+			uniqueIDs[id] = true
+		}
+		require.Len(t, uniqueIDs, 20, "All entity IDs should be unique")
+	})
+}
+
+// Helper function to setup namespaces for testing
+func setupNamespaces(t *testing.T, c *Core, ctx context.Context) (*namespace.Namespace, *namespace.Namespace) {
+	ns1 := &namespace.Namespace{ID: "testns1", Path: "testns1/"}
+	ns2 := &namespace.Namespace{ID: "testns2", Path: "testns2/"}
+
+	ns1Entry := &NamespaceEntry{Namespace: ns1}
+	ns2Entry := &NamespaceEntry{Namespace: ns2}
+
+	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns1Entry))
+	require.NoError(t, c.namespaceStore.SetNamespace(ctx, ns2Entry))
+
+	return ns1, ns2
+}
+
+// Test cross-namespace isolation with comprehensive matrix of lookup attempts
+func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
+	// Register auth backend
+	err := AddTestCredentialBackend("userpass", credUserpass.Factory)
+	require.NoError(t, err)
+	defer ClearTestCredentialBackends()
+
+	// Setup core and namespaces
+	c, _, _ := TestCoreUnsealed(t)
+	is := c.identityStore
+	rootCtx := namespace.RootContext(context.Background())
+	ns1, ns2 := setupNamespaces(t, c, rootCtx)
+
+	// Create namespace contexts
+	ns1Ctx := namespace.ContextWithNamespace(context.Background(), ns1)
+	ns2Ctx := namespace.ContextWithNamespace(context.Background(), ns2)
+
+	// Enable auth methods in all namespaces
+	rootMount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in root",
+	}
+	err = c.enableCredential(rootCtx, rootMount)
+	require.NoError(t, err)
+	rootAccessor := rootMount.Accessor
+
+	ns1Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns1",
+	}
+	err = c.enableCredential(ns1Ctx, ns1Mount)
+	require.NoError(t, err)
+	ns1Accessor := ns1Mount.Accessor
+
+	ns2Mount := &MountEntry{
+		Table:       credentialTableType,
+		Path:        "userpass/",
+		Type:        "userpass",
+		Description: "userpass auth in ns2",
+	}
+	err = c.enableCredential(ns2Ctx, ns2Mount)
+	require.NoError(t, err)
+	ns2Accessor := ns2Mount.Accessor
+
+	// Create identical aliases in all three namespaces
+	commonUser := "isolation-user"
+
+	rootAlias := &logical.Alias{
+		Name:          commonUser,
+		MountAccessor: rootAccessor,
+		MountType:     "userpass",
+	}
+
+	ns1Alias := &logical.Alias{
+		Name:          commonUser,
+		MountAccessor: ns1Accessor,
+		MountType:     "userpass",
+	}
+
+	ns2Alias := &logical.Alias{
+		Name:          commonUser,
+		MountAccessor: ns2Accessor,
+		MountType:     "userpass",
+	}
+
+	rootEntity, _, err := is.CreateOrFetchEntity(rootCtx, rootAlias)
+	require.NoError(t, err)
+
+	ns1Entity, _, err := is.CreateOrFetchEntity(ns1Ctx, ns1Alias)
+	require.NoError(t, err)
+
+	ns2Entity, _, err := is.CreateOrFetchEntity(ns2Ctx, ns2Alias)
+	require.NoError(t, err)
+
+	// Verify all three entities are different
+	require.NotEqual(t, rootEntity.ID, ns1Entity.ID)
+	require.NotEqual(t, rootEntity.ID, ns2Entity.ID)
+	require.NotEqual(t, ns1Entity.ID, ns2Entity.ID)
+
+	// Comprehensive matrix of cross-namespace lookups
+	crossLookups := []struct {
+		name       string
+		ctx        context.Context
+		accessor   string
+		expectNil  bool
+		expectedID string
+	}{
+		{"root→ns1", rootCtx, ns1Accessor, true, ""},
+		{"root→ns2", rootCtx, ns2Accessor, true, ""},
+		{"ns1→root", ns1Ctx, rootAccessor, true, ""},
+		{"ns1→ns2", ns1Ctx, ns2Accessor, true, ""},
+		{"ns2→root", ns2Ctx, rootAccessor, true, ""},
+		{"ns2→ns1", ns2Ctx, ns1Accessor, true, ""},
+		{"root→root", rootCtx, rootAccessor, false, rootEntity.ID},
+		{"ns1→ns1", ns1Ctx, ns1Accessor, false, ns1Entity.ID},
+		{"ns2→ns2", ns2Ctx, ns2Accessor, false, ns2Entity.ID},
+	}
+
+	for _, test := range crossLookups {
+		t.Run(test.name, func(t *testing.T) {
+			entity, err := is.entityByAliasFactors(test.ctx, test.accessor, commonUser, false)
+			require.NoError(t, err)
+
+			if test.expectNil {
+				require.Nil(t, entity, "Should not find entity across namespace boundaries")
+			} else {
+				require.NotNil(t, entity, "Should find entity in same namespace")
+				require.Equal(t, test.expectedID, entity.ID)
+			}
+		})
+	}
+
+	// Test direct entity lookup by ID (should succeed regardless of namespace)
+	t.Run("direct_entity_lookup", func(t *testing.T) {
+		// Root entity should be retrievable from any context by ID
+		entity, err := is.MemDBEntityByID(rootEntity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, entity)
+		require.Equal(t, rootEntity.ID, entity.ID)
+
+		// NS1 entity should be retrievable from any context by ID
+		entity, err = is.MemDBEntityByID(ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.NotNil(t, entity)
+		require.Equal(t, ns1Entity.ID, entity.ID)
+	})
+
+	// Test lookup by name (should respect namespace boundaries)
+	t.Run("entity_lookup_by_name", func(t *testing.T) {
+		// Create entities with the same name in different namespaces
+		nameForTest := "same-name-entity"
+
+		// Create in root
+		rootEntity, err := is.CreateEntity(rootCtx)
+		require.NoError(t, err)
+		upsertedEntity := rootEntity
+		upsertedEntity.Name = nameForTest
+		err = is.upsertEntity(rootCtx, upsertedEntity, rootEntity, true)
+		require.NoError(t, err)
+
+		// Create in ns1
+		ns1Entity, err := is.CreateEntity(ns1Ctx)
+		require.NoError(t, err)
+		upsertedEntity = ns1Entity
+		upsertedEntity.Name = nameForTest
+		err = is.upsertEntity(ns1Ctx, upsertedEntity, ns1Entity, true)
+		require.NoError(t, err)
+
+		// Lookup by name should respect namespace boundaries
+		foundRoot, err := is.MemDBEntityByName(rootCtx, nameForTest, false)
+		require.NoError(t, err)
+		require.NotNil(t, foundRoot)
+		require.Equal(t, rootEntity.ID, foundRoot.ID)
+
+		foundNS1, err := is.MemDBEntityByName(ns1Ctx, nameForTest, false)
+		require.NoError(t, err)
+		require.NotNil(t, foundNS1)
+		require.Equal(t, ns1Entity.ID, foundNS1.ID)
+
+		// Cross-namespace lookups should return nil
+		crossEntity, err := is.MemDBEntityByName(rootCtx, ns1Entity.Name, false)
+		require.NoError(t, err)
+		if crossEntity != nil && crossEntity.ID == ns1Entity.ID {
+			t.Fatal("Should not find NS1 entity from root context by name")
+		}
+
+		crossEntity, err = is.MemDBEntityByName(ns1Ctx, rootEntity.Name, false)
+		require.NoError(t, err)
+		if crossEntity != nil && crossEntity.ID == rootEntity.ID {
+			t.Fatal("Should not find root entity from NS1 context by name")
+		}
+	})
+
+	// === GROUP ALIASES ===
+	// ------------------------------------
+	// Test group aliases across namespaces
+	t.Run("group_alias_namespace_isolation", func(t *testing.T) {
+		commonAliasName := "common-group-alias"
+
+		// --- Setup test data ---
+		// -------------------------------------
+		// Create groups in each namespace first
+		groups := make(map[string]struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		})
+
+		// Root namespace group
+		rootGroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-root",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err := is.HandleRequest(rootCtx, rootGroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create root group: %v", resp.Error())
+
+		groups["root"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      rootCtx,
+			id:       resp.Data["id"].(string),
+			ns:       namespace.RootNamespace,
+			accessor: rootAccessor,
+		}
+
+		// NS1 namespace group
+		ns1GroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-ns1",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err = is.HandleRequest(ns1Ctx, ns1GroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create ns1 group: %v", resp.Error())
+
+		groups["ns1"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      ns1Ctx,
+			id:       resp.Data["id"].(string),
+			ns:       ns1,
+			accessor: ns1Accessor,
+		}
+
+		// NS2 namespace group
+		ns2GroupReq := &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "group",
+			Data: map[string]interface{}{
+				"name":     "test-group-ns2",
+				"type":     "external",
+				"policies": []string{"default"},
+			},
+		}
+		resp, err = is.HandleRequest(ns2Ctx, ns2GroupReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.False(t, resp.IsError(), "Failed to create ns2 group: %v", resp.Error())
+
+		groups["ns2"] = struct {
+			ctx      context.Context
+			id       string
+			ns       *namespace.Namespace
+			accessor string
+		}{
+			ctx:      ns2Ctx,
+			id:       resp.Data["id"].(string),
+			ns:       ns2,
+			accessor: ns2Accessor,
+		}
+
+		//  === Create aliases with the same name in each namespace ===
+		// -------------------------------------------------------------
+		for name, group := range groups {
+			aliasReq := &logical.Request{
+				Operation: logical.UpdateOperation,
+				Path:      "group-alias",
+				Data: map[string]interface{}{
+					"name":           commonAliasName,
+					"canonical_id":   group.id,
+					"mount_accessor": group.accessor,
+				},
+			}
+			resp, err = is.HandleRequest(group.ctx, aliasReq)
+			require.NoError(t, err)
+			require.NotNil(t, resp)
+			require.False(t, resp.IsError(), "Failed to create %s group alias: %v", name, resp.Error())
+		}
+
+		// === Verify groups have their aliases and correct namespace IDs ===
+		// -------------------------------------------------------------------
+		for name, group := range groups {
+			updatedGroup, err := is.MemDBGroupByID(group.id, true)
+			require.NoError(t, err)
+			require.NotNil(t, updatedGroup)
+			require.NotNil(t, updatedGroup.Alias, "%s group alias should not be nil", name)
+			require.Equal(t, commonAliasName, updatedGroup.Alias.Name)
+			require.Equal(t, group.ns.ID, updatedGroup.Alias.NamespaceID,
+				"%s alias should have %s namespace ID", name, name)
+		}
+
+		// ===  Test namespace-aware lookups ===
+		// --------------------------------------------------------------
+		// Table 1: Valid lookups within the correct namespace
+		validLookups := []struct {
+			name       string
+			ctx        context.Context
+			accessor   string
+			expectedNS string
+		}{
+			{"root lookup", rootCtx, rootAccessor, namespace.RootNamespaceID},
+			{"ns1 lookup", ns1Ctx, ns1Accessor, ns1.ID},
+			{"ns2 lookup", ns2Ctx, ns2Accessor, ns2.ID},
+		}
+
+		for _, test := range validLookups {
+			t.Run(test.name, func(t *testing.T) {
+				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
+					test.ctx,
+					is.db.Txn(false),
+					test.accessor,
+					commonAliasName,
+					false,
+					true,
+				)
+				require.NoError(t, err)
+				require.NotNil(t, aliasLookup, "%s should find the alias", test.name)
+				require.Equal(t, test.expectedNS, aliasLookup.NamespaceID,
+					"%s should have correct namespace ID", test.name)
+
+				// Verify group lookup by alias ID works
+				groupByAlias, err := is.MemDBGroupByAliasID(aliasLookup.ID, true)
+				require.NoError(t, err)
+				require.NotNil(t, groupByAlias)
+				require.Equal(t, test.expectedNS, groupByAlias.NamespaceID,
+					"Group from %s should have correct namespace ID", test.name)
+			})
+		}
+
+		// Table 2: Cross-namespace lookups that should all return nil
+		crossLookups := []struct {
+			name      string
+			ctx       context.Context
+			accessor  string
+			expectNil bool
+		}{
+			{"root→ns1", rootCtx, ns1Accessor, true},
+			{"root→ns2", rootCtx, ns2Accessor, true},
+			{"ns1→root", ns1Ctx, rootAccessor, true},
+			{"ns1→ns2", ns1Ctx, ns2Accessor, true},
+			{"ns2→root", ns2Ctx, rootAccessor, true},
+			{"ns2→ns1", ns2Ctx, ns1Accessor, true},
+		}
+
+		for _, test := range crossLookups {
+			t.Run(test.name, func(t *testing.T) {
+				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
+					test.ctx,
+					is.db.Txn(false),
+					test.accessor,
+					commonAliasName,
+					false,
+					true,
+				)
+				require.NoError(t, err)
+				require.Nil(t, aliasLookup,
+					"%s should not find alias across namespace boundaries", test.name)
+			})
+		}
+	})
 }

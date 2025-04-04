@@ -228,6 +228,8 @@ func TestPKI_DeviceCert(t *testing.T) {
 		"allow_subdomains":   true,
 		"not_after":          "9999-12-31T23:59:59Z",
 		"not_before":         "1900-01-01T00:00:00Z",
+		"not_after_bound":    "9999-12-31T23:59:59Z",
+		"not_before_bound":   "permit",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -904,6 +906,8 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		KeyType:                   "rsa",
 		KeyBits:                   2048,
 		RequireCN:                 true,
+		NotBeforeBound:            "permit",
+		NotAfterBound:             "ttl-limited",
 		AllowWildcardCertificates: new(bool),
 	}
 	*roleVals.AllowWildcardCertificates = true
@@ -3874,7 +3878,9 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"allowed_domains_template":           false,
 		"allow_token_displayname":            false,
 		"country":                            []interface{}{},
+		"not_before_bound":                   "permit",
 		"not_before":                         "",
+		"not_after_bound":                    "ttl-limited",
 		"not_after":                          "",
 		"postal_code":                        []interface{}{},
 		"use_csr_common_name":                true,
@@ -7766,6 +7772,109 @@ func TestPaginatedListing(t *testing.T) {
 	resp, err = CBPaginatedList(b, s, "issuers", all_ids[2], 2)
 	require.NoError(t, err)
 	require.Equal(t, resp.Data["keys"], all_ids[3:5])
+}
+
+func TestForbidNotBeforeBound(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "example.com",
+		"not_after":   "9999-12-31T23:59:59Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create role with not_before_bound=forbid
+	_, err = CBWrite(b, s, "roles/example", map[string]interface{}{
+		"allow_subdomains": true,
+		"allowed_domains":  "example.com",
+		"not_before_bound": "forbid",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Issuing a certificate by providing not_before should result in an error
+	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
+		"common_name": "test.example.com",
+		"not_before":  "9998-12-31T23:59:59Z",
+	})
+	require.Error(t, err)
+	require.True(t, resp.IsError())
+	require.Equal(t, "not_before_bound is set to forbid. not_before cannot be provided.", err.Error())
+}
+
+func TestForbidNotAfterBound(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "example.com",
+		"not_after":   "9999-12-31T23:59:59Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create role with not_after_bound=forbid
+	_, err = CBWrite(b, s, "roles/example", map[string]interface{}{
+		"allow_subdomains": true,
+		"allowed_domains":  "example.com",
+		"not_after_bound":  "forbid",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Issuing a certificate by providing not_after should result in an error
+	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
+		"common_name": "test.example.com",
+		"not_after":   "9998-12-31T23:59:59Z",
+	})
+	require.Error(t, err)
+	require.True(t, resp.IsError())
+	require.Equal(t, "not_after_bound is set to forbid. not_after cannot be provided.", err.Error())
+}
+
+func TestTimestampNotAfterBound(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "example.com",
+		"not_after":   "9999-12-31T23:59:59Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	maxTimestamp := time.Now().Add(time.Hour * 2).UTC().Format(time.RFC3339Nano)
+
+	// Create role with not_after_bound=time.now + 2h
+	_, err = CBWrite(b, s, "roles/example", map[string]interface{}{
+		"allow_subdomains": true,
+		"allowed_domains":  "example.com",
+		"not_after_bound":  maxTimestamp,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	not_after := time.Now().Add(time.Hour * 3).UTC().Format(time.RFC3339Nano)
+
+	// Issuing a certificate with not_after=time.now + 3h should result in an error
+	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
+		"common_name": "test.example.com",
+		"not_after":   not_after,
+	})
+	require.Error(t, err)
+	require.True(t, resp.IsError())
+	require.Equal(t, fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", maxTimestamp, not_after, maxTimestamp), err.Error())
 }
 
 var (

@@ -81,6 +81,10 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					"name":       "cn_value",
 					"expression": "request.common_name",
 				},
+				{
+					"name":       "not_after",
+					"expression": "now + duration(request.ttl)",
+				},
 			},
 			"expressions": map[string]any{
 				"requestId": "123",
@@ -89,7 +93,7 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					"CommonName":        "cn_value",
 					"Country":           "['Zimbabwe', 'America']",
 					"NotBefore":         "now",
-					"NotAfter":          "now + duration('1h')",
+					"NotAfter":          "not_after",
 					"IPAddresses":       "['10.0.0.0']",
 					"NotBeforeDuration": "76",
 					"PolicyIdentifiers": `["1.3.6.1.4.1.1.1"]`,
@@ -699,7 +703,6 @@ func TestCelCustomFunction(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
 	}
-	t.Logf("\n\n resp:%v", resp)
 
 	// Issue a certificate using the CEL role
 	issueData := map[string]interface{}{
@@ -718,7 +721,6 @@ func TestCelCustomFunction(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
 	}
-	t.Logf("\n\n resp:%v", resp)
 
 	// Validate the response
 	certPEM, ok := resp.Data["certificate"].(string)
@@ -740,4 +742,128 @@ func TestCelCustomFunction(t *testing.T) {
 	require.Equal(t, "example.com", cert.Subject.CommonName, "Common Name should be example.com")
 }
 
-// TO DO: Test Error messages are returned appropriately
+// Test parameter that uses time duration
+func TestNotAfter(t *testing.T) {
+	t.Parallel()
+
+	b, storage := CreateBackendWithStorage(t)
+
+	// Create a root CA
+	caData := map[string]interface{}{
+		"common_name": "root.com",
+		"ttl":         "30h",
+		"ip_sans":     "127.0.0.1",
+		"locality":    "MiltonPark",
+	}
+	caReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "root/generate/internal",
+		Storage:   storage,
+		Data:      caData,
+	}
+	caResp, err := b.HandleRequest(context.Background(), caReq)
+	if err != nil || (caResp != nil && caResp.IsError()) {
+		t.Fatalf("Failed to initialize CA: err: %v, resp: %#v", err, caResp)
+	}
+
+	// Validate the response
+	CAcertPEM, ok := caResp.Data["certificate"].(string)
+	if !ok || CAcertPEM == "" {
+		t.Fatalf("Certificate not found in response: %v", caResp.Data)
+	}
+
+	CAblock, _ := pem.Decode([]byte(CAcertPEM))
+	if CAblock == nil || CAblock.Type != "CERTIFICATE" {
+		t.Fatalf("Failed to decode certificate PEM: %v", CAcertPEM)
+	}
+
+	CAcert, err := x509.ParseCertificate(CAblock.Bytes)
+	if err != nil && CAcert != nil {
+		t.Fatalf("Failed to parse certificate: %v", err)
+	}
+
+	// Modify our issuer to set custom AIAs
+	resp0, err := CBPatch(b, storage, "issuer/default", map[string]interface{}{
+		"ocsp_servers": "http://localhost/c",
+	})
+	requireSuccessNonNilResponse(t, resp0, err, "failed setting up issuer")
+
+	// Create a CEL role
+	roleData := map[string]interface{}{
+		"validation_program": map[string]interface{}{
+			"variables": []map[string]interface{}{
+				{
+					"name":       "after",
+					"expression": "timestamp(request.not_after)",
+				},
+				// Check notAfter is within the next 3 hours from now
+				{
+					"name":       "validate_after",
+					"expression": "after < now + duration('3h')",
+				},
+			},
+			"expressions": map[string]any{
+				"requestId": "123",
+				"success":   "validate_after",
+				"certificate": map[string]any{
+					"NotAfter": "after",
+				},
+			},
+		},
+	}
+
+	roleReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/roles/testrole",
+		Storage:   storage,
+		Data:      roleData,
+	}
+
+	resp, err := b.HandleRequest(context.Background(), roleReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to create CEL role: err: %v, resp: %v", err, resp)
+	}
+
+	notAfter := time.Now().Add(time.Duration(time.Hour)).UTC().Format(time.RFC3339)
+
+	// Issue a certificate using the CEL role
+	issueData := map[string]interface{}{
+		"common_name": "example.com",
+		"not_after":   notAfter,
+	}
+
+	issueReq := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      "cel/issue/testrole",
+		Storage:   storage,
+		Data:      issueData,
+	}
+
+	resp, err = b.HandleRequest(context.Background(), issueReq)
+	if err != nil || (resp != nil && resp.IsError()) {
+		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
+	}
+
+	// Validate the response
+	certPEM, ok := resp.Data["certificate"].(string)
+	if !ok || certPEM == "" {
+		t.Fatalf("Certificate not found in response: %v", resp.Data)
+	}
+
+	block, _ := pem.Decode([]byte(certPEM))
+	if block == nil || block.Type != "CERTIFICATE" {
+		t.Fatalf("Failed to decode certificate PEM: %v", certPEM)
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		t.Fatalf("Failed to parse certificate: %v", err)
+	}
+
+	// Validate the TTL
+	expectedTTL := 1 * time.Hour
+	actualTTL := cert.NotAfter.Sub(cert.NotBefore)
+	if diff := actualTTL - expectedTTL; diff < -1*time.Minute || diff > 1*time.Minute {
+		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
+	}
+}

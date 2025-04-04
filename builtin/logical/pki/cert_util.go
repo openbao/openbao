@@ -1880,8 +1880,9 @@ func generateCELCreationBundle(b *backend, env *celgo.Env, template CertificateT
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating NotBefore: %w", err)
 	}
+	// Default notBefore to current time if not provided
 	if str, ok := notBefore.(string); ok && str == "" {
-		notBefore = time.Time{}
+		notBefore = time.Now()
 	}
 
 	notAfter, err := evaluateField(template.NotAfter)

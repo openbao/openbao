@@ -803,6 +803,7 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	envOptions := []celgo.EnvOption{
 		celgo.Declarations(
 			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
+			decls.NewVar("now", decls.Timestamp),
 		),
 	}
 
@@ -872,21 +873,26 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// If CEL validation against the request is not successful, evaluate and return Error message
 	if !success {
-		errorExpression, err := compileExpression(env, celRole.ValidationProgram.Expressions.Error)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compile CEL Error expression: %w", err)
-		}
-		evalResult, _, err := errorExpression.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to evaluate CEL Error expression: %w", err)
-		}
+		error := celRole.ValidationProgram.Expressions.Error
+		if error != "" {
+			errorExpression, err := compileExpression(env, error)
+			if err != nil {
+				return nil, fmt.Errorf("failed to compile CEL Error expression: %w", err)
+			}
+			evalResult, _, err := errorExpression.Eval(evaluationData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to evaluate CEL Error expression: %w", err)
+			}
 
-		// Ensure result is a string
-		if evalResult.Type() != celgo.StringType {
-			return nil, fmt.Errorf("CEL Error expression did not evaluate to a String")
-		}
+			// Ensure result is a string
+			if evalResult.Type() != celgo.StringType {
+				return nil, fmt.Errorf("CEL Error expression did not evaluate to a String")
+			}
 
-		return nil, fmt.Errorf("%s", evalResult.Value().(string))
+			return nil, fmt.Errorf("%s", evalResult.Value().(string))
+		} else {
+			return nil, fmt.Errorf("CEL program evaluated 'success' expression to false")
+		}
 	}
 
 	// Evaluate generate_lease
@@ -905,6 +911,14 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 	signingBundle, _, err := b.fetchCaSigningBundle(ctx, req, data, celRole.ValidationProgram.Expressions.Issuer)
 	if err != nil {
 		return nil, err
+	}
+
+	// Ensure both TTL and notAfter are not provided together
+	rawTTL := data.Get("ttl")
+	rawNotAfter := data.Get("not_after")
+
+	if rawTTL != 0 && rawNotAfter != "" {
+		return nil, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
 
 	var parsedBundle *certutil.ParsedCertBundle
@@ -998,20 +1012,23 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		}
 	}
 
-	// Compile and add warnings to response
-	warningsExpression, err := compileExpression(env, celRole.ValidationProgram.Expressions.Warnings)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile CEL Warnings expression: %w", err)
-	}
-	evalResult, _, err := warningsExpression.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate CEL Warnings expression: %w", err)
-	}
-	if evalResult.Type() != celgo.StringType {
-		return nil, fmt.Errorf("CEL Warnings expression did not evaluate to a String")
-	}
+	warnings := celRole.ValidationProgram.Expressions.Warnings
+	if warnings != "" {
+		// Compile and add warnings to response
+		warningsExpression, err := compileExpression(env, warnings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile CEL Warnings expression: %w", err)
+		}
+		evalResult, _, err := warningsExpression.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate CEL Warnings expression: %w", err)
+		}
+		if evalResult.Type() != celgo.StringType {
+			return nil, fmt.Errorf("CEL Warnings expression did not evaluate to a String")
+		}
 
-	resp.AddWarning(evalResult.Value().(string))
+		resp.AddWarning(evalResult.Value().(string))
+	}
 
 	return resp, nil
 }

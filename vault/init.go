@@ -64,7 +64,7 @@ func (c *Core) InitializeRecovery(ctx context.Context) error {
 	return nil
 }
 
-// Initialized checks if the Vault is already initialized.  This means one of
+// Initialized checks if the OpenBao is already initialized.  This means one of
 // two things: either the barrier has been created (with keyring and root key)
 // and the seal config written to storage, or Raft is forming a cluster and a
 // join/bootstrap is in progress.
@@ -87,7 +87,7 @@ func (c *Core) Initialized(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-// InitializedLocally checks if the Vault is already initialized from the
+// InitializedLocally checks if the OpenBao is already initialized from the
 // local node's perspective.  This is the same thing as Initialized, unless
 // using Raft, in which case Initialized may return true (because a peer
 // we're joining to has been initialized) while InitializedLocally returns

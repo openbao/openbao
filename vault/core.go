@@ -116,11 +116,11 @@ const (
 var (
 	// ErrAlreadyInit is returned if the core is already
 	// initialized. This prevents a re-initialization.
-	ErrAlreadyInit = errors.New("Vault is already initialized")
+	ErrAlreadyInit = errors.New("OpenBao is already initialized")
 
 	// ErrNotInit is returned if a non-initialized barrier
 	// is attempted to be unsealed.
-	ErrNotInit = errors.New("Vault is not initialized")
+	ErrNotInit = errors.New("OpenBao is not initialized")
 
 	// ErrInternalError is returned when we don't want to leak
 	// any information about an internal error
@@ -128,11 +128,11 @@ var (
 
 	// ErrHANotEnabled is returned if the operation only makes sense
 	// in an HA setting
-	ErrHANotEnabled = errors.New("Vault is not configured for highly-available mode")
+	ErrHANotEnabled = errors.New("OpenBao is not configured for highly-available mode")
 
 	// ErrIntrospectionNotEnabled is returned if "introspection_endpoint" is not
 	// enabled in the configuration file
-	ErrIntrospectionNotEnabled = errors.New("The Vault configuration must set \"introspection_endpoint\" to true to enable this endpoint")
+	ErrIntrospectionNotEnabled = errors.New("The OpenBao configuration must set \"introspection_endpoint\" to true to enable this endpoint")
 
 	// manualStepDownSleepPeriod is how long to sleep after a user-initiated
 	// step down of the active node, to prevent instantly regrabbing the lock.

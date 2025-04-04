@@ -59,6 +59,12 @@ func pathConfigIssuers(b *backend) *framework.Path {
 }
 
 func (b *backend) pathReadDefaultIssuerHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	sc := b.makeStorageContext(ctx, req.Storage)
 	config, err := sc.getIssuersConfig()
 	if err != nil {
@@ -67,6 +73,10 @@ func (b *backend) pathReadDefaultIssuerHandler(ctx context.Context, req *logical
 
 	if len(config.DefaultIssuerID) == 0 {
 		return logical.ErrorResponse("no default issuer currently configured"), nil
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{

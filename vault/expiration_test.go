@@ -56,8 +56,6 @@ func mockBackendExpiration(t testing.TB, backend physical.Backend) (*Core, *Expi
 }
 
 func TestExpiration_Metrics(t *testing.T) {
-	var err error
-
 	testCore := TestCore(t)
 	testCore.baseLogger = logger
 	testCore.logger = logger.Named("core")
@@ -75,8 +73,15 @@ func TestExpiration_Metrics(t *testing.T) {
 		count++
 	}
 
+	ctx := namespace.RootContext(context.Background())
+
+	idView, err := exp.tokenIndexView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Scan the storage with the count func set
-	if err = logical.ScanView(namespace.RootContext(nil), exp.idView, countFunc); err != nil {
+	if err := logical.ScanView(ctx, idView, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -85,7 +90,13 @@ func TestExpiration_Metrics(t *testing.T) {
 		t.Fatalf("bad: lease count; expected:0 actual:%d", count)
 	}
 
-	for i := 0; i < 50; i++ {
+	ns := &namespace.Namespace{
+		ID:   "nsid",
+		Path: "foo/bar",
+	}
+	TestCoreCreateNamespaces(testCore, ns)
+
+	for i := range 50 {
 		le := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i),
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i),
@@ -94,31 +105,26 @@ func TestExpiration_Metrics(t *testing.T) {
 			ExpireTime: time.Now().Add(time.Hour),
 		}
 
-		otherNS := &namespace.Namespace{
-			ID:   "nsid",
-			Path: "foo/bar",
-		}
-
-		otherNSle := &leaseEntry{
+		namespaceLe := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i) + "/blah.nsid",
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i) + "/blah.nsid",
-			namespace:  otherNS,
+			namespace:  ns,
 			IssueTime:  time.Now(),
 			ExpireTime: time.Now().Add(time.Hour),
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting entry: %v", err)
 		}
 		exp.updatePendingInternal(le)
 
-		if err := exp.persistEntry(namespace.RootContext(nil), otherNSle); err != nil {
+		if err := exp.persistEntry(ctx, namespaceLe); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting entry: %v", err)
 		}
-		exp.updatePendingInternal(otherNSle)
+		exp.updatePendingInternal(namespaceLe)
 		exp.pendingLock.Unlock()
 	}
 
@@ -132,7 +138,7 @@ func TestExpiration_Metrics(t *testing.T) {
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting entry: %v", err)
 		}
@@ -141,7 +147,7 @@ func TestExpiration_Metrics(t *testing.T) {
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), idView, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -239,13 +245,16 @@ func TestExpiration_TotalLeaseCount(t *testing.T) {
 	// for testing the total lease count quota
 	c, _, _ := TestCoreUnsealed(t)
 	exp := c.expiration
+	ctx := namespace.RootContext(context.Background())
 
 	expectedCount := 0
-	otherNS := &namespace.Namespace{
+	ns := &namespace.Namespace{
 		ID:   "nsid",
 		Path: "foo/bar",
 	}
-	for i := 0; i < 50; i++ {
+	TestCoreCreateNamespaces(c, ns)
+
+	for i := range 50 {
 		le := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i),
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i),
@@ -257,20 +266,20 @@ func TestExpiration_TotalLeaseCount(t *testing.T) {
 		otherNSle := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i) + "/blah.nsid",
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i) + "/blah.nsid",
-			namespace:  otherNS,
+			namespace:  ns,
 			IssueTime:  time.Now(),
 			ExpireTime: time.Now().Add(time.Hour),
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
 		exp.updatePendingInternal(le)
 		expectedCount++
 
-		if err := exp.persistEntry(namespace.RootContext(nil), otherNSle); err != nil {
+		if err := exp.persistEntry(ctx, otherNSle); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
@@ -292,28 +301,28 @@ func TestExpiration_TotalLeaseCount(t *testing.T) {
 			RevokeErr:  "some err message",
 		}
 
-		otherNSle := &leaseEntry{
+		nsLe := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i+1) + "/blah.nsid",
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i+1) + "/blah.nsid",
-			namespace:  otherNS,
+			namespace:  ns,
 			IssueTime:  time.Now(),
 			ExpireTime: time.Now(),
 			RevokeErr:  "some err message",
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
 		exp.updatePendingInternal(le)
 		expectedCount++
 
-		if err := exp.persistEntry(namespace.RootContext(nil), otherNSle); err != nil {
+		if err := exp.persistEntry(ctx, nsLe); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
-		exp.updatePendingInternal(otherNSle)
+		exp.updatePendingInternal(nsLe)
 		expectedCount++
 		exp.pendingLock.Unlock()
 	}
@@ -332,12 +341,15 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 	// for testing the total lease count quota
 	c, _, _ := TestCoreUnsealed(t)
 	exp := c.expiration
+	ctx := namespace.RootContext(context.Background())
 
 	expectedCount := 0
-	otherNS := &namespace.Namespace{
+	ns := &namespace.Namespace{
 		ID:   "nsid",
 		Path: "foo/bar",
 	}
+	TestCoreCreateNamespaces(c, ns)
+
 	for i := 0; i < 50; i++ {
 		le := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i),
@@ -348,28 +360,28 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 			ExpireTime: time.Now().Add(time.Hour),
 		}
 
-		otherNSle := &leaseEntry{
+		nsLe := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i) + "/blah.nsid",
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i) + "/blah.nsid",
 			LoginRole:  "loginRole" + fmt.Sprintf("%d", i),
-			namespace:  otherNS,
+			namespace:  ns,
 			IssueTime:  time.Now(),
 			ExpireTime: time.Now().Add(time.Hour),
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
 		exp.updatePendingInternal(le)
 		expectedCount++
 
-		if err := exp.persistEntry(namespace.RootContext(nil), otherNSle); err != nil {
+		if err := exp.persistEntry(ctx, nsLe); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
-		exp.updatePendingInternal(otherNSle)
+		exp.updatePendingInternal(nsLe)
 		expectedCount++
 		exp.pendingLock.Unlock()
 	}
@@ -388,29 +400,29 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 			RevokeErr:  "some err message",
 		}
 
-		otherNSle := &leaseEntry{
+		nsLe := &leaseEntry{
 			LeaseID:    "lease" + fmt.Sprintf("%d", i+1) + "/blah.nsid",
 			Path:       "foo/bar/" + fmt.Sprintf("%d", i+1) + "/blah.nsid",
 			LoginRole:  "loginRole" + fmt.Sprintf("%d", i),
-			namespace:  otherNS,
+			namespace:  ns,
 			IssueTime:  time.Now(),
 			ExpireTime: time.Now(),
 			RevokeErr:  "some err message",
 		}
 
 		exp.pendingLock.Lock()
-		if err := exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+		if err := exp.persistEntry(ctx, le); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
 		exp.updatePendingInternal(le)
 		expectedCount++
 
-		if err := exp.persistEntry(namespace.RootContext(nil), otherNSle); err != nil {
+		if err := exp.persistEntry(ctx, nsLe); err != nil {
 			exp.pendingLock.Unlock()
 			t.Fatalf("error persisting irrevocable entry: %v", err)
 		}
-		exp.updatePendingInternal(otherNSle)
+		exp.updatePendingInternal(nsLe)
 		expectedCount++
 		exp.pendingLock.Unlock()
 	}
@@ -425,8 +437,6 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 }
 
 func TestExpiration_Tidy(t *testing.T) {
-	var err error
-
 	// We use this later for tidy testing where we need to check the output
 	logOut := new(bytes.Buffer)
 	logger := log.New(&log.LoggerOptions{
@@ -450,8 +460,15 @@ func TestExpiration_Tidy(t *testing.T) {
 		count++
 	}
 
+	ctx := namespace.RootContext(context.Background())
+
+	view, err := exp.leaseView(ctx, namespace.RootNamespace)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Scan the storage with the count func set
-	if err = logical.ScanView(namespace.RootContext(nil), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(ctx, view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -468,29 +485,28 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Persist the invalid lease entry
-	if err = exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+	if err = exp.persistEntry(ctx, le); err != nil {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
-	// Check that the storage was successful and that the count of leases is
-	// now 1
+	// Check that the storage was successful and that the count of leases is now 1
 	if count != 1 {
 		t.Fatalf("bad: lease count; expected:1 actual:%d", count)
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(namespace.RootContext(nil))
+	err = exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	count = 0
-	if err := logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err := logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -503,12 +519,12 @@ func TestExpiration_Tidy(t *testing.T) {
 	le.ClientToken = "invalidtoken"
 
 	// Persist the invalid lease entry
-	if err = exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+	if err = exp.persistEntry(ctx, le); err != nil {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -519,13 +535,13 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(namespace.RootContext(nil))
+	err = exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -535,7 +551,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Attach an invalid token with 2 leases
-	if err = exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+	if err = exp.persistEntry(ctx, le); err != nil {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
@@ -545,13 +561,13 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(namespace.RootContext(nil))
+	err = exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -577,14 +593,14 @@ func TestExpiration_Tidy(t *testing.T) {
 				"test_key": "test_value",
 			},
 		}
-		_, err := exp.Register(namespace.RootContext(nil), req, resp, "")
+		_, err := exp.Register(ctx, req, resp, "")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -600,11 +616,11 @@ func TestExpiration_Tidy(t *testing.T) {
 	// one tidy operation can be in flight at any time. One of these requests
 	// should error out.
 	go func() {
-		errCh1 <- exp.Tidy(namespace.RootContext(nil))
+		errCh1 <- exp.Tidy(ctx)
 	}()
 
 	go func() {
-		errCh2 <- exp.Tidy(namespace.RootContext(nil))
+		errCh2 <- exp.Tidy(ctx)
 	}()
 
 	var err1, err2 error
@@ -630,18 +646,18 @@ func TestExpiration_Tidy(t *testing.T) {
 	le.ClientToken = root.ID
 
 	// Attach a valid token with the leases
-	if err = exp.persistEntry(namespace.RootContext(nil), le); err != nil {
+	if err = exp.persistEntry(ctx, le); err != nil {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(namespace.RootContext(nil))
+	err = exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), exp.idView, countFunc); err != nil {
+	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1005,7 +1021,8 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 		Parent:       rootToken,
 	}
 
-	err := exp.tokenStore.create(context.Background(), te)
+	ctx := namespace.RootContext(context.Background())
+	err := exp.tokenStore.create(ctx, te)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1028,12 +1045,12 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 		},
 	}
 
-	leaseID, err := exp.Register(namespace.RootContext(nil), req, resp, "")
+	leaseID, err := exp.Register(ctx, req, resp, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	_, err = exp.Renew(namespace.RootContext(nil), leaseID, time.Minute)
+	_, err = exp.Renew(ctx, leaseID, time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1066,7 +1083,11 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	var idEnts []string
 	for time.Now().Before(deadline) {
-		idEnts, err = exp.tokenView.List(context.Background(), "")
+		tokenView, err := exp.tokenIndexView(ctx, namespace.RootNamespace)
+		if err != nil {
+			t.Fatal(err)
+		}
+		idEnts, err = tokenView.List(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)
 		}

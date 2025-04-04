@@ -112,7 +112,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 	// identify if the namespaces must be included in response and get counts
 	for _, nsID := range nsIDs {
 		nsID = strings.TrimSuffix(nsID, "/")
-		ns, err := NamespaceByID(ctx, nsID, b.Core)
+		ns, err := b.Core.NamespaceByID(ctx, nsID)
 		if err != nil {
 			return 0, nil, err
 		}

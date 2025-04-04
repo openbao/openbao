@@ -102,8 +102,12 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 		}
 		entry.Accessor = accessor
 	}
-	viewPath := entry.ViewPath()
-	view := NewBarrierView(c.barrier, viewPath)
+
+	view, err := c.mountEntryView(ctx, entry)
+	if err != nil {
+		return err
+	}
+
 	origViewReadOnlyErr := view.GetReadOnlyErr()
 
 	// Mark the view as read-only until the mounting is complete and
@@ -285,7 +289,7 @@ func (c *Core) loadAudits(ctx context.Context) error {
 			needPersist = true
 		}
 		// Get the namespace from the namespace ID and load it in memory
-		ns, err := NamespaceByID(ctx, entry.NamespaceID, c)
+		ns, err := c.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -388,8 +392,11 @@ func (c *Core) setupAudits(ctx context.Context) error {
 
 	for _, entry := range c.audit.Entries {
 		// Create a barrier view using the UUID
-		viewPath := entry.ViewPath()
-		view := NewBarrierView(c.barrier, viewPath)
+		view, err := c.mountEntryView(ctx, entry)
+		if err != nil {
+			return err
+		}
+
 		origViewReadOnlyErr := view.GetReadOnlyErr()
 
 		// Mark the view as read-only until the mounting is complete and

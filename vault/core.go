@@ -376,6 +376,9 @@ type Core struct {
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
 
+	// namespace Store is used to manage namespaces
+	namespaceStore *NamespaceStore
+
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
 
@@ -1216,6 +1219,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
+	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.tokenStore != nil {
+			return c.tokenStore, nil
+		}
+		return nil, errors.New("token store does not exist")
+	}
 
 	c.credentialBackends = credentialBackends
 }
@@ -1237,6 +1246,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	// Cubbyhole
 	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.cubbyholeBackend != nil {
+			return c.cubbyholeBackend, nil
+		}
+		return nil, errors.New("cubbyhole backend does not exist")
+	}
 
 	// System
 	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1248,6 +1263,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		}
 		return b, nil
 	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -2244,6 +2260,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
+	if err := c.setupNamespaceStore(ctx); err != nil {
+		return err
+	}
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2465,6 +2484,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownPolicyStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down policy store: %w", err))
+	}
+	if err := c.teardownNamespaceStore(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
 	}
 	if err := c.stopRollback(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping rollback: %w", err))

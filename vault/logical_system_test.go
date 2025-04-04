@@ -1857,8 +1857,10 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 			MaxLeaseTTLVal:     time.Hour * 24 * 32,
 		},
 	}
+
+	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(namespace.RootContext(nil), bc)
+	err := b.Backend.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1871,9 +1873,9 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
-	te, err = ts.Lookup(namespace.RootContext(nil), "foo")
+	te, err = ts.Lookup(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1888,13 +1890,13 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "leases/revoke-prefix/auth/github/")
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -1902,7 +1904,7 @@ func TestSystemBackend_revokePrefixAuth_newUrl(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	te, err = ts.Lookup(namespace.RootContext(nil), te.ID)
+	te, err = ts.Lookup(ctx, te.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1921,8 +1923,10 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 			MaxLeaseTTLVal:     time.Hour * 24 * 32,
 		},
 	}
+
+	ctx := namespace.RootContext(nil)
 	b := NewSystemBackend(core, hclog.New(&hclog.LoggerOptions{}))
-	err := b.Backend.Setup(namespace.RootContext(nil), bc)
+	err := b.Backend.Setup(ctx, bc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1935,9 +1939,9 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		TTL:         time.Hour,
 		NamespaceID: namespace.RootNamespaceID,
 	}
-	testMakeTokenDirectly(t, ts, te)
+	testMakeTokenDirectly(t, ctx, ts, te)
 
-	te, err = ts.Lookup(namespace.RootContext(nil), "foo")
+	te, err = ts.Lookup(ctx, "foo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1952,13 +1956,13 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 			TTL: time.Hour,
 		},
 	}
-	err = exp.RegisterAuth(namespace.RootContext(nil), te, auth, "")
+	err = exp.RegisterAuth(ctx, te, auth, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
 	req := logical.TestRequest(t, logical.UpdateOperation, "revoke-prefix/auth/github/")
-	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	resp, err := b.HandleRequest(ctx, req)
 	if err != nil {
 		t.Fatalf("err: %v %v", err, resp)
 	}
@@ -1966,7 +1970,7 @@ func TestSystemBackend_revokePrefixAuth_origUrl(t *testing.T) {
 		t.Fatalf("bad: %#v", resp)
 	}
 
-	te, err = ts.Lookup(namespace.RootContext(nil), te.ID)
+	te, err = ts.Lookup(ctx, te.ID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

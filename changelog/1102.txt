@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Support pagination in ClearView, improving secret disable memory consumption.
+```

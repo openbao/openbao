@@ -1,3 +1,6 @@
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 const arches: string[] = ["amd64", "arm64", "armhf", "armv7hl", "arm", "riscv64", "aarch64", "x86_64", "ppc64le", "s390x"];
 
 interface ArchPackageMap {
@@ -7,6 +10,13 @@ interface ArchPackageMap {
 interface Release {
     assets: {
         linux: {
+            deb: ArchPackageMap;
+            rpm: ArchPackageMap;
+            pkg: ArchPackageMap;
+            binary: ArchPackageMap;
+            docker: ArchPackageMap;
+        };
+        hsm: {
             deb: ArchPackageMap;
             rpm: ArchPackageMap;
             pkg: ArchPackageMap;
@@ -69,6 +79,13 @@ export function GetReleases(response): Releases {
                     binary: NewArchPackageMap(),
                     docker: NewArchPackageMap(),
                 },
+                hsm: {
+                    deb: NewArchPackageMap(),
+                    rpm: NewArchPackageMap(),
+                    pkg: NewArchPackageMap(),
+                    binary: NewArchPackageMap(),
+                    docker: NewArchPackageMap(),
+                },
                 darwin: {
                     binary: NewArchPackageMap(),
                 },
@@ -112,6 +129,34 @@ export function GetReleases(response): Releases {
             }
             if (a.browser_download_url.toLowerCase().includes("darwin")) {
                 release.assets.darwin.binary[arch].push(a.browser_download_url);
+            }
+            if (a.browser_download_url.toLowerCase().includes("hsm")) {
+                if (a.browser_download_url.toLowerCase().includes("docker")) {
+                    release.assets.hsm.docker[arch].push(a.browser_download_url);
+                    // docker urls also contain "hsm", so contiune if we find it
+                    continue;
+                }
+                if (a.browser_download_url.toLowerCase().includes(".rpm")) {
+                    release.assets.hsm.rpm[arch].push(a.browser_download_url);
+                    // rpm urls also contain "hsm", so contiune if we find it
+                    continue;
+                }
+                if (a.browser_download_url.toLowerCase().includes(".deb")) {
+                    release.assets.hsm.deb[arch].push(a.browser_download_url);
+                    // deb urls also contain "hsm", so contiune if we find it
+                    continue;
+                }
+                if (a.browser_download_url.toLowerCase().includes(".pkg")) {
+                    release.assets.hsm.pkg[arch].push(a.browser_download_url);
+                    // pkg urls also contain "hsm", so contiune if we find it
+                    continue;
+                }
+                if (a.browser_download_url.toLowerCase().includes("hsm")) {
+                    release.assets.hsm.binary[arch].push(a.browser_download_url);
+                }
+                // Unknown item, continue because we don't want to match Linux
+                // as well.
+                continue;
             }
             if (a.browser_download_url.toLowerCase().includes("docker")) {
                 release.assets.linux.docker[arch].push(a.browser_download_url);
@@ -166,6 +211,8 @@ export function OsPrettyPrint(name: string): string {
             return "NetBSD";
         case "windows":
             return "Windows";
+        case "hsm":
+            return "HSM for Linux";
     }
     return "";
 }
@@ -174,13 +221,28 @@ interface ArchPackageMapApplicationLambda {
     (value: string, key: string): JSX.Element;
 }
 
-export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackageMapApplicationLambda): JSX.Element[] {
+export function ArchPackageMapApply(category: ArchPackageMap, lambda: ArchPackageMapApplicationLambda): JSX.Element {
     var result: JSX.Element[] = [];
     for (let arch of arches) {
         if (arch in category) {
-            result.push(lambda(category[arch], arch));
+            const item = lambda(category[arch], arch);
+            if (item !== null && item !== undefined) {
+                result.push(
+                    <TabItem value={ arch }>
+                        { item }
+                    </TabItem>
+                );
+            }
         }
     }
 
-    return result;
+    if (result.length > 0) {
+        return (
+            <Tabs>
+                { result }
+            </Tabs>
+        );
+    }
+
+    return null;
 }

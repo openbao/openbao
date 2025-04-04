@@ -7867,7 +7867,7 @@ func TestTimestampNotAfterBound(t *testing.T) {
 
 	not_after := time.Now().Add(time.Hour * 3).UTC().Format(time.RFC3339Nano)
 
-	// Issuing a certificate with not_eafter=time.now + 3h should result in an error
+	// Issuing a certificate with not_after=time.now + 3h should result in an error
 	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
 		"common_name": "test.example.com",
 		"not_after":   not_after,

@@ -1104,8 +1104,10 @@ func (i *IdentityStore) parseGroupFromBucketItem(item *storagepacker.Item) (*ide
 }
 
 // entityByAliasFactors fetches the entity based on factors of alias, i.e mount
-// accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactors(mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+// accessor and the alias name, using the given context.
+// This function respects namespace boundaries and will only return an entity that belongs to the
+// same namespace as the context.
+func (i *IdentityStore) entityByAliasFactors(ctx context.Context, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if mountAccessor == "" {
 		return nil, errors.New("missing mount accessor")
 	}
@@ -1116,12 +1118,12 @@ func (i *IdentityStore) entityByAliasFactors(mountAccessor, aliasName string, cl
 
 	txn := i.db.Txn(false)
 
-	return i.entityByAliasFactorsInTxn(txn, mountAccessor, aliasName, clone)
+	return i.entityByAliasFactorsInTxn(ctx, txn, mountAccessor, aliasName, clone)
 }
 
 // entityByAliasFactorsInTxn fetches the entity based on factors of alias, i.e
 // mount accessor and the alias name.
-func (i *IdentityStore) entityByAliasFactorsInTxn(txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
+func (i *IdentityStore) entityByAliasFactorsInTxn(ctx context.Context, txn *memdb.Txn, mountAccessor, aliasName string, clone bool) (*identity.Entity, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
@@ -1134,7 +1136,7 @@ func (i *IdentityStore) entityByAliasFactorsInTxn(txn *memdb.Txn, mountAccessor,
 		return nil, errors.New("missing alias name")
 	}
 
-	alias, err := i.MemDBAliasByFactorsInTxn(txn, mountAccessor, aliasName, false, false)
+	alias, err := i.MemDBAliasByFactorsInTxnWithContext(ctx, txn, mountAccessor, aliasName, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1151,7 +1153,15 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 	defer metrics.MeasureSince([]string{"identity", "create_entity"}, time.Now())
 
 	entity := new(identity.Entity)
-	err := i.sanitizeEntity(ctx, entity)
+
+	// Set the namespace from the context
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entity.NamespaceID = ns.ID
+
+	err = i.sanitizeEntity(ctx, entity)
 	if err != nil {
 		return nil, err
 	}
@@ -1159,26 +1169,19 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 		return nil, err
 	}
 
-	// Emit a metric for the new entity
-	ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-	var nsLabel metrics.Label
-	if err != nil {
-		nsLabel = metrics.Label{"namespace", "unknown"}
-	} else {
-		nsLabel = metricsutil.NamespaceLabel(ns)
-	}
 	i.metrics.IncrCounterWithLabels(
 		[]string{"identity", "entity", "creation"},
 		1,
 		[]metrics.Label{
-			nsLabel,
+			metricsutil.NamespaceLabel(ns),
 		})
 
 	return entity.Clone()
 }
 
-// CreateOrFetchEntity creates a new entity. This is used by core to
-// associate each login attempt by an alias to a unified entity in Vault.
+// CreateOrFetchEntity creates a new entity or returns an existing entity based on the alias,
+// respecting namespace boundaries defined by the context.
+// Entities and aliases are always created in the namespace from which the request originated (derived from ctx).
 func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.Alias) (*identity.Entity, bool, error) {
 	defer metrics.MeasureSince([]string{"identity", "create_or_fetch_entity"}, time.Now())
 
@@ -1204,11 +1207,18 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 		return nil, false, fmt.Errorf("mount accessor %q is not a mount of type %q", alias.MountAccessor, alias.MountType)
 	}
 
+	// Get namespace from the context
+	ns, nsErr := namespace.FromContext(ctx)
+	if nsErr != nil {
+		return nil, false, nsErr
+	}
+
 	// Check if an entity already exists for the given alias
-	entity, err = i.entityByAliasFactors(alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactors(ctx, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}
+	// The entity lookup is already namespace aware, but we check anyway for clarity
 	if entity != nil && changedAliasIndex(entity, alias) == -1 {
 		return entity, false, nil
 	}
@@ -1221,10 +1231,11 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	defer txn.Abort()
 
 	// Check if an entity was created before acquiring the lock
-	entity, err = i.entityByAliasFactorsInTxn(txn, alias.MountAccessor, alias.Name, true)
+	entity, err = i.entityByAliasFactorsInTxn(ctx, txn, alias.MountAccessor, alias.Name, true)
 	if err != nil {
 		return nil, false, err
 	}
+	// The entity lookup is already namespace aware, but we check anyway for clarity
 	if entity != nil {
 		idx := changedAliasIndex(entity, alias)
 		if idx == -1 {
@@ -1239,6 +1250,10 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 
 	if !update {
 		entity = new(identity.Entity)
+
+		// Set namespace ID from context
+		entity.NamespaceID = ns.ID
+
 		err = i.sanitizeEntity(ctx, entity)
 		if err != nil {
 			return nil, false, err
@@ -1253,6 +1268,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			MountPath:     mountValidationResp.MountPath,
 			MountType:     mountValidationResp.MountType,
 			Local:         alias.Local,
+			NamespaceID:   entity.NamespaceID, // Ensure alias has same namespace as entity
 		}
 
 		err = i.sanitizeAlias(ctx, newAlias)
@@ -1267,19 +1283,11 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			newAlias,
 		}
 
-		// Emit a metric for the new entity
-		ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
-		var nsLabel metrics.Label
-		if err != nil {
-			nsLabel = metrics.Label{"namespace", "unknown"}
-		} else {
-			nsLabel = metricsutil.NamespaceLabel(ns)
-		}
 		i.metrics.IncrCounterWithLabels(
 			[]string{"identity", "entity", "creation"},
 			1,
 			[]metrics.Label{
-				nsLabel,
+				metricsutil.NamespaceLabel(ns),
 				{"auth_method", newAlias.MountType},
 				{"mount_point", newAlias.MountPath},
 			})

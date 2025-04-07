@@ -99,7 +99,7 @@ var (
 		}
 
 		for _, api := range containsAPIs {
-			if strings.Contains(fullURL, api) {
+			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
 				return http.StatusBadRequest
 			}
 		}

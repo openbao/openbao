@@ -370,13 +370,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			newR, status := adjustRequest(r)
+			status := validateNamespace(r)
 			if status != 0 {
-				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s) from namespace [%s]", r.Method, r.URL.Path, ns.Path))
+				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s)", r.Method, r.URL.Path))
 				cancelFunc()
 				return
 			}
-			r = newR
 
 		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
 		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):

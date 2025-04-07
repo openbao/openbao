@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -70,29 +71,40 @@ var (
 		"sys/rekey/",
 	}
 
-	adjustRequest = func(r *http.Request) (*http.Request, int) {
-		u := r.URL
-		p := u.Path[3:]
-
+	validateNamespace = func(r *http.Request) int {
 		ns, err := namespace.FromContext(r.Context())
-		if err != nil || ns == namespace.RootNamespace {
-			return r, 0
+		if err != nil {
+			return http.StatusBadRequest
+		}
+
+		fullURL, err := url.JoinPath(ns.Path, r.URL.Path[4:])
+		if err != nil {
+			return http.StatusBadRequest
 		}
 
 		for _, api := range restrictedAPIs {
-			// exclude any occurences of possible restriced APIs paths when prefix indicates it's a policy name
-			if strings.HasSuffix(p, api) && !strings.HasPrefix(p, "/sys/policies") {
-				return r, http.StatusBadRequest
+			apiSysRawRouted := "sys/raw/" + api
+			// if path not equals the restricted api path or not equals restricted api path with "sys/raw/" prefix
+			namespaceUseOfRestrictedEndpoint := (fullURL != api && fullURL != apiSysRawRouted) && strings.HasSuffix(fullURL, api)
+			namespacePath, _, ok := strings.Cut(fullURL, api)
+
+			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
+			if ok && strings.HasSuffix(namespacePath, "sys/policies/acl/") {
+				return 0
+			}
+
+			if namespaceUseOfRestrictedEndpoint {
+				return http.StatusBadRequest
 			}
 		}
 
 		for _, api := range containsAPIs {
-			if strings.Contains(p, api) {
-				return r, http.StatusBadRequest
+			if strings.Contains(fullURL, api) {
+				return http.StatusBadRequest
 			}
 		}
 
-		return r, 0
+		return 0
 	}
 
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {

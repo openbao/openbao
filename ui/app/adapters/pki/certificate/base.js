@@ -11,7 +11,7 @@ export default class PkiCertificateBaseAdapter extends ApplicationAdapter {
 
   getURL(backend, id) {
     const uri = `${this.buildURL()}/${encodePath(backend)}`;
-    return id ? `${uri}/cert/${id}` : `${uri}/certs`;
+    return id ? `${uri}/cert/${id}` : `${uri}/certs/detailed`;
   }
 
   fetchByQuery(query) {

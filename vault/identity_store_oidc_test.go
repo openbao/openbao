@@ -1128,24 +1128,20 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 			}
 
 			numCases := len(testSet.testCases)
-			namedKeySamples := make([]*logical.StorageEntry, numCases)
-			publicKeysSamples := make([][]string, numCases)
-
 			for i := 0; i < numCases; i++ {
 				// sleep for the rotation period
-				time.Sleep(testSet.namedKey.RotationPeriod + 50*time.Millisecond)
+				time.Sleep(testSet.namedKey.RotationPeriod)
+				// run periodicFunc
 				c.identityStore.oidcPeriodicFunc(ctx)
+				// collect entries
 				namedKeyEntry, _ := storage.Get(ctx, namedKeyConfigPath+testSet.namedKey.name)
 				publicKeysEntry, _ := storage.List(ctx, publicKeysConfigPath)
-				namedKeySamples[i] = namedKeyEntry
-				publicKeysSamples[i] = publicKeysEntry
-			}
 
-			// measure collected samples
-			for i := range testSet.testCases {
+				// verify the number of keys
+				var namedKey namedKey
+				namedKeyEntry.DecodeJSON(&namedKey)
 				expectedKeyCount := testSet.testCases[i].expectedNumKeys
-				namedKeySamples[i].DecodeJSON(&testSet.namedKey)
-				actualKeyRingLen := len(testSet.namedKey.KeyRing)
+				actualKeyRingLen := len(namedKey.KeyRing)
 				if actualKeyRingLen < expectedKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected namedKey's KeyRing to be at least of length %d but was: %d",
@@ -1156,7 +1152,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 					)
 				}
 				expectedPublicKeyCount := testSet.testCases[i].expectedNumPublicKeys
-				actualPubKeysLen := len(publicKeysSamples[i])
+				actualPubKeysLen := len(publicKeysEntry)
 				if actualPubKeysLen < expectedPublicKeyCount {
 					t.Errorf(
 						"For key: %s at cycle: %d expected public keys to be at least of length %d but was: %d",

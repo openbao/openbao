@@ -66,12 +66,12 @@ require (
 	github.com/hashicorp/go-secure-stdlib/gatedwriter v0.1.1
 	github.com/hashicorp/go-secure-stdlib/kv-builder v0.1.2
 	github.com/hashicorp/go-secure-stdlib/nonceutil v0.1.0
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.9
-	github.com/hashicorp/go-secure-stdlib/password v0.1.1
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0
+	github.com/hashicorp/go-secure-stdlib/password v0.1.4
 	github.com/hashicorp/go-secure-stdlib/reloadutil v0.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-secure-stdlib/tlsutil v0.1.2
-	github.com/hashicorp/go-sockaddr v1.0.6
+	github.com/hashicorp/go-sockaddr v1.0.7
 	github.com/hashicorp/go-syslog v1.0.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/hashicorp/go-version v1.7.0
@@ -108,12 +108,13 @@ require (
 	github.com/natefinch/atomic v1.0.1
 	github.com/oklog/run v1.1.0
 	github.com/okta/okta-sdk-golang/v2 v2.20.0
-	github.com/openbao/go-kms-wrapping/v2 v2.3.0
+	github.com/openbao/go-kms-wrapping/v2 v2.3.1-0.20250321181437-1a1c5b0c79b1
 	github.com/openbao/go-kms-wrapping/wrappers/aead/v2 v2.1.0
 	github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/awskms/v2 v2.3.0
 	github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
+	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b0c79b1
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0
@@ -145,21 +146,21 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.36.0
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/net v0.36.0
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/sync v0.11.0
-	golang.org/x/sys v0.30.0
-	golang.org/x/term v0.29.0
-	golang.org/x/text v0.22.0
+	golang.org/x/sync v0.12.0
+	golang.org/x/sys v0.31.0
+	golang.org/x/term v0.30.0
+	golang.org/x/text v0.23.0
 	golang.org/x/tools v0.29.0
 	google.golang.org/api v0.220.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.5
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0
-	gotest.tools/gotestsum v1.10.0
+	gotest.tools/gotestsum v1.12.1
 	honnef.co/go/tools v0.4.3
 	k8s.io/api v0.32.1
 	k8s.io/apimachinery v0.32.1
@@ -214,6 +215,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
+	github.com/bitfield/gotestdox v0.2.2 // indirect
 	github.com/boombuler/barcode v1.0.1 // indirect
 	github.com/caddyserver/zerossl v0.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -237,7 +239,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
@@ -322,6 +324,7 @@ require (
 	github.com/opencontainers/runc v1.1.14 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/oracle/oci-go-sdk/v60 v60.0.0 // indirect
+	github.com/ovh/kmip-go v0.3.3 // indirect
 	github.com/packethost/packngo v0.1.1-0.20180711074735-b9cb5096f54c // indirect
 	github.com/petermattis/goid v0.0.0-20240813172612-4fcff4a6cae7 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect

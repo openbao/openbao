@@ -1067,6 +1067,7 @@ func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 			client.Timeout = 60 * time.Second
 
 			res, err := client.Do(req)
+			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, res.StatusCode)
 		})
 	}

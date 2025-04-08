@@ -1109,7 +1109,7 @@ func TestOIDC_PeriodicFunc(t *testing.T) {
 
 			for i := 0; i < len(testSet.expectedKeyCounts); i++ {
 				// sleep for the rotation period
-				time.Sleep(testSet.namedKey.RotationPeriod)
+				time.Sleep(testSet.namedKey.RotationPeriod + 100*time.Millisecond)
 				// run periodicFunc
 				c.identityStore.oidcPeriodicFunc(ctx)
 				// collect entries

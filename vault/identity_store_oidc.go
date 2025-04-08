@@ -2036,7 +2036,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 
 		// Get nextRun from cache one more time, in case changed out of band
 		refreshedNextRun := i.getNextRun(ctx)
-		// Update the nextRun cache value, but only if needed
+		// Update the nextRun cache value if unchanged or greater than newNextRun
 		updateCache := refreshedNextRun.Equal(nextRun) || newNextRun.Before(refreshedNextRun)
 		if updateCache {
 			if err := i.oidcCache.SetDefault(noNamespace, "nextRun", newNextRun); err != nil {

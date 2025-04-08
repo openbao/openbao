@@ -1985,16 +1985,7 @@ func (i *IdentityStore) oidcKeyRotation(ctx context.Context, s logical.Storage) 
 func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	var nextRun time.Time
 	now := time.Now()
-
-	v, ok, err := i.oidcCache.Get(noNamespace, "nextRun")
-	if err != nil {
-		i.Logger().Error("error reading oidc cache", "err", err)
-		return
-	}
-
-	if ok {
-		nextRun = v.(time.Time)
-	}
+	nextRun = i.getNextRun(ctx)
 
 	// The condition here is for performance, not precise timing. The actions can
 	// be run at any time safely, but there is no need to invoke them (which
@@ -2043,8 +2034,11 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			}
 		}
 
-		// Update the nextRun cache value, but only if we need to set it earlier than its previous time
-		if newNextRun.Before(nextRun) {
+		// Get nextRun from cache one more time, in case changed out of band
+		refreshedNextRun := i.getNextRun(ctx)
+		// Update the nextRun cache value, but only if needed
+		updateCache := refreshedNextRun.Equal(nextRun) || newNextRun.Before(refreshedNextRun)
+		if updateCache {
 			if err := i.oidcCache.SetDefault(noNamespace, "nextRun", newNextRun); err != nil {
 				i.Logger().Error("error setting oidc cache", "err", err)
 			}
@@ -2066,6 +2060,20 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 		}
 
 	}
+}
+
+// getNextRun returns the next run time from the cache, or default time.Time if not found
+func (i *IdentityStore) getNextRun(ctx context.Context) time.Time {
+	nextRun := time.Time{}
+	v, ok, err := i.oidcCache.Get(noNamespace, "nextRun")
+	if err != nil {
+		i.Logger().Error("error reading oidc cache", "err", err)
+	}
+
+	if ok {
+		nextRun = v.(time.Time)
+	}
+	return nextRun
 }
 
 func newOIDCCache(defaultExpiration, cleanupInterval time.Duration) *oidcCache {

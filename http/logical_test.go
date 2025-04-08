@@ -28,6 +28,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-test/deep"
 	log "github.com/hashicorp/go-hclog"
@@ -1065,5 +1066,150 @@ func TestLogical_AuditEnabled_ShouldLogPluginMetadata_Secret(t *testing.T) {
 			}
 		}
 		testBuiltinPluginMetadataAuditLog(t, auditResponse, consts.PluginTypeSecrets.String())
+	}
+}
+
+// TestLogical_NamespaceRestrictedAPIs verifies that:
+// 1. Restricted APIs cannot be accessed from non-root namespaces (400 error)
+// 2. Non-restricted APIs can be successfully accessed from namespaces with proper permissions
+func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
+	// Create a test cluster
+	cluster := vault.NewTestCluster(t, nil, &vault.TestClusterOptions{
+		HandlerFunc: Handler,
+	})
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	rootClient := cluster.Cores[0].Client
+	core := cluster.Cores[0].Core
+	rootToken := cluster.RootToken
+
+	// Create a test namespace
+	ns := &namespace.Namespace{
+		ID:   "testns-id",
+		Path: "testns/",
+	}
+	err := vault.TestCoreCreateNamespaces(core, ns)
+	require.NoError(t, err, "Failed to create test namespace")
+
+	// Create a policy in the namespace that grants access to sys/mounts and sys/policy
+	nsClient, err := rootClient.Clone()
+	require.NoError(t, err, "Failed to clone root client")
+	nsClient.SetNamespace("testns/")
+	nsClient.SetToken(rootToken)
+
+	// Write policy that grants access to the non-restricted APIs we want to test
+	policyName := "ns-test-policy"
+	policyHCL := `
+	path "sys/mounts" {
+		capabilities = ["read"]
+	}
+	path "sys/policy" {
+		capabilities = ["read"]
+	}
+	`
+
+	err = nsClient.Sys().PutPolicy(policyName, policyHCL)
+	require.NoError(t, err, "Failed to create policy in namespace")
+
+	// Create a token within the namespace with the policy
+	tokenResp, err := nsClient.Auth().Token().Create(&api.TokenCreateRequest{
+		Policies: []string{policyName},
+	})
+	require.NoError(t, err, "Failed to create token in namespace")
+	require.NotNil(t, tokenResp, "Token response should not be nil")
+	require.NotNil(t, tokenResp.Auth, "Token auth should not be nil")
+
+	nsToken := tokenResp.Auth.ClientToken
+
+	// Create a client with namespace and token
+	nsAuthClient, err := rootClient.Clone()
+	require.NoError(t, err, "Failed to clone root client")
+	nsAuthClient.SetNamespace("testns/")
+	nsAuthClient.SetToken(nsToken)
+
+	// Test cases
+	restrictedAPIs := []string{
+		"sys/health",
+		"sys/init",
+		"sys/metrics",
+	}
+
+	nonRestrictedAPIs := []string{
+		"sys/mounts",
+		"sys/policy",
+	}
+
+	// Test restricted APIs - they should fail with 400 when accessed with namespace
+	for _, path := range restrictedAPIs {
+		t.Run("restricted-"+path, func(t *testing.T) {
+			// Use root token but with namespace
+			client, err := rootClient.Clone()
+			require.NoError(t, err, "Failed to clone root client")
+			client.SetNamespace("testns/")
+			client.SetToken(rootToken)
+
+			resp, err := client.Logical().ReadRaw(path)
+
+			// Should get 400 Bad Request (namespace restriction)
+			require.Error(t, err, "Restricted API should fail with namespace")
+			respErr, ok := err.(*api.ResponseError)
+			require.True(t, ok, "Expected ResponseError")
+			require.Equal(t, http.StatusBadRequest, respErr.StatusCode,
+				"Restricted API should return 400 Bad Request with namespace")
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+		})
+
+		t.Run("restricted-root-"+path, func(t *testing.T) {
+			// Same API from root should not fail with 400
+			resp, err := rootClient.Logical().ReadRaw(path)
+			if err != nil {
+				respErr, ok := err.(*api.ResponseError)
+				if ok {
+					require.NotEqual(t, http.StatusBadRequest, respErr.StatusCode,
+						"API should not return 400 Bad Request from root namespace")
+				}
+			}
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+		})
+	}
+
+	// Test non-restricted APIs - they should succeed with 200 when accessed with namespace and proper permissions
+	for _, path := range nonRestrictedAPIs {
+		t.Run("allowed-"+path, func(t *testing.T) {
+			resp, err := nsAuthClient.Logical().ReadRaw(path)
+
+			// Should succeed with 200 OK
+			require.NoError(t, err, "Non-restricted API should succeed with proper permissions")
+			require.NotNil(t, resp, "Response should not be nil")
+			require.Equal(t, http.StatusOK, resp.StatusCode,
+				"Non-restricted API should return 200 OK with namespace and proper permissions")
+
+			resp.Body.Close()
+		})
+	}
+
+	// Test restricted APIs - they should fail with 400 when accessed with namespace and proper permissions
+	for _, path := range restrictedAPIs {
+		t.Run("restricted-"+path, func(t *testing.T) {
+			resp, err := nsAuthClient.Logical().ReadRaw(path)
+
+			// Should get 400 Bad Request (namespace restriction)
+			require.Error(t, err, "Restricted API should fail with proper permissions")
+			respErr, ok := err.(*api.ResponseError)
+			require.True(t, ok, "Expected ResponseError")
+			require.Equal(t, http.StatusBadRequest, respErr.StatusCode,
+				"Restricted API should return 400 Bad Request with namespace and proper permissions")
+
+			if resp != nil && resp.Body != nil {
+				resp.Body.Close()
+			}
+		})
 	}
 }

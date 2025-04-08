@@ -33,9 +33,10 @@ export default class PkiCertificateBaseSerializer extends ApplicationSerializer 
     if (payload.data) {
       if (payload.data?.keys && Array.isArray(payload.data.keys)) {
         return payload.data.keys.map((key) => {
+          const keyInfo = payload.data.key_info?.[key] || {};
           return {
             serial_number: key,
-            ...payload.data.key_info[key],
+            ...keyInfo,
           };
         });
       }

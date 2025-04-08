@@ -32,7 +32,7 @@ jobs:
         uses: ./.github/actions/set-up-go
 
       - name: 'Submit Dependencies To GitHub'
-        uses: actions/go-dependency-submission@v2.0.1
+        uses: actions/go-dependency-submission@v2.0.3
         #with:
           # GitHub Personal Access Token (PAT). Defaults to PAT provided by Action runner
           # token: # optional, default is ${{ github.token }}

@@ -2003,7 +2003,7 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 	if now.Equal(nextRun) || now.After(nextRun) {
 		// Initialize to a fairly distant next run time. This will be brought in
 		// based on key rotation times.
-		newNextRun := now.Add(24 * time.Hour)
+		nextRun = now.Add(24 * time.Hour)
 		minJwksClientCacheDuration := time.Duration(math.MaxInt64)
 
 		for _, ns := range i.namespacer.ListNamespaces(true) {
@@ -2030,12 +2030,12 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			}
 
 			// re-run at the soonest expiration or rotation time
-			if nextRotation.Before(newNextRun) {
-				newNextRun = nextRotation
+			if nextRotation.Before(nextRun) {
+				nextRun = nextRotation
 			}
 
-			if nextExpiration.Before(newNextRun) {
-				newNextRun = nextExpiration
+			if nextExpiration.Before(nextRun) {
+				nextRun = nextExpiration
 			}
 
 			if jwksClientCacheDuration < minJwksClientCacheDuration {
@@ -2043,11 +2043,8 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 			}
 		}
 
-		// Update the nextRun cache value, but only if we need to set it earlier than its previous time
-		if newNextRun.Before(nextRun) {
-			if err := i.oidcCache.SetDefault(noNamespace, "nextRun", newNextRun); err != nil {
-				i.Logger().Error("error setting oidc cache", "err", err)
-			}
+		if err := i.oidcCache.SetDefault(noNamespace, "nextRun", nextRun); err != nil {
+			i.Logger().Error("error setting oidc cache", "err", err)
 		}
 
 		if minJwksClientCacheDuration < math.MaxInt64 {

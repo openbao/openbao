@@ -195,6 +195,12 @@ func pathGetIssuerPublicKeyUnauthenticated(b *backend) *framework.Path {
 }
 
 func (b *backend) pathGetIssuerPublicKeyHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	issuerRef := getIssuerRef(d)
 
 	sc := b.makeStorageContext(ctx, req.Storage)
@@ -206,6 +212,10 @@ func (b *backend) pathGetIssuerPublicKeyHandler(ctx context.Context, req *logica
 	issuer, err := sc.fetchIssuerById(id)
 	if err != nil {
 		return handleStorageContextErr(err)
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
 	}
 
 	return &logical.Response{
@@ -245,6 +255,12 @@ func (b *backend) pathReadIssuerHandler(ctx context.Context, req *logical.Reques
 }
 
 func (b *backend) pathUpdateIssuerHandler(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	// Since we're planning on updating issuers here, grab the lock so we've
 	// got a consistent view.
 	b.issuersLock.Lock()
@@ -291,6 +307,10 @@ func (b *backend) pathUpdateIssuerHandler(ctx context.Context, req *logical.Requ
 
 	response, _ := respondReadIssuer(issuer)
 	addWarningOnDereferencing(sc, oldName, response)
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
 
 	return response, nil
 }

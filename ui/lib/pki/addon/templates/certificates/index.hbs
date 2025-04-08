@@ -41,6 +41,14 @@
                     {{pkiCertificate.commonName}}
                   </span>
                 {{/if}}
+                {{#if pkiCertificate.notAfter}}
+                  <span class="tag is-transparent has-left-margin-none" data-test-not-after={{idx}}>
+                    <InfoTooltip>
+                      Not After
+                    </InfoTooltip>
+                    {{date-format pkiCertificate.notAfter "MMM d yyyy HH:mm:ss a zzzz"}}
+                  </span>
+                {{/if}}
               </div>
             </div>
           </div>

@@ -454,7 +454,6 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	ns2Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
 
 	ns3Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/namespaces/ns3/"}}
-	// nsCEntry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "a/b/namespaces/c/"}}
 
 	// Create namespaces
 	rootCtx := namespace.RootContext(nil)

@@ -2674,7 +2674,7 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 		if err != nil {
 			return nil, err
 		}
-		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -3094,7 +3094,7 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 
 	b.Core.auditLock.RLock()
 	table := b.Core.audit.shallowClone()
-	entry, err := table.find(ctx, path)
+	entry, err := table.findByPath(ctx, path)
 	b.Core.auditLock.RUnlock()
 
 	if err != nil {

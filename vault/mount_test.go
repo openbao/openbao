@@ -433,7 +433,7 @@ func TestCore_FindOps(t *testing.T) {
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
-	entry, err = c.mounts.find(namespace.RootContext(nil), "unknown")
+	entry, err = c.mounts.findByPath(namespace.RootContext(nil), "unknown")
 	if err != nil || entry != nil {
 		t.Fatalf("expected no errors nor matches got, error: %#v entry: %#v", err, entry)
 	}
@@ -448,7 +448,7 @@ func TestCore_FindOps(t *testing.T) {
 	}
 
 	// Find another entry by its path
-	entry, err = c.mounts.find(namespace.RootContext(nil), path2)
+	entry, err = c.mounts.findByPath(namespace.RootContext(nil), path2)
 	if err != nil || entry == nil {
 		t.Fatalf("failed finding entry by path error: %#v entry: %#v", err, entry)
 	}

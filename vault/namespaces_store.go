@@ -574,11 +574,56 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return errors.New("unable to delete root namespace")
 	}
 
+	// TODO: check whether namespace has child namespaces
+
+	nsCtx := namespace.ContextWithNamespace(ctx, item)
+
+	// clear ACL policies
+	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
+	if err != nil {
+		return err
+	}
+
+	for _, policy := range policiesToClear {
+		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
+		if err != nil {
+			return err
+		}
+	}
+
+	// clear auth mounts
+	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	if err != nil {
+		return err
+	}
+
+	for _, me := range authMountEntries {
+		err := ns.core.disableCredential(nsCtx, me.Path)
+		if err != nil {
+			return fmt.Errorf("failed to unmount auth: %s - %w", me.Path, err)
+		}
+	}
+
+	// clear mounts
+	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	if err != nil {
+		return err
+	}
+
+	for _, me := range mountEntries {
+		err := ns.core.unmount(nsCtx, me.Path)
+		if err != nil {
+			return fmt.Errorf("failed to unmount: %s - %w", me.Path, err)
+		}
+	}
+
+	// TODO: clear other ns configs
+
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
-	err := ns.namespacesByPath.Delete(item.Path)
+	err = ns.namespacesByPath.Delete(item.Path)
 	if err != nil {
 		return err
 	}

@@ -84,6 +84,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 		return errors.New("backend path must be specified")
 	}
 
+	// not sure why we lock the mounts here
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	locked := true
@@ -190,6 +191,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	newTable.Entries = append(newTable.Entries, entry)
 	if updateStorage {
 		if err := c.persistAuth(ctx, nil, newTable, &entry.Local, entry.UUID); err != nil {
+			c.logger.Error("failed to update auth table", "error", err)
 			return fmt.Errorf("failed to update auth table: %w", err)
 		}
 	}
@@ -210,7 +212,7 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 	}
 
 	if c.logger.IsInfo() {
-		c.logger.Info("enabled credential backend", "path", entry.Path, "type", entry.Type, "version", entry.Version)
+		c.logger.Info("enabled credential backend", "namespace", entry.Namespace().Path, "path", entry.Path, "type", entry.Type, "version", entry.Version)
 	}
 	return nil
 }
@@ -222,8 +224,13 @@ func (c *Core) disableCredential(ctx context.Context, path string) error {
 		path += "/"
 	}
 
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Ensure the token backend is not affected
-	if path == "token/" {
+	if path == "token/" && ns.Path == namespace.RootNamespace.Path {
 		return errors.New("token credential backend cannot be disabled")
 	}
 
@@ -249,10 +256,10 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		return errors.New("no matching mount")
 	}
 
-	// Store the view for this backend
+	// Get the view for this backend
 	view := c.router.MatchingStorageByAPIPath(ctx, path)
 	if view == nil {
-		return fmt.Errorf("no matching backend %q", path)
+		return fmt.Errorf("no matching storage %q", path)
 	}
 
 	// Get the backend/mount entry for this path, used to remove ignored
@@ -261,6 +268,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 
 	// Mark the entry as tainted
 	if err := c.taintCredEntry(ctx, ns.ID, path, updateStorage); err != nil {
+		c.logger.Error("failed to taint credential entry for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 		return err
 	}
 
@@ -269,13 +277,10 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		return err
 	}
 
-	if c.expiration != nil && backend != nil {
+	revokeCtx := namespace.ContextWithNamespace(c.activeContext, ns)
+
+	if backend != nil && c.expiration != nil && updateStorage {
 		// Revoke credentials from this path
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return err
-		}
-		revokeCtx := namespace.ContextWithNamespace(c.activeContext, ns)
 		if err := c.expiration.RevokePrefix(revokeCtx, path, true); err != nil {
 			return err
 		}
@@ -283,7 +288,7 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 
 	if backend != nil {
 		// Call cleanup function if it exists
-		backend.Cleanup(ctx)
+		backend.Cleanup(revokeCtx)
 	}
 
 	switch {
@@ -291,31 +296,32 @@ func (c *Core) disableCredentialInternal(ctx context.Context, path string, updat
 		// Don't attempt to clear data, replication will handle this
 	default:
 		// Have writable storage, remove the whole thing
-		if err := logical.ClearViewWithLogging(ctx, view, c.logger.Named("auth.deletion").With("namespace", ns.ID, "path", path)); err != nil {
-			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
+		if err := logical.ClearViewWithLogging(revokeCtx, view, c.logger.Named("auth.deletion").With("namespace", ns.Path, "path", path)); err != nil {
+			c.logger.Error("failed to clear view for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 			return err
 		}
 	}
 
 	// Remove the mount table entry
-	if err := c.removeCredEntry(ctx, strings.TrimPrefix(path, credentialRoutePrefix), updateStorage); err != nil {
+	if err := c.removeCredEntry(revokeCtx, strings.TrimPrefix(path, credentialRoutePrefix), updateStorage); err != nil {
+		c.logger.Error("failed to remove credential entry for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 		return err
 	}
 
 	// Unmount the backend
-	if err := c.router.Unmount(ctx, path); err != nil {
+	if err := c.router.Unmount(revokeCtx, path); err != nil {
 		return err
 	}
 
 	if c.quotaManager != nil {
-		if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
-			c.logger.Error("failed to update quotas after disabling auth", "path", path, "error", err)
+		if err := c.quotaManager.HandleBackendDisabling(revokeCtx, ns.Path, path); err != nil {
+			c.logger.Error("failed to update quotas after disabling auth", "error", err, "namespace", ns.Path, "path", path)
 			return err
 		}
 	}
 
 	if c.logger.IsInfo() {
-		c.logger.Info("disabled credential backend", "path", path)
+		c.logger.Info("disabled credential backend", "namespace", ns.Path, "path", path)
 	}
 
 	return nil

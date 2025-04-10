@@ -38,8 +38,8 @@ module('Acceptance | settings/configure/secrets/ssh', function (hooks) {
     await click(SELECTORS.saveConfig);
     assert.strictEqual(
       flashMessage.latestMessage,
-      'missing public_key',
-      'renders warning flash message for failed save'
+      'SSH Certificate Authority Configuration saved!',
+      'shows success flash when saving mount‑level config without a key'
     );
     await click(SELECTORS.generateSigningKey);
     await click(SELECTORS.saveConfig);

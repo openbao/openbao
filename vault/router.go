@@ -390,6 +390,39 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 	return existing
 }
 
+// matchingNamespaceInternal returns a namespace prefix that a path may be a part of
+func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+
+	// Every namespace has a sys/ mount. We can use that as a sentinel that
+	// our given path conflicts. Walk the parent namespace of path and check
+	// if there's a common prefix between a child namespace's sys/ entry and
+	// path.
+	//
+	// This allows us to avoid calling into the namespace store, which may be
+	// locked as we're trying to mount required mounts for a new namespace.
+	var existing string
+	fn := func(existingPath string, v interface{}) bool {
+		if !strings.HasSuffix(existingPath, "sys/") {
+			return false
+		}
+
+		nsPath := strings.TrimSuffix(existingPath, "sys/")
+		if strings.HasPrefix(path, nsPath) {
+			existing = nsPath
+			return true
+		}
+
+		return false
+	}
+
+	r.root.WalkPrefix(ns.Path, fn)
+	return existing
+}
+
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
 	r.l.RLock()
@@ -399,6 +432,9 @@ func (r *Router) MountConflict(ctx context.Context, path string) string {
 	}
 	if prefixMatch := r.matchingPrefixInternal(ctx, path); prefixMatch != "" {
 		return prefixMatch
+	}
+	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
+		return nsMatch
 	}
 	return ""
 }

@@ -270,6 +270,12 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		return fmt.Errorf("failed validating namespace: %w", err)
 	}
 
+	// Validate that we have a parent namespace.
+	parent, err := namespace.FromContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error loading parent namespace from context: %w", err)
+	}
+
 	var exists bool
 	if entry.UUID == "" {
 		id, err := ns.assignIdentifier(entry.Namespace.Path)
@@ -286,7 +292,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 		var existing *NamespaceEntry
 		existing, exists = ns.namespacesByUUID[entry.UUID]
 		if !exists {
-			return errors.New("trying to update a non-existant namespace")
+			return errors.New("trying to update a non-existent namespace")
 		}
 
 		if existing.Namespace.ID != entry.Namespace.ID {
@@ -295,6 +301,28 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 
 		if existing.Namespace.Path != entry.Namespace.Path {
 			return errors.New("unable to remount namespace at new path")
+		}
+	}
+
+	if !exists {
+		// Before attempting to create it, ensure we don't have a mount table
+		// entry that conflicts with this new namespace. We assume we only
+		// need to look at our parent's namespace's mount table for the last
+		// path component of this new namespace; while mount paths can have
+		// any number of components, our namespace only has one and is relative
+		// to some parent path.
+		path := entry.Namespace.Path
+		if parent.ID != namespace.RootNamespaceID {
+			if !entry.Namespace.HasParent(parent) {
+				return errors.New("namespace path lacks parent as a prefix")
+			}
+
+			path = namespace.Canonicalize(parent.TrimmedPath(entry.Namespace.Path))
+		}
+
+		conflict := ns.core.router.matchingPrefixInternal(ctx, path)
+		if conflict != "" {
+			return fmt.Errorf("new namespace conflicts with existing mount: %v", conflict)
 		}
 	}
 
@@ -311,7 +339,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 	nsEntry.Namespace.Path = entry.Namespace.Path
 
 	if !exists {
-		// unlock before initializeNamespace sice that will re-acqurie the lock
+		// unlock before initializeNamespace since that will re-acquire the lock
 		ns.lock.Unlock()
 		unlocked = true
 
@@ -516,10 +544,12 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		}}
 	}
 
-	entry, err = callback(ctx, entry)
-	if err != nil {
-		ns.lock.Unlock()
-		return nil, err
+	if callback != nil {
+		entry, err = callback(ctx, entry)
+		if err != nil {
+			ns.lock.Unlock()
+			return nil, err
+		}
 	}
 
 	// setNamespaceLocked will unlock ns.lock

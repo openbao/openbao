@@ -1,0 +1,3 @@
+```release-note:change
+packaging/systemd: Do not set LimitNOFILE, allowing Go to automatically manage this value on behalf of the server. See also https://github.com/golang/go/issues/46279.
+```

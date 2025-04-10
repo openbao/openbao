@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
 )
@@ -24,4 +25,14 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Names
 
 func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
 	return c.namespaceStore.ListAllNamespaces(ctx, true)
+}
+
+func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
+	ctxNs, err := namespace.FromContext(ctx)
+	if err != nil {
+		ctxNs = namespace.RootNamespace
+	}
+	combinedPath := ctxNs.Path + path
+	prefix, entry, _ := c.namespaceStore.namespacesByPath.LongestPrefix(combinedPath)
+	return entry.Namespace, strings.TrimPrefix(combinedPath, prefix)
 }

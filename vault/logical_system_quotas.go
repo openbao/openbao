@@ -301,13 +301,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 		}
 
 		mountPath := sanitizePath(d.Get("path").(string))
-		ns, err := namespace.FromContext(ctx)
-		if err != nil {
-			return logical.ErrorResponse("failed to find namespace in context: %v", err), nil
-		}
-		if ns.ID != namespace.RootNamespaceID {
-			mountPath = strings.TrimPrefix(mountPath, ns.Path)
-		}
+		ns, mountPath := b.Core.NamespaceByPath(ctx, mountPath)
 
 		var pathSuffix string
 		if mountPath != "" {

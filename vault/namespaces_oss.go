@@ -31,3 +31,7 @@ func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView
 
 	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
 }
+
+func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
+	return c.namespaceStore.GetNamespaceByLongestPrefix(ctx, path)
+}

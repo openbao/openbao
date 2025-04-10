@@ -73,6 +73,12 @@ be later than the role max TTL.`,
 }
 
 func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	txRollback, err := logical.StartTxStorage(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	defer txRollback()
+
 	roleName := data.Get("role").(string)
 
 	// Get the role
@@ -84,7 +90,16 @@ func (b *backend) pathSign(ctx context.Context, req *logical.Request, data *fram
 		return logical.ErrorResponse(fmt.Sprintf("Unknown role: %s", roleName)), nil
 	}
 
-	return b.pathSignCertificate(ctx, req, data, role)
+	resp, err := b.pathSignCertificate(ctx, req, data, role)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := logical.EndTxStorage(ctx, req); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (b *backend) pathSignCertificate(ctx context.Context, req *logical.Request, data *framework.FieldData, role *sshRole) (*logical.Response, error) {
@@ -103,5 +118,7 @@ func (b *backend) pathSignCertificate(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse(fmt.Sprintf("public_key failed to meet the key requirements: %s", err)), nil
 	}
 
-	return b.pathSignIssueCertificateHelper(ctx, req, data, role, userPublicKey)
+	sc := b.makeStorageContext(ctx, req.Storage)
+
+	return b.pathSignIssueCertificateHelper(sc, req, data, role, userPublicKey)
 }

@@ -1,0 +1,3 @@
+```release-note:feature
+ssh: Support multiple certificate issuers in SSH secret engine mounts, enabling safer rotation of SSH CA key material
+```

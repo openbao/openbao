@@ -408,10 +408,9 @@ func TestPolicyStore_LoadACLPolicyNamespaces(t *testing.T) {
 	require.False(t, resp.IsError())
 
 	// Lookup the namespace
-	nsEntry, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
+	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
-	require.NotNil(t, nsEntry, "namespace not found: %s", nsPath)
-	ns := nsEntry.Namespace
+	require.NotNil(t, ns, "namespace not found: %s", nsPath)
 
 	// Create namespace context
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
@@ -470,10 +469,9 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	require.False(t, resp.IsError())
 
 	// Lookup the namespace
-	nsEntry, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
+	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
-	require.NotNil(t, nsEntry, "namespace not found: %s", nsPath)
-	ns := nsEntry.Namespace
+	require.NotNil(t, ns, "namespace not found: %s", nsPath)
 
 	// Create policy in namespace
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
@@ -555,10 +553,9 @@ func TestPolicyStore_NamespaceAPI(t *testing.T) {
 	require.False(t, rootResp.IsError())
 
 	// Get namespace and create context
-	nsEntry, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
+	ns, err := core.namespaceStore.GetNamespaceByPath(ctx, nsPath)
 	require.NoError(t, err)
-	require.NotNil(t, nsEntry, "namespace not found: %s", nsPath)
-	ns := nsEntry.Namespace
+	require.NotNil(t, ns, "namespace not found: %s", nsPath)
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 
 	// Create and verify namespace policy
@@ -643,7 +640,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	// Get parent namespace context
 	parentNS, err := core.namespaceStore.GetNamespaceByPath(rootCtx, "parent")
 	require.NoError(t, err)
-	parentCtx := namespace.ContextWithNamespace(rootCtx, parentNS.Namespace)
+	parentCtx := namespace.ContextWithNamespace(rootCtx, parentNS)
 
 	// Create child namespace
 	childResp, err := core.HandleRequest(parentCtx, &logical.Request{
@@ -658,7 +655,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	childNS, err := core.namespaceStore.GetNamespaceByPath(parentCtx, "child")
 	require.NoError(t, err)
 	// Create child context from root context to avoid inheriting parent context
-	childCtx := namespace.ContextWithNamespace(parentCtx, childNS.Namespace)
+	childCtx := namespace.ContextWithNamespace(parentCtx, childNS)
 
 	// Add distinct policies to each namespace
 	policyTemplates := []struct {
@@ -668,8 +665,8 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 		content string
 	}{
 		{namespace.RootNamespace, rootCtx, "root-policy", `path "sys/*" { capabilities = ["read"] }`},
-		{parentNS.Namespace, parentCtx, "parent-policy", `path "secret/*" { capabilities = ["list"] }`},
-		{childNS.Namespace, childCtx, "child-policy", `path "auth/*" { capabilities = ["create"] }`},
+		{parentNS, parentCtx, "parent-policy", `path "secret/*" { capabilities = ["list"] }`},
+		{childNS, childCtx, "child-policy", `path "auth/*" { capabilities = ["create"] }`},
 	}
 
 	for _, tmpl := range policyTemplates {
@@ -768,10 +765,9 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	require.False(t, resp.IsError(), "response error: %#v", resp)
 
 	// Get the parent namespace
-	parentEntry, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+	parentNS, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
 	require.NoError(t, err)
-	require.NotNil(t, parentEntry, "parent namespace not found")
-	parentNS := parentEntry.Namespace
+	require.NotNil(t, parentNS, "parent namespace not found")
 	parentCtx := namespace.ContextWithNamespace(ctx, parentNS)
 
 	// Create a child namespace
@@ -785,10 +781,9 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	require.False(t, resp.IsError(), "response error: %#v", resp)
 
 	// Get the child namespace
-	childEntry, err := core.namespaceStore.GetNamespaceByPath(parentCtx, childPath)
+	childNS, err := core.namespaceStore.GetNamespaceByPath(parentCtx, childPath)
 	require.NoError(t, err)
-	require.NotNil(t, childEntry, "child namespace not found")
-	childNS := childEntry.Namespace
+	require.NotNil(t, childNS, "child namespace not found")
 	childCtx := namespace.ContextWithNamespace(parentCtx, childNS)
 
 	// Create policies in each namespace

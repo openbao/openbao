@@ -143,7 +143,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaceEntries(ctx, false, false)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -151,13 +151,13 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		var keys []string
 		keyInfo := make(map[string]interface{})
 		for _, entry := range entries {
-			p := parent.TrimmedPath(entry.Namespace.Path)
+			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
 			keyInfo[p] = map[string]any{
 				"uuid":            entry.UUID,
-				"id":              entry.Namespace.ID,
-				"path":            entry.Namespace.Path,
-				"custom_metadata": entry.Namespace.CustomMetadata,
+				"id":              entry.ID,
+				"path":            entry.Path,
+				"custom_metadata": entry.CustomMetadata,
 			}
 		}
 
@@ -172,7 +172,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		entries, err := b.Core.namespaceStore.ListNamespaceEntries(ctx, false, true)
+		entries, err := b.Core.namespaceStore.ListNamespaces(ctx, false, true)
 		if err != nil {
 			return nil, err
 		}
@@ -180,13 +180,13 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		var keys []string
 		keyInfo := make(map[string]interface{})
 		for _, entry := range entries {
-			p := parent.TrimmedPath(entry.Namespace.Path)
+			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
 			keyInfo[p] = map[string]any{
 				"uuid":            entry.UUID,
-				"id":              entry.Namespace.ID,
-				"path":            entry.Namespace.Path,
-				"custom_metadata": entry.Namespace.CustomMetadata,
+				"id":              entry.ID,
+				"path":            entry.Path,
+				"custom_metadata": entry.CustomMetadata,
 			}
 		}
 
@@ -215,9 +215,9 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"uuid":            ns.UUID,
-				"id":              ns.Namespace.ID,
-				"path":            ns.Namespace.Path,
-				"custom_metadata": ns.Namespace.CustomMetadata,
+				"id":              ns.ID,
+				"path":            ns.Path,
+				"custom_metadata": ns.CustomMetadata,
 			},
 		}
 
@@ -245,8 +245,8 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
-			ns.Namespace.CustomMetadata = metadata
+		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
@@ -255,9 +255,9 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 		resp := &logical.Response{Data: map[string]interface{}{
 			"uuid":            entry.UUID,
-			"path":            entry.Namespace.Path,
-			"id":              entry.Namespace.ID,
-			"custom_metadata": entry.Namespace.CustomMetadata,
+			"path":            entry.Path,
+			"id":              entry.ID,
+			"custom_metadata": entry.CustomMetadata,
 		}}
 		return resp, nil
 	}
@@ -288,13 +288,13 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
 
 			current := make(map[string]interface{})
-			for k, v := range ns.Namespace.CustomMetadata {
+			for k, v := range ns.CustomMetadata {
 				current[k] = v
 			}
 
@@ -308,7 +308,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 				return nil, err
 			}
 
-			ns.Namespace.CustomMetadata = patched
+			ns.CustomMetadata = patched
 			return ns, nil
 		})
 		if err != nil {
@@ -317,9 +317,9 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 
 		resp := &logical.Response{Data: map[string]interface{}{
 			"uuid":            ns.UUID,
-			"path":            ns.Namespace.Path,
-			"id":              ns.Namespace.ID,
-			"custom_metadata": ns.Namespace.CustomMetadata,
+			"path":            ns.Path,
+			"id":              ns.ID,
+			"custom_metadata": ns.CustomMetadata,
 		}}
 		return resp, nil
 	}

@@ -103,7 +103,7 @@ func (c *Core) enableAudit(ctx context.Context, entry *MountEntry, updateStorage
 		entry.Accessor = accessor
 	}
 
-	view, err := c.mountEntryView(ctx, entry)
+	view, err := c.mountEntryView(entry)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (c *Core) setupAudits(ctx context.Context) error {
 
 	for _, entry := range c.audit.Entries {
 		// Create a barrier view using the UUID
-		view, err := c.mountEntryView(ctx, entry)
+		view, err := c.mountEntryView(entry)
 		if err != nil {
 			return err
 		}

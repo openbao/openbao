@@ -446,33 +446,30 @@ func (c *Core) stopExpiration() error {
 	return nil
 }
 
-func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
+func (m *ExpirationManager) leaseView(ctx context.Context, ns *namespace.Namespace) BarrierView {
 	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix), nil
+		return m.core.systemBarrierView.SubView(expirationSubPath + leaseViewPrefix)
 	}
-	return m.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
+	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+leaseViewPrefix)
 }
 
-func (m *ExpirationManager) tokenIndexView(ctx context.Context, ns *namespace.Namespace) (BarrierView, error) {
+func (m *ExpirationManager) tokenIndexView(ctx context.Context, ns *namespace.Namespace) BarrierView {
 	if ns.ID == namespace.RootNamespaceID {
-		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix), nil
+		return m.core.systemBarrierView.SubView(expirationSubPath + tokenViewPrefix)
 	}
-	return m.core.namespaceMountEntryView(ctx, ns.ID, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
+	return m.core.namespaceMountEntryView(ns, systemBarrierPrefix+expirationSubPath+tokenViewPrefix)
 }
 
 func (m *ExpirationManager) collectLeases() (map[*namespace.Namespace][]string, int, error) {
 	leaseCount := 0
 	existing := make(map[*namespace.Namespace][]string)
-	namespaces, err := m.core.namespaceStore.ListAllNamespaces(m.quitContext, true)
+	namespaces, err := m.core.ListNamespaces(m.quitContext)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list all namespaces: %w", err)
 	}
 
 	for _, namespace := range namespaces {
-		view, err := m.leaseView(m.quitContext, namespace)
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to determine lease view for namespace: %w", err)
-		}
+		view := m.leaseView(m.quitContext, namespace)
 		keys, err := logical.CollectKeys(m.quitContext, view)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan for leases: %w", err)
@@ -668,11 +665,7 @@ func (m *ExpirationManager) Tidy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	leaseView, err := m.leaseView(ctx, ns)
-	if err != nil {
-		return err
-	}
-
+	leaseView := m.leaseView(ctx, ns)
 	if err := logical.ScanView(m.quitContext, leaseView, tidyFunc); err != nil {
 		return err
 	}
@@ -1186,12 +1179,8 @@ func (m *ExpirationManager) revokePrefixCommon(ctx context.Context, prefix strin
 	if err != nil {
 		return err
 	}
-	view, err := m.leaseView(ctx, ns)
-	if err != nil {
-		return err
-	}
-	sub := view.SubView(prefix)
-	existing, err := logical.CollectKeys(ctx, sub)
+	view := m.leaseView(ctx, ns).SubView(prefix)
+	existing, err := logical.CollectKeys(ctx, view)
 	if err != nil {
 		return fmt.Errorf("failed to scan for leases: %w", err)
 	}
@@ -2038,12 +2027,7 @@ func (m *ExpirationManager) loadEntryInternal(ctx context.Context, leaseID strin
 		return nil, err
 	}
 
-	view, err := m.leaseView(ctx, ns)
-	if err != nil {
-		return nil, err
-	}
-
-	out, err := view.Get(ctx, leaseID)
+	out, err := m.leaseView(ctx, ns).Get(ctx, leaseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read lease entry %s: %w", leaseID, err)
 	}
@@ -2093,11 +2077,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 		ent.SealWrap = true
 	}
 
-	view, err := m.leaseView(ctx, le.namespace)
-	if err != nil {
-		return fmt.Errorf("failed to determine lease view: %w", err)
-	}
-	if err := view.Put(ctx, &ent); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Put(ctx, &ent); err != nil {
 		return fmt.Errorf("failed to persist lease entry: %w", err)
 	}
 	return nil
@@ -2105,11 +2085,7 @@ func (m *ExpirationManager) persistEntry(ctx context.Context, le *leaseEntry) er
 
 // deleteEntry is used to delete a lease entry
 func (m *ExpirationManager) deleteEntry(ctx context.Context, le *leaseEntry) error {
-	view, err := m.leaseView(ctx, le.namespace)
-	if err != nil {
-		return fmt.Errorf("failed to determine lease view: %w", err)
-	}
-	if err := view.Delete(ctx, le.LeaseID); err != nil {
+	if err := m.leaseView(ctx, le.namespace).Delete(ctx, le.LeaseID); err != nil {
 		return fmt.Errorf("failed to delete lease entry: %w", err)
 	}
 	return nil
@@ -2146,11 +2122,7 @@ func (m *ExpirationManager) createIndexByToken(ctx context.Context, le *leaseEnt
 		Value: []byte(le.LeaseID),
 	}
 
-	tokenView, err := m.tokenIndexView(ctx, tokenNS)
-	if err != nil {
-		return fmt.Errorf("failed to determine lease index view: %w", err)
-	}
-	if err := tokenView.Put(ctx, &ent); err != nil {
+	if err := m.tokenIndexView(ctx, tokenNS).Put(ctx, &ent); err != nil {
 		return fmt.Errorf("failed to persist lease index entry: %w", err)
 	}
 	return nil
@@ -2183,11 +2155,7 @@ func (m *ExpirationManager) indexByToken(ctx context.Context, le *leaseEntry) (*
 	}
 
 	key := saltedID + "/" + leaseSaltedID
-	tokenView, err := m.tokenIndexView(ctx, tokenNS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to determine lease index view: %w", err)
-	}
-	entry, err := tokenView.Get(ctx, key)
+	entry, err := m.tokenIndexView(ctx, tokenNS).Get(ctx, key)
 	if err != nil {
 		return nil, errors.New("failed to look up secondary index entry")
 	}
@@ -2221,11 +2189,7 @@ func (m *ExpirationManager) removeIndexByToken(ctx context.Context, le *leaseEnt
 	}
 
 	key := saltedID + "/" + leaseSaltedID
-	tokenView, err := m.tokenIndexView(ctx, tokenNS)
-	if err != nil {
-		return fmt.Errorf("failed to determine lease index view: %w", err)
-	}
-	if err := tokenView.Delete(ctx, key); err != nil {
+	if err := m.tokenIndexView(ctx, tokenNS).Delete(ctx, key); err != nil {
 		return fmt.Errorf("failed to delete lease index entry: %w", err)
 	}
 	return nil
@@ -2322,10 +2286,7 @@ func (m *ExpirationManager) lookupLeasesByToken(ctx context.Context, te *logical
 		return nil, err
 	}
 
-	tokenView, err := m.tokenIndexView(ctx, tokenNS)
-	if err != nil {
-		return nil, fmt.Errorf("failed to determine lease index view: %w", err)
-	}
+	tokenView := m.tokenIndexView(ctx, tokenNS)
 
 	// Scan via the index for sub-leases
 	prefix := saltedID + "/"
@@ -2350,10 +2311,7 @@ func (m *ExpirationManager) lookupLeasesByToken(ctx context.Context, te *logical
 	// Downgrade logic for old-style (V0) leases entries created by a namespace
 	// token that lived in the root namespace.
 	if tokenNS.ID != namespace.RootNamespaceID {
-		tokenView, err := m.tokenIndexView(ctx, namespace.RootNamespace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to determine lease index view on root namespace: %w", err)
-		}
+		tokenView := m.tokenIndexView(ctx, namespace.RootNamespace)
 
 		// Scan via the index for sub-leases on the root namespace
 		prefix := saltedID + "/"

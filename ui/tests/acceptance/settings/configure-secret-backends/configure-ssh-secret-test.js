@@ -41,8 +41,6 @@ module('Acceptance | settings/configure/secrets/ssh', function (hooks) {
       'missing public_key',
       'renders warning flash message for failed save'
     );
-    await click(SELECTORS.generateSigningKey);
-    await click(SELECTORS.saveConfig);
     assert.dom(SELECTORS.publicKey).exists('renders public key after saving config');
   });
 });

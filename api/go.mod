@@ -7,7 +7,7 @@ module github.com/openbao/openbao/api/v2
 // have to.
 go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.23.8
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0

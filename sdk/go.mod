@@ -7,7 +7,7 @@ module github.com/openbao/openbao/sdk/v2
 // have to.
 go 1.23.1
 
-toolchain go1.23.3
+toolchain go1.23.8
 
 replace github.com/openbao/openbao/api/v2 => ../api
 

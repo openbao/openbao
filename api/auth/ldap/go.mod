@@ -2,7 +2,7 @@ module github.com/openbao/openbao/api/auth/ldap/v2
 
 go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.23.8
 
 replace github.com/openbao/openbao/api/v2 => ../../
 

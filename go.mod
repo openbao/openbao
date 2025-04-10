@@ -8,7 +8,7 @@ module github.com/openbao/openbao
 // The general policy for updating it is: when the Go major version used on the branch is
 // updated. If we choose not to do so at some point (e.g. because we don't want some new
 // semantic related to Go module handling), this comment should be updated to explain that.
-go 1.24.0
+go 1.24.2
 
 replace github.com/openbao/openbao/api/v2 => ./api
 
@@ -43,7 +43,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/go-test/deep v1.1.0
 	github.com/gocql/gocql v1.0.0
-	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/protobuf v1.5.4
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
 	github.com/google/go-cmp v0.7.0
@@ -212,7 +212,7 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.62.301 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/aws/aws-sdk-go v1.55.5 // indirect
+	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
@@ -253,7 +253,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.1.0 // indirect
 	github.com/gofrs/uuid v4.3.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect

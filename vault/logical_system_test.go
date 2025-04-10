@@ -511,7 +511,7 @@ func TestSystemBackend_PathCapabilities(t *testing.T) {
 	core, b, rootToken := testCoreSystemBackend(t)
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -720,7 +720,7 @@ func testCapabilities(t *testing.T, endpoint string) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -776,7 +776,7 @@ func TestSystemBackend_CapabilitiesAccessor_BC(t *testing.T) {
 	}
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, capabilitiesPolicy)
-	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy)
+	err = core.policyStore.SetPolicy(namespace.RootContext(nil), policy, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -2379,6 +2379,7 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	b := testSystemBackend(t)
 
 	// Create the policy
+	beforeWrite := time.Now()
 	rules := `path "foo/" { policy = "read" }`
 	req := logical.TestRequest(t, logical.UpdateOperation, "policy/Foo")
 	req.Data["rules"] = rules
@@ -2413,24 +2414,39 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 		true,
 	)
 
+	// Validate date was reasonably in the past.
+	require.Contains(t, resp.Data, "modified")
+	modified := resp.Data["modified"].(time.Time)
+	require.True(t, modified.After(beforeWrite))
+	delete(resp.Data, "modified")
+
 	exp := map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
 	}
 
-	// Read, and make sure that case has been normalized
+	// Read, and make sure that case has been normalized.
 	req = logical.TestRequest(t, logical.ReadOperation, "policy/Foo")
 	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
+	// No change; modified should be the same.
+	require.Contains(t, resp.Data, "modified")
+	require.Equal(t, resp.Data["modified"].(time.Time), modified)
+	delete(resp.Data, "modified")
+
 	exp = map[string]interface{}{
-		"name":  "foo",
-		"rules": rules,
+		"name":         "foo",
+		"rules":        rules,
+		"cas_required": false,
+		"version":      1,
 	}
 	if !reflect.DeepEqual(resp.Data, exp) {
 		t.Fatalf("got: %#v expect: %#v", resp.Data, exp)
@@ -3233,7 +3249,7 @@ func TestSystemBackend_rawDelete(t *testing.T) {
 		Type:      PolicyTypeACL,
 		namespace: namespace.RootNamespace,
 	}
-	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p)
+	err := c.policyStore.SetPolicy(namespace.RootContext(nil), p, nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -6038,4 +6054,83 @@ func TestCanUnseal_WithNonExistentBuiltinPluginVersion_InMountStorage(t *testing
 			t.Errorf("expected empty plugin version in config: %#v", config)
 		}
 	}
+}
+
+func TestPolicyStore_Store(t *testing.T) {
+	t.Parallel()
+
+	core, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
+
+	t.Run("ttl", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/ttl-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+		req.Data["ttl"] = "10s"
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+		require.Contains(t, resp.Data, "modified")
+		exp := resp.Data["expiration"].(time.Time)
+		modified := resp.Data["modified"].(time.Time)
+		require.LessOrEqual(t, time.Now().Sub(modified), 2*time.Second)
+
+		time.Sleep(2 * time.Second)
+
+		if time.Now().Before(exp) {
+			req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+			resp, err = core.systemBackend.HandleRequest(ctx, req)
+
+			if time.Now().Before(exp) {
+				require.NoError(t, err)
+				require.NotNil(t, resp)
+				require.Contains(t, resp.Data, "expiration")
+				require.Contains(t, resp.Data, "modified")
+
+				// Modified should not change.
+				require.Equal(t, modified, resp.Data["modified"])
+			}
+		}
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/ttl-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("expiration", func(t *testing.T) {
+		req := logical.TestRequest(t, logical.UpdateOperation, "policies/acl/expiration-test-policy")
+		req.Data["policy"] = `path "*" { capabilities = ["read"] }`
+
+		expectedExpiration := time.Now().Add(10 * time.Second).UTC()
+		req.Data["expiration"] = expectedExpiration.Format(time.RFC3339)
+
+		resp, err := core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Contains(t, resp.Data, "expiration")
+
+		exp := resp.Data["expiration"].(time.Time)
+		require.Equal(t, expectedExpiration.Format(time.RFC3339), exp.Format(time.RFC3339))
+
+		time.Sleep(time.Until(exp) + 10*time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "policies/acl/expiration-test-policy")
+		resp, err = core.systemBackend.HandleRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
 }

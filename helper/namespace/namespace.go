@@ -36,7 +36,7 @@ type Namespace struct {
 	ID             string            `json:"id" mapstructure:"id"`
 	UUID           string            `json:"uuid" mapstructure:"uuid"`
 	Path           string            `json:"path" mapstructure:"path"`
-	Tainted        bool              `json:"tainted,omitempty" mapstructure:"tainted"`
+	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 

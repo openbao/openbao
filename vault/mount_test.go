@@ -1307,3 +1307,121 @@ func TestCore_MountEntryView(t *testing.T) {
 		})
 	}
 }
+
+func TestNamespaceMount_Exclusion(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &NoopBackend{}, nil
+	}
+
+	// Creating a mount and then a namespace with the same name should fail.
+	me := &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err := c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// In openbao#1198, the first creation erred but left a ghost namespace
+	// object lying around. This meant that list and subsequent create
+	// namespace operations returned this ghost structure and did not error
+	// properly. Retrying the create ensures no ghost object exists.
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a deeply nested mount should also cause failures.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a new namespace should succeed.
+	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
+	require.NoError(t, err)
+	require.NotNil(t, nsBar)
+
+	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar.Namespace)
+
+	// Doing the above inside bar should behave the same.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a mount at the root level that conflicts with bar/ should fail.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/baz/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	// Ensure creating sibling mounts still works.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/qux/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+}

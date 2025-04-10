@@ -1107,6 +1107,15 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 	path "sys/policy" {
 		capabilities = ["read"]
 	}
+	path "sys/health" {
+		capabilities = ["read"]
+	}
+	path "sys/init" {
+		capabilities = ["read"]
+	}
+	path "sys/metrics" {
+		capabilities = ["read"]
+	}
 	`
 
 	err = nsClient.Sys().PutPolicy(policyName, policyHCL)

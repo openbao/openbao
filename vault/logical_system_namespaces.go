@@ -138,14 +138,14 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 // createNamespaceDataResponse is the standard response object
 // for any operations concerning a namespace
-func createNamespaceDataResponse(nsEntry *NamespaceEntry) *logical.Response {
-	return &logical.Response{Data: map[string]interface{}{
+func createNamespaceDataResponse(nsEntry *NamespaceEntry) map[string]any {
+	return map[string]any{
 		"uuid":            nsEntry.UUID,
 		"path":            nsEntry.Namespace.Path,
 		"id":              nsEntry.Namespace.ID,
 		"tainted":         nsEntry.Namespace.Tainted,
 		"custom_metadata": nsEntry.Namespace.CustomMetadata,
-	}}
+	}
 }
 
 // handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
@@ -214,7 +214,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		return createNamespaceDataResponse(ns), nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
@@ -246,7 +246,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return createNamespaceDataResponse(entry), nil
+		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
 	}
 }
 
@@ -302,7 +302,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		return createNamespaceDataResponse(ns), nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 

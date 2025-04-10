@@ -652,7 +652,7 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 
 	// If the path is tainted, we reject any operation except for
 	// Rollback and Revoke
-	if re.tainted {
+	if re.tainted || ns.Tainted {
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:

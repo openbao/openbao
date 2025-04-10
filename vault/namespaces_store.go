@@ -557,6 +557,19 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive)
 }
 
+// taintNamespace is used to taint the namespace scheduled to be deleted
+func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespace *namespace.Namespace) error {
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
+	ns.namespacesByUUID[namespace.UUID].Tainted = true
+	ns.namespacesByAccessor[namespace.ID].Tainted = true
+	ns.namespacesByPath.Get(namespace.Path).Tainted = true
+
+	return nil
+}
+
 // DeleteNamespace is used to delete the named namespace
 func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) error {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
@@ -566,7 +579,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	}
 
 	item, ok := ns.namespacesByUUID[uuid]
-	if !ok {
+	if !ok || item.Tainted {
 		return nil
 	}
 
@@ -574,9 +587,20 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return errors.New("unable to delete root namespace")
 	}
 
-	// TODO: check whether namespace has child namespaces
-
 	nsCtx := namespace.ContextWithNamespace(ctx, item)
+
+	// checking whether namespace has child namespaces
+	childNS, err := ns.ListNamespaces(nsCtx, false, false)
+	if err != nil {
+		return err
+	}
+
+	if len(childNS) > 0 {
+		return fmt.Errorf("cannot delete namespace (%q) containing child namespaces", item.Path)
+	}
+
+	// taint the namespace
+	err = ns.taintNamespace(nsCtx, item)
 
 	// clear ACL policies
 	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
+	"github.com/stretchr/testify/require"
 
 	"github.com/armon/go-metrics"
 	"github.com/go-test/deep"
@@ -734,7 +735,7 @@ func TestCore_Remount_Protected(t *testing.T) {
 
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	table := c.defaultMountTable()
+	table := c.defaultMountTable(context.Background())
 	verifyDefaultTable(t, table, 3)
 }
 
@@ -1118,4 +1119,309 @@ func TestCore_MountInitialize(t *testing.T) {
 			t.Fatal("backend is not initialized")
 		}
 	}
+}
+
+func TestCore_MountEntryView(t *testing.T) {
+	t.Parallel()
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	testMountEntryUUID := "mount-entry-uuid"
+	testNamespace1 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
+	testNamespace2 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
+
+	err := s.SetNamespace(ctx, testNamespace1)
+	require.NoError(t, err)
+	err = s.SetNamespace(ctx, testNamespace2)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		mountEntry *MountEntry
+
+		wantViewPrefix string
+		wantError      bool
+	}{
+		{
+			name: "entry without type nor table type leading to error",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+			},
+
+			wantError: true,
+		},
+		{
+			name: "entry of 'system' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeSystem,
+			},
+
+			wantViewPrefix: systemBarrierPrefix,
+		},
+		{
+			name: "entry of 'token' mount type",
+			mountEntry: &MountEntry{
+				UUID: testMountEntryUUID,
+				Type: mountTypeToken,
+			},
+
+			wantViewPrefix: systemBarrierPrefix + tokenSubPath,
+		},
+		{
+			name: "entry of 'credential' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Type:  "approle",
+				Table: credentialTableType,
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'audit' table type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: auditTableType,
+			},
+
+			wantViewPrefix: auditBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type and 'identity' type",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeIdentity,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeNSCubbyhole,
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table type, and 'cubbyholeNS' type with namespace not present in store",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeNSCubbyhole,
+				// does not exist in store
+				NamespaceID: "ns-2",
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantError: true,
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       mountTableType,
+				Type:        mountTypeKV,
+				NamespaceID: testNamespace2.Namespace.ID,
+				namespace:   testNamespace2.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'mount' table, and 'kv' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: mountTableType,
+				Type:  mountTypeKV,
+			},
+
+			wantViewPrefix: backendBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace1.Namespace.ID,
+				namespace:   testNamespace1.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type with nested namespace present",
+			mountEntry: &MountEntry{
+				UUID:        testMountEntryUUID,
+				Table:       credentialTableType,
+				Type:        "userpass",
+				NamespaceID: testNamespace2.Namespace.ID,
+				namespace:   testNamespace2.Namespace,
+			},
+
+			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+		{
+			name: "entry of 'auth' table, and 'userpass' type without namespace present",
+			mountEntry: &MountEntry{
+				UUID:  testMountEntryUUID,
+				Table: credentialTableType,
+				Type:  "userpass",
+			},
+
+			wantViewPrefix: credentialBarrierPrefix + testMountEntryUUID + "/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotView, err := c.mountEntryView(ctx, tt.mountEntry)
+
+			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
+			if err == nil {
+				require.Equalf(t, tt.wantViewPrefix, gotView.Prefix(), "(*Core).mountEntryView() gotViewPrefix: %v, want: %v", gotView.Prefix(), tt.wantViewPrefix)
+			}
+		})
+	}
+}
+
+func TestNamespaceMount_Exclusion(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	c.logicalBackends["noop"] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		return &NoopBackend{}, nil
+	}
+
+	// Creating a mount and then a namespace with the same name should fail.
+	me := &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err := c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// In openbao#1198, the first creation erred but left a ghost namespace
+	// object lying around. This meant that list and subsequent create
+	// namespace operations returned this ghost structure and did not error
+	// properly. Retrying the create ensures no ghost object exists.
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a deeply nested mount should also cause failures.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a new namespace should succeed.
+	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
+	require.NoError(t, err)
+	require.NotNil(t, nsBar)
+
+	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar.Namespace)
+
+	// Doing the above inside bar should behave the same.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/foo/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	require.Error(t, err)
+	require.Nil(t, ns)
+
+	// Creating a mount at the root level that conflicts with bar/ should fail.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "bar/baz/",
+		Type:        "noop",
+		NamespaceID: namespace.RootNamespaceID,
+	}
+	err = c.mount(namespace.RootContext(nil), me)
+	require.Error(t, err)
+
+	// Ensure creating sibling mounts still works.
+	me = &MountEntry{
+		Table:       mountTableType,
+		Path:        "fud/bar/baz/qux/",
+		Type:        "noop",
+		NamespaceID: nsBar.Namespace.ID,
+	}
+	err = c.mount(barCtx, me)
+	require.NoError(t, err)
 }

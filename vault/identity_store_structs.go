@@ -124,7 +124,7 @@ var _ LocalNode = &Core{}
 
 type Namespacer interface {
 	NamespaceByID(context.Context, string) (*namespace.Namespace, error)
-	ListNamespaces(includePath bool) []*namespace.Namespace
+	ListNamespaces(context.Context) ([]*namespace.Namespace, error)
 }
 
 var _ Namespacer = &Core{}

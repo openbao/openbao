@@ -632,6 +632,19 @@ func (ns *NamespaceStore) ListNamespaceEntries(ctx context.Context, includeParen
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive)
 }
 
+// taintNamespace is used to taint the namespace scheduled to be deleted
+func (ns *NamespaceStore) taintNamespace(ctx context.Context, nsEntry *NamespaceEntry) error {
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
+	ns.namespacesByUUID[nsEntry.UUID].Namespace.Tainted = true
+	ns.namespacesByAccessor[nsEntry.Namespace.ID].Namespace.Tainted = true
+	ns.namespacesByPath.Get(nsEntry.Namespace.Path).Namespace.Tainted = true
+
+	return nil
+}
+
 // DeleteNamespace is used to delete the named namespace
 func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) error {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
@@ -641,7 +654,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	}
 
 	item, ok := ns.namespacesByUUID[uuid]
-	if !ok {
+	if !ok || item.Namespace.Tainted {
 		return nil
 	}
 
@@ -649,11 +662,67 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 		return errors.New("unable to delete root namespace")
 	}
 
+	nsCtx := namespace.ContextWithNamespace(ctx, item.Namespace)
+
+	// checking whether namespace has child namespaces
+	childNS, err := ns.ListNamespaces(nsCtx, false, false)
+	if err != nil {
+		return err
+	}
+
+	if len(childNS) > 0 {
+		return fmt.Errorf("cannot delete namespace (%q) containing child namespaces", item.Namespace.Path)
+	}
+
+	// taint the namespace
+	err = ns.taintNamespace(nsCtx, item)
+
+	// clear ACL policies
+	policiesToClear, err := ns.core.policyStore.ListPolicies(nsCtx, PolicyTypeACL, false)
+	if err != nil {
+		return err
+	}
+
+	for _, policy := range policiesToClear {
+		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
+		if err != nil {
+			return err
+		}
+	}
+
+	// clear auth mounts
+	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(nsCtx)
+	if err != nil {
+		return err
+	}
+
+	for _, me := range authMountEntries {
+		err := ns.core.disableCredential(nsCtx, me.Path)
+		if err != nil {
+			return fmt.Errorf("failed to unmount auth: %s - %w", me.Path, err)
+		}
+	}
+
+	// clear mounts
+	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(nsCtx)
+	if err != nil {
+		return err
+	}
+
+	for _, me := range mountEntries {
+		err := ns.core.unmount(nsCtx, me.Path)
+		if err != nil {
+			return fmt.Errorf("failed to unmount: %s - %w", me.Path, err)
+		}
+	}
+
+	// TODO: clear other ns configs
+
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
-	err := ns.namespacesByPath.Delete(item.Namespace.Path)
+	err = ns.namespacesByPath.Delete(item.Namespace.Path)
 	if err != nil {
 		return err
 	}

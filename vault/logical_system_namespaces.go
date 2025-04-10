@@ -136,6 +136,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 	}
 }
 
+// createNamespaceDataResponse is the standard response object
+// for any operations concerning a namespace
+func createNamespaceDataResponse(nsEntry *NamespaceEntry) map[string]any {
+	return map[string]any{
+		"uuid":            nsEntry.UUID,
+		"path":            nsEntry.Namespace.Path,
+		"id":              nsEntry.Namespace.ID,
+		"tainted":         nsEntry.Namespace.Tainted,
+		"custom_metadata": nsEntry.Namespace.CustomMetadata,
+	}
+}
+
 // handleNamespacesList handles "/sys/namespaces" endpoint to list the enabled namespaces.
 func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -153,12 +165,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Namespace.Path)
 			keys = append(keys, p)
-			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
-				"id":              entry.Namespace.ID,
-				"path":            entry.Namespace.Path,
-				"custom_metadata": entry.Namespace.CustomMetadata,
-			}
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -182,12 +189,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Namespace.Path)
 			keys = append(keys, p)
-			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
-				"id":              entry.Namespace.ID,
-				"path":            entry.Namespace.Path,
-				"custom_metadata": entry.Namespace.CustomMetadata,
-			}
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -212,16 +214,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid":            ns.UUID,
-				"id":              ns.Namespace.ID,
-				"path":            ns.Namespace.Path,
-				"custom_metadata": ns.Namespace.CustomMetadata,
-			},
-		}
-
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
@@ -253,13 +246,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            entry.UUID,
-			"path":            entry.Namespace.Path,
-			"id":              entry.Namespace.ID,
-			"custom_metadata": entry.Namespace.CustomMetadata,
-		}}
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
 	}
 }
 
@@ -315,17 +302,11 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            ns.UUID,
-			"path":            ns.Namespace.Path,
-			"id":              ns.Namespace.ID,
-			"custom_metadata": ns.Namespace.CustomMetadata,
-		}}
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoints to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))

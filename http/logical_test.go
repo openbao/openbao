@@ -1099,6 +1099,8 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 	nsClient.SetToken(rootToken)
 
 	// Write policy that grants access to the non-restricted APIs we want to test
+	// grants access to sys/health, sys/init, and sys/metrics verifying that the namespace
+	// still has no access to the restricted APIs
 	policyName := "ns-test-policy"
 	policyHCL := `
 	path "sys/mounts" {

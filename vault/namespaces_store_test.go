@@ -134,6 +134,57 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, item.Path, itemPath)
 }
 
+func TestNamespaceStore_DeleteNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	// create namespace
+	testNamespace := &namespace.Namespace{Path: "test"}
+	err := s.SetNamespace(ctx, testNamespace)
+	require.NoError(t, err)
+
+	// retrieve namespace
+	createdNS, err := s.GetNamespaceByPath(ctx, testNamespace.Path)
+	require.NoError(t, err)
+
+	// delete namespace
+	err = s.DeleteNamespace(ctx, createdNS.UUID)
+	require.NoError(t, err)
+
+	// verify namespace
+	nsList, err := s.ListAllNamespaces(ctx, false)
+	require.NoError(t, err)
+	require.Empty(t, nsList)
+
+	// all have to be of length 1 due to root existing
+	require.Len(t, s.namespacesByAccessor, 1)
+	require.Len(t, s.namespacesByUUID, 1)
+	require.Equal(t, s.namespacesByPath.size, 1)
+
+	// try to delete root
+	err = s.DeleteNamespace(ctx, "")
+	require.Error(t, err)
+
+	// try to delete namespace with child namespaces
+	parentNamespace := &namespace.Namespace{Path: "parent/"}
+	childNamespace := &namespace.Namespace{Path: "parent/child/"}
+	err = s.SetNamespace(ctx, parentNamespace)
+	require.NoError(t, err)
+
+	parentNS, err := s.GetNamespaceByPath(ctx, parentNamespace.Path)
+	require.NoError(t, err)
+
+	parentCtx := namespace.ContextWithNamespace(ctx, parentNS)
+	err = s.SetNamespace(ctx, childNamespace)
+	require.NoError(t, err)
+
+	err = s.DeleteNamespace(parentCtx, parentNS.UUID)
+	require.Error(t, err)
+}
+
 func TestNamespaceHierarchy(t *testing.T) {
 	t.Parallel()
 

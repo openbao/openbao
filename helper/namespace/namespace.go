@@ -92,6 +92,7 @@ var (
 		ID:             RootNamespaceID,
 		UUID:           RootNamespaceUUID,
 		Path:           "",
+		Tainted:        false,
 		CustomMetadata: make(map[string]string),
 	}
 )

@@ -558,14 +558,18 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 }
 
 // taintNamespace is used to taint the namespace scheduled to be deleted
-func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespace *namespace.Namespace) error {
+func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
+	if namespaceToTaint.ID == namespace.RootNamespaceID {
+		return errors.New("cannot taint a root namespace")
+	}
+
 	if err := ns.checkInvalidation(ctx); err != nil {
 		return err
 	}
 
-	ns.namespacesByUUID[namespace.UUID].Tainted = true
-	ns.namespacesByAccessor[namespace.ID].Tainted = true
-	ns.namespacesByPath.Get(namespace.Path).Tainted = true
+	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
+	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
+	ns.namespacesByPath.Get(namespaceToTaint.Path).Tainted = true
 
 	return nil
 }
@@ -611,7 +615,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 	for _, policy := range policiesToClear {
 		err := ns.core.policyStore.deletePolicyForce(nsCtx, policy, PolicyTypeACL)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to delete policy: %s - %w", policy, err)
 		}
 	}
 
@@ -640,8 +644,6 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) erro
 			return fmt.Errorf("failed to unmount: %s - %w", me.Path, err)
 		}
 	}
-
-	// TODO: clear other ns configs
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()

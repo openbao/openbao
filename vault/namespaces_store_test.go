@@ -443,3 +443,76 @@ func BenchmarkNamespaceSetLocked(b *testing.B) {
 		i += 1
 	}
 }
+
+// TestNamespaces_ResolveNamespaceFromRequest verifies namespace resolution logic from request.
+func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
+	core, _, _ := TestCoreUnsealed(t)
+	nsStore := core.namespaceStore
+
+	// Setup only necessary namespaces
+	ns1Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
+	ns2Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
+
+	ns3Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/namespaces/ns3/"}}
+
+	// Create namespaces
+	rootCtx := namespace.RootContext(nil)
+	// Set namespaces in root
+	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
+
+	// Set child into ns1
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1Entry.Namespace)
+	require.NoError(t, nsStore.SetNamespace(ns1Ctx, ns2Entry))
+
+	// Set child into ns1/ns2
+	ns2Ctx := namespace.ContextWithNamespace(ns1Ctx, ns2Entry.Namespace)
+	require.NoError(t, nsStore.SetNamespace(ns2Ctx, ns3Entry))
+
+	// Define test cases
+	testCases := []struct {
+		name            string
+		reqPath         string
+		expectedFinalNS *namespace.Namespace
+		expectedRelPath string
+	}{
+		{
+			name:            "NS in path",
+			reqPath:         "ns1/secret/foo",
+			expectedFinalNS: ns1Entry.Namespace,
+			expectedRelPath: "secret/foo",
+		},
+		{
+			name:            "Nested NS in path",
+			reqPath:         "ns1/ns2/secret/foo",
+			expectedFinalNS: ns2Entry.Namespace,
+			expectedRelPath: "secret/foo",
+		},
+		{
+			name:            "Route to existing namespace ns2 with sys in path",
+			reqPath:         "ns1/sys/namespaces/ns2",
+			expectedFinalNS: ns1Entry.Namespace,
+			expectedRelPath: "sys/namespaces/ns2",
+		},
+		{
+			name:            "Route to existing namespace ns3 with ns1/ns2/sys in path",
+			reqPath:         "ns1/ns2/sys/namespaces/ns3",
+			expectedFinalNS: ns2Entry.Namespace,
+			expectedRelPath: "sys/namespaces/ns3",
+		},
+	}
+
+	// Execute test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			baseCtx := namespace.RootContext(context.Background())
+			httpCtx := namespace.RootContext(context.Background())
+
+			finalCtx, finalNS, finalPath, err := nsStore.ResolveNamespaceFromRequest(baseCtx, httpCtx, tc.reqPath)
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedFinalNS.Path, finalNS.Path)
+			require.Equal(t, tc.expectedRelPath, finalPath)
+			require.NotNil(t, finalCtx)
+		})
+	}
+}

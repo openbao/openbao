@@ -10,10 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -71,31 +71,40 @@ var (
 		"sys/rekey/",
 	}
 
-	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {
-		u := r.URL
-		p := u.Path[3:]
+	validateNamespace = func(r *http.Request) int {
+		ns, err := namespace.FromContext(r.Context())
+		if err != nil {
+			return http.StatusBadRequest
+		}
 
-		nsHeaderPath := namespace.Canonicalize(r.Header.Get(consts.NamespaceHeaderName))
+		fullURL, err := url.JoinPath(ns.Path, r.URL.Path[4:])
+		if err != nil {
+			return http.StatusBadRequest
+		}
+
 		for _, api := range restrictedAPIs {
-			if strings.HasSuffix(p, api) && (p != "/"+api || nsHeaderPath != "") {
-				return r, http.StatusBadRequest
+			apiSysRawRouted := "sys/raw/" + api
+			// if path not equals the restricted api path or not equals restricted api path with "sys/raw/" prefix
+			namespaceUseOfRestrictedEndpoint := (fullURL != api && fullURL != apiSysRawRouted) && strings.HasSuffix(fullURL, api)
+			namespacePath, _, ok := strings.Cut(fullURL, api)
+
+			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
+			if ok && (strings.HasSuffix(namespacePath, "sys/policies/acl/") || strings.HasSuffix(namespacePath, "sys/policy/")) {
+				return 0
+			}
+
+			if namespaceUseOfRestrictedEndpoint {
+				return http.StatusBadRequest
 			}
 		}
 
 		for _, api := range containsAPIs {
-			if strings.Contains(p, api) && (!strings.HasPrefix(p, "/"+api) && nsHeaderPath != "") {
-				return r, http.StatusBadRequest
+			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
+				return http.StatusBadRequest
 			}
 		}
 
-		// TODO(ascheel): Consider if we can combine header with actual request path here without triggering redirect logic.
-		if nsHeaderPath != "" {
-			r = r.WithContext(namespace.ContextWithNamespace(r.Context(), &namespace.Namespace{
-				Path: nsHeaderPath,
-			}))
-		}
-
-		return r, 0
+		return 0
 	}
 
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {

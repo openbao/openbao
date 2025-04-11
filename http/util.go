@@ -89,7 +89,7 @@ var (
 			namespacePath, _, ok := strings.Cut(fullURL, api)
 
 			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
-			if ok && strings.HasSuffix(namespacePath, "sys/policies/acl/") {
+			if ok && (strings.HasSuffix(namespacePath, "sys/policies/acl/") || strings.HasSuffix(namespacePath, "sys/policy/")) {
 				return 0
 			}
 

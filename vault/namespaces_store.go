@@ -569,7 +569,11 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
+
+	// We've got to grab write lock because we modify the namespace tree structure
+	ns.lock.Lock()
 	ns.namespacesByPath.Get(namespaceToTaint.Path).Tainted = true
+	ns.lock.Unlock()
 
 	return nil
 }

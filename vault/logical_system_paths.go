@@ -4030,6 +4030,25 @@ func (b *SystemBackend) policyPaths() []*framework.Path {
 			HelpDescription: "Read the rules of an existing password policy, create or update " +
 				"the rules of a password policy, or delete a password policy.",
 		},
+
+		{
+			Pattern: "policies/detailed/acl/?$",
+			Fields: map[string]*framework.FieldSchema{
+				"list": {
+					Type:        framework.TypeBool,
+					Description: "List ACL policies",
+					Query:       true,
+				},
+			},
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.ListOperation: &framework.PathOperation{
+					Callback: b.handlePoliciesDetailedAclList(),
+					Summary:  "List ACL policies with detailed information.",
+				},
+			},
+			HelpSynopsis:    strings.TrimSpace(sysHelp["policies"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["policies"][1]),
+		},
 	}
 }
 

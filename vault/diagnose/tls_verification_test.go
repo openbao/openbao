@@ -429,10 +429,25 @@ func TestTLSLeafCertInClientCAFile(t *testing.T) {
 	}
 	warnings, errs := ListenerChecks(context.Background(), listeners)
 	if errs == nil || len(errs) != 1 {
-		t.Fatal("TLS Config check on bad ClientCAFile certificate should fail once")
+		t.Fatalf("TLS Config check on bad ClientCAFile certificate should fail once: %v", errs)
 	}
 	if warnings == nil || len(warnings) != 1 {
-		t.Fatal("TLS Config check on bad ClientCAFile certificate should warn once")
+		// CN=Baltimore CyberTrust Root,OU=CyberTrust,O=Baltimore,C=IE global
+		// root CA is expiring soon (May '25); it has serial number 33554617
+		// and is affecting tests.
+		var skipBaltimore bool
+		if len(warnings) > 1 {
+			for _, warning := range warnings {
+				if strings.Contains(warning, "33554617") {
+					skipBaltimore = true
+					break
+				}
+			}
+		}
+
+		if !skipBaltimore {
+			t.Fatalf("TLS Config check on bad ClientCAFile certificate should warn once: %v", warnings)
+		}
 	}
 	if !strings.Contains(warnings[0], "Found at least one leaf certificate in the CA certificate file.") {
 		t.Fatalf("Bad error message: %s", warnings[0])

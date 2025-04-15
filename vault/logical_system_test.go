@@ -2499,6 +2499,49 @@ func TestSystemBackend_policyCRUD(t *testing.T) {
 	}
 }
 
+func TestSystemBackend_PoliciesDetailedAcl(t *testing.T) {
+	// Create a proper test system backend with namespace context
+	_, b, _ := testCoreSystemBackend(t)
+
+	// Create a test policy to ensure we have something to list
+	// This is important as a fresh test environment might not have policies
+	policy := `
+        path "secret/*" {
+            capabilities = ["read", "list"]
+        }
+    `
+
+	// Write the test policy
+	req := logical.TestRequest(t, logical.UpdateOperation, "policy/test-policy")
+	req.Data["policy"] = policy
+
+	resp, err := b.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+
+	// Now test the detailed ACL list endpoint
+	req = logical.TestRequest(t, logical.ListOperation, "policies/detailed/acl")
+	resp, err = b.HandleRequest(namespace.RootContext(nil), req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	policies, ok := resp.Data["keys"].([]string)
+	require.True(t, ok, "expected keys to be []string, got: %T", resp.Data["keys"])
+	require.Greater(t, len(policies), 0, "expected at least one policy, got: %v", policies)
+	require.Contains(t, policies, "test-policy")
+
+	detailedPolicies, ok := resp.Data["key_info"].(map[string]interface{})
+	require.True(t, ok, "expected policies to be map[string]interface{}, got: %T", resp.Data["policies"])
+	require.Greater(t, len(detailedPolicies), 0, "expected at least one detailed policy, got: %v", detailedPolicies)
+
+	// Test policy should exist in the detailed info.
+	entryRaw, ok := detailedPolicies["test-policy"]
+	require.True(t, ok, "expected detailed policies to contain test-policy: %v", detailedPolicies)
+
+	entry := entryRaw.(map[string]interface{})
+	require.Contains(t, entry, "policy")
+	require.Equal(t, entry["policy"].(string), policy)
+}
+
 func TestSystemBackend_enableAudit(t *testing.T) {
 	c, b, _ := testCoreSystemBackend(t)
 	c.auditBackends["noop"] = corehelpers.NoopAuditFactory(nil)

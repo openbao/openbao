@@ -642,7 +642,6 @@ func (c *Core) mount(ctx context.Context, entry *MountEntry) error {
 
 func (c *Core) mountInternal(ctx context.Context, entry *MountEntry, updateStorage bool) error {
 	c.mountsLock.Lock()
-	// not sure why we lock the auth here
 	c.authLock.Lock()
 	locked := true
 	unlock := func() {

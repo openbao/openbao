@@ -124,6 +124,17 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesDelete(),
 					Responses: map[int][]framework.Response{
+						http.StatusOK: {
+							{
+								Description: "OK",
+								Fields: map[string]*framework.FieldSchema{
+									"status": {
+										Type:        framework.TypeString,
+										Description: "Status of the deletion operation.",
+									},
+								},
+							},
+						},
 						http.StatusNoContent: {{Description: "OK"}},
 					},
 					Summary: "Delete a namespace.",
@@ -326,8 +337,17 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return resp, nil
 		}
 
-		if err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID); err != nil {
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID)
+		if err != nil {
 			return handleError(err)
+		}
+
+		if status != "" {
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"status": status,
+				},
+			}, nil
 		}
 
 		return nil, nil

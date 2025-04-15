@@ -84,7 +84,6 @@ func (c *Core) enableCredentialInternal(ctx context.Context, entry *MountEntry, 
 		return errors.New("backend path must be specified")
 	}
 
-	// not sure why we lock the mounts here
 	c.mountsLock.Lock()
 	c.authLock.Lock()
 	locked := true

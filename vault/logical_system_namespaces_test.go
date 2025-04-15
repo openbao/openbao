@@ -9,6 +9,7 @@ import (
 	"maps"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/namespace"
@@ -295,11 +296,14 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foo")
-		_, err := b.HandleRequest(rootCtx, req)
+		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		time.Sleep(10 * time.Millisecond)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
-		res, err := b.HandleRequest(rootCtx, req)
+		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
 		require.Empty(t, res, "expected empty response")
 	})
@@ -312,11 +316,14 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 
 		// ctx ns = foobar, path = baz
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
-		_, err := b.HandleRequest(nestedCtx, req)
+		res, err := b.HandleRequest(nestedCtx, req)
 		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		time.Sleep(10 * time.Millisecond)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/baz")
-		res, err := b.HandleRequest(nestedCtx, req)
+		res, err = b.HandleRequest(nestedCtx, req)
 		require.NoError(t, err)
 		require.Empty(t, res, "expected empty response")
 

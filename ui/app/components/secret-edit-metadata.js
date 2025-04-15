@@ -53,7 +53,7 @@ export default class SecretEditMetadata extends Component {
     if (value) {
       if (name === 'customMetadata') {
         // atypical case where property is not set on model on change - validate independently
-        /* eslint-disable no-useless-escape */
+
         const regex = /^[^\\]+$/g; // looking for a backward slash
         if (!value.match(regex)) {
           state[name] = {

@@ -107,7 +107,7 @@ export default Route.extend(ModelBoundaryRoute, ClusterRoute, {
         /* eslint-disable-next-line ember/no-controller-access-in-routes */
         yield this.controller.model.reload();
         yield this.transitionToTargetRoute();
-      } catch (e) {
+      } catch {
         // we want to keep polling here
       }
     }

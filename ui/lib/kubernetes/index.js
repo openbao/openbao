@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-/* eslint-env node */
-/* eslint-disable node/no-extraneous-require */
 'use strict';
 
 const { buildEngine } = require('ember-engines/lib/engine-addon');

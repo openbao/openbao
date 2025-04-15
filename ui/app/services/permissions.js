@@ -74,7 +74,7 @@ export default Service.extend({
       const resp = yield this.store.adapterFor('permissions').query();
       this.setPaths(resp);
       return;
-    } catch (err) {
+    } catch {
       // If no policy can be found, default to showing all nav items.
       this.set('canViewAll', true);
     }

@@ -72,7 +72,7 @@ export default ApplicationAdapter.extend({
       // second post to config
       try {
         await this.ajax(this.urlForConfig(path), 'POST', { data: configData });
-      } catch (e) {
+      } catch {
         // error here means you do not have update capabilities to config endpoint. If that's the case we show a flash message in the component and continue with the transition.
         // the error is handled by mount-backend-form component which checks capabilities before hitting the save to the adapter.
         // we do not handle the error here because we want the secret-engine to mount successfully and to continue the flow.

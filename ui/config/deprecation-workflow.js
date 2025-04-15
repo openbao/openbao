@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-/* global self */
 self.deprecationWorkflow = self.deprecationWorkflow || {};
 //self.deprecationWorkflow.config = {
 //throwOnUnhandled: true

@@ -496,6 +496,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
+		if entry.Tainted {
+			ns.lock.Unlock()
+			return nil, errors.New("namespace with that name exists and is currently tainted")
+		}
 		entry = entry.Clone()
 	} else {
 		entry = &namespace.Namespace{

@@ -60,7 +60,7 @@ jobs:
       # binary-dependent tests. We isolate them there so that the
       # other tests aren't slowed down waiting for a binary build.
       binary-tests: true
-      total-runners: 12
+      total-runners: 16
       go-arch: amd64
       go-tags: "${{ needs.setup.outputs.go-tags }},deadlock"
       runs-on: ubuntu-latest
@@ -98,7 +98,7 @@ jobs:
       needs.verify-changes.outputs.is_ui_change == 'false'
     uses: ./.github/workflows/test-go.yml
     with:
-      total-runners: 12
+      total-runners: 16
       env-vars: |
         {
           "VAULT_CI_GO_TEST_RACE": 1

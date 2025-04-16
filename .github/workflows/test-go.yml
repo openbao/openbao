@@ -41,7 +41,7 @@ on:
       go-test-parallelism:
         description: The parallelism parameter for Go tests
         required: false
-        default: 16
+        default: 12
         type: number
       timeout-minutes:
         description: The maximum number of minutes that this workflow should run

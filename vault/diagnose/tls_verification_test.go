@@ -436,7 +436,7 @@ func TestTLSLeafCertInClientCAFile(t *testing.T) {
 		// root CA is expiring soon (May '25); it has serial number 33554617
 		// and is affecting tests.
 		var skipBaltimore bool
-		if len(warnings) > 1 {
+		if len(warnings) == 2 {
 			for _, warning := range warnings {
 				if strings.Contains(warning, "33554617") {
 					skipBaltimore = true

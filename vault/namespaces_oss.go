@@ -25,3 +25,7 @@ func (c *Core) NamespaceByID(ctx context.Context, nsID string) (*namespace.Names
 func (c *Core) ListNamespaces(ctx context.Context) ([]*namespace.Namespace, error) {
 	return c.namespaceStore.ListAllNamespaces(ctx, true)
 }
+
+func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
+	return c.namespaceStore.GetNamespaceByLongestPrefix(ctx, path)
+}

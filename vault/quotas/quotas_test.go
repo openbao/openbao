@@ -19,7 +19,7 @@ func TestQuotas_MountPathOverwrite(t *testing.T) {
 	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
-	quota := NewRateLimitQuota("tq", "", "kv1/", "", "", 10, time.Second, 0)
+	quota := NewRateLimitQuota("tq", "", "kv1/", "", "", 10, time.Second, 0, false)
 	require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), quota, false))
 	quota = quota.Clone().(*RateLimitQuota)
 	quota.MountPath = "kv2/"
@@ -48,7 +48,7 @@ func TestQuotas_Precedence(t *testing.T) {
 
 	setQuotaFunc := func(t *testing.T, name, nsPath, mountPath, pathSuffix, role string) Quota {
 		t.Helper()
-		quota := NewRateLimitQuota(name, nsPath, mountPath, pathSuffix, role, 10, time.Second, 0)
+		quota := NewRateLimitQuota(name, nsPath, mountPath, pathSuffix, role, 10, time.Second, 0, false)
 		require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), quota, true))
 		return quota
 	}
@@ -137,7 +137,7 @@ func TestQuotas_QueryResolveRole_RateLimitQuotas(t *testing.T) {
 	require.False(t, required)
 
 	// Create a non-role-based RLQ on mount1/ and make sure it doesn't require role resolution
-	rlq := NewRateLimitQuota("tq", rlqReq.NamespacePath, rlqReq.MountPath, rlqReq.Path, rlqReq.Role, 10, 1*time.Minute, 10*time.Second)
+	rlq := NewRateLimitQuota("tq", rlqReq.NamespacePath, rlqReq.MountPath, rlqReq.Path, rlqReq.Role, 10, 1*time.Minute, 10*time.Second, false)
 	require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), rlq, false))
 
 	required, err = qm.QueryResolveRoleQuotas(rlqReq)
@@ -146,7 +146,7 @@ func TestQuotas_QueryResolveRole_RateLimitQuotas(t *testing.T) {
 
 	// Create a role-based RLQ on mount1/ and make sure it requires role resolution
 	rlqReq.Role = "test"
-	rlq = NewRateLimitQuota("tq", rlqReq.NamespacePath, rlqReq.MountPath, rlqReq.Path, rlqReq.Role, 10, 1*time.Minute, 10*time.Second)
+	rlq = NewRateLimitQuota("tq", rlqReq.NamespacePath, rlqReq.MountPath, rlqReq.Path, rlqReq.Role, 10, 1*time.Minute, 10*time.Second, false)
 	require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), rlq, false))
 
 	required, err = qm.QueryResolveRoleQuotas(rlqReq)

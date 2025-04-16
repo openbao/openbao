@@ -1,0 +1,2 @@
+```release-note:change
+Adjusted CI configuration, improved test stability.

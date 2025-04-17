@@ -1956,7 +1956,7 @@ func TestTokenStore_HandleRequest_CreateToken_NonRoot_RootChild(t *testing.T) {
 
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -3489,19 +3489,19 @@ func TestTokenStore_RoleDisallowedPolicies(t *testing.T) {
 	// Create 3 different policies
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test2"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test3"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -3757,25 +3757,25 @@ func TestTokenStore_RoleDisallowedPoliciesGlob(t *testing.T) {
 	// Create 4 different policies
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test1"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test2"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test3"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	policy, _ = ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "test3b"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -5066,7 +5066,7 @@ func TestTokenStore_NoDefaultPolicy(t *testing.T) {
 	ps := core.policyStore
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, tokenCreationPolicy)
 	policy.Name = "policy1"
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 

@@ -84,24 +84,30 @@ var cap2Int = map[string]uint32{
 
 // Policy is used to represent the policy specified by an ACL configuration.
 type Policy struct {
-	Name      string       `hcl:"name"`
-	Paths     []*PathRules `hcl:"-"`
-	Raw       string
-	Type      PolicyType
-	Templated bool
-	namespace *namespace.Namespace
+	Name        string `hcl:"name"`
+	DataVersion int
+	CASRequired bool
+	Paths       []*PathRules `hcl:"-"`
+	Raw         string
+	Type        PolicyType
+	Templated   bool
+	Expiration  time.Time
+	Modified    time.Time
+	namespace   *namespace.Namespace
 }
 
 // ShallowClone returns a shallow clone of the policy. This should not be used
 // if any of the reference-typed fields are going to be modified
 func (p *Policy) ShallowClone() *Policy {
 	return &Policy{
-		Name:      p.Name,
-		Paths:     p.Paths,
-		Raw:       p.Raw,
-		Type:      p.Type,
-		Templated: p.Templated,
-		namespace: p.namespace,
+		Name:        p.Name,
+		DataVersion: p.DataVersion,
+		CASRequired: p.CASRequired,
+		Paths:       p.Paths,
+		Raw:         p.Raw,
+		Type:        p.Type,
+		Templated:   p.Templated,
+		namespace:   p.namespace,
 	}
 }
 
@@ -113,6 +119,9 @@ type PathRules struct {
 	IsPrefix            bool
 	HasSegmentWildcards bool
 	Capabilities        []string
+
+	ExpirationRaw string    `hcl:"expiration"`
+	Expiration    time.Time `hcl:"-"`
 
 	// These keys are used at the top level to make the HCL nicer; we store in
 	// the ACLPermissions object though
@@ -324,6 +333,7 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 			"max_wrapping_ttl",
 			"mfa_methods",
 			"pagination_limit",
+			"expiration",
 		}
 		if err := hclutil.CheckHCLKeys(item.Val, valid); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
@@ -338,6 +348,23 @@ func parsePaths(result *Policy, list *ast.ObjectList, performTemplating bool, en
 
 		if err := hcl.DecodeObject(&pc, item.Val); err != nil {
 			return multierror.Prefix(err, fmt.Sprintf("path %q:", key))
+		}
+
+		if len(pc.ExpirationRaw) > 0 {
+			expiration, err := time.Parse(time.RFC3339, pc.ExpirationRaw)
+			if err != nil {
+				return fmt.Errorf("path %q: invalid expiration time (must be in format '%v'): %w", pc.Path, time.RFC3339, err)
+			}
+
+			pc.Expiration = expiration
+
+			// If this path is expired, ignore it. We assume that the policy
+			// author has set an overall expiration time of the last-valid
+			// path for automatic cleanup.
+			if time.Now().After(expiration) {
+				// Skip the path because it has expired.
+				continue
+			}
 		}
 
 		// Strip a leading '/' as paths in Vault start after the / in the API path

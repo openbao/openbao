@@ -39,7 +39,7 @@ on:
         default: ""
         type: string
       go-test-parallelism:
-        description: The parallelism parameter for Go tests 
+        description: The parallelism parameter for Go tests
         required: false
         default: 12
         type: number

@@ -1129,8 +1129,8 @@ func TestCore_MountEntryView(t *testing.T) {
 	s := c.namespaceStore
 
 	testMountEntryUUID := "mount-entry-uuid"
-	testNamespace1 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
-	testNamespace2 := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
+	testNamespace1 := &namespace.Namespace{Path: "ns1/"}
+	testNamespace2 := &namespace.Namespace{Path: "ns1/ns2/"}
 
 	err := s.SetNamespace(ctx, testNamespace1)
 	require.NoError(t, err)
@@ -1205,8 +1205,8 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeNSCubbyhole,
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
@@ -1219,7 +1219,7 @@ func TestCore_MountEntryView(t *testing.T) {
 				Type:  mountTypeNSCubbyhole,
 				// does not exist in store
 				NamespaceID: "ns-2",
-				namespace:   testNamespace1.Namespace,
+				namespace:   testNamespace1,
 			},
 
 			wantError: true,
@@ -1230,8 +1230,8 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeKV,
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
@@ -1242,8 +1242,8 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       mountTableType,
 				Type:        mountTypeKV,
-				NamespaceID: testNamespace2.Namespace.ID,
-				namespace:   testNamespace2.Namespace,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + backendBarrierPrefix + testMountEntryUUID + "/",
@@ -1264,8 +1264,8 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       credentialTableType,
 				Type:        "userpass",
-				NamespaceID: testNamespace1.Namespace.ID,
-				namespace:   testNamespace1.Namespace,
+				NamespaceID: testNamespace1.ID,
+				namespace:   testNamespace1,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace1.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
@@ -1276,8 +1276,8 @@ func TestCore_MountEntryView(t *testing.T) {
 				UUID:        testMountEntryUUID,
 				Table:       credentialTableType,
 				Type:        "userpass",
-				NamespaceID: testNamespace2.Namespace.ID,
-				namespace:   testNamespace2.Namespace,
+				NamespaceID: testNamespace2.ID,
+				namespace:   testNamespace2,
 			},
 
 			wantViewPrefix: namespaceBarrierPrefix + testNamespace2.UUID + "/" + credentialBarrierPrefix + testMountEntryUUID + "/",
@@ -1298,7 +1298,7 @@ func TestCore_MountEntryView(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotView, err := c.mountEntryView(ctx, tt.mountEntry)
+			gotView, err := c.mountEntryView(tt.mountEntry)
 
 			require.Equalf(t, tt.wantError, (err != nil), "(*Core).mountEntryView() got unexpected error: %v", err)
 			if err == nil {
@@ -1359,14 +1359,14 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, nsBar)
 
-	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar.Namespace)
+	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
 
 	// Doing the above inside bar should behave the same.
 	me = &MountEntry{
 		Table:       mountTableType,
 		Path:        "foo/",
 		Type:        "noop",
-		NamespaceID: nsBar.Namespace.ID,
+		NamespaceID: nsBar.ID,
 	}
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
@@ -1383,7 +1383,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Table:       mountTableType,
 		Path:        "fud/bar/baz/foo/",
 		Type:        "noop",
-		NamespaceID: nsBar.Namespace.ID,
+		NamespaceID: nsBar.ID,
 	}
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
@@ -1420,7 +1420,7 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 		Table:       mountTableType,
 		Path:        "fud/bar/baz/qux/",
 		Type:        "noop",
-		NamespaceID: nsBar.Namespace.ID,
+		NamespaceID: nsBar.ID,
 	}
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)

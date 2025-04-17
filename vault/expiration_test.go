@@ -75,10 +75,7 @@ func TestExpiration_Metrics(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	idView, err := exp.tokenIndexView(ctx, namespace.RootNamespace)
-	if err != nil {
-		t.Fatal(err)
-	}
+	idView := exp.tokenIndexView(ctx, namespace.RootNamespace)
 
 	// Scan the storage with the count func set
 	if err := logical.ScanView(ctx, idView, countFunc); err != nil {
@@ -147,7 +144,7 @@ func TestExpiration_Metrics(t *testing.T) {
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), idView, countFunc); err != nil {
+	if err := logical.ScanView(context.Background(), idView, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -462,13 +459,10 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	view, err := exp.leaseView(ctx, namespace.RootNamespace)
-	if err != nil {
-		t.Fatal(err)
-	}
+	view := exp.leaseView(ctx, namespace.RootNamespace)
 
 	// Scan the storage with the count func set
-	if err = logical.ScanView(ctx, view, countFunc); err != nil {
+	if err := logical.ScanView(ctx, view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -485,12 +479,12 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Persist the invalid lease entry
-	if err = exp.persistEntry(ctx, le); err != nil {
+	if err := exp.persistEntry(ctx, le); err != nil {
 		t.Fatalf("error persisting entry: %v", err)
 	}
 
 	count = 0
-	if err = logical.ScanView(context.Background(), view, countFunc); err != nil {
+	if err := logical.ScanView(context.Background(), view, countFunc); err != nil {
 		t.Fatal(err)
 	}
 
@@ -500,7 +494,7 @@ func TestExpiration_Tidy(t *testing.T) {
 	}
 
 	// Run the tidy operation
-	err = exp.Tidy(ctx)
+	err := exp.Tidy(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1083,10 +1077,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	var idEnts []string
 	for time.Now().Before(deadline) {
-		tokenView, err := exp.tokenIndexView(ctx, namespace.RootNamespace)
-		if err != nil {
-			t.Fatal(err)
-		}
+		tokenView := exp.tokenIndexView(ctx, namespace.RootNamespace)
 		idEnts, err = tokenView.List(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)

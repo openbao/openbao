@@ -19,12 +19,12 @@ type namespaceTree struct {
 type namespaceNode struct {
 	parent   *namespaceNode
 	children map[string]*namespaceNode
-	entry    *NamespaceEntry
+	entry    *namespace.Namespace
 }
 
-// newNamespaceTree creates a new namespaceTree with the given NamespaceEntry as
+// newNamespaceTree creates a new namespaceTree with the given Namespace as
 // root namespace
-func newNamespaceTree(root *NamespaceEntry) *namespaceTree {
+func newNamespaceTree(root *namespace.Namespace) *namespaceTree {
 	node := &namespaceNode{
 		entry:    root,
 		children: make(map[string]*namespaceNode),
@@ -35,7 +35,7 @@ func newNamespaceTree(root *NamespaceEntry) *namespaceTree {
 }
 
 // Get returns the namespace at a given path
-func (nt *namespaceTree) Get(path string) *NamespaceEntry {
+func (nt *namespaceTree) Get(path string) *namespace.Namespace {
 	path = namespace.Canonicalize(path)
 	var segments []string
 	if path != "" {
@@ -55,10 +55,10 @@ func (nt *namespaceTree) Get(path string) *NamespaceEntry {
 	return node.entry
 }
 
-// LongestPrefix finds the longest prefix of path that leads to a namespace
-// entry. It returns the path to the namespace, the namespace entry and the
-// remaining part of the input path.
-func (nt *namespaceTree) LongestPrefix(path string) (string, *NamespaceEntry, string) {
+// LongestPrefix finds the longest prefix of path that leads to a namespace. It
+// returns the path to the namespace, the namespace and the remaining part of
+// the input path.
+func (nt *namespaceTree) LongestPrefix(path string) (string, *namespace.Namespace, string) {
 	cpath := namespace.Canonicalize(path)
 	var segments []string
 	if path != "" {
@@ -75,7 +75,7 @@ func (nt *namespaceTree) LongestPrefix(path string) (string, *NamespaceEntry, st
 		node = n
 	}
 
-	namespacePrefix := node.entry.Namespace.Path
+	namespacePrefix := node.entry.Path
 	pathSuffix := strings.TrimPrefix(path, namespacePrefix)
 	return namespacePrefix, node.entry, pathSuffix
 }
@@ -83,7 +83,7 @@ func (nt *namespaceTree) LongestPrefix(path string) (string, *NamespaceEntry, st
 // List lists child Namespace entries at a given path, optionally including the
 // namespace at the given path, optionally recursing down into all child
 // namespaces.
-func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) ([]*NamespaceEntry, error) {
+func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) ([]*namespace.Namespace, error) {
 	path = namespace.Canonicalize(path)
 	var segments []string
 	if path != "" {
@@ -103,9 +103,9 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 	var nodes []*namespaceNode
 	nodes = append(nodes, node)
 
-	var entries []*NamespaceEntry
+	var entries []*namespace.Namespace
 	if includeParent {
-		entries = make([]*NamespaceEntry, 0, len(node.children)+1)
+		entries = make([]*namespace.Namespace, 0, len(node.children)+1)
 		entries = append(entries, node.entry)
 	}
 	for idx := 0; idx < len(nodes); idx++ {
@@ -123,8 +123,8 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 
 // Insert adds or updates the namespace with the given entry. It refuses to add
 // the namespace if the parent namespace does not exist in the tree.
-func (nt *namespaceTree) Insert(entry *NamespaceEntry) error {
-	path := namespace.Canonicalize(entry.Namespace.Path)
+func (nt *namespaceTree) Insert(entry *namespace.Namespace) error {
+	path := namespace.Canonicalize(entry.Path)
 	if path == "" {
 		return errors.New("can't insert root namespace")
 	}
@@ -195,7 +195,7 @@ func (nt *namespaceTree) validate() error {
 		node := nodes[idx]
 		for _, child := range node.children {
 			if node.entry == nil {
-				errs = append(errs, fmt.Errorf("orphan namespace found: %s", child.entry.Namespace.Path))
+				errs = append(errs, fmt.Errorf("orphan namespace found: %s", child.entry.Path))
 			}
 			nodes = append(nodes, child)
 		}
@@ -207,8 +207,8 @@ func (nt *namespaceTree) validate() error {
 // unsafeInsert performs an unsafe insert of the namespace entry. It will create
 // any intermediate tree entries as necessary and will not perform validation of
 // the tree. You MUST call validate yourself when done inserting.
-func (nt *namespaceTree) unsafeInsert(entry *NamespaceEntry) {
-	segments := strings.SplitAfter(entry.Namespace.Path, "/")
+func (nt *namespaceTree) unsafeInsert(entry *namespace.Namespace) {
+	segments := strings.SplitAfter(entry.Path, "/")
 	segments = segments[:len(segments)-1]
 	node := nt.root
 

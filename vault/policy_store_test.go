@@ -110,7 +110,7 @@ func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace)
 
 	// List should be blank
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err := ps.ListPolicies(ctx, PolicyTypeACL)
+	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -138,7 +138,7 @@ func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace)
 
 	// List should contain two elements
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err = ps.ListPolicies(ctx, PolicyTypeACL)
+	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -160,7 +160,7 @@ func testPolicyStoreCRUD(t *testing.T, ps *PolicyStore, ns *namespace.Namespace)
 
 	// List should contain one element
 	ctx = namespace.ContextWithNamespace(context.Background(), ns)
-	out, err = ps.ListPolicies(ctx, PolicyTypeACL)
+	out, err = ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestPolicyStore_Predefined(t *testing.T) {
 func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Namespace) {
 	// List should be two elements
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	out, err := ps.ListPolicies(ctx, PolicyTypeACL)
+	out, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -490,16 +490,14 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootP, "unexpected policy found in root namespace")
 
 	// Check storage locations
-	nsBarrierView, err := ps.getACLView(ns)
-	require.NoError(t, err)
+	nsBarrierView := ps.getACLView(ns)
 	require.NotNil(t, nsBarrierView, "expected namespace storage")
 
 	out, err := nsBarrierView.Get(nsCtx, "test-policy")
 	require.NoError(t, err)
 	require.NotNil(t, out, "expected policy in namespace storage")
 
-	rootBarrierView, err := ps.getACLView(namespace.RootNamespace)
-	require.NoError(t, err)
+	rootBarrierView := ps.getACLView(namespace.RootNamespace)
 	require.NotNil(t, rootBarrierView, "expected root namespace storage")
 
 	rootOut, err := rootBarrierView.Get(ctx, "test-policy")
@@ -507,11 +505,11 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	assert.Nil(t, rootOut, "policy should not exist in root storage")
 
 	// Check policy listings
-	policies, err := ps.ListPolicies(nsCtx, PolicyTypeACL)
+	policies, err := ps.ListPolicies(nsCtx, PolicyTypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, policies, "test-policy", "policy not found in namespace listing")
 
-	rootPolicies, err := ps.ListPolicies(ctx, PolicyTypeACL)
+	rootPolicies, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	require.NoError(t, err)
 	assert.NotContains(t, rootPolicies, "test-policy", "namespace policy found in root listing")
 
@@ -731,19 +729,19 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	}
 
 	// Verify child namespace only sees its own policy
-	childPolicies, err := ps.ListPolicies(childCtx, PolicyTypeACL)
+	childPolicies, err := ps.ListPolicies(childCtx, PolicyTypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "child-policy"}, childPolicies,
 		"child namespace should only contain its own policy and default")
 
 	// Verify parent namespace listing
-	parentPolicies, err := ps.ListPolicies(parentCtx, PolicyTypeACL)
+	parentPolicies, err := ps.ListPolicies(parentCtx, PolicyTypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "parent-policy"}, parentPolicies,
 		"parent namespace should contain its own policy and default")
 
 	// Verify root namespace listing
-	rootPolicies, err := ps.ListPolicies(rootCtx, PolicyTypeACL)
+	rootPolicies, err := ps.ListPolicies(rootCtx, PolicyTypeACL, true)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, []string{"default", "root-policy"}, rootPolicies,
 		"root namespace should contain its own policy and default")
@@ -823,14 +821,9 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	assert.Contains(t, childP.Raw, `capabilities = ["read", "list", "create"]`)
 
 	// Verify storage locations by directly accessing the barrier views
-	rootView, err := ps.getACLView(namespace.RootNamespace)
-	require.NoError(t, err)
-
-	parentView, err := ps.getACLView(parentNS)
-	require.NoError(t, err)
-
-	childView, err := ps.getACLView(childNS)
-	require.NoError(t, err)
+	rootView := ps.getACLView(namespace.RootNamespace)
+	parentView := ps.getACLView(parentNS)
+	childView := ps.getACLView(childNS)
 
 	rootEntry, err := rootView.Get(ctx, "test-nested-policy")
 	require.NoError(t, err)
@@ -845,15 +838,15 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	require.NotNil(t, childViewEntry, "policy not found in child storage")
 
 	// Verify namespace visibility
-	rootList, err := ps.ListPolicies(ctx, PolicyTypeACL)
+	rootList, err := ps.ListPolicies(ctx, PolicyTypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, rootList, "test-nested-policy", "policy missing in root listing")
 
-	parentList, err := ps.ListPolicies(parentCtx, PolicyTypeACL)
+	parentList, err := ps.ListPolicies(parentCtx, PolicyTypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, parentList, "test-nested-policy", "policy missing in parent listing")
 
-	childList, err := ps.ListPolicies(childCtx, PolicyTypeACL)
+	childList, err := ps.ListPolicies(childCtx, PolicyTypeACL, true)
 	require.NoError(t, err)
 	assert.Contains(t, childList, "test-nested-policy", "policy missing in child listing")
 

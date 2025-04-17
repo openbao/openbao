@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -265,49 +266,59 @@ func (t *MountTable) setTaint(nsID, path string, tainted bool, mountState string
 // remove is used to remove a given path entry; returns the entry that was
 // removed
 func (t *MountTable) remove(ctx context.Context, path string) (*MountEntry, error) {
-	n := len(t.Entries)
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < n; i++ {
-		if entry := t.Entries[i]; entry.Path == path && entry.Namespace().ID == ns.ID {
-			t.Entries[i], t.Entries[n-1] = t.Entries[n-1], nil
-			t.Entries = t.Entries[:n-1]
-			return entry, nil
+	var mountEntryToDelete *MountEntry
+	t.Entries = slices.DeleteFunc(t.Entries, func(me *MountEntry) bool {
+		if me.Path == path && me.Namespace().ID == ns.ID {
+			mountEntryToDelete = me
+			return true
 		}
-	}
-	return nil, nil
+		return false
+	})
+
+	return mountEntryToDelete, nil
 }
 
-func (t *MountTable) find(ctx context.Context, path string) (*MountEntry, error) {
-	n := len(t.Entries)
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < n; i++ {
-		if entry := t.Entries[i]; entry.Path == path && entry.Namespace().ID == ns.ID {
-			return entry, nil
-		}
-	}
-	return nil, nil
+func (t *MountTable) findByPath(ctx context.Context, path string) (*MountEntry, error) {
+	return t.find(ctx, func(me *MountEntry) bool { return me.Path == path })
 }
 
 func (t *MountTable) findByBackendUUID(ctx context.Context, backendUUID string) (*MountEntry, error) {
-	n := len(t.Entries)
+	return t.find(ctx, func(me *MountEntry) bool { return me.BackendAwareUUID == backendUUID })
+}
+
+func (t *MountTable) findAllNamespaceMounts(ctx context.Context) ([]*MountEntry, error) {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := 0; i < n; i++ {
-		if entry := t.Entries[i]; entry.BackendAwareUUID == backendUUID && entry.Namespace().ID == ns.ID {
+	var mounts []*MountEntry
+	for _, entry := range t.Entries {
+		if entry.Namespace().ID == ns.ID {
+			mounts = append(mounts, entry)
+		}
+	}
+
+	return mounts, nil
+}
+
+func (t *MountTable) find(ctx context.Context, predicate func(*MountEntry) bool) (*MountEntry, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range t.Entries {
+		if predicate(entry) && entry.Namespace().ID == ns.ID {
 			return entry, nil
 		}
 	}
+
 	return nil, nil
 }
 
@@ -846,6 +857,9 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 
 	// Get the view for this backend
 	view := c.router.MatchingStorageByAPIPath(ctx, path)
+	if view == nil {
+		return fmt.Errorf("no matching storage %q", path)
+	}
 
 	// Get the backend/mount entry for this path, used to remove ignored
 	// replication prefixes
@@ -853,7 +867,7 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 
 	// Mark the entry as tainted
 	if err := c.taintMountEntry(ctx, ns.ID, path, updateStorage, true); err != nil {
-		c.logger.Error("failed to taint mount entry for path being unmounted", "error", err, "path", path)
+		c.logger.Error("failed to taint mount entry for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 		return err
 	}
 
@@ -863,27 +877,27 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		return err
 	}
 
-	rCtx := namespace.ContextWithNamespace(c.activeContext, ns)
+	revokeCtx := namespace.ContextWithNamespace(c.activeContext, ns)
 	if backend != nil && c.rollback != nil {
 		// Invoke the rollback manager a final time. This is not fatal as
 		// various periodic funcs (e.g., PKI) can legitimately error; the
 		// periodic rollback manager logs these errors rather than failing
 		// replication like returning this error would do.
-		if err := c.rollback.Rollback(rCtx, path); err != nil {
+		if err := c.rollback.Rollback(revokeCtx, path); err != nil {
 			c.logger.Error("ignoring rollback error during unmount", "error", err, "path", path)
 			err = nil
 		}
 	}
 	if backend != nil && c.expiration != nil && updateStorage {
 		// Revoke all the dynamic keys
-		if err := c.expiration.RevokePrefix(rCtx, path, true); err != nil {
+		if err := c.expiration.RevokePrefix(revokeCtx, path, true); err != nil {
 			return err
 		}
 	}
 
 	if backend != nil {
 		// Call cleanup function if it exists
-		backend.Cleanup(ctx)
+		backend.Cleanup(revokeCtx)
 	}
 
 	switch {
@@ -891,32 +905,32 @@ func (c *Core) unmountInternal(ctx context.Context, path string, updateStorage b
 		// Don't attempt to clear data, replication will handle this
 	default:
 		// Have writable storage, remove the whole thing
-		if err := logical.ClearViewWithLogging(ctx, view, c.logger.Named("secrets.deletion").With("namespace", ns.ID, "path", path)); err != nil {
-			c.logger.Error("failed to clear view for path being unmounted", "error", err, "path", path)
+		if err := logical.ClearViewWithLogging(revokeCtx, view, c.logger.Named("secrets.deletion").With("namespace", ns.Path, "path", path)); err != nil {
+			c.logger.Error("failed to clear view for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 			return err
 		}
 	}
 
 	// Remove the mount table entry
-	if err := c.removeMountEntry(ctx, path, updateStorage); err != nil {
-		c.logger.Error("failed to remove mount entry for path being unmounted", "error", err, "path", path)
+	if err := c.removeMountEntry(revokeCtx, path, updateStorage); err != nil {
+		c.logger.Error("failed to remove mount entry for path being unmounted", "error", err, "namespace", ns.Path, "path", path)
 		return err
 	}
 
 	// Unmount the backend entirely
-	if err := c.router.Unmount(ctx, path); err != nil {
+	if err := c.router.Unmount(revokeCtx, path); err != nil {
 		return err
 	}
 
 	if c.quotaManager != nil {
-		if err := c.quotaManager.HandleBackendDisabling(ctx, ns.Path, path); err != nil {
-			c.logger.Error("failed to update quotas after disabling mount", "path", path, "error", err)
+		if err := c.quotaManager.HandleBackendDisabling(revokeCtx, ns.Path, path); err != nil {
+			c.logger.Error("failed to update quotas after disabling mount", "error", err, "namespace", ns.Path, "path", path)
 			return err
 		}
 	}
 
 	if c.logger.IsInfo() {
-		c.logger.Info("successfully unmounted", "path", path, "namespace", ns.Path)
+		c.logger.Info("successfully unmounted", "namespace", ns.Path, "path", path)
 	}
 
 	return nil

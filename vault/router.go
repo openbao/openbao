@@ -650,13 +650,13 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry found, but backend is nil.", req.Path)), false, false, logical.ErrUnsupportedPath
 	}
 
-	// If the path is tainted, we reject any operation except for
-	// Rollback and Revoke
-	if re.tainted {
+	// If the path or namespace is tainted, we reject any operation
+	// except for Rollback and Revoke
+	if re.tainted || ns.Tainted {
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry is tainted.", req.Path)), false, false, logical.ErrUnsupportedPath
+			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q on namespace %q. route entry or namespace is tainted.", req.Path, ns.Path)), false, false, logical.ErrUnsupportedPath
 		}
 	}
 

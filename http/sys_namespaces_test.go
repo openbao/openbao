@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -93,19 +94,33 @@ func FuzzNamespaceName(f *testing.F) {
 		namesList = append(namesList, name)
 
 		resp := testHttpPut(t, token, addr+"/v1/sys/namespaces/"+escapedName, nil)
-		t.Logf("creating namespace '%s' (%x)", name, name)
+		t.Logf("creating namespace %q (%x)", name, name)
 		if resp.StatusCode < 300 {
 			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces?list=true")
 			t.Log("listing namespaces")
 			testResponseStatus(t, resp, http.StatusOK)
 
 			resp = testHttpGet(t, token, addr+"/v1/"+escapedName+"/sys/namespaces?list=true")
-			t.Logf("listing child namespaces of '%s' (%x)", name, name)
+			t.Logf("listing child namespaces of %q (%x)", name, name)
 			testResponseStatus(t, resp, http.StatusNotFound)
 
 			resp = testHttpDelete(t, token, addr+"/v1/sys/namespaces/"+escapedName)
-			t.Logf("deleting namespace '%s' (%x)", name, name)
-			testResponseStatus(t, resp, http.StatusNoContent)
+			t.Logf("deleting namespace %q (%x)", name, name)
+			testResponseStatus(t, resp, http.StatusOK)
+
+			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
+			t.Logf("retrieving namespace details")
+			testResponseStatus(t, resp, http.StatusOK)
+
+			// TODO(wslabosz): As deletion is asynchronous we have to wait before it completes
+			// this should be adjusted with more comprehensive test, hypotheticall with polling
+			// whenever we have "deletion status" endpoint, but for now sleeping for 1ms
+			time.Sleep(1 * time.Millisecond)
+
+			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
+			t.Logf("retrieving namespace details after deletion")
+			testResponseStatus(t, resp, http.StatusNotFound)
+
 			return
 		}
 
@@ -118,14 +133,14 @@ func FuzzNamespaceName(f *testing.F) {
 
 			for _, e := range out.Errors {
 				if strings.Contains(e, "existing mount") {
-					t.Logf("existing mount: '%s' (%x)", name, name)
+					t.Logf("existing mount: %q (%x)", name, name)
 					for _, n := range namesList {
 						if strings.Contains(n, name) || strings.Contains(name, n) {
 							t.Logf("possible mount: %s", n)
 						}
 					}
 					if canonicalName != name {
-						t.Logf("found differing name: '%s', cleaned: '%s'", name, canonicalName)
+						t.Logf("found differing name: %q, cleaned: %q", name, canonicalName)
 					}
 				}
 			}

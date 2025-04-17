@@ -124,6 +124,17 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				logical.DeleteOperation: &framework.PathOperation{
 					Callback: b.handleNamespacesDelete(),
 					Responses: map[int][]framework.Response{
+						http.StatusOK: {
+							{
+								Description: "OK",
+								Fields: map[string]*framework.FieldSchema{
+									"status": {
+										Type:        framework.TypeString,
+										Description: "Status of the deletion operation.",
+									},
+								},
+							},
+						},
 						http.StatusNoContent: {{Description: "OK"}},
 					},
 					Summary: "Delete a namespace.",
@@ -133,6 +144,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
 		},
+	}
+}
+
+// createNamespaceDataResponse is the standard response object
+// for any operations concerning a namespace
+func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
+	return map[string]any{
+		"uuid":            ns.UUID,
+		"path":            ns.Path,
+		"id":              ns.ID,
+		"tainted":         ns.Tainted,
+		"custom_metadata": ns.CustomMetadata,
 	}
 }
 
@@ -153,12 +176,7 @@ func (b *SystemBackend) handleNamespacesList() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
-				"id":              entry.ID,
-				"path":            entry.Path,
-				"custom_metadata": entry.CustomMetadata,
-			}
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -182,12 +200,7 @@ func (b *SystemBackend) handleNamespacesScan() framework.OperationFunc {
 		for _, entry := range entries {
 			p := parent.TrimmedPath(entry.Path)
 			keys = append(keys, p)
-			keyInfo[p] = map[string]any{
-				"uuid":            entry.UUID,
-				"id":              entry.ID,
-				"path":            entry.Path,
-				"custom_metadata": entry.CustomMetadata,
-			}
+			keyInfo[p] = createNamespaceDataResponse(entry)
 		}
 
 		return logical.ListResponseWithInfo(keys, keyInfo), nil
@@ -212,16 +225,7 @@ func (b *SystemBackend) handleNamespacesRead() framework.OperationFunc {
 			return nil, nil
 		}
 
-		resp := &logical.Response{
-			Data: map[string]interface{}{
-				"uuid":            ns.UUID,
-				"id":              ns.ID,
-				"path":            ns.Path,
-				"custom_metadata": ns.CustomMetadata,
-			},
-		}
-
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
@@ -253,13 +257,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			return handleError(err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            entry.UUID,
-			"path":            entry.Path,
-			"id":              entry.ID,
-			"custom_metadata": entry.CustomMetadata,
-		}}
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
 	}
 }
 
@@ -315,17 +313,11 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, fmt.Errorf("failed to modify namespace: %w", err)
 		}
 
-		resp := &logical.Response{Data: map[string]interface{}{
-			"uuid":            ns.UUID,
-			"path":            ns.Path,
-			"id":              ns.ID,
-			"custom_metadata": ns.CustomMetadata,
-		}}
-		return resp, nil
+		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
 	}
 }
 
-// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoints to delete a namespace.
+// handleNamespacesDelete handles the "/sys/namespace/<path>" endpoint to delete a namespace.
 func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
@@ -345,8 +337,17 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return resp, nil
 		}
 
-		if err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID); err != nil {
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID)
+		if err != nil {
 			return handleError(err)
+		}
+
+		if status != "" {
+			return &logical.Response{
+				Data: map[string]interface{}{
+					"status": status,
+				},
+			}, nil
 		}
 
 		return nil, nil

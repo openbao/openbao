@@ -9,6 +9,7 @@ import (
 	"maps"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/helper/namespace"
@@ -28,6 +29,7 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 	return &namespace.Namespace{
 		ID:             res.Data["id"].(string),
 		Path:           res.Data["path"].(string),
+		Tainted:        res.Data["tainted"].(bool),
 		CustomMetadata: res.Data["custom_metadata"].(map[string]string),
 	}
 }
@@ -290,17 +292,20 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 	b := testSystemBackend(t)
 	rootCtx := namespace.RootContext(context.Background())
 
-	t.Run("delete existing namespace", func(t *testing.T) {
+	t.Run("delete namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foo")
-		_, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-
-		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Empty(t, res, "expected emtpy response to read after deleting namespace")
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		time.Sleep(50 * time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res, "expected empty response")
 	})
 
 	t.Run("delete nested namespace", func(t *testing.T) {
@@ -311,13 +316,21 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 
 		// ctx ns = foobar, path = baz
 		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
-		_, err := b.HandleRequest(nestedCtx, req)
+		res, err := b.HandleRequest(nestedCtx, req)
 		require.NoError(t, err)
+		require.Equal(t, "in-progress", res.Data["status"])
+
+		time.Sleep(50 * time.Millisecond)
+
+		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/baz")
+		res, err = b.HandleRequest(nestedCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res, "expected empty response")
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar")
-		res, err := b.HandleRequest(rootCtx, req)
+		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.NotEmpty(t, res, "expected non-emtpy response to read after deleting child namespace")
+		require.NotEmpty(t, res, "expected non-empty response")
 	})
 
 	t.Run("delete non-existent namespace", func(t *testing.T) {
@@ -363,6 +376,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
 			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 		}
@@ -396,6 +410,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
 			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 		}
@@ -429,6 +444,7 @@ func TestNamespaceBackend_List(t *testing.T) {
 			require.True(t, ok, fmt.Sprintf("key_info does not have path %q which is present in keys", path))
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 			require.Subset(t, []string{"bar/", "baz/"}, []string{path})
@@ -472,6 +488,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
 			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 		}
@@ -505,6 +522,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
 			require.Equal(t, ns.Path, path, "path in key does not match path in namespace struct")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 		}
@@ -539,6 +557,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 			var ns namespace.Namespace
 			require.NoError(t, mapstructure.Decode(info, &ns), "key_info entry is not a namespace")
 			require.Equal(t, ns.Path, info.(map[string]any)["path"], "path in key does not match path in info struct")
+			require.False(t, ns.Tainted, "tained in key should be false")
 			require.NotEmpty(t, ns.ID, "namespace ID should not be empty")
 			require.NotEqual(t, ns.ID, namespace.RootNamespaceID, "list should not include root namespace")
 			require.Subset(t, []string{"baz/", "baz/bar/"}, []string{path})

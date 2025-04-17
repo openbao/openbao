@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"path"
 	"sync"
 	"sync/atomic"
@@ -267,7 +268,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *Names
 	// Copy the entry before validating and potentially mutating it.
 	entry := nsEntry.Clone()
 	if err := entry.Validate(); err != nil {
-		return fmt.Errorf("failed validating namespace: %w", err)
+		return logical.CodedError(http.StatusBadRequest, err.Error())
 	}
 
 	// Validate that we have a parent namespace.
@@ -529,7 +530,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 
 	path = namespace.Canonicalize(parent.Path + path)
 	if path == "" {
-		return nil, errors.New("refusing to modify root namespace")
+		return nil, logical.CodedError(http.StatusBadRequest, "refusing to modify root namespace")
 	}
 
 	ns.lock.Lock()

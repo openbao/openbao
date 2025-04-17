@@ -362,7 +362,7 @@ func TestCoreCreateNamespaces(core *Core, namespaces ...*namespace.Namespace) er
 	// Use root context to ensure parent namespace is available
 	ctx := namespace.RootContext(context.Background())
 	for _, ns := range namespaces {
-		err := core.namespaceStore.SetNamespace(ctx, &NamespaceEntry{Namespace: ns})
+		err := core.namespaceStore.SetNamespace(ctx, ns)
 		if err != nil {
 			return err
 		}

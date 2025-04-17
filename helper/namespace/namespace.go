@@ -34,6 +34,7 @@ type contextValues struct{}
 
 type Namespace struct {
 	ID             string            `json:"id" mapstructure:"id"`
+	UUID           string            `json:"uuid" mapstructure:"uuid"`
 	Path           string            `json:"path" mapstructure:"path"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
@@ -79,7 +80,8 @@ func (n *Namespace) Validate() error {
 }
 
 const (
-	RootNamespaceID = "root"
+	RootNamespaceID   = "root"
+	RootNamespaceUUID = "00000000-0000-0000-0000-000000000000"
 )
 
 var (
@@ -87,6 +89,7 @@ var (
 	ErrNoNamespace   error         = errors.New("no namespace")
 	RootNamespace    *Namespace    = &Namespace{
 		ID:             RootNamespaceID,
+		UUID:           RootNamespaceUUID,
 		Path:           "",
 		CustomMetadata: make(map[string]string),
 	}
@@ -121,6 +124,20 @@ func (n *Namespace) ParentPath() (string, bool) {
 // TrimmedPath trims n.Path from the given path
 func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
+}
+
+func (n *Namespace) Clone() *Namespace {
+	meta := make(map[string]string, len(n.CustomMetadata))
+	for k, v := range n.CustomMetadata {
+		meta[k] = v
+	}
+
+	return &Namespace{
+		ID:             n.ID,
+		UUID:           n.UUID,
+		Path:           n.Path,
+		CustomMetadata: meta,
+	}
 }
 
 // ContextWithNamespace adds the given namespace to the given context

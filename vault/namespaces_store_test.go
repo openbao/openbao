@@ -19,47 +19,45 @@ func TestNamespaceStore(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceEntries(ctx, false)
+	ns, err := s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
 	// Creating an item should save it, set IDs, and canonicalize path.
-	item := &NamespaceEntry{
-		Namespace: &namespace.Namespace{
-			Path: "ns1",
-		},
+	item := &namespace.Namespace{
+		Path: "ns1",
 	}
 
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)
-	require.NotEmpty(t, item.Namespace.ID)
-	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
-	require.Equal(t, item.Namespace.Path, "ns1/")
+	require.NotEmpty(t, item.ID)
+	require.Equal(t, item.Path, namespace.Canonicalize("ns1"))
+	require.Equal(t, item.Path, "ns1/")
 
 	itemUUID := item.UUID
-	itemAccessor := item.Namespace.ID
-	itemPath := item.Namespace.Path
+	itemAccessor := item.ID
+	itemPath := item.Path
 
 	// We should now have one item.
-	ns, err = s.ListAllNamespaceEntries(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, item.UUID)
 
 	// Modifying our copy shouldn't affect anything.
-	item.Namespace.CustomMetadata = map[string]string{"openbao": "true"}
-	item.Namespace.Path = "modified"
-	item.Namespace.ID = "modified"
+	item.CustomMetadata = map[string]string{"openbao": "true"}
+	item.Path = "modified"
+	item.ID = "modified"
 	item.UUID = "modified"
 
 	fetched, err := s.GetNamespace(ctx, itemUUID)
 	require.NoError(t, err)
 	require.NotNil(t, fetched)
 	require.Equal(t, fetched.UUID, itemUUID)
-	require.Equal(t, fetched.Namespace.ID, itemAccessor)
-	require.Equal(t, fetched.Namespace.Path, itemPath)
-	require.Empty(t, fetched.Namespace.CustomMetadata)
+	require.Equal(t, fetched.ID, itemAccessor)
+	require.Equal(t, fetched.Path, itemPath)
+	require.Empty(t, fetched.CustomMetadata)
 
 	// Fetching the modified ID should fail.
 	fetched, err = s.GetNamespace(ctx, item.UUID)
@@ -84,7 +82,7 @@ func TestNamespaceStore(t *testing.T) {
 	s = c.namespaceStore
 
 	// We should still have one item.
-	ns, err = s.ListAllNamespaceEntries(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.NotEmpty(t, ns)
 	require.Equal(t, ns[0].UUID, itemUUID)
@@ -94,7 +92,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// Store should be empty.
-	ns, err = s.ListAllNamespaceEntries(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
@@ -115,27 +113,25 @@ func TestNamespaceStore(t *testing.T) {
 	// however, the s.SetNamespace function is still using the previous namespace.
 	s = c.namespaceStore
 
-	ns, err = s.ListAllNamespaceEntries(ctx, false)
+	ns, err = s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
 	// Creating a new version of item should yield a new id even though the
 	// path is the same.
-	item = &NamespaceEntry{
-		Namespace: &namespace.Namespace{
-			Path: "ns1/",
-		},
+	item = &namespace.Namespace{
+		Path: "ns1/",
 	}
 
 	err = s.SetNamespace(ctx, item)
 	require.NoError(t, err)
 	require.NotEmpty(t, item.UUID)
 	require.NotEqual(t, item.UUID, itemUUID)
-	require.NotEmpty(t, item.Namespace.ID)
-	require.NotEqual(t, item.Namespace.ID, itemAccessor)
-	require.Equal(t, item.Namespace.Path, namespace.Canonicalize("ns1"))
-	require.Equal(t, item.Namespace.Path, "ns1/")
-	require.Equal(t, item.Namespace.Path, itemPath)
+	require.NotEmpty(t, item.ID)
+	require.NotEqual(t, item.ID, itemAccessor)
+	require.Equal(t, item.Path, namespace.Canonicalize("ns1"))
+	require.Equal(t, item.Path, "ns1/")
+	require.Equal(t, item.Path, itemPath)
 }
 
 func TestNamespaceHierarchy(t *testing.T) {
@@ -147,33 +143,33 @@ func TestNamespaceHierarchy(t *testing.T) {
 	ctx := namespace.RootContext(context.TODO())
 
 	// Initial store should be empty.
-	ns, err := s.ListAllNamespaceEntries(ctx, false)
+	ns, err := s.ListAllNamespaces(ctx, false)
 	require.NoError(t, err)
 	require.Empty(t, ns)
 
 	// Creating an item should save it, set IDs, and canonicalize path.
 	namespaces := []struct {
 		context.Context
-		*NamespaceEntry
+		*namespace.Namespace
 	}{
 		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
-			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1"}},
+			&namespace.Namespace{Path: "ns1"},
 		},
 		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
-			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns2"}},
+			&namespace.Namespace{Path: "ns2"},
 		},
 		{
 			namespace.ContextWithNamespace(ctx, namespace.RootNamespace),
-			&NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns3"}},
+			&namespace.Namespace{Path: "ns1/ns3"},
 		},
 	}
 
 	for idx, ns := range namespaces {
-		err := s.SetNamespace(ns.Context, ns.NamespaceEntry)
+		err := s.SetNamespace(ns.Context, ns.Namespace)
 		require.NoError(t, err)
-		require.NotEmpty(t, ns.UUID)
+		require.NotEmpty(t, ns.Namespace.UUID)
 		require.NotEmpty(t, ns.Namespace.ID)
 		require.Equal(t, ns.Namespace.Path, namespace.Canonicalize(namespaces[idx].Namespace.Path))
 	}
@@ -224,14 +220,14 @@ func TestNamespaceHierarchy(t *testing.T) {
 }
 
 func TestNamespaceTree(t *testing.T) {
-	rootNs := &NamespaceEntry{Namespace: namespace.RootNamespace}
+	rootNs := namespace.RootNamespace
 	tree := newNamespaceTree(rootNs)
 
-	namespaces1 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns1/", ID: "00001"}, UUID: "00001"},
-		{Namespace: &namespace.Namespace{Path: "ns1/ns2/", ID: "00002"}, UUID: "00002"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns4/", ID: "00004"}, UUID: "00004"},
-		{Namespace: &namespace.Namespace{Path: "ns3/", ID: "00003"}, UUID: "00003"},
+	namespaces1 := []*namespace.Namespace{
+		{Path: "ns1/", ID: "00001", UUID: "00001"},
+		{Path: "ns1/ns2/", ID: "00002", UUID: "00002"},
+		{Path: "ns3/ns4/", ID: "00004", UUID: "00004"},
+		{Path: "ns3/", ID: "00003", UUID: "00003"},
 	}
 
 	for _, entry := range namespaces1 {
@@ -240,9 +236,9 @@ func TestNamespaceTree(t *testing.T) {
 	err := tree.validate()
 	require.NoError(t, err)
 
-	namespaces2 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns3/ns6/ns7/", ID: "00007"}, UUID: "00007"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns8/ns9/", ID: "00009"}, UUID: "00009"},
+	namespaces2 := []*namespace.Namespace{
+		{Path: "ns3/ns6/ns7/", ID: "00007", UUID: "00007"},
+		{Path: "ns3/ns8/ns9/", ID: "00009", UUID: "00009"},
 	}
 
 	for _, entry := range namespaces2 {
@@ -251,10 +247,10 @@ func TestNamespaceTree(t *testing.T) {
 	err = tree.validate()
 	require.Error(t, err)
 
-	namespaces3 := []*NamespaceEntry{
-		{Namespace: &namespace.Namespace{Path: "ns3/ns6/", ID: "00006"}, UUID: "00006"},
-		{Namespace: &namespace.Namespace{Path: "ns3/ns8/", ID: "00008"}, UUID: "00008"},
-		{Namespace: &namespace.Namespace{Path: "ns9/ns10/", ID: "00010"}, UUID: "00010"},
+	namespaces3 := []*namespace.Namespace{
+		{Path: "ns3/ns6/", ID: "00006", UUID: "00006"},
+		{Path: "ns3/ns8/", ID: "00008", UUID: "00008"},
+		{Path: "ns9/ns10/", ID: "00010", UUID: "00010"},
 	}
 
 	err = tree.Insert(namespaces3[0])
@@ -301,7 +297,7 @@ func TestNamespaceTree(t *testing.T) {
 	require.Equal(t, "foobar", pathSuffix)
 }
 
-func randomNamespace(ns *NamespaceStore) *NamespaceEntry {
+func randomNamespace(ns *NamespaceStore) *namespace.Namespace {
 	// make use of random map iteration order
 	for _, item := range ns.namespacesByUUID {
 		return item
@@ -319,11 +315,9 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	for i := range n {
 		parent := randomNamespace(s)
-		ctx := namespace.ContextWithNamespace(ctx, parent.Namespace)
-		item := &NamespaceEntry{
-			Namespace: &namespace.Namespace{
-				Path: parent.Namespace.Path + "ns" + strconv.Itoa(i) + "/",
-			},
+		ctx := namespace.ContextWithNamespace(ctx, parent)
+		item := &namespace.Namespace{
+			Path: parent.Path + "ns" + strconv.Itoa(i) + "/",
 		}
 		err := s.SetNamespace(ctx, item)
 		require.NoError(b, err)
@@ -340,21 +334,21 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("GetNamespaceByAccessor", func(b *testing.B) {
 		for b.Loop() {
-			accessor := randomNamespace(s).Namespace.ID
+			accessor := randomNamespace(s).ID
 			s.GetNamespaceByAccessor(ctx, accessor)
 		}
 	})
 
 	b.Run("GetNamespaceByPath", func(b *testing.B) {
 		for b.Loop() {
-			path := randomNamespace(s).Namespace.Path
+			path := randomNamespace(s).Path
 			s.GetNamespaceByPath(ctx, path)
 		}
 	})
 
 	b.Run("ModifyNamespaceByPath", func(b *testing.B) {
 		for b.Loop() {
-			path := randomNamespace(s).Namespace.Path
+			path := randomNamespace(s).Path
 			s.ModifyNamespaceByPath(ctx, path, testModifyNamespace)
 		}
 	})
@@ -367,7 +361,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("ListNamespaces non-recursive", func(b *testing.B) {
 		for b.Loop() {
-			parent := randomNamespace(s).Namespace
+			parent := randomNamespace(s)
 			ctx = namespace.ContextWithNamespace(ctx, parent)
 			s.ListNamespaces(ctx, false, false)
 		}
@@ -375,7 +369,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 
 	b.Run("ListNamespaces recursive", func(b *testing.B) {
 		for b.Loop() {
-			parent := randomNamespace(s).Namespace
+			parent := randomNamespace(s)
 			ctx = namespace.ContextWithNamespace(ctx, parent)
 			s.ListNamespaces(ctx, false, true)
 		}
@@ -384,7 +378,7 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
 		rootCtx := namespace.RootContext(context.TODO())
 		for b.Loop() {
-			ns := randomNamespace(s).Namespace
+			ns := randomNamespace(s)
 			ctx := namespace.ContextWithNamespace(rootCtx, ns)
 			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
 		}
@@ -398,11 +392,11 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	})
 }
 
-func testModifyNamespace(_ context.Context, ns *NamespaceEntry) (*NamespaceEntry, error) {
+func testModifyNamespace(_ context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 	uuid := ns.UUID
-	accessor := ns.Namespace.ID
-	ns.Namespace.CustomMetadata["uuid"] = uuid
-	ns.Namespace.CustomMetadata["accessor"] = accessor
+	accessor := ns.ID
+	ns.CustomMetadata["uuid"] = uuid
+	ns.CustomMetadata["accessor"] = accessor
 
 	return ns, nil
 }
@@ -413,13 +407,11 @@ func BenchmarkNamespaceSet(b *testing.B) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	item := &NamespaceEntry{
-		Namespace: &namespace.Namespace{},
-	}
+	item := &namespace.Namespace{}
 
 	var i int
 	for b.Loop() {
-		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		item.Path = "ns" + strconv.Itoa(i)
 		s.SetNamespace(ctx, item)
 		i += 1
 	}
@@ -431,13 +423,11 @@ func BenchmarkNamespaceSetLocked(b *testing.B) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	item := &NamespaceEntry{
-		Namespace: &namespace.Namespace{},
-	}
+	item := &namespace.Namespace{}
 
 	var i int
 	for b.Loop() {
-		item.Namespace.Path = "ns" + strconv.Itoa(i)
+		item.Path = "ns" + strconv.Itoa(i)
 		s.lock.Lock()
 		s.setNamespaceLocked(ctx, item)
 		i += 1
@@ -450,10 +440,10 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	nsStore := core.namespaceStore
 
 	// Setup only necessary namespaces
-	ns1Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/"}}
-	ns2Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/"}}
+	ns1Entry := &namespace.Namespace{Path: "ns1/"}
+	ns2Entry := &namespace.Namespace{Path: "ns1/ns2/"}
 
-	ns3Entry := &NamespaceEntry{Namespace: &namespace.Namespace{Path: "ns1/ns2/namespaces/ns3/"}}
+	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/namespaces/ns3/"}
 
 	// Create namespaces
 	rootCtx := namespace.RootContext(nil)
@@ -461,11 +451,11 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
 
 	// Set child into ns1
-	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1Entry.Namespace)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1Entry)
 	require.NoError(t, nsStore.SetNamespace(ns1Ctx, ns2Entry))
 
 	// Set child into ns1/ns2
-	ns2Ctx := namespace.ContextWithNamespace(ns1Ctx, ns2Entry.Namespace)
+	ns2Ctx := namespace.ContextWithNamespace(ns1Ctx, ns2Entry)
 	require.NoError(t, nsStore.SetNamespace(ns2Ctx, ns3Entry))
 
 	// Define test cases
@@ -478,25 +468,25 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 		{
 			name:            "NS in path",
 			reqPath:         "ns1/secret/foo",
-			expectedFinalNS: ns1Entry.Namespace,
+			expectedFinalNS: ns1Entry,
 			expectedRelPath: "secret/foo",
 		},
 		{
 			name:            "Nested NS in path",
 			reqPath:         "ns1/ns2/secret/foo",
-			expectedFinalNS: ns2Entry.Namespace,
+			expectedFinalNS: ns2Entry,
 			expectedRelPath: "secret/foo",
 		},
 		{
 			name:            "Route to existing namespace ns2 with sys in path",
 			reqPath:         "ns1/sys/namespaces/ns2",
-			expectedFinalNS: ns1Entry.Namespace,
+			expectedFinalNS: ns1Entry,
 			expectedRelPath: "sys/namespaces/ns2",
 		},
 		{
 			name:            "Route to existing namespace ns3 with ns1/ns2/sys in path",
 			reqPath:         "ns1/ns2/sys/namespaces/ns3",
-			expectedFinalNS: ns2Entry.Namespace,
+			expectedFinalNS: ns2Entry,
 			expectedRelPath: "sys/namespaces/ns3",
 		},
 	}

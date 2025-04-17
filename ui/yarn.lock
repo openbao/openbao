@@ -18460,10 +18460,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"highlight.js@npm:^10.4.1":
-  version: 10.7.2
-  resolution: "highlight.js@npm:10.7.2"
-  checksum: af09b434070c81ed154b4c990bee61a8c1295887554abc7884eb2544c48bff208e237e7ce1b324ebe94abe0f942e15e2c11dff1b1ed22a79a3c4a0d8a900a921
+"highlight.js@npm:^11.11.1":
+  version: 11.11.1
+  resolution: "highlight.js@npm:11.11.1"
+  checksum: 841ddd329a92be123a61ef4051698f824c3575deef588fbb810bd638f1575ddc96b7bdd925b97c05a29276bb119dfcb8e5bcb0acb31c86249371bf046e131d72
   languageName: node
   linkType: hard
 

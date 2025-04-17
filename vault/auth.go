@@ -384,7 +384,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		return fmt.Errorf("no matching mount at %q", src.Namespace.Path+src.MountPath)
 	}
 
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
 		return fmt.Errorf("path in use at %q", match)
 	}
 
@@ -407,7 +407,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 
 	c.authLock.Lock()
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
 		c.authLock.Unlock()
 		return fmt.Errorf("path in use at %q", match)
 	}
@@ -428,7 +428,93 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 
 	// Remount the backend, setting the existing route entry
 	// against the new path
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath); err != nil {
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
+		if src.Namespace.ID == dst.Namespace.ID {
+			// no need to move storage entries
+			return nil
+		}
+
+		barrier := c.barrier
+		var view logical.Storage = barrier
+		rollback := func(context.Context) error { return nil }
+		commit := func(context.Context) error { return nil }
+		if txnBarrier, ok := barrier.(logical.TransactionalStorage); ok {
+			tx, err := txnBarrier.BeginTx(ctx)
+			if err != nil {
+				return err
+			}
+			rollback = tx.Rollback
+			commit = tx.Commit
+			view = tx
+		}
+
+		dstBarrierView, err := c.mountEntryView(srcMatch)
+		if err != nil {
+			return err
+		}
+		dstPrefix := dstBarrierView.Prefix()
+
+		keys, err := view.List(ctx, re.storagePrefix)
+		if err != nil {
+			rErr := rollback(ctx)
+			return errors.Join(err, rErr)
+		}
+		for i := 0; i < len(keys); i++ {
+			key := keys[i]
+			if strings.HasSuffix(key, "/") {
+				nestedKeys, err := view.List(ctx, re.storagePrefix+key)
+				if err != nil {
+					return err
+				}
+				for i := range nestedKeys {
+					nestedKeys[i] = key + nestedKeys[i]
+				}
+
+				keys = append(keys, nestedKeys...)
+				continue
+			}
+
+			se, err := view.Get(ctx, re.storagePrefix+key)
+			if err != nil {
+				rErr := rollback(ctx)
+				return errors.Join(err, rErr)
+			}
+			if se == nil {
+				continue
+			}
+
+			se.Key = dstPrefix + key
+			err = view.Put(ctx, se)
+			if err != nil {
+				rErr := rollback(ctx)
+				return errors.Join(err, rErr)
+			}
+			err = view.Delete(ctx, re.storagePrefix+key)
+			if err != nil {
+				rErr := rollback(ctx)
+				return errors.Join(err, rErr)
+			}
+		}
+		err = commit(ctx)
+		if err != nil {
+			return err
+		}
+
+		srcEntryView := NamespaceView(barrier, src.Namespace)
+		if srcMatch.Local {
+			srcEntryView = srcEntryView.SubView(coreLocalAuthConfigPath + "/")
+		} else {
+			srcEntryView = srcEntryView.SubView(coreAuthConfigPath + "/")
+		}
+		err = srcEntryView.Delete(ctx, srcMatch.UUID)
+		if err != nil {
+			return err
+		}
+
+		re.storageView = dstBarrierView
+		re.storagePrefix = dstPrefix
+		return nil
+	}); err != nil {
 		c.authLock.Unlock()
 		return err
 	}

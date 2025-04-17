@@ -300,7 +300,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "in-progress", res.Data["status"])
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
 		res, err = b.HandleRequest(rootCtx, req)
@@ -320,7 +320,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "in-progress", res.Data["status"])
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/baz")
 		res, err = b.HandleRequest(nestedCtx, req)

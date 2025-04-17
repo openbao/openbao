@@ -650,7 +650,7 @@ func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceT
 	}
 
 	for _, me := range authMountEntries {
-		err := ns.core.disableCredential(ctx, me.Path)
+		err := ns.core.disableCredentialInternal(ctx, me.Path, true)
 		if err != nil {
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 			return
@@ -665,7 +665,7 @@ func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceT
 	}
 
 	for _, me := range mountEntries {
-		err := ns.core.unmount(ctx, me.Path)
+		err := ns.core.unmountInternal(ctx, me.Path, true)
 		if err != nil {
 			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
 			return

@@ -223,13 +223,8 @@ func (c *Core) disableCredential(ctx context.Context, path string) error {
 		path += "/"
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Ensure the token backend is not affected
-	if path == "token/" && ns.Path == namespace.RootNamespace.Path {
+	if path == "token/" {
 		return errors.New("token credential backend cannot be disabled")
 	}
 

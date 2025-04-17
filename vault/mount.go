@@ -828,14 +828,9 @@ func (c *Core) unmount(ctx context.Context, path string) error {
 		path += "/"
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Prevent protected paths from being unmounted
 	for _, p := range protectedMounts {
-		if strings.HasPrefix(path, p) && ns.Path == namespace.RootNamespace.Path {
+		if strings.HasPrefix(path, p) {
 			return fmt.Errorf("cannot unmount %q", path)
 		}
 	}

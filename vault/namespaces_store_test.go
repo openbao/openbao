@@ -170,7 +170,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.Equal(t, s.namespacesByPath.size, 1)
 
 	// try to delete root
-	_, err = s.DeleteNamespace(ctx, "")
+	_, err = s.DeleteNamespace(ctx, namespace.RootNamespaceUUID)
 	require.Error(t, err)
 
 	// try to delete namespace with child namespaces

@@ -1341,7 +1341,7 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("no matching mount at %q", sanitizePath(fromPath)))
 	}
 
-	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != "" {
+	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != toPathDetails.Namespace.Path {
 		return handleError(fmt.Errorf("path already in use at %q", match))
 	}
 

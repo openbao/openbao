@@ -157,7 +157,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	_, err = s.DeleteNamespace(ctx, createdNS.UUID)
 	require.NoError(t, err)
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
 	// verify namespace deletion
 	nsList, err := s.ListAllNamespaces(ctx, false)

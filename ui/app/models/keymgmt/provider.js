@@ -94,8 +94,8 @@ export default class KeymgmtProviderModel extends Model {
     const value = l
       ? `${l} ${l > 1 ? 'keys' : 'key'}`
       : this.canListKeys
-      ? 'None'
-      : 'You do not have permission to list keys';
+        ? 'None'
+        : 'You do not have permission to list keys';
     attrs.push({ hasBlock: true, isLink: l, label: 'Keys', value });
     return attrs;
   }

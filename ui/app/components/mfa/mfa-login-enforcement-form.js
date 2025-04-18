@@ -75,7 +75,7 @@ export default class MfaLoginEnforcementForm extends Component {
       for (const type of types) {
         try {
           options[type] = (await this.store.query(type, {})).toArray();
-        } catch (error) {
+        } catch {
           options[type] = [];
         }
       }

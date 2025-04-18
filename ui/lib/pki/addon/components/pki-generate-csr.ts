@@ -75,7 +75,7 @@ export default class PkiGenerateCsrComponent extends Component<Args> {
     try {
       const issuerCapabilities = await this.args.model.generateIssuerCsrPath;
       return issuerCapabilities.get('canCreate') === true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

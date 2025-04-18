@@ -26,9 +26,9 @@ const EXTENSION_TO_MIME: Extensions = {
 export default class DownloadService extends Service {
   download(filename: string, content: string, extension: string) {
     // replace spaces with hyphens, append extension to filename
-    const formattedFilename =
-      `${filename?.replace(/\s+/g, '-')}.${extension}` ||
-      `vault-data-${timestamp.now().toISOString()}.${extension}`;
+    const formattedFilename = filename
+      ? `${filename.replace(/\s+/g, '-')}.${extension}`
+      : `vault-data-${timestamp.now().toISOString()}.${extension}`;
 
     // map extension to MIME type or use default
     const mimetype = EXTENSION_TO_MIME[extension as keyof Extensions] || 'text/plain';

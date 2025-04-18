@@ -163,7 +163,7 @@ export default ApplicationAdapter.extend({
         backend,
         db: db[0],
       });
-    } catch (e) {
+    } catch {
       throw new Error(
         'Could not update allowed roles for selected database. Check the OpenBao logs for details'
       );

@@ -39,7 +39,7 @@ export default class TextFileComponent extends Component {
       this.content = await file.text();
       this.filename = file.name;
       this.handleChange();
-    } catch (error) {
+    } catch {
       this.clearFile();
       this.uploadError = 'There was a problem uploading. Please try again.';
     }

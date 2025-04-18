@@ -14,7 +14,7 @@ export default function (type) {
   try {
     window.localStorage.getItem('test');
     storage = localStorageWrapper;
-  } catch (e) {
+  } catch {
     storage = memoryStorage;
   }
   return storage;

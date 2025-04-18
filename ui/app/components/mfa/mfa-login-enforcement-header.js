@@ -43,7 +43,7 @@ export default class MfaLoginEnforcementHeaderComponent extends Component {
       // cache initial values for lookup in select handler
       this._enforcements = (await this.store.query('mfa-login-enforcement', {})).toArray();
       this.enforcements = [...this._enforcements];
-    } catch (error) {
+    } catch {
       this.enforcements = [];
     }
   }

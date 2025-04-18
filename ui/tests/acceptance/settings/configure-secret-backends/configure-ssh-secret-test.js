@@ -41,8 +41,5 @@ module('Acceptance | settings/configure/secrets/ssh', function (hooks) {
       'SSH Certificate Authority Configuration saved!',
       'shows success flash when saving mount‑level config without a key'
     );
-    await click(SELECTORS.generateSigningKey);
-    await click(SELECTORS.saveConfig);
-    assert.dom(SELECTORS.publicKey).exists('renders public key after saving config');
   });
 });

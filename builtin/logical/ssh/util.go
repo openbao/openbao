@@ -149,8 +149,8 @@ func substQuery(tpl string, data map[string]string) string {
 	return tpl
 }
 
-// handleKeyGeneration parses the input parameters and returns the public and private keys
-// by either generating them or using the provided ones.
+// handleKeyGeneration parses the input parameters and returns the public
+// and private keys  by either generating them or using the provided ones.
 func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey string, privateKey string, generateSigningKey bool, err error) {
 	publicKey = data.Get("public_key").(string)
 	privateKey = data.Get("private_key").(string)
@@ -178,8 +178,12 @@ func (b *backend) handleKeyGeneration(data *framework.FieldData) (publicKey stri
 			return
 		}
 	// generation of signing key not set and no key material provided so generate
-	case publicKey == "" && privateKey == "":
+	case publicKey == "" && privateKey == "" && !ok:
 		generateSigningKey = true
+	// generation of signing key set as false but not key material provided
+	case publicKey == "" && privateKey == "" && ok && !generateSigningKeyRaw.(bool):
+		err = errutil.UserError{Err: "missing public_key"}
+		return
 	// generation of signing key not set and only one key material provided
 	default:
 		err = errutil.UserError{Err: fmt.Sprintf("only one of public_key and private_key set; both must be set to use, or both must be blank to auto-generate")}

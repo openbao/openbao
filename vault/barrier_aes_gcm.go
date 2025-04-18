@@ -451,7 +451,7 @@ func (b *AESGCMBarrier) ReloadRootKey(ctx context.Context) error {
 	}
 
 	if out == nil {
-		out, err = b.Get(ctx, legacyRootKeyPath)
+		out, err = b.lockSwitchedGet(ctx, b.backend, legacyRootKeyPath, false)
 		if err != nil {
 			return fmt.Errorf("failed to read legacy root key path: %w", err)
 		}

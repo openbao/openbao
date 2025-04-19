@@ -156,7 +156,7 @@ func (c *Core) filterGroupPoliciesByNS(ctx context.Context, tokenNS *namespace.N
 // apply to the token based on the group policy application mode,
 // and the relationship between the token namespace and the group namespace.
 func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespace.Namespace, nsID string, nsPolicies []string, policyApplicationMode string) ([]string, error) {
-	policyNS, err := NamespaceByID(ctx, nsID, c)
+	policyNS, err := c.NamespaceByID(ctx, nsID)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	// Add tokens policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		c.logger.Error("failed to fetch token namespace", "error", err)
 		return nil, nil, nil, nil, ErrInternalError
@@ -509,13 +509,11 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ns, err := namespace.FromContext(httpCtx)
+	ctx, _, req.Path, err = c.namespaceStore.ResolveNamespaceFromRequest(ctx, httpCtx, req.Path)
 	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+		return nil, err
 	}
 
-	ctx = namespace.ContextWithNamespace(ctx, ns)
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
 		ctx = context.WithValue(ctx, logical.CtxKeyInFlightRequestID{}, inFlightReqID)
@@ -557,10 +555,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
-	}
 	var requestBodyToken string
 	var returnRequestAuthToken bool
 
@@ -573,7 +567,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		te := req.TokenEntry()
 		newCtx := ctx
 		if te != nil {
-			ns, err := NamespaceByID(ctx, te.NamespaceID, c)
+			ns, err := c.NamespaceByID(ctx, te.NamespaceID)
 			if err != nil {
 				c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 				return nil, err
@@ -637,7 +631,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(token.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 					return nil, err
@@ -663,7 +657,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(leaseID.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the lease's namespace ID", "error", err)
 					return nil, err
@@ -681,15 +675,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		if c.standby {
 			return nil, ErrCannotForwardLocalOnly
 		}
-	}
-
-	ns, err = namespace.FromContext(ctx)
-	if err != nil {
-		return nil, errwrap.Wrapf("could not parse namespace from http context: {{err}}", err)
-	}
-
-	if ns.Path != "" {
-		return nil, logical.CodedError(403, "namespaces feature not enabled")
 	}
 
 	var auth *logical.Auth
@@ -1103,7 +1088,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Fetch the namespace to which the token belongs
-		tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+		tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			c.logger.Error("failed to fetch token's namespace", "error", err)
 			retErr = multierror.Append(retErr, err)

@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -21,8 +22,89 @@ import (
 )
 
 var (
-	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {
-		return r, 0
+	restrictedAPIs = []string{
+		"sys/audit",
+		"sys/audit-hash",
+		"sys/config/cors",
+		"sys/config/reload",
+		"sys/config/state",
+		"sys/config/ui",
+		"sys/decode-token",
+		"sys/generate-recovery-token",
+		"sys/generate-root",
+		"sys/health",
+		"sys/host-info",
+		"sys/in-flight-req",
+		"sys/init",
+		"sys/internal/counters/activity",
+		"sys/internal/counters/activity/export",
+		"sys/internal/counters/activity/monthly",
+		"sys/internal/counters/config",
+		"sys/key-status",
+		"sys/loggers",
+		"sys/metrics",
+		"sys/monitor",
+		"sys/quotas/config",
+		"sys/quotas/lease-count",
+		"sys/quotas/rate-limit",
+		"sys/raw",
+		"sys/rekey-recovery-key",
+		"sys/replication/recover",
+		"sys/replication/reindex",
+		"sys/replication/status",
+		"sys/replication/merkle-check",
+		"sys/rotate/config",
+		"sys/rotate",
+		"sys/seal",
+		"sys/sealwrap/rewrap",
+		"sys/step-down",
+		"sys/storage",
+		"sys/sync/config",
+		"sys/unseal",
+	}
+	containsAPIs = []string{
+		"sys/config/auditing/",
+		"sys/internal/inspect/router/",
+		"sys/managed-keys/",
+		"sys/mfa/method/",
+		"sys/pprof/",
+		"sys/rekey/",
+	}
+
+	validateNamespace = func(r *http.Request) int {
+		ns, err := namespace.FromContext(r.Context())
+		if err != nil {
+			return http.StatusBadRequest
+		}
+
+		fullURL, err := url.JoinPath(ns.Path, r.URL.Path[4:])
+		if err != nil {
+			return http.StatusBadRequest
+		}
+
+		for _, api := range restrictedAPIs {
+			apiSysRawRouted := "sys/raw/" + api
+			// if path not equals the restricted api path or not equals restricted api path with "sys/raw/" prefix
+			namespaceUseOfRestrictedEndpoint := (fullURL != api && fullURL != apiSysRawRouted) && strings.HasSuffix(fullURL, api)
+			namespacePath, _, ok := strings.Cut(fullURL, api)
+
+			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
+			if ok && (strings.HasSuffix(namespacePath, "sys/policies/acl/") || strings.HasSuffix(namespacePath, "sys/policy/")) {
+				return 0
+			}
+
+			if namespaceUseOfRestrictedEndpoint {
+				return http.StatusBadRequest
+			}
+		}
+
+		for _, api := range containsAPIs {
+			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
+				return http.StatusBadRequest
+			}
+		}
+
+		return 0
 	}
 
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {

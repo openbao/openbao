@@ -7,15 +7,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 )
+
+// reservedNames is the list of string names that
+// shouldn't be used as namespace name, hence are forbidden to use
+var reservedNames = []string{
+	"",
+	".",
+	"..",
+	"root",
+	"sys",
+	"audit",
+	"auth",
+	"cubbyhole",
+	"identity",
+}
 
 type contextValues struct{}
 
 type Namespace struct {
 	ID             string            `json:"id" mapstructure:"id"`
+	UUID           string            `json:"uuid" mapstructure:"uuid"`
 	Path           string            `json:"path" mapstructure:"path"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
@@ -24,8 +43,45 @@ func (n *Namespace) String() string {
 	return fmt.Sprintf("ID: %s. Path: %s", n.ID, n.Path)
 }
 
+func (n *Namespace) Validate() error {
+	n.Path = Canonicalize(n.Path)
+	if n.Path == "" {
+		return errors.New("path is missing; cannot validate root namespace")
+	}
+
+	if n.ID == RootNamespaceID {
+		return errors.New("cannot reuse root namespace identifier")
+	}
+
+	// canonicalize adds a trailing slash, we don't need to consider it here
+	for segment := range strings.SplitSeq(n.Path[:len(n.Path)-1], "/") {
+		if segment == "" {
+			return fmt.Errorf("namespace name cannot be empty")
+		}
+		if slices.Contains(reservedNames, segment) {
+			return fmt.Errorf("%q is a reserved path and cannot be used as a namespace name", segment)
+		}
+
+		for _, r := range segment {
+			switch {
+			case !utf8.ValidRune(r):
+				return fmt.Errorf("%q contains invalid utf-8 characters that cannot be used in a namespace name: %q", segment, r)
+			case !unicode.IsGraphic(r):
+				return fmt.Errorf("%q contains unicode characters that cannot be used in a namespace name: %q", segment, r)
+			case unicode.IsSpace(r):
+				return fmt.Errorf("%q contains space characters that cannot be used in a namespace name", segment)
+			case r == '+' || r == '*':
+				return fmt.Errorf("%q contains wildcard characters that cannot be used in a namespace name: %q", segment, r)
+			}
+		}
+	}
+
+	return nil
+}
+
 const (
-	RootNamespaceID = "root"
+	RootNamespaceID   = "root"
+	RootNamespaceUUID = "00000000-0000-0000-0000-000000000000"
 )
 
 var (
@@ -33,11 +89,14 @@ var (
 	ErrNoNamespace   error         = errors.New("no namespace")
 	RootNamespace    *Namespace    = &Namespace{
 		ID:             RootNamespaceID,
+		UUID:           RootNamespaceUUID,
 		Path:           "",
 		CustomMetadata: make(map[string]string),
 	}
 )
 
+// HasParent returns true if possibleParent is a parent namespace of n.
+// Otherwise it returns false.
 func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	switch {
 	case possibleParent.Path == "":
@@ -49,14 +108,45 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 	}
 }
 
+// ParentPath returns the path of the parent namespace. n.Path must be a
+// canonicalized path.
+func (n *Namespace) ParentPath() (string, bool) {
+	if n.Path == "" {
+		return "", false
+	}
+	segments := strings.SplitAfter(n.Path, "/")
+	if len(segments) <= 2 {
+		return "", true
+	}
+	return strings.Join(segments[:len(segments)-2], ""), true
+}
+
+// TrimmedPath trims n.Path from the given path
 func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
 }
 
+func (n *Namespace) Clone() *Namespace {
+	meta := make(map[string]string, len(n.CustomMetadata))
+	for k, v := range n.CustomMetadata {
+		meta[k] = v
+	}
+
+	return &Namespace{
+		ID:             n.ID,
+		UUID:           n.UUID,
+		Path:           n.Path,
+		CustomMetadata: meta,
+	}
+}
+
+// ContextWithNamespace adds the given namespace to the given context
 func ContextWithNamespace(ctx context.Context, ns *Namespace) context.Context {
 	return context.WithValue(ctx, contextNamespace, ns)
 }
 
+// RootContext adds the root namespace to the given context or returns a new
+// context if the given context is nil
 func RootContext(ctx context.Context) context.Context {
 	if ctx == nil {
 		return ContextWithNamespace(context.Background(), RootNamespace)
@@ -85,14 +175,17 @@ func FromContext(ctx context.Context) (*Namespace, error) {
 }
 
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the
-// provided string
+// provided string. The canonical root namespace path is the empty string.
 func Canonicalize(nsPath string) string {
-	if nsPath == "" {
+	if nsPath == "" || nsPath == "/" {
 		return ""
 	}
 
 	// Canonicalize the path to not have a '/' prefix
 	nsPath = strings.TrimPrefix(nsPath, "/")
+
+	// Remove duplicate slashes and any ../ values if present.
+	nsPath = path.Clean(nsPath)
 
 	// Canonicalize the path to always having a '/' suffix
 	if !strings.HasSuffix(nsPath, "/") {

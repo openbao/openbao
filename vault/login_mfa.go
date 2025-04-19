@@ -707,7 +707,7 @@ func (b *LoginMFABackend) sanitizeMFACredsWithLoginEnforcementMethodIDs(ctx cont
 		// method name in the MFACredsMap should be the method full name,
 		// i.e., namespacePath+name. This is because, a user in a child
 		// namespace can reference an MFA method ID in a parent namespace
-		configNS, err := NamespaceByID(ctx, mConfig.NamespaceID, b.Core)
+		configNS, err := b.Core.NamespaceByID(ctx, mConfig.NamespaceID)
 		if err != nil {
 			return nil, err
 		}

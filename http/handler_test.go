@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-cleanhttp"
@@ -948,4 +949,126 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 	client.Do(req)
 	runtime.ReadMemStats(&end)
 	require.Less(t, end.TotalAlloc-start.TotalAlloc, uint64(1024*1024))
+}
+
+func TestHandler_RestrictedEndpointCalls(t *testing.T) {
+	core, _, token := vault.TestCoreUnsealed(t)
+	// add namespaces for tests
+	err := vault.TestCoreCreateNamespaces(core,
+		&namespace.Namespace{Path: "test"},
+		&namespace.Namespace{Path: "test/test2"},
+	)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		method          string
+		path            string
+		namespaceHeader string
+
+		expectedStatusCode int
+	}{
+		{
+			name:               "happy path - root namespace quota call",
+			method:             "GET",
+			path:               "/v1/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 404,
+		},
+		{
+			name:               "happy path - root namespace quota call through sys-raw",
+			method:             "GET",
+			path:               "/v1/sys/raw/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 404,
+		},
+		{
+			name:               "bad path - namespace in path request",
+			method:             "GET",
+			path:               "/v1/test/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in header request",
+			method:             "GET",
+			path:               "/v1/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in both header and path request",
+			method:             "GET",
+			path:               "/v1/test2/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace at the beginning path request through sys-raw",
+			method:             "GET",
+			path:               "/v1/test/sys/raw/sys/quotas/rate-limit?list=true",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in header passed for request through sys-raw",
+			method:             "GET",
+			path:               "/v1/sys/raw/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "bad path - namespace in both header and path passed for request through sys-raw",
+			method:             "GET",
+			path:               "/v1/test2/sys/raw/sys/quotas/rate-limit?list=true",
+			namespaceHeader:    "test",
+			expectedStatusCode: 400,
+		},
+		{
+			name:               "happy path - root can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/sys/policies/acl/sys/raw",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (path) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/test/sys/policies/acl/sys/raw",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (header) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/sys/policies/acl/sys/raw",
+			namespaceHeader:    "test",
+			expectedStatusCode: 204,
+		},
+		{
+			name:               "happy path - namespace (path & header) can create policy with restricted name",
+			method:             "PUT",
+			path:               "/v1/test2/sys/policies/acl/sys/raw",
+			namespaceHeader:    "test",
+			expectedStatusCode: 204,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ln, addr := TestServer(t, core)
+			defer ln.Close()
+
+			var body io.Reader
+			if tt.method == "PUT" {
+				bodyString := `{"policy":"path \"auth/token/lookup\" {\n capabilities = [\"read\", \"update\"]\n}\n\npath \"*/auth/token/lookup\" {\n capabilities = [\"read\", \"update\"]\n}"}`
+				body = bytes.NewBufferString(bodyString)
+			}
+			req, err := http.NewRequest(tt.method, addr+tt.path, body)
+			require.NoError(t, err)
+
+			req.Header.Set(consts.AuthHeaderName, token)
+			req.Header.Set(consts.NamespaceHeaderName, tt.namespaceHeader)
+			client := cleanhttp.DefaultClient()
+			client.Timeout = 60 * time.Second
+
+			res, err := client.Do(req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatusCode, res.StatusCode)
+		})
+	}
 }

@@ -34,8 +34,8 @@ func (c *Core) countActiveTokens(ctx context.Context) (*ActiveTokens, error) {
 
 	// Count the tokens under each namespace
 	total := 0
-	for i := 0; i < len(ns); i++ {
-		ids, err := c.tokenStore.idView(ns[i]).List(ctx, "")
+	for i := range ns {
+		ids, err := c.tokenStore.idView(ctx, ns[i]).List(ctx, "")
 		if err != nil {
 			return nil, err
 		}

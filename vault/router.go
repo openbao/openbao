@@ -390,6 +390,39 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 	return existing
 }
 
+// matchingNamespaceInternal returns a namespace prefix that a path may be a part of
+func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+
+	// Every namespace has a sys/ mount. We can use that as a sentinel that
+	// our given path conflicts. Walk the parent namespace of path and check
+	// if there's a common prefix between a child namespace's sys/ entry and
+	// path.
+	//
+	// This allows us to avoid calling into the namespace store, which may be
+	// locked as we're trying to mount required mounts for a new namespace.
+	var existing string
+	fn := func(existingPath string, v interface{}) bool {
+		if !strings.HasSuffix(existingPath, "sys/") {
+			return false
+		}
+
+		nsPath := strings.TrimSuffix(existingPath, "sys/")
+		if strings.HasPrefix(path, nsPath) {
+			existing = nsPath
+			return true
+		}
+
+		return false
+	}
+
+	r.root.WalkPrefix(ns.Path, fn)
+	return existing
+}
+
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
 	r.l.RLock()
@@ -399,6 +432,9 @@ func (r *Router) MountConflict(ctx context.Context, path string) string {
 	}
 	if prefixMatch := r.matchingPrefixInternal(ctx, path); prefixMatch != "" {
 		return prefixMatch
+	}
+	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
+		return nsMatch
 	}
 	return ""
 }
@@ -569,8 +605,18 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 	// Find the mount point
 	r.l.RLock()
 	adjustedPath := req.Path
-	mount, raw, ok := r.root.LongestPrefix(ns.Path + adjustedPath)
-	if !ok && !strings.HasSuffix(adjustedPath, "/") {
+
+	isNSPath := strings.HasPrefix(req.Path, "sys/namespaces/")
+	var mount string
+	var raw interface{}
+	var ok bool
+	if isNSPath {
+		mount, raw, ok = r.root.LongestPrefix(adjustedPath)
+	} else {
+		mount, raw, ok = r.root.LongestPrefix(ns.Path + adjustedPath)
+	}
+
+	if !isNSPath && !ok && !strings.HasSuffix(adjustedPath, "/") {
 		// Re-check for a backend by appending a slash. This lets "foo" mean
 		// "foo/" at the root level which is almost always what we want.
 		adjustedPath += "/"
@@ -616,7 +662,11 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 
 	// Adjust the path to exclude the routing prefix
 	originalPath := req.Path
-	req.Path = strings.TrimPrefix(ns.Path+req.Path, mount)
+	if isNSPath {
+		req.Path = strings.TrimPrefix(req.Path, mount)
+	} else {
+		req.Path = strings.TrimPrefix(ns.Path+req.Path, mount)
+	}
 	req.MountPoint = mount
 	req.MountType = re.mountEntry.Type
 	req.SetMountRunningSha256(re.mountEntry.RunningSha256)

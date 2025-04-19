@@ -146,6 +146,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.capabilitiesPaths()...)
@@ -2202,8 +2203,7 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	view := b.Core.expiration.leaseView(ns)
-	keys, err := view.List(ctx, prefix)
+	keys, err := b.Core.expiration.leaseView(ctx, ns).List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)
 		return handleErrorNoReadOnlyForward(err)
@@ -3347,7 +3347,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	unwrapNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	unwrapNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3681,7 +3681,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	lookupNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	lookupNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -5785,6 +5785,37 @@ This path responds to the following HTTP methods.
 
     LIST /
         Returns a list historical version changes sorted by installation time in ascending order.
+		`,
+	},
+
+	"list-namespaces": {
+		"List namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List namespaces.
+
+	SCAN /
+		Scan (recursively list) namespaces.
+		`,
+	},
+	"namespaces": {
+		"Create, read, update and delete namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve a namespace.
+
+	PUT /<path>
+		Create or update a namespace.
+
+	PATCH /<path>
+		Update a namespace's custom metadata.
+
+	DELETE /<path>
+		Delete a namespace.
 		`,
 	},
 }

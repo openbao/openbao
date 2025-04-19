@@ -1,0 +1,3 @@
+```release-note:bug
+secrets/pki: Remove null value for subproblems encoding, fixing compatibility with certain ACME clients like certbot.
+```

@@ -15462,23 +15462,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ember-qunit@npm:6.0.0":
-  version: 6.0.0
-  resolution: "ember-qunit@npm:6.0.0"
+"ember-qunit@npm:6.2.0":
+  version: 6.2.0
+  resolution: "ember-qunit@npm:6.2.0"
   dependencies:
     broccoli-funnel: ^3.0.8
     broccoli-merge-trees: ^3.0.2
     common-tags: ^1.8.0
-    ember-auto-import: ^2.4.2
-    ember-cli-babel: ^7.26.6
+    ember-auto-import: ^2.6.0
+    ember-cli-babel: ^7.26.11
     ember-cli-test-loader: ^3.0.0
     resolve-package-path: ^4.0.3
     silent-error: ^1.1.1
-    validate-peer-dependencies: ^2.1.0
+    validate-peer-dependencies: ^2.2.0
   peerDependencies:
-    "@ember/test-helpers": ^2.4.0
+    "@ember/test-helpers": ^2.9.3
+    ember-source: ">=3.28"
     qunit: ^2.13.0
-  checksum: 74c4c9316ff509a195e7961bae9aa1da6e6260d1a5e0ce153dff76302d23f974fa652dfc9d484fbe78d64623ba0d837b68d437d56745531118b88b950c6a5608
+  checksum: c9058d02d78efe06887ee6993908d8f45592c4369e0f72a57045f5ae27df94ea7497866bdf484f12eaddfac23ae4051a259bae0280a70c0dd50a8260eae3126c
   languageName: node
   linkType: hard
 
@@ -24888,7 +24889,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve-package-path@npm:^4.0.0, resolve-package-path@npm:^4.0.1, resolve-package-path@npm:^4.0.3":
+"resolve-package-path@npm:^4.0.1, resolve-package-path@npm:^4.0.3":
   version: 4.0.3
   resolution: "resolve-package-path@npm:4.0.3"
   dependencies:
@@ -28010,13 +28011,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"validate-peer-dependencies@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "validate-peer-dependencies@npm:2.1.0"
+"validate-peer-dependencies@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "validate-peer-dependencies@npm:2.2.0"
   dependencies:
-    resolve-package-path: ^4.0.0
-    semver: ^7.3.2
-  checksum: 72b2cde7f0b4b968c71cadb0b2b0fd5fc8bf5936de61bc7fc28949f2563dcc7ff839067be4c6fac5e4dbad707e98d07a685f89937e92df61ae3d74dadbaac1a8
+    resolve-package-path: ^4.0.3
+    semver: ^7.3.8
+  checksum: 0f025e34d9d469c03cf221c34da7e6b53a463ba11bb69294da63a08de67776384e3ef15e3bb479318f304593ae40f502c3e17a9cb671df4d73a9d1005b8b4774
   languageName: node
   linkType: hard
 
@@ -28130,7 +28131,7 @@ __metadata:
     ember-page-title: ^7.0.0
     ember-power-select: 6.0.1
     ember-qrcode-shim: ^0.4.0
-    ember-qunit: 6.0.0
+    ember-qunit: 6.2.0
     ember-resolver: ^13.1.0
     ember-responsive: 5.0.0
     ember-router-helpers: ^0.4.0

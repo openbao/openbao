@@ -149,7 +149,7 @@
     "ember-page-title": "^7.0.0",
     "ember-power-select": "6.0.1",
     "ember-qrcode-shim": "^0.4.0",
-    "ember-qunit": "6.0.0",
+    "ember-qunit": "6.2.0",
     "ember-resolver": "^13.1.0",
     "ember-responsive": "5.0.0",
     "ember-router-helpers": "^0.4.0",

@@ -1,11 +1,11 @@
 # OpenBao CODEOWNERS file
 
 # Everything
-* @openbao/openbao-committers
+* @openbao/openbao-org-maintainers
 
 # JWT Auth Plugin
-builtin/credential/jwt @openbao/openbao-committers @openbao/openbao-auth-jwt-committers
-command/agentproxyshared/auth/jwt @openbao/openbao-committers @openbao/openbao-auth-jwt-committers
-website/content/docs/auth/jwt/ @openbao/openbao-committers @openbao/openbao-auth-jwt-committers
-website/content/api-docs/auth/jwt.mdx @openbao/openbao-committers @openbao/openbao-auth-jwt-committers
-website/content/docs/agent-and-proxy/autoauth/methods/jwt.mdx @openbao/openbao-committers @openbao/openbao-auth-jwt-committers
+builtin/credential/jwt @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
+command/agentproxyshared/auth/jwt @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
+website/content/docs/auth/jwt/ @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
+website/content/api-docs/auth/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers
+website/content/docs/agent-and-proxy/autoauth/methods/jwt.mdx @openbao/openbao-org-maintainers @openbao/openbao-auth-jwt-committers

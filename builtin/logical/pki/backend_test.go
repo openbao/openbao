@@ -907,7 +907,7 @@ func generateRoleSteps(t *testing.T, useCSRs bool) []logicaltest.TestStep {
 		KeyBits:                   2048,
 		RequireCN:                 true,
 		NotBeforeBound:            "permit",
-		NotAfterBound:             "ttl-limited",
+		NotAfterBound:             "permit",
 		AllowWildcardCertificates: new(bool),
 	}
 	*roleVals.AllowWildcardCertificates = true

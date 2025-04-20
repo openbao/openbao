@@ -1,3 +1,3 @@
-```release-note:change
+```release-note:improvement
 pki: add not_afer_bound and not_before_bound role parameters
 ```

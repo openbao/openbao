@@ -7835,7 +7835,7 @@ func TestDurationNotBeforeBound(t *testing.T) {
 
 	not_before := time.Now().Add(-time.Hour * 3).UTC().Format(time.RFC3339Nano)
 
-	// Issuing a certificate by providing not_before = time.now - 2h should result in an error
+	// Issuing a certificate by providing not_before = time.now - 3h should result in an error
 	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
 		"common_name": "test.example.com",
 		"not_before":  not_before,

@@ -1594,6 +1594,9 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	if notBeforeAlt == "" {
 		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
 		if ok {
+			// for not_before_bound=permit we set not_before to the provided input.
+			// for not_before_bound=duration, errors out if not_before is not older than time.Now() - not_before_duration
+			// for not_before_bound=forbid errors out.
 			switch notBeforeBound {
 			case PermitNotBeforeBound.String():
 				notBeforeAlt = notBeforeAltRaw.(string)
@@ -1686,6 +1689,7 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 			if err != nil {
 				return notAfter, warnings, errutil.UserError{Err: err.Error()}
 			}
+			// if data was provided and not_before_bound=forbid, errors out
 		} else if ok && forbidBound {
 			return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. not_after cannot be provided.", notAfterBound)}
 		}
@@ -1714,6 +1718,7 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		ttl = maxTTL
 	}
 
+	// for not_after_bound=ttl-limited, errors out if not_after is later than time.Now() + TTL
 	if ttlLimitedBound && notAfter.After(time.Now().Add(ttl)) {
 		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot satisfy request as that would result in notAfter of %s that is beyond the TTL of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), ttl)}
 	}
@@ -1744,6 +1749,7 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		}
 	}
 
+	// for not_before_bound=explicit, errors out if not_after is later than the role not_before_bound
 	if timestampBound && notAfter.After(timestamp) {
 		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), timestamp.UTC().Format(time.RFC3339Nano))}
 	}

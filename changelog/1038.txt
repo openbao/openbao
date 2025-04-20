@@ -1,0 +1,3 @@
+```release-note:bug
+cli: Return a quoted string URL when -output-curl-string flag is passed in
+```

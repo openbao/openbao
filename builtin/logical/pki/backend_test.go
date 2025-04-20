@@ -228,7 +228,7 @@ func TestPKI_DeviceCert(t *testing.T) {
 		"allow_subdomains":   true,
 		"not_after":          "9999-12-31T23:59:59Z",
 		"not_before":         "1900-01-01T00:00:00Z",
-		"not_after_bound":    "9999-12-31T23:59:59Z",
+		"not_after_bound":    "permit",
 		"not_before_bound":   "permit",
 	})
 	if err != nil {
@@ -3880,7 +3880,7 @@ func TestReadWriteDeleteRoles(t *testing.T) {
 		"country":                            []interface{}{},
 		"not_before_bound":                   "permit",
 		"not_before":                         "",
-		"not_after_bound":                    "ttl-limited",
+		"not_after_bound":                    "permit",
 		"not_after":                          "",
 		"postal_code":                        []interface{}{},
 		"use_csr_common_name":                true,
@@ -7805,6 +7805,44 @@ func TestForbidNotBeforeBound(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, resp.IsError())
 	require.Equal(t, "not_before_bound is set to forbid. not_before cannot be provided.", err.Error())
+}
+
+func TestDurationNotBeforeBound(t *testing.T) {
+	t.Parallel()
+
+	b, s := CreateBackendWithStorage(t)
+
+	_, err := CBWrite(b, s, "root/generate/internal", map[string]interface{}{
+		"common_name": "example.com",
+		"not_after":   "9999-12-31T23:59:59Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	not_before_duration := time.Hour * 2
+
+	// Create role with not_before_bound=duration
+	_, err = CBWrite(b, s, "roles/example", map[string]interface{}{
+		"allow_subdomains":    true,
+		"allowed_domains":     "example.com",
+		"not_before_bound":    "duration",
+		"not_before_duration": not_before_duration,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	not_before := time.Now().Add(-time.Hour * 3).UTC().Format(time.RFC3339Nano)
+
+	// Issuing a certificate by providing not_before = time.now - 2h should result in an error
+	resp, err := CBWrite(b, s, "issue/example", map[string]interface{}{
+		"common_name": "test.example.com",
+		"not_before":  not_before,
+	})
+	require.Error(t, err)
+	require.True(t, resp.IsError())
+	require.Equal(t, fmt.Sprintf("not_before_bound is set to duration. Cannot satisfy request as it would result in notBefore of %s that is older than the allowed not_before_duration of %s", not_before, not_before_duration), err.Error())
 }
 
 func TestForbidNotAfterBound(t *testing.T) {

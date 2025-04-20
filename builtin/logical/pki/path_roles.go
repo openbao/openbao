@@ -407,8 +407,8 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 		"not_before_bound": {
 			Type:          framework.TypeString,
 			Description:   `Set how not_before can be configured.`,
-			AllowedValues: []interface{}{certutil.PermitNotBeforeBound.String(), certutil.ForbidNotBeforeBound.String()},
-			Default:       certutil.PermitNotBeforeBound.String(),
+			AllowedValues: []interface{}{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
+			Default:       PermitNotBeforeBound.String(),
 		},
 		"not_after": {
 			Type: framework.TypeString,
@@ -418,8 +418,8 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 		"not_after_bound": {
 			Type:          framework.TypeString,
 			Description:   `Set how not_after can be configured.`,
-			AllowedValues: []interface{}{certutil.ForbidNotAfterBound.String(), certutil.TTLNotAfterBound.String(), "an explicit timestamp"},
-			Default:       certutil.TTLNotAfterBound.String(),
+			AllowedValues: []interface{}{PermitNotAfterBound.String(), ForbidNotAfterBound.String(), TTLNotAfterBound.String(), "an explicit timestamp"},
+			Default:       PermitNotAfterBound.String(),
 		},
 		"issuer_ref": {
 			Type: framework.TypeString,
@@ -844,8 +844,8 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 			"not_before_bound": {
 				Type:          framework.TypeString,
 				Description:   `Set how not_before can be configured.`,
-				AllowedValues: []interface{}{certutil.PermitNotBeforeBound.String(), certutil.ForbidNotBeforeBound.String()},
-				Default:       certutil.PermitNotBeforeBound.String(),
+				AllowedValues: []interface{}{PermitNotBeforeBound.String(), DurationNotBeforeBound.String(), ForbidNotBeforeBound.String()},
+				Default:       PermitNotBeforeBound.String(),
 			},
 			"not_after": {
 				Type: framework.TypeString,
@@ -855,8 +855,8 @@ The value format should be given in UTC format YYYY-MM-ddTHH:MM:SSZ.`,
 			"not_after_bound": {
 				Type:          framework.TypeString,
 				Description:   `Set how not_after can be configured.`,
-				AllowedValues: []interface{}{certutil.TTLNotAfterBound.String(), certutil.ForbidNotAfterBound.String(), "an explicit timestamp"},
-				Default:       certutil.TTLNotAfterBound.String(),
+				AllowedValues: []interface{}{PermitNotAfterBound.String(), TTLNotAfterBound.String(), ForbidNotAfterBound.String(), "an explicit timestamp"},
+				Default:       PermitNotAfterBound.String(),
 			},
 			"issuer_ref": {
 				Type: framework.TypeString,
@@ -1241,9 +1241,11 @@ func validateNotAfterBound(notAfterBound string) (*logical.Response, error) {
 	var err error
 
 	switch notAfterBound {
-	case certutil.ForbidNotAfterBound.String():
+	case PermitNotAfterBound.String():
 	// nothing to do
-	case certutil.TTLNotAfterBound.String():
+	case ForbidNotAfterBound.String():
+	// nothing to do
+	case TTLNotAfterBound.String():
 	// nothing to do
 	default:
 		_, err = time.Parse(time.RFC3339, notAfterBound)
@@ -1259,9 +1261,11 @@ func validateNoBeforeBound(notBeforebound string) (*logical.Response, error) {
 	var err error
 
 	switch notBeforebound {
-	case certutil.ForbidNotBeforeBound.String():
+	case ForbidNotBeforeBound.String():
 	// nothing to do
-	case certutil.PermitNotBeforeBound.String():
+	case DurationNotBeforeBound.String():
+	// nothing to do
+	case PermitNotBeforeBound.String():
 	// nothing to do
 	default:
 		resp = logical.ErrorResponse("Unknown value for field `not_before_bound`. Possible values are `permit` or `forbid`")

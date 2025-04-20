@@ -1680,7 +1680,6 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		timestampBound = true
 	}
 
-	//	if !forbidBound {
 	if notAfterAlt == "" {
 		notAfterAltRaw, ok := data.apiData.GetOk("not_after")
 		if ok && !forbidBound {

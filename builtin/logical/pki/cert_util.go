@@ -1748,7 +1748,7 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		}
 	}
 
-	// for not_before_bound=explicit, errors out if not_after is later than the role not_before_bound
+	// for not_after_bound=explicit timestamp, errors out if not_after is later than the role not_before_bound
 	if timestampBound && notAfter.After(timestamp) {
 		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), timestamp.UTC().Format(time.RFC3339Nano))}
 	}

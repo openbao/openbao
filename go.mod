@@ -46,7 +46,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/golang/protobuf v1.5.4
 	github.com/golangci/revgrep v0.0.0-20220804021717-745bb2f7c2e6
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/google/go-metrics-stackdriver v0.2.0
 	github.com/hashicorp/cap v0.9.0
 	github.com/hashicorp/cli v1.1.7

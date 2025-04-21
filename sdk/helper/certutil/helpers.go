@@ -895,6 +895,20 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 		notBefore = data.Params.NotBefore
 	}
 
+	// Verify that notBefore is older than notAfter.
+	if notBefore.After(data.Params.NotAfter) {
+		return nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.UTC().Format(time.RFC3339Nano), data.Params.NotAfter.UTC().Format(time.RFC3339Nano)),
+		}
+	}
+
+	// Disallow zero duration certificate.
+	if notBefore.Equal(data.Params.NotAfter) {
+		return nil, errutil.UserError{
+			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore.UTC().Format(time.RFC3339Nano), data.Params.NotAfter.UTC().Format(time.RFC3339Nano)),
+		}
+	}
+
 	certTemplate := &x509.Certificate{
 		SerialNumber:   serialNumber,
 		NotBefore:      notBefore,

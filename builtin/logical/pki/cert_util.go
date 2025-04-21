@@ -1595,7 +1595,7 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
 		if ok {
 			// for not_before_bound=permit we set not_before to the provided input.
-			// for not_before_bound=duration, errors out if not_before is not older than time.Now() - not_before_duration
+			// for not_before_bound=duration, errors out if not_before is older than time.Now() - not_before_duration
 			// for not_before_bound=forbid errors out.
 			switch notBeforeBound {
 			case PermitNotBeforeBound.String():

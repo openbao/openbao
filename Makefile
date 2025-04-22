@@ -384,3 +384,10 @@ sync-deps:
 .PHONY: ci-sync-deps
 ci-sync-deps: sync-deps
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make sync-deps' locally and commit the changes.\n" && exit 1)
+
+.PHONY: bump-critical
+bump-critical:
+	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	go get github.com/golang-jwt/jwt/v4@latest
+	go get github.com/golang-jwt/jwt/v5@latest
+	make sync-deps

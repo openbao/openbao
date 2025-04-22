@@ -6,6 +6,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	retryablehttp "github.com/hashicorp/go-retryablehttp"
@@ -94,5 +95,5 @@ func (d *OutputStringError) buildCurlString() (string, error) {
 		finalCurlString = fmt.Sprintf("%s-d '%s' ", finalCurlString, escapedBody)
 	}
 
-	return fmt.Sprintf("%s%s", finalCurlString, d.Request.URL.String()), nil
+	return fmt.Sprintf("%s%s", finalCurlString, strconv.Quote(d.Request.URL.String())), nil
 }

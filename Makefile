@@ -366,16 +366,9 @@ dev-gorelease:
 
 .PHONY: goreleaser-check
 goreleaser-check:
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#HSMONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.hsm.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.linux.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:

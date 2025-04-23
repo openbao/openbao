@@ -75,7 +75,7 @@ func TestExpiration_Metrics(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	idView := exp.tokenIndexView(ctx, namespace.RootNamespace)
+	idView := exp.tokenIndexView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
 	if err := logical.ScanView(ctx, idView, countFunc); err != nil {
@@ -459,7 +459,7 @@ func TestExpiration_Tidy(t *testing.T) {
 
 	ctx := namespace.RootContext(context.Background())
 
-	view := exp.leaseView(ctx, namespace.RootNamespace)
+	view := exp.leaseView(namespace.RootNamespace)
 
 	// Scan the storage with the count func set
 	if err := logical.ScanView(ctx, view, countFunc); err != nil {
@@ -1077,7 +1077,7 @@ func TestExpiration_Register_BatchToken(t *testing.T) {
 	deadline := time.Now().Add(5 * time.Second)
 	var idEnts []string
 	for time.Now().Before(deadline) {
-		tokenView := exp.tokenIndexView(ctx, namespace.RootNamespace)
+		tokenView := exp.tokenIndexView(namespace.RootNamespace)
 		idEnts, err = tokenView.List(context.Background(), "")
 		if err != nil {
 			t.Fatal(err)

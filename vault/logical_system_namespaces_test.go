@@ -153,6 +153,7 @@ func TestNamespaceBackend_Read(t *testing.T) {
 		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
 		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
 		require.Equal(t, res.Data["path"].(string), "foo/")
+		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata,
 			"read custom_metadata does not match original custom_metadata")
 	})
@@ -170,6 +171,7 @@ func TestNamespaceBackend_Read(t *testing.T) {
 		require.NotEmpty(t, res.Data["uuid"].(string), "namespace has no UUID")
 		require.NotEmpty(t, res.Data["id"].(string), "namespace has no ID")
 		require.Equal(t, res.Data["path"].(string), "foo/bar/")
+		require.Equal(t, res.Data["tainted"].(bool), false)
 		require.Equal(t, res.Data["custom_metadata"], customMetadata,
 			"read custom_metadata does not match original custom_metadata")
 	})
@@ -295,17 +297,19 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 	t.Run("delete namespace", func(t *testing.T) {
 		testCreateNamespace(t, rootCtx, b, "foo", nil)
 
-		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foo")
-		res, err := b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Equal(t, "in-progress", res.Data["status"])
-
-		time.Sleep(50 * time.Millisecond)
-
-		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foo")
-		res, err = b.HandleRequest(rootCtx, req)
-		require.NoError(t, err)
-		require.Empty(t, res, "expected empty response")
+		maxRetries := 50
+		for range maxRetries {
+			req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foo")
+			res, err := b.HandleRequest(rootCtx, req)
+			require.NoError(t, err)
+			val, ok := res.Data["status"]
+			if ok {
+				require.Equal(t, "in-progress", val)
+				time.Sleep(1 * time.Millisecond)
+				continue
+			}
+			require.Empty(t, res.Data, "data should be empty when deleting already deleted namespace")
+		}
 	})
 
 	t.Run("delete nested namespace", func(t *testing.T) {
@@ -314,18 +318,34 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 		testCreateNamespace(t, nestedCtx, b, "bar", nil)
 		testCreateNamespace(t, nestedCtx, b, "baz", nil)
 
-		// ctx ns = foobar, path = baz
-		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
-		res, err := b.HandleRequest(nestedCtx, req)
+		// three namespaces: "foobar", "foobar/bar" and "foobar/baz"
+		req := logical.TestRequest(t, logical.DeleteOperation, "namespaces/foobar")
+		res, err := b.HandleRequest(rootCtx, req)
+		// fails as foobar contains child namespaces
+		require.Error(t, err)
+
+		req = logical.TestRequest(t, logical.DeleteOperation, "namespaces/baz")
+		res, err = b.HandleRequest(nestedCtx, req)
 		require.NoError(t, err)
 		require.Equal(t, "in-progress", res.Data["status"])
 
-		time.Sleep(50 * time.Millisecond)
+		maxRetries := 50
+		for range maxRetries {
+			req = logical.TestRequest(t, logical.ReadOperation, "namespaces/baz")
+			res, err = b.HandleRequest(nestedCtx, req)
+			require.NoError(t, err)
 
-		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/baz")
-		res, err = b.HandleRequest(nestedCtx, req)
-		require.NoError(t, err)
-		require.Empty(t, res, "expected empty response")
+			if res != nil {
+				val, ok := res.Data["tainted"].(bool)
+				if ok {
+					require.Equal(t, true, val)
+					time.Sleep(1 * time.Millisecond)
+					continue
+				}
+			}
+
+			require.Empty(t, res, "expected empty response")
+		}
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar")
 		res, err = b.HandleRequest(rootCtx, req)

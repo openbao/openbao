@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -130,14 +131,13 @@ func (n *Namespace) TrimmedPath(path string) string {
 
 func (n *Namespace) Clone() *Namespace {
 	meta := make(map[string]string, len(n.CustomMetadata))
-	for k, v := range n.CustomMetadata {
-		meta[k] = v
-	}
+	maps.Copy(meta, n.CustomMetadata)
 
 	return &Namespace{
 		ID:             n.ID,
 		UUID:           n.UUID,
 		Path:           n.Path,
+		Tainted:        n.Tainted,
 		CustomMetadata: meta,
 	}
 }

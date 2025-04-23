@@ -565,21 +565,29 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
 	// to be extra safe
 	if namespaceToTaint.ID == namespace.RootNamespaceID {
-		return errors.New("cannot taint a root namespace")
+		return errors.New("cannot taint root namespace")
 	}
 
 	if err := ns.checkInvalidation(ctx); err != nil {
 		return err
 	}
 
-	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
-	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
-
 	// We've got to grab write lock because we modify the namespace tree structure
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
-	ns.namespacesByPath.Get(namespaceToTaint.Path).Tainted = true
+	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
+	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
+	namespaceToTaint.Tainted = true
+	err := ns.namespacesByPath.Insert(namespaceToTaint)
+	if err != nil {
+		return fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	nsCopy := namespaceToTaint.Clone()
+	if err := ns.writeNamespace(ctx, nsCopy); err != nil {
+		return fmt.Errorf("failed to persist namespace taint: %w", err)
+	}
 
 	return nil
 }

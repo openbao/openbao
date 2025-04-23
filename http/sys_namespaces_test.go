@@ -8,7 +8,6 @@ import (
 	"path"
 	"strings"
 	"testing"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -111,15 +110,6 @@ func FuzzNamespaceName(f *testing.F) {
 			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
 			t.Logf("retrieving namespace details")
 			testResponseStatus(t, resp, http.StatusOK)
-
-			// TODO(wslabosz): As deletion is asynchronous we have to wait before it completes
-			// this should be adjusted with more comprehensive test, hypotheticall with polling
-			// whenever we have "deletion status" endpoint, but for now sleeping for 1ms
-			time.Sleep(1 * time.Millisecond)
-
-			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
-			t.Logf("retrieving namespace details after deletion")
-			testResponseStatus(t, resp, http.StatusNotFound)
 
 			return
 		}

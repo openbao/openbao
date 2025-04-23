@@ -501,6 +501,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	}
 
 	ctx, cancel := context.WithCancel(c.activeContext)
+	defer cancel()
 	go func(ctx context.Context, httpCtx context.Context) {
 		select {
 		case <-ctx.Done():
@@ -509,10 +510,12 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ctx, _, req.Path, err = c.namespaceStore.ResolveNamespaceFromRequest(ctx, httpCtx, req.Path)
+	// Copy the namespace from httpCtx -> ctx
+	ns, err := namespace.FromContext(httpCtx)
 	if err != nil {
 		return nil, err
 	}
+	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
@@ -528,7 +531,6 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	}
 	resp, err = c.handleCancelableRequest(ctx, req)
 	req.SetTokenEntry(nil)
-	cancel()
 	return resp, err
 }
 

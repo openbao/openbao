@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -715,54 +716,35 @@ func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceT
 	return
 }
 
-// copyNamespaceFromCtx copies the namespace from fromCtx into intoCtx, ensuring that the namespace exists.
-func (ns *NamespaceStore) copyNamespaceFromCtx(intoCtx context.Context, fromCtx context.Context) (context.Context, *namespace.Namespace, error) {
-	rawNs, err := namespace.FromContext(fromCtx)
-	if err != nil {
-		return intoCtx, nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+// ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
+// header combined with the request path, returning the namespace and the
+// "trimmed" request path devoid of any namespace components.
+func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string, error) {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() || c.standby {
+		return namespace.RootNamespace, reqPath, nil
 	}
 
-	// in practice intoCtx should already have the root namespace set, but let's make it explicit that this is necessary here
-	entry, err := ns.GetNamespaceByPath(namespace.RootContext(intoCtx), rawNs.Path)
-	if err != nil {
-		return intoCtx, nil, fmt.Errorf("could not fetch namespace by path: %w", err)
+	nsHeader = namespace.Canonicalize(nsHeader)
+	// Naively stack header ahead of request path.
+	reqPath = nsHeader + reqPath
+	// Find namespace that matches the longest prefix of reqPath.
+	c.namespaceStore.lock.RLock()
+	_, ns, trimmedPath := c.namespaceStore.namespacesByPath.LongestPrefix(reqPath)
+	c.namespaceStore.lock.RUnlock()
+
+	// Ensure that entire header was matched, so unmatched paths don't leak
+	// into the request path.
+	if !strings.HasPrefix(ns.Path, nsHeader) {
+		return nil, "", fmt.Errorf("requested namespace was not found")
 	}
-
-	if entry == nil {
-		return intoCtx, nil, fmt.Errorf("requested namespace was not found")
-	}
-
-	intoCtx = namespace.ContextWithNamespace(intoCtx, entry)
-	return intoCtx, entry, nil
-}
-
-// ResolveNamespaceFromRequest merges the given base context with the
-// namespace from httpCtx, combining it with any namespaces within the
-// request path itself. We remove the prefix from the path, if given,
-// because logic elsewhere in vault/ combines the namespace with the
-// path again.
-func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, httpCtx context.Context, reqPath string) (context.Context, *namespace.Namespace, string, error) {
-	ns.lock.RLock()
-	defer ns.lock.RUnlock()
-
-	// We stack the namespace context ahead of any namespace in path.
-	newCtx, parentNs, err := ns.copyNamespaceFromCtx(baseCtx, httpCtx)
-	if err != nil {
-		return newCtx, parentNs, reqPath, err
-	}
-
-	// prepend namespace path from request context
-	reqPath = parentNs.Path + reqPath
-	// find namespace that matches the longest prefix of reqPath
-	nsPath, parentNs, _ := ns.namespacesByPath.LongestPrefix(reqPath)
-	// trim matched prefix from reqPath
-	reqPath = reqPath[len(nsPath):]
 
 	// TODO(ascheel): Fix global uses of comparison by pointer.
-	if parentNs.ID == namespace.RootNamespaceID {
-		parentNs = namespace.RootNamespace
+	if ns.ID == namespace.RootNamespaceID {
+		ns = namespace.RootNamespace
 	}
 
-	finalCtx := namespace.ContextWithNamespace(baseCtx, parentNs)
-	return finalCtx, parentNs, reqPath, nil
+	return ns, trimmedPath, nil
 }

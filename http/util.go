@@ -10,10 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/openbao/openbao/helper/namespace"
@@ -25,6 +25,7 @@ var (
 	restrictedAPIs = []string{
 		"sys/audit",
 		"sys/audit-hash",
+		"sys/config/auditing",
 		"sys/config/cors",
 		"sys/config/reload",
 		"sys/config/state",
@@ -40,21 +41,26 @@ var (
 		"sys/internal/counters/activity/export",
 		"sys/internal/counters/activity/monthly",
 		"sys/internal/counters/config",
+		"sys/internal/inspect/router",
 		"sys/key-status",
 		"sys/loggers",
+		"sys/managed-keys",
 		"sys/metrics",
+		"sys/mfa/method",
 		"sys/monitor",
+		"sys/pprof",
 		"sys/quotas/config",
 		"sys/quotas/lease-count",
 		"sys/quotas/rate-limit",
 		"sys/raw",
+		"sys/rekey",
 		"sys/rekey-recovery-key",
+		"sys/replication/merkle-check",
 		"sys/replication/recover",
 		"sys/replication/reindex",
 		"sys/replication/status",
-		"sys/replication/merkle-check",
-		"sys/rotate/config",
 		"sys/rotate",
+		"sys/rotate/config",
 		"sys/seal",
 		"sys/sealwrap/rewrap",
 		"sys/step-down",
@@ -62,49 +68,36 @@ var (
 		"sys/sync/config",
 		"sys/unseal",
 	}
-	containsAPIs = []string{
-		"sys/config/auditing/",
-		"sys/internal/inspect/router/",
-		"sys/managed-keys/",
-		"sys/mfa/method/",
-		"sys/pprof/",
-		"sys/rekey/",
-	}
 
-	validateNamespace = func(r *http.Request) int {
-		ns, err := namespace.FromContext(r.Context())
-		if err != nil {
-			return http.StatusBadRequest
+	resolveNamespace = func(core *vault.Core, r *http.Request) (*namespace.Namespace, int, error) {
+		if !strings.HasPrefix(r.URL.Path, "/v1/") {
+			// Default namespace for all requests that don't go to /v1.
+			return namespace.RootNamespace, 0, nil
 		}
 
-		fullURL, err := url.JoinPath(ns.Path, r.URL.Path[4:])
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
+		ns, trimmedPath, err := core.ResolveNamespaceFromRequest(nsHeader, strings.TrimPrefix(r.URL.Path, "/v1/"))
 		if err != nil {
-			return http.StatusBadRequest
+			return nil, http.StatusNotFound, err
+		}
+
+		r.URL.Path = "/v1/" + ns.Path + trimmedPath
+
+		// No need to check for restricted APIs, return early.
+		if ns.ID == namespace.RootNamespaceID {
+			return ns, 0, nil
 		}
 
 		for _, api := range restrictedAPIs {
-			apiSysRawRouted := "sys/raw/" + api
-			// if path not equals the restricted api path or not equals restricted api path with "sys/raw/" prefix
-			namespaceUseOfRestrictedEndpoint := (fullURL != api && fullURL != apiSysRawRouted) && strings.HasSuffix(fullURL, api)
-			namespacePath, _, ok := strings.Cut(fullURL, api)
-
-			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
-			if ok && (strings.HasSuffix(namespacePath, "sys/policies/acl/") || strings.HasSuffix(namespacePath, "sys/policy/")) {
-				return 0
-			}
-
-			if namespaceUseOfRestrictedEndpoint {
-				return http.StatusBadRequest
+			// Either:
+			// - Direct match with no '/' at end of path
+			// - Path starts with restricted API, final '/' or further path components afterwards
+			if trimmedPath == api || (strings.HasPrefix(trimmedPath, api) && trimmedPath[len(api)] == '/') {
+				return ns, http.StatusBadRequest, fmt.Errorf("unavailable operation (%s %s)", r.Method, r.URL.Path)
 			}
 		}
 
-		for _, api := range containsAPIs {
-			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
-				return http.StatusBadRequest
-			}
-		}
-
-		return 0
+		return ns, 0, nil
 	}
 
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {

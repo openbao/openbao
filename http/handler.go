@@ -345,17 +345,6 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
 
-		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
-		ns := namespace.RootNamespace
-		if nsHeader != "" {
-			ns = &namespace.Namespace{Path: namespace.Canonicalize(nsHeader)}
-			// Setting the namespace in the header to be included in the response
-			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
-
-		}
-		ctx = namespace.ContextWithNamespace(ctx, ns)
-		r = r.WithContext(ctx)
-
 		// Set some response headers with raft node id (if applicable) and hostname, if available
 		if core.RaftNodeIDHeaderEnabled() {
 			nodeID := core.GetRaftNodeID()
@@ -368,16 +357,23 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set("X-Vault-Hostname", hostname)
 		}
 
-		switch {
-		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			status := validateNamespace(r)
-			if status != 0 {
-				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s)", r.Method, r.URL.Path))
-				cancelFunc()
-				return
-			}
+		ns, status, err := resolveNamespace(core, r)
+		if ns != nil && ns.ID != namespace.RootNamespaceID {
+			// Setting the namespace in the header to be included in the response.
+			// The header is used by the CLI for better error reporting.
+			nw.Header().Set(consts.NamespaceHeaderName, ns.Path)
+		}
+		if err != nil {
+			respondError(nw, status, err)
+			cancelFunc()
+			return
+		}
 
-		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		ctx = namespace.ContextWithNamespace(ctx, ns)
+		r = r.WithContext(ctx)
+
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
 		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
 			for _, ln := range props.AllListeners {
 				if ln.Config == nil || ln.Config.TLSDisable {

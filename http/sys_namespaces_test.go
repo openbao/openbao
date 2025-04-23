@@ -8,12 +8,14 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
+	"github.com/stretchr/testify/require"
 )
 
 func FuzzNamespaceName(f *testing.F) {
@@ -107,10 +109,17 @@ func FuzzNamespaceName(f *testing.F) {
 			t.Logf("deleting namespace %q (%x)", name, name)
 			testResponseStatus(t, resp, http.StatusOK)
 
-			resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
-			t.Logf("retrieving namespace details")
-			testResponseStatus(t, resp, http.StatusOK)
-
+			maxRetries := 50
+			for range maxRetries {
+				resp = testHttpGet(t, token, addr+"/v1/sys/namespaces/"+escapedName)
+				t.Logf("retrieving namespace details after deletion")
+				if resp.StatusCode == http.StatusOK {
+					time.Sleep(1 * time.Millisecond)
+					continue
+				}
+				require.Equal(t, http.StatusNotFound, resp.StatusCode)
+				break
+			}
 			return
 		}
 

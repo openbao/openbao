@@ -154,10 +154,20 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	// delete namespace
-	_, err = s.DeleteNamespace(ctx, createdNS.UUID)
+	status, err := s.DeleteNamespace(ctx, createdNS.UUID)
 	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
 
-	time.Sleep(50 * time.Millisecond)
+	maxRetries := 50
+	for range maxRetries {
+		status, err := s.DeleteNamespace(ctx, createdNS.UUID)
+		require.NoError(t, err)
+		if status == "in-progress" {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+		break
+	}
 
 	// verify namespace deletion
 	nsList, err := s.ListAllNamespaces(ctx, false)
@@ -186,6 +196,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	err = s.SetNamespace(ctx, childNamespace)
 	require.NoError(t, err)
 
+	// failed to delete as it contains a child namespace
 	_, err = s.DeleteNamespace(parentCtx, parentNS.UUID)
 	require.Error(t, err)
 }

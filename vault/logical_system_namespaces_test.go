@@ -309,6 +309,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 				continue
 			}
 			require.Empty(t, res.Data, "data should be empty when deleting already deleted namespace")
+			break
 		}
 	})
 
@@ -345,6 +346,7 @@ func TestNamespaceBackend_Delete(t *testing.T) {
 			}
 
 			require.Empty(t, res, "expected empty response")
+			break
 		}
 
 		req = logical.TestRequest(t, logical.ReadOperation, "namespaces/foobar")

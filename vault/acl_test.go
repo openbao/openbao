@@ -25,7 +25,7 @@ func TestACL_NewACL(t *testing.T) {
 func testNewACL(t *testing.T, ns *namespace.Namespace) {
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
 	policy := []*Policy{{Name: "root"}}
-	_, err := NewACL(ctx, policy)
+	_, err := NewACL(ctx, policy, ACLOptions{})
 	switch ns.ID {
 	case namespace.RootNamespaceID:
 		if err != nil {
@@ -67,7 +67,7 @@ path "secret/split/definition" {
 	}
 
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestACL_Capabilities(t *testing.T) {
 		t.Parallel()
 		policy := []*Policy{{Name: "root"}}
 		ctx := namespace.RootContext(context.Background())
-		acl, err := NewACL(ctx, policy)
+		acl, err := NewACL(ctx, policy, ACLOptions{})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -128,7 +128,7 @@ func testACLCapabilities(t *testing.T, ns *namespace.Namespace) {
 		t.Fatalf("err: %v", err)
 	}
 
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -163,7 +163,7 @@ func testACLRoot(t *testing.T, ns *namespace.Namespace) {
 	// Create the root policy ACL. Always create on root namespace regardless of
 	// which namespace to ACL check on.
 	policy := []*Policy{{Name: "root"}}
-	acl, err := NewACL(namespace.RootContext(context.Background()), policy)
+	acl, err := NewACL(namespace.RootContext(context.Background()), policy, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -196,7 +196,7 @@ func testACLSingle(t *testing.T, ns *namespace.Namespace) {
 	}
 
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestACL_Layered(t *testing.T) {
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
-		acl, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy1, policy2})
+		acl, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy1, policy2}, ACLOptions{})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -399,7 +399,7 @@ func testACLPolicyMerge(t *testing.T, ns *namespace.Namespace) {
 		t.Fatalf("err: %v", err)
 	}
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -468,7 +468,7 @@ func testACLAllowOperation(t *testing.T, ns *namespace.Namespace) {
 		t.Fatalf("err: %v", err)
 	}
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -553,7 +553,7 @@ func testACLValuePermissions(t *testing.T, ns *namespace.Namespace) {
 	}
 
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -710,7 +710,7 @@ path "foo/bar/+/ba*" { capabilities = ["update"] }
 			t.Fatalf("err: %v", err)
 		}
 
-		acl, err := NewACL(ctx, []*Policy{policy})
+		acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -807,7 +807,7 @@ func TestACL_SegmentWildcardPriority_BareMount(t *testing.T) {
 			t.Fatalf("err: %v", err)
 		}
 
-		acl, err := NewACL(ctx, []*Policy{policy})
+		acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -839,7 +839,7 @@ func TestACL_CreationRace(t *testing.T) {
 				if time.Now().After(stopTime) {
 					return
 				}
-				_, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy})
+				_, err := NewACL(namespace.RootContext(context.Background()), []*Policy{policy}, ACLOptions{})
 				if err != nil {
 					errs <- fmt.Errorf("goroutine %d: %w", i, err)
 				}
@@ -911,7 +911,7 @@ func TestACLGrantingPolicies(t *testing.T) {
 			Operation: tc.op,
 		}
 
-		acl, err := NewACL(ctx, tc.policies)
+		acl, err := NewACL(ctx, tc.policies, ACLOptions{})
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}

@@ -38,6 +38,15 @@ type ACL struct {
 
 	// Stores policies that are actually RGPs for later fetching
 	rgpPolicies []*Policy
+
+	// Parameters needed for external ACL evaluation
+	rawAclPolicies     []*Policy
+	externalAclAddress string
+}
+
+// TODO
+type ACLOptions struct {
+	ExternalAclAddress string
 }
 
 type PolicyCheckOpts struct {
@@ -70,7 +79,8 @@ type SentinelResults struct {
 const limitParameterName = "limit"
 
 // NewACL is used to construct a policy based ACL from a set of policies.
-func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
+func NewACL(ctx context.Context, policies []*Policy, options ACLOptions) (*ACL, error) {
+
 	// Initialize
 	a := &ACL{
 		exactRules:           radix.New(),
@@ -87,8 +97,14 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 		return nil, namespace.ErrNoNamespace
 	}
 
+	// Store the options for later usage
+	if !strings.EqualFold(options.ExternalAclAddress, "") {
+		a.externalAclAddress = options.ExternalAclAddress
+	}
+
 	// Inject each policy
 	for _, policy := range policies {
+
 		// Ignore a nil policy object
 		if policy == nil {
 			continue
@@ -111,6 +127,9 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 			}
 			a.root = true
 		}
+
+		// Store the raw policy for later usage
+		a.rawAclPolicies = append(a.rawAclPolicies, policy)
 
 		for _, pc := range policy.Paths {
 			var raw interface{}
@@ -278,6 +297,7 @@ func NewACL(ctx context.Context, policies []*Policy) (*ACL, error) {
 }
 
 func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities []string) {
+
 	req := &logical.Request{
 		Path: path,
 		// doesn't matter, but use List to trigger fallback behavior so we can
@@ -327,6 +347,12 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 
 // AllowOperation is used to check if the given operation is permitted.
 func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheckOnly bool) (ret *ACLResults) {
+
+	// Request ACL evaluation to an external service when required by the user
+	if !strings.EqualFold(a.externalAclAddress, "") {
+		return a.AllowOperationExternal(ctx, req, capCheckOnly)
+	}
+
 	ret = new(ACLResults)
 
 	// Fast-path root
@@ -642,6 +668,13 @@ type wcPathDescr struct {
 // access checks), or nil indicating no non-deny permissions were found.
 func (a *ACL) CheckAllowedFromNonExactPaths(path string, bareMount bool) *ACLPermissions {
 	wcPathDescrs := make([]wcPathDescr, 0, len(a.segmentWildcardPaths)+1)
+
+	// TODO
+	// When using external ACL evaluation service, all permission checks must be fully delegated and explicit.
+	// This function only processes locally-evaluated ACLs.
+	if !strings.EqualFold(a.externalAclAddress, "") {
+		return nil
+	}
 
 	less := func(i, j int) bool {
 		// In the case of multiple matches, we use this priority order,

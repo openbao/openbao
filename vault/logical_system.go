@@ -3960,6 +3960,9 @@ func hasMountAccess(ctx context.Context, acl *ACL, path string) bool {
 		acl.prefixRules.WalkPrefix(path, walkFn)
 	}
 
+	// TODO
+	// Useful to know whether an entity has access to a mount or not.
+	// Does it guessing if the user has permissions in any specific path inside
 	if !aclCapabilitiesGiven {
 		if perms := acl.CheckAllowedFromNonExactPaths(path, true); perms != nil {
 			return true

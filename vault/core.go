@@ -635,6 +635,9 @@ type Core struct {
 
 	// Config value for "detect_deadlocks".
 	detectDeadlocks []string
+
+	//
+	externalAclAddress string
 }
 
 // c.stateLock needs to be held in read mode before calling this function.
@@ -781,6 +784,10 @@ type CoreConfig struct {
 	AdministrativeNamespacePath string
 
 	NumRollbackWorkers int
+
+	//
+	EnableExternalAcl  bool
+	ExternalAclAddress string
 }
 
 // GetServiceRegistration returns the config's ServiceRegistration, or nil if it does
@@ -1151,6 +1158,11 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 	if c.versionHistory == nil {
 		c.logger.Info("Initializing version history cache for core")
 		c.versionHistory = make(map[string]VaultVersion)
+	}
+
+	//
+	if conf.EnableExternalAcl {
+		c.externalAclAddress = conf.ExternalAclAddress
 	}
 
 	return c, nil

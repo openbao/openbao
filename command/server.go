@@ -132,6 +132,10 @@ type ServerCommand struct {
 	flagTestVerifyOnly     bool
 	flagTestServerConfig   bool
 	flagExitOnCoreShutdown bool
+
+	// TODO
+	flagEnableExternalAcl  bool
+	flagExternalAclAddress string
 }
 
 func (c *ServerCommand) Synopsis() string {
@@ -196,6 +200,19 @@ func (c *ServerCommand) Flags() *FlagSets {
 		Target: &c.flagRecovery,
 		Usage: "Enable recovery mode. In this mode, OpenBao is used to perform recovery actions." +
 			"Using a recovery operation token, \"sys/raw\" API can be used to manipulate the storage.",
+	})
+
+	f.BoolVar(&BoolVar{
+		Name:    "enable-external-acl",
+		Target:  &c.flagEnableExternalAcl,
+		Default: false,
+		Usage:   "Enable ACL evaluation by an external service.",
+	})
+
+	f.StringVar(&StringVar{
+		Name:   "external-acl-address",
+		Target: &c.flagExternalAclAddress,
+		Usage:  "Address of a server for external ACL evaluation",
 	})
 
 	f = set.NewFlagSet("Dev Options")
@@ -1214,6 +1231,11 @@ func (c *ServerCommand) Run(args []string) int {
 			c.UI.Warn("")
 		}
 	}
+
+	// TODO
+	// Store config for external ACL
+	coreConfig.EnableExternalAcl = c.flagEnableExternalAcl
+	coreConfig.ExternalAclAddress = c.flagExternalAclAddress
 
 	// Initialize the core
 	core, newCoreError := vault.NewCore(&coreConfig)

@@ -203,6 +203,7 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 
 	// Special-case root; doesn't exist on disk but does need to be found
 	ps.policyTypeMap.Store(ps.cacheKey(namespace.RootNamespace, "root"), PolicyTypeACL)
+
 	return ps, nil
 }
 
@@ -656,8 +657,9 @@ func (ps *PolicyStore) ACL(ctx context.Context, entity *identity.Entity, policyN
 		}
 	}
 
-	// Construct the ACL
-	acl, err := NewACL(ctx, allPolicies)
+	acl, err := NewACL(ctx, allPolicies, ACLOptions{
+		ExternalAclAddress: ps.core.externalAclAddress,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to construct ACL: %w", err)
 	}

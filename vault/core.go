@@ -2485,14 +2485,14 @@ func (c *Core) preSeal() error {
 	if err := c.teardownPolicyStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down policy store: %w", err))
 	}
-	if err := c.teardownNamespaceStore(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
-	}
 	if err := c.stopRollback(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error stopping rollback: %w", err))
 	}
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
+	}
+	if err := c.teardownNamespaceStore(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
 	}
 
 	if c.autoRotateCancel != nil {

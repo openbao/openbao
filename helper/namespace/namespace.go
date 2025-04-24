@@ -34,10 +34,13 @@ var reservedNames = []string{
 type contextValues struct{}
 
 type Namespace struct {
-	ID             string            `json:"id" mapstructure:"id"`
-	UUID           string            `json:"uuid" mapstructure:"uuid"`
-	Path           string            `json:"path" mapstructure:"path"`
-	Tainted        bool              `json:"tainted" mapstructure:"tainted"`
+	ID      string `json:"id" mapstructure:"id"`
+	UUID    string `json:"uuid" mapstructure:"uuid"`
+	Path    string `json:"path" mapstructure:"path"`
+	Tainted bool   `json:"tainted" mapstructure:"tainted"`
+	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
+	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
+	IsDeleting     bool              `json:"-"`
 	CustomMetadata map[string]string `json:"custom_metadata" mapstructure:"custom_metadata"`
 }
 
@@ -94,6 +97,7 @@ var (
 		UUID:           RootNamespaceUUID,
 		Path:           "",
 		Tainted:        false,
+		IsDeleting:     false,
 		CustomMetadata: make(map[string]string),
 	}
 )
@@ -138,6 +142,7 @@ func (n *Namespace) Clone() *Namespace {
 		UUID:           n.UUID,
 		Path:           n.Path,
 		Tainted:        n.Tainted,
+		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}
 }

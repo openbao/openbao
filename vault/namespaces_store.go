@@ -577,8 +577,11 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 	defer ns.lock.Unlock()
 
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
+	ns.namespacesByUUID[namespaceToTaint.UUID].IsDeleting = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
+	ns.namespacesByAccessor[namespaceToTaint.ID].IsDeleting = true
 	namespaceToTaint.Tainted = true
+	namespaceToTaint.IsDeleting = true
 	err := ns.namespacesByPath.Insert(namespaceToTaint)
 	if err != nil {
 		return fmt.Errorf("failed to modify namespace tree: %w", err)
@@ -605,7 +608,7 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (str
 		return "", nil
 	}
 
-	if namespaceToDelete.Tainted {
+	if namespaceToDelete.Tainted && namespaceToDelete.IsDeleting {
 		return "in-progress", nil
 	}
 
@@ -625,11 +628,13 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (str
 		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
 	}
 
-	// taint the namespace
-	err = ns.taintNamespace(nsCtx, namespaceToDelete)
+	if !namespaceToDelete.Tainted {
+		// taint the namespace
+		err = ns.taintNamespace(nsCtx, namespaceToDelete)
+	}
 
-	ctxWithoutCancel := context.WithoutCancel(nsCtx)
-	go clearNamespaceResources(ctxWithoutCancel, ns, namespaceToDelete)
+	quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, namespaceToDelete)
+	go clearNamespaceResources(quitCtx, ns, namespaceToDelete)
 
 	return "in-progress", nil
 }

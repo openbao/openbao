@@ -89,9 +89,11 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
-	_, err = s.DeleteNamespace(ctx, itemUUID)
+	status, err := s.DeleteNamespace(ctx, itemUUID)
 	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
 
+	// wait until deletion
 	time.Sleep(10 * time.Millisecond)
 
 	// Store should be empty.

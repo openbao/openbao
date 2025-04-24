@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/helper/benchhelpers"
 	"github.com/openbao/openbao/helper/namespace"
@@ -88,8 +89,12 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
-	err = s.DeleteNamespace(ctx, itemUUID)
+	status, err := s.DeleteNamespace(ctx, itemUUID)
 	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	// wait until deletion
+	time.Sleep(10 * time.Millisecond)
 
 	// Store should be empty.
 	ns, err = s.ListAllNamespaces(ctx, false)
@@ -132,6 +137,70 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, item.Path, namespace.Canonicalize("ns1"))
 	require.Equal(t, item.Path, "ns1/")
 	require.Equal(t, item.Path, itemPath)
+}
+
+func TestNamespaceStore_DeleteNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	// create namespace
+	testNamespace := &namespace.Namespace{Path: "test"}
+	err := s.SetNamespace(ctx, testNamespace)
+	require.NoError(t, err)
+
+	// retrieve namespace
+	createdNS, err := s.GetNamespaceByPath(ctx, testNamespace.Path)
+	require.NoError(t, err)
+
+	// delete namespace
+	status, err := s.DeleteNamespace(ctx, createdNS.UUID)
+	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	maxRetries := 50
+	for range maxRetries {
+		status, err := s.DeleteNamespace(ctx, createdNS.UUID)
+		require.NoError(t, err)
+		if status == "in-progress" {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+		break
+	}
+
+	// verify namespace deletion
+	nsList, err := s.ListAllNamespaces(ctx, false)
+	require.NoError(t, err)
+	require.Empty(t, nsList)
+
+	// all have to be of length 1 due to root existing
+	require.Len(t, s.namespacesByAccessor, 1)
+	require.Len(t, s.namespacesByUUID, 1)
+	require.Equal(t, s.namespacesByPath.size, 1)
+
+	// try to delete root
+	_, err = s.DeleteNamespace(ctx, namespace.RootNamespaceUUID)
+	require.Error(t, err)
+
+	// try to delete namespace with child namespaces
+	parentNamespace := &namespace.Namespace{Path: "parent/"}
+	childNamespace := &namespace.Namespace{Path: "parent/child/"}
+	err = s.SetNamespace(ctx, parentNamespace)
+	require.NoError(t, err)
+
+	parentNS, err := s.GetNamespaceByPath(ctx, parentNamespace.Path)
+	require.NoError(t, err)
+
+	parentCtx := namespace.ContextWithNamespace(ctx, parentNS)
+	err = s.SetNamespace(ctx, childNamespace)
+	require.NoError(t, err)
+
+	// failed to delete as it contains a child namespace
+	_, err = s.DeleteNamespace(parentCtx, parentNS.UUID)
+	require.Error(t, err)
 }
 
 func TestNamespaceHierarchy(t *testing.T) {
@@ -280,7 +349,7 @@ func TestNamespaceTree(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, len(entries))
 
-	entries, err = tree.List("", false, true)
+	entries, err = tree.List("", true, true)
 	require.NoError(t, err)
 	require.Equal(t, tree.size, len(entries))
 
@@ -303,6 +372,15 @@ func randomNamespace(ns *NamespaceStore) *namespace.Namespace {
 		return item
 	}
 	return nil
+}
+
+func testModifyNamespace(_ context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+	uuid := ns.UUID
+	accessor := ns.ID
+	ns.CustomMetadata["uuid"] = uuid
+	ns.CustomMetadata["accessor"] = accessor
+
+	return ns, nil
 }
 
 func BenchmarkNamespaceStore(b *testing.B) {
@@ -383,55 +461,59 @@ func BenchmarkNamespaceStore(b *testing.B) {
 			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
 		}
 	})
+}
 
-	b.Run("DeleteNamespace", func(b *testing.B) {
+// can be later on expanded with non-empty namespaces
+func BenchmarkClearNamespaceResources(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	n := 1_000
+
+	for i := range n {
+		ctx := namespace.ContextWithNamespace(ctx, namespace.RootNamespace)
+		item := &namespace.Namespace{
+			Path: "ns" + strconv.Itoa(i) + "/",
+		}
+		err := s.SetNamespace(ctx, item)
+		require.NoError(b, err)
+	}
+
+	require.Equal(b, n+1, len(s.namespacesByUUID))
+
+	for b.Loop() {
+		ns := randomNamespace(s)
+		nsCtx := namespace.ContextWithNamespace(ctx, ns)
+		clearNamespaceResources(nsCtx, s, ns)
+	}
+}
+
+func BenchmarkNamespace_Set(b *testing.B) {
+	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	item := &namespace.Namespace{}
+
+	b.Run("SetNamespace", func(b *testing.B) {
+		var i int
 		for b.Loop() {
-			uuid := randomNamespace(s).UUID
-			s.DeleteNamespace(ctx, uuid)
+			item.Path = "ns" + strconv.Itoa(i)
+			s.SetNamespace(ctx, item)
+			i += 1
 		}
 	})
-}
 
-func testModifyNamespace(_ context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
-	uuid := ns.UUID
-	accessor := ns.ID
-	ns.CustomMetadata["uuid"] = uuid
-	ns.CustomMetadata["accessor"] = accessor
-
-	return ns, nil
-}
-
-func BenchmarkNamespaceSet(b *testing.B) {
-	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
-	s := c.namespaceStore
-
-	ctx := namespace.RootContext(context.Background())
-
-	item := &namespace.Namespace{}
-
-	var i int
-	for b.Loop() {
-		item.Path = "ns" + strconv.Itoa(i)
-		s.SetNamespace(ctx, item)
-		i += 1
-	}
-}
-
-func BenchmarkNamespaceSetLocked(b *testing.B) {
-	c, _, _ := TestCoreUnsealed(benchhelpers.TBtoT(b))
-	s := c.namespaceStore
-
-	ctx := namespace.RootContext(context.Background())
-
-	item := &namespace.Namespace{}
-
-	var i int
-	for b.Loop() {
-		item.Path = "ns" + strconv.Itoa(i)
-		s.lock.Lock()
-		s.setNamespaceLocked(ctx, item)
-		i += 1
-	}
+	b.Run("SetNamespaceLocked", func(b *testing.B) {
+		var i int
+		for b.Loop() {
+			item.Path = "ns" + strconv.Itoa(i)
+			s.lock.Lock()
+			s.setNamespaceLocked(ctx, item)
+			i += 1
+		}
+	})
 }
 
 // TestNamespaces_ResolveNamespaceFromRequest verifies namespace resolution logic from request.

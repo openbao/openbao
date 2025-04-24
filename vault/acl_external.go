@@ -181,7 +181,6 @@ func (a *ACL) AllowOperationExternal(ctx context.Context, req *logical.Request, 
 	ret.Allowed = slices.Contains(resContent.Capabilities, string(op))
 
 	for _, capability := range resContent.Capabilities {
-
 		switch logical.Operation(capability) {
 		case logical.ReadOperation:
 			ret.CapabilitiesBitmap |= ReadCapabilityInt

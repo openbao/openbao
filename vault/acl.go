@@ -44,7 +44,6 @@ type ACL struct {
 	externalAclAddress string
 }
 
-// TODO
 type ACLOptions struct {
 	ExternalAclAddress string
 }
@@ -80,7 +79,6 @@ const limitParameterName = "limit"
 
 // NewACL is used to construct a policy based ACL from a set of policies.
 func NewACL(ctx context.Context, policies []*Policy, options ACLOptions) (*ACL, error) {
-
 	// Initialize
 	a := &ACL{
 		exactRules:           radix.New(),
@@ -297,7 +295,6 @@ func NewACL(ctx context.Context, policies []*Policy, options ACLOptions) (*ACL, 
 }
 
 func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities []string) {
-
 	req := &logical.Request{
 		Path: path,
 		// doesn't matter, but use List to trigger fallback behavior so we can
@@ -347,7 +344,6 @@ func (a *ACL) Capabilities(ctx context.Context, path string) (pathCapabilities [
 
 // AllowOperation is used to check if the given operation is permitted.
 func (a *ACL) AllowOperation(ctx context.Context, req *logical.Request, capCheckOnly bool) (ret *ACLResults) {
-
 	// Request ACL evaluation to an external service when required by the user
 	if !strings.EqualFold(a.externalAclAddress, "") {
 		return a.AllowOperationExternal(ctx, req, capCheckOnly)
@@ -669,7 +665,6 @@ type wcPathDescr struct {
 func (a *ACL) CheckAllowedFromNonExactPaths(path string, bareMount bool) *ACLPermissions {
 	wcPathDescrs := make([]wcPathDescr, 0, len(a.segmentWildcardPaths)+1)
 
-	// TODO
 	// When using external ACL evaluation service, all permission checks must be fully delegated and explicit.
 	// This function only processes locally-evaluated ACLs.
 	if !strings.EqualFold(a.externalAclAddress, "") {

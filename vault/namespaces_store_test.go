@@ -93,8 +93,17 @@ func TestNamespaceStore(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
-	// wait until deletion
-	time.Sleep(10 * time.Millisecond)
+	// Wait until deletion has finished.
+	maxRetries := 50
+	for range maxRetries {
+		ns, err = s.ListAllNamespaces(ctx, false)
+		require.NoError(t, err)
+		if len(ns) > 0 {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+		break
+	}
 
 	// Store should be empty.
 	ns, err = s.ListAllNamespaces(ctx, false)

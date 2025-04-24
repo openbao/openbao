@@ -496,6 +496,10 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 
 	entry := ns.namespacesByPath.Get(path)
 	if entry != nil {
+		if entry.Tainted {
+			ns.lock.Unlock()
+			return nil, errors.New("namespace with that name exists and is currently tainted")
+		}
 		entry = entry.Clone()
 	} else {
 		entry = &namespace.Namespace{
@@ -557,42 +561,151 @@ func (ns *NamespaceStore) ListNamespaces(ctx context.Context, includeParent bool
 	return ns.namespacesByPath.List(parent.Path, includeParent, recursive)
 }
 
-// DeleteNamespace is used to delete the named namespace
-func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) error {
-	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
+// taintNamespace is used to taint the namespace designated to be deleted
+func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *namespace.Namespace) error {
+	// to be extra safe
+	if namespaceToTaint.ID == namespace.RootNamespaceID {
+		return errors.New("cannot taint root namespace")
+	}
 
 	if err := ns.checkInvalidation(ctx); err != nil {
 		return err
 	}
 
-	item, ok := ns.namespacesByUUID[uuid]
-	if !ok {
-		return nil
+	// We've got to grab write lock because we modify the namespace tree structure
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+
+	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
+	ns.namespacesByUUID[namespaceToTaint.UUID].IsDeleting = true
+	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
+	ns.namespacesByAccessor[namespaceToTaint.ID].IsDeleting = true
+	namespaceToTaint.Tainted = true
+	namespaceToTaint.IsDeleting = true
+	err := ns.namespacesByPath.Insert(namespaceToTaint)
+	if err != nil {
+		return fmt.Errorf("failed to modify namespace tree: %w", err)
 	}
 
-	if item.ID == namespace.RootNamespaceID {
-		return errors.New("unable to delete root namespace")
+	nsCopy := namespaceToTaint.Clone()
+	if err := ns.writeNamespace(ctx, nsCopy); err != nil {
+		return fmt.Errorf("failed to persist namespace taint: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteNamespace is used to delete the named namespace
+func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (string, error) {
+	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return "", err
+	}
+
+	namespaceToDelete, ok := ns.namespacesByUUID[uuid]
+	if !ok {
+		return "", nil
+	}
+
+	if namespaceToDelete.Tainted && namespaceToDelete.IsDeleting {
+		return "in-progress", nil
+	}
+
+	if namespaceToDelete.ID == namespace.RootNamespaceID {
+		return "", errors.New("unable to delete root namespace")
+	}
+
+	nsCtx := namespace.ContextWithNamespace(ctx, namespaceToDelete)
+
+	// checking whether namespace has child namespaces
+	childNS, err := ns.ListNamespaces(nsCtx, false, false)
+	if err != nil {
+		return "", err
+	}
+
+	if len(childNS) > 0 {
+		return "", fmt.Errorf("cannot delete namespace (%q) containing child namespaces", namespaceToDelete.Path)
+	}
+
+	if !namespaceToDelete.Tainted {
+		// taint the namespace
+		err = ns.taintNamespace(nsCtx, namespaceToDelete)
+	}
+
+	quitCtx := namespace.ContextWithNamespace(ns.core.activeContext, namespaceToDelete)
+	go clearNamespaceResources(quitCtx, ns, namespaceToDelete)
+
+	return "in-progress", nil
+}
+
+func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceToDelete *namespace.Namespace) {
+	// clear ACL policies
+	policiesToClear, err := ns.core.policyStore.ListPolicies(ctx, PolicyTypeACL, false)
+	if err != nil {
+		ns.logger.Error("failed to retrieve namespace policies", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
+	for _, policy := range policiesToClear {
+		err := ns.core.policyStore.deletePolicyForce(ctx, policy, PolicyTypeACL)
+		if err != nil {
+			ns.logger.Error(fmt.Sprintf("failed to delete policy %q", policy), "namespace", namespaceToDelete.Path, "error", err.Error())
+			return
+		}
+	}
+
+	// clear auth mounts
+	authMountEntries, err := ns.core.auth.findAllNamespaceMounts(ctx)
+	if err != nil {
+		ns.logger.Error("failed to retrieve namespace credentials", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
+	for _, me := range authMountEntries {
+		err := ns.core.disableCredentialInternal(ctx, me.Path, true)
+		if err != nil {
+			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
+			return
+		}
+	}
+
+	// clear mounts
+	mountEntries, err := ns.core.mounts.findAllNamespaceMounts(ctx)
+	if err != nil {
+		ns.logger.Error("failed to retrieve namespace mounts", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
+	for _, me := range mountEntries {
+		err := ns.core.unmountInternal(ctx, me.Path, true)
+		if err != nil {
+			ns.logger.Error(fmt.Sprintf("failed to unmount %q", me.Path), "namespace", namespaceToDelete.Path, "error", err.Error())
+			return
+		}
 	}
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
 
-	err := ns.namespacesByPath.Delete(item.Path)
+	err = ns.namespacesByPath.Delete(namespaceToDelete.Path)
 	if err != nil {
-		return err
+		ns.logger.Error("failed to delete namespace entry in namespace tree", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
 	}
-	delete(ns.namespacesByUUID, uuid)
-	delete(ns.namespacesByAccessor, item.ID)
+	delete(ns.namespacesByUUID, namespaceToDelete.UUID)
+	delete(ns.namespacesByAccessor, namespaceToDelete.ID)
 
-	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		storagePath := path.Join(namespaceStoreRoot, uuid)
+	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		storagePath := path.Join(namespaceStoreRoot, namespaceToDelete.UUID)
 		return s.Delete(ctx, storagePath)
-	}); err != nil {
-		return err
+	})
+	if err != nil {
+		ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
 	}
 
-	return nil
+	return
 }
 
 // copyNamespaceFromCtx copies the namespace from fromCtx into intoCtx, ensuring that the namespace exists.

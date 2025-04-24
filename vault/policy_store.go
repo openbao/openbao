@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -188,11 +189,7 @@ func NewPolicyStore(ctx context.Context, core *Core, baseView BarrierView, syste
 		ps.tokenPoliciesLRU = cache
 	}
 
-	aclView, err := ps.getACLView(namespace.RootNamespace)
-	if err != nil {
-		return nil, err
-	}
-
+	aclView := ps.getACLView(namespace.RootNamespace)
 	keys, err := logical.CollectKeys(namespace.RootContext(ctx), aclView)
 	if err != nil {
 		ps.logger.Error("error collecting acl policy keys", "error", err)
@@ -303,10 +300,7 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 	defer ps.modifyLock.Unlock()
 
 	// Get the appropriate view based on policy type and namespace
-	view, err := ps.getBarrierView(p.namespace, p.Type)
-	if err != nil {
-		return err
-	}
+	view := ps.getBarrierView(p.namespace, p.Type)
 
 	// Create the entry
 	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
@@ -362,25 +356,17 @@ func (ps *PolicyStore) GetNonEGPPolicyType(nsID string, name string) (*PolicyTyp
 }
 
 // getACLView returns the ACL view for the given namespace
-func (ps *PolicyStore) getACLView(ns *namespace.Namespace) (BarrierView, error) {
-	if ns == nil {
-		ns = namespace.RootNamespace
+func (ps *PolicyStore) getACLView(ns *namespace.Namespace) BarrierView {
+	if ns.ID == namespace.RootNamespaceID {
+		return ps.core.systemBarrierView.SubView(policyACLSubPath)
 	}
 
-	// First, get the namespace's entry from the namespace store
-	ns, err := ps.core.NamespaceByID(context.Background(), ns.ID)
-	if err != nil || ns == nil {
-		ps.logger.Error("failed to find namespace entry", "namespace_id", ns.ID)
-		return nil, fmt.Errorf("failed to find namespace entry for %q", ns.ID)
-	}
-
-	nsView := NamespaceView(ps.core.barrier, ns)
-	return nsView.SubView(path.Join("sys", policyACLSubPath) + "/"), nil
+	return ps.core.namespaceMountEntryView(ns, systemBarrierPrefix+policyACLSubPath)
 }
 
 // getBarrierView returns the appropriate barrier view for the given namespace and policy type.
 // Currently, this only supports ACL policies, so it delegates to getACLView.
-func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) (BarrierView, error) {
+func (ps *PolicyStore) getBarrierView(ns *namespace.Namespace, _ PolicyType) BarrierView {
 	return ps.getACLView(ns)
 }
 
@@ -406,10 +392,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	switch policyType {
 	case PolicyTypeACL:
 		cache = ps.tokenPoliciesLRU
-		view, err = ps.getACLView(ns)
-		if err != nil {
-			return nil, err
-		}
+		view = ps.getACLView(ns)
 	case PolicyTypeToken:
 		cache = ps.tokenPoliciesLRU
 		val, ok := ps.policyTypeMap.Load(index)
@@ -420,10 +403,7 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 		policyType = val.(PolicyType)
 		switch policyType {
 		case PolicyTypeACL:
-			view, err = ps.getACLView(ns)
-			if err != nil {
-				return nil, err
-			}
+			view = ps.getACLView(ns)
 		default:
 			return nil, fmt.Errorf("invalid type of policy in type map: %q", policyType)
 		}
@@ -515,12 +495,14 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 }
 
 // ListPolicies is used to list the available policies
-func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType) ([]string, error) {
-	return ps.ListPoliciesWithPrefix(ctx, policyType, "")
+func (ps *PolicyStore) ListPolicies(ctx context.Context, policyType PolicyType, omitNonAssignable bool) ([]string, error) {
+	return ps.ListPoliciesWithPrefix(ctx, policyType, "", omitNonAssignable)
 }
 
 // ListPoliciesWithPrefix is used to list policies with the given prefix in the specified namespace
-func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType PolicyType, prefix string) ([]string, error) {
+// omitNonAssignable dictates whether result list
+// should also contain the nonAssignable policies
+func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType PolicyType, prefix string, omitNonAssignable bool) ([]string, error) {
 	defer metrics.MeasureSince([]string{"policy", "list_policies"}, time.Now())
 
 	ns, err := namespace.FromContext(ctx)
@@ -532,10 +514,7 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 	}
 
 	// Get the appropriate view based on policy type and namespace
-	view, err := ps.getBarrierView(ns, policyType)
-	if err != nil {
-		return []string{}, err
-	}
+	view := ps.getBarrierView(ns, policyType)
 
 	// Scan the view, since the policy names are the same as the
 	// key names.
@@ -547,21 +526,10 @@ func (ps *PolicyStore) ListPoliciesWithPrefix(ctx context.Context, policyType Po
 		return nil, fmt.Errorf("unknown policy type %q", policyType)
 	}
 
-	// We only have non-assignable ACL policies at the moment
-	for _, nonAssignable := range nonAssignablePolicies {
-		deleteIndex := -1
-		// Find indices of non-assignable policies in keys
-		for index, key := range keys {
-			if key == nonAssignable {
-				// Delete collection outside the loop
-				deleteIndex = index
-				break
-			}
-		}
-		// Remove non-assignable policies when found
-		if deleteIndex != -1 {
-			keys = append(keys[:deleteIndex], keys[deleteIndex+1:]...)
-		}
+	if omitNonAssignable {
+		keys = slices.DeleteFunc(keys, func(policyName string) bool {
+			return slices.Contains(nonAssignablePolicies, policyName)
+		})
 	}
 
 	return keys, err
@@ -598,10 +566,7 @@ func (ps *PolicyStore) switchedDeletePolicy(ctx context.Context, name string, po
 	name = ps.sanitizeName(name)
 	index := ps.cacheKey(ns, name)
 
-	view, err := ps.getBarrierView(ns, policyType)
-	if err != nil {
-		return err
-	}
+	view := ps.getBarrierView(ns, policyType)
 
 	switch policyType {
 	case PolicyTypeACL:

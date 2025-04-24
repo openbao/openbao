@@ -98,6 +98,11 @@ var (
 			}
 		}
 
+		namespacedQuotaRequest := (strings.Contains(fullURL, "sys/quotas") && ns.Path != "")
+		if namespacedQuotaRequest {
+			return http.StatusBadRequest
+		}
+
 		for _, api := range containsAPIs {
 			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
 				return http.StatusBadRequest

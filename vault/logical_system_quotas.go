@@ -245,7 +245,7 @@ func (b *SystemBackend) handleQuotasConfigUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		if err := req.Storage.Put(ctx, entry); err != nil {
+		if err := b.Core.systemBarrierView.Put(ctx, entry); err != nil {
 			return nil, err
 		}
 
@@ -253,7 +253,8 @@ func (b *SystemBackend) handleQuotasConfigUpdate() framework.OperationFunc {
 		if err != nil {
 			return nil, err
 		}
-		if err := req.Storage.Put(ctx, entry); err != nil {
+
+		if err := b.Core.systemBarrierView.Put(ctx, entry); err != nil {
 			return nil, err
 		}
 
@@ -391,7 +392,7 @@ func (b *SystemBackend) handleRateLimitQuotasUpdate() framework.OperationFunc {
 			return nil, err
 		}
 
-		if err := req.Storage.Put(ctx, entry); err != nil {
+		if err := b.Core.systemBarrierView.Put(ctx, entry); err != nil {
 			return nil, err
 		}
 
@@ -444,8 +445,7 @@ func (b *SystemBackend) handleRateLimitQuotasDelete() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 		name := d.Get("name").(string)
 		qType := quotas.TypeRateLimit.String()
-
-		if err := req.Storage.Delete(ctx, quotas.QuotaStoragePath(qType, name)); err != nil {
+		if err := b.Core.systemBarrierView.Delete(ctx, quotas.QuotaStoragePath(qType, name)); err != nil {
 			return nil, err
 		}
 

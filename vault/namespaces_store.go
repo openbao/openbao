@@ -529,6 +529,9 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
 	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
 	for _, entry := range ns.namespacesByUUID {
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
@@ -599,12 +602,16 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
-	if err := ns.checkInvalidation(ctx); err != nil {
+	// We do not grab a lock here; the goroutine below will acquire the write
+	// lock to actually remove the namespace. We will have to use helpers below
+	// that acquire short-term locks (such as GetNamespace(...)) rather than
+	// grabbing a single long-lived lock.
+
+	namespaceToDelete, err := ns.GetNamespace(ctx, uuid)
+	if err != nil {
 		return "", err
 	}
-
-	namespaceToDelete, ok := ns.namespacesByUUID[uuid]
-	if !ok {
+	if namespaceToDelete == nil {
 		return "", nil
 	}
 

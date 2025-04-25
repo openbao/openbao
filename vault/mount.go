@@ -2157,7 +2157,11 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view B
 		ch.saltUUID = entry.UUID
 		c.cubbyholeBackend = ch
 	case mountTypeIdentity:
-		c.identityStore = backend.(*IdentityStore)
+		// Identity mount is a singleton mount, so we need to set the identity store only for root namespace.
+		// All token validation and ACL checks are done against the root identity store.
+		if entry.NamespaceID == namespace.RootNamespaceID {
+			c.identityStore = backend.(*IdentityStore)
+		}
 	}
 }
 

@@ -742,6 +742,9 @@ func (ns *NamespaceStore) copyNamespaceFromCtx(intoCtx context.Context, fromCtx 
 // because logic elsewhere in vault/ combines the namespace with the
 // path again.
 func (ns *NamespaceStore) ResolveNamespaceFromRequest(baseCtx context.Context, httpCtx context.Context, reqPath string) (context.Context, *namespace.Namespace, string, error) {
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
 	// We stack the namespace context ahead of any namespace in path.
 	newCtx, parentNs, err := ns.copyNamespaceFromCtx(baseCtx, httpCtx)
 	if err != nil {

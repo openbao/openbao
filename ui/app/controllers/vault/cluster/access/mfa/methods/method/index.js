@@ -20,7 +20,7 @@ export default class MfaMethodController extends Controller {
       await this.model.method.destroyRecord();
       this.flashMessages.success('MFA method deleted successfully.');
       this.router.transitionTo('vault.cluster.access.mfa.methods');
-    } catch (error) {
+    } catch {
       this.flashMessages.danger(`There was an error deleting this MFA method.`);
     }
   }

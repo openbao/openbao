@@ -100,7 +100,7 @@ export default class MountBackendForm extends Component {
           this.args.mountModel.deleteVersionAfter,
         ] = [0, false, 0];
       }
-    } catch (e) {
+    } catch {
       // Show different warning if we're not sure the config saved
       this.flashMessages.warning(
         'You may not have access to the config endpoint. The secret engine was mounted, but the configuration settings may not be saved.'

@@ -67,7 +67,7 @@ export default Component.extend({
     // parse to verify it's valid
     try {
       serviceArgs = parseCommand(command);
-    } catch (e) {
+    } catch {
       if (shouldThrow) {
         this.logAndOutput(command, { type: 'help' });
       }
@@ -102,7 +102,7 @@ export default Component.extend({
       this.store.clearAllDatasets();
       yield this.router.transitionTo(currentRoute);
       this.logAndOutput(null, { type: 'success', content: 'The current screen has been refreshed!' });
-    } catch (error) {
+    } catch {
       this.logAndOutput(null, { type: 'error', content: 'The was a problem refreshing the current screen.' });
     }
   }),

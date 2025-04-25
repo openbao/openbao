@@ -46,7 +46,7 @@ export default class VersionService extends Service {
       const response = yield this.store.adapterFor('cluster').features();
       this.features = response.features;
       return;
-    } catch (err) {
+    } catch {
       // if we fail here, we're likely in DR Secondary mode and don't need to worry about it
     }
   }

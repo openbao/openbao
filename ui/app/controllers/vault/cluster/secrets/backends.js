@@ -2,21 +2,24 @@
  * Copyright (c) HashiCorp, Inc.
  * SPDX-License-Identifier: MPL-2.0
  */
-/* eslint ember/no-computed-properties-in-native-classes: 'warn' */
 import Controller from '@ember/controller';
 import { inject as service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
-import { filterBy } from '@ember/object/computed';
+import { createCache, getValue } from '@glimmer/tracking/primitives/cache';
 import { dropTask } from 'ember-concurrency';
 
 export default class VaultClusterSecretsBackendController extends Controller {
   @service flashMessages;
-  @filterBy('model', 'shouldIncludeInList') displayableBackends;
 
   @tracked secretEngineOptions = [];
   @tracked selectedEngineType = null;
   @tracked selectedEngineName = null;
+
+  #displayableBackendsCache = createCache(() => this.model.filter((be) => be.shouldIncludeInList));
+  get displayableBackends() {
+    return getValue(this.#displayableBackendsCache);
+  }
 
   get sortedDisplayableBackends() {
     // show supported secret engines first and then organize those by id.

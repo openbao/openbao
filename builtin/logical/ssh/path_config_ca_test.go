@@ -219,6 +219,83 @@ func TestSSH_ConfigCAPurgeIssuers(t *testing.T) {
 	require.True(t, len(resp.Data) == 0 || len(resp.Data["keys"].([]string)) == 0, "expected no issuers")
 }
 
+func TestSSH_ConfigCAParams(t *testing.T) {
+	t.Parallel()
+	b, s := CreateBackendWithStorage(t)
+
+	t.Run("GenerateSigningKeyFalse", func(t *testing.T) {
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Storage:   s,
+			Data: map[string]interface{}{
+				"generate_signing_key": false,
+			},
+		})
+		require.Nil(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Data["error"].(string), "missing public_key")
+	})
+
+	t.Run("NoPrivateKeySet", func(t *testing.T) {
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Storage:   s,
+			Data: map[string]interface{}{
+				"generate_signing_key": false,
+				"public_key":           testCAPublicKey,
+			},
+		})
+		require.Nil(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Data["error"].(string), "only one of public_key and private_key set")
+	})
+
+	t.Run("GenerateSigningKeyTrue", func(t *testing.T) {
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Storage:   s,
+			Data: map[string]interface{}{
+				"generate_signing_key": true,
+			},
+		})
+		require.Nil(t, err)
+		require.False(t, resp.IsError())
+		require.NotEmpty(t, resp.Data["issuer_id"].(string))
+		require.Contains(t, resp.Data["public_key"].(string), "ssh-rsa")
+	})
+
+	t.Run("GenerateSigningKeyTrueAndKeyMaterial", func(t *testing.T) {
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Storage:   s,
+			Data: map[string]interface{}{
+				"generate_signing_key": true,
+				"public_key":           testCAPublicKey,
+				"private_key":          testCAPrivateKey,
+			},
+		})
+		require.Nil(t, err)
+		require.True(t, resp.IsError())
+		require.Contains(t, resp.Data["error"].(string), "public_key and private_key must not be set when generate_signing_key is set to true")
+	})
+
+	t.Run("NoParametersSet", func(t *testing.T) {
+		resp, err := b.HandleRequest(context.Background(), &logical.Request{
+			Operation: logical.UpdateOperation,
+			Path:      "config/ca",
+			Storage:   s,
+		})
+		require.Nil(t, err)
+		require.False(t, resp.IsError())
+		require.NotEmpty(t, resp.Data["issuer_id"].(string))
+		require.Contains(t, resp.Data["public_key"].(string), "ssh-rsa")
+	})
+}
+
 func TestSSH_ConfigCAReadDefaultIssuer(t *testing.T) {
 	t.Parallel()
 	b, s := CreateBackendWithStorage(t)

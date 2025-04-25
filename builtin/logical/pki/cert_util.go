@@ -1439,27 +1439,12 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	if err != nil {
 		return nil, warnings, err
 	}
-
 	// Get the TTL and verify it against the max allowed
 	notAfter, ttlWarnings, err := getCertificateNotAfter(b, data, caSign)
 	if err != nil {
 		return nil, warnings, err
 	}
 	warnings = append(warnings, ttlWarnings...)
-
-	// Verify that notBefore is older than notAfter.
-	if notBefore.After(notAfter) {
-		return nil, nil, errutil.UserError{
-			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
-		}
-	}
-
-	// Disallow zero duration certificate.
-	if notBefore.Equal(notAfter) {
-		return nil, nil, errutil.UserError{
-			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore.String(), notAfter.String()),
-		}
-	}
 
 	// Parse SKID from the request for cross-signing.
 	var skid []byte
@@ -1576,17 +1561,56 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	return creation, warnings, nil
 }
 
+type notBeforeBound int
+
+const (
+	ForbidNotBeforeBound notBeforeBound = iota
+	PermitNotBeforeBound
+	DurationNotBeforeBound
+)
+
+var notBeforeBoundNames = map[notBeforeBound]string{
+	ForbidNotBeforeBound:   "forbid",
+	PermitNotBeforeBound:   "permit",
+	DurationNotBeforeBound: "duration",
+}
+
+func (n notBeforeBound) String() string {
+	if name, ok := notBeforeBoundNames[n]; ok && len(name) > 0 {
+		return name
+	}
+	return "unknown"
+}
+
 // compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.
 func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	var notBefore time.Time
 	var err error
 
+	notBeforeBound := data.role.NotBeforeBound
 	notBeforeAlt := data.role.NotBefore
+	notBeforeDuration := data.role.NotBeforeDuration
 
 	if notBeforeAlt == "" {
 		notBeforeAltRaw, ok := data.apiData.GetOk("not_before")
 		if ok {
-			notBeforeAlt = notBeforeAltRaw.(string)
+			// for not_before_bound=permit we set not_before to the provided input.
+			// for not_before_bound=duration, errors out if not_before is older than time.Now() - not_before_duration
+			// for not_before_bound=forbid errors out.
+			switch notBeforeBound {
+			case PermitNotBeforeBound.String():
+				notBeforeAlt = notBeforeAltRaw.(string)
+			case DurationNotBeforeBound.String():
+				notBefore, err = time.Parse(time.RFC3339, notBeforeAltRaw.(string))
+				if err != nil {
+					return notBefore, errutil.UserError{Err: err.Error()}
+				}
+				if notBefore.Before(time.Now().Add(-notBeforeDuration)) {
+					return notBefore, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. Cannot satisfy request as it would result in notBefore of %s that is older than the allowed not_before_duration of %s", notBeforeBound, notBefore.UTC().Format(time.RFC3339Nano), notBeforeDuration)}
+				}
+			case ForbidNotBeforeBound.String():
+				return time.Time{}, errutil.UserError{Err: fmt.Sprintf("not_before_bound is set to %s. not_before cannot be provided.", notBeforeBound)}
+			}
 		}
 	}
 
@@ -1600,6 +1624,28 @@ func getCertificateNotBefore(data *inputBundle) (time.Time, error) {
 	return notBefore, err
 }
 
+type notAfterBound int
+
+const (
+	ForbidNotAfterBound notAfterBound = iota
+	TTLNotAfterBound
+	PermitNotAfterBound
+)
+
+var notAfterBoundNames = map[notAfterBound]string{
+	PermitNotAfterBound: "permit",
+	ForbidNotAfterBound: "forbid",
+	TTLNotAfterBound:    "ttl-limited",
+}
+
+func (n notAfterBound) String() string {
+	if name, ok := notAfterBoundNames[n]; ok && len(name) > 0 {
+		return name
+	}
+
+	return "unknown"
+}
+
 // getCertificateNotAfter compute a certificate's NotAfter date based on the mount ttl, role, signing bundle and input
 // api data being sent. Returns a NotAfter time, a set of warnings or an error.
 func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAInfoBundle) (time.Time, []string, error) {
@@ -1609,13 +1655,45 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 	var err error
 
 	ttl := time.Duration(data.apiData.Get("ttl").(int)) * time.Second
+
 	notAfterAlt := data.role.NotAfter
+	notAfterBound := data.role.NotAfterBound
+	var timestamp time.Time
+	forbidBound := false
+	ttlLimitedBound := false
+	timestampBound := false
+
+	switch notAfterBound {
+	case "":
+	// Nothing to do - for pki/root/generate/internal we have no not_after_bound
+	case PermitNotAfterBound.String():
+	// Nothing to do
+	case ForbidNotAfterBound.String():
+		forbidBound = true
+	case TTLNotAfterBound.String():
+		ttlLimitedBound = true
+	default:
+		timestamp, err = time.Parse(time.RFC3339, notAfterBound)
+		if err != nil {
+			return notAfter, warnings, errutil.UserError{Err: err.Error()}
+		}
+		timestampBound = true
+	}
+
 	if notAfterAlt == "" {
 		notAfterAltRaw, ok := data.apiData.GetOk("not_after")
-		if ok {
+		if ok && !forbidBound {
 			notAfterAlt = notAfterAltRaw.(string)
+			notAfter, err = time.Parse(time.RFC3339, notAfterAlt)
+			if err != nil {
+				return notAfter, warnings, errutil.UserError{Err: err.Error()}
+			}
+			// if data was provided and not_before_bound=forbid, errors out
+		} else if ok && forbidBound {
+			return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. not_after cannot be provided.", notAfterBound)}
 		}
 	}
+
 	if ttl > 0 && notAfterAlt != "" {
 		return time.Time{}, warnings, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
@@ -1637,6 +1715,11 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 	if ttl > maxTTL {
 		warnings = append(warnings, fmt.Sprintf("TTL %q is longer than permitted maxTTL %q, so maxTTL is being used", ttl, maxTTL))
 		ttl = maxTTL
+	}
+
+	// for not_after_bound=ttl-limited, errors out if not_after is later than time.Now() + TTL
+	if ttlLimitedBound && notAfter.After(time.Now().Add(ttl)) {
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot satisfy request as that would result in notAfter of %s that is beyond the TTL of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), ttl)}
 	}
 
 	if notAfterAlt != "" {
@@ -1664,6 +1747,12 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 				"cannot satisfy request, as TTL would result in notAfter of %s that is beyond the expiration of the CA certificate at %s", notAfter.UTC().Format(time.RFC3339Nano), caSign.Certificate.NotAfter.UTC().Format(time.RFC3339Nano))}
 		}
 	}
+
+	// for not_after_bound=explicit timestamp, errors out if not_after is later than the role not_before_bound
+	if timestampBound && notAfter.After(timestamp) {
+		return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf("not_after_bound is set to %s. Cannot statisfy request as that would result in notAfter of %s that is beyond the maximum timestamp of %s", notAfterBound, notAfter.UTC().Format(time.RFC3339Nano), timestamp.UTC().Format(time.RFC3339Nano))}
+	}
+
 	return notAfter, warnings, nil
 }
 

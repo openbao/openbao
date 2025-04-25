@@ -66,7 +66,7 @@ export function withConfirmLeave(modelPath = 'model', silentCleanupPaths) {
       willTransition(transition) {
         try {
           super.willTransition(...arguments);
-        } catch (e) {
+        } catch {
           // if the SuperClass doesn't have willTransition
           // defined calling it will throw an error.
         }

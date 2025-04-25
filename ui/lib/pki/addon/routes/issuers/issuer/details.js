@@ -45,7 +45,7 @@ export default class PkiIssuerDetailsRoute extends Route {
         }
         return response.text();
       });
-    } catch (e) {
+    } catch {
       return null;
     }
   }

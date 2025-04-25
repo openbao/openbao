@@ -91,7 +91,7 @@ export default Service.extend({
           return reject();
         }
 
-        helpUrl = `/v1/${apiPath}${path.slice(1)}?help=true` || newModel.proto().getHelpUrl(backend);
+        helpUrl = `/v1/${apiPath}${path.slice(1)}?help=true`;
         pathInfo.paths = paths;
         newModel = newModel.extend({ paths: pathInfo });
         return this.registerNewModelWithProps(helpUrl, backend, newModel, modelName);
@@ -330,7 +330,7 @@ export default Service.extend({
             newModel = GeneratedItemModel;
           }
         }
-      } catch (err) {
+      } catch {
         // eat the error, fieldGroups is computed in the model definition
       }
       // attempting to set the id prop on a model will trigger an error

@@ -38,7 +38,7 @@ export default class OidcConsentBlockComponent extends Component {
         }
       });
       return url;
-    } catch (e) {
+    } catch {
       console.debug('DEBUG: parsing url failed for', urlString); // eslint-disable-line
       throw new Error('Invalid URL');
     }

@@ -36,7 +36,7 @@ export default Route.extend({
       if (!errorURL) {
         try {
           errorURL = router.urlFor(name, ...(contexts || []), { queryParams });
-        } catch (e) {
+        } catch {
           // If this fails, something weird is happening with URL transitions
           errorURL = null;
         }

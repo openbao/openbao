@@ -529,6 +529,9 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot bool) ([]*namespace.Namespace, error) {
 	defer metrics.MeasureSince([]string{"namespace", "list_all_namespaces"}, time.Now())
 
+	ns.lock.RLock()
+	defer ns.lock.RUnlock()
+
 	namespaces := make([]*namespace.Namespace, 0, len(ns.namespacesByUUID))
 	for _, entry := range ns.namespacesByUUID {
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
@@ -603,8 +606,11 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (str
 		return "", err
 	}
 
-	namespaceToDelete, ok := ns.namespacesByUUID[uuid]
-	if !ok {
+	namespaceToDelete, err := ns.GetNamespace(ctx, uuid)
+	if err != nil {
+		return "", err
+	}
+	if namespaceToDelete == nil {
 		return "", nil
 	}
 

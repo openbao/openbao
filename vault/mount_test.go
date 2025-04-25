@@ -733,6 +733,58 @@ func TestCore_Remount_Protected(t *testing.T) {
 	}
 }
 
+func TestCore_Remount_Namespaces(t *testing.T) {
+	c, keys, token := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	testCoreAddSecretMountContext(ns2Ctx, t, c, token)
+
+	src := namespace.MountPathDetails{
+		Namespace: ns2,
+		MountPath: "secret/",
+	}
+	dst := namespace.MountPathDetails{
+		Namespace: ns3,
+		MountPath: "secret2/",
+	}
+	err := c.remountSecretsEngine(ns1Ctx, src, dst, true)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	match := c.router.MatchingMount(ns3Ctx, "secret2/bar")
+	if match != ns3.Path+"secret2/" {
+		t.Fatal("failed remount", match)
+	}
+
+	c.sealInternal()
+	for i, key := range keys {
+		unseal, err := TestCoreUnseal(c, key)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if i+1 == len(keys) && !unseal {
+			t.Fatal("should be unsealed")
+		}
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "secret/bar")
+	if match != "" {
+		t.Fatal("failed remount", match)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "secret2/bar")
+	if match != ns3.Path+"secret2/" {
+		t.Fatal("failed remount", match)
+	}
+}
+
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	table := c.defaultMountTable(context.Background())

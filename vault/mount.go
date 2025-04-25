@@ -1114,7 +1114,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 		return fmt.Errorf("no matching mount at %q", src.Namespace.Path+src.MountPath)
 	}
 
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		return fmt.Errorf("path in use at %q", match)
 	}
 
@@ -1147,7 +1147,7 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 
 	c.mountsLock.Lock()
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		c.mountsLock.Unlock()
 		return fmt.Errorf("path in use at %q", match)
 	}

@@ -117,6 +117,7 @@ var (
 		mountTypeSystem,
 		mountTypeNSSystem,
 		mountTypeToken,
+		mountTypeNSToken,
 		mountTypeIdentity,
 		mountTypeNSIdentity,
 	}

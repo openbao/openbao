@@ -821,8 +821,8 @@ github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b
 github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b0c79b1/go.mod h1:dpa8S2Cxb++GixV+97j6tu8tljU6tyV7Yp6+x6oXIA4=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0 h1:SGCAKG5+0xX0ZcsZueZAuJVzZvF3ggN6J8M9KAn4OX8=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0/go.mod h1:0uT6B3D6rtzheWaVTxAUXOrrLHrMOxwrdcR/lbG2djs=
-github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6 h1:DS7Qc6KN82f2xWOMkJ+wpXlNc/CjqjNBTKoH1/td42Y=
-github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6/go.mod h1:BOwTkMzLnFCalvOKWaHd7WGjsJpDfewZyuCeK+TqO1s=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.2.0 h1:Jc2niG5HmJ2hrqFQ9LOgjLmX1Gkmq6FXwn/rlL7FOKg=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.2.0/go.mod h1:BOwTkMzLnFCalvOKWaHd7WGjsJpDfewZyuCeK+TqO1s=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0 h1:hSPcvNAzowM/P/fzguD7rdtWKRvAaDWojqZ6v5q2Ko4=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0/go.mod h1:u37F1o4c9tr/k2say69BiyumhcN4SezbaK1Khf/4/Vo=
 github.com/openbao/openbao-template v1.0.1 h1:p3K6HWA19H8oJFgK2sSMMpaWWB3dq010oxlvkvRzEcU=

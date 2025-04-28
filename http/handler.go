@@ -367,6 +367,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+		r = r.WithContext(ctx)
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
 		if nsHeader != "" {

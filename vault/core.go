@@ -1271,6 +1271,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		c.AddLogger(identityLogger)
 		return NewIdentityStore(ctx, c, config, identityLogger)
 	}
+	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.identityStore != nil {
+			return c.identityStore, nil
+		}
+		return nil, errors.New("identity store does not exist")
+	}
 
 	c.logicalBackends = logicalBackends
 }

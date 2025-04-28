@@ -70,6 +70,7 @@ const (
 	mountTypeSystem      = "system"
 	mountTypeNSSystem    = "ns_system"
 	mountTypeIdentity    = "identity"
+	mountTypeNSIdentity  = "ns_identity"
 	mountTypeCubbyhole   = "cubbyhole"
 	mountTypePlugin      = "plugin"
 	mountTypeKV          = "kv"
@@ -116,7 +117,9 @@ var (
 		mountTypeSystem,
 		mountTypeNSSystem,
 		mountTypeToken,
+		mountTypeNSToken,
 		mountTypeIdentity,
+		mountTypeNSIdentity,
 	}
 
 	// mountAliases maps old backend names to new backend names, allowing us
@@ -2108,6 +2111,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 
 	if ns.ID != namespace.RootNamespaceID {
 		cubbyholeMount.Type = mountTypeNSCubbyhole
+		identityMount.Type = mountTypeNSIdentity
 		sysMount.Type = mountTypeNSSystem
 	}
 

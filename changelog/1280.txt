@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/postgresql: support retrying database connection on startup to gracefully handle service ordering issues
+```

@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
 	gziphandler "github.com/klauspost/compress/gzhttp"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -343,12 +344,15 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
-		r = r.WithContext(ctx)
 
-		if nsHeader := r.Header.Get(consts.NamespaceHeaderName); nsHeader != "" {
+		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
+		if nsHeader != "" {
 			// Setting the namespace in the header to be included in the response
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
 		}
+
+		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
+		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
 		if core.RaftNodeIDHeaderEnabled() {

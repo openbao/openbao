@@ -70,6 +70,7 @@ const (
 	mountTypeSystem      = "system"
 	mountTypeNSSystem    = "ns_system"
 	mountTypeIdentity    = "identity"
+	mountTypeNSIdentity  = "ns_identity"
 	mountTypeCubbyhole   = "cubbyhole"
 	mountTypePlugin      = "plugin"
 	mountTypeKV          = "kv"
@@ -117,6 +118,7 @@ var (
 		mountTypeNSSystem,
 		mountTypeToken,
 		mountTypeIdentity,
+		mountTypeNSIdentity,
 	}
 
 	// mountAliases maps old backend names to new backend names, allowing us
@@ -2108,6 +2110,7 @@ func (c *Core) requiredMountTable(ctx context.Context) (*MountTable, error) {
 
 	if ns.ID != namespace.RootNamespaceID {
 		cubbyholeMount.Type = mountTypeNSCubbyhole
+		identityMount.Type = mountTypeNSIdentity
 		sysMount.Type = mountTypeNSSystem
 	}
 
@@ -2157,11 +2160,7 @@ func (c *Core) setCoreBackend(entry *MountEntry, backend logical.Backend, view B
 		ch.saltUUID = entry.UUID
 		c.cubbyholeBackend = ch
 	case mountTypeIdentity:
-		// Identity mount is a singleton mount, so we need to set the identity store only for root namespace.
-		// All token validation and ACL checks are done against the root identity store.
-		if entry.NamespaceID == namespace.RootNamespaceID {
-			c.identityStore = backend.(*IdentityStore)
-		}
+		c.identityStore = backend.(*IdentityStore)
 	}
 }
 

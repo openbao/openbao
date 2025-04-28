@@ -10,8 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
 	"github.com/openbao/openbao/vault"
@@ -68,17 +70,33 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			respondError(w, status, err)
 			return
 		}
-		mountPath := core.MatchingMount(r.Context(), path)
+
+		// NOTE: The namespace and mount resolved here may differ from the ones
+		// later resolved in core and used for the remainder of request handling.
+		// For example, this can happen if there is a seal->unseal transition
+		// between this point in request handling and once we read-lock core's state.
+		// The worst-case outcome is that we don't know of a potential quota
+		// configuration at this point (because core is sealed) and let the request
+		// bypass rate limiting right into core if it has queued up right before the
+		// unseal process begins.
+		nsHeader := namespace.HeaderFromContext(r.Context())
+		ns, trimmedPath := core.ResolveNamespaceFromRequest(nsHeader, path)
+		if ns == nil {
+			ns = namespace.RootNamespace
+		}
+		ctx := namespace.ContextWithNamespace(r.Context(), ns)
+		mountPath := strings.TrimPrefix(core.MatchingMount(ctx, trimmedPath), ns.Path)
 
 		quotaReq := &quotas.Request{
 			Type:          quotas.TypeRateLimit,
 			Path:          path,
 			MountPath:     mountPath,
+			NamespacePath: ns.Path,
 			ClientAddress: parseRemoteIPAddress(r),
 		}
 
 		// This checks if any role based quota is required (LCQ or RLQ).
-		requiresResolveRole, err := core.ResolveRoleForQuotas(r.Context(), quotaReq)
+		requiresResolveRole, err := core.ResolveRoleForQuotas(quotaReq)
 		if err != nil {
 			core.Logger().Error("failed to lookup quotas", "path", path, "error", err)
 			respondError(w, http.StatusInternalServerError, err)
@@ -90,7 +108,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		if requiresResolveRole {
 			buf := bytes.Buffer{}
 			teeReader := io.TeeReader(r.Body, &buf)
-			role := core.DetermineRoleFromLoginRequestFromReader(r.Context(), mountPath, teeReader)
+			role := core.DetermineRoleFromLoginRequestFromReader(ctx, mountPath, teeReader)
 
 			// Reset the body if it was read
 			if buf.Len() > 0 {

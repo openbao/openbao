@@ -451,11 +451,6 @@ func (ns *NamespaceStore) GetNamespaceByLongestPrefix(ctx context.Context, path 
 		ctxNs = namespace.RootNamespace
 	}
 
-	// e.g. needed for /sys/unseal, where the namespace store is not yet initialized
-	if ns == nil {
-		return ctxNs, path
-	}
-
 	combinedPath := ctxNs.Path + path
 	ns.lock.RLock()
 	prefix, entry, _ := ns.namespacesByPath.LongestPrefix(combinedPath)
@@ -732,4 +727,30 @@ func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceT
 	}
 
 	return
+}
+
+// ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
+// header combined with the request path, returning the namespace and the
+// "trimmed" request path devoid of any namespace components.
+func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string) {
+	nsHeader = namespace.Canonicalize(nsHeader)
+	// Naively stack header ahead of request path.
+	reqPath = nsHeader + reqPath
+	// Find namespace that matches the longest prefix of reqPath.
+	ns.lock.RLock()
+	_, resolvedNs, trimmedPath := ns.namespacesByPath.LongestPrefix(reqPath)
+	ns.lock.RUnlock()
+
+	// Ensure that entire header was matched, so unmatched paths don't leak
+	// into the request path.
+	if !strings.HasPrefix(resolvedNs.Path, nsHeader) {
+		return nil, ""
+	}
+
+	// TODO(ascheel): Fix global uses of comparison by pointer.
+	if resolvedNs.ID == namespace.RootNamespaceID {
+		resolvedNs = namespace.RootNamespace
+	}
+
+	return resolvedNs, trimmedPath
 }

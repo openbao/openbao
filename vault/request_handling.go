@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -509,7 +510,13 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ctx = namespace.RootContext(ctx)
+	nsHeader := namespace.HeaderFromContext(httpCtx)
+	ns, trimmedPath := c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+	if ns == nil {
+		return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+	}
+	ctx = namespace.ContextWithNamespace(ctx, ns)
+	req.Path = trimmedPath
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

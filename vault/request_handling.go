@@ -563,13 +563,18 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	nsHeader := namespace.HeaderFromContext(httpCtx)
-	ns, trimmedPath := c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
-	if ns == nil {
-		return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+	// A namespace was manually passed to HandleRequest, as can be the case with:
+	// 1. Synthesized logical requests not originating from an HTTP request
+	// 2. Tests
+	ns, err := namespace.FromContext(httpCtx)
+	// If the above is not the case, resolve the namespace from header & request path.
+	if err != nil {
+		nsHeader := namespace.HeaderFromContext(httpCtx)
+		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+		if ns == nil {
+			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+		}
 	}
-	ctx = namespace.ContextWithNamespace(ctx, ns)
-	req.Path = trimmedPath
 
 	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
 		strings.HasPrefix(req.Path, "sys/") &&
@@ -578,6 +583,8 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	if isRestrictedSysAPI {
 		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
 	}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

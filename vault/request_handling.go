@@ -578,21 +578,13 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 
 	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
 		strings.HasPrefix(req.Path, "sys/") &&
-		restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):])
+		restrictedSysAPIs.HasPathSegments(req.Path[4:])
 
 	if isRestrictedSysAPI {
 		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
-
-	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
-		strings.HasPrefix(req.Path, "sys/") &&
-		restrictedSysAPIs.HasPathSegments(req.Path[4:])
-
-	if isRestrictedSysAPI {
-		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
-	}
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

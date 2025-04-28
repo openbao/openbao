@@ -76,6 +76,11 @@ var (
 
 	alwaysRedirectPaths = pathmanager.New()
 
+	// restrictedSysAPIsNonLogical is the set of `sys/` APIs available only in the root namespace
+	// that may not pass through logical request handling but are handled in HTTP using specialized
+	// calls to core. This is a subset of `vault.restrictedSysAPIs`.
+	restrictedSysAPIsNonLogical = pathmanager.New()
+
 	injectDataIntoTopRoutes = []string{
 		"/v1/sys/audit",
 		"/v1/sys/audit/",
@@ -108,6 +113,23 @@ func init() {
 	alwaysRedirectPaths.AddPaths([]string{
 		"sys/storage/raft/snapshot",
 		"sys/storage/raft/snapshot-force",
+	})
+
+	restrictedSysAPIsNonLogical.AddPaths([]string{
+		"raw",
+		"generate-recovery-token",
+		"init",
+		"seal",
+		"step-down",
+		"unseal",
+		"health",
+		"rekey-recovery-key",
+		"rekey",
+		"storage",
+		"generate-root",
+		"metrics",
+		"pprof",
+		"in-flight-req",
 	})
 }
 
@@ -366,7 +388,15 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set("X-Vault-Hostname", hostname)
 		}
 
+		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
+			restrictedSysAPIsNonLogical.HasPathSegments(r.URL.Path[len("/v1/sys/"):])
+
 		switch {
+		case isRestrictedSysAPI:
+			respondError(nw, http.StatusBadRequest, fmt.Errorf("operation unavailable in namespaces"))
+			cancelFunc()
+			return
+
 		case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
 		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
 			for _, ln := range props.AllListeners {

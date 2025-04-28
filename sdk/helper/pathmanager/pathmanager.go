@@ -156,7 +156,7 @@ func (p *PathManager) HasPathSegments(path string) bool {
 			path[len(strVal)] == '/' ||
 			// prefix match is continued by a new path segment, where `strVal` has an trailing '/'
 			// -- in this case we enforce the trailing '/' in `path` as well.
-			(path[len(strVal)-1] == '/' && strVal[len(strVal)-1] == '/') { //
+			(path[len(strVal)-1] == '/' && strVal[len(strVal)-1] == '/') {
 			return !exception
 		}
 	}

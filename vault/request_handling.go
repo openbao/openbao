@@ -35,6 +35,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -55,7 +56,59 @@ var (
 
 	ErrNoApplicablePolicies    = errors.New("no applicable policies")
 	ErrPolicyNotExistInTypeMap = errors.New("policy does not exist in type map")
+
+	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
+	restrictedSysAPIs = pathmanager.New()
 )
+
+func init() {
+	restrictedSysAPIs.AddPaths([]string{
+		"audit-hash",
+		"audit",
+		"config/auditing",
+		"config/cors",
+		"config/reload",
+		"config/state",
+		"config/ui",
+		"decode-token",
+		"generate-recovery-token",
+		"generate-root",
+		"health",
+		"host-info",
+		"in-flight-req",
+		"init",
+		"internal/counters/activity",
+		"internal/counters/activity/export",
+		"internal/counters/activity/monthly",
+		"internal/counters/config",
+		"internal/inspect/router",
+		"key-status",
+		"loggers",
+		"managed-keys",
+		"metrics",
+		"mfa/method",
+		"monitor",
+		"pprof",
+		"quotas/config",
+		"quotas/lease-count",
+		"quotas/rate-limit",
+		"raw",
+		"rekey-recovery-key",
+		"rekey",
+		"replication/merkle-check",
+		"replication/recover",
+		"replication/reindex",
+		"replication/status",
+		"rotate",
+		"rotate/config",
+		"seal",
+		"sealwrap/rewrap",
+		"step-down",
+		"storage",
+		"sync/config",
+		"unseal",
+	})
+}
 
 // HandlerProperties is used to seed configuration into a vaulthttp.Handler.
 // It's in this package to avoid a circular dependency
@@ -517,6 +570,14 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 	}
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 	req.Path = trimmedPath
+
+	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
+		strings.HasPrefix(req.Path, "sys/") &&
+		restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):])
+
+	if isRestrictedSysAPI {
+		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
+	}
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

@@ -299,7 +299,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		input := &logical.LogInput{
 			Request: req,
 		}
-		err = core.AuditLogger().AuditRequest(r.Context(), input)
+		ctx := namespace.RootContext(r.Context())
+		err = core.AuditLogger().AuditRequest(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 			return
@@ -313,7 +314,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		}
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
-		err = core.AuditLogger().AuditResponse(r.Context(), input)
+		err = core.AuditLogger().AuditResponse(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 		}

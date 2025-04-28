@@ -509,10 +509,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ctx, _, req.Path, err = c.namespaceStore.ResolveNamespaceFromRequest(ctx, httpCtx, req.Path)
-	if err != nil {
-		return nil, err
-	}
+	ctx = namespace.RootContext(ctx)
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

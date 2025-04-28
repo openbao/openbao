@@ -28,7 +28,6 @@ import (
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
 	gziphandler "github.com/klauspost/compress/gzhttp"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/internalshared/configutil"
 	"github.com/openbao/openbao/internalshared/listenerutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -344,17 +343,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			ctx, cancelFunc = context.WithTimeout(ctx, maxRequestDuration)
 		}
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
+		r = r.WithContext(ctx)
 
-		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
-		ns := namespace.RootNamespace
-		if nsHeader != "" {
-			ns = &namespace.Namespace{Path: namespace.Canonicalize(nsHeader)}
+		if nsHeader := r.Header.Get(consts.NamespaceHeaderName); nsHeader != "" {
 			// Setting the namespace in the header to be included in the response
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
-
 		}
-		ctx = namespace.ContextWithNamespace(ctx, ns)
-		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
 		if core.RaftNodeIDHeaderEnabled() {
@@ -369,15 +363,7 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		}
 
 		switch {
-		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			status := validateNamespace(r)
-			if status != 0 {
-				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s)", r.Method, r.URL.Path))
-				cancelFunc()
-				return
-			}
-
-		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
 		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
 			for _, ln := range props.AllListeners {
 				if ln.Config == nil || ln.Config.TLSDisable {
@@ -792,13 +778,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
-		return
-	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
-	if alwaysRedirectPaths.HasPath(path) {
+	if alwaysRedirectPaths.HasPath(r.URL.Path[len("/v1/"):]) {
 		respondStandby(core, w, r.URL)
 		return
 	}

@@ -91,6 +91,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			Type:          quotas.TypeRateLimit,
 			Path:          path,
 			MountPath:     mountPath,
+			NamespacePath: ns.Path,
 			ClientAddress: parseRemoteIPAddress(r),
 		}
 

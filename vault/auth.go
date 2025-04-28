@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	// coreAuthConfigPath is used to store the auth configuration.11
+	// coreAuthConfigPath is used to store the auth configuration.
 	// Auth configuration is protected within the Vault itself, which means it
 	// can only be viewed or modified after an unseal.
 	coreAuthConfigPath = "core/auth"

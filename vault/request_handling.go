@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -54,7 +56,59 @@ var (
 
 	ErrNoApplicablePolicies    = errors.New("no applicable policies")
 	ErrPolicyNotExistInTypeMap = errors.New("policy does not exist in type map")
+
+	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
+	restrictedSysAPIs = pathmanager.New()
 )
+
+func init() {
+	restrictedSysAPIs.AddPaths([]string{
+		"audit-hash",
+		"audit",
+		"config/auditing",
+		"config/cors",
+		"config/reload",
+		"config/state",
+		"config/ui",
+		"decode-token",
+		"generate-recovery-token",
+		"generate-root",
+		"health",
+		"host-info",
+		"in-flight-req",
+		"init",
+		"internal/counters/activity",
+		"internal/counters/activity/export",
+		"internal/counters/activity/monthly",
+		"internal/counters/config",
+		"internal/inspect/router",
+		"key-status",
+		"loggers",
+		"managed-keys",
+		"metrics",
+		"mfa/method",
+		"monitor",
+		"pprof",
+		"quotas/config",
+		"quotas/lease-count",
+		"quotas/rate-limit",
+		"raw",
+		"rekey-recovery-key",
+		"rekey",
+		"replication/merkle-check",
+		"replication/recover",
+		"replication/reindex",
+		"replication/status",
+		"rotate",
+		"rotate/config",
+		"seal",
+		"sealwrap/rewrap",
+		"step-down",
+		"storage",
+		"sync/config",
+		"unseal",
+	})
+}
 
 // HandlerProperties is used to seed configuration into a vaulthttp.Handler.
 // It's in this package to avoid a circular dependency
@@ -509,10 +563,26 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
-	ctx, _, req.Path, err = c.namespaceStore.ResolveNamespaceFromRequest(ctx, httpCtx, req.Path)
+	// A namespace was manually passed to HandleRequest, as can be the case with:
+	// 1. Synthesized logical requests not originating from an HTTP request
+	// 2. Tests
+	ns, err := namespace.FromContext(httpCtx)
+	// If the above is not the case, resolve the namespace from header & request path.
 	if err != nil {
-		return nil, err
+		nsHeader := namespace.HeaderFromContext(httpCtx)
+		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+		if ns == nil {
+			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+		}
 	}
+
+	if ns.ID != namespace.RootNamespaceID && strings.HasPrefix(req.Path, "sys/") {
+		if restrictedSysAPIs.HasPathSegments(req.Path[4:]) {
+			return nil, logical.CodedError(http.StatusBadRequest, fmt.Sprintf("unavailable operation: %s %s", req.Operation, req.Path))
+		}
+	}
+
+	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

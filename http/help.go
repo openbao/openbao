@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )
@@ -31,20 +30,14 @@ func wrapHelpHandler(h http.Handler, core *vault.Core) http.Handler {
 }
 
 func handleHelp(core *vault.Core, w http.ResponseWriter, r *http.Request) {
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		respondError(w, http.StatusBadRequest, nil)
-		return
-	}
 	if !strings.HasPrefix(r.URL.Path, "/v1/") {
 		respondError(w, http.StatusNotFound, errors.New("Missing /v1/ prefix in path. Use vault path-help command to retrieve API help for paths"))
 		return
 	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
 
 	req := &logical.Request{
 		Operation:  logical.HelpOperation,
-		Path:       path,
+		Path:       r.URL.Path[4:],
 		Connection: getConnection(r),
 	}
 	requestAuth(r, req)

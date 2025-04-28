@@ -463,11 +463,9 @@ func BenchmarkNamespaceStore(b *testing.B) {
 	})
 
 	b.Run("ResolveNamespaceFromRequest", func(b *testing.B) {
-		rootCtx := namespace.RootContext(context.TODO())
 		for b.Loop() {
 			ns := randomNamespace(s)
-			ctx := namespace.ContextWithNamespace(rootCtx, ns)
-			s.ResolveNamespaceFromRequest(rootCtx, ctx, "/sys/namespaces")
+			c.ResolveNamespaceFromRequest(ns.Path, "/sys/namespaces")
 		}
 	})
 }
@@ -533,12 +531,12 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 	// Setup only necessary namespaces
 	ns1Entry := &namespace.Namespace{Path: "ns1/"}
 	ns2Entry := &namespace.Namespace{Path: "ns1/ns2/"}
-
-	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/namespaces/ns3/"}
+	ns3Entry := &namespace.Namespace{Path: "ns1/ns2/ns3/"}
 
 	// Create namespaces
 	rootCtx := namespace.RootContext(nil)
-	// Set namespaces in root
+
+	// Set child into root
 	require.NoError(t, nsStore.SetNamespace(rootCtx, ns1Entry))
 
 	// Set child into ns1
@@ -551,49 +549,90 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 
 	// Define test cases
 	testCases := []struct {
-		name            string
-		reqPath         string
-		expectedFinalNS *namespace.Namespace
-		expectedRelPath string
+		name                string
+		nsHeader            string
+		reqPath             string
+		expectedNamespace   *namespace.Namespace
+		expectedTrimmedPath string
+		wantError           bool
 	}{
 		{
-			name:            "NS in path",
-			reqPath:         "ns1/secret/foo",
-			expectedFinalNS: ns1Entry,
-			expectedRelPath: "secret/foo",
+			name:                "Single namespace in header",
+			nsHeader:            "ns1",
+			reqPath:             "secret/foo",
+			expectedNamespace:   ns1Entry,
+			expectedTrimmedPath: "secret/foo",
 		},
 		{
-			name:            "Nested NS in path",
-			reqPath:         "ns1/ns2/secret/foo",
-			expectedFinalNS: ns2Entry,
-			expectedRelPath: "secret/foo",
+			name:                "Nested namespace in header",
+			nsHeader:            "ns1/ns2",
+			reqPath:             "secret/foo",
+			expectedNamespace:   ns2Entry,
+			expectedTrimmedPath: "secret/foo",
 		},
 		{
-			name:            "Route to existing namespace ns2 with sys in path",
-			reqPath:         "ns1/sys/namespaces/ns2",
-			expectedFinalNS: ns1Entry,
-			expectedRelPath: "sys/namespaces/ns2",
+			name:                "Single namespace in request path",
+			reqPath:             "ns1/secret/foo",
+			expectedNamespace:   ns1Entry,
+			expectedTrimmedPath: "secret/foo",
 		},
 		{
-			name:            "Route to existing namespace ns3 with ns1/ns2/sys in path",
-			reqPath:         "ns1/ns2/sys/namespaces/ns3",
-			expectedFinalNS: ns2Entry,
-			expectedRelPath: "sys/namespaces/ns3",
+			name:                "Nested namespace in request path",
+			reqPath:             "ns1/ns2/secret/foo",
+			expectedNamespace:   ns2Entry,
+			expectedTrimmedPath: "secret/foo",
+		},
+		{
+			name:                "Route to existing namespace ns2 with sys in path",
+			reqPath:             "ns1/sys/namespaces/ns2",
+			expectedNamespace:   ns1Entry,
+			expectedTrimmedPath: "sys/namespaces/ns2",
+		},
+		{
+			name:                "Route to existing namespace ns3 with ns1/ns2/sys in path",
+			reqPath:             "ns1/ns2/sys/namespaces/ns3",
+			expectedNamespace:   ns2Entry,
+			expectedTrimmedPath: "sys/namespaces/ns3",
+		},
+		{
+			name:                "Namespace in both header and request path",
+			nsHeader:            "ns1/ns2",
+			reqPath:             "ns3/secret/foo",
+			expectedNamespace:   ns3Entry,
+			expectedTrimmedPath: "secret/foo",
+		},
+		{
+			name:              "Invalid namespace in header and request path combination",
+			nsHeader:          "ns1/ns3",
+			reqPath:           "ns2/secret/foo",
+			expectedNamespace: nil,
+		},
+		{
+			name:              "Header cannot spill into path",
+			nsHeader:          "ns1/secret",
+			reqPath:           "foo",
+			expectedNamespace: nil,
+		},
+		{
+			name:                "Header and path don't deduplicate",
+			nsHeader:            "ns1",
+			reqPath:             "ns1/secret/foo",
+			expectedNamespace:   ns1Entry,
+			expectedTrimmedPath: "ns1/secret/foo",
 		},
 	}
 
 	// Execute test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			baseCtx := namespace.RootContext(context.Background())
-			httpCtx := namespace.RootContext(context.Background())
-
-			finalCtx, finalNS, finalPath, err := nsStore.ResolveNamespaceFromRequest(baseCtx, httpCtx, tc.reqPath)
-
-			require.NoError(t, err)
-			require.Equal(t, tc.expectedFinalNS.Path, finalNS.Path)
-			require.Equal(t, tc.expectedRelPath, finalPath)
-			require.NotNil(t, finalCtx)
+			ns, trimmedPath := nsStore.ResolveNamespaceFromRequest(tc.nsHeader, tc.reqPath)
+			if tc.expectedNamespace == nil {
+				require.Nil(t, ns)
+			} else {
+				require.NotNil(t, ns)
+				require.Equal(t, tc.expectedNamespace.Path, ns.Path)
+				require.Equal(t, tc.expectedTrimmedPath, trimmedPath)
+			}
 		})
 	}
 }

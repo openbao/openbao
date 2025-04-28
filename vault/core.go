@@ -3106,6 +3106,20 @@ func (c *Core) MatchingMount(ctx context.Context, reqPath string) string {
 	return c.router.MatchingMount(ctx, reqPath)
 }
 
+// ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
+// header combined with the request path, returning the namespace and the
+// "trimmed" request path devoid of any namespace components.
+func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string) {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() || c.standby || c.namespaceStore == nil {
+		return nil, ""
+	}
+
+	return c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, reqPath)
+}
+
 func (c *Core) setupQuotas(ctx context.Context) error {
 	if c.quotaManager == nil {
 		return nil
@@ -3668,7 +3682,7 @@ func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, match
 
 // ResolveRoleForQuotas looks for any quotas requiring a role for early
 // computation in the RateLimitQuotaWrapping handler.
-func (c *Core) ResolveRoleForQuotas(ctx context.Context, req *quotas.Request) (bool, error) {
+func (c *Core) ResolveRoleForQuotas(req *quotas.Request) (bool, error) {
 	if c.quotaManager == nil {
 		return false, nil
 	}

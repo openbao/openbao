@@ -137,3 +137,28 @@ func (p *PathManager) HasExactPath(path string) bool {
 	}
 	return false
 }
+
+// HasPathSegments returns if the prefix for a given path exists,
+// as long as full path components (delimited by '/') are matched.
+func (p *PathManager) HasPathSegments(path string) bool {
+	p.l.RLock()
+	defer p.l.RUnlock()
+
+	if val, exceptionRaw, ok := p.paths.Root().LongestPrefix([]byte(path)); ok {
+		var exception bool
+		if exceptionRaw != nil {
+			exception = exceptionRaw.(bool)
+		}
+
+		strVal := string(val)
+		if path == strVal || // exact match, down to the trailing '/'
+			// prefix match is continued by a new path segment, where `strVal` has no trailing '/'
+			path[len(strVal)] == '/' ||
+			// prefix match is continued by a new path segment, where `strVal` has an trailing '/'
+			// -- in this case we enforce the trailing '/' in `path` as well.
+			(path[len(strVal)-1] == '/' && strVal[len(strVal)-1] == '/') { //
+			return !exception
+		}
+	}
+	return false
+}

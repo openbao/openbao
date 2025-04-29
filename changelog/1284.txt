@@ -1,0 +1,3 @@
+```release-note:improvement
+storage/postgresql: support marking a node as a permanent non-voter, preventing leadership acquisition
+```

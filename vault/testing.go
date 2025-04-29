@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	gotesting "testing"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -45,6 +46,7 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/corehelpers"
 	"github.com/openbao/openbao/helper/testhelpers/pluginhelpers"
 	"github.com/openbao/openbao/internalshared/configutil"
+	"github.com/openbao/openbao/physical/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
@@ -1752,6 +1754,29 @@ func NewTestCluster(t testing.T, base *CoreConfig, opts *TestClusterOptions) *Te
 	testCluster.opts = opts
 	testCluster.start(t)
 	return &testCluster
+}
+
+// NewTestClusterWithPostgreSQL behaves like NewTestCluster but creates a new
+// PostgreSQL cluster and storage backend to use first.
+func NewTestClusterWithPostgreSQL(t testing.T, base *CoreConfig, opts *TestClusterOptions) *TestCluster {
+	if opts == nil {
+		opts = &TestClusterOptions{}
+	}
+	if opts.Logger == nil {
+		opts.Logger = corehelpers.NewTestLogger(t)
+	}
+
+	physicalBackend, cleanup := postgresql.GetTestPostgreSQLBackend(t.(*gotesting.T), opts.Logger)
+
+	if base == nil {
+		base = &CoreConfig{}
+	}
+	base.Physical = physicalBackend
+
+	cluster := NewTestCluster(t, base, opts)
+	cluster.cleanupFuncs = append(cluster.cleanupFuncs, cleanup)
+
+	return cluster
 }
 
 // StopCore performs an orderly shutdown of a core.

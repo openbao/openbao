@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -72,7 +73,9 @@ type PostgreSQLBackend struct {
 
 	upsert_function string
 
-	haEnabled     bool
+	haEnabled  bool
+	haNonVoter atomic.Bool
+
 	logger        log.Logger
 	permitPool    *physical.PermitPool
 	txnPermitPool *physical.PermitPool
@@ -254,6 +257,14 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		upsert_function: quoted_upsert_function,
 	}
 
+	// Determine if we should participate in leadership elections. This can
+	// be changed at runtime but is not persisted.
+	nonVoter, err := permanentStandby(conf)
+	if err != nil {
+		return nil, err
+	}
+	m.haNonVoter.Store(nonVoter)
+
 	// Determine if we should create tables.
 	raw_skip_create_table, ok := conf["skip_create_table"]
 	if !ok {
@@ -263,7 +274,7 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse value for `skip_create_table`: %w", err)
 	}
-	if !skip_create_table {
+	if !skip_create_table || !nonVoter {
 		txn, err := db.BeginTx(context.TODO(), &sql.TxOptions{
 			Isolation: sql.LevelRepeatableRead,
 		})
@@ -318,6 +329,28 @@ func connectionURL(conf map[string]string) string {
 	}
 
 	return connURL
+}
+
+// permanentStandby first checks environment variables for voting status. If
+// it is not found, it falls back to the configuration file, or else false.
+func permanentStandby(conf map[string]string) (bool, error) {
+	if envStandby := api.ReadBaoVariable("BAO_PG_PERMANENT_STANDBY"); envStandby != "" {
+		standby, err := parseutil.ParseBool(envStandby)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse value for environment variable BAO_PG_PERMANENT_STANDBY: %w", err)
+		}
+		return standby, nil
+	}
+
+	if confStandby, ok := conf["ha_permanent_standby"]; ok {
+		standby, err := parseutil.ParseBool(confStandby)
+		if err != nil {
+			return false, fmt.Errorf("failed to parse value for config value `ha_permanent_standby`: %w", err)
+		}
+		return standby, nil
+	}
+
+	return false, nil
 }
 
 func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB, error) {
@@ -516,14 +549,30 @@ func (p *PostgreSQLBackend) HAEnabled() bool {
 	return p.haEnabled
 }
 
+func (p *PostgreSQLBackend) HAIsVoter() (bool, error) {
+	return !p.haNonVoter.Load(), nil
+}
+
+func (p *PostgreSQLBackend) HASetVoter(voter bool) error {
+	p.haNonVoter.Store(voter)
+	return nil
+}
+
 // Lock tries to acquire the lock by repeatedly trying to create a record in the
 // PostgreSQL table. It will block until either the stop channel is closed or
 // the lock could be acquired successfully. The returned channel will be closed
 // once the lock in the PostgreSQL table cannot be renewed, either due to an
 // error speaking to PostgreSQL or because someone else has taken it.
+//
+// A nil channel with no error will be returned if the node is a non-voter or if
+// stopCh is called.
 func (l *PostgreSQLLock) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
 	l.lock.Lock()
 	defer l.lock.Unlock()
+
+	if l.backend.haNonVoter.Load() {
+		return nil, nil
+	}
 
 	var (
 		success = make(chan struct{})

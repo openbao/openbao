@@ -81,6 +81,12 @@ to disable SSL.
   connection is active, issues a `SELECT RANDOM() as random` query. Can be
   set to zero to ensure unlimited retries.
 
+- `ha_permanent_standby` `(bool: false)` - Whether or not this node is a
+  permanent standby and does not attempt to acquire active node status. This
+  is useful when against a replicated PostgreSQL cluster. The environment
+  variable `BAO_PG_PERMANENT_STANDBY` also controls this and takes precedence.
+  Defaults to `false`, meaning leadership may be sought.
+
 ## `postgresql` examples
 
 ### Custom SSL verification

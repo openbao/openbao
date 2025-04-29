@@ -1821,6 +1821,17 @@ func (b *RaftBackend) applyLog(ctx context.Context, command *LogData) error {
 // HAEnabled is the implementation of the HABackend interface
 func (b *RaftBackend) HAEnabled() bool { return true }
 
+func (b *RaftBackend) HAIsVoter() (bool, error) {
+	b.l.RLock()
+	defer b.l.RUnlock()
+
+	return b.nonVoter, nil
+}
+
+func (b *RaftBackend) HASetVoter(state bool) error {
+	return b.SetDesiredSuffrage(!state)
+}
+
 // HAEnabled is the implementation of the HABackend interface
 func (b *RaftBackend) LockWith(key, value string) (physical.Lock, error) {
 	return &RaftLock{

@@ -6,6 +6,7 @@ package inmem
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -17,6 +18,8 @@ type InmemHABackend struct {
 	l      *sync.Mutex
 	cond   *sync.Cond
 	logger log.Logger
+
+	voter atomic.Bool
 }
 
 // NewInmemHA constructs a new in-memory HA backend. This is only for testing.
@@ -33,6 +36,7 @@ func NewInmemHA(_ map[string]string, logger log.Logger) (physical.Backend, error
 		l:       new(sync.Mutex),
 	}
 	in.cond = sync.NewCond(in.l)
+	in.voter.Store(true)
 	return in, nil
 }
 
@@ -56,6 +60,15 @@ func (i *InmemHABackend) LockMapSize() int {
 // Currently always returns true.
 func (i *InmemHABackend) HAEnabled() bool {
 	return true
+}
+
+func (i *InmemHABackend) HAIsVoter() (bool, error) {
+	return i.voter.Load(), nil
+}
+
+func (i *InmemHABackend) HASetVoter(state bool) error {
+	i.voter.Store(state)
+	return nil
 }
 
 // InmemLock is an in-memory Lock implementation for the HABackend

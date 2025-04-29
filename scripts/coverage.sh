@@ -7,9 +7,9 @@
 # Works around the fact that `go test -coverprofile` currently does not work
 # with multiple packages, see https://code.google.com/p/go/issues/detail?id=6909
 #
-# Usage: script/coverage [--html|--coveralls|--json] [--pr|<package>]
+# Usage: scripts/coverage.sh [--html|--coveralls|--json|--pr] <package>
 #
-#     --html      Additionally create HTML report and open it in browser
+#     --html      Additionally create an HTML report and open it in the browser
 #     --coveralls Push coverage statistics to coveralls.io
 #     --json      Output coverage data in JSON format
 #     --pr        Only include packages changed in the current PR
@@ -76,6 +76,10 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
+            if [ -n "$pr" ]; then
+                echo "Error: --pr and package name cannot be used together"
+                exit 1
+            fi
             searchString="$1"
             shift
             ;;
@@ -84,7 +88,8 @@ done
 
 # Get packages to test
 if [ $pr = "true" ]; then
-    pkgs=$(git diff --name-only origin/main...HEAD | grep '\.go$' | xargs -n1 dirname | sort -u | uniq | xargs -I{} go list ./{} 2>/dev/null)
+    base_ref=${GITHUB_BASE_REF:-main}
+    pkgs=$(git diff --name-only "origin/$base_ref"...HEAD | grep '\.go$' | xargs -n1 dirname | sort -u | uniq | xargs -I{} go list ./{} 2>/dev/null)
 elif [ -n "$searchString" ]; then
     pkgs=$(go list ./... | grep -v /vendor/ | grep "$searchString")
 else

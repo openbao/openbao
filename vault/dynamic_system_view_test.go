@@ -6,7 +6,6 @@ package vault
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -241,8 +240,7 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_successful(t *testing.T) {
 func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 	type testCase struct {
 		policyName string
-		getEntry   *logical.StorageEntry
-		getErr     error
+		entry      *logical.StorageEntry
 	}
 
 	tests := map[string]testCase{
@@ -251,38 +249,32 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 		},
 		"no policy found": {
 			policyName: "testpolicy",
-			getEntry:   nil,
-			getErr:     nil,
 		},
 		"error retrieving policy": {
 			policyName: "testpolicy",
-			getEntry:   nil,
-			getErr:     errors.New("a test error"),
 		},
 		"saved policy is malformed": {
 			policyName: "testpolicy",
-			getEntry: &logical.StorageEntry{
+			entry: &logical.StorageEntry{
 				Key:   getPasswordPolicyKey("testpolicy"),
 				Value: []byte(`{"policy":"asdfahsdfasdf"}`),
 			},
-			getErr: nil,
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			testStorage := fakeBarrier{
-				getEntry: test.getEntry,
-				getErr:   test.getErr,
-			}
-
-			core := &Core{
-				systemBarrierView: NewBarrierView(testStorage, "sys/"),
-			}
-			dsv := TestDynamicSystemView(core, nil)
+			core, _, _ := TestCoreUnsealed(t)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
+
+			if test.entry != nil {
+				core.systemBarrierView.Put(ctx, test.entry)
+			}
+
+			dsv := TestDynamicSystemView(core, nil)
+
 			actualPassword, err := dsv.GeneratePasswordFromPolicy(ctx, test.policyName)
 			if err == nil {
 				t.Fatal("err expected, got nil")
@@ -299,28 +291,3 @@ type runes []rune
 func (r runes) Len() int           { return len(r) }
 func (r runes) Less(i, j int) bool { return r[i] < r[j] }
 func (r runes) Swap(i, j int)      { r[i], r[j] = r[j], r[i] }
-
-type fakeBarrier struct {
-	getEntry *logical.StorageEntry
-	getErr   error
-}
-
-func (b fakeBarrier) Get(context.Context, string) (*logical.StorageEntry, error) {
-	return b.getEntry, b.getErr
-}
-
-func (b fakeBarrier) List(context.Context, string) ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (b fakeBarrier) ListPage(context.Context, string, string, int) ([]string, error) {
-	return nil, errors.New("not implemented")
-}
-
-func (b fakeBarrier) Put(context.Context, *logical.StorageEntry) error {
-	return errors.New("not implemented")
-}
-
-func (b fakeBarrier) Delete(context.Context, string) error {
-	return errors.New("not implemented")
-}

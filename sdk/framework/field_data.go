@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
@@ -463,4 +464,20 @@ func (d *FieldData) getPrimitive(k string, schema *FieldSchema) (interface{}, bo
 	default:
 		panic(fmt.Sprintf("Unknown type: %s", schema.Type))
 	}
+}
+
+func (d *FieldData) GetWithExplicitDefault(field string, defaultValue interface{}) interface{} {
+	assignedValue, ok := d.GetOk(field)
+	if ok {
+		return assignedValue
+	}
+	return defaultValue
+}
+
+func (d *FieldData) GetTimeWithExplicitDefault(field string, defaultValue time.Duration) time.Duration {
+	assignedValue, ok := d.GetOk(field)
+	if ok {
+		return time.Duration(assignedValue.(int)) * time.Second
+	}
+	return defaultValue
 }

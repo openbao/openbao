@@ -354,9 +354,9 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		AuthProgram:   data.Get("auth_program").(string),
-		FailurePolicy: data.Get("failure_policy").(string),
-		Message:       data.Get("message").(string),
+		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(string),
+		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
+		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
 
 	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)

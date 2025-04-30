@@ -314,8 +314,8 @@ github.com/go-openapi/swag v0.23.0/go.mod h1:esZ8ITTYEsH1V2trKHjAN8Ai7xHb8RV+YSZ
 github.com/go-quicktest/qt v1.101.0 h1:O1K29Txy5P2OK0dGo59b7b0LR6wKfIhttaAhHUyn7eI=
 github.com/go-quicktest/qt v1.101.0/go.mod h1:14Bz/f7NwaXPtdYEgzsx46kqSxVwTbzVZsDC26tQJow=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/go-sql-driver/mysql v1.8.1 h1:LedoTUt/eveggdHS9qUFC1EFSa8bU2+1pZjSRpvNJ1Y=
-github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
+github.com/go-sql-driver/mysql v1.9.2 h1:4cNKDYQ1I84SXslGddlsrMhc8k4LeDVj6Ad6WRjiHuU=
+github.com/go-sql-driver/mysql v1.9.2/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
 github.com/go-stack/stack v1.8.0/go.mod h1:v0f6uXyyMGvRgIKkXu+yp6POWl0qKG85gN/melR3HDY=
 github.com/go-task/slim-sprig/v3 v3.0.0 h1:sUs3vkvUymDpBKi3qH1YSqBQk9+9D/8M2mN1vB6EwHI=
 github.com/go-task/slim-sprig/v3 v3.0.0/go.mod h1:W848ghGpv3Qj3dhTPRyJypKRiqCdHZiAzKg9hl15HA8=
@@ -827,8 +827,8 @@ github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b
 github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b0c79b1/go.mod h1:dpa8S2Cxb++GixV+97j6tu8tljU6tyV7Yp6+x6oXIA4=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0 h1:SGCAKG5+0xX0ZcsZueZAuJVzZvF3ggN6J8M9KAn4OX8=
 github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0/go.mod h1:0uT6B3D6rtzheWaVTxAUXOrrLHrMOxwrdcR/lbG2djs=
-github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6 h1:DS7Qc6KN82f2xWOMkJ+wpXlNc/CjqjNBTKoH1/td42Y=
-github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6/go.mod h1:BOwTkMzLnFCalvOKWaHd7WGjsJpDfewZyuCeK+TqO1s=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.2.0 h1:Jc2niG5HmJ2hrqFQ9LOgjLmX1Gkmq6FXwn/rlL7FOKg=
+github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.2.0/go.mod h1:BOwTkMzLnFCalvOKWaHd7WGjsJpDfewZyuCeK+TqO1s=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0 h1:hSPcvNAzowM/P/fzguD7rdtWKRvAaDWojqZ6v5q2Ko4=
 github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0/go.mod h1:u37F1o4c9tr/k2say69BiyumhcN4SezbaK1Khf/4/Vo=
 github.com/openbao/openbao-template v1.0.1 h1:p3K6HWA19H8oJFgK2sSMMpaWWB3dq010oxlvkvRzEcU=

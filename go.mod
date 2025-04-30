@@ -40,7 +40,7 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.4
 	github.com/go-ldap/ldap/v3 v3.4.9
 	github.com/go-ldap/ldif v0.0.0-20200320164324-fd88d9b715b3
-	github.com/go-sql-driver/mysql v1.8.1
+	github.com/go-sql-driver/mysql v1.9.2
 	github.com/go-test/deep v1.1.0
 	github.com/gocql/gocql v1.0.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
@@ -117,7 +117,7 @@ require (
 	github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/kmip/v2 v2.0.0-20250321181437-1a1c5b0c79b1
 	github.com/openbao/go-kms-wrapping/wrappers/ocikms/v2 v2.2.0
-	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.0.0-20250213200901-c6047d9096f6
+	github.com/openbao/go-kms-wrapping/wrappers/pkcs11/v2 v2.2.0
 	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.4.0
 	github.com/openbao/openbao-template v1.0.1
 	github.com/openbao/openbao/api/auth/approle/v2 v2.0.0

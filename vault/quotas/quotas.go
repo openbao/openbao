@@ -594,7 +594,6 @@ func (m *Manager) queryQuota(txn *memdb.Txn, req *Request) (Quota, error) {
 		}
 		if quota != nil && quota.IsInheritable() {
 			return quota, nil
-		} else if quota != nil {
 		}
 
 		if path == "root" {

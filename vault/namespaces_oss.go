@@ -32,6 +32,8 @@ func NamespaceView(barrier logical.Storage, ns *namespace.Namespace) BarrierView
 	return NewBarrierView(barrier, path.Join(namespaceBarrierPrefix, ns.UUID)+"/")
 }
 
+// NamespaceByPath returns the namespace and the path prefix for the given path.
+// Note, that it is on the caller to ensure that the namespace is resolved, as NamespaceByPath otherwise resolves to root.
 func (c *Core) NamespaceByPath(ctx context.Context, path string) (*namespace.Namespace, string) {
 	return c.namespaceStore.GetNamespaceByLongestPrefix(ctx, path)
 }

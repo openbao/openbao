@@ -200,6 +200,9 @@ type Quota interface {
 	// QuotaName is the name of the quota rule
 	QuotaName() string
 
+	// IsInheritable returns whether the quota is inheritable
+	IsInheritable() bool
+
 	// initialize sets up the fields in the quota type to begin operating
 	initialize(log.Logger, *metricsutil.ClusterMetricSink) error
 
@@ -576,18 +579,26 @@ func (m *Manager) queryQuota(txn *memdb.Txn, req *Request) (Quota, error) {
 	// If the request belongs to "root" namespace, then we have already looked at
 	// global quotas when fetching namespace specific quota rule. When the request
 	// belongs to a non-root namespace, and when there are no namespace specific
-	// quota rules present, we fallback on the global quotas.
+	// quota rules present, we fallback on the inheritable quotas.
 	if req.NamespacePath == "root" {
 		return nil, nil
 	}
 
-	// Fetch global quota
-	quota, err = quotaFetchFunc(indexNamespace, "root", false, false, false)
-	if err != nil {
-		return nil, err
-	}
-	if quota != nil {
-		return quota, nil
+	for path, isParent := namespace.ParentOf(req.NamespacePath); isParent; path, isParent = namespace.ParentOf(path) {
+		if path == "" {
+			path = "root"
+		}
+		quota, err = quotaFetchFunc(indexNamespace, path, false, false, false)
+		if err != nil {
+			return nil, err
+		}
+		if quota != nil && quota.IsInheritable() {
+			return quota, nil
+		}
+
+		if path == "root" {
+			break
+		}
 	}
 
 	return nil, nil

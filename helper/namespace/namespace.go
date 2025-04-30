@@ -118,10 +118,16 @@ func (n *Namespace) HasParent(possibleParent *Namespace) bool {
 // ParentPath returns the path of the parent namespace. n.Path must be a
 // canonicalized path.
 func (n *Namespace) ParentPath() (string, bool) {
-	if n.Path == "" {
+	return ParentOf(n.Path)
+}
+
+// ParentOf returns the path of the parent namespace. path must be a
+// canonicalized path.
+func ParentOf(path string) (string, bool) {
+	if path == "" {
 		return "", false
 	}
-	segments := strings.SplitAfter(n.Path, "/")
+	segments := strings.SplitAfter(path, "/")
 	if len(segments) <= 2 {
 		return "", true
 	}

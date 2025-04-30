@@ -98,6 +98,11 @@ var (
 			}
 		}
 
+		namespacedQuotaRequest := (strings.Contains(fullURL, "sys/quotas") && ns.Path != "")
+		if namespacedQuotaRequest {
+			return http.StatusBadRequest
+		}
+
 		for _, api := range containsAPIs {
 			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
 				return http.StatusBadRequest
@@ -143,12 +148,6 @@ func wrapMaxRequestSizeHandler(handler http.Handler, props *vault.HandlerPropert
 
 func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ns, err := namespace.FromContext(r.Context())
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
-			return
-		}
-
 		// We don't want to do buildLogicalRequestNoAuth here because, if the
 		// request gets allowed by the quota, the same function will get called
 		// again, which is not desired.
@@ -157,6 +156,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			respondError(w, status, err)
 			return
 		}
+		ns, _ := core.NamespaceByPath(r.Context(), path)
 		mountPath := strings.TrimPrefix(core.MatchingMount(r.Context(), path), ns.Path)
 
 		quotaReq := &quotas.Request{

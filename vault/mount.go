@@ -2210,7 +2210,10 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	}
 
 	switch me.Type {
-	case mountTypeSystem:
+	case mountTypeSystem, mountTypeNSSystem:
+		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
+			return c.namespaceMountEntryView(me.Namespace(), systemBarrierPrefix), nil
+		}
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
 		return NewBarrierView(c.barrier, systemBarrierPrefix+tokenSubPath), nil

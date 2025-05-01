@@ -67,9 +67,9 @@ Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
 $ bao operator rekey \
     -target=recovery \
     -init \
+    -key-shares=1 \
+    -key-threshold=1 \
     -pgp-keys=keybase:grahamopenbao
-    -key-shares=1
-    -key-threshold=1
 ```
 
 Store encrypted PGP keys in OpenBao's core:

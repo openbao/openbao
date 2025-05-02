@@ -11,21 +11,17 @@ import (
 
 	"github.com/go-jose/go-jose/v3/jwt"
 	"github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/common/types/ref"
-	"github.com/google/cel-go/common/types/traits"
-	"github.com/hashicorp/go-secure-stdlib/parseutil"
-	"github.com/hashicorp/go-sockaddr"
+	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type celRoleEntry struct {
-	Name          string `json:"name"`                     // Required
-	AuthProgram   string `json:"auth_program"`             // Required
-	FailurePolicy string `json:"failure_policy,omitempty"` // Default: Deny
-	Message       string `json:"message,omitempty"`
+	Name          string     `json:"name"`                     // Required
+	AuthProgram   CelProgram `json:"auth_program"`             // Required
+	FailurePolicy string     `json:"failure_policy,omitempty"` // Default: Deny
+	Message       string     `json:"message,omitempty"`
 
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
@@ -35,6 +31,20 @@ type celRoleEntry struct {
 	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
 	// Role binding properties
 	BoundAudiences []string `json:"bound_audiences"`
+}
+
+type CelProgram struct {
+	// List of variables with explicit order (optional)
+	Variables []CelVariable `json:"variables,omitempty"`
+	// Required, the main CEL expression
+	Expressions string `json:"expression"`
+}
+
+type CelVariable struct {
+	// Name of the variable.
+	Name string `json:"name"`
+	// CEL expression for the variable
+	Expression string `json:"explression"`
 }
 
 type celRole struct {
@@ -92,8 +102,8 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Description: "Name of the cel role",
 		},
 		"auth_program": {
-			Type:        framework.TypeString,
-			Description: "CEL expression defining the auth program for the role",
+			Type:        framework.TypeMap,
+			Description: "CEL variables and expression defining the auth program for the role",
 		},
 		"failure_policy": {
 			Type:        framework.TypeString,
@@ -236,11 +246,11 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 	name := nameRaw.(string)
 
-	authProgram := ""
+	authProgram := CelProgram{}
 	if authProgramRaw, ok := data.GetOk("auth_program"); !ok {
 		return logical.ErrorResponse("missing required field 'auth_program'"), nil
 	} else {
-		authProgram = authProgramRaw.(string)
+		authProgram = authProgramRaw.(CelProgram)
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -354,7 +364,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(string),
+		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(CelProgram),
 		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
 		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
@@ -414,7 +424,7 @@ func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, role
 func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := b.validateCelExpressions(entry.AuthProgram)
+	_, err := b.validateCelProgram(entry.AuthProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -423,9 +433,9 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 	return resp, nil
 }
 
-func (b *jwtAuthBackend) validateCelExpressions(rule string) (bool, error) {
+func (b *jwtAuthBackend) validateCelProgram(program CelProgram) (bool, error) {
 	role := jwtRole{}
-	env, err := b.celEnv(&role)
+	env, err := b.celEnv(program)
 	if err != nil {
 		return false, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
@@ -443,204 +453,66 @@ func (b *jwtAuthBackend) validateCelExpressions(rule string) (bool, error) {
 	return true, nil
 }
 
-func (b *jwtAuthBackend) celEnv(role *jwtRole) (*cel.Env, error) {
-	return cel.NewEnv(
-		// these functions are closures around `role` and can alter it
-		cel.Variable("claims", cel.MapType(cel.StringType, cel.DynType)),
-		cel.Function("SetPolicies",
-			cel.Overload("SetPolicies",
-				[]*cel.Type{cel.ListType(types.StringType)},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					list, ok := arg.(traits.Lister)
-					if !ok {
-						return types.NewErr("expected a list of strings")
-					}
+func (b *jwtAuthBackend) celEvalData(program CelProgram) (*map[string]any, error) {
+	// Evaluate all variables
+	for _, variable := range program.Variables {
+		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("%w", err)
+		}
 
-					// Iterate over the list
-					for i := int64(0); i < int64(list.Size().(types.Int)); i++ {
-						elem := fmt.Sprintf("%v", list.Get(types.Int(i)))
-						role.TokenPolicies = append(role.TokenPolicies, elem)
-					}
+		// Add the evaluated result for subsequent CEL evaluations.
+		// This ensures variables can reference each other and build a cumulative evaluation context.
+		evaluationData[variable.Name] = result.Value()
+	}
+	return evaluationData
+}
 
-					// Return true
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetBoundCIDRs",
-			cel.Overload("SetBoundCIDRs",
-				[]*cel.Type{cel.ListType(types.StringType)},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					list, ok := arg.(traits.Lister)
-					if !ok {
-						return types.NewErr("expected a list of strings")
-					}
+func (b *jwtAuthBackend) celEvalExpression(env *cel.Env, expression string) (any, error) {
+	ast, issues := env.Parse(expression)
+	if issues != nil && issues.Err() != nil {
+		return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
+	}
 
-					// Iterate over the list
-					for i := int64(0); i < int64(list.Size().(types.Int)); i++ {
-						elem := fmt.Sprintf("%v", list.Get(types.Int(i)))
-						sockAddr, err := sockaddr.NewSockAddr(elem)
-						if err != nil {
-							return types.NewErr("expected a list of CIDRs")
-						}
-						role.TokenBoundCIDRs = append(role.TokenBoundCIDRs,
-							&sockaddr.SockAddrMarshaler{SockAddr: sockAddr})
-					}
+	// Compile the expression
+	prog, err := env.Program(ast)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
+	}
 
-					// Return true
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetTTL",
-			cel.Overload("SetTTL",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					ttl, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected a duration string")
-					}
-					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
-					if err != nil {
-						return types.NewErr("expected a duration string")
-					}
-					role.TokenTTL = duration
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetMaxTTL",
-			cel.Overload("SetMaxTTL",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					ttl, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected a duration string")
-					}
-					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
-					if err != nil {
-						return types.NewErr("expected a duration string")
-					}
-					role.TokenMaxTTL = duration
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetExplicitMaxTTL",
-			cel.Overload("SetExplicitMaxTTL",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					ttl, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected a duration string")
-					}
-					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
-					if err != nil {
-						return types.NewErr("expected a duration string")
-					}
-					role.TokenExplicitMaxTTL = duration
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetPeriod",
-			cel.Overload("SetPeriod",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					ttl, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected a duration string")
-					}
-					duration, err := parseutil.ParseDurationSecond(fmt.Sprintf("%v", ttl))
-					if err != nil {
-						return types.NewErr("expected a duration string")
-					}
-					role.TokenPeriod = duration
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetNoDefaultPolicy",
-			cel.Overload("SetNoDefaultPolicy",
-				[]*cel.Type{cel.BoolType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					boolSetting, ok := arg.(types.Bool)
-					if !ok {
-						return types.NewErr("expected a boolean")
-					}
-					role.TokenNoDefaultPolicy = boolSetting.Value().(bool)
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetStrictlyBindIP",
-			cel.Overload("SetStrictlyBindIP",
-				[]*cel.Type{cel.BoolType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					boolSetting, ok := arg.(types.Bool)
-					if !ok {
-						return types.NewErr("expected a boolean")
-					}
-					role.TokenStrictlyBindIP = boolSetting.Value().(bool)
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetTokenNumUses",
-			cel.Overload("SetTokenNumUses",
-				[]*cel.Type{cel.IntType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					intSetting, ok := arg.(types.Int)
-					if !ok {
-						return types.NewErr("expected an integer")
-					}
-					role.TokenNumUses = int(intSetting)
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetTokenType",
-			cel.Overload("SetTokenType",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					strSetting, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected a string")
-					}
-					ttype, err := logical.NewTokenType(fmt.Sprintf("%v", strSetting))
-					if err != nil {
-						return types.NewErr("expected a token type string")
-					}
-					role.TokenType = ttype
-					return types.True
-				}),
-			),
-		),
-		cel.Function("SetUserClaim",
-			cel.Overload("SetUserClaim",
-				[]*cel.Type{cel.StringType},
-				cel.BoolType,
-				cel.UnaryBinding(func(arg ref.Val) ref.Val {
-					strSetting, ok := arg.(types.String)
-					if !ok {
-						return types.NewErr("expected the user claim field name")
-					}
-					role.UserClaim = fmt.Sprintf("%v", strSetting)
-					return types.True
-				}),
-			),
-		),
-	)
+	// Evaluate the expression
+	result, _, err := prog.Eval(evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
+	}
+}
+
+func (b *jwtAuthBackend) celEvalProgram(program CelProgram) (any, error) {
+
+	env, error := b.celEnv(program)
+	if error != nil {
+		return nil, error
+	}
+
+	// Evaluate the CEL Role success expression
+	return b.celEvalExpression(env, program.Expressions, evaluationData)
+}
+
+func (b *jwtAuthBackend) celEnv(program CelProgram) (*cel.Env, error) {
+	envOptions := []cel.EnvOption{}
+
+	// Add all variable declarations to the CEL environment.
+	for _, variable := range program.Variables {
+		envOptions = append(envOptions, cel.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
+	}
+
+	// Create the CEL environment using the prepared declarations.
+	env, err := cel.NewEnv(envOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
+	}
+
+	return &env
 }
 
 const (

@@ -19,21 +19,25 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 	// Test case for creating CEL roles
 	type TestCase struct {
 		Name          string
-		AuthProgram   string
+		AuthProgram   map[string]any
 		ExpectErr     bool
 		FailurePolicy string
 	}
 
 	testCases := []TestCase{
 		{
-			Name:          "testcelrole_valid",
-			AuthProgram:   "1 == 1",
+			Name: "testcelrole_valid",
+			AuthProgram: map[string]any{
+				"expression": "1 == 1",
+			},
 			ExpectErr:     false,
 			FailurePolicy: "Modify",
 		},
 		{
-			Name:          "testcelrole_invalid",
-			AuthProgram:   "invalid_cel_syntax",
+			Name: "testcelrole_invalid",
+			AuthProgram: map[string]any{
+				"expression": "invalid_cel_syntax",
+			},
 			ExpectErr:     true,
 			FailurePolicy: "Modify",
 		},

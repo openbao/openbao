@@ -18,7 +18,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | [OSPS-AC-03.02](#osps-ac-03-02) | |
 | [OSPS-BR-01.01](#osps-br-01-01) | |
 | [OSPS-BR-03.01](#osps-br-03-01) | |
-| [OSPS-DO-01.01](#osps-do-01-01) | |
+| [OSPS-DO-01.01](#osps-do-01-01) | ✅ |
 | [OSPS-DO-02.01](#osps-do-02-01) | |
 | [OSPS-GV-02.01](#osps-gv-02-01) | |
 | [OSPS-GV-03.01](#osps-gv-03-01) | ✅ |
@@ -52,7 +52,10 @@ When a CI/CD pipeline accepts an input parameter, that parameter MUST be sanitiz
 When the project lists a URI as an official project channel, that URI MUST be exclusively delivered using encrypted channels.
 
 ## OSPS-DO-01.01 {#osps-do-01-01}
-When the project has made a release, the project documentation MUST include user guides for all basic functionality.
+
+> **Requirement:** *When the project has made a [release](https://baseline.openssf.org/versions/2025-02-25#release), the [project documentation](https://baseline.openssf.org/versions/2025-02-25#project-documentation) MUST include user guides for all basic functionality.*
+
+OpenBao publishes its documentation, including [release notes](/docs/release-notes), at the [OpenBao documentation site](/docs). The documentation also highlights potentially dangerous or destructive operations.
 
 ## OSPS-DO-02.01 {#osps-do-02-01}
 When the project has made a release, the project documentation MUST include a guide for reporting defects.

@@ -17,6 +17,7 @@ import (
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -33,6 +34,12 @@ rule "charset" {
 }
 rule "charset" {
 	charset = "0123456789"
+	min_chars = 1
+}`
+	rawTestPasswordPolicy2 = `
+length = 10
+rule "charset" {
+	charset = "abcdefghijklmnopqrstuvwxyz"
 	min_chars = 1
 }`
 )
@@ -284,6 +291,66 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
+	core, _, token := TestCoreUnsealed(t)
+
+	err := TestCoreCreateNamespaces(core,
+		&namespace.Namespace{Path: "foo/"},
+		&namespace.Namespace{Path: "foo/bar/"},
+	)
+	require.NoError(t, err)
+
+	ctx := namespace.RootContext(nil)
+
+	fooNs, err := core.namespaceStore.GetNamespaceByPath(ctx, "foo/")
+	require.NoError(t, err)
+	barNs, err := core.namespaceStore.GetNamespaceByPath(ctx, "foo/bar")
+	require.NoError(t, err)
+
+	// Create password policy in the 'foo/' namespace.
+	path := fmt.Sprintf("sys/policies/password/%s", testPolicyName)
+	req := logical.TestRequest(t, logical.CreateOperation, path)
+	b64Policy := base64.StdEncoding.EncodeToString([]byte(rawTestPasswordPolicy))
+	req.Data["policy"] = b64Policy
+	req.ClientToken = token
+	_, err = core.HandleRequest(namespace.ContextWithNamespace(ctx, fooNs), req)
+	require.NoError(t, err)
+
+	// Password policy should only work in the 'foo/' namespace,
+	// not a child namespace, not the root namespace.
+	pass, err := TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	pass, err = TestDynamicSystemView(core, barNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.Error(t, err)
+	require.Empty(t, pass)
+	pass, err = TestDynamicSystemView(core, nil).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.Error(t, err)
+	require.Empty(t, pass)
+
+	// Create another password policy in the root namespace, with the same name.
+	path = fmt.Sprintf("sys/policies/password/%s", testPolicyName)
+	req = logical.TestRequest(t, logical.CreateOperation, path)
+	b64Policy = base64.StdEncoding.EncodeToString([]byte(rawTestPasswordPolicy2))
+	req.Data["policy"] = b64Policy
+	req.ClientToken = token
+	_, err = core.HandleRequest(ctx, req)
+	require.NoError(t, err)
+
+	// Password policy in 'foo/' should still act the same
+	pass, err = TestDynamicSystemView(core, fooNs).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	require.Len(t, pass, 20)
+
+	// Password policy in root namespace should now be available, but generate passwords
+	// according to different constraints.
+	pass, err = TestDynamicSystemView(core, nil).GeneratePasswordFromPolicy(ctx, testPolicyName)
+	require.NoError(t, err)
+	require.NotEmpty(t, pass)
+	require.Len(t, pass, 10)
 }
 
 type runes []rune

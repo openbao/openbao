@@ -25,7 +25,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "Boolean expression true, returns role with no error",
 			celRole: celRoleEntry{
-				AuthProgram: "claims.sub == 'test@example.com'",
+				AuthProgram: "{'does': 'this work?'}",
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
@@ -40,7 +40,7 @@ func Test_runCelProgram(t *testing.T) {
 		{
 			name: "Boolean expression false, returns error",
 			celRole: celRoleEntry{
-				AuthProgram: "claims.sub == 'test-admin@example.com'",
+				AuthProgram: "{'does': 'this work?'}",
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",

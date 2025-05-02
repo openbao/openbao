@@ -13,7 +13,6 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/tokenutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -37,7 +36,7 @@ type CelProgram struct {
 	// List of variables with explicit order (optional)
 	Variables []CelVariable `json:"variables,omitempty"`
 	// Required, the main CEL expression
-	Expressions string `json:"expression"`
+	Expression string `json:"expression"`
 }
 
 type CelVariable struct {
@@ -45,10 +44,6 @@ type CelVariable struct {
 	Name string `json:"name"`
 	// CEL expression for the variable
 	Expression string `json:"explression"`
-}
-
-type celRole struct {
-	tokenutil.TokenParams
 }
 
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
@@ -151,8 +146,8 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Description: "Name of the cel role",
 			},
 			"auth_program": {
-				Type:        framework.TypeString,
-				Description: "CEL expression defining the auth program for the role",
+				Type:        framework.TypeMap,
+				Description: "CEL variables and expression defining the auth program for the role",
 			},
 			"failure_policy": {
 				Type:        framework.TypeString,
@@ -487,15 +482,35 @@ func (b *jwtAuthBackend) celEvalExpression(env *cel.Env, expression string) (any
 	}
 }
 
-func (b *jwtAuthBackend) celEvalProgram(program CelProgram) (any, error) {
+func (b *jwtAuthBackend) celEvalProgram(program CelProgram, jwtClaims *jwt.Claims) (any, error) {
 
 	env, error := b.celEnv(program)
 	if error != nil {
 		return nil, error
 	}
 
+	// Initialize the evaluation context for CEL expressions with the raw request data.
+	// The "request" key allows CEL expressions to access and evaluate against input fields.
+	// Additional variables and evaluated results will be added dynamically during processing.
+	evaluationData := map[string]interface{}{
+		"claims": jwtClaims,
+		"now":    time.Now(),
+	}
+
+	// Evaluate all variables
+	for _, variable := range program.Variables {
+		result, err := parseCompileAndEvaluateExpression(env, variable, evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("%w", err)
+		}
+
+		// Add the evaluated result for subsequent CEL evaluations.
+		// This ensures variables can reference each other and build a cumulative evaluation context.
+		evaluationData[variable.Name] = result.Value()
+	}
+
 	// Evaluate the CEL Role success expression
-	return b.celEvalExpression(env, program.Expressions, evaluationData)
+	return b.parseCompileAndEvaluateExpression(env, program.Expression, evaluationData)
 }
 
 func (b *jwtAuthBackend) celEnv(program CelProgram) (*cel.Env, error) {

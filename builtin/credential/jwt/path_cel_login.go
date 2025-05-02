@@ -222,7 +222,7 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 	if err != nil {
 		return nil, err
 	}
-	ast, iss := env.Compile(celRoleEntry.AuthProgram)
+	ast, iss := env.Compile(celRoleEntry.AuthProgram.Expression)
 	if iss.Err() != nil {
 		return nil, fmt.Errorf("Cel role auth program failed to compile: %w", iss.Err())
 	}

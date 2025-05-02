@@ -22,10 +22,10 @@ import (
 )
 
 type celRoleEntry struct {
-	Name          string `json:"name"`                     // Required
-	AuthProgram   string `json:"auth_program"`             // Required
-	FailurePolicy string `json:"failure_policy,omitempty"` // Default: Deny
-	Message       string `json:"message,omitempty"`
+	Name          string     `json:"name"`                     // Required
+	AuthProgram   CelProgram `json:"auth_program"`             // Required
+	FailurePolicy string     `json:"failure_policy,omitempty"` // Default: Deny
+	Message       string     `json:"message,omitempty"`
 
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
@@ -35,6 +35,20 @@ type celRoleEntry struct {
 	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
 	// Role binding properties
 	BoundAudiences []string `json:"bound_audiences"`
+}
+
+type CelProgram struct {
+	// List of variables with explicit order (optional)
+	Variables []CelVariable `json:"variables,omitempty"`
+	// Required, the main CEL expression
+	Expressions string `json:"expression"`
+}
+
+type CelVariable struct {
+	// Name of the variable.
+	Name string `json:"name"`
+	// CEL expression for the variable
+	Expression string `json:"explression"`
 }
 
 type celRole struct {
@@ -92,8 +106,8 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Description: "Name of the cel role",
 		},
 		"auth_program": {
-			Type:        framework.TypeString,
-			Description: "CEL expression defining the auth program for the role",
+			Type:        framework.TypeMap,
+			Description: "CEL variables and expression defining the auth program for the role",
 		},
 		"failure_policy": {
 			Type:        framework.TypeString,
@@ -236,11 +250,11 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 	name := nameRaw.(string)
 
-	authProgram := ""
+	authProgram := CelProgram{}
 	if authProgramRaw, ok := data.GetOk("auth_program"); !ok {
 		return logical.ErrorResponse("missing required field 'auth_program'"), nil
 	} else {
-		authProgram = authProgramRaw.(string)
+		authProgram = authProgramRaw.(CelProgram)
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -354,7 +368,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(string),
+		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(CelProgram),
 		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
 		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
@@ -423,7 +437,7 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 	return resp, nil
 }
 
-func (b *jwtAuthBackend) validateCelExpressions(rule string) (bool, error) {
+func (b *jwtAuthBackend) validateCelProgram(program CelProgram) (bool, error) {
 	role := jwtRole{}
 	env, err := b.celEnv(&role)
 	if err != nil {

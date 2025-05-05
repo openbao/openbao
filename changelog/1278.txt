@@ -1,3 +1,0 @@
-```release-note:improvement
-scripts/coverage.sh: improved coverage script
-```

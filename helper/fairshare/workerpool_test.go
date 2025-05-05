@@ -247,7 +247,6 @@ func TestFairshare_stop(t *testing.T) {
 
 	go func() {
 		d.stop()
-		d.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -269,7 +268,6 @@ func TestFairshare_stopMultiple(t *testing.T) {
 
 	go func() {
 		d.stop()
-		d.wg.Wait()
 		doneCh <- struct{}{}
 	}()
 
@@ -291,7 +289,6 @@ func TestFairshare_stopMultiple(t *testing.T) {
 		}()
 
 		d.stop()
-		d.wg.Wait()
 	}()
 
 	select {

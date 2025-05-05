@@ -7,12 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"time"
 
+	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/openbao/openbao/sdk/v2/framework"
-	"github.com/openbao/openbao/sdk/v2/helper/cidrutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
-	"google.golang.org/protobuf/types/known/structpb"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 const (
@@ -163,94 +166,48 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}
 
 	// execute celRoleEntry.AuthProgram
-	jwtRole, err := b.runCelProgram(ctx, celRoleEntry, allClaims)
+	pbAuth, err := b.runCelProgram(ctx, celRoleEntry, allClaims)
 	if err != nil {
 		return logical.ErrorResponse("error executing cel program: %s", err.Error()), nil
 	}
 
-	if len(jwtRole.TokenBoundCIDRs) > 0 {
-		if req.Connection == nil {
-			b.Logger().Warn("token bound CIDRs found but no connection information available for validation")
-			return nil, logical.ErrPermissionDenied
-		}
-		if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, jwtRole.TokenBoundCIDRs) {
-			return nil, logical.ErrPermissionDenied
-		}
-	}
-
-	alias, groupAliases, err := b.createIdentity(ctx, allClaims, celRoleEntry.Name, jwtRole, nil)
-	if err != nil {
-		return logical.ErrorResponse(err.Error()), nil
-	}
-
-	tokenMetadata := make(map[string]string)
-	for k, v := range alias.Metadata {
-		tokenMetadata[k] = v
-	}
-
-	auth := &logical.Auth{
-		DisplayName:  alias.Name,
-		Alias:        alias,
-		GroupAliases: groupAliases,
-		InternalData: map[string]interface{}{
-			"role": celRoleEntry.Name,
-		},
-		Metadata: tokenMetadata,
-	}
-
-	if err := jwtRole.PopulateTokenAuth(auth, req); err != nil {
-		return nil, fmt.Errorf("failed to populate auth information: %w", err)
-	}
-
-	if err := jwtRole.maybeTemplatePolicies(auth, allClaims); err != nil {
-		return nil, err
-	}
+	auth := authFromProto(*pbAuth)
 
 	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 
 	return &logical.Response{
-		Auth: auth,
+		Auth: &auth,
 	}, nil
 }
 
 // runCelProgram executes the AuthProgram for the celRoleEntry and returns a transient jwtRole
-func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*jwtRole, error) {
-	role := jwtRole{}
-	env, err := b.celEnv(&role)
-	if err != nil {
-		return nil, err
-	}
-	ast, iss := env.Compile(celRoleEntry.AuthProgram.Expression)
-	if iss.Err() != nil {
-		return nil, fmt.Errorf("Cel role auth program failed to compile: %w", iss.Err())
-	}
-	prog, err := env.Program(ast)
+func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
+	result, err := b.celEvalProgram(celRoleEntry.CelProgram, allClaims)
 	if err != nil {
 		return nil, fmt.Errorf("Cel role auth program failed: %w", err)
 	}
-	result, _, err := prog.Eval(map[string]any{
-		"claims": allClaims,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("Cel role auth program failed to evaluate: %w", err)
-	}
+
+	refVal := result.(ref.Val)
 
 	// process result from CEL program
-	switch v := result.Value().(type) {
-	// if boolean return value
+	switch v := refVal.Value().(type) {
+	// if boolean false return auth failed
 	case bool:
 		if !v {
 			return nil, fmt.Errorf("Cel role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
 		}
-	case structpb.NullValue:
-		// okay, just continue
-	default:
-		return nil, fmt.Errorf("Cel role '%s' returned unexpected type: %T", celRoleEntry.Name, result.Value())
 	}
 
-	return &role, nil
+	if msg, err := refVal.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
+		pbAuth, ok := msg.(*pb.Auth)
+		if ok {
+			return pbAuth, nil
+		}
+	}
+
+	return nil, fmt.Errorf("Cel program '%s' returned unexpected type: %T", celRoleEntry.Name, result)
 }
 
 func (b *jwtAuthBackend) pathCelLoginRenew(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -281,3 +238,30 @@ const (
 Authenticates JWTs against a CEL role.
 `
 )
+
+// authFromProto will convert a protobuf auth message to logical.Auth
+func authFromProto(pbAuth pb.Auth) logical.Auth {
+	return logical.Auth{
+		DisplayName: pbAuth.DisplayName,
+		// InternalData:     pbAuth.InternalData, // TODO requires unmarshaling
+		Policies:         pbAuth.Policies,
+		TokenPolicies:    pbAuth.TokenPolicies,
+		IdentityPolicies: pbAuth.IdentityPolicies,
+		NoDefaultPolicy:  pbAuth.NoDefaultPolicy,
+		Metadata:         pbAuth.Metadata,
+		Period:           time.Duration(pbAuth.Period),
+		ExplicitMaxTTL:   time.Duration(pbAuth.ExplicitMaxTTL),
+		NumUses:          int(pbAuth.NumUses),
+		BoundCIDRs:       marshalCIDRs(pbAuth.BoundCIDRs),
+	}
+}
+
+func marshalCIDRs(cidrs []string) []*sockaddr.SockAddrMarshaler {
+	sockaddrs := []*sockaddr.SockAddrMarshaler{}
+	for _, cidr := range cidrs {
+		sockaddr := sockaddr.SockAddrMarshaler{}
+		sockaddr.UnmarshalJSON([]byte(cidr))
+		sockaddrs = append(sockaddrs, &sockaddr)
+	}
+	return sockaddrs
+}

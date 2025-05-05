@@ -10,7 +10,9 @@ import (
 	"time"
 
 	sqjwt "github.com/go-jose/go-jose/v3/jwt"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,243 +22,128 @@ func Test_runCelProgram(t *testing.T) {
 		celRole        celRoleEntry
 		claims         map[string]interface{}
 		auth           logical.Auth
-		validateResult func(t *testing.T, err error, role *jwtRole)
+		validateResult func(t *testing.T, err error, role *pb.Auth)
 	}{
 		{
-			name: "Boolean expression true, returns role with no error",
+			name: "Boolean false will return error",
 			celRole: celRoleEntry{
-				AuthProgram: "{'does': 'this work?'}",
+				CelProgram: celhelper.CelProgram{
+					Expression: "1 == 2",
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-			},
-		},
-		{
-			name: "Boolean expression false, returns error",
-			celRole: celRoleEntry{
-				AuthProgram: "{'does': 'this work?'}",
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
 				require.Error(t, err)
 				require.Nil(t, rslt)
 			},
 		},
 		{
-			name: "SetPolicies will add some policies to the resulting role",
+			name: "pb.Auth type can be returned",
 			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetPolicies(["policy1", "policy2"])
-					: false`,
+				CelProgram: celhelper.CelProgram{
+					Expression: `pb.Auth{display_name: 'newAuth'}`,
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
 				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, []string{"policy1", "policy2"}, rslt.TokenPolicies)
+				require.IsType(t, &pb.Auth{}, rslt)
+				require.Equal(t, "newAuth", rslt.DisplayName)
 			},
 		},
 		{
-			name: "SetBoundCIDRs will add some CIDRs to the resulting role",
+			name: "pb.Auth can have policies to the resulting role",
 			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetBoundCIDRs(["192.168.1.0/24", "10.0.1.1/31"])
-					: false`,
+				CelProgram: celhelper.CelProgram{
+					Expression: `pb.Auth{policies: ['policy1', 'policy2']}`,
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
-				require.Equal(t, "192.168.1.0/24", rslt.TokenBoundCIDRs[0].String())
-				require.Equal(t, "10.0.1.1/31", rslt.TokenBoundCIDRs[1].String())
+				require.Equal(t, []string{"policy1", "policy2"}, rslt.Policies)
 			},
 		},
 		{
-			name: "SetTTL will add TTL duration to the resulting role",
+			name: "pb.Auth BoundCIDRs will add some CIDRs to the resulting role",
 			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetTTL("5m")
+				CelProgram: celhelper.CelProgram{
+					Expression: `claims.sub == 'test@example.com'
+					? pb.Auth{bound_cidrs: ['192.168.1.0/24', '10.0.1.1/31']}
 					: false`,
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
-				require.Equal(t, "5m0s", rslt.TokenTTL.String())
+				require.Equal(t, "192.168.1.0/24", rslt.BoundCIDRs[0])
+				require.Equal(t, "10.0.1.1/31", rslt.BoundCIDRs[1])
 			},
 		},
 		{
-			name: "SetMaxTTL will add TTL duration to the resulting role",
+			name: "Cel variables can be used in the expression",
 			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetMaxTTL("5m")
+				CelProgram: celhelper.CelProgram{
+					Variables: []celhelper.CelVariable{
+						{Name: "is_admin", Expression: "claims.sub == 'test@example.com'"},
+					},
+					Expression: `is_admin
+					? pb.Auth{bound_cidrs: ['192.168.1.0/24', '10.0.1.1/31']}
 					: false`,
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
 				require.NoError(t, err)
 				require.NotNil(t, rslt)
-				require.Equal(t, "5m0s", rslt.TokenMaxTTL.String())
+				require.Equal(t, "192.168.1.0/24", rslt.BoundCIDRs[0])
+				require.Equal(t, "10.0.1.1/31", rslt.BoundCIDRs[1])
 			},
 		},
 		{
-			name: "SetExplicitMaxTTL will add TTL duration to the resulting role",
+			name: "pb.Auth proto message is validated",
 			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetExplicitMaxTTL("5m")
+				Name: "celRole",
+				CelProgram: celhelper.CelProgram{
+					Variables: []celhelper.CelVariable{
+						{Name: "is_admin", Expression: "claims.sub == 'test@example.com'"},
+					},
+					Expression: `is_admin
+					? pb.Auth{no_field: ['192.168.1.0/24', '10.0.1.1/31']}
 					: false`,
+				},
 			},
 			claims: map[string]interface{}{
 				"sub":    "test@example.com",
 				"groups": []string{"group1", "group2"},
 			},
 			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, "5m0s", rslt.TokenExplicitMaxTTL.String())
-			},
-		},
-		{
-			name: "SetPeriod will add token period duration to the resulting role",
-			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetPeriod("5m")
-					: false`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, "5m0s", rslt.TokenPeriod.String())
-			},
-		},
-		{
-			name: "SetNoDefaultPolicy will configure the role",
-			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetNoDefaultPolicy(true)
-					: false`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.True(t, rslt.TokenNoDefaultPolicy)
-			},
-		},
-		{
-			name: "SetStrictlyBindIP will configure the role",
-			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetStrictlyBindIP(true)
-					: false`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.True(t, rslt.TokenStrictlyBindIP)
-			},
-		},
-		{
-			name: "SetTokenNumUses will configure the role",
-			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetTokenNumUses(5)
-					: false`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, 5, rslt.TokenNumUses)
-			},
-		},
-		{
-			name: "SetTokenType will configure the role",
-			celRole: celRoleEntry{
-				AuthProgram: `claims.sub == 'test@example.com'
-					? SetTokenType("default-batch")
-					: false`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, logical.TokenTypeDefaultBatch, rslt.TokenType)
-			},
-		},
-		{
-			name: "Multiple functions can be called in the same program",
-			celRole: celRoleEntry{
-				AuthProgram: `
-                                        claims.sub == 'test@example.com'
-                                        ?
-                                          SetUserClaim("sub") &&
-                                          SetTTL("5m") &&
-                                          SetPolicies(["policy1", "policy2"])
-                                        :
-                                          false
-				`,
-			},
-			claims: map[string]interface{}{
-				"sub":    "test@example.com",
-				"groups": []string{"group1", "group2"},
-			},
-			auth: logical.Auth{},
-			validateResult: func(t *testing.T, err error, rslt *jwtRole) {
-				require.NoError(t, err)
-				require.NotNil(t, rslt)
-				require.Equal(t, "sub", rslt.UserClaim)
-				require.Equal(t, "5m0s", rslt.TokenTTL.String())
-				require.Equal(t, []string{"policy1", "policy2"}, rslt.TokenPolicies)
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
+				require.Error(t, err)
+				require.Nil(t, rslt)
+				require.Contains(t, err.Error(), "no such field")
 			},
 		},
 	}

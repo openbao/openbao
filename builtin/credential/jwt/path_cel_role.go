@@ -13,14 +13,16 @@ import (
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
 type celRoleEntry struct {
-	Name          string     `json:"name"`                     // Required
-	AuthProgram   CelProgram `json:"auth_program"`             // Required
-	FailurePolicy string     `json:"failure_policy,omitempty"` // Default: Deny
-	Message       string     `json:"message,omitempty"`
+	Name          string               `json:"name"`                     // Required
+	CelProgram    celhelper.CelProgram `json:"cel_program"`              // Required
+	FailurePolicy string               `json:"failure_policy,omitempty"` // Default: Deny
+	Message       string               `json:"message,omitempty"`
 
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
@@ -30,20 +32,6 @@ type celRoleEntry struct {
 	ClockSkewLeeway time.Duration `json:"clock_skew_leeway"`
 	// Role binding properties
 	BoundAudiences []string `json:"bound_audiences"`
-}
-
-type CelProgram struct {
-	// List of variables with explicit order (optional)
-	Variables []CelVariable `json:"variables,omitempty"`
-	// Required, the main CEL expression
-	Expression string `json:"expression"`
-}
-
-type CelVariable struct {
-	// Name of the variable.
-	Name string `json:"name"`
-	// CEL expression for the variable
-	Expression string `json:"explression"`
 }
 
 func pathCelRoleList(b *jwtAuthBackend) *framework.Path {
@@ -241,11 +229,11 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	}
 	name := nameRaw.(string)
 
-	authProgram := CelProgram{}
-	if authProgramRaw, ok := data.GetOk("auth_program"); !ok {
+	celProgram := celhelper.CelProgram{}
+	if celProgramRaw, ok := data.GetOk("cel_program"); !ok {
 		return logical.ErrorResponse("missing required field 'auth_program'"), nil
 	} else {
-		authProgram = authProgramRaw.(CelProgram)
+		celProgram = celProgramRaw.(celhelper.CelProgram)
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -278,7 +266,7 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 
 	entry := &celRoleEntry{
 		Name:             name,
-		AuthProgram:      authProgram,
+		CelProgram:       celProgram,
 		FailurePolicy:    failurePolicy,
 		Message:          data.Get("message").(string),
 		BoundAudiences:   boundAudiences,
@@ -359,7 +347,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		AuthProgram:   data.GetWithExplicitDefault("auth_program", oldEntry.AuthProgram).(CelProgram),
+		CelProgram:    data.GetWithExplicitDefault("auth_program", oldEntry.CelProgram).(celhelper.CelProgram),
 		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
 		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
@@ -419,7 +407,7 @@ func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, role
 func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context.Context, s logical.Storage) (*logical.Response, error) {
 	resp := &logical.Response{}
 
-	_, err := b.validateCelProgram(entry.AuthProgram)
+	_, err := b.validateCelProgram(entry.CelProgram)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
@@ -428,14 +416,13 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 	return resp, nil
 }
 
-func (b *jwtAuthBackend) validateCelProgram(program CelProgram) (bool, error) {
-	role := jwtRole{}
+func (b *jwtAuthBackend) validateCelProgram(program celhelper.CelProgram) (bool, error) {
 	env, err := b.celEnv(program)
 	if err != nil {
 		return false, fmt.Errorf("failed to create CEL environment: %w", err)
 	}
 
-	ast, issues := env.Compile(rule)
+	ast, issues := env.Compile(program.Expression)
 	if issues != nil && issues.Err() != nil {
 		return false, fmt.Errorf("Invalid CEL syntax: %v", issues.Err())
 	}
@@ -448,42 +435,7 @@ func (b *jwtAuthBackend) validateCelProgram(program CelProgram) (bool, error) {
 	return true, nil
 }
 
-func (b *jwtAuthBackend) celEvalData(program CelProgram) (*map[string]any, error) {
-	// Evaluate all variables
-	for _, variable := range program.Variables {
-		result, err := parseCompileAndEvaluateVariable(env, variable, evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("%w", err)
-		}
-
-		// Add the evaluated result for subsequent CEL evaluations.
-		// This ensures variables can reference each other and build a cumulative evaluation context.
-		evaluationData[variable.Name] = result.Value()
-	}
-	return evaluationData
-}
-
-func (b *jwtAuthBackend) celEvalExpression(env *cel.Env, expression string) (any, error) {
-	ast, issues := env.Parse(expression)
-	if issues != nil && issues.Err() != nil {
-		return nil, fmt.Errorf("invalid CEL syntax for variable '%s': %w", variable.Name, issues.Err())
-	}
-
-	// Compile the expression
-	prog, err := env.Program(ast)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile variable '%s': %w", variable.Name, err)
-	}
-
-	// Evaluate the expression
-	result, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate variable '%s': %w", variable.Name, err)
-	}
-}
-
-func (b *jwtAuthBackend) celEvalProgram(program CelProgram, jwtClaims *jwt.Claims) (any, error) {
-
+func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, jwtClaims map[string]any) (any, error) {
 	env, error := b.celEnv(program)
 	if error != nil {
 		return nil, error
@@ -499,7 +451,7 @@ func (b *jwtAuthBackend) celEvalProgram(program CelProgram, jwtClaims *jwt.Claim
 
 	// Evaluate all variables
 	for _, variable := range program.Variables {
-		result, err := parseCompileAndEvaluateExpression(env, variable, evaluationData)
+		result, err := celhelper.ParseCompileAndEvaluateVariable(env, variable, evaluationData)
 		if err != nil {
 			return nil, fmt.Errorf("%w", err)
 		}
@@ -510,10 +462,10 @@ func (b *jwtAuthBackend) celEvalProgram(program CelProgram, jwtClaims *jwt.Claim
 	}
 
 	// Evaluate the CEL Role success expression
-	return b.parseCompileAndEvaluateExpression(env, program.Expression, evaluationData)
+	return celhelper.ParseCompileAndEvaluateExpression(env, program.Expression, evaluationData)
 }
 
-func (b *jwtAuthBackend) celEnv(program CelProgram) (*cel.Env, error) {
+func (b *jwtAuthBackend) celEnv(program celhelper.CelProgram) (*cel.Env, error) {
 	envOptions := []cel.EnvOption{}
 
 	// Add all variable declarations to the CEL environment.
@@ -521,13 +473,11 @@ func (b *jwtAuthBackend) celEnv(program CelProgram) (*cel.Env, error) {
 		envOptions = append(envOptions, cel.Declarations(decls.NewVar(variable.Name, decls.Dyn)))
 	}
 
-	// Create the CEL environment using the prepared declarations.
-	env, err := cel.NewEnv(envOptions...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create CEL environment: %w", err)
-	}
+	// Add "pb.Auth" return type to environment
+	envOptions = append(envOptions, cel.Types(&pb.Auth{}))
 
-	return &env
+	// Create the CEL environment using the prepared declarations.
+	return cel.NewEnv(envOptions...)
 }
 
 const (
@@ -540,7 +490,7 @@ const (
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":              r.Name,
-		"auth_program":      r.AuthProgram,
+		"auth_program":      r.CelProgram,
 		"failure_policy":    r.FailurePolicy,
 		"message":           r.Message,
 		"expiration_leeway": int64(r.ExpirationLeeway.Seconds()),

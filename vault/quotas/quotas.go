@@ -1204,6 +1204,49 @@ func (m *Manager) HandleRemount(ctx context.Context, from, to namespace.MountPat
 	return nil
 }
 
+// pruneQuota is a helper to delete quota entries from memdb and storage as part of
+// mount disabling or namespace deletion.
+// The caller must hold quotaLock in write mode and dbAndCacheLock in read/write mode.
+func (m *Manager) pruneQuota(ctx context.Context, txn *memdb.Txn, idx string, args ...any) error {
+	for _, quotaType := range quotaTypes() {
+		iter, err := txn.Get(quotaType, idx, args...)
+		if err != nil {
+			return err
+		}
+		for raw := iter.Next(); raw != nil; raw = iter.Next() {
+			if err := txn.Delete(quotaType, raw); err != nil {
+				return fmt.Errorf("failed to delete quota from memdb: %w", err)
+			}
+			quota := raw.(Quota)
+			if err := m.storage.Delete(ctx, QuotaStoragePath(quotaType, quota.QuotaName())); err != nil {
+				return fmt.Errorf("failed to delete quota from storage: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// HandleNamespaceDeletion updates the quota subsystem with the deletion of a
+// namespace. This should only be called on the primary cluster node.
+func (m *Manager) HandleNamespaceDeletion(ctx context.Context, nsPath string) error {
+	m.quotaLock.Lock()
+	m.dbAndCacheLock.RLock()
+	defer m.quotaLock.Unlock()
+	defer m.dbAndCacheLock.RUnlock()
+
+	txn := m.db.Txn(true)
+	defer txn.Abort()
+
+	err := m.pruneQuota(ctx, txn, indexNamespace, nsPath, false, false, false)
+	if err != nil {
+		return err
+	}
+
+	txn.Commit()
+
+	return nil
+}
+
 // HandleBackendDisabling updates the quota subsystem with the disabling of auth
 // or secret engine disabling. This should only be called on the primary cluster
 // node.
@@ -1222,39 +1265,20 @@ func (m *Manager) HandleBackendDisabling(ctx context.Context, nsPath, mountPath 
 		nsPath = "root"
 	}
 
-	updateMounts := func(idx string, args ...interface{}) error {
-		for _, quotaType := range quotaTypes() {
-			iter, err := txn.Get(quotaType, idx, args...)
-			if err != nil {
-				return err
-			}
-			for raw := iter.Next(); raw != nil; raw = iter.Next() {
-				if err := txn.Delete(quotaType, raw); err != nil {
-					return fmt.Errorf("failed to delete quota from db after mount disabling; namespace %q, err %v", nsPath, err)
-				}
-				quota := raw.(Quota)
-				if err := m.storage.Delete(ctx, QuotaStoragePath(quotaType, quota.QuotaName())); err != nil {
-					return fmt.Errorf("failed to delete quota from storage after mount disabling; namespace %q, err %v", nsPath, err)
-				}
-			}
-		}
-		return nil
-	}
-
 	// Update mounts for everything without a path prefix or role
-	err := updateMounts(indexNamespaceMount, nsPath, mountPath, false, false)
+	err := m.pruneQuota(ctx, txn, indexNamespaceMount, nsPath, mountPath, false, false)
 	if err != nil {
 		return err
 	}
 
 	// Update mounts for everything with a path prefix
-	err = updateMounts(indexNamespaceMount, nsPath, mountPath, true, false)
+	err = m.pruneQuota(ctx, txn, indexNamespaceMount, nsPath, mountPath, true, false)
 	if err != nil {
 		return err
 	}
 
 	// Update mounts for everything with a role
-	err = updateMounts(indexNamespaceMount, nsPath, mountPath, false, true)
+	err = m.pruneQuota(ctx, txn, indexNamespaceMount, nsPath, mountPath, false, true)
 	if err != nil {
 		return err
 	}

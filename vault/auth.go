@@ -384,7 +384,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 		return fmt.Errorf("no matching mount at %q", src.Namespace.Path+src.MountPath)
 	}
 
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		return fmt.Errorf("path in use at %q", match)
 	}
 
@@ -407,7 +407,7 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 
 	c.authLock.Lock()
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		c.authLock.Unlock()
 		return fmt.Errorf("path in use at %q", match)
 	}

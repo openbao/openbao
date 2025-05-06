@@ -754,19 +754,24 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 		MountPath: "secret2/",
 	}
 
+	match := c.router.MatchingMount(ns2Ctx, "secret/bar")
+	if match != ns2.Path+"secret/" {
+		t.Fatalf("missing mount, match %q", match)
+	}
+
 	err := c.remountSecretsEngine(ns1Ctx, src, dst, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(ns2Ctx, "secret/bar")
+	match = c.router.MatchingMount(ns2Ctx, "secret/bar")
 	if match != "" {
-		t.Fatal("failed remount", match)
+		t.Fatalf("secret still at old location, match %q", match)
 	}
 
 	match = c.router.MatchingMount(ns3Ctx, "secret2/bar")
 	if match != ns3.Path+"secret2/" {
-		t.Fatal("failed remount", match)
+		t.Fatalf("secret not at new location, match %q", match)
 	}
 
 	c.sealInternal()
@@ -782,12 +787,12 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 
 	match = c.router.MatchingMount(ns2Ctx, "secret/bar")
 	if match != "" {
-		t.Fatal("failed remount after seal", match)
+		t.Fatalf("secret still at old location after unseal, match %q", match)
 	}
 
 	match = c.router.MatchingMount(ns3Ctx, "secret2/bar")
 	if match != ns3.Path+"secret2/" {
-		t.Fatal("failed remount after seal", match)
+		t.Fatalf("secret not at new location after unseal, match %q", match)
 	}
 }
 

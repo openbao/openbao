@@ -455,6 +455,7 @@ func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core,
 		t.Fatal(err)
 	}
 }
+
 func testCoreAddSecretMount(t testing.T, core *Core, token string) {
 	rootCtx := namespace.RootContext(nil)
 	testCoreAddSecretMountContext(rootCtx, t, core, token)

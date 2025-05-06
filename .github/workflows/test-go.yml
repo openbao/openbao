@@ -213,6 +213,8 @@ jobs:
               -tags "$INPUTS_GO_TAGS" \
               -timeout=${{ env.TIMEOUT_IN_MINUTES }}m \
               -parallel=${{ inputs.go-test-parallelism }} \
+              -covermode=count \
+              -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out \
               $INPUTS_EXTRA_FLAGS \
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

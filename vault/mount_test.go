@@ -753,12 +753,18 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 		Namespace: ns3,
 		MountPath: "secret2/",
 	}
+
 	err := c.remountSecretsEngine(ns1Ctx, src, dst, true)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	match := c.router.MatchingMount(ns3Ctx, "secret2/bar")
+	match := c.router.MatchingMount(ns2Ctx, "secret/bar")
+	if match != "" {
+		t.Fatal("failed remount", match)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "secret2/bar")
 	if match != ns3.Path+"secret2/" {
 		t.Fatal("failed remount", match)
 	}
@@ -776,12 +782,12 @@ func TestCore_Remount_Namespaces(t *testing.T) {
 
 	match = c.router.MatchingMount(ns2Ctx, "secret/bar")
 	if match != "" {
-		t.Fatal("failed remount", match)
+		t.Fatal("failed remount after seal", match)
 	}
 
 	match = c.router.MatchingMount(ns3Ctx, "secret2/bar")
 	if match != ns3.Path+"secret2/" {
-		t.Fatal("failed remount", match)
+		t.Fatal("failed remount after seal", match)
 	}
 }
 

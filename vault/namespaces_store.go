@@ -711,6 +711,12 @@ func clearNamespaceResources(ctx context.Context, ns *NamespaceStore, namespaceT
 		}
 	}
 
+	err = ns.core.quotaManager.HandleNamespaceDeletion(ctx, namespaceToDelete.Path)
+	if err != nil {
+		ns.logger.Error("failed to update quotas after deleting namespace", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
 	defer ns.lock.Unlock()

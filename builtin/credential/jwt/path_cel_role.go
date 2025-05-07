@@ -424,6 +424,7 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 }
 
 func (b *jwtAuthBackend) validateCelProgram(program celhelper.CelProgram) (bool, error) {
+	// adding a minimal jwtClaims collection here, for validating usages in CEL expression
 	_, err := b.celEvalProgram(program, map[string]any{"sub": "email@example.com", "aud": "audience", "iss": "issuer"})
 	if err != nil {
 		return false, fmt.Errorf("failed to validate CEL program: %w", err)

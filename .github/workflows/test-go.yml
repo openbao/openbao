@@ -225,16 +225,6 @@ jobs:
               -covermode=$COVERMODE \
               -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out \
               $INPUTS_EXTRA_FLAGS \
-      - name: Merge coverage reports
-        if: inputs.binary-tests && matrix.id == inputs.total-runners
-        run: |
-          set -exo pipefail
-          # Merge the coverage reports from all the test runs
-          gocovmerge -o test-results/go-test/coverage.out test-results/go-test/coverage-*.out
-          # Convert the merged report to HTML format
-          go tool cover -html=test-results/go-test/coverage.out -o test-results/go-test/coverage.html
-          # Print the total coverage percentage
-          go tool cover -func=coverage.out | grep total | awk '{ print $1, $3 }'
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -335,3 +325,13 @@ jobs:
           ls -lhR test-results/go-test
           find test-results/go-test -type f -mindepth 1 -mtime +3 -delete
           ls -lhR test-results/go-test
+      - name: Calculate global test coverage
+        run: |
+          set -e
+          COVERAGE_FILE="test-results/go-test/combined-coverage.out"
+          # Combine all coverage files into one
+          echo "mode: count" > "$COVERAGE_FILE"
+          find test-results/go-test -name 'coverage-*.out' -exec tail -n +2 {} \; >> "$COVERAGE_FILE"
+
+          # Calculate the global coverage percentage
+          go tool cover -func="$COVERAGE_FILE" | tail -n 1 | awk '{print "Global Test Coverage: " $3}'

@@ -122,6 +122,8 @@ func RespondErrorCommon(req *Request, resp *Response, err error) (int, error) {
 			statusCode = http.StatusMethodNotAllowed
 		case errwrap.Contains(err, ErrUnsupportedPath.Error()):
 			statusCode = http.StatusNotFound
+		case errwrap.Contains(err, ErrLockedNamespace.Error()):
+			statusCode = http.StatusServiceUnavailable
 		case errwrap.Contains(err, ErrInvalidRequest.Error()):
 			statusCode = http.StatusBadRequest
 		case errwrap.Contains(err, ErrUpstreamRateLimited.Error()):

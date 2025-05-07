@@ -5,6 +5,7 @@ package jwtauth
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -84,9 +85,9 @@ func pathCelRole(b *jwtAuthBackend) *framework.Path {
 			Type:        framework.TypeString,
 			Description: "Name of the cel role",
 		},
-		"auth_program": {
+		"cel_program": {
 			Type:        framework.TypeMap,
-			Description: "CEL variables and expression defining the auth program for the role",
+			Description: "CEL variables and expression defining the program for the role",
 		},
 		"failure_policy": {
 			Type:        framework.TypeString,
@@ -133,9 +134,9 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
 				Type:        framework.TypeString,
 				Description: "Name of the cel role",
 			},
-			"auth_program": {
+			"cel_program": {
 				Type:        framework.TypeMap,
-				Description: "CEL variables and expression defining the auth program for the role",
+				Description: "CEL variables and expression defining the program for the role",
 			},
 			"failure_policy": {
 				Type:        framework.TypeString,
@@ -231,9 +232,15 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 
 	celProgram := celhelper.CelProgram{}
 	if celProgramRaw, ok := data.GetOk("cel_program"); !ok {
-		return logical.ErrorResponse("missing required field 'auth_program'"), nil
+		return logical.ErrorResponse("missing required field 'cel_program'"), nil
 	} else {
-		celProgram = celProgramRaw.(celhelper.CelProgram)
+		jsonString, err := json.Marshal(celProgramRaw)
+		if err != nil {
+			return logical.ErrorResponse("failed to parse cel_program: %s", err), nil
+		}
+		if err := json.Unmarshal(jsonString, &celProgram); err != nil {
+			return logical.ErrorResponse("failed to parse cel_program: %s", err), nil
+		}
 	}
 
 	failurePolicy := "Deny" // Default value
@@ -347,7 +354,7 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 	entry := &celRoleEntry{
 		Name:          roleName,
-		CelProgram:    data.GetWithExplicitDefault("auth_program", oldEntry.CelProgram).(celhelper.CelProgram),
+		CelProgram:    data.GetWithExplicitDefault("cel_program", oldEntry.CelProgram).(celhelper.CelProgram),
 		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
 		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
@@ -417,30 +424,18 @@ func validateCelRoleCreation(b *jwtAuthBackend, entry *celRoleEntry, ctx context
 }
 
 func (b *jwtAuthBackend) validateCelProgram(program celhelper.CelProgram) (bool, error) {
-	env, err := b.celEnv(program)
+	_, err := b.celEvalProgram(program, map[string]any{"sub": "email@example.com", "aud": "audience", "iss": "issuer"})
 	if err != nil {
-		return false, fmt.Errorf("failed to create CEL environment: %w", err)
+		return false, fmt.Errorf("failed to validate CEL program: %w", err)
 	}
-
-	ast, issues := env.Compile(program.Expression)
-	if issues != nil && issues.Err() != nil {
-		return false, fmt.Errorf("Invalid CEL syntax: %v", issues.Err())
-	}
-
-	// Check AST for errors
-	if ast == nil {
-		return false, fmt.Errorf("failed to compile CEL rule")
-	}
-
 	return true, nil
 }
 
 func (b *jwtAuthBackend) celEvalProgram(program celhelper.CelProgram, jwtClaims map[string]any) (any, error) {
-	env, error := b.celEnv(program)
-	if error != nil {
-		return nil, error
+	env, err := b.celEnv(program)
+	if err != nil {
+		return nil, err
 	}
-
 	// Initialize the evaluation context for CEL expressions with the raw request data.
 	// The "request" key allows CEL expressions to access and evaluate against input fields.
 	// Additional variables and evaluated results will be added dynamically during processing.
@@ -475,8 +470,6 @@ func (b *jwtAuthBackend) celEnv(program celhelper.CelProgram) (*cel.Env, error) 
 
 	// Add "pb.Auth" return type to environment
 	envOptions = append(envOptions, cel.Types(&pb.Auth{}))
-
-	// Create the CEL environment using the prepared declarations.
 	return cel.NewEnv(envOptions...)
 }
 
@@ -490,7 +483,7 @@ const (
 func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":              r.Name,
-		"auth_program":      r.CelProgram,
+		"cel_program":       r.CelProgram,
 		"failure_policy":    r.FailurePolicy,
 		"message":           r.Message,
 		"expiration_leeway": int64(r.ExpirationLeeway.Seconds()),

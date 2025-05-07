@@ -9,6 +9,7 @@ import (
 	"slices"
 	"testing"
 
+	celhelper "github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 	// Test case for creating CEL roles
 	type TestCase struct {
 		Name          string
-		AuthProgram   map[string]any
+		CelProgram    map[string]any
 		ExpectErr     bool
 		FailurePolicy string
 	}
@@ -27,7 +28,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 	testCases := []TestCase{
 		{
 			Name: "testcelrole_valid",
-			AuthProgram: map[string]any{
+			CelProgram: map[string]any{
 				"expression": "1 == 1",
 			},
 			ExpectErr:     false,
@@ -35,7 +36,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 		},
 		{
 			Name: "testcelrole_invalid",
-			AuthProgram: map[string]any{
+			CelProgram: map[string]any{
 				"expression": "invalid_cel_syntax",
 			},
 			ExpectErr:     true,
@@ -54,7 +55,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 			// Data for creating the role
 			roleData := map[string]interface{}{
-				"auth_program": tc.AuthProgram,
+				"cel_program": tc.CelProgram,
 			}
 
 			// Add failure_policy only if it's provided in the test case
@@ -103,7 +104,7 @@ func TestJwt_CelRoleCreate(t *testing.T) {
 
 				// Validate fields
 				require.Equal(t, tc.Name, data["name"], fmt.Sprintf("bad [%d] name mismatch", tcNum))
-				require.Equal(t, tc.AuthProgram, data["auth_program"], fmt.Sprintf("bad [%d] auth_program mismatch", tcNum))
+				require.Equal(t, tc.CelProgram["expression"], data["cel_program"].(celhelper.CelProgram).Expression, fmt.Sprintf("bad [%d] cel_program mismatch", tcNum))
 			}
 
 			// List roles to verify

@@ -22,15 +22,12 @@ runs:
   steps:
     - id: install
       shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
         mkdir -p "$HOME/bin"
-        DEST="$HOME/bin/gocovmerge"
-        echo "destination=$DEST" >> "$GITHUB_OUTPUT"
-
-        # Use latest commit SHA since gocovmerge doesn't use releases
-        echo "version=latest" >> "$GITHUB_OUTPUT"
-
         go install github.com/wadey/gocovmerge@latest
+
+        # Add the Go bin path to GITHUB_PATH so future steps see it
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+        echo "destination=$(go env GOPATH)/bin/gocovmerge" >> "$GITHUB_OUTPUT"
+        echo "version=latest" >> "$GITHUB_OUTPUT"

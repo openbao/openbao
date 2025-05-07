@@ -588,6 +588,18 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
 
+	if ns != namespace.RootNamespace {
+		// verify whether the namespace is either directly or inherently locked
+		lockedNS := c.namespaceStore.GetLockingNamespace(ns)
+		if lockedNS != nil && req.Operation != logical.RevokeOperation && req.Operation != logical.RollbackOperation {
+			switch req.Path {
+			case "sys/namespaces/api-lock/unlock":
+			default:
+				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
+			}
+		}
+	}
+
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
 		ctx = context.WithValue(ctx, logical.CtxKeyInFlightRequestID{}, inFlightReqID)

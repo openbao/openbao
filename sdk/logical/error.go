@@ -14,6 +14,10 @@ var (
 	// by the logical backend.
 	ErrUnsupportedPath = errors.New("unsupported path")
 
+	// ErrLockedNamespace is returned if the namespace (path)
+	// is locked and cannot be accessed without unlocking.
+	ErrLockedNamespace = errors.New("locked namespace")
+
 	// ErrInvalidRequest is returned if the request is invalid
 	ErrInvalidRequest = errors.New("invalid request")
 

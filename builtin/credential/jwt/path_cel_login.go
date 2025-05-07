@@ -18,12 +18,6 @@ import (
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 )
 
-const (
-	CelResultAuthorizedKey     = "authorized"
-	CelResultAddPoliciesKey    = "add_policies"
-	CelResultRemovePoliciesKey = "remove_policies"
-)
-
 func pathCelLogin(b *jwtAuthBackend) *framework.Path {
 	return &framework.Path{
 		Pattern: `cel/login$`,

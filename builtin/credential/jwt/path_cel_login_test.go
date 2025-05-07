@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test_runCelProgram test private method 'runCelProgram'
 func Test_runCelProgram(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -162,6 +163,7 @@ func Test_runCelProgram(t *testing.T) {
 	}
 }
 
+// TestCelRoleAuth tests the path_cel_role and path_cel_login endpoints
 func TestCelRoleAuth(t *testing.T) {
 	tests := []struct {
 		name          string

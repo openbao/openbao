@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestJwt_CelRoleCreate tests the path_cel_role create handler
 func TestJwt_CelRoleCreate(t *testing.T) {
 	t.Parallel()
 

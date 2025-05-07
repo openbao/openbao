@@ -322,11 +322,8 @@ func (b *jwtAuthBackend) pathCelRoleRead(ctx context.Context, req *logical.Reque
 	}
 
 	role, err := b.getCelRole(ctx, req.Storage, roleName)
-	if err != nil {
+	if err != nil || role == nil {
 		return nil, err
-	}
-	if role == nil {
-		return nil, nil
 	}
 
 	resp := &logical.Response{
@@ -385,20 +382,13 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 
 func (b *jwtAuthBackend) pathCelRoleDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	err := req.Storage.Delete(ctx, "cel/role/"+data.Get("name").(string))
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
+	return nil, err
 }
 
 func (b *jwtAuthBackend) getCelRole(ctx context.Context, s logical.Storage, roleName string) (*celRoleEntry, error) {
 	entry, err := s.Get(ctx, "cel/role/"+roleName)
-	if err != nil {
+	if err != nil || entry == nil {
 		return nil, err
-	}
-	if entry == nil {
-		return nil, nil
 	}
 
 	var result celRoleEntry

@@ -832,7 +832,7 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 }
 
-func TestCore_RemountCredential_Namesoaces(t *testing.T) {
+func TestCore_RemountCredential_Namespaces(t *testing.T) {
 	c, keys, _ := TestCoreUnsealed(t)
 	rootCtx := namespace.RootContext(nil)
 	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)

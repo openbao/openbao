@@ -444,3 +444,29 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b)
 }
+
+func TestPostgreSQLBackend_Retry(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.TestContainerNoWait(t)
+	defer cleanup()
+
+	var b physical.Backend
+	var err error
+
+	b, err = NewPostgreSQLBackend(map[string]string{
+		"connection_url":      connURL,
+		"table":               "openbao_kv_store",
+		"ha_enabled":          "true",
+		"max_connect_retries": "1000",
+		"skip_create_table":   "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+	if b == nil {
+		t.Fatalf("failed to create backend")
+	}
+}

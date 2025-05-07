@@ -75,6 +75,18 @@ to disable SSL.
   PostgreSQL 9.5 or later. Set to `true` if the database user does not have
   the required permissions; otherwise, OpenBao will fail to start.
 
+- `max_connect_retries` `(int: 1)` - Maximum number of retries to perform
+  when waiting for the database to be active. This uses exponential backoff,
+  starting with 15ms and increasing to 5s between retries. To ensure the
+  connection is active, issues a `SELECT RANDOM() as random` query. Can be
+  set to zero to ensure unlimited retries.
+
+- `ha_permanent_standby` `(bool: false)` - Whether or not this node is a
+  permanent standby and does not attempt to acquire active node status. This
+  is useful when against a replicated PostgreSQL cluster. The environment
+  variable `BAO_PG_PERMANENT_STANDBY` also controls this and takes precedence.
+  Defaults to `false`, meaning leadership may be sought.
+
 ## `postgresql` examples
 
 ### Custom SSL verification

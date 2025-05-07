@@ -1096,6 +1096,17 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 
 	if conf.HAPhysical != nil && conf.HAPhysical.HAEnabled() {
 		c.ha = conf.HAPhysical
+
+		// When the ha backend is marked as a non-voter, ensure we do not
+		// attempt to become the active node.
+		voter, err := c.ha.HAIsVoter()
+		if err != nil {
+			return nil, fmt.Errorf("error getting initial voter status of backend: %w", err)
+		}
+		c.SetNeverBecomeActive(!voter)
+		if !voter {
+			c.standby = true
+		}
 	}
 
 	// MFA method

@@ -70,6 +70,13 @@ type HABackend interface {
 
 	// Whether or not HA functionality is enabled
 	HAEnabled() bool
+
+	// Whether the node should be considered for leaderships
+	HAIsVoter() (bool, error)
+
+	// Set voting status. This has no guarantees whether this is ephemeral or
+	// persistent and is dependent on the particular backend.
+	HASetVoter(bool) error
 }
 
 // FencingHABackend is an HABackend which provides the additional guarantee that

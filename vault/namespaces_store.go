@@ -35,6 +35,9 @@ const (
 	// Namespace storage location.
 	namespaceStoreRoot = "core/namespaces/"
 
+	// Namespaces lock location.
+	lockPrefix = "core/namespace-lock"
+
 	// namespaceBarrierPrefix is the prefix to the UUID of a namespaces
 	// used in the barrier view for the namespace-owned backends.
 	namespaceBarrierPrefix = "namespaces/"
@@ -62,6 +65,14 @@ type NamespaceStore struct {
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
+}
+
+// lock struct is used to represent a lock of the namespace
+// rendering the namespace unable to serve any requests
+// it can be hold by the admin of the same namespace or any
+// admin associated by the parent namespaces
+type lock struct {
+	Key string `json:"key" mapstructure:"key"`
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -121,22 +132,31 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
 		if err := logical.HandleListPage(s, namespaceStoreRoot, 100, func(page int, index int, entry string) (bool, error) {
-			path := path.Join(namespaceStoreRoot, entry)
+			nsPath := path.Join(namespaceStoreRoot, entry)
 
-			item, err := s.Get(ctx, path)
+			item, err := s.Get(ctx, nsPath)
 			if err != nil {
-				return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", path, page, index, err)
+				return false, fmt.Errorf("failed to fetch namespace %v (page %v / index %v): %w", nsPath, page, index, err)
 			}
 
 			if item == nil {
-				return false, fmt.Errorf("%v has an empty namespace definition (page %v / index %v)", path, page, index)
+				return false, fmt.Errorf("%v has an empty namespace definition (page %v / index %v)", nsPath, page, index)
+			}
+
+			nsLockPath := path.Join(namespaceBarrierPrefix, entry, lockPrefix)
+			nsLock, err := s.Get(ctx, nsLockPath)
+			if err != nil {
+				return false, fmt.Errorf("failed to fetch namespace lock %v (page %v / index %v): %w", nsLockPath, page, index, err)
 			}
 
 			var namespace namespace.Namespace
 			if err := item.DecodeJSON(&namespace); err != nil {
-				return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", path, page, index, err)
+				return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", nsPath, page, index, err)
 			}
 
+			if nsLock != nil {
+				namespace.Locked = true
+			}
 			namespacesByPath.unsafeInsert(&namespace)
 			namespacesByUUID[namespace.UUID] = &namespace
 			namespacesByAccessor[namespace.ID] = &namespace
@@ -754,4 +774,92 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 	}
 
 	return resolvedNs, trimmedPath
+}
+
+// LockNamespace is used to lock the specified namespace
+func (ns *NamespaceStore) LockNamespace(ctx context.Context, uuid string) (string, error) {
+	defer metrics.MeasureSince([]string{"namespace", "lock_namespace"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return "", err
+	}
+
+	namespaceToLock, err := ns.GetNamespace(ctx, uuid)
+	if err != nil {
+		return "", err
+	}
+
+	if namespaceToLock == nil {
+		return "", nil
+	}
+
+	lockedNamespace := ns.GetLockingNamespace(namespaceToLock)
+	if lockedNamespace != nil {
+		return "", fmt.Errorf("cannot lock namespace %q as %q is already locked", namespaceToLock.Path, lockedNamespace.Path)
+	}
+
+	ns.lock.Lock()
+	return ns.lockNamespaceLocked(ctx, namespaceToLock)
+}
+
+// GetLockingNamespace walks the namespace tree structure looking for
+// a locked namespace, starting from the child of root, ending at the
+// namespace provided as a argument to the function
+func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
+	var lockedNS *namespace.Namespace
+	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
+		if curNS.Locked {
+			lockedNS = curNS
+			return true
+		}
+		return false
+	})
+	if lockedNS != nil {
+		return lockedNS.Clone()
+	}
+
+	return nil
+}
+
+// lockNamespaceLocked is used to lock the specified namespace
+func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace) (string, error) {
+	// create lock
+	lockKey, err := base62.Random(24)
+	if err != nil {
+		return "", fmt.Errorf("unable to generate namespace lock key: %w", err)
+	}
+
+	lock := &lock{
+		Key: lockKey,
+	}
+
+	// write lock to storage
+	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		storagePath := path.Join(namespaceBarrierPrefix, namespace.UUID, lockPrefix)
+		item, err := logical.StorageEntryJSON(storagePath, &lock)
+		if err != nil {
+			return fmt.Errorf("error marshalling storage entry: %w", err)
+		}
+
+		if err := s.Put(ctx, item); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("error writing namespace lock: %w", err)
+	}
+
+	ns.namespacesByAccessor[namespace.ID].Locked = true
+	ns.namespacesByUUID[namespace.UUID].Locked = true
+	namespace.Locked = true
+	err = ns.namespacesByPath.Insert(namespace)
+	if err != nil {
+		return "", fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	ns.lock.Unlock()
+
+	return lockKey, nil
 }

@@ -81,6 +81,28 @@ func (nt *namespaceTree) LongestPrefix(path string) (string, *namespace.Namespac
 	return namespacePrefix, node.entry, pathSuffix
 }
 
+func (nt *namespaceTree) WalkPath(path string, predicate func(namespace *namespace.Namespace) bool) {
+	path = namespace.Canonicalize(path)
+	var segments []string
+	if path != "" {
+		segments = strings.SplitAfter(path, "/")
+		segments = segments[:len(segments)-1]
+	}
+
+	// intentionally not calling the predicate on the root
+	node := nt.root
+	for _, segment := range segments {
+		n, ok := node.children[segment]
+		if !ok || predicate(n.entry) {
+			return
+		}
+
+		node = n
+	}
+
+	return
+}
+
 // List lists child Namespace entries at a given path, optionally including the
 // namespace at the given path, optionally recursing down into all child
 // namespaces.

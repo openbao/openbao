@@ -81,6 +81,41 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			Pattern: "namespaces/api-lock/lock(?P<path>.*)",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    false,
+					Description: "Path of the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesLock(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: map[string]*framework.FieldSchema{
+							"unlock_key": {
+								Type:        framework.TypeString,
+								Required:    true,
+								Description: "Unlock key required for unlocking the namespace.",
+							},
+						}}},
+					},
+					Summary: "Lock a namespace.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -155,6 +190,7 @@ func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
 		"path":            ns.Path,
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
+		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
 	}
 }
@@ -314,6 +350,42 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
+	}
+}
+
+// handleNamespacesLock handles the "/sys/namespaces/api-lock/lock/<path>" endpoint to lock a namespace.
+func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve namespace: %w", err)
+		}
+
+		if ns == nil {
+			return nil, errors.New("requested namespace does not exist")
+		}
+
+		if ns.ID == namespace.RootNamespaceID {
+			return nil, errors.New("cannot lock root namespace")
+		}
+
+		if ns.Locked {
+			return nil, errors.New("namespace already locked")
+		}
+
+		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, ns.UUID)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if unlockKey != "" {
+			return &logical.Response{Data: map[string]interface{}{
+				"unlock_key": unlockKey,
+			}}, nil
+		}
+
+		return nil, nil
 	}
 }
 

@@ -72,6 +72,7 @@ jobs:
       - uses: ./.github/actions/set-up-go
         name: Setup Git configuration (public)
       - uses: ./.github/actions/set-up-gotestsum
+      - uses: ./.github/actions/set-up-gocovmerge
       - run: mkdir -p test-results/go-test
       - name: Build matrix excluding binary, integration, and testonly tests
         id: build-non-binary
@@ -201,6 +202,14 @@ jobs:
            RERUN_FAILS="--rerun-fails"
           fi
 
+          # Covermode is set to "atomic" when the extra
+          # flag is "-race"
+          if [ extraFlags == "-race" ]; then
+            COVERMODE="atomic"
+          else
+            COVERMODE="count"
+          fi
+
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
           GOARCH="$INPUTS_GO_ARCH" \
             gotestsum --format=short-verbose \
@@ -213,9 +222,19 @@ jobs:
               -tags "$INPUTS_GO_TAGS" \
               -timeout=${{ env.TIMEOUT_IN_MINUTES }}m \
               -parallel=${{ inputs.go-test-parallelism }} \
-              -covermode=count \
+              -covermode=$COVERMODE \
               -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out \
               $INPUTS_EXTRA_FLAGS \
+      - name: Merge coverage reports
+        if: inputs.binary-tests && matrix.id == inputs.total-runners
+        run: |
+          set -exo pipefail
+          # Merge the coverage reports from all the test runs
+          gocovmerge -o test-results/go-test/coverage.out test-results/go-test/coverage-*.out
+          # Convert the merged report to HTML format
+          go tool cover -html=test-results/go-test/coverage.out -o test-results/go-test/coverage.html
+          # Print the total coverage percentage
+          go tool cover -func=coverage.out | grep total | awk '{ print $1, $3 }'
       - name: Archive test results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

@@ -1,0 +1,11 @@
+name: Set up gocovmerge
+description: Installs gocovmerge CLI tool
+
+runs:
+  using: composite
+  steps:
+    - name: Install gocovmerge
+      run: |
+        go install github.com/wadey/gocovmerge@latest
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      shell: bash

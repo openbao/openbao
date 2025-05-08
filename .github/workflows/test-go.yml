@@ -335,6 +335,7 @@ jobs:
           # Extract the last line of the coverage report
           # and print the global coverage percentage
           cat test-results/go-test/coverage.txt | tail -n 1 | awk '{print "Global Test Coverage: " $3}'
+        working-directory: ${{ github.workspace }}
       - name: Archive coverage results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

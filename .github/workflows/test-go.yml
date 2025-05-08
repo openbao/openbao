@@ -59,7 +59,7 @@ on:
         default: ${{ github.ref }}
         type: string
 
-
+env: ${{ fromJSON(inputs.env-vars) }}
 
 jobs:
   test-matrix:
@@ -201,10 +201,8 @@ jobs:
            RERUN_FAILS="--rerun-fails"
           fi
 
-          # Covermode is set to "atomic" when the extra
-          # flag is "-race"
-          if [ $extraFlags -ne "-race" ]; then
-            COVERAGE="-covermode=count -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
+          if [[ $INPUTS_EXTRA_FLAGS == *"-race"* ]]; then
+            COVERAGE="-covermode=atomic -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
           fi
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS
@@ -307,11 +305,6 @@ jobs:
     needs: test-go
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
-        with:
-          ref: ${{ inputs.checkout-ref }}
-          persist-credentials: false
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: test-results/go-test
@@ -344,5 +337,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage.html
-          path: test-results/go-test
-        if: success() || failure()
+          path: test-results/go-test/coverage.html
+        if: inputs.extra-flags !~ '-race'

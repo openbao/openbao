@@ -216,7 +216,7 @@ func testTokenStore_CubbyholeTidy(t *testing.T, c *Core, root string, ns *namesp
 
 	// Verify that root view.List will not return appriopriate keys when
 	// root namespace context is passed
-	if ns != namespace.RootNamespace {
+	if ns.ID != namespace.RootNamespaceID {
 		rootCtx := namespace.RootContext(context.Background())
 		rootView := c.router.MatchingStorageByAPIPath(rootCtx, mountPathCubbyhole)
 		cubbyholeKeysOnRootLevel, err := rootView.List(rootCtx, "")

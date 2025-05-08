@@ -747,10 +747,5 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 		return nil, ""
 	}
 
-	// TODO(ascheel): Fix global uses of comparison by pointer.
-	if resolvedNs.ID == namespace.RootNamespaceID {
-		resolvedNs = namespace.RootNamespace
-	}
-
 	return resolvedNs, trimmedPath
 }

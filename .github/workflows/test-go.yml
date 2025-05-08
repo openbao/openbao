@@ -338,4 +338,4 @@ jobs:
         with:
           name: coverage.html
           path: test-results/go-test/coverage.html
-        if: inputs.extra-flags !~ '-race'
+        if: success() || failure()

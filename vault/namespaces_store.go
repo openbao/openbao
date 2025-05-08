@@ -816,7 +816,96 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 	return resolvedNs, trimmedPath
 }
 
-// LockNamespace is used to lock the specified namespace
+// GetLockingNamespace walks the namespace tree structure looking for
+// a locked namespace, starting from one of the root children,
+// ending at the namespace provided as a argument to the function.
+func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
+	var lockedNS *namespace.Namespace
+	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
+		if curNS.Locked {
+			lockedNS = curNS
+			return true
+		}
+		return false
+	})
+	if lockedNS != nil {
+		return lockedNS.Clone()
+	}
+
+	return nil
+}
+
+// UnlockNamespace attempts to unlock the namespace with provided provided uuid.
+func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, uuid string, forceUnlock bool) error {
+	defer metrics.MeasureSince([]string{"namespace", "unlock_namespace"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
+	namespaceToUnlock, err := ns.GetNamespace(ctx, uuid)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToUnlock == nil {
+		return nil
+	}
+
+	ns.lock.Lock()
+	return ns.unlockNamespaceLocked(ctx, namespaceToUnlock, unlockKey, forceUnlock)
+}
+
+// unlockNamespaceLocked reads namespace lock from the storage, compares it to the
+// provided unlock key, with match deletes the storage entry, modifies namespace
+// tree structure and namespace maps changing the 'Locked' field to false.
+func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace, unlockKey string, forceUnlock bool) error {
+	lockPath := path.Join(namespaceBarrierPrefix, namespace.UUID, lockPrefix)
+	defer ns.lock.Unlock()
+
+	// read lock from storage
+	var nsLock lock
+	err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		item, err := s.Get(ctx, lockPath)
+		if err != nil {
+			return err
+		}
+
+		if item == nil {
+			return errors.New("couldn't find namespace lock in storage")
+		}
+
+		return item.DecodeJSON(&nsLock)
+	})
+	if err != nil {
+		return fmt.Errorf("error retrieving namespace lock: %w", err)
+	}
+
+	// verify lock or omit when forced unlock
+	if !forceUnlock && nsLock.Key != unlockKey {
+		return errors.New("incorrect unlock key")
+	}
+
+	// delete lock from storage
+	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		return s.Delete(ctx, lockPath)
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting namespace lock: %w", err)
+	}
+
+	ns.namespacesByAccessor[namespace.ID].Locked = false
+	ns.namespacesByUUID[namespace.UUID].Locked = false
+	namespace.Locked = false
+	err = ns.namespacesByPath.Insert(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	return nil
+}
+
+// LockNamespace attempts to lock the namespace with provided uuid.
 func (ns *NamespaceStore) LockNamespace(ctx context.Context, uuid string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "lock_namespace"}, time.Now())
 
@@ -842,26 +931,8 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, uuid string) (strin
 	return ns.lockNamespaceLocked(ctx, namespaceToLock)
 }
 
-// GetLockingNamespace walks the namespace tree structure looking for
-// a locked namespace, starting from the child of root, ending at the
-// namespace provided as a argument to the function
-func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
-	var lockedNS *namespace.Namespace
-	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
-		if curNS.Locked {
-			lockedNS = curNS
-			return true
-		}
-		return false
-	})
-	if lockedNS != nil {
-		return lockedNS.Clone()
-	}
-
-	return nil
-}
-
-// lockNamespaceLocked is used to lock the specified namespace
+// lockNamespaceLocked creates a namespace lock, saves it to the storage, modifies namespace
+// tree structure and namespace maps in memory changing the 'Locked' field to true.
 func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace) (string, error) {
 	// create lock
 	lockKey, err := base62.Random(24)

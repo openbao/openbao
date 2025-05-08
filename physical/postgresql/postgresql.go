@@ -101,9 +101,6 @@ type PostgreSQLLock struct {
 func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.Backend, error) {
 	// Get the PostgreSQL credentials to perform read/write operations.
 	connURL := connectionURL(conf)
-	if connURL == "" {
-		return nil, errors.New("missing connection_url")
-	}
 
 	unquoted_table, ok := conf["table"]
 	if !ok {

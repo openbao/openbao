@@ -116,6 +116,40 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			Pattern: "namespaces/api-lock/unlock(?P<path>.*)",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    false,
+					Description: "Path of the namespace.",
+				},
+				"unlock_key": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Unlock key required for unlocking the namespace",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesUnlock(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: "No Content"}},
+					},
+					Summary: "Unlock a namespace.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -170,7 +204,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 								},
 							},
 						},
-						http.StatusNoContent: {{Description: "OK"}},
+						http.StatusNoContent: {{Description: "No Content"}},
 					},
 					Summary: "Delete a namespace.",
 				},
@@ -383,6 +417,49 @@ func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 			return &logical.Response{Data: map[string]interface{}{
 				"unlock_key": unlockKey,
 			}}, nil
+		}
+
+		return nil, nil
+	}
+}
+
+// handleNamespacesUnlock handles the "/sys/namespaces/api-lock/unlock/<path>" endpoint to unlock a namespace.
+func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		unlockKey := data.Get("unlock_key").(string)
+
+		te, err := b.Core.LookupToken(ctx, req.ClientToken)
+		if err != nil {
+			return nil, err
+		}
+
+		isRootRequest := te.IsRoot()
+		if unlockKey == "" && !isRootRequest {
+			return nil, errors.New("provided empty key")
+		}
+
+		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve namespace: %w", err)
+		}
+
+		if ns == nil {
+			return nil, errors.New("requested namespace does not exist")
+		}
+
+		if !ns.Locked {
+			return nil, fmt.Errorf("namespace %q is not locked", ns.Path)
+		}
+
+		lockingNamespace := b.Core.namespaceStore.GetLockingNamespace(ns)
+		if lockingNamespace.ID != ns.ID {
+			return nil, fmt.Errorf("cannot unlock %q with namespace %q being locked", ns.Path, lockingNamespace.Path)
+		}
+
+		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, ns.UUID, isRootRequest)
+		if err != nil {
+			return handleError(err)
 		}
 
 		return nil, nil

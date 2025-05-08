@@ -602,6 +602,7 @@ func TestNamespaceBackend_Scan(t *testing.T) {
 	})
 }
 
+// TestNamespaceBackend_Lock tests the Lock namespace operation on logical request level
 func TestNamespaceBackend_Lock(t *testing.T) {
 	b := testSystemBackend(t)
 	rootCtx := namespace.RootContext(context.Background())
@@ -692,5 +693,123 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 		res, err = b.HandleRequest(teamCtx, req)
 		require.Error(t, err)
 		require.Empty(t, res, "response is not empty")
+	})
+}
+
+// TestNamespaceBackend_Unlock tests the Unlock namespace operation on logical request level
+func TestNamespaceBackend_Unlock(t *testing.T) {
+	core, _, rootToken := TestCoreUnsealed(t)
+	b := core.systemBackend
+	rootCtx := namespace.RootContext(context.Background())
+
+	t.Run("cannot unlock namespace with missing request details", func(t *testing.T) {
+		testNS := testCreateNamespace(t, rootCtx, b, "test", nil)
+
+		// invalid token
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/test")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.Error(t, err)
+		require.Empty(t, res, "response is not empty")
+
+		// empty unlock key
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/test")
+		req.ClientToken = "token"
+		res, err = b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, "provided empty key")
+		require.Empty(t, res, "response is not empty")
+
+		// namespace doesn't exist
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/nonexistent")
+		req.Data["unlock_key"] = "key"
+		req.ClientToken = "token"
+		res, err = b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, "requested namespace does not exist")
+		require.Empty(t, res, "response is not empty")
+
+		// namespace not locked
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/test")
+		req.Data["unlock_key"] = "key"
+		req.ClientToken = "token"
+		res, err = b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, fmt.Sprintf("namespace %q is not locked", testNS.Path))
+		require.Empty(t, res, "response is not empty")
+	})
+
+	t.Run("cannot unlock namespace with locked ancestor", func(t *testing.T) {
+		parentNS := testCreateNamespace(t, rootCtx, b, "parent", nil)
+		parentNSCtx := namespace.ContextWithNamespace(rootCtx, parentNS)
+		childNS := testCreateNamespace(t, parentNSCtx, b, "child", nil)
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/parent/child")
+		_, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/parent")
+		_, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/parent/child")
+		req.Data["unlock_key"] = "placeholder"
+		req.ClientToken = "token"
+		res, err := b.HandleRequest(rootCtx, req)
+		require.ErrorContains(t, err, fmt.Sprintf("cannot unlock %q with namespace %q being locked", childNS.Path, parentNS.Path))
+		require.Empty(t, res, "response is not empty")
+	})
+
+	t.Run("namespace can be unlocked with unlock key", func(t *testing.T) {
+		companyA := testCreateNamespace(t, rootCtx, b, "company_a", nil)
+		companyACtx := namespace.ContextWithNamespace(rootCtx, companyA)
+		testCreateNamespace(t, companyACtx, b, "team_a", nil)
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company_a/team_a")
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		teamALock := res.Data["unlock_key"].(string)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company_a")
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		companyALock := res.Data["unlock_key"].(string)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/company_a")
+		req.Data["unlock_key"] = companyALock
+		req.ClientToken = "team_a"
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/company_a/team_a")
+		req.Data["unlock_key"] = teamALock
+		req.ClientToken = "team_a"
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+	})
+
+	t.Run("namespace can be unlocked by root", func(t *testing.T) {
+		companyB := testCreateNamespace(t, rootCtx, b, "company_b", nil)
+		companyBCtx := namespace.ContextWithNamespace(rootCtx, companyB)
+		testCreateNamespace(t, companyBCtx, b, "team_b", nil)
+
+		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company_b/team_b")
+		_, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company_b")
+		_, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+
+		// root can unlock any namespace without providing the unlock key
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/company_b")
+		req.ClientToken = rootToken
+		res, err := b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
+
+		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/company_b/team_b")
+		req.ClientToken = rootToken
+		res, err = b.HandleRequest(rootCtx, req)
+		require.NoError(t, err)
+		require.Empty(t, res)
 	})
 }

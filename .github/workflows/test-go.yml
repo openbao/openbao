@@ -336,7 +336,7 @@ jobs:
           go tool cover -html="$COVERAGE_FILE" -o test-results/go-test/final-coverage.html
           # Extract the last line of the coverage report
           # and print the global coverage percentage
-          cat test-results/go-test/coverage.txt | tail -n 1 | awk '{print "Global Test Coverage: " $3}'
+          cat test-results/go-test/final-coverage.txt | tail -n 1 | awk '{print "Global Test Coverage: " $3}'
         if: ${{ inputs.env-vars != '-race' }}
       - name: Archive coverage results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

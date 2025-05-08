@@ -2587,7 +2587,7 @@ func (m *ExpirationManager) getIrrevocableLeaseCounts(ctx context.Context, inclu
 			return true
 		}
 
-		leaseMatches := (leaseNS == requestNS) || (includeChildNamespaces && leaseNS.HasParent(requestNS))
+		leaseMatches := (leaseNS.ID == requestNS.ID) || (includeChildNamespaces && leaseNS.HasParent(requestNS))
 		if !leaseMatches {
 			// the lease doesn't meet our criteria, so keep looking
 			return true
@@ -2644,7 +2644,7 @@ func (m *ExpirationManager) listIrrevocableLeases(ctx context.Context, includeCh
 			return true
 		}
 
-		leaseMatches := (leaseNS == requestNS) || (includeChildNamespaces && leaseNS.HasParent(requestNS))
+		leaseMatches := (leaseNS.ID == requestNS.ID) || (includeChildNamespaces && leaseNS.HasParent(requestNS))
 		if !leaseMatches {
 			// the lease doesn't meet our criteria, so keep looking
 			return true

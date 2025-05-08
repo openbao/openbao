@@ -31,7 +31,10 @@ var reservedNames = []string{
 	"identity",
 }
 
-type contextValues struct{}
+type (
+	contextKeyNamespace struct{}
+	contextKeyHeader    struct{}
+)
 
 type Namespace struct {
 	ID      string `json:"id" mapstructure:"id"`
@@ -90,9 +93,10 @@ const (
 )
 
 var (
-	contextNamespace contextValues = struct{}{}
-	ErrNoNamespace   error         = errors.New("no namespace")
-	RootNamespace    *Namespace    = &Namespace{
+	contextNamespace contextKeyNamespace = struct{}{}
+	contextHeader    contextKeyHeader    = struct{}{}
+	ErrNoNamespace   error               = errors.New("no namespace")
+	RootNamespace    *Namespace          = &Namespace{
 		ID:             RootNamespaceID,
 		UUID:           RootNamespaceUUID,
 		Path:           "",
@@ -185,6 +189,25 @@ func FromContext(ctx context.Context) (*Namespace, error) {
 	}
 
 	return ns, nil
+}
+
+// ContextWithNamespaceHeader adds the given namespace header to the given context.
+func ContextWithNamespaceHeader(ctx context.Context, nsHeader string) context.Context {
+	return context.WithValue(ctx, contextHeader, Canonicalize(nsHeader))
+}
+
+// HeaderFromContext retrieves the namespace header from a context.
+func HeaderFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+
+	raw := ctx.Value(contextHeader)
+	if raw == nil {
+		return ""
+	}
+
+	return raw.(string)
 }
 
 // Canonicalize trims any prefix '/' and adds a trailing '/' to the

@@ -10,108 +10,17 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
 var (
-	restrictedAPIs = []string{
-		"sys/audit",
-		"sys/audit-hash",
-		"sys/config/cors",
-		"sys/config/reload",
-		"sys/config/state",
-		"sys/config/ui",
-		"sys/decode-token",
-		"sys/generate-recovery-token",
-		"sys/generate-root",
-		"sys/health",
-		"sys/host-info",
-		"sys/in-flight-req",
-		"sys/init",
-		"sys/internal/counters/activity",
-		"sys/internal/counters/activity/export",
-		"sys/internal/counters/activity/monthly",
-		"sys/internal/counters/config",
-		"sys/key-status",
-		"sys/loggers",
-		"sys/metrics",
-		"sys/monitor",
-		"sys/quotas/config",
-		"sys/quotas/lease-count",
-		"sys/quotas/rate-limit",
-		"sys/raw",
-		"sys/rekey-recovery-key",
-		"sys/replication/recover",
-		"sys/replication/reindex",
-		"sys/replication/status",
-		"sys/replication/merkle-check",
-		"sys/rotate/config",
-		"sys/rotate",
-		"sys/seal",
-		"sys/sealwrap/rewrap",
-		"sys/step-down",
-		"sys/storage",
-		"sys/sync/config",
-		"sys/unseal",
-	}
-	containsAPIs = []string{
-		"sys/config/auditing/",
-		"sys/internal/inspect/router/",
-		"sys/managed-keys/",
-		"sys/mfa/method/",
-		"sys/pprof/",
-		"sys/rekey/",
-	}
-
-	validateNamespace = func(r *http.Request) int {
-		ns, err := namespace.FromContext(r.Context())
-		if err != nil {
-			return http.StatusBadRequest
-		}
-
-		fullURL, err := url.JoinPath(ns.Path, r.URL.Path[4:])
-		if err != nil {
-			return http.StatusBadRequest
-		}
-
-		for _, api := range restrictedAPIs {
-			apiSysRawRouted := "sys/raw/" + api
-			// if path not equals the restricted api path or not equals restricted api path with "sys/raw/" prefix
-			namespaceUseOfRestrictedEndpoint := (fullURL != api && fullURL != apiSysRawRouted) && strings.HasSuffix(fullURL, api)
-			namespacePath, _, ok := strings.Cut(fullURL, api)
-
-			// exclude any occurences of possible restricted APIs paths when path dictates that the suffix is a policy name
-			if ok && (strings.HasSuffix(namespacePath, "sys/policies/acl/") || strings.HasSuffix(namespacePath, "sys/policy/")) {
-				return 0
-			}
-
-			if namespaceUseOfRestrictedEndpoint {
-				return http.StatusBadRequest
-			}
-		}
-
-		namespacedQuotaRequest := (strings.Contains(fullURL, "sys/quotas") && ns.Path != "")
-		if namespacedQuotaRequest {
-			return http.StatusBadRequest
-		}
-
-		for _, api := range containsAPIs {
-			if strings.Contains(fullURL, api) && !strings.HasPrefix(fullURL, api) {
-				return http.StatusBadRequest
-			}
-		}
-
-		return 0
-	}
-
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {
 		// Wrap the help wrapped handler with another layer with a generic
 		// handler
@@ -148,6 +57,11 @@ func wrapMaxRequestSizeHandler(handler http.Handler, props *vault.HandlerPropert
 
 func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/v1/") {
+			handler.ServeHTTP(w, r)
+			return
+		}
+
 		// We don't want to do buildLogicalRequestNoAuth here because, if the
 		// request gets allowed by the quota, the same function will get called
 		// again, which is not desired.
@@ -156,8 +70,22 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			respondError(w, status, err)
 			return
 		}
-		ns, _ := core.NamespaceByPath(r.Context(), path)
-		mountPath := strings.TrimPrefix(core.MatchingMount(r.Context(), path), ns.Path)
+
+		// NOTE: The namespace and mount resolved here may differ from the ones
+		// later resolved in core and used for the remainder of request handling.
+		// For example, this can happen if there is a seal->unseal transition
+		// between this point in request handling and once we read-lock core's state.
+		// The worst-case outcome is that we don't know of a potential quota
+		// configuration at this point (because core is sealed) and let the request
+		// bypass rate limiting right into core if it has queued up right before the
+		// unseal process begins.
+		nsHeader := namespace.HeaderFromContext(r.Context())
+		ns, trimmedPath := core.ResolveNamespaceFromRequest(nsHeader, path)
+		if ns == nil {
+			ns = namespace.RootNamespace
+		}
+		ctx := namespace.ContextWithNamespace(r.Context(), ns)
+		mountPath := strings.TrimPrefix(core.MatchingMount(ctx, trimmedPath), ns.Path)
 
 		quotaReq := &quotas.Request{
 			Type:          quotas.TypeRateLimit,
@@ -168,7 +96,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		}
 
 		// This checks if any role based quota is required (LCQ or RLQ).
-		requiresResolveRole, err := core.ResolveRoleForQuotas(r.Context(), quotaReq)
+		requiresResolveRole, err := core.ResolveRoleForQuotas(quotaReq)
 		if err != nil {
 			core.Logger().Error("failed to lookup quotas", "path", path, "error", err)
 			respondError(w, http.StatusInternalServerError, err)
@@ -180,7 +108,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		if requiresResolveRole {
 			buf := bytes.Buffer{}
 			teeReader := io.TeeReader(r.Body, &buf)
-			role := core.DetermineRoleFromLoginRequestFromReader(r.Context(), mountPath, teeReader)
+			role := core.DetermineRoleFromLoginRequestFromReader(ctx, mountPath, teeReader)
 
 			// Reset the body if it was read
 			if buf.Len() > 0 {

@@ -76,6 +76,11 @@ var (
 
 	alwaysRedirectPaths = pathmanager.New()
 
+	// restrictedSysAPIsNonLogical is the set of `sys/` APIs available only in the root namespace
+	// that may not pass through logical request handling but are handled in HTTP using specialized
+	// calls to core. This is a subset of `vault.restrictedSysAPIs`.
+	restrictedSysAPIsNonLogical = pathmanager.New()
+
 	injectDataIntoTopRoutes = []string{
 		"/v1/sys/audit",
 		"/v1/sys/audit/",
@@ -108,6 +113,23 @@ func init() {
 	alwaysRedirectPaths.AddPaths([]string{
 		"sys/storage/raft/snapshot",
 		"sys/storage/raft/snapshot-force",
+	})
+
+	restrictedSysAPIsNonLogical.AddPaths([]string{
+		"raw",
+		"generate-recovery-token",
+		"init",
+		"seal",
+		"step-down",
+		"unseal",
+		"health",
+		"rekey-recovery-key",
+		"rekey",
+		"storage",
+		"generate-root",
+		"metrics",
+		"pprof",
+		"in-flight-req",
 	})
 }
 
@@ -277,7 +299,8 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		input := &logical.LogInput{
 			Request: req,
 		}
-		err = core.AuditLogger().AuditRequest(r.Context(), input)
+		ctx := namespace.RootContext(r.Context())
+		err = core.AuditLogger().AuditRequest(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 			return
@@ -291,7 +314,7 @@ func handleAuditNonLogical(core *vault.Core, h http.Handler) http.Handler {
 		}
 		httpResp := &logical.HTTPResponse{Data: data, Headers: cw.Header()}
 		input.Response = logical.HTTPResponseToLogicalResponse(httpResp)
-		err = core.AuditLogger().AuditResponse(r.Context(), input)
+		err = core.AuditLogger().AuditResponse(ctx, input)
 		if err != nil {
 			respondError(w, status, err)
 		}
@@ -346,14 +369,12 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 		ctx = context.WithValue(ctx, "original_request_path", r.URL.Path)
 
 		nsHeader := r.Header.Get(consts.NamespaceHeaderName)
-		ns := namespace.RootNamespace
 		if nsHeader != "" {
-			ns = &namespace.Namespace{Path: namespace.Canonicalize(nsHeader)}
 			// Setting the namespace in the header to be included in the response
 			nw.Header().Set(consts.NamespaceHeaderName, nsHeader)
-
 		}
-		ctx = namespace.ContextWithNamespace(ctx, ns)
+
+		ctx = namespace.ContextWithNamespaceHeader(ctx, nsHeader)
 		r = r.WithContext(ctx)
 
 		// Set some response headers with raft node id (if applicable) and hostname, if available
@@ -368,16 +389,16 @@ func wrapGenericHandler(core *vault.Core, h http.Handler, props *vault.HandlerPr
 			nw.Header().Set("X-Vault-Hostname", hostname)
 		}
 
-		switch {
-		case strings.HasPrefix(r.URL.Path, "/v1/"):
-			status := validateNamespace(r)
-			if status != 0 {
-				respondError(nw, status, fmt.Errorf("unavailable operation (%s %s)", r.Method, r.URL.Path))
-				cancelFunc()
-				return
-			}
+		isRestrictedSysAPI := nsHeader != "" && strings.HasPrefix(r.URL.Path, "/v1/sys/") &&
+			restrictedSysAPIsNonLogical.HasPathSegments(r.URL.Path[len("/v1/sys/"):])
 
-		case strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
+		switch {
+		case isRestrictedSysAPI:
+			respondError(nw, http.StatusBadRequest, fmt.Errorf("operation unavailable in namespaces"))
+			cancelFunc()
+			return
+
+		case strings.HasPrefix(r.URL.Path, "/v1/"), strings.HasPrefix(r.URL.Path, "/ui"), r.URL.Path == "/robots.txt", r.URL.Path == "/":
 		case strings.HasPrefix(r.URL.Path, "/.well-known/acme-challenge/"):
 			for _, ln := range props.AllListeners {
 				if ln.Config == nil || ln.Config.TLSDisable {
@@ -792,13 +813,7 @@ func forwardRequest(core *vault.Core, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		respondError(w, http.StatusBadRequest, err)
-		return
-	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
-	if alwaysRedirectPaths.HasPath(path) {
+	if alwaysRedirectPaths.HasPath(r.URL.Path[len("/v1/"):]) {
 		respondStandby(core, w, r.URL)
 		return
 	}

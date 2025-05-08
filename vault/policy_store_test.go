@@ -228,7 +228,7 @@ func testPolicyStorePredefined(t *testing.T, ps *PolicyStore, ns *namespace.Name
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if ns == namespace.RootNamespace {
+	if ns.ID == namespace.RootNamespaceID {
 		if pRoot == nil {
 			t.Fatal("nil root policy")
 		}

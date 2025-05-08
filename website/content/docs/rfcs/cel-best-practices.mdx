@@ -55,9 +55,15 @@ This proposes three tenants of CEL programs:
 
    For instance, in PKI Secrets, this would allow the operator to invoke (from CEL) various role-based validation mechanisms (e.g., IP Sans, durations, &c) using custom parameters without requiring a role object. Or, in JWT, it would allow the operator to build an on-the-fly role.
 
-   In either case, this validation should return back to CEL and not to the calling Go method, allowing it to re-evaluate or potentially call multiple role validation operations. In the case of PKI and JWT, roles would be split into a `validateInputAgainstRole(...)` mechanism and a `templateCertFromRole(...)`/`templateAuthInfoFromRole(...)` mechanism rather than the current behavior which does both in a single step.
+   In either case, this validation should return back to CEL and not to the calling Go method, allowing it to re-evaluate or potentially call multiple role validation operations.
 
-   Notably, this requires that every CEL role have at least two required programs: a validation program, which returns true/false/error message and an output program which templates output in the desired format. With the requirement for libraries and variables (see 3 below), we can take advantage of composability of the program.
+   The net result of this evaluation should be a one of three values:
+
+   1. A boolean literal `false`, indicating the default error message should be returned to the caller. For e.g., login requests, this would be `permission denied` or similar.
+   2. A string error message, giving more detailed failure rationale.
+   3. The final success response object, a Protobuf `message` mimicking e.g., `logical.Auth` or some other plugin-specific structure.
+
+   Notably, while object construction is hard to handle in general (to/from `ref.Val`), using Protobuf is simpler to cross the Go&lt;-&gt;CEL boundary. Certain areas, like [`logical.Auth`](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/logical/auth.go#L13-L117) already have [Protobuf variants](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/plugin/pb/backend.proto#L150-L227), along with [conversion helpers](https://github.com/openbao/openbao/blob/9bdcc26ef9ed7114f74075d196aeb46c96357a7b/sdk/plugin/pb/translation.go#L506-L594).
 
 3. User-Aided Extensibility; aligning with our desire for [pluginization](https://github.com/openbao/openbao/issues/569) of everything.
 
@@ -94,13 +100,17 @@ Eventually, global (under `sys/cel/libraries`) libraries should be created. Thes
 
 Inheritance works from most specific to most general (mount -> child namespace -> parent namespace -> root namespace). This allows overwriting parent behavior, if desired.
 
+### Plugins
+
+In addition, long-term there should be operator-attached plugins specific to CEL; the design for this will be in a separate RFC. However, various builtin components will live under `sdk/helper/cel`.
+
 ### Paths
 
 For layout in the engine, the following paths should be considered:
 
 - `<plugin>/cel/roles` - LIST all roles
 - `<plugin>/cel/role/<role>` - CRUD role
-- `<plugin>/cel/role/<role>/debug` - to debug execution of a role. This is privileged and outputs every step of execution (libraries, variables, validation, and output)
+- `<plugin>/cel/role/<role>/debug` - to debug execution of a role. This is privileged and outputs every step of execution (libraries, variables, and output), though may stop short of full result construction (e.g., in the case of PKI, would not sign the certificate or for login, would not create a final token).
 - `<plugin>/cel/login`, `<plugin>/cel/role/<role>/login` - for auth mounts, to perform a login, taking role as a request parameter or in the path (unauthenticated)
 - `<plugin>/cel/<plugin-specific>` - mount-specific paths, e.g., issue/sign certificates for PKI and SSH
 - `<plugin>/cel/libraries` - LIST all mount-level libraries

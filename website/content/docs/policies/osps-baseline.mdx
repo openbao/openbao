@@ -18,10 +18,10 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | [OSPS-AC-03.02](#osps-ac-03-02) | |
 | [OSPS-BR-01.01](#osps-br-01-01) | |
 | [OSPS-BR-03.01](#osps-br-03-01) | |
-| [OSPS-DO-01.01](#osps-do-01-01) | |
+| [OSPS-DO-01.01](#osps-do-01-01) | ✅ |
 | [OSPS-DO-02.01](#osps-do-02-01) | |
 | [OSPS-GV-02.01](#osps-gv-02-01) | |
-| [OSPS-GV-03.01](#osps-gv-03-01) | |
+| [OSPS-GV-03.01](#osps-gv-03-01) | ✅ |
 | [OSPS-LE-02.01](#osps-le-02-01) | ✅ |
 | [OSPS-LE-02.02](#osps-le-02-02) | |
 | [OSPS-LE-03.01](#osps-le-03-01) | |
@@ -52,7 +52,10 @@ When a CI/CD pipeline accepts an input parameter, that parameter MUST be sanitiz
 When the project lists a URI as an official project channel, that URI MUST be exclusively delivered using encrypted channels.
 
 ## OSPS-DO-01.01 {#osps-do-01-01}
-When the project has made a release, the project documentation MUST include user guides for all basic functionality.
+
+> **Requirement:** *When the project has made a [release](https://baseline.openssf.org/versions/2025-02-25#release), the [project documentation](https://baseline.openssf.org/versions/2025-02-25#project-documentation) MUST include user guides for all basic functionality.*
+
+OpenBao publishes its documentation, including [release notes](/docs/release-notes), at the [OpenBao documentation site](/docs). The documentation also highlights potentially dangerous or destructive operations.
 
 ## OSPS-DO-02.01 {#osps-do-02-01}
 When the project has made a release, the project documentation MUST include a guide for reporting defects.
@@ -61,7 +64,10 @@ When the project has made a release, the project documentation MUST include a gu
 While active, the project MUST have one or more mechanisms for public discussions about proposed changes and usage obstacles.
 
 ## OSPS-GV-03.01 {#osps-gv-03-01}
-While active, the project documentation MUST include an explanation of the contribution process.
+
+> **Requirement:** *While active, the project documentation MUST include an explanation of the contribution process.*
+
+The [`CONTRIBUTING.md`](https://github.com/openbao/openbao/blob/main/CONTRIBUTING.md) file details the contribution process, license policies, and contribution rights, and is also referenced on the [Contributing](/docs/contributing) page.
 
 ## OSPS-LE-02.01 {#osps-le-02-01}
 
@@ -79,7 +85,10 @@ While active, the license for the source code MUST be maintained in the correspo
 While active, the license for the released software assets MUST be included in the released source code, or in a LICENSE file, COPYING file, or LICENSE/ directory alongside the corresponding release assets.
 
 ## OSPS-QA-01.01 {#osps-qa-01-01}
-While active, the project's source code repository MUST be publicly readable at a static URL.
+
+> **Requirement:** *While active, the project's source code [repository](https://baseline.openssf.org/versions/2025-02-25#repository) MUST be publicly readable at a static URL.*
+
+OpenBao's source code repositories are hosted in the public [OpenBao GitHub organization](https://github.com/openbao). The main [`openbao/openbao` repository](https://github.com/openbao/openbao) is accessible via HTTPS and SSH.
 
 ## OSPS-QA-01.02 {#osps-qa-01-02}
 The version control system MUST contain a publicly readable record of all changes made, who made the changes, and when the changes were made.

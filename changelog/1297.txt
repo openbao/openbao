@@ -1,0 +1,3 @@
+```release-note:change
+storage/postgresql: Support empty connection URLs to use standard component-wise variables
+```

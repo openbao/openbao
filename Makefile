@@ -366,16 +366,9 @@ dev-gorelease:
 
 .PHONY: goreleaser-check
 goreleaser-check:
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#LINUXONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#NONHSM#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
-	@$(SED) 's/REPLACE_WITH_RELEASE_GOOS/linux/g' $(CURDIR)/.goreleaser-template.yaml > $(CURDIR)/.goreleaser.yaml
-	@$(SED) -i 's/^#HSMONLY#//g' $(CURDIR)/.goreleaser.yaml
-	@$(GO_CMD) run github.com/goreleaser/goreleaser/v2@latest check
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.hsm.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.linux.yaml
+	$(GO_CMD) run github.com/goreleaser/goreleaser/v2@v2.5.1 check -f goreleaser.other.yaml
 
 .PHONY: sync-deps
 sync-deps:
@@ -384,3 +377,10 @@ sync-deps:
 .PHONY: ci-sync-deps
 ci-sync-deps: sync-deps
 	git diff --quiet || (echo -e "\n\nModified files:" && git status --short && echo -e "\n\nRun 'make sync-deps' locally and commit the changes.\n" && exit 1)
+
+.PHONY: bump-critical
+bump-critical:
+	grep -o 'golang.org/x/[^ ]*' ./go.mod  | xargs -I{} go get '{}@latest'
+	go get github.com/golang-jwt/jwt/v4@latest
+	go get github.com/golang-jwt/jwt/v5@latest
+	make sync-deps

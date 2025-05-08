@@ -41,11 +41,15 @@ to disable SSL.
 
 ## `postgresql` parameters
 
-- `connection_url` `(string: <required>)` – Specifies the connection string to
+- `connection_url` `(string: "")` – Specifies the connection string to
   use to authenticate and connect to PostgreSQL. The connection URL can also be
   set using the `BAO_PG_CONNECTION_URL` environment variable. A full list of supported
   parameters can be found in the [pgx library][pgxlib] and [PostgreSQL connection string][pg_conn_docs]
   documentation. For example connection string URLs, see the examples section below.
+  OpenBao supports standard PostgreSQL component environment variables as well,
+  [including `PGHOST`](https://www.postgresql.org/docs/current/libpq-envars.html);
+  see [`pgconn.ParseConfig(...)`](https://pkg.go.dev/github.com/jackc/pgconn)
+  for more information. This configuration option may be blank.
 
 - `table` `(string: "openbao_kv_store")` – Specifies the name of the table in
   which to write OpenBao data. OpenBao will attempt to create it if missing and

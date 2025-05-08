@@ -6,6 +6,7 @@ package postgresql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/openbao/openbao/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostgreSQLBackend(t *testing.T) {
@@ -443,4 +445,46 @@ func TestPostgreSQLBackend_NoCreateTables(t *testing.T) {
 
 	logger.Info("Running basic backend tests")
 	physical.ExerciseBackend(t, b)
+}
+
+// TestPostgreSQLBackend_PGEnv ensures that standard PostgreSQL environment
+// variables works.
+func TestPostgreSQLBackend_PGEnv(t *testing.T) {
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	defer func(host, user, password, port, sslmode string) {
+		os.Setenv("PGHOST", host)
+		os.Setenv("PGUSER", user)
+		os.Setenv("PGPASSWORD", password)
+		os.Setenv("PGPORT", port)
+		os.Setenv("PGSSLMODE", sslmode)
+	}(
+		os.Getenv("PGHOST"),
+		os.Getenv("PGUSER"),
+		os.Getenv("PGPASSWORD"),
+		os.Getenv("PGPORT"),
+		os.Getenv("PGSSLMODE"),
+	)
+
+	addr, err := url.Parse(connURL)
+	require.NoError(t, err)
+
+	password, _ := addr.User.Password()
+	os.Setenv("PGHOST", addr.Hostname())
+	os.Setenv("PGUSER", addr.User.Username())
+	os.Setenv("PGPASSWORD", password)
+	os.Setenv("PGPORT", addr.Port())
+	os.Setenv("PGSSLMODE", "disable")
+
+	_, err = NewPostgreSQLBackend(map[string]string{
+		"table":             "openbao_kv_store",
+		"ha_enabled":        "true",
+		"skip_create_table": "true",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
 }

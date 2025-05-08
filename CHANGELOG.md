@@ -1,3 +1,12 @@
+## 2.2.1
+## April 22, 2025
+
+BUG FIXES:
+
+* cli: Return a quoted string URL when -output-curl-string flag is passed in [[GH-1038](https://github.com/openbao/openbao/pull/1038)]
+* openbao: update modules and checksums to address vulnerabilities [[GH-1126](https://github.com/openbao/openbao/pull/1126)]
+* secrets/pki: Remove null value for subproblems encoding, fixing compatibility with certain ACME clients like certbot. [[GH-1236](https://github.com/openbao/openbao/pull/1236)]
+
 ## 2.2.0
 ## March 5, 2025
 

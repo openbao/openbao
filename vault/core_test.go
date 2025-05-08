@@ -2708,7 +2708,7 @@ path "secret/*" {
 
 	ps := c.policyStore
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, secretWritingPolicy)
-	if err := ps.SetPolicy(namespace.RootContext(nil), policy); err != nil {
+	if err := ps.SetPolicy(namespace.RootContext(nil), policy, nil); err != nil {
 		t.Fatal(err)
 	}
 

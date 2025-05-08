@@ -201,7 +201,7 @@ jobs:
            RERUN_FAILS="--rerun-fails"
           fi
 
-          if [[ $INPUTS_EXTRA_FLAGS == *"-race"* ]]; then
+          if [[ $INPUTS_EXTRA_FLAGS == "-race" ]]; then
             COVERAGE="-covermode=atomic -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
           fi
 

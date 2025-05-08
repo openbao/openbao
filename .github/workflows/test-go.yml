@@ -305,6 +305,10 @@ jobs:
     needs: test-go
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+        ref: ${{ inputs.checkout-ref }}
+        persist-credentials: false
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: test-results/go-test
@@ -319,7 +323,7 @@ jobs:
           ls -lhR test-results/go-test
           find test-results/go-test -type f -mindepth 1 -mtime +3 -delete
           ls -lhR test-results/go-test
-      - name: Calculate global test coverage
+      - name: Combine Coverage files
         run: |
           set -e
           COVERAGE_FILE="test-results/go-test/combined-coverage.out"
@@ -337,6 +341,6 @@ jobs:
       - name: Archive coverage results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: final-coverage
+          name: coverage-report
           path: test-results/go-test/final-coverage.*
         if: ${{ inputs.env-vars != '-race' }}

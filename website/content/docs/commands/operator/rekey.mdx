@@ -58,7 +58,7 @@ $ bao operator rekey \
     -init \
     -key-shares=3 \
     -key-threshold=2 \
-    -pgp-keys="keybase:hashicorp,keybase:jefferai,keybase:sethvargo"
+    -pgp-keys="keybase:openbao,keybase:jefferai,keybase:sethvargo"
 ```
 
 Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
@@ -67,9 +67,9 @@ Rekey an Auto Unseal OpenBao and encrypt the resulting recovery keys with PGP:
 $ bao operator rekey \
     -target=recovery \
     -init \
-    -pgp-keys=keybase:grahamhashicorp
-    -key-shares=1
-    -key-threshold=1
+    -key-shares=1 \
+    -key-threshold=1 \
+    -pgp-keys=keybase:grahamopenbao
 ```
 
 Store encrypted PGP keys in OpenBao's core:

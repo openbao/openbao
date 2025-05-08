@@ -202,7 +202,7 @@ jobs:
           fi
 
           if [[ $INPUTS_EXTRA_FLAGS != '-race' ]]; then
-            COVERAGE="-covermode=atomic -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
+            COVERAGE="-covermode=count -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
           fi
 
           # shellcheck disable=SC2086 # can't quote RERUN_FAILS

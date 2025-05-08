@@ -74,7 +74,6 @@ type PostgreSQLBackend struct {
 
 	haEnabled     bool
 	logger        log.Logger
-	permitPool    *physical.PermitPool
 	txnPermitPool *physical.PermitPool
 }
 
@@ -245,7 +244,6 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		// $1=ha_identity $2=ha_key
 		" DELETE FROM " + quoted_ha_table + " WHERE ha_identity=$1 AND ha_key=$2 ",
 		logger:          logger,
-		permitPool:      physical.NewPermitPool(maxParInt),
 		txnPermitPool:   physical.NewPermitPool(txnMaxParInt),
 		haEnabled:       conf["ha_enabled"] == "true",
 		upsert_function: quoted_upsert_function,
@@ -377,9 +375,6 @@ func (m *PostgreSQLBackend) splitKey(fullPath string) (string, string, string) {
 func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) error {
 	defer metrics.MeasureSince([]string{"postgres", "put"}, time.Now())
 
-	m.permitPool.Acquire()
-	defer m.permitPool.Release()
-
 	parentPath, path, key := m.splitKey(entry.Key)
 
 	_, err := m.client.ExecContext(ctx, m.put_query, parentPath, path, key, entry.Value)
@@ -392,9 +387,6 @@ func (m *PostgreSQLBackend) Put(ctx context.Context, entry *physical.Entry) erro
 // Get is used to fetch and entry.
 func (m *PostgreSQLBackend) Get(ctx context.Context, fullPath string) (*physical.Entry, error) {
 	defer metrics.MeasureSince([]string{"postgres", "get"}, time.Now())
-
-	m.permitPool.Acquire()
-	defer m.permitPool.Release()
 
 	_, path, key := m.splitKey(fullPath)
 
@@ -418,9 +410,6 @@ func (m *PostgreSQLBackend) Get(ctx context.Context, fullPath string) (*physical
 func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 	defer metrics.MeasureSince([]string{"postgres", "delete"}, time.Now())
 
-	m.permitPool.Acquire()
-	defer m.permitPool.Release()
-
 	_, path, key := m.splitKey(fullPath)
 
 	_, err := m.client.ExecContext(ctx, m.delete_query, path, key)
@@ -434,9 +423,6 @@ func (m *PostgreSQLBackend) Delete(ctx context.Context, fullPath string) error {
 // prefix, up to the next prefix.
 func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, error) {
 	defer metrics.MeasureSince([]string{"postgres", "list"}, time.Now())
-
-	m.permitPool.Acquire()
-	defer m.permitPool.Release()
 
 	rows, err := m.client.QueryContext(ctx, m.list_query, "/"+prefix)
 	if err != nil {
@@ -462,9 +448,6 @@ func (m *PostgreSQLBackend) List(ctx context.Context, prefix string) ([]string, 
 // prefix, after the given key, up to the given key.
 func (m *PostgreSQLBackend) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
 	defer metrics.MeasureSince([]string{"postgres", "list-page"}, time.Now())
-
-	m.permitPool.Acquire()
-	defer m.permitPool.Release()
 
 	var rows *sql.Rows
 	var err error
@@ -548,8 +531,6 @@ func (l *PostgreSQLLock) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
 // PostgreSQL table.
 func (l *PostgreSQLLock) Unlock() error {
 	pg := l.backend
-	pg.permitPool.Acquire()
-	defer pg.permitPool.Release()
 
 	if l.renewTicker != nil {
 		l.renewTicker.Stop()
@@ -564,8 +545,6 @@ func (l *PostgreSQLLock) Unlock() error {
 // including this one, and returns the current value.
 func (l *PostgreSQLLock) Value() (bool, string, error) {
 	pg := l.backend
-	pg.permitPool.Acquire()
-	defer pg.permitPool.Release()
 	var result string
 	err := pg.client.QueryRow(pg.haGetLockValueQuery, l.key).Scan(&result)
 
@@ -624,8 +603,6 @@ func (l *PostgreSQLLock) periodicallyRenewLock(done chan struct{}) {
 // else has the lock, whereas non-nil means that something unexpected happened.
 func (l *PostgreSQLLock) writeItem() (bool, error) {
 	pg := l.backend
-	pg.permitPool.Acquire()
-	defer pg.permitPool.Release()
 
 	// Try steal lock or update expiry on my lock
 

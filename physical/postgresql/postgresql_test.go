@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -516,5 +518,114 @@ func TestPostgreSQLBackend_Retry(t *testing.T) {
 	}
 	if b == nil {
 		t.Fatalf("failed to create backend")
+	}
+}
+
+// TestPostgreSQLBackend_Parallel ensures that max_parallel is respected.
+func TestPostgreSQLBackend_Parallel(t *testing.T) {
+	t.Parallel()
+
+	logger := logging.NewVaultLogger(log.Debug)
+
+	cleanup, connURL := postgresql.PrepareTestContainer(t, "11.1")
+	defer cleanup()
+
+	bRaw, err := NewPostgreSQLBackend(map[string]string{
+		"connection_url": connURL,
+		"table":          "openbao_kv_store",
+		"ha_enabled":     "true",
+		"max_parallel":   "2",
+	}, logger)
+	if err != nil {
+		t.Fatalf("Failed to create new backend: %v", err)
+	}
+
+	b := bRaw.(physical.TransactionalBackend)
+
+	// Put should succeed with an error even with massively parallel
+	// requests.
+	errors := make([]error, 100)
+	var wg sync.WaitGroup
+	for j := range errors {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
+			err = b.Put(context.Background(), entry)
+			if err != nil {
+				errors[i] = err
+			}
+		}(j)
+	}
+
+	wg.Wait()
+
+	for j := range errors {
+		if errors[j] != nil {
+			t.Fatalf("process %v: %v", j, errors[j])
+		}
+	}
+
+	// Use transactions so we can sleep while holding a connection.
+	var count atomic.Int32
+	for j := range errors {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
+
+			tx, err := b.BeginTx(context.Background())
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			value := count.Add(1)
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			time.Sleep(1)
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			err = tx.Put(context.Background(), entry)
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			time.Sleep(1)
+
+			value = count.Load()
+			if value > 2 {
+				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
+			}
+
+			err = tx.Commit(context.Background())
+			if err != nil {
+				errors[i] = err
+				return
+			}
+
+			defer count.Add(-1)
+		}(j)
+
+		wg.Wait()
+
+		for j := range errors {
+			if errors[j] != nil {
+				t.Fatalf("process %v: %v", j, errors[j])
+			}
+		}
 	}
 }

@@ -92,5 +92,6 @@ func (c *NamespaceAPIUnlockCommand) Run(args []string) int {
 		return 2
 	}
 
+	c.UI.Info("Namespace unlocked successfully!")
 	return 0
 }

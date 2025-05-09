@@ -287,7 +287,7 @@ func TestDefaultPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acl, err := NewACL(ctx, []*Policy{policy})
+	acl, err := NewACL(ctx, []*Policy{policy}, ACLOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

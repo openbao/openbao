@@ -5861,4 +5861,22 @@ This path responds to the following HTTP methods.
 		Delete a namespace.
 		`,
 	},
+	"namespaces-lock": {
+		"Lock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	POST /<path>
+		Lock the API for a namespace.
+		`,
+	},
+	"namespaces-unlock": {
+		"Unlock a namespace.",
+		`
+This path responds to the following HTTP methods.
+
+	POST /<path>
+		Unlock the API for a namespace.
+		`,
+	},
 }

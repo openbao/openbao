@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/cap/jwt"
@@ -165,14 +164,17 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("error executing cel program: %s", err.Error()), nil
 	}
 
-	auth := authFromProto(*pbAuth)
+	auth, err := pb.ProtoAuthToLogicalAuth(pbAuth)
+	if err != nil {
+		return logical.ErrorResponse("error converting proto auth: %s", err.Error()), nil
+	}
 
 	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
 	}
 
 	return &logical.Response{
-		Auth: &auth,
+		Auth: auth,
 	}, nil
 }
 
@@ -237,23 +239,6 @@ const (
 Authenticates JWTs against a CEL role.
 `
 )
-
-// authFromProto will convert a protobuf auth message to logical.Auth
-func authFromProto(pbAuth pb.Auth) logical.Auth {
-	return logical.Auth{
-		DisplayName: pbAuth.DisplayName,
-		// InternalData:     pbAuth.InternalData, // TODO requires unmarshaling
-		Policies:         pbAuth.Policies,
-		TokenPolicies:    pbAuth.TokenPolicies,
-		IdentityPolicies: pbAuth.IdentityPolicies,
-		NoDefaultPolicy:  pbAuth.NoDefaultPolicy,
-		Metadata:         pbAuth.Metadata,
-		Period:           time.Duration(pbAuth.Period),
-		ExplicitMaxTTL:   time.Duration(pbAuth.ExplicitMaxTTL),
-		NumUses:          int(pbAuth.NumUses),
-		BoundCIDRs:       marshalCIDRs(pbAuth.BoundCIDRs),
-	}
-}
 
 func marshalCIDRs(cidrs []string) []*sockaddr.SockAddrMarshaler {
 	sockaddrs := []*sockaddr.SockAddrMarshaler{}

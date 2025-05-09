@@ -53,6 +53,11 @@ on:
         required: false
         default: false
         type: boolean
+      raceonly:
+        description: Whether to run the tests in racemode.
+        required: false
+        default: false
+        type: boolean
       checkout-ref:
         description: The ref to use for checkout.
         required: false
@@ -201,7 +206,7 @@ jobs:
            RERUN_FAILS="--rerun-fails"
           fi
 
-          if [[ $INPUTS_EXTRA_FLAGS != '-race' ]] && [[ ${{ inputs.testonly }} == 'false' ]]; then
+          if [[ ${{ inputs.raceonly }} == 'false' ]] && [[ ${{ inputs.testonly }} == 'false' ]]; then
             COVERAGE="-covermode=count -coverprofile=test-results/go-test/coverage-${{ matrix.id }}.out"
           fi
 
@@ -337,10 +342,10 @@ jobs:
           # Extract the last line of the coverage report
           # and print the global coverage percentage
           cat test-results/go-test/final-coverage.txt | tail -n 1 | awk '{print "Global Test Coverage: " $3}'
-        if: inputs.env-vars != '-race' && !inputs.testonly
+        if: ${{ !inputs.raceonly && !inputs.testonly }}
       - name: Archive coverage results
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-report
           path: test-results/go-test/final-coverage.*
-        if: inputs.env-vars != '-race' && !inputs.testonly
+        if: ${{ !inputs.raceonly && !inputs.testonly }}

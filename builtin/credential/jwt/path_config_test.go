@@ -696,6 +696,51 @@ func TestConfig_OIDC_Update_Namespace(t *testing.T) {
 	}
 }
 
+func TestConfig_OIDC_Ignore(t *testing.T) {
+	b, storage := getBackend(t)
+	// Provide an invalid CA cert to verify that it is in fact paying
+	// attention to the value we specified, but set skip_jwks_validation=true
+	data := map[string]interface{}{
+		"oidc_discovery_url":    "https://team-vault.auth0.com/",
+		"oidc_discovery_ca_pem": oidcBadCACerts,
+		"skip_jwks_validation":  true,
+	}
+
+	req := &logical.Request{
+		Operation: logical.UpdateOperation,
+		Path:      configPath,
+		Storage:   storage,
+		Data:      data,
+	}
+	resp, err := b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error; expected warning: %v", err)
+	}
+	if resp.IsError() {
+		t.Fatalf("unexpected error; expected warning: %#v", resp)
+	}
+
+	if len(resp.Warnings) == 0 {
+		t.Fatalf("expected at least one verification warning: %#v", resp)
+	}
+
+	// Reading the config should give the same result.
+	req.Operation = logical.ReadOperation
+	req.Data = nil
+
+	resp, err = b.HandleRequest(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error; expected warning: %v", err)
+	}
+	if resp.IsError() {
+		t.Fatalf("unexpected error; expected warning: %#v", resp)
+	}
+
+	if len(resp.Warnings) == 0 {
+		t.Fatalf("expected at least one verification warning: %#v", resp)
+	}
+}
+
 const (
 	testJWTPubKey = `-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9

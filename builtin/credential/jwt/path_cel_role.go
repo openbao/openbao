@@ -20,10 +20,9 @@ import (
 )
 
 type celRoleEntry struct {
-	Name          string               `json:"name"`                     // Required
-	CelProgram    celhelper.CelProgram `json:"cel_program"`              // Required
-	FailurePolicy string               `json:"failure_policy,omitempty"` // Default: Deny
-	Message       string               `json:"message,omitempty"`
+	Name       string               `json:"name"`        // Required
+	CelProgram celhelper.CelProgram `json:"cel_program"` // Required
+	Message    string               `json:"message,omitempty"`
 
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
@@ -274,7 +273,6 @@ func (b *jwtAuthBackend) pathCelRoleCreate(ctx context.Context, req *logical.Req
 	entry := &celRoleEntry{
 		Name:             name,
 		CelProgram:       celProgram,
-		FailurePolicy:    failurePolicy,
 		Message:          data.Get("message").(string),
 		BoundAudiences:   boundAudiences,
 		ExpirationLeeway: expirationLeeway,
@@ -350,10 +348,9 @@ func (b *jwtAuthBackend) pathCelRolePatch(ctx context.Context, req *logical.Requ
 	}
 
 	entry := &celRoleEntry{
-		Name:          roleName,
-		CelProgram:    data.GetWithExplicitDefault("cel_program", oldEntry.CelProgram).(celhelper.CelProgram),
-		FailurePolicy: data.GetWithExplicitDefault("failure_policy", oldEntry.FailurePolicy).(string),
-		Message:       data.GetWithExplicitDefault("message", oldEntry.Message).(string),
+		Name:       roleName,
+		CelProgram: data.GetWithExplicitDefault("cel_program", oldEntry.CelProgram).(celhelper.CelProgram),
+		Message:    data.GetWithExplicitDefault("message", oldEntry.Message).(string),
 	}
 
 	resp, err := validateCelRoleCreation(b, entry, ctx, req.Storage)
@@ -475,7 +472,6 @@ func (r *celRoleEntry) ToResponseData() map[string]interface{} {
 	return map[string]interface{}{
 		"name":              r.Name,
 		"cel_program":       r.CelProgram,
-		"failure_policy":    r.FailurePolicy,
 		"message":           r.Message,
 		"expiration_leeway": int64(r.ExpirationLeeway.Seconds()),
 		"not_before_leeway": int64(r.NotBeforeLeeway.Seconds()),

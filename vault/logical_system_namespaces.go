@@ -44,6 +44,16 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    true,
 			Description: "Path of the namespace.",
 		},
+		"tainted": {
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: "Flag representing the taint status of the namespace.",
+		},
+		"locked": {
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: "Flag representing the lock status of the namespace.",
+		},
 		"custom_metadata": {
 			Type:        framework.TypeMap,
 			Required:    true,
@@ -391,24 +401,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		path := namespace.Canonicalize(data.Get("path").(string))
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve namespace: %w", err)
-		}
-
-		if ns == nil {
-			return nil, errors.New("requested namespace does not exist")
-		}
-
-		if ns.ID == namespace.RootNamespaceID {
-			return nil, errors.New("cannot lock root namespace")
-		}
-
-		if ns.Locked {
-			return nil, errors.New("namespace already locked")
-		}
-
-		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, ns.UUID)
+		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
 		if err != nil {
 			return handleError(err)
 		}
@@ -439,25 +432,7 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 			return nil, errors.New("provided empty key")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve namespace: %w", err)
-		}
-
-		if ns == nil {
-			return nil, errors.New("requested namespace does not exist")
-		}
-
-		if !ns.Locked {
-			return nil, fmt.Errorf("namespace %q is not locked", ns.Path)
-		}
-
-		lockingNamespace := b.Core.namespaceStore.GetLockingNamespace(ns)
-		if lockingNamespace.ID != ns.ID {
-			return nil, fmt.Errorf("cannot unlock %q with namespace %q being locked", ns.Path, lockingNamespace.Path)
-		}
-
-		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, ns.UUID, isRootRequest)
+		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path, isRootRequest)
 		if err != nil {
 			return handleError(err)
 		}

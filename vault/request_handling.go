@@ -578,7 +578,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}
 
-	if ns.ID != namespace.RootNamespace.ID {
+	if ns.ID != namespace.RootNamespaceID {
 		// verify whether the namespace is either directly or inherently locked
 		lockedNS := c.namespaceStore.GetLockingNamespace(ns)
 		if lockedNS != nil && req.Operation != logical.RevokeOperation && req.Operation != logical.RollbackOperation {

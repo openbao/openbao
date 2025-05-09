@@ -1340,22 +1340,6 @@ func validateRole(b *backend, entry *roleEntry, ctx context.Context, s logical.S
 	return resp, nil
 }
 
-func getWithExplicitDefault(data *framework.FieldData, field string, defaultValue interface{}) interface{} {
-	assignedValue, ok := data.GetOk(field)
-	if ok {
-		return assignedValue
-	}
-	return defaultValue
-}
-
-func getTimeWithExplicitDefault(data *framework.FieldData, field string, defaultValue time.Duration) time.Duration {
-	assignedValue, ok := data.GetOk(field)
-	if ok {
-		return time.Duration(assignedValue.(int)) * time.Second
-	}
-	return defaultValue
-}
-
 func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 
@@ -1368,54 +1352,54 @@ func (b *backend) pathRolePatch(ctx context.Context, req *logical.Request, data 
 	}
 
 	entry := &roleEntry{
-		MaxTTL:                        getTimeWithExplicitDefault(data, "max_ttl", oldEntry.MaxTTL),
-		TTL:                           getTimeWithExplicitDefault(data, "ttl", oldEntry.TTL),
-		AllowLocalhost:                getWithExplicitDefault(data, "allow_localhost", oldEntry.AllowLocalhost).(bool),
-		AllowedDomains:                getWithExplicitDefault(data, "allowed_domains", oldEntry.AllowedDomains).([]string),
-		AllowedDomainsTemplate:        getWithExplicitDefault(data, "allowed_domains_template", oldEntry.AllowedDomainsTemplate).(bool),
-		AllowBareDomains:              getWithExplicitDefault(data, "allow_bare_domains", oldEntry.AllowBareDomains).(bool),
-		AllowSubdomains:               getWithExplicitDefault(data, "allow_subdomains", oldEntry.AllowSubdomains).(bool),
-		AllowGlobDomains:              getWithExplicitDefault(data, "allow_glob_domains", oldEntry.AllowGlobDomains).(bool),
+		MaxTTL:                        data.GetTimeWithExplicitDefault("max_ttl", oldEntry.MaxTTL),
+		TTL:                           data.GetTimeWithExplicitDefault("ttl", oldEntry.TTL),
+		AllowLocalhost:                data.GetWithExplicitDefault("allow_localhost", oldEntry.AllowLocalhost).(bool),
+		AllowedDomains:                data.GetWithExplicitDefault("allowed_domains", oldEntry.AllowedDomains).([]string),
+		AllowedDomainsTemplate:        data.GetWithExplicitDefault("allowed_domains_template", oldEntry.AllowedDomainsTemplate).(bool),
+		AllowBareDomains:              data.GetWithExplicitDefault("allow_bare_domains", oldEntry.AllowBareDomains).(bool),
+		AllowSubdomains:               data.GetWithExplicitDefault("allow_subdomains", oldEntry.AllowSubdomains).(bool),
+		AllowGlobDomains:              data.GetWithExplicitDefault("allow_glob_domains", oldEntry.AllowGlobDomains).(bool),
 		AllowWildcardCertificates:     new(bool), // Handled specially below
-		AllowAnyName:                  getWithExplicitDefault(data, "allow_any_name", oldEntry.AllowAnyName).(bool),
-		AllowedURISANsTemplate:        getWithExplicitDefault(data, "allowed_uri_sans_template", oldEntry.AllowedURISANsTemplate).(bool),
-		EnforceHostnames:              getWithExplicitDefault(data, "enforce_hostnames", oldEntry.EnforceHostnames).(bool),
-		AllowIPSANs:                   getWithExplicitDefault(data, "allow_ip_sans", oldEntry.AllowIPSANs).(bool),
-		AllowedURISANs:                getWithExplicitDefault(data, "allowed_uri_sans", oldEntry.AllowedURISANs).([]string),
-		ServerFlag:                    getWithExplicitDefault(data, "server_flag", oldEntry.ServerFlag).(bool),
-		ClientFlag:                    getWithExplicitDefault(data, "client_flag", oldEntry.ClientFlag).(bool),
-		CodeSigningFlag:               getWithExplicitDefault(data, "code_signing_flag", oldEntry.CodeSigningFlag).(bool),
-		EmailProtectionFlag:           getWithExplicitDefault(data, "email_protection_flag", oldEntry.EmailProtectionFlag).(bool),
-		KeyType:                       getWithExplicitDefault(data, "key_type", oldEntry.KeyType).(string),
-		KeyBits:                       getWithExplicitDefault(data, "key_bits", oldEntry.KeyBits).(int),
-		SignatureBits:                 getWithExplicitDefault(data, "signature_bits", oldEntry.SignatureBits).(int),
-		UsePSS:                        getWithExplicitDefault(data, "use_pss", oldEntry.UsePSS).(bool),
-		UseCSRCommonName:              getWithExplicitDefault(data, "use_csr_common_name", oldEntry.UseCSRCommonName).(bool),
-		UseCSRSANs:                    getWithExplicitDefault(data, "use_csr_sans", oldEntry.UseCSRSANs).(bool),
-		KeyUsage:                      getWithExplicitDefault(data, "key_usage", oldEntry.KeyUsage).([]string),
-		ExtKeyUsage:                   getWithExplicitDefault(data, "ext_key_usage", oldEntry.ExtKeyUsage).([]string),
-		ExtKeyUsageOIDs:               getWithExplicitDefault(data, "ext_key_usage_oids", oldEntry.ExtKeyUsageOIDs).([]string),
-		OU:                            getWithExplicitDefault(data, "ou", oldEntry.OU).([]string),
-		Organization:                  getWithExplicitDefault(data, "organization", oldEntry.Organization).([]string),
-		Country:                       getWithExplicitDefault(data, "country", oldEntry.Country).([]string),
-		Locality:                      getWithExplicitDefault(data, "locality", oldEntry.Locality).([]string),
-		Province:                      getWithExplicitDefault(data, "province", oldEntry.Province).([]string),
-		StreetAddress:                 getWithExplicitDefault(data, "street_address", oldEntry.StreetAddress).([]string),
-		PostalCode:                    getWithExplicitDefault(data, "postal_code", oldEntry.PostalCode).([]string),
+		AllowAnyName:                  data.GetWithExplicitDefault("allow_any_name", oldEntry.AllowAnyName).(bool),
+		AllowedURISANsTemplate:        data.GetWithExplicitDefault("allowed_uri_sans_template", oldEntry.AllowedURISANsTemplate).(bool),
+		EnforceHostnames:              data.GetWithExplicitDefault("enforce_hostnames", oldEntry.EnforceHostnames).(bool),
+		AllowIPSANs:                   data.GetWithExplicitDefault("allow_ip_sans", oldEntry.AllowIPSANs).(bool),
+		AllowedURISANs:                data.GetWithExplicitDefault("allowed_uri_sans", oldEntry.AllowedURISANs).([]string),
+		ServerFlag:                    data.GetWithExplicitDefault("server_flag", oldEntry.ServerFlag).(bool),
+		ClientFlag:                    data.GetWithExplicitDefault("client_flag", oldEntry.ClientFlag).(bool),
+		CodeSigningFlag:               data.GetWithExplicitDefault("code_signing_flag", oldEntry.CodeSigningFlag).(bool),
+		EmailProtectionFlag:           data.GetWithExplicitDefault("email_protection_flag", oldEntry.EmailProtectionFlag).(bool),
+		KeyType:                       data.GetWithExplicitDefault("key_type", oldEntry.KeyType).(string),
+		KeyBits:                       data.GetWithExplicitDefault("key_bits", oldEntry.KeyBits).(int),
+		SignatureBits:                 data.GetWithExplicitDefault("signature_bits", oldEntry.SignatureBits).(int),
+		UsePSS:                        data.GetWithExplicitDefault("use_pss", oldEntry.UsePSS).(bool),
+		UseCSRCommonName:              data.GetWithExplicitDefault("use_csr_common_name", oldEntry.UseCSRCommonName).(bool),
+		UseCSRSANs:                    data.GetWithExplicitDefault("use_csr_sans", oldEntry.UseCSRSANs).(bool),
+		KeyUsage:                      data.GetWithExplicitDefault("key_usage", oldEntry.KeyUsage).([]string),
+		ExtKeyUsage:                   data.GetWithExplicitDefault("ext_key_usage", oldEntry.ExtKeyUsage).([]string),
+		ExtKeyUsageOIDs:               data.GetWithExplicitDefault("ext_key_usage_oids", oldEntry.ExtKeyUsageOIDs).([]string),
+		OU:                            data.GetWithExplicitDefault("ou", oldEntry.OU).([]string),
+		Organization:                  data.GetWithExplicitDefault("organization", oldEntry.Organization).([]string),
+		Country:                       data.GetWithExplicitDefault("country", oldEntry.Country).([]string),
+		Locality:                      data.GetWithExplicitDefault("locality", oldEntry.Locality).([]string),
+		Province:                      data.GetWithExplicitDefault("province", oldEntry.Province).([]string),
+		StreetAddress:                 data.GetWithExplicitDefault("street_address", oldEntry.StreetAddress).([]string),
+		PostalCode:                    data.GetWithExplicitDefault("postal_code", oldEntry.PostalCode).([]string),
 		GenerateLease:                 new(bool),
-		NoStore:                       getWithExplicitDefault(data, "no_store", oldEntry.NoStore).(bool),
-		RequireCN:                     getWithExplicitDefault(data, "require_cn", oldEntry.RequireCN).(bool),
-		CNValidations:                 getWithExplicitDefault(data, "cn_validations", oldEntry.CNValidations).([]string),
-		AllowedSerialNumbers:          getWithExplicitDefault(data, "allowed_serial_numbers", oldEntry.AllowedSerialNumbers).([]string),
-		AllowedUserIDs:                getWithExplicitDefault(data, "allowed_user_ids", oldEntry.AllowedUserIDs).([]string),
+		NoStore:                       data.GetWithExplicitDefault("no_store", oldEntry.NoStore).(bool),
+		RequireCN:                     data.GetWithExplicitDefault("require_cn", oldEntry.RequireCN).(bool),
+		CNValidations:                 data.GetWithExplicitDefault("cn_validations", oldEntry.CNValidations).([]string),
+		AllowedSerialNumbers:          data.GetWithExplicitDefault("allowed_serial_numbers", oldEntry.AllowedSerialNumbers).([]string),
+		AllowedUserIDs:                data.GetWithExplicitDefault("allowed_user_ids", oldEntry.AllowedUserIDs).([]string),
 		PolicyIdentifiers:             getPolicyIdentifier(data, &oldEntry.PolicyIdentifiers),
-		BasicConstraintsValidForNonCA: getWithExplicitDefault(data, "basic_constraints_valid_for_non_ca", oldEntry.BasicConstraintsValidForNonCA).(bool),
-		NotBeforeDuration:             getTimeWithExplicitDefault(data, "not_before_duration", oldEntry.NotBeforeDuration),
-		NotBefore:                     getWithExplicitDefault(data, "not_before", oldEntry.NotBefore).(string),
-		NotBeforeBound:                getWithExplicitDefault(data, "not_before_bound", oldEntry.NotBeforeBound).(string),
-		NotAfter:                      getWithExplicitDefault(data, "not_after", oldEntry.NotAfter).(string),
-		NotAfterBound:                 getWithExplicitDefault(data, "not_after_bound", oldEntry.NotAfterBound).(string),
-		Issuer:                        getWithExplicitDefault(data, "issuer_ref", oldEntry.Issuer).(string),
+		BasicConstraintsValidForNonCA: data.GetWithExplicitDefault("basic_constraints_valid_for_non_ca", oldEntry.BasicConstraintsValidForNonCA).(bool),
+		NotBeforeDuration:             data.GetTimeWithExplicitDefault("not_before_duration", oldEntry.NotBeforeDuration),
+		NotBefore:                     data.GetWithExplicitDefault("not_before", oldEntry.NotBefore).(string),
+		NotBeforeBound:                data.GetWithExplicitDefault("not_before_bound", oldEntry.NotBeforeBound).(string),
+		NotAfter:                      data.GetWithExplicitDefault("not_after", oldEntry.NotAfter).(string),
+		NotAfterBound:                 data.GetWithExplicitDefault("not_after_bound", oldEntry.NotAfterBound).(string),
+		Issuer:                        data.GetWithExplicitDefault("issuer_ref", oldEntry.Issuer).(string),
 	}
 
 	allowedOtherSANsData, wasSet := data.GetOk("allowed_other_sans")

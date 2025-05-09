@@ -121,8 +121,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-lock"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-lock"][1]),
 		},
 
 		{
@@ -155,8 +155,8 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				},
 			},
 
-			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
-			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-unlock"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-unlock"][1]),
 		},
 
 		{

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pathmanager"
 	"github.com/openbao/openbao/sdk/v2/helper/policyutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -54,7 +56,59 @@ var (
 
 	ErrNoApplicablePolicies    = errors.New("no applicable policies")
 	ErrPolicyNotExistInTypeMap = errors.New("policy does not exist in type map")
+
+	// restrictedSysAPIs is the set of `sys/` APIs available only in the root namespace.
+	restrictedSysAPIs = pathmanager.New()
 )
+
+func init() {
+	restrictedSysAPIs.AddPaths([]string{
+		"audit-hash",
+		"audit",
+		"config/auditing",
+		"config/cors",
+		"config/reload",
+		"config/state",
+		"config/ui",
+		"decode-token",
+		"generate-recovery-token",
+		"generate-root",
+		"health",
+		"host-info",
+		"in-flight-req",
+		"init",
+		"internal/counters/activity",
+		"internal/counters/activity/export",
+		"internal/counters/activity/monthly",
+		"internal/counters/config",
+		"internal/inspect/router",
+		"key-status",
+		"loggers",
+		"managed-keys",
+		"metrics",
+		"mfa/method",
+		"monitor",
+		"pprof",
+		"quotas/config",
+		"quotas/lease-count",
+		"quotas/rate-limit",
+		"raw",
+		"rekey-recovery-key",
+		"rekey",
+		"replication/merkle-check",
+		"replication/recover",
+		"replication/reindex",
+		"replication/status",
+		"rotate",
+		"rotate/config",
+		"seal",
+		"sealwrap/rewrap",
+		"step-down",
+		"storage",
+		"sync/config",
+		"unseal",
+	})
+}
 
 // HandlerProperties is used to seed configuration into a vaulthttp.Handler.
 // It's in this package to avoid a circular dependency
@@ -156,7 +210,7 @@ func (c *Core) filterGroupPoliciesByNS(ctx context.Context, tokenNS *namespace.N
 // apply to the token based on the group policy application mode,
 // and the relationship between the token namespace and the group namespace.
 func (c *Core) getApplicableGroupPolicies(ctx context.Context, tokenNS *namespace.Namespace, nsID string, nsPolicies []string, policyApplicationMode string) ([]string, error) {
-	policyNS, err := NamespaceByID(ctx, nsID, c)
+	policyNS, err := c.NamespaceByID(ctx, nsID)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +322,7 @@ func (c *Core) fetchACLTokenEntryAndEntity(ctx context.Context, req *logical.Req
 	// Add tokens policies
 	policyNames[te.NamespaceID] = append(policyNames[te.NamespaceID], te.Policies...)
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		c.logger.Error("failed to fetch token namespace", "error", err)
 		return nil, nil, nil, nil, ErrInternalError
@@ -509,13 +563,29 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}(ctx, httpCtx)
 
+	// A namespace was manually passed to HandleRequest, as can be the case with:
+	// 1. Synthesized logical requests not originating from an HTTP request
+	// 2. Tests
 	ns, err := namespace.FromContext(httpCtx)
+	// If the above is not the case, resolve the namespace from header & request path.
 	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
+		nsHeader := namespace.HeaderFromContext(httpCtx)
+		ns, req.Path = c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, req.Path)
+		if ns == nil {
+			return nil, logical.CodedError(http.StatusNotFound, "namespace not found")
+		}
+	}
+
+	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
+		strings.HasPrefix(req.Path, "sys/") &&
+		restrictedSysAPIs.HasPathSegments(req.Path[len("sys/"):])
+
+	if isRestrictedSysAPI {
+		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
 	}
 
 	ctx = namespace.ContextWithNamespace(ctx, ns)
+
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {
 		ctx = context.WithValue(ctx, logical.CtxKeyInFlightRequestID{}, inFlightReqID)
@@ -557,10 +627,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		return nil, err
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse namespace from http context: %w", err)
-	}
 	var requestBodyToken string
 	var returnRequestAuthToken bool
 
@@ -573,7 +639,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		te := req.TokenEntry()
 		newCtx := ctx
 		if te != nil {
-			ns, err := NamespaceByID(ctx, te.NamespaceID, c)
+			ns, err := c.NamespaceByID(ctx, te.NamespaceID)
 			if err != nil {
 				c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 				return nil, err
@@ -637,7 +703,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(token.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the token's namespace ID", "error", err)
 					return nil, err
@@ -663,7 +729,7 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 			}
 			_, nsID := namespace.SplitIDFromString(leaseID.(string))
 			if nsID != "" {
-				ns, err := NamespaceByID(ctx, nsID, c)
+				ns, err := c.NamespaceByID(ctx, nsID)
 				if err != nil {
 					c.Logger().Warn("error looking up namespace from the lease's namespace ID", "error", err)
 					return nil, err
@@ -681,15 +747,6 @@ func (c *Core) handleCancelableRequest(ctx context.Context, req *logical.Request
 		if c.standby {
 			return nil, ErrCannotForwardLocalOnly
 		}
-	}
-
-	ns, err = namespace.FromContext(ctx)
-	if err != nil {
-		return nil, errwrap.Wrapf("could not parse namespace from http context: {{err}}", err)
-	}
-
-	if ns.Path != "" {
-		return nil, logical.CodedError(403, "namespaces feature not enabled")
 	}
 
 	var auth *logical.Auth
@@ -1103,7 +1160,7 @@ func (c *Core) handleRequest(ctx context.Context, req *logical.Request) (retResp
 		}
 
 		// Fetch the namespace to which the token belongs
-		tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+		tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			c.logger.Error("failed to fetch token's namespace", "error", err)
 			retErr = multierror.Append(retErr, err)

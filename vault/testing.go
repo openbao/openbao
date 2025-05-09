@@ -358,6 +358,18 @@ func TestCoreSeal(core *Core) error {
 	return core.sealInternal()
 }
 
+func TestCoreCreateNamespaces(core *Core, namespaces ...*namespace.Namespace) error {
+	// Use root context to ensure parent namespace is available
+	ctx := namespace.RootContext(context.Background())
+	for _, ns := range namespaces {
+		err := core.namespaceStore.SetNamespace(ctx, ns)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // TestCoreUnsealed returns a pure in-memory core that is already
 // initialized and unsealed.
 func TestCoreUnsealed(t testing.T) (*Core, [][]byte, string) {

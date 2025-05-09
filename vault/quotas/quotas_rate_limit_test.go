@@ -30,7 +30,7 @@ func TestNewRateLimitQuota(t *testing.T) {
 		rlq       *RateLimitQuota
 		expectErr bool
 	}{
-		{"valid rate", NewRateLimitQuota("test-rate-limiter", "qa", "/foo/bar", "", "", 16.7, time.Second, 0), false},
+		{"valid rate", NewRateLimitQuota("test-rate-limiter", "qa", "/foo/bar", "", "", 16.7, time.Second, 0, false), false},
 	}
 
 	for _, tc := range testCases {
@@ -47,7 +47,7 @@ func TestNewRateLimitQuota(t *testing.T) {
 }
 
 func TestRateLimitQuota_Close(t *testing.T) {
-	rlq := NewRateLimitQuota("test-rate-limiter", "qa", "/foo/bar", "", "", 16.7, time.Second, time.Minute)
+	rlq := NewRateLimitQuota("test-rate-limiter", "qa", "/foo/bar", "", "", 16.7, time.Second, time.Minute, false)
 	require.NoError(t, rlq.initialize(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink()))
 	require.NoError(t, rlq.close(context.Background()))
 
@@ -221,7 +221,7 @@ func TestRateLimitQuota_Update(t *testing.T) {
 	qm, err := NewManager(logging.NewVaultLogger(log.Trace), metricsutil.BlackholeSink(), true)
 	require.NoError(t, err)
 
-	quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0)
+	quota := NewRateLimitQuota("quota1", "", "", "", "", 10, time.Second, 0, false)
 	require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), quota, true))
 	require.NoError(t, qm.SetQuota(context.Background(), TypeRateLimit.String(), quota, true))
 

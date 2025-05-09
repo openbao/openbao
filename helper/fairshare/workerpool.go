@@ -123,11 +123,12 @@ func (d *dispatcher) start() {
 	})
 }
 
-// stop stops the worker pool asynchronously
+// stop stops the worker pool, waiting for all workers to exit.
 func (d *dispatcher) stop() {
 	d.onceStop.Do(func() {
 		d.logger.Trace("terminating dispatcher")
 		close(d.quit)
+		d.wg.Wait()
 	})
 }
 

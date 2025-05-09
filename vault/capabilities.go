@@ -30,7 +30,7 @@ func (c *Core) Capabilities(ctx context.Context, token, path string) ([]string, 
 		return nil, &logical.StatusBadRequest{Err: "invalid token"}
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, c)
+	tokenNS, err := c.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}

@@ -7,15 +7,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/openbao/openbao/helper/namespace"
 )
 
 const (
-	passwordPolicySubPath = "password_policy/"
+	passwordPolicySubPath = "sys/password_policy/"
 )
 
 // retrievePasswordPolicy retrieves a password policy from the logical storage
 func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyName string) (*passwordPolicyConfig, error) {
-	storage := d.core.systemBarrierView.SubView(passwordPolicySubPath)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	storage := d.core.namespaceMountEntryView(ns, passwordPolicySubPath)
 	entry, err := storage.Get(ctx, policyName)
 	if err != nil {
 		return nil, err

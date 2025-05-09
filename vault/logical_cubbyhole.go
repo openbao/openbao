@@ -42,8 +42,7 @@ func CubbyholeBackendFactory(ctx context.Context, conf *logical.BackendConfig) (
 type CubbyholeBackend struct {
 	*framework.Backend
 
-	saltUUID    string
-	storageView logical.Storage
+	saltUUID string
 }
 
 func (b *CubbyholeBackend) paths() []*framework.Path {

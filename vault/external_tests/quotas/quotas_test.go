@@ -108,6 +108,19 @@ func testRPS(reqFunc func(numSuccess, numFail *atomic.Int32), d time.Duration) (
 	return numSuccess.Load(), numFail.Load(), time.Since(start)
 }
 
+func testRPSWithNS(reqFunc func(numSuccess, numFail *atomic.Int32, ns string), d time.Duration, ns string) (int32, int32, time.Duration) {
+	numSuccess := atomic.NewInt32(0)
+	numFail := atomic.NewInt32(0)
+
+	start := time.Now()
+	end := start.Add(d)
+	for time.Now().Before(end) {
+		reqFunc(numSuccess, numFail, ns)
+	}
+
+	return numSuccess.Load(), numFail.Load(), time.Since(start)
+}
+
 func waitForRemovalOrTimeout(c *api.Client, path string, tick, to time.Duration) error {
 	ticker := time.Tick(tick)
 	timeout := time.After(to)
@@ -300,32 +313,7 @@ func TestQuotas_RateLimitQuota_Mount(t *testing.T) {
 	client := cluster.Cores[0].Client
 	vault.TestWaitActive(t, core)
 
-	err := client.Sys().Mount("pki", &api.MountInput{
-		Type: "pki",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
-		"common_name": "testvault.com",
-		"ttl":         "200h",
-		"ip_sans":     "127.0.0.1",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = client.Logical().Write("pki/roles/test", map[string]interface{}{
-		"require_cn":       false,
-		"allowed_domains":  "testvault.com",
-		"allow_subdomains": true,
-		"max_ttl":          "2h",
-		"generate_lease":   true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	setupMounts(t, client)
 
 	reqFunc := func(numSuccess, numFail *atomic.Int32) {
 		_, err := client.Logical().Read("pki/cert/ca_chain")
@@ -340,7 +328,7 @@ func TestQuotas_RateLimitQuota_Mount(t *testing.T) {
 	// Create a rate limit quota with a low RPS of 7.7, which means we can process
 	// ⌈7.7⌉*2 requests in the span of roughly a second -- 8 initially, followed
 	// by a refill rate of 7.7 per-second.
-	_, err = client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
+	_, err := client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
 		"rate": 7.7,
 		"path": "pki/",
 	})
@@ -376,6 +364,8 @@ func TestQuotas_RateLimitQuota_Mount(t *testing.T) {
 	if numFail > 0 {
 		t.Fatalf("unexpected number of failed requests: %d", numFail)
 	}
+
+	teardownMounts(t, client)
 }
 
 func TestQuotas_RateLimitQuota_MountPrecedence(t *testing.T) {
@@ -391,35 +381,10 @@ func TestQuotas_RateLimitQuota_MountPrecedence(t *testing.T) {
 	vault.TestWaitActive(t, core)
 
 	// create PKI mount
-	err := client.Sys().Mount("pki", &api.MountInput{
-		Type: "pki",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = client.Logical().Write("pki/root/generate/internal", map[string]interface{}{
-		"common_name": "testvault.com",
-		"ttl":         "200h",
-		"ip_sans":     "127.0.0.1",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = client.Logical().Write("pki/roles/test", map[string]interface{}{
-		"require_cn":       false,
-		"allowed_domains":  "testvault.com",
-		"allow_subdomains": true,
-		"max_ttl":          "2h",
-		"generate_lease":   true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	setupMounts(t, client)
 
 	// create a root rate limit quota
-	_, err = client.Logical().Write("sys/quotas/rate-limit/root-rlq", map[string]interface{}{
+	_, err := client.Logical().Write("sys/quotas/rate-limit/root-rlq", map[string]interface{}{
 		"name": "root-rlq",
 		"rate": 14.7,
 	})
@@ -463,6 +428,8 @@ func TestQuotas_RateLimitQuota_MountPrecedence(t *testing.T) {
 	if want := int32(ideal + 1); numSuccess > want {
 		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
 	}
+
+	teardownMounts(t, client)
 }
 
 func TestQuotas_RateLimitQuota(t *testing.T) {
@@ -477,24 +444,10 @@ func TestQuotas_RateLimitQuota(t *testing.T) {
 
 	vault.TestWaitActive(t, core)
 
-	err := client.Sys().EnableAuthWithOptions("userpass", &api.EnableAuthOptions{
-		Type: "userpass",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = client.Logical().Write("auth/userpass/users/foo", map[string]interface{}{
-		"password": "bar",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// Create a rate limit quota with a low RPS of 7.7, which means we can process
 	// ⌈7.7⌉*2 requests in the span of roughly a second -- 8 initially, followed
 	// by a refill rate of 7.7 per-second.
-	_, err = client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
+	_, err := client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
 		"rate": 7.7,
 	})
 	if err != nil {
@@ -540,5 +493,206 @@ func TestQuotas_RateLimitQuota(t *testing.T) {
 	_, numFail, _ = testRPS(reqFunc, 5*time.Second)
 	if numFail > 0 {
 		t.Fatalf("unexpected number of failed requests: %d", numFail)
+	}
+}
+
+func TestQuotas_RateLimitQuotaNS(t *testing.T) {
+	conf, opts := teststorage.ClusterSetup(coreConfig, nil, nil)
+	opts.NoDefaultQuotas = true
+	cluster := vault.NewTestCluster(t, conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	client := cluster.Cores[0].Client
+
+	vault.TestWaitActive(t, core)
+
+	// Create a global rate limit with a low RPS of 7.7, which means we can process
+	// ⌈7.7⌉*2 requests in the span of roughly a second -- 8 initially, followed
+	// by a refill rate of 7.7 per-second.
+	// As inheritable is set to true, the quota will be inherited by child namespaces
+	_, err := client.Logical().Write("sys/quotas/rate-limit/global-rlq", map[string]interface{}{
+		"rate": 7.7,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create Parent Namespace ns1
+	// ns1 intentionaly does not have a quota, so it should be able to do more requests than root
+	_, err = client.Logical().Write("sys/namespaces/ns1", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
+	client.SetNamespace("ns1")
+	_, err = client.Logical().Write("sys/namespaces/ns1.1", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.ClearNamespace()
+
+	// Create a rate limit for namespace ns1/ns1.1 with a higher RPS than the global quota
+	_, err = client.Logical().Write("sys/quotas/rate-limit/ns1.1-rlq", map[string]interface{}{
+		"rate": 9.9,
+		"path": "ns1/ns1.1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reqFunc := func(numSuccess, numFail *atomic.Int32, ns string) {
+		// list all namespaces in ns1/ns1.1
+		// the quota of ns1 should apply
+		client.SetNamespace(ns)
+		_, err := client.Logical().List("sys/namespaces")
+
+		if err != nil {
+			numFail.Add(1)
+		} else {
+			numSuccess.Add(1)
+		}
+		client.ClearNamespace()
+	}
+
+	// Test global rate limit quota
+	numSuccess, numFail, elapsed := testRPSWithNS(reqFunc, 5*time.Second, "")
+	// evaluate the ideal RPS as (ceil(RPS) + (RPS * totalSeconds))
+	ideal := 8 + (7.7 * float64(elapsed) / float64(time.Second))
+	// ensure there were some failed requests
+	if numFail == 0 {
+		t.Fatalf("expected some requests to fail; numSuccess: %d, numFail: %d, elapsed: %d", numSuccess, numFail, elapsed)
+	}
+	// ensure that we should never get more requests than allowed
+	if want := int32(ideal + 1); numSuccess > want {
+		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
+	}
+
+	// Test ns1 quota
+	// Global quota should apply!
+	_, numFail, _ = testRPSWithNS(reqFunc, 5*time.Second, "ns1")
+	// ensure there were some failed requests
+	if numFail == 0 {
+		t.Fatalf("expected some requests to fail; numSuccess: %d, numFail: %d, elapsed: %d", numSuccess, numFail, elapsed)
+	}
+	// ensure that we should never get more requests than allowed
+	if want := int32(ideal + 1); numSuccess > want {
+		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
+	}
+
+	// Test ns1/ns1.1 rate limit quota
+	// Should allow more requests than the global quota, as the rate limit for ns1/ns1.1 is higher
+	numSuccess, numFail, elapsed = testRPSWithNS(reqFunc, 5*time.Second, "ns1/ns1.1")
+	// evaluate the ideal RPS as (ceil(RPS) + (RPS * totalSeconds))
+	newIdeal := 10 + (9.9 * float64(elapsed) / float64(time.Second))
+	// ensure there were some failed requests
+	if numFail == 0 {
+		t.Fatalf("expected some requests to fail; numSuccess: %d, numFail: %d, elapsed: %d", numSuccess, numFail, elapsed)
+	}
+	// ensure that we should never get more requests than allowed
+	if want := int32(newIdeal + 1); numSuccess > want {
+		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
+	}
+}
+
+func TestQuotas_RateLimitQuotaInheritableNS(t *testing.T) {
+	conf, opts := teststorage.ClusterSetup(coreConfig, nil, nil)
+	opts.NoDefaultQuotas = true
+	cluster := vault.NewTestCluster(t, conf, opts)
+	cluster.Start()
+	defer cluster.Cleanup()
+
+	core := cluster.Cores[0].Core
+	client := cluster.Cores[0].Client
+
+	vault.TestWaitActive(t, core)
+
+	// Create Parent Namespace
+	_, err := client.Logical().Write("sys/namespaces/ns1", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a rate limit quota for parent namespace with a low RPS of 7.7, which means we can process
+	// ⌈7.7⌉*2 requests in the span of roughly a second -- 8 initially, followed
+	// by a refill rate of 7.7 per-second.
+	// As inheritable is set to true, the quota will be inherited by child namespaces
+	_, err = client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
+		"rate":        7.7,
+		"path":        "ns1",
+		"inheritable": true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create Childnamespace, so we get a hierarchy of ns1/ns1.1
+	client.SetNamespace("ns1")
+	_, err = client.Logical().Write("sys/namespaces/ns1.1", map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.ClearNamespace()
+
+	reqFunc := func(numSuccess, numFail *atomic.Int32, ns string) {
+		// list all namespaces in ns1/ns1.1
+		// the quota of ns1 should apply
+		client.SetNamespace(ns)
+		_, err := client.Logical().List("sys/namespaces")
+
+		if err != nil {
+			numFail.Add(1)
+		} else {
+			numSuccess.Add(1)
+		}
+		client.ClearNamespace()
+	}
+
+	numSuccess, numFail, elapsed := testRPSWithNS(reqFunc, 5*time.Second, "ns1/ns1.1")
+
+	// evaluate the ideal RPS as (ceil(RPS) + (RPS * totalSeconds))
+	ideal := 8 + (7.7 * float64(elapsed) / float64(time.Second))
+
+	// ensure there were some failed requests
+	if numFail == 0 {
+		t.Fatalf("expected some requests to fail; numSuccess: %d, numFail: %d, elapsed: %d", numSuccess, numFail, elapsed)
+	}
+
+	// ensure that we should never get more requests than allowed
+	if want := int32(ideal + 1); numSuccess > want {
+		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
+	}
+
+	// allow time (1s) for rate limit to refill before updating the quota
+	time.Sleep(time.Second)
+
+	// update the rate limit quota to inheritable false
+	// as a result the quota should not anymore apply to ns1.1, but only ns1
+	_, err = client.Logical().Write("sys/quotas/rate-limit/rlq", map[string]interface{}{
+		"rate":        7.7,
+		"path":        "ns1",
+		"inheritable": false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// as there is no quota for ns1/ns1.1, there should be no fails
+	_, numFail, _ = testRPSWithNS(reqFunc, 5*time.Second, "ns1/ns1.1")
+	if numFail > 0 {
+		t.Fatalf("unexpected number of failed requests: %d", numFail)
+	}
+
+	// as there the quota applies to ns1, there should be some fail
+	numSuccess, numFail, elapsed = testRPSWithNS(reqFunc, 5*time.Second, "ns1")
+	// ensure there were some failed requests
+	if numFail == 0 {
+		t.Fatalf("expected some requests to fail; numSuccess: %d, numFail: %d, elapsed: %d", numSuccess, numFail, elapsed)
+	}
+	// ensure that we should never get more requests than allowed
+	if want := int32(ideal + 1); numSuccess > want {
+		t.Fatalf("too many successful requests; want: %d, numSuccess: %d, numFail: %d, elapsed: %d", want, numSuccess, numFail, elapsed)
 	}
 }

@@ -780,6 +780,20 @@ func (i *IdentityStore) MemDBAliasByFactors(mountAccessor, aliasName string, clo
 }
 
 func (i *IdentityStore) MemDBAliasByFactorsInTxn(txn *memdb.Txn, mountAccessor, aliasName string, clone bool, groupAlias bool) (*identity.Alias, error) {
+	// Use root context as fallback
+	ctx := namespace.RootContext(nil)
+	return i.MemDBAliasByFactorsInTxnWithContext(ctx, txn, mountAccessor, aliasName, clone, groupAlias)
+}
+
+// MemDBAliasByFactorsInTxnWithContext looks up an alias by its factors (mount accessor and name)
+// while respecting namespace boundaries. This function will only return an alias that exists
+// in the same namespace as the provided context. If multiple aliases with the same factors
+// exist in different namespaces, only the one matching the context's namespace will be returned.
+//
+// This ensures proper isolation between namespaces and prevents cross-namespace information
+// disclosure. Each namespace can have its own set of aliases with the same name/mount accessor
+// without conflict.
+func (i *IdentityStore) MemDBAliasByFactorsInTxnWithContext(ctx context.Context, txn *memdb.Txn, mountAccessor, aliasName string, clone bool, groupAlias bool) (*identity.Alias, error) {
 	if txn == nil {
 		return nil, errors.New("nil txn")
 	}
@@ -797,7 +811,13 @@ func (i *IdentityStore) MemDBAliasByFactorsInTxn(txn *memdb.Txn, mountAccessor, 
 		tableName = groupAliasesTable
 	}
 
-	aliasRaw, err := txn.First(tableName, "factors", mountAccessor, aliasName)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get namespace from context: %w", err)
+	}
+
+	// Use compound index to look up alias by all 3 factors
+	aliasRaw, err := txn.First(tableName, "factors_ns", mountAccessor, aliasName, ns.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch alias from memdb using factors: %w", err)
 	}
@@ -2130,7 +2150,7 @@ func (i *IdentityStore) refreshExternalGroupMembershipsByEntityID(ctx context.Co
 		var newGroups []*identity.Group
 		var validAliases []*logical.Alias
 		for _, alias := range groupAliases {
-			aliasByFactors, err := i.MemDBAliasByFactorsInTxn(txn, alias.MountAccessor, alias.Name, true, true)
+			aliasByFactors, err := i.MemDBAliasByFactorsInTxnWithContext(ctx, txn, alias.MountAccessor, alias.Name, true, true)
 			if err != nil {
 				return false, nil, err
 			}

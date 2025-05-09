@@ -1109,13 +1109,18 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	dstRelativePath := dst.GetRelativePath(ns)
 
 	// Verify exact match of the route
-	srcMatch := c.router.MatchingMountEntry(ctx, srcRelativePath)
-	if srcMatch == nil {
+	mountEntry := c.router.MatchingMountEntry(ctx, srcRelativePath)
+	if mountEntry == nil {
 		return fmt.Errorf("no matching mount at %q", src.Namespace.Path+src.MountPath)
 	}
 
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		return fmt.Errorf("path in use at %q", match)
+	}
+
+	srcBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
 	}
 
 	// Mark the entry as tainted
@@ -1147,27 +1152,45 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	}
 
 	c.mountsLock.Lock()
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		c.mountsLock.Unlock()
 		return fmt.Errorf("path in use at %q", match)
 	}
 
-	srcMatch.Tainted = false
-	srcMatch.NamespaceID = dst.Namespace.ID
-	srcMatch.namespace = dst.Namespace
-	srcPath := srcMatch.Path
-	srcMatch.Path = dst.MountPath
+	mountEntry.Tainted = false
+	mountEntry.NamespaceID = dst.Namespace.ID
+	mountEntry.namespace = dst.Namespace
+	srcPath := mountEntry.Path
+	mountEntry.Path = dst.MountPath
+
+	dstBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
+	}
 
 	// Update the mount table
-	if err := c.persistMounts(ctx, nil, c.mounts, &srcMatch.Local, srcMatch.UUID); err != nil {
-		srcMatch.Path = srcPath
-		srcMatch.Tainted = true
+	if err := c.persistMounts(ctx, nil, c.mounts, &mountEntry.Local, mountEntry.UUID); err != nil {
+		mountEntry.Path = srcPath
+		mountEntry.Tainted = true
 		c.mountsLock.Unlock()
 		return fmt.Errorf("failed to update mount table with error %+v", err)
 	}
 
+	if src.Namespace.ID != dst.Namespace.ID {
+		// Handle storage entries
+		if err := c.moveMountStorage(ctx, src, mountEntry, srcBarrierView, dstBarrierView); err != nil {
+			c.mountsLock.Unlock()
+			return err
+		}
+	}
+
 	// Remount the backend
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath); err != nil {
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
+		re.storageView = dstBarrierView
+		re.storagePrefix = dstBarrierView.Prefix()
+
+		return nil
+	}); err != nil {
 		c.mountsLock.Unlock()
 		return err
 	}
@@ -1181,6 +1204,110 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 	return nil
 }
 
+// moveMountStorage moves storage entries of a mount mountEntry to its new destination
+func (c *Core) moveMountStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
+}
+
+// moveAuthStorage moves storage entries of an auth mountEntry to its new destination
+func (c *Core) moveAuthStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+	return c.moveStorage(ctx, src, me, srcBarrierView, dstBarrierView)
+}
+
+// moveStorage moves storage entries of a mountEntry to its new destination
+// It detects the mountEntry type
+func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, me *MountEntry, srcBarrierView, dstBarrierView BarrierView) error {
+	srcPrefix := srcBarrierView.Prefix()
+	dstPrefix := dstBarrierView.Prefix()
+
+	barrier := c.barrier
+	var view logical.Storage = barrier
+	rollback := func(context.Context) error { return nil }
+	commit := func(context.Context) error { return nil }
+	if txnBarrier, ok := barrier.(logical.TransactionalStorage); ok {
+		tx, err := txnBarrier.BeginTx(ctx)
+		if err != nil {
+			return err
+		}
+		rollback = tx.Rollback
+		commit = tx.Commit
+		view = tx
+	}
+
+	keys, err := view.List(ctx, srcPrefix)
+	if err != nil {
+		rErr := rollback(ctx)
+		return errors.Join(err, rErr)
+	}
+
+	for i := 0; i < len(keys); i++ {
+		key := keys[i]
+		if strings.HasSuffix(key, "/") {
+			nestedKeys, err := view.List(ctx, srcPrefix+key)
+			if err != nil {
+				return err
+			}
+			for k := range nestedKeys {
+				nestedKeys[k] = key + nestedKeys[k]
+			}
+
+			keys = append(keys, nestedKeys...)
+			continue
+		}
+
+		se, err := view.Get(ctx, srcPrefix+key)
+		if err != nil {
+			rErr := rollback(ctx)
+			return errors.Join(err, rErr)
+		}
+		if se == nil {
+			continue
+		}
+
+		se.Key = dstPrefix + key
+		err = view.Put(ctx, se)
+		if err != nil {
+			rErr := rollback(ctx)
+			return errors.Join(err, rErr)
+		}
+		err = view.Delete(ctx, srcPrefix+key)
+		if err != nil {
+			rErr := rollback(ctx)
+			return errors.Join(err, rErr)
+		}
+	}
+	err = commit(ctx)
+	if err != nil {
+		return err
+	}
+
+	srcEntryView := NamespaceView(barrier, src.Namespace)
+	var coreLocalPath, corePath string
+
+	switch me.Table {
+	case mountTableType:
+		coreLocalPath = coreLocalMountConfigPath
+		corePath = coreMountConfigPath
+	case credentialTableType:
+		coreLocalPath = coreLocalAuthConfigPath
+		corePath = coreAuthConfigPath
+	default:
+		return fmt.Errorf("unable to delete mount table type %q", me.Table)
+	}
+
+	if me.Local {
+		srcEntryView = srcEntryView.SubView(coreLocalPath + "/")
+	} else {
+		srcEntryView = srcEntryView.SubView(corePath + "/")
+	}
+	err = srcEntryView.Delete(ctx, me.UUID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // From an input path that has a relative namespace hierarchy followed by a mount point, return the full
 // namespace of the mount point, along with the mount point without the namespace related prefix.
 // For example, in a hierarchy ns1/ns2/ns3/secret-mount, when currNs is ns1 and path is ns2/ns3/secret-mount,
@@ -1188,10 +1315,10 @@ func (c *Core) remountSecretsEngine(ctx context.Context, src, dst namespace.Moun
 func (c *Core) splitNamespaceAndMountFromPath(currNs, path string) namespace.MountPathDetails {
 	fullPath := currNs + path
 
-	mountPath := strings.TrimPrefix(fullPath, namespace.RootNamespace.Path)
+	ns, mountPath := c.NamespaceByPath(namespace.RootContext(nil), fullPath)
 
 	return namespace.MountPathDetails{
-		Namespace: namespace.RootNamespace,
+		Namespace: ns,
 		MountPath: sanitizePath(mountPath),
 	}
 }

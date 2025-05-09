@@ -255,7 +255,7 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 }
 
 // Remount is used to change the mount location of a logical backend
-func (r *Router) Remount(ctx context.Context, src, dst string) error {
+func (r *Router) Remount(ctx context.Context, src, dst string, callback func(*routeEntry) error) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -270,6 +270,13 @@ func (r *Router) Remount(ctx context.Context, src, dst string) error {
 	raw, ok := r.root.Get(src)
 	if !ok {
 		return fmt.Errorf("no mount at %q", src)
+	}
+
+	if callback != nil {
+		err = callback(raw.(*routeEntry))
+		if err != nil {
+			return fmt.Errorf("unable to update route entry: %w", err)
+		}
 	}
 
 	// Update the mount point

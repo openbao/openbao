@@ -832,6 +832,77 @@ func TestCore_RemountCredential_Cleanup(t *testing.T) {
 	}
 }
 
+func TestCore_RemountCredential_Namespaces(t *testing.T) {
+	c, keys, _ := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	me := &MountEntry{
+		Table: credentialTableType,
+		Path:  "foo",
+		Type:  "noop",
+	}
+	err := c.enableCredential(ns2Ctx, me)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	src := namespace.MountPathDetails{
+		Namespace: ns2,
+		MountPath: "auth/foo/",
+	}
+	dst := namespace.MountPathDetails{
+		Namespace: ns3,
+		MountPath: "auth/bar/",
+	}
+
+	match := c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != ns2.Path+"auth/foo/" {
+		t.Fatalf("missing mount, match: %q", match)
+	}
+
+	err = c.remountCredential(ns1Ctx, src, dst, true)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location, match: %q", err)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location, match: %q", match)
+	}
+
+	c.sealInternal()
+	for i, key := range keys {
+		unseal, err := TestCoreUnseal(c, key)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if i+1 == len(keys) && !unseal {
+			t.Fatal("should be unsealed")
+		}
+	}
+
+	match = c.router.MatchingMount(ns2Ctx, "auth/foo/bar")
+	if match != "" {
+		t.Fatalf("auth method still at old location after unseal, match: %q", match)
+	}
+
+	match = c.router.MatchingMount(ns3Ctx, "auth/bar/baz")
+	if match != ns3.Path+"auth/bar/" {
+		t.Fatalf("auth method not at new location after unseal, match: %q", match)
+	}
+}
+
 func TestCore_RemountCredential_InvalidSource(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	err := remountCredentialFromRoot(c, "foo", "auth/bar", true)

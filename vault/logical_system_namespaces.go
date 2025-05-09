@@ -91,7 +91,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "namespaces/api-lock/lock(?P<path>.*)",
+			Pattern: "namespaces/api-lock/lock(?:$|/(?P<path>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",
@@ -126,7 +126,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
-			Pattern: "namespaces/api-lock/unlock(?P<path>.*)",
+			Pattern: "namespaces/api-lock/unlock(?:$|/(?P<path>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
 				OperationPrefix: "namespaces",

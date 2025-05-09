@@ -325,8 +325,12 @@ func (c *Logical) Write(path string, data map[string]interface{}) (*Secret, erro
 
 func (c *Logical) WriteWithContext(ctx context.Context, path string, data map[string]interface{}) (*Secret, error) {
 	r := c.c.NewRequest(http.MethodPut, "/v1/"+path)
-	if err := r.SetJSONBody(data); err != nil {
-		return nil, err
+
+	// don't set stringified nil body on the request
+	if data != nil {
+		if err := r.SetJSONBody(data); err != nil {
+			return nil, err
+		}
 	}
 
 	return c.write(ctx, path, r)

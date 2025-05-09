@@ -86,5 +86,6 @@ func (c *NamespaceAPILockCommand) Run(args []string) int {
 		return 2
 	}
 
+	c.UI.Warn("Copy and store your unlock key, as losing it may cause data loss.\nIn case key gets missing, contact the administrator.\n")
 	return OutputSecret(c.UI, resp)
 }

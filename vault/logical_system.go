@@ -5866,7 +5866,7 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	POST /<path>
+	PUT /<path>
 		Lock the API for a namespace.
 		`,
 	},
@@ -5875,7 +5875,7 @@ This path responds to the following HTTP methods.
 		`
 This path responds to the following HTTP methods.
 
-	POST /<path>
+	PUT /<path>
 		Unlock the API for a namespace.
 		`,
 	},

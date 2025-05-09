@@ -43,6 +43,24 @@ func Test_runCelProgram(t *testing.T) {
 			},
 		},
 		{
+			name: "String will be returned as error",
+			celRole: celRoleEntry{
+				CelProgram: celhelper.CelProgram{
+					Expression: "'something is amiss'",
+				},
+			},
+			claims: map[string]interface{}{
+				"sub":    "test@example.com",
+				"groups": []string{"group1", "group2"},
+			},
+			auth: logical.Auth{},
+			validateResult: func(t *testing.T, err error, rslt *pb.Auth) {
+				require.Error(t, err)
+				require.Nil(t, rslt)
+				require.Contains(t, err.Error(), "something is amiss")
+			},
+		},
+		{
 			name: "pb.Auth type can be returned",
 			celRole: celRoleEntry{
 				CelProgram: celhelper.CelProgram{

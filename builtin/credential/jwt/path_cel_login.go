@@ -176,7 +176,7 @@ func (b *jwtAuthBackend) pathCelLogin(ctx context.Context, req *logical.Request,
 	}, nil
 }
 
-// runCelProgram executes the AuthProgram for the celRoleEntry and returns a transient jwtRole
+// runCelProgram executes the CelProgram for the celRoleEntry and returns a pb.Auth or error
 func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRoleEntry, allClaims map[string]any) (*pb.Auth, error) {
 	result, err := b.celEvalProgram(celRoleEntry.CelProgram, allClaims)
 	if err != nil {
@@ -192,8 +192,13 @@ func (b *jwtAuthBackend) runCelProgram(ctx context.Context, celRoleEntry *celRol
 		if !v {
 			return nil, fmt.Errorf("Cel role '%s' blocked authorization with boolean false return", celRoleEntry.Name)
 		}
+	// if string, return this as auth failed message
+	case string:
+		return nil, fmt.Errorf("Cel role '%s' blocked authorization with message: %s", celRoleEntry.Name, v)
+
 	}
 
+	// handle protobuf Auth return type
 	if msg, err := refVal.ConvertToNative(reflect.TypeOf(&pb.Auth{})); err == nil {
 		pbAuth, ok := msg.(*pb.Auth)
 		if ok {

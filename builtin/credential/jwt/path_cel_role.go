@@ -24,6 +24,7 @@ type celRoleEntry struct {
 	CelProgram celhelper.CelProgram `json:"cel_program"` // Required
 	Message    string               `json:"message,omitempty"`
 
+	// The following attributes are used for validating a JWT prior to CEL evaluation
 	// Duration of leeway for expiration to account for clock skew
 	ExpirationLeeway time.Duration `json:"expiration_leeway"`
 	// Duration of leeway for not before to account for clock skew

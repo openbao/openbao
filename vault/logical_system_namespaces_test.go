@@ -608,17 +608,17 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 	rootCtx := namespace.RootContext(context.Background())
 
 	t.Run("cannot lock nonexistent, root or already locked namespaces", func(t *testing.T) {
-		testCreateNamespace(t, rootCtx, b, "test", nil)
+		testNamespace := testCreateNamespace(t, rootCtx, b, "test", nil)
 
 		req := logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/idontexist")
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "requested namespace does not exist")
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, "requested namespace does not exist", res.Data["error"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock")
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "cannot lock root namespace")
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, "cannot lock root namespace", res.Data["error"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/test")
 		res, err = b.HandleRequest(rootCtx, req)
@@ -627,8 +627,8 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/test")
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "namespace already locked")
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, fmt.Sprintf("cannot lock namespace %q: is already locked", testNamespace.Path), res.Data["error"])
 	})
 
 	t.Run("cannot lock child namespace when ancestor is locked", func(t *testing.T) {
@@ -644,7 +644,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/company_a/team_a")
 		res, err = b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.Equal(t, res.Data["error"], fmt.Sprintf("cannot lock namespace %q as %q is already locked", "company_a/team_a/", "company_a/"))
+		require.Equal(t, fmt.Sprintf("cannot lock namespace %q: ancestor namespace %q is already locked", "company_a/team_a/", "company_a/"), res.Data["error"])
 	})
 
 	t.Run("can lock parent namespace when child is locked", func(t *testing.T) {
@@ -723,16 +723,16 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 		req.Data["unlock_key"] = "key"
 		req.ClientToken = "token"
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, "requested namespace does not exist")
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, "requested namespace does not exist", res.Data["error"])
 
 		// namespace not locked
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/test")
 		req.Data["unlock_key"] = "key"
 		req.ClientToken = "token"
 		res, err = b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, fmt.Sprintf("namespace %q is not locked", testNS.Path))
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, fmt.Sprintf("namespace %q is not locked", testNS.Path), res.Data["error"])
 	})
 
 	t.Run("cannot unlock namespace with locked ancestor", func(t *testing.T) {
@@ -752,8 +752,8 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 		req.Data["unlock_key"] = "placeholder"
 		req.ClientToken = "token"
 		res, err := b.HandleRequest(rootCtx, req)
-		require.ErrorContains(t, err, fmt.Sprintf("cannot unlock %q with namespace %q being locked", childNS.Path, parentNS.Path))
-		require.Empty(t, res, "response is not empty")
+		require.Error(t, err)
+		require.Equal(t, fmt.Sprintf("cannot unlock %q with namespace %q being locked", childNS.Path, parentNS.Path), res.Data["error"])
 	})
 
 	t.Run("namespace can be unlocked with unlock key", func(t *testing.T) {

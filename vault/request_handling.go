@@ -576,17 +576,7 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 		}
 	}
 
-	isRestrictedSysAPI := ns.ID != namespace.RootNamespaceID &&
-		strings.HasPrefix(req.Path, "sys/") &&
-		restrictedSysAPIs.HasPathSegments(req.Path[4:])
-
-	if isRestrictedSysAPI {
-		return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
-	}
-
-	ctx = namespace.ContextWithNamespace(ctx, ns)
-
-	if ns != namespace.RootNamespace {
+	if ns.ID != namespace.RootNamespace.ID {
 		// verify whether the namespace is either directly or inherently locked
 		lockedNS := c.namespaceStore.GetLockingNamespace(ns)
 		if lockedNS != nil && req.Operation != logical.RevokeOperation && req.Operation != logical.RollbackOperation {
@@ -596,7 +586,13 @@ func (c *Core) switchedLockHandleRequest(httpCtx context.Context, req *logical.R
 				return logical.ErrorResponse(fmt.Sprintf("API access to this namespace has been locked by an administrator - %q must be unlocked to gain access.", lockedNS.Path)), logical.ErrLockedNamespace
 			}
 		}
+
+		if strings.HasPrefix(req.Path, "sys/") &&
+			restrictedSysAPIs.HasPathSegments(req.Path[4:]) {
+			return nil, logical.CodedError(http.StatusBadRequest, "operation unavailable in namespaces")
+		}
 	}
+	ctx = namespace.ContextWithNamespace(ctx, ns)
 
 	inFlightReqID, ok := httpCtx.Value(logical.CtxKeyInFlightRequestID{}).(string)
 	if ok {

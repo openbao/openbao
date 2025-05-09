@@ -618,7 +618,7 @@ func TestNamespaceBackend_Lock(t *testing.T) {
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock")
 		res, err = b.HandleRequest(rootCtx, req)
 		require.Error(t, err)
-		require.Equal(t, "cannot lock root namespace", res.Data["error"])
+		require.Equal(t, "root namespace cannot be locked/unlocked", res.Data["error"])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/lock/test")
 		res, err = b.HandleRequest(rootCtx, req)

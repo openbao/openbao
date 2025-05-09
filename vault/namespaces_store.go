@@ -850,6 +850,10 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 		return errors.New("requested namespace does not exist")
 	}
 
+	if namespaceToUnlock.ID == namespace.RootNamespaceID {
+		return errors.New("root namespace cannot be locked/unlocked")
+	}
+
 	if !namespaceToUnlock.Locked {
 		return fmt.Errorf("namespace %q is not locked", namespaceToUnlock.Path)
 	}
@@ -930,7 +934,7 @@ func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (strin
 	}
 
 	if namespaceToLock.ID == namespace.RootNamespaceID {
-		return "", errors.New("cannot lock root namespace")
+		return "", errors.New("root namespace cannot be locked/unlocked")
 	}
 
 	lockedNamespace := ns.GetLockingNamespace(namespaceToLock)

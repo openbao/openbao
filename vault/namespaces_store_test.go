@@ -258,7 +258,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 
 	// root path will return err and empty unlock key
 	unlockKey, err = s.LockNamespace(ctx, "")
-	require.ErrorContains(t, err, "cannot lock root namespace")
+	require.ErrorContains(t, err, "root namespace cannot be locked/unlocked")
 	require.Empty(t, unlockKey)
 
 	// lock parent namespace
@@ -344,6 +344,10 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 	// nonexistent path will return err
 	err = s.UnlockNamespace(ctx, "key", "nonexistent", false)
 	require.ErrorContains(t, err, "requested namespace does not exist")
+
+	// cannot unlock root as it cannot be locked
+	err = s.UnlockNamespace(ctx, "key", "", false)
+	require.ErrorContains(t, err, "root namespace cannot be locked/unlocked")
 
 	// unlocking not locked namespace will return err
 	err = s.UnlockNamespace(ctx, "key", anotherNamespace.Path, false)

@@ -256,7 +256,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	nsLock, err := s.storage.Get(ctx, nsLockPath)
 	require.NoError(t, err)
 
-	var lockItem lock
+	var lockItem namespaceLock
 	err = nsLock.DecodeJSON(&lockItem)
 	require.NoError(t, err)
 	require.Equal(t, unlockKey, lockItem.Key)

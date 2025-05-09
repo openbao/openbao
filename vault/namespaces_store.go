@@ -69,7 +69,7 @@ type NamespaceStore struct {
 
 // namespaceLock marks a locked namespace in storage.
 // It holds the unlock key for the locked namespace.
-type lock struct {
+type namespaceLock struct {
 	Key string `json:"key" mapstructure:"key"`
 }
 
@@ -141,15 +141,15 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 				return false, fmt.Errorf("%v has an empty namespace definition (page %v / index %v)", nsPath, page, index)
 			}
 
-			nsLockPath := path.Join(namespaceBarrierPrefix, entry, namespaceLockPrefix)
-			nsLock, err := s.Get(ctx, nsLockPath)
-			if err != nil {
-				return false, fmt.Errorf("failed to fetch namespace lock %v (page %v / index %v): %w", nsLockPath, page, index, err)
-			}
-
 			var namespace namespace.Namespace
 			if err := item.DecodeJSON(&namespace); err != nil {
 				return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", nsPath, page, index, err)
+			}
+
+			lockView := NamespaceView(s, &namespace).SubView(namespaceLockPrefix)
+			nsLock, err := lockView.Get(ctx, "")
+			if err != nil {
+				return false, fmt.Errorf("failed to fetch namespace lock %v (page %v / index %v): %w", lockView.Prefix(), page, index, err)
 			}
 
 			if nsLock != nil {
@@ -828,12 +828,12 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 // provided unlock key, with match deletes the storage entry, modifies namespace
 // tree structure and namespace maps changing the 'Locked' field to false.
 func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace, unlockKey string, forceUnlock bool) error {
-	lockPath := path.Join(namespaceBarrierPrefix, namespace.UUID, namespaceLockPrefix)
+	lockView := NamespaceView(ns.storage, namespace).SubView(namespaceLockPrefix)
 
 	// read lock from storage
-	var nsLock lock
+	var nsLock namespaceLock
 	err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		item, err := s.Get(ctx, lockPath)
+		item, err := lockView.Get(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -855,7 +855,7 @@ func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *
 
 	// delete lock from storage
 	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		return s.Delete(ctx, lockPath)
+		return lockView.Delete(ctx, "")
 	})
 	if err != nil {
 		return fmt.Errorf("error deleting namespace lock: %w", err)
@@ -914,14 +914,14 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, namespace *na
 		return "", fmt.Errorf("unable to generate namespace lock key: %w", err)
 	}
 
-	lock := &lock{
+	lock := &namespaceLock{
 		Key: lockKey,
 	}
 
 	// write lock to storage
 	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		storagePath := path.Join(namespaceBarrierPrefix, namespace.UUID, namespaceLockPrefix)
-		item, err := logical.StorageEntryJSON(storagePath, &lock)
+		lockView := NamespaceView(ns.storage, namespace).SubView(namespaceLockPrefix)
+		item, err := logical.StorageEntryJSON(lockView.Prefix(), &lock)
 		if err != nil {
 			return fmt.Errorf("error marshalling storage entry: %w", err)
 		}

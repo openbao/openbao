@@ -44,6 +44,16 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    true,
 			Description: "Path of the namespace.",
 		},
+		"tainted": {
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: "Flag representing the taint status of the namespace.",
+		},
+		"locked": {
+			Type:        framework.TypeBool,
+			Required:    true,
+			Description: "Flag representing the lock status of the namespace.",
+		},
 		"custom_metadata": {
 			Type:        framework.TypeMap,
 			Required:    true,
@@ -78,6 +88,75 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 			HelpSynopsis:    strings.TrimSpace(sysHelp["list-namespaces"][0]),
 			HelpDescription: strings.TrimSpace(sysHelp["list-namespaces"][1]),
+		},
+
+		{
+			Pattern: "namespaces/api-lock/lock(?:$|/(?P<path>.+))",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    false,
+					Description: "Path of the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesLock(),
+					Responses: map[int][]framework.Response{
+						http.StatusOK: {{Description: "OK", Fields: map[string]*framework.FieldSchema{
+							"unlock_key": {
+								Type:        framework.TypeString,
+								Required:    true,
+								Description: "Unlock key required for unlocking the namespace.",
+							},
+						}}},
+					},
+					Summary: "Lock a namespace.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-lock"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-lock"][1]),
+		},
+
+		{
+			Pattern: "namespaces/api-lock/unlock(?:$|/(?P<path>.+))",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"path": {
+					Type:        framework.TypeString,
+					Required:    false,
+					Description: "Path of the namespace.",
+				},
+				"unlock_key": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Unlock key required for unlocking the namespace",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Callback: b.handleNamespacesUnlock(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: "No Content"}},
+					},
+					Summary: "Unlock a namespace.",
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces-unlock"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces-unlock"][1]),
 		},
 
 		{
@@ -135,7 +214,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 								},
 							},
 						},
-						http.StatusNoContent: {{Description: "OK"}},
+						http.StatusNoContent: {{Description: "No Content"}},
 					},
 					Summary: "Delete a namespace.",
 				},
@@ -155,6 +234,7 @@ func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
 		"path":            ns.Path,
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
+		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
 	}
 }
@@ -314,6 +394,50 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(ns)}, nil
+	}
+}
+
+// handleNamespacesLock handles the "/sys/namespaces/api-lock/lock/<path>" endpoint to lock a namespace.
+func (b *SystemBackend) handleNamespacesLock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		unlockKey, err := b.Core.namespaceStore.LockNamespace(ctx, path)
+		if err != nil {
+			return handleError(err)
+		}
+
+		if unlockKey != "" {
+			return &logical.Response{Data: map[string]interface{}{
+				"unlock_key": unlockKey,
+			}}, nil
+		}
+
+		return nil, nil
+	}
+}
+
+// handleNamespacesUnlock handles the "/sys/namespaces/api-lock/unlock/<path>" endpoint to unlock a namespace.
+func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		path := namespace.Canonicalize(data.Get("path").(string))
+		unlockKey := data.Get("unlock_key").(string)
+
+		te, err := b.Core.LookupToken(ctx, req.ClientToken)
+		if err != nil {
+			return nil, err
+		}
+
+		isRootRequest := te.IsRoot()
+		if unlockKey == "" && !isRootRequest {
+			return nil, errors.New("provided empty key")
+		}
+
+		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path, isRootRequest)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
 	}
 }
 

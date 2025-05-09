@@ -86,5 +86,11 @@ func (c *NamespaceAPILockCommand) Run(args []string) int {
 		return 2
 	}
 
-	return OutputSecret(c.UI, resp)
+	c.UI.Output(fmt.Sprintf("Unlock Key: %s", resp.Data["unlock_key"]))
+	c.UI.Info(`
+Namespace is now locked. Please securely store the unlock key printed above.
+You must supply the unlock key to re-enable access to the namespace.
+If the unlock key is lost, a root token is required to unlock the namespace without it.`)
+
+	return 0
 }

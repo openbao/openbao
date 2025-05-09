@@ -503,6 +503,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/acme-tls-listeners",
                 "rfcs/acl-paginated-lists",
                 "rfcs/ssh-ca-multi-issuer",
+                "rfcs/cel-best-practices",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

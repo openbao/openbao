@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package openbao.pki;
+
+option go_package = "github.com/openbao/openbao/builtin/logical/pki";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
+message PKIX {
+    message Name {
+        repeated string Country = 1;
+        repeated string Organization = 2;
+        repeated string OrganizationUnit = 3;
+        repeated string Locality = 4;
+        repeated string Province = 5;
+        repeated string StreetAddress = 6;
+        repeated string PostalCode = 7;
+        string SerialNumber = 8;
+        string CommonName = 9;
+    }
+    message Extension {
+        repeated int64 Id  = 1;
+        bool Critical = 2;
+        bytes Value = 3;
+    }
+}
+
+message ObjectIdentifier {
+  // 1.2.840.113549 → [1, 2, 840, 113549]
+  repeated uint32 arc = 1;
+}
+
+message IPMask {
+    bytes IPMask = 1;
+}
+
+message net {
+    message IP {
+        bytes IP = 1;
+    }
+    message IPNet {
+        net.IP IP = 1;          // network number
+	    IPMask Mask = 2;
+    }
+}
+
+message Userinfo {
+	string username      = 1;   // RFC‑2396 allows empty.
+    string password      = 2;   // Empty when not supplied.
+    bool   password_set  = 3;   // If true, then password field is meaningful.
+}
+
+message url {
+    message URL {
+        string Scheme = 1;
+        string Opaque = 2;
+        Userinfo User = 3;
+        string Host = 4;
+        string Path = 5;
+        string RawPath = 6;
+        bool OmitHost = 7;
+        bool ForceQuery = 8;
+        string RawQuery = 9;
+        string Fragment = 10;
+        string RawFragment = 11;
+    }    
+}
+
+// An OID represents an ASN.1 OBJECT IDENTIFIER.
+message OID {
+    repeated uint64 arc = 1;     // 1.2.840.113549 → [1, 2, 840, 113549]
+}
+
+message PolicyMapping {	
+	OID IssuerDomainPolicy = 1;	
+	OID SubjectDomainPolicy = 2;
+}
+
+enum PublicKeyAlgorithm {
+    UnknownPublicKeyAlgorithm = 0;
+    RSA = 1;
+    DSA = 2;
+    ECDSA = 3;
+    Ed25519 = 4;
+}
+
+enum SignatureAlgorithm {
+    UnknownSignatureAlgorithm = 0;
+	MD2WithRSA  = 1;            // Unsupported.
+	MD5WithRSA = 2;             // Only supported for signing, not verification.
+	SHA1WithRSA = 3;            // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
+	SHA256WithRSA = 4;
+	SHA384WithRSA = 5;
+	SHA512WithRSA = 6;
+	DSAWithSHA1 = 7;            // Unsupported.
+	DSAWithSHA256 = 8;          // Unsupported.
+	ECDSAWithSHA1 = 9;          // Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.
+	ECDSAWithSHA256 = 10;
+	ECDSAWithSHA384 = 11;
+	ECDSAWithSHA512 = 12;
+	SHA256WithRSAPSS = 13;
+	SHA384WithRSAPSS = 14;
+	SHA512WithRSAPSS = 15;
+	PureEd25519 = 16;
+}
+
+enum KeyUsage {
+    KeyUsageUnspecified = 0;
+    KeyUsageDigitalSignature = 1;
+    KeyUsageContentCommitment = 2;
+	KeyUsageKeyEncipherment = 3;
+	KeyUsageDataEncipherment = 4;
+	KeyUsageKeyAgreement = 5;
+	KeyUsageCertSign = 6;
+	KeyUsageCRLSign = 7;
+	KeyUsageEncipherOnly = 8;
+	KeyUsageDecipherOnly = 9;
+}
+
+enum ExtKeyUsage {
+    ExtKeyUsageAny = 0;
+	ExtKeyUsageServerAuth = 1;
+	ExtKeyUsageClientAuth = 2;
+	ExtKeyUsageCodeSigning = 3;
+	ExtKeyUsageEmailProtection = 4;
+	ExtKeyUsageIPSECEndSystem = 5;
+	ExtKeyUsageIPSECTunnel = 6;
+	ExtKeyUsageIPSECUser = 7;
+	ExtKeyUsageTimeStamping = 8;
+	ExtKeyUsageOCSPSigning = 9;
+	ExtKeyUsageMicrosoftServerGatedCrypto = 10;
+	ExtKeyUsageNetscapeServerGatedCrypto = 11;
+	ExtKeyUsageMicrosoftCommercialCodeSigning = 12;
+	ExtKeyUsageMicrosoftKernelCodeSigning = 13;
+}
+
+// Mirrors x509.Certificate
+message CertTemplate {
+    // Complete ASN.1 DER content (certificate, signature algorithm and signature).
+    bytes Raw = 1; 
+	bytes RawTBSCertificate = 2; 
+	bytes RawSubjectPublicKeyInfo  = 3; 
+	bytes RawSubject = 4; 
+	bytes RawIssuer = 5; 
+
+	bytes Signature = 6; 
+    SignatureAlgorithm SignatureAlgorithm = 7;
+
+	PublicKeyAlgorithm PublicKeyAlgorithm = 8;
+	google.protobuf.Any PublicKey = 9;
+
+	int64 Version = 10;
+	bytes SerialNumber = 11;
+    PKIX.Name Issuer = 12;
+    PKIX.Name Subject = 13;
+    google.protobuf.Timestamp NotBefore = 14;
+    google.protobuf.Timestamp NotAfter  = 15;
+    KeyUsage KeyUsage = 16;
+    
+    PKIX.Extension Extensions = 17;
+	PKIX.Extension ExtraExtensions = 18;
+    repeated ObjectIdentifier UnhandledCriticalExtensions = 19;
+
+	ExtKeyUsage ExtKeyUsage = 20;
+	repeated ObjectIdentifier UnknownExtKeyUsage = 21;
+
+	bool BasicConstraintsValid =22;
+	bool IsCA = 23;
+
+    int64 MaxPathLen = 24;
+    bool MaxPathLenZero = 25;
+
+    repeated bytes subject_key_id = 26;
+	repeated bytes authority_key_id = 27;
+
+    // RFC 5280, 4.2.2.1 (Authority Information Access)
+	repeated string OCSPServer = 28;
+	repeated string IssuingCertificateURL = 29;
+
+	repeated string DNSNames = 30;
+	repeated string EmailAddresses = 31;
+	repeated net.IP IPAddresses = 32;
+	repeated url.URL URIs = 33;
+
+    // Name constraints
+	bool PermittedDNSDomainsCritical = 34; // if true then the name constraints are marked critical.
+	repeated string PermittedDNSDomains = 35;
+	repeated string ExcludedDNSDomains = 36;
+	repeated net.IPNet PermittedIPRanges = 37;
+	repeated net.IPNet ExcludedIPRanges = 38;
+	repeated string PermittedEmailAddresses = 39;
+	repeated string ExcludedEmailAddresses = 40;
+	repeated string PermittedURIDomains = 41;
+	repeated string ExcludedURIDomains = 42;
+    
+	repeated string CRLDistributionPoints = 43;
+
+    repeated ObjectIdentifier policy_identifiers = 44;
+	repeated OID Policies = 45;
+
+	int64 InhibitAnyPolicy = 46;
+	bool InhibitAnyPolicyZero = 47;
+
+	int64 InhibitPolicyMapping = 48;
+	bool InhibitPolicyMappingZero = 49;
+
+	int64 RequireExplicitPolicy = 50;
+	bool RequireExplicitPolicyZero = 51;
+	repeated PolicyMapping PolicyMappings = 52;
+}

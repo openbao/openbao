@@ -2,21 +2,21 @@
 
 ## Summary
 
-This feature offers support for [Common Expression Language (CEL)](https://github.com/google/cel-spec) in Vault's jwt-based auth engines (oidc, jwt) to create a flexible framework for validating claims and dynamically assigning token policies. CEL will allow administrators to define fine-grained rules for claim validation and dynamic policy assignment, extending the more static assignment of role- and identity-based policies.
+This feature offers support for [Common Expression Language (CEL)](https://github.com/google/cel-spec) in OpenBao's jwt-based auth engines (oidc, jwt) to create a flexible framework for validating claims and dynamically assigning token policies. CEL will allow administrators to define fine-grained rules for claim validation and dynamic policy assignment, extending the more static assignment of role- and identity-based policies.
 
-JWT CEL support is implemented as a new type of CEL role and follows the [general plan for CEL support](https://github.com/openbao/openbao/blob/main/website/content/docs/rfcs/cel-best-practices.mdx) in Openbao 
+JWT CEL support is implemented as a new type of CEL role and follows the [general plan for CEL support](https://github.com/openbao/openbao/blob/main/website/content/docs/rfcs/cel-best-practices.mdx) in OpenBao.
 
 ---
 
 ## Problem Statement
 
-Vault's jwt-based auth engines (OIDC and JWT) currently assemble token policies from `roles` and `identities`. However, administrators cannot enforce complex constraints, such as validating combinations of claims or dynamically assigning token policies based on claim values.
+OpenBao's jwt-based auth engines (OIDC and JWT) currently assemble token policies from `roles` and `identities`. However, administrators cannot enforce complex constraints, such as validating combinations of claims or dynamically assigning token policies based on claim values.
 
 ---
 
 ## User-facing description
 
-**_Administrators_** can define CEL roles under a new endpoint, `auth/{oidc|jwt}/cel/roles/:name`, to be executed during authentication. CEL roles evaluate incoming claims and generate `logical.Auth{}` instances having appropriate token policies.
+**_Administrators_** can define CEL roles under a new endpoint, `auth/{oidc|jwt}/cel/roles/:name`, to be executed during authentication. CEL roles should evaluate all incoming claims and generate `logical.Auth{}` instances having appropriate token policies.
 
 **_Users_** authenticating with JWT or OIDC tokens will have their claims validated through the CEL inidicated role. If successful, they receive a token with policies and other attributes. 
 
@@ -25,13 +25,17 @@ For example:
 - A CEL role validates that the token contains specific claims like `"admin" in claims.roles && matches(claims.tenant_id, [0-9]+)"`.
 - If validation passes, the CEL program assigns the token policies `admin` and `team-12345` (using `claims.tenant_id` to form the policy name).
 
+This could be codified in the following CEL program:
+
+    "admin" in claims.roles && matches(claims.tenant_id, [0-9]+)" ? pb.Auth{ policies: ["admin", "team-12345"] } : false
+
 ---
 
 ## Technical Description
 
 ### CEL in Vault Auth Engines (OIDC, JWT)
 
-CEL roles integrate with Vault's Auth engine (OIDC and JWT) to dynamically evaluate claims. Instead of using static role-to-policy assignment with `bound_claim`, CEL programs validate claims and return a `logical.Auth` instance containing dynamically assigned token policies.
+CEL roles integrate with OpenBao's Auth engine (OIDC and JWT) to dynamically evaluate claims. Instead of using static role-to-policy assignment with `bound_claim`, CEL programs validate claims and return a `logical.Auth` instance containing dynamically assigned token policies.
 
 **Workflow:**
 1. A user authenticates with a JWT or OIDC token.

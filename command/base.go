@@ -492,7 +492,7 @@ func (c *BaseCommand) flagSet(bit FlagSetBit) *FlagSets {
 			f.StringVar(&StringVar{
 				Name:       "unlock-key",
 				Target:     &c.flagUnlockKey,
-				Default:    notSetValue,
+				Default:    "",
 				Completion: complete.PredictNothing,
 				Usage:      "Key to unlock a namespace API lock.",
 			})

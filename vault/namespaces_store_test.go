@@ -338,27 +338,27 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 	require.Equal(t, true, s.namespacesByPath.Get(testNamespace.Path).Locked)
 
 	// nonexistent path will return err
-	err = s.UnlockNamespace(ctx, "key", "nonexistent", false)
+	err = s.UnlockNamespace(ctx, "key", "nonexistent")
 	require.ErrorContains(t, err, "requested namespace does not exist")
 
 	// cannot unlock root as it cannot be locked
-	err = s.UnlockNamespace(ctx, "key", "", false)
+	err = s.UnlockNamespace(ctx, "key", "")
 	require.ErrorContains(t, err, "root namespace cannot be locked/unlocked")
 
 	// unlocking not locked namespace will return err
-	err = s.UnlockNamespace(ctx, "key", anotherNamespace.Path, false)
+	err = s.UnlockNamespace(ctx, "key", anotherNamespace.Path)
 	require.ErrorContains(t, err, fmt.Sprintf("namespace %q is not locked", anotherNamespace.Path))
 
 	// cannot unlock child namespace of a locked namespace
-	err = s.UnlockNamespace(ctx, unlockKeyChild, childNamespace.Path, false)
+	err = s.UnlockNamespace(ctx, unlockKeyChild, childNamespace.Path)
 	require.ErrorContains(t, err, fmt.Sprintf("cannot unlock %q with namespace %q being locked", childNamespace.Path, testNamespace.Path))
 
 	// try to unlock with wrong key
-	err = s.UnlockNamespace(ctx, "key", testNamespace.Path, false)
+	err = s.UnlockNamespace(ctx, "key", testNamespace.Path)
 	require.ErrorContains(t, err, "e")
 
 	// unlock with correct key
-	err = s.UnlockNamespace(ctx, unlockKeyParent, testNamespace.Path, false)
+	err = s.UnlockNamespace(ctx, unlockKeyParent, testNamespace.Path)
 	require.NoError(t, err)
 
 	// verify empty storage
@@ -372,8 +372,8 @@ func TestNamespaceStore_UnlockNamespace(t *testing.T) {
 	require.Equal(t, false, s.namespacesByUUID[testNamespace.UUID].Locked)
 	require.Equal(t, false, s.namespacesByPath.Get(testNamespace.Path).Locked)
 
-	// force unlock of child namespace (parent is already unlocked)
-	err = s.UnlockNamespace(ctx, "", childNamespace.Path, true)
+	// force unlock of child namespace using empty key (parent is already unlocked)
+	err = s.UnlockNamespace(ctx, "", childNamespace.Path)
 	require.NoError(t, err)
 
 	// verify empty storage

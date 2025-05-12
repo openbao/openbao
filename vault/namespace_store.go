@@ -845,8 +845,8 @@ func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace
 	return nil
 }
 
-// UnlockNamespace attempts to unlock the namespace with provided provided uuid.
-func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path string, forceUnlock bool) error {
+// UnlockNamespace attempts to unlock the namespace with provided namespace path.
+func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "unlock_namespace"}, time.Now())
 
 	if err := ns.checkInvalidation(ctx); err != nil {
@@ -877,13 +877,13 @@ func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path s
 
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
-	return ns.unlockNamespaceLocked(ctx, namespaceToUnlock, unlockKey, forceUnlock)
+	return ns.unlockNamespaceLocked(ctx, namespaceToUnlock, unlockKey)
 }
 
 // unlockNamespaceLocked reads namespace lock from the storage, compares it to the
 // provided unlock key, with match deletes the storage entry, modifies namespace
 // tree structure and namespace maps changing the 'Locked' field to false.
-func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace, unlockKey string, forceUnlock bool) error {
+func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace, unlockKey string) error {
 	lockView := NamespaceView(ns.storage, namespace).SubView(namespaceLockPrefix)
 
 	// read lock from storage
@@ -904,8 +904,9 @@ func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *
 		return fmt.Errorf("error retrieving namespace lock: %w", err)
 	}
 
-	// verify lock or omit when forced unlock
-	if !forceUnlock && nsLock.Key != unlockKey {
+	// verify lock or skip when provided unlock key is empty
+	// (meaning namespace is unlocked using root capability)
+	if unlockKey != "" && nsLock.Key != unlockKey {
 		return errors.New("incorrect unlock key")
 	}
 

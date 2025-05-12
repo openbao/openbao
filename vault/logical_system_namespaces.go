@@ -91,6 +91,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			// should match
+			// .../lock
+			// .../lock/<path_to_namespace> capturing the "path_to_namespace"
+			// but should not match
+			// .../lockkk or any malformation of "lock" string
 			Pattern: "namespaces/api-lock/lock(?:$|/(?P<path>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -126,6 +131,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			// should match
+			// .../unlock
+			// .../unlock/<path_to_namespace> capturing the "path_to_namespace"
+			// but should not match
+			// .../unlockkk or any malformation of "unlock" string
 			Pattern: "namespaces/api-lock/unlock(?:$|/(?P<path>.+))",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -427,14 +437,18 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 			return nil, err
 		}
 
-		isRootRequest := te.IsRoot()
-		if unlockKey == "" && !isRootRequest {
+		if unlockKey == "" && !te.IsRoot() {
 			return nil, errors.New("provided empty key")
 		}
 
-		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path, isRootRequest)
+		// unlockKey can only be empty if the request was made with the root token
+		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
 		if err != nil {
 			return handleError(err)
+		}
+
+		if unlockKey == "" {
+			return &logical.Response{Warnings: []string{"Namespace unlocked using root capabilities"}}, nil
 		}
 
 		return nil, nil

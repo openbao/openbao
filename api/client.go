@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -353,7 +354,7 @@ func (c *Config) ReadEnvironment() error {
 	var envClientTimeout time.Duration
 	var envInsecure bool
 	var envTLSServerName string
-	var envMaxRetries *uint64
+	var envMaxRetries *int
 	var envSRVLookup bool
 	var limit *rate.Limiter
 	var envVaultProxy string
@@ -367,11 +368,12 @@ func (c *Config) ReadEnvironment() error {
 		envAgentAddress = v
 	}
 	if v := ReadBaoVariable(EnvVaultMaxRetries); v != "" {
-		maxRetries, err := strconv.ParseUint(v, 10, 32)
+		maxRetries, err := parseutil.SafeParseIntRange(v, 0, math.MaxInt)
 		if err != nil {
 			return err
 		}
-		envMaxRetries = &maxRetries
+		mRetries := int(maxRetries)
+		envMaxRetries = &mRetries
 	}
 	if v := ReadBaoVariable(EnvVaultCACert); v != "" {
 		envCACert = v
@@ -470,7 +472,7 @@ func (c *Config) ReadEnvironment() error {
 	}
 
 	if envMaxRetries != nil {
-		c.MaxRetries = int(*envMaxRetries)
+		c.MaxRetries = *envMaxRetries
 	}
 
 	if envClientTimeout != 0 {

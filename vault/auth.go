@@ -1164,7 +1164,12 @@ func (c *Core) teardownCredentials(ctx context.Context) error {
 	}
 
 	c.auth = nil
-	c.tokenStore = nil
+
+	if c.tokenStore != nil {
+		c.tokenStore.teardown()
+		c.tokenStore = nil
+	}
+
 	return nil
 }
 

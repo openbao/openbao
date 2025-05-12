@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -767,7 +766,7 @@ type TokenStore struct {
 	saltLock sync.RWMutex
 	salts    map[string]*salt.Salt
 
-	tidyLock *uint32
+	tidyLock sync.Mutex
 
 	identityPoliciesDeriverFunc func(string) (*identity.Entity, []string, error)
 
@@ -792,7 +791,7 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 		tokenLocks:            locksutil.CreateLocks(),
 		tokensPendingDeletion: &sync.Map{},
 		saltLock:              sync.RWMutex{},
-		tidyLock:              new(uint32),
+		tidyLock:              sync.Mutex{},
 		quitContext:           core.activeContext,
 		salts:                 make(map[string]*salt.Salt),
 	}
@@ -828,6 +827,13 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 	}
 
 	return t, nil
+}
+
+func (ts *TokenStore) teardown() {
+	// Ensure that:
+	// - The current tidy operation (if any) has finished
+	// - No further tidy operations can be queued
+	ts.tidyLock.Lock()
 }
 
 func (ts *TokenStore) baseView(ns *namespace.Namespace) BarrierView {
@@ -2164,7 +2170,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 // handleTidy handles the cleaning up of leaked accessor storage entries and
 // cleaning up of leases that are associated to tokens that are expired.
 func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if !atomic.CompareAndSwapUint32(ts.tidyLock, 0, 1) {
+	if !ts.tidyLock.TryLock() {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -2176,8 +2182,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	}
 
 	go func() {
-		defer atomic.StoreUint32(ts.tidyLock, 0)
-
+		defer ts.tidyLock.Unlock()
 		logger := ts.logger.Named("tidy")
 
 		var tidyErrors *multierror.Error

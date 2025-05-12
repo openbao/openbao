@@ -804,12 +804,12 @@ func TestNamespaceBackend_Unlock(t *testing.T) {
 		req.ClientToken = rootToken
 		res, err := b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Empty(t, res)
+		require.Equal(t, "Namespace unlocked using root capabilities", res.Warnings[0])
 
 		req = logical.TestRequest(t, logical.UpdateOperation, "namespaces/api-lock/unlock/company_b/team_b")
 		req.ClientToken = rootToken
 		res, err = b.HandleRequest(rootCtx, req)
 		require.NoError(t, err)
-		require.Empty(t, res)
+		require.Equal(t, "Namespace unlocked using root capabilities", res.Warnings[0])
 	})
 }

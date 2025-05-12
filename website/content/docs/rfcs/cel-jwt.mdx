@@ -26,8 +26,9 @@ For example:
 - If validation passes, the CEL program assigns the token policies `admin` and `team-12345` (using `claims.tenant_id` to form the policy name).
 
 This could be codified in the following CEL program:
-
-    "admin" in claims.roles && matches(claims.tenant_id, [0-9]+)" ? pb.Auth{ policies: ["admin", "team-12345"] } : false
+```json
+"admin" in claims.roles && matches(claims.tenant_id, [0-9]+)" ? pb.Auth{ policies: ["admin", "team-12345"] } : false
+```
 
 ---
 

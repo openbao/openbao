@@ -2,7 +2,9 @@
 
 ## Summary
 
-This feature proposes the use of [Common Expression Language (CEL)](https://github.com/google/cel-spec) in Vault's jwt-based auth engines (oidc, jwt) to create a flexible framework for validating claims and dynamically assigning token policies. CEL will allow administrators to define fine-grained rules for claim validation and dynamic policy assignment, extending the more static assignment of role- and identity-based policies.
+This feature offers support for [Common Expression Language (CEL)](https://github.com/google/cel-spec) in Vault's jwt-based auth engines (oidc, jwt) to create a flexible framework for validating claims and dynamically assigning token policies. CEL will allow administrators to define fine-grained rules for claim validation and dynamic policy assignment, extending the more static assignment of role- and identity-based policies.
+
+JWT CEL support is implemented as a new type of CEL role and follows the [general plan for CEL support](https://github.com/openbao/openbao/blob/main/website/content/docs/rfcs/cel-best-practices.mdx) in Openbao 
 
 ---
 
@@ -14,14 +16,14 @@ Vault's jwt-based auth engines (OIDC and JWT) currently assemble token policies 
 
 ## User-facing description
 
-**_Administrators_** can define CEL extensions under a new endpoint, `auth/{oidc|jwt}/cel/roles/:name`, to be executed during authentication. CEL roles evaluate incoming claims and generate `logical.Auth{}` instances having appropriate token policies.
+**_Administrators_** can define CEL roles under a new endpoint, `auth/{oidc|jwt}/cel/roles/:name`, to be executed during authentication. CEL roles evaluate incoming claims and generate `logical.Auth{}` instances having appropriate token policies.
 
-**_Users_** authenticating with JWT or OIDC tokens will have their claims validated through the CEL roles where present. If successful, they receive a token with dynamically-assigned policies. 
+**_Users_** authenticating with JWT or OIDC tokens will have their claims validated through the CEL inidicated role. If successful, they receive a token with policies and other attributes. 
 
 For example:
 
 - A CEL role validates that the token contains specific claims like `"admin" in claims.roles && matches(claims.tenant_id, [0-9]+)"`.
-- If validation passes, the CEL program assigns the token policies `admin` and `team-12345` (using `claims.tenant_id` value).
+- If validation passes, the CEL program assigns the token policies `admin` and `team-12345` (using `claims.tenant_id` to form the policy name).
 
 ---
 
@@ -37,7 +39,7 @@ CEL roles integrate with Vault's Auth engine (OIDC and JWT) to dynamically evalu
 3. If the CEL policy evaluates successfully:
     - A `logical.Auth` instance is returned.
     - Token policies are assigned dynamically based on the CEL program logic.
-4. If validation fails, `false` is returned and token is not generated.
+4. If validation fails, `false` or `string` (error message) is returned and token is not generated.
 
 ---
 
@@ -50,12 +52,35 @@ CEL roles integrate with Vault's Auth engine (OIDC and JWT) to dynamically evalu
 | Create a CEL role        | `POST`   | `auth/jwt/cel/roles/:name` |
 | Update a CEL role        | `PATCH`  | `auth/jwt/cel/roles/:name` |
 | Delete a CEL role        | `DELETE` | `auth/jwt/cel/roles/:name` |
+| Login with CEL role      | `POST`   | `auth/jwt/cel/login role=:name jwt=:jwt`|
 
 ---
 
-### CEL Request Format (Auth Engine to CEL)
+### CEL Role Format
+A CEL role is defined as a JSON object with the following fields:
+```json
+{
+  "name": "string",
+  "cel_program": {
+    "variables": [
+      {
+        "name": "string",
+        "expression": "string"
+      }
+    ],
+    "expression": "string",
+  },
+  "expiration_leeway": "int",
+  "not_before_leeway": "int",
+  "clock_skew_leeway": "int",
+  "bound_audiences": [
+    "string"
+  ],
+}
+```
 
-The following parameters are sent to the CEL policy engine:
+
+The following parameters are supplied by the CEL policy engine and may be used in the expression:
 
 - `claims` `(map[string]any: required)`  
   All claims present in the incoming JWT or OIDC token.
@@ -64,7 +89,8 @@ The following parameters are sent to the CEL policy engine:
 
 The CEL role engine evaluates the claims and returns a `logical.Auth` object or error that determines the authenticated user's token and policies.
 
-- `auth` `(logical.Auth: optional)`  
+The CEL expression itself may return one of the following:
+- `pb.Auth` `(protobuf Auth: optional)`  
   A `logical.Auth` instance containing the following fields:
     - `policies` `([]string: required)`  
       List of token policies assigned to the user.
@@ -72,10 +98,12 @@ The CEL role engine evaluates the claims and returns a `logical.Auth` object or 
       Duration (in seconds) for which the token is valid.
     - `renewable` `(bool: required)`  
       Whether the token is renewable.
-
-- `error` `(Error: optional)`  
-  A detailed error if the program fails.
+- `bool`(false: optional)
+  A boolean false value indicates failed authorization.
+- `string` `(Error: optional)`  
+  A detailed error when the program fails.
 - 
+
 ## Rationale and alternatives
 
 Dynamic policy assignment can be implemented using templating for [ACLs](https://openbao.org/api-docs/auth/jwt/#acl-policy-templating-examples), but the expressiveness of CEL is much greater.
@@ -87,3 +115,63 @@ Alternatively, a web hook approach like [Vault's CIEPS](https://developer.hashic
 ## Downsides
 
 Additional complexity of a new type; not backwards compatible with Vault.
+
+## Demo
+```bash
+bao server -dev -dev-root-token-id="dev-only-token"
+export VAULT_ADDR=http://localhost:8200
+export VAULT_TOKEN=dev-only-token
+
+# Create userpass
+bao auth enable userpass
+bao write auth/userpass/users/testing password=testing token_policies=example
+bao write sys/policies/acl/example policy='path "identity/oidc/token/example" { capabilities = ["read"] }'
+
+# Set up identity
+bao write identity/oidc/key/default algorithm=EdDSA
+bao write identity/oidc/role/example key=default client_id=aud
+
+# Setup JWT auth engine
+bao auth enable jwt
+bao write auth/jwt/config oidc_discovery_url=http://127.0.0.1:8200/v1/identity/oidc
+
+# Obtain a JWT
+export BAO_TOKEN=$(bao login -field=token -method=userpass username=testing password=testing)
+export JWT=$(bao read identity/oidc/token/example -format=json | jq -r ".data.token")
+
+# Create a CEL role 
+cat << EOF > cel-role.json
+{
+	"cel_program": {
+		"expression": "pb.Auth{policies:['example']}"
+	},
+	"bound_audiences": "aud,aud1"
+}
+EOF
+
+BAO_TOKEN="dev-only-token" bao write auth/jwt/cel/role/example @cel-role.json
+Key                  Value
+---                  -----
+bound_audiences      [aud aud1]
+cel_program          map[expression:pb.Auth{policies:['example']}]
+clock_skew_leeway    60
+expiration_leeway    150
+message              n/a
+name                 example
+not_before_leeway    150
+
+
+# login to role with jwt from above
+bao write auth/jwt/cel/login role=example jwt=$JWT
+Key                  Value
+---                  -----
+token                s.Y2uJO5FC8WOMoRVMgZ5pnw2H
+token_accessor       bu8HpQbueHv8Ln911hRBOjlL
+token_duration       768h
+token_renewable      true
+token_policies       ["default" "example"]
+identity_policies    []
+policies             ["default" "example"]
+token_meta_role      example
+
+```

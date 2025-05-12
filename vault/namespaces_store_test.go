@@ -90,7 +90,7 @@ func TestNamespaceStore(t *testing.T) {
 	require.Equal(t, ns[0].UUID, itemUUID)
 
 	// Delete that item.
-	status, err := s.DeleteNamespace(ctx, itemUUID)
+	status, err := s.DeleteNamespace(ctx, itemPath)
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
@@ -161,18 +161,14 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	err := s.SetNamespace(ctx, testNamespace)
 	require.NoError(t, err)
 
-	// retrieve namespace
-	createdNS, err := s.GetNamespaceByPath(ctx, testNamespace.Path)
-	require.NoError(t, err)
-
 	// delete namespace
-	status, err := s.DeleteNamespace(ctx, createdNS.UUID)
+	status, err := s.DeleteNamespace(ctx, "test")
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
 	maxRetries := 50
 	for range maxRetries {
-		status, err := s.DeleteNamespace(ctx, createdNS.UUID)
+		status, err := s.DeleteNamespace(ctx, "test")
 		require.NoError(t, err)
 		if status == "in-progress" {
 			time.Sleep(1 * time.Millisecond)
@@ -196,7 +192,7 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.Equal(t, s.namespacesByPath.size, 1)
 
 	// try to delete root
-	_, err = s.DeleteNamespace(ctx, namespace.RootNamespaceUUID)
+	_, err = s.DeleteNamespace(ctx, "")
 	require.Error(t, err)
 
 	// try to delete namespace with child namespaces
@@ -210,16 +206,16 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 
 	// failed to delete as it contains a child namespace
-	_, err = s.DeleteNamespace(parentCtx, parentNamespace.UUID)
+	_, err = s.DeleteNamespace(ctx, "parent")
 	require.Error(t, err)
 
 	// delete the child namespace
-	status, err = s.DeleteNamespace(ctx, childNamespace.UUID)
+	status, err = s.DeleteNamespace(parentCtx, "child")
 	require.NoError(t, err)
 	require.Equal(t, "in-progress", status)
 
 	for range maxRetries {
-		status, err := s.DeleteNamespace(ctx, childNamespace.UUID)
+		status, err := s.DeleteNamespace(parentCtx, "child")
 		require.NoError(t, err)
 		if status == "in-progress" {
 			time.Sleep(1 * time.Millisecond)

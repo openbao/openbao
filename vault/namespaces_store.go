@@ -611,14 +611,6 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 		return errors.New("cannot taint root namespace")
 	}
 
-	if err := ns.checkInvalidation(ctx); err != nil {
-		return err
-	}
-
-	// We've got to grab write lock because we modify the namespace tree structure
-	ns.lock.Lock()
-	defer ns.lock.Unlock()
-
 	ns.namespacesByUUID[namespaceToTaint.UUID].Tainted = true
 	ns.namespacesByUUID[namespaceToTaint.UUID].IsDeleting = true
 	ns.namespacesByAccessor[namespaceToTaint.ID].Tainted = true
@@ -639,15 +631,17 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 }
 
 // DeleteNamespace is used to delete the named namespace
-func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (string, error) {
+func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, path string) (string, error) {
 	defer metrics.MeasureSince([]string{"namespace", "delete_namespace"}, time.Now())
 
-	// We do not grab a lock here; the goroutine below will acquire the write
-	// lock to actually remove the namespace. We will have to use helpers below
-	// that acquire short-term locks (such as GetNamespace(...)) rather than
-	// grabbing a single long-lived lock.
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return "", err
+	}
 
-	namespaceToDelete, err := ns.GetNamespace(ctx, uuid)
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+
+	namespaceToDelete, err := ns.getNamespaceByPathLocked(ctx, path)
 	if err != nil {
 		return "", err
 	}
@@ -663,10 +657,8 @@ func (ns *NamespaceStore) DeleteNamespace(ctx context.Context, uuid string) (str
 		return "", errors.New("unable to delete root namespace")
 	}
 
-	nsCtx := namespace.ContextWithNamespace(ctx, namespaceToDelete)
-
 	// checking whether namespace has child namespaces
-	childNS, err := ns.ListNamespaces(nsCtx, false, false)
+	childNS, err := ns.namespacesByPath.List(namespaceToDelete.Path, false, false)
 	if err != nil {
 		return "", err
 	}

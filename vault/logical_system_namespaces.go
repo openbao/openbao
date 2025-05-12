@@ -326,30 +326,21 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.GetNamespaceByPath(ctx, path)
+		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, path)
 		if err != nil {
-			return nil, fmt.Errorf("failed to load namespace: %w", err)
+			return handleError(err)
 		}
 
-		if ns == nil {
+		if status == "" {
 			resp := &logical.Response{}
 			resp.AddWarning("requested namespace does not exist")
 			return resp, nil
 		}
 
-		status, err := b.Core.namespaceStore.DeleteNamespace(ctx, ns.UUID)
-		if err != nil {
-			return handleError(err)
-		}
-
-		if status != "" {
-			return &logical.Response{
-				Data: map[string]interface{}{
-					"status": status,
-				},
-			}, nil
-		}
-
-		return nil, nil
+		return &logical.Response{
+			Data: map[string]interface{}{
+				"status": status,
+			},
+		}, nil
 	}
 }

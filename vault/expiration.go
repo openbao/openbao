@@ -226,11 +226,13 @@ func (r *revocationJob) Execute() error {
 	default:
 	}
 
-	r.m.coreStateLock.RLock()
-	err := r.m.Revoke(revokeCtx, r.leaseID)
-	r.m.coreStateLock.RUnlock()
-
-	return err
+	// We call Revoke(...) without read-locking core's state lock. This prevents a deadlock if
+	// this job is still running while sealing begins and a write lock is acquired. As sealing
+	// synchronously ensures that this very job has finished before advancing any further, we
+	// inherently already hold the lock here. Assuming seal/unseal transitions are the only
+	// conditions where not holding a read lock on core is racy, we are safe to never
+	// lock here at all.
+	return r.m.Revoke(revokeCtx, r.leaseID)
 }
 
 func (r *revocationJob) OnFailure(err error) {

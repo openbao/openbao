@@ -486,6 +486,7 @@ const sidebars: SidebarsConfig = {
                 "policies/plugins",
                 "policies/release",
                 "policies/support",
+                "policies/osps-baseline",
             ],
             Contributing: [
                 "contributing/index",

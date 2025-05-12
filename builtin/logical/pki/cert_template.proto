@@ -158,11 +158,11 @@ message CertTemplate {
     google.protobuf.Timestamp NotAfter  = 15;
     KeyUsage KeyUsage = 16;
     
-    PKIX.Extension Extensions = 17;
-	PKIX.Extension ExtraExtensions = 18;
+    repeated PKIX.Extension Extensions = 17;
+	repeated PKIX.Extension ExtraExtensions = 18;
     repeated ObjectIdentifier UnhandledCriticalExtensions = 19;
 
-	ExtKeyUsage ExtKeyUsage = 20;
+	repeated ExtKeyUsage ExtKeyUsage = 20;
 	repeated ObjectIdentifier UnknownExtKeyUsage = 21;
 
 	bool BasicConstraintsValid =22;
@@ -171,8 +171,8 @@ message CertTemplate {
     int64 MaxPathLen = 24;
     bool MaxPathLenZero = 25;
 
-    repeated bytes subject_key_id = 26;
-	repeated bytes authority_key_id = 27;
+    bytes SubjectKeyId = 26;
+	bytes AuthorityKeyId = 27;
 
     // RFC 5280, 4.2.2.1 (Authority Information Access)
 	repeated string OCSPServer = 28;
@@ -196,7 +196,7 @@ message CertTemplate {
     
 	repeated string CRLDistributionPoints = 43;
 
-    repeated ObjectIdentifier policy_identifiers = 44;
+    repeated ObjectIdentifier PolicyIdentifiers = 44;
 	repeated OID Policies = 45;
 
 	int64 InhibitAnyPolicy = 46;

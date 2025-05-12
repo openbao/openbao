@@ -1301,6 +1301,10 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	fromPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, fromPath)
 	toPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, toPath)
 
+	if toPathDetails.MountPath == "" {
+		return handleError(fmt.Errorf("invalid destination mount path %q", toPath))
+	}
+
 	if err = validateMountPath(toPathDetails.MountPath); err != nil {
 		return handleError(fmt.Errorf("invalid destination mount: %v", err))
 	}

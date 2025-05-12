@@ -342,7 +342,7 @@ type UintVar struct {
 func (f *FlagSet) UintVar(i *UintVar) {
 	initial := i.Default
 	if v, exist := api.LookupBaoVariable(i.EnvVar); exist {
-		if i, err := strconv.ParseUint(v, 0, 64); err == nil {
+		if i, err := strconv.ParseUint(v, 0, strconv.IntSize); err == nil {
 			initial = uint(i)
 		}
 	}

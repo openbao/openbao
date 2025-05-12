@@ -678,8 +678,10 @@ type FlagSet struct {
 // NewFlagSet creates a new flag set.
 func NewFlagSet(name string) *FlagSet {
 	return &FlagSet{
-		name:    name,
-		flagSet: flag.NewFlagSet(name, flag.ContinueOnError),
+		name:        name,
+		flagSet:     flag.NewFlagSet(name, flag.ContinueOnError),
+		mainSet:     flag.NewFlagSet(name, flag.ContinueOnError),
+		completions: make(complete.Flags),
 	}
 }
 

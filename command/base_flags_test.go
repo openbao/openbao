@@ -4,11 +4,39 @@
 package command
 
 import (
+	"fmt"
+	"math"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+// Test_Uint tests the parsing of uint values from an environment variable
+func Test_Uint(t *testing.T) {
+	f := NewFlagSet("test")
+	var tgt uint
+	defaultVal := uint(12)
+	v := UintVar{
+		Name:    "test",
+		EnvVar:  "TEST_UINT",
+		Target:  &tgt,
+		Default: defaultVal,
+		Hidden:  false,
+	}
+	var value uint64 = math.MaxUint64
+	os.Setenv("TEST_UINT", fmt.Sprintf("%d", value))
+
+	f.UintVar(&v)
+	expected := value
+	// on 32 bit machines, this will be true
+	if value > math.MaxUint {
+		expected = uint64(defaultVal)
+	}
+
+	require.Equal(t, expected, uint64(tgt))
+}
 
 func Test_BoolPtr(t *testing.T) {
 	var boolPtr BoolPtr

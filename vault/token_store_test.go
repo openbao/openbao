@@ -336,7 +336,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 		Value: enc,
 	}
 
-	if err := ts.idView(ctx, namespace.RootNamespace).Put(ctx, le); err != nil {
+	if err := ts.idView(namespace.RootNamespace).Put(ctx, le); err != nil {
 		t.Fatal(err)
 	}
 
@@ -893,7 +893,7 @@ func TestTokenStore_HandleRequest_ListAccessors(t *testing.T) {
 		}
 
 		le := &logical.StorageEntry{Key: saltID, Value: []byte(aEntry.TokenID)}
-		if err := ts.accessorView(ctx, namespace.RootNamespace).Put(ctx, le); err != nil {
+		if err := ts.accessorView(namespace.RootNamespace).Put(ctx, le); err != nil {
 			t.Fatalf("failed to persist accessor index entry: %v", err)
 		}
 	}
@@ -1440,7 +1440,7 @@ func testTokenStore_Revoke(t *testing.T, ts *TokenStore, ns *namespace.Namespace
 
 func testTokenStore_VerifyNumOfTokens(t *testing.T, ts *TokenStore, ns *namespace.Namespace, desiredCount int) {
 	ctx := namespace.ContextWithNamespace(context.Background(), ns)
-	tokenKeys, err := ts.idView(ctx, ns).List(ctx, "")
+	tokenKeys, err := ts.idView(ns).List(ctx, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -1564,7 +1564,7 @@ func testTokenStore_RevokeTree_NonRecursive(t testing.TB, depth uint64, injectCy
 	ctx := namespace.RootContext(context.Background())
 	root, children := buildTokenTree(t, ctx, ts, depth)
 
-	parentView := ts.parentView(ctx, namespace.RootNamespace)
+	parentView := ts.parentView(namespace.RootNamespace)
 
 	var cyclePaths []string
 	if injectCycles {
@@ -2509,7 +2509,7 @@ func TestTokenStore_HandleRequest_RevokeOrphan(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	children, err := ts.idView(ctx, namespace.RootNamespace).List(ctx, parentPrefix+saltedID+"/")
+	children, err := ts.idView(namespace.RootNamespace).List(ctx, parentPrefix+saltedID+"/")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -4571,7 +4571,7 @@ func TestTokenStore_RoleTokenFields(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := ts.rolesView(rootContext, ns).Put(rootContext, jsonEntry); err != nil {
+		if err := ts.rolesView(ns).Put(rootContext, jsonEntry); err != nil {
 			t.Fatal(err)
 		}
 		// Read it back
@@ -5709,7 +5709,7 @@ func TestTokenStore_HandleTidyCase1(t *testing.T) {
 		}
 
 		// Destroy the token index
-		if ts.idView(ctx, namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
+		if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
 			t.Fatalf("failed to delete token entry: %v", err)
 		}
 
@@ -5845,7 +5845,7 @@ func TestTokenStore_HandleTidy_parentCleanup(t *testing.T) {
 		}
 
 		// Destroy the token index
-		if ts.idView(ctx, namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
+		if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
 			t.Fatalf("failed to delete token entry: %v", err)
 		}
 
@@ -6042,7 +6042,7 @@ func TestTokenStore_TidyLeaseRevocation(t *testing.T) {
 	}
 
 	// Destroy the token index
-	if ts.idView(ctx, namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
+	if ts.idView(namespace.RootNamespace).Delete(ctx, saltedTut); err != nil {
 		t.Fatalf("failed to delete token entry: %v", err)
 	}
 	te, err = ts.lookupInternal(ctx, saltedTut, true, true)

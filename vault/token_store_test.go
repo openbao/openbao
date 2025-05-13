@@ -127,8 +127,7 @@ func TestTokenStore_CubbyholeTidy(t *testing.T) {
 func TestTokenStore_CubbyholeTidyNamespace(t *testing.T) {
 	c, _, root := TestCoreUnsealed(t)
 	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
-	err := TestCoreCreateNamespaces(c, ns)
-	require.NoError(t, err)
+	TestCoreCreateNamespaces(t, c, ns)
 
 	testTokenStore_CubbyholeTidy(t, c, root, ns)
 }
@@ -264,7 +263,7 @@ func TestTokenStore_Salting(t *testing.T) {
 	}
 
 	ns := &namespace.Namespace{ID: "testid", Path: "ns1"}
-	TestCoreCreateNamespaces(c, ns)
+	TestCoreCreateNamespaces(t, c, ns)
 
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 	saltedID, err = ts.SaltID(nsCtx, "foo")
@@ -431,8 +430,7 @@ func TestTokenStore_TokenEntryUpgrade(t *testing.T) {
 
 	// Test the token namespace case
 	ns := &namespace.Namespace{ID: "ns1-id", Path: "ns1"}
-	err = TestCoreCreateNamespaces(c, ns)
-	require.NoError(t, err)
+	TestCoreCreateNamespaces(t, c, ns)
 	nsCtx := namespace.ContextWithNamespace(context.Background(), ns)
 	ns, err = c.NamespaceByID(nsCtx, ns.ID)
 	require.NoError(t, err)
@@ -1366,7 +1364,7 @@ func TestTokenStore_Revoke(t *testing.T) {
 	ns2 := &namespace.Namespace{
 		Path: "ns1/ns2",
 	}
-	TestCoreCreateNamespaces(c, ns1, ns2)
+	TestCoreCreateNamespaces(t, c, ns1, ns2)
 	ctx := namespace.RootContext(context.Background())
 
 	// there has to be root token

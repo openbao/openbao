@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"path"
 	"strconv"
 	"testing"
 	"time"
@@ -185,6 +186,10 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, nsList)
 
+	keys, err := s.storage.List(ctx, namespaceStoreSubPath)
+	require.NoError(t, err)
+	require.Empty(t, keys, "Expected empty namespace store on storage level")
+
 	// all have to be of length 1 due to root existing
 	require.Len(t, s.namespacesByAccessor, 1)
 	require.Len(t, s.namespacesByUUID, 1)
@@ -200,16 +205,32 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	err = s.SetNamespace(ctx, parentNamespace)
 	require.NoError(t, err)
 
-	parentNS, err := s.GetNamespaceByPath(ctx, parentNamespace.Path)
-	require.NoError(t, err)
-
-	parentCtx := namespace.ContextWithNamespace(ctx, parentNS)
+	parentCtx := namespace.ContextWithNamespace(ctx, parentNamespace)
 	err = s.SetNamespace(ctx, childNamespace)
 	require.NoError(t, err)
 
 	// failed to delete as it contains a child namespace
-	_, err = s.DeleteNamespace(parentCtx, parentNS.UUID)
+	_, err = s.DeleteNamespace(parentCtx, parentNamespace.UUID)
 	require.Error(t, err)
+
+	// delete the child namespace
+	status, err = s.DeleteNamespace(ctx, childNamespace.UUID)
+	require.NoError(t, err)
+	require.Equal(t, "in-progress", status)
+
+	for range maxRetries {
+		status, err := s.DeleteNamespace(ctx, childNamespace.UUID)
+		require.NoError(t, err)
+		if status == "in-progress" {
+			time.Sleep(1 * time.Millisecond)
+			continue
+		}
+		break
+	}
+
+	keys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
+	require.NoError(t, err)
+	require.Empty(t, keys, "Expected empty namespace store on storage level")
 }
 
 func TestNamespaceHierarchy(t *testing.T) {
@@ -491,8 +512,7 @@ func BenchmarkClearNamespaceResources(b *testing.B) {
 
 	for b.Loop() {
 		ns := randomNamespace(s)
-		nsCtx := namespace.ContextWithNamespace(ctx, ns)
-		clearNamespaceResources(nsCtx, s, ns)
+		s.clearNamespaceResources(ctx, ns)
 	}
 }
 
@@ -634,5 +654,62 @@ func TestNamespaces_ResolveNamespaceFromRequest(t *testing.T) {
 				require.Equal(t, tc.expectedTrimmedPath, trimmedPath)
 			}
 		})
+	}
+}
+
+func TestNamespaceStorage(t *testing.T) {
+	c, keys, root := TestCoreUnsealed(t)
+	s := c.namespaceStore
+
+	namespaces := []*namespace.Namespace{
+		{Path: "ns1/"},
+		{Path: "ns2/"},
+		{Path: "ns1/ns3/"},
+		{Path: "ns1/ns3/ns4/"},
+	}
+	TestCoreCreateNamespaces(t, c, namespaces...)
+
+	ctx := namespace.RootContext(nil)
+
+	nsKeys, err := s.storage.List(ctx, namespaceStoreSubPath)
+	require.NoError(t, err)
+	require.Len(t, nsKeys, 2)
+	require.ElementsMatch(t, nsKeys, []string{namespaces[0].UUID, namespaces[1].UUID})
+
+	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[0].UUID, namespaceStoreSubPath)+"/")
+	require.NoError(t, err)
+	require.Len(t, nsKeys, 1)
+	require.ElementsMatch(t, nsKeys, []string{namespaces[2].UUID})
+
+	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[1].UUID, namespaceStoreSubPath)+"/")
+	require.NoError(t, err)
+	require.Len(t, nsKeys, 0)
+
+	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[2].UUID, namespaceStoreSubPath)+"/")
+	require.NoError(t, err)
+	require.Len(t, nsKeys, 1)
+	require.ElementsMatch(t, nsKeys, []string{namespaces[3].UUID})
+
+	nsKeys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, namespaces[3].UUID, namespaceStoreSubPath)+"/")
+	require.NoError(t, err)
+	require.Len(t, nsKeys, 0)
+
+	// Loading structure back into memory on seal -> unseal
+	err = c.Seal(root)
+	require.NoError(t, err)
+
+	for i, key := range keys {
+		unseal, err := TestCoreUnseal(c, key)
+		require.NoError(t, err)
+
+		if i+1 == len(keys) && !unseal {
+			t.Fatal("err: should be unsealed")
+		}
+	}
+
+	for _, ns := range namespaces {
+		ns, err := s.GetNamespace(ctx, ns.UUID)
+		require.NoError(t, err)
+		require.NotNil(t, ns)
 	}
 }

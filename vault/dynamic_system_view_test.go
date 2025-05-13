@@ -296,11 +296,10 @@ func TestDynamicSystemView_GeneratePasswordFromPolicy_failed(t *testing.T) {
 func TestDynamicSystemView_GeneratePasswordFromPolicy_namespaces(t *testing.T) {
 	core, _, token := TestCoreUnsealed(t)
 
-	err := TestCoreCreateNamespaces(core,
+	TestCoreCreateNamespaces(t, core,
 		&namespace.Namespace{Path: "foo/"},
 		&namespace.Namespace{Path: "foo/bar/"},
 	)
-	require.NoError(t, err)
 
 	ctx := namespace.RootContext(nil)
 

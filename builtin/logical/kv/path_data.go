@@ -9,13 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/locksutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // pathConfig returns the path configuration for CRUD operations on the backend
@@ -147,10 +146,10 @@ func (b *versionedKVBackend) pathDataRead() framework.OperationFunc {
 
 		// If the version has been deleted return metadata with a 404
 		if vm.DeletionTime != nil {
-			deletionTime, err := ptypes.Timestamp(vm.DeletionTime)
-			if err != nil {
+			if err := vm.DeletionTime.CheckValid(); err != nil {
 				return nil, err
 			}
+			deletionTime := vm.DeletionTime.AsTime()
 
 			if deletionTime.Before(time.Now()) {
 				return logical.RespondWithStatusCode(resp, req, http.StatusNotFound)
@@ -330,21 +329,17 @@ func (b *versionedKVBackend) pathDataWrite() framework.OperationFunc {
 		}
 		version := &Version{
 			Data:        marshaledData,
-			CreatedTime: ptypes.TimestampNow(),
+			CreatedTime: timestamppb.Now(),
 		}
 
-		ctime, err := ptypes.Timestamp(version.CreatedTime)
-		if err != nil {
-			return logical.ErrorResponse("unexpected error converting %T(%v) to time.Time: %v", version.CreatedTime, version.CreatedTime, err), logical.ErrInvalidRequest
-		}
+		ctime := version.CreatedTime.AsTime()
 
 		if !config.IsDeleteVersionAfterDisabled() {
 			if dtime, ok := deletionTime(ctime, deleteVersionAfter(config), deleteVersionAfter(meta)); ok {
-				dt, err := ptypes.TimestampProto(dtime)
-				if err != nil {
+				version.DeletionTime = timestamppb.New(dtime)
+				if err := version.DeletionTime.CheckValid(); err != nil {
 					return logical.ErrorResponse("error setting deletion_time: converting %v to protobuf: %v", dtime, err), logical.ErrInvalidRequest
 				}
-				version.DeletionTime = dt
 			}
 		}
 
@@ -495,10 +490,10 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 		}
 
 		if versionMetadata.DeletionTime != nil {
-			deletionTime, err := ptypes.Timestamp(versionMetadata.DeletionTime)
-			if err != nil {
+			if err := versionMetadata.DeletionTime.CheckValid(); err != nil {
 				return nil, err
 			}
+			deletionTime := versionMetadata.DeletionTime.AsTime()
 
 			if deletionTime.Before(time.Now()) {
 				return logical.RespondWithStatusCode(notFoundResp, req, http.StatusNotFound)
@@ -540,23 +535,19 @@ func (b *versionedKVBackend) pathDataPatch() framework.OperationFunc {
 
 		newVersion := &Version{
 			Data:        patchedBytes,
-			CreatedTime: ptypes.TimestampNow(),
+			CreatedTime: timestamppb.Now(),
 		}
 
-		ctime, err := ptypes.Timestamp(newVersion.CreatedTime)
-		if err != nil {
-			return logical.ErrorResponse("unexpected error converting %T(%v) to time.Time: %v", newVersion.CreatedTime, newVersion.CreatedTime, err), logical.ErrInvalidRequest
-		}
+		ctime := newVersion.CreatedTime.AsTime()
 
 		// Set the deletion_time for the new version based on delete_version_after value if set
 		// on either the secret's key metadata or the engine's config
 		if !config.IsDeleteVersionAfterDisabled() {
 			if dtime, ok := deletionTime(ctime, deleteVersionAfter(config), deleteVersionAfter(meta)); ok {
-				dt, err := ptypes.TimestampProto(dtime)
-				if err != nil {
+				newVersion.DeletionTime = timestamppb.New(dtime)
+				if err := newVersion.DeletionTime.CheckValid(); err != nil {
 					return logical.ErrorResponse("error setting deletion_time: converting %v to protobuf: %v", dtime, err), logical.ErrInvalidRequest
 				}
-				newVersion.DeletionTime = dt
 			}
 		}
 
@@ -653,17 +644,17 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 		}
 
 		if lv.DeletionTime != nil {
-			deletionTime, err := ptypes.Timestamp(lv.DeletionTime)
-			if err != nil {
+			if err := lv.DeletionTime.CheckValid(); err != nil {
 				return nil, err
 			}
+			deletionTime := lv.DeletionTime.AsTime()
 
 			if deletionTime.Before(time.Now()) {
 				return nil, nil
 			}
 		}
 
-		lv.DeletionTime = ptypes.TimestampNow()
+		lv.DeletionTime = timestamppb.Now()
 
 		err = b.writeKeyMetadata(ctx, req.Storage, meta)
 		if err != nil {
@@ -686,7 +677,7 @@ func (b *versionedKVBackend) pathDataDelete() framework.OperationFunc {
 // AddVersion adds a version to the key metadata and moves the sliding window of
 // max versions. It returns the newly added version and the version to delete
 // from storage.
-func (k *KeyMetadata) AddVersion(createdTime, deletionTime *timestamp.Timestamp, configMaxVersions uint32) (*VersionMetadata, uint64) {
+func (k *KeyMetadata) AddVersion(createdTime, deletionTime *timestamppb.Timestamp, configMaxVersions uint32) (*VersionMetadata, uint64) {
 	if k.Versions == nil {
 		k.Versions = map[uint64]*VersionMetadata{}
 	}

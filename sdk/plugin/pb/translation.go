@@ -10,11 +10,11 @@ import (
 	"errors"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/wrapping"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -141,29 +141,24 @@ func ProtoLeaseOptionsToLogicalLeaseOptions(l *LeaseOptions) (logical.LeaseOptio
 		return logical.LeaseOptions{}, nil
 	}
 
-	t, err := ptypes.Timestamp(l.IssueTime)
+	err := l.IssueTime.CheckValid()
 	return logical.LeaseOptions{
 		TTL:       time.Duration(l.TTL),
 		Renewable: l.Renewable,
 		Increment: time.Duration(l.Increment),
-		IssueTime: t,
+		IssueTime: l.IssueTime.AsTime(),
 		MaxTTL:    time.Duration(l.MaxTTL),
 	}, err
 }
 
 func LogicalLeaseOptionsToProtoLeaseOptions(l logical.LeaseOptions) (*LeaseOptions, error) {
-	t, err := ptypes.TimestampProto(l.IssueTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &LeaseOptions{
 		TTL:       int64(l.TTL),
 		Renewable: l.Renewable,
 		Increment: int64(l.Increment),
-		IssueTime: t,
+		IssueTime: timestamppb.New(l.IssueTime),
 		MaxTTL:    int64(l.MaxTTL),
-	}, err
+	}, nil
 }
 
 func ProtoSecretToLogicalSecret(s *Secret) (*logical.Secret, error) {
@@ -421,16 +416,11 @@ func ProtoResponseWrapInfoToLogicalResponseWrapInfo(i *ResponseWrapInfo) (*wrapp
 		return nil, nil
 	}
 
-	t, err := ptypes.Timestamp(i.CreationTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &wrapping.ResponseWrapInfo{
 		TTL:             time.Duration(i.TTL),
 		Token:           i.Token,
 		Accessor:        i.Accessor,
-		CreationTime:    t,
+		CreationTime:    i.CreationTime.AsTime(),
 		WrappedAccessor: i.WrappedAccessor,
 		WrappedEntityID: i.WrappedEntityID,
 		Format:          i.Format,
@@ -444,16 +434,11 @@ func LogicalResponseWrapInfoToProtoResponseWrapInfo(i *wrapping.ResponseWrapInfo
 		return nil, nil
 	}
 
-	t, err := ptypes.TimestampProto(i.CreationTime)
-	if err != nil {
-		return nil, err
-	}
-
 	return &ResponseWrapInfo{
 		TTL:             int64(i.TTL),
 		Token:           i.Token,
 		Accessor:        i.Accessor,
-		CreationTime:    t,
+		CreationTime:    timestamppb.New(i.CreationTime),
 		WrappedAccessor: i.WrappedAccessor,
 		WrappedEntityID: i.WrappedEntityID,
 		Format:          i.Format,

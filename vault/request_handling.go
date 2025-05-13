@@ -15,13 +15,13 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/hashicorp/go-uuid"
 	uberAtomic "go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/command/server"

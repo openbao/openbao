@@ -432,23 +432,20 @@ func (b *SystemBackend) handleNamespacesUnlock() framework.OperationFunc {
 		path := namespace.Canonicalize(data.Get("path").(string))
 		unlockKey := data.Get("unlock_key").(string)
 
-		te, err := b.Core.LookupToken(ctx, req.ClientToken)
-		if err != nil {
-			return nil, err
-		}
-
-		if unlockKey == "" && !te.IsRoot() {
+		// sudo check
+		isSudo := b.System().(extendedSystemView).SudoPrivilege(ctx, req.MountPoint+req.Path, req.ClientToken)
+		if unlockKey == "" && !isSudo {
 			return nil, errors.New("provided empty key")
 		}
 
-		// unlockKey can only be empty if the request was made with the root token
-		err = b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
+		// unlockKey can only be empty if the request was made with token having sudo capability
+		err := b.Core.namespaceStore.UnlockNamespace(ctx, unlockKey, path)
 		if err != nil {
 			return handleError(err)
 		}
 
 		if unlockKey == "" {
-			return &logical.Response{Warnings: []string{"Namespace unlocked using root capabilities"}}, nil
+			return &logical.Response{Warnings: []string{"Namespace unlocked using sudo capabilities"}}, nil
 		}
 
 		return nil, nil

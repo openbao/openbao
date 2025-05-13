@@ -325,7 +325,8 @@ func Test_kubeAuthBackend_initialize(t *testing.T) {
 			}
 			b.tlsMu.RUnlock()
 
-			ctx, _ := context.WithTimeout(tt.ctx, time.Second*30)
+			ctx, cancel := context.WithTimeout(tt.ctx, time.Second*30)
+			defer cancel()
 			err := b.initialize(ctx, tt.req)
 			if tt.wantErr && err == nil {
 				t.Errorf("initialize() error = %v, wantErr %v", err, tt.wantErr)

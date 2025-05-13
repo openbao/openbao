@@ -92,7 +92,8 @@ func TestAcmeConfig(t *testing.T) {
 
 	for _, tc := range cases {
 		deadline := time.Now().Add(1 * time.Minute)
-		subTestCtx, _ := context.WithDeadline(testCtx, deadline)
+		subTestCtx, cancel := context.WithDeadline(testCtx, deadline)
+		defer cancel()
 
 		_, err := client.Logical().WriteWithContext(subTestCtx, "pki/roles/exists", roleConfig)
 		require.NoError(t, err)

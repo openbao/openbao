@@ -1223,29 +1223,17 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 	dstPrefix := dstBarrierView.Prefix()
 
 	barrier := c.barrier
-	var view logical.Storage = barrier
-	rollback := func(context.Context) error { return nil }
-	commit := func(context.Context) error { return nil }
-	if txnBarrier, ok := barrier.(logical.TransactionalStorage); ok {
-		tx, err := txnBarrier.BeginTx(ctx)
-		if err != nil {
-			return err
-		}
-		rollback = tx.Rollback
-		commit = tx.Commit
-		view = tx
-	}
 
-	keys, err := view.List(ctx, srcPrefix)
+	var key string
+	keys, err := barrier.List(ctx, srcPrefix)
 	if err != nil {
-		rErr := rollback(ctx)
-		return errors.Join(err, rErr)
+		return err
 	}
 
-	for i := 0; i < len(keys); i++ {
-		key := keys[i]
+	for len(keys) > 0 {
+		key, keys = keys[0], keys[1:]
 		if strings.HasSuffix(key, "/") {
-			nestedKeys, err := view.List(ctx, srcPrefix+key)
+			nestedKeys, err := barrier.List(ctx, srcPrefix+key)
 			if err != nil {
 				return err
 			}
@@ -1257,30 +1245,27 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 			continue
 		}
 
-		se, err := view.Get(ctx, srcPrefix+key)
-		if err != nil {
-			rErr := rollback(ctx)
-			return errors.Join(err, rErr)
+		if err := logical.WithTransaction(ctx, barrier, func(s logical.Storage) error {
+			se, err := s.Get(ctx, srcPrefix+key)
+			if err != nil {
+				return err
+			}
+			if se == nil {
+				return nil
+			}
+			se.Key = dstPrefix + key
+			err = s.Put(ctx, se)
+			if err != nil {
+				return err
+			}
+			err = s.Delete(ctx, srcPrefix+key)
+			if err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return err
 		}
-		if se == nil {
-			continue
-		}
-
-		se.Key = dstPrefix + key
-		err = view.Put(ctx, se)
-		if err != nil {
-			rErr := rollback(ctx)
-			return errors.Join(err, rErr)
-		}
-		err = view.Delete(ctx, srcPrefix+key)
-		if err != nil {
-			rErr := rollback(ctx)
-			return errors.Join(err, rErr)
-		}
-	}
-	err = commit(ctx)
-	if err != nil {
-		return err
 	}
 
 	srcEntryView := NamespaceView(barrier, src.Namespace)

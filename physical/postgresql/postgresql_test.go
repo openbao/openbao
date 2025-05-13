@@ -12,7 +12,7 @@ import (
 	"time"
 
 	log "github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/openbao/openbao/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/physical"

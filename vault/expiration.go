@@ -970,7 +970,8 @@ func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
 			}
 
 			ctxWithNS := namespace.ContextWithNamespace(m.core.activeContext, leaseNS)
-			ctxWithNSAndTimeout, _ := context.WithTimeout(ctxWithNS, time.Minute)
+			ctxWithNSAndTimeout, cancel := context.WithTimeout(ctxWithNS, time.Minute)
+			defer cancel()
 			if err := m.revokeCommon(ctxWithNSAndTimeout, leaseID, false, false); err != nil {
 				// on failure, force some delay to mitigate resource spike while
 				// this is running. if revocations succeed, we are okay with

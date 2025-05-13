@@ -1495,6 +1495,8 @@ func TestVersionedKV_Metadata_Patch_Success(t *testing.T) {
 				Data:      tc.input,
 			}
 
+			time.Sleep(time.Second)
+
 			resp, err = b.HandleRequest(context.Background(), req)
 
 			if err != nil || (resp != nil && resp.IsError()) {

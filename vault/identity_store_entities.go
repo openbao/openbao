@@ -8,10 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"google.golang.org/protobuf/types/known/anypb"
 
-	"github.com/golang/protobuf/ptypes"
 	memdb "github.com/hashicorp/go-memdb"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/helper/identity"
@@ -474,8 +475,8 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 	respData["namespace_id"] = entity.NamespaceID
 
 	// Convert protobuf timestamp into RFC3339 format
-	respData["creation_time"] = ptypes.TimestampString(entity.CreationTime)
-	respData["last_update_time"] = ptypes.TimestampString(entity.LastUpdateTime)
+	respData["creation_time"] = entity.CreationTime.AsTime().Format(time.RFC3339)
+	respData["last_update_time"] = entity.LastUpdateTime.AsTime().Format(time.RFC3339)
 
 	// Convert each alias into a map and replace the time format in each
 	aliasesToReturn := make([]interface{}, len(entity.Aliases))
@@ -487,8 +488,8 @@ func (i *IdentityStore) handleEntityReadCommon(ctx context.Context, entity *iden
 		aliasMap["metadata"] = alias.Metadata
 		aliasMap["name"] = alias.Name
 		aliasMap["merged_from_canonical_ids"] = alias.MergedFromCanonicalIDs
-		aliasMap["creation_time"] = ptypes.TimestampString(alias.CreationTime)
-		aliasMap["last_update_time"] = ptypes.TimestampString(alias.LastUpdateTime)
+		aliasMap["creation_time"] = alias.CreationTime.AsTime().Format(time.RFC3339)
+		aliasMap["last_update_time"] = alias.LastUpdateTime.AsTime().Format(time.RFC3339)
 		aliasMap["local"] = alias.Local
 		aliasMap["custom_metadata"] = alias.CustomMetadata
 
@@ -1120,7 +1121,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 	if persist {
 		// Persist the entity which we are merging to
-		toEntityAsAny, err := ptypes.MarshalAny(toEntity)
+		toEntityAsAny, err := anypb.New(toEntity)
 		if err != nil {
 			return nil, err, nil
 		}

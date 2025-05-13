@@ -12,8 +12,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 )
 
@@ -42,11 +42,10 @@ func (s *gRPCServer) Type(context.Context, *Empty) (*TypeResponse, error) {
 }
 
 func (s *gRPCServer) CreateUser(ctx context.Context, req *CreateUserRequest) (*CreateUserResponse, error) {
-	e, err := ptypes.Timestamp(req.Expiration)
-	if err != nil {
+	if err := req.Expiration.CheckValid(); err != nil {
 		return nil, err
 	}
-
+	e := req.Expiration.AsTime()
 	u, p, err := s.impl.CreateUser(ctx, *req.Statements, *req.UsernameConfig, e)
 
 	return &CreateUserResponse{
@@ -56,11 +55,11 @@ func (s *gRPCServer) CreateUser(ctx context.Context, req *CreateUserRequest) (*C
 }
 
 func (s *gRPCServer) RenewUser(ctx context.Context, req *RenewUserRequest) (*Empty, error) {
-	e, err := ptypes.Timestamp(req.Expiration)
-	if err != nil {
+	if err := req.Expiration.CheckValid(); err != nil {
 		return nil, err
 	}
-	err = s.impl.RenewUser(ctx, *req.Statements, req.Username, e)
+	e := req.Expiration.AsTime()
+	err := s.impl.RenewUser(ctx, *req.Statements, req.Username, e)
 	return &Empty{}, err
 }
 
@@ -162,8 +161,8 @@ func (c *gRPCClient) Type() (string, error) {
 }
 
 func (c *gRPCClient) CreateUser(ctx context.Context, statements Statements, usernameConfig UsernameConfig, expiration time.Time) (username string, password string, err error) {
-	t, err := ptypes.TimestampProto(expiration)
-	if err != nil {
+	t := timestamppb.New(expiration)
+	if err := t.CheckValid(); err != nil {
 		return "", "", err
 	}
 
@@ -189,8 +188,8 @@ func (c *gRPCClient) CreateUser(ctx context.Context, statements Statements, user
 }
 
 func (c *gRPCClient) RenewUser(ctx context.Context, statements Statements, username string, expiration time.Time) error {
-	t, err := ptypes.TimestampProto(expiration)
-	if err != nil {
+	t := timestamppb.New(expiration)
+	if err := t.CheckValid(); err != nil {
 		return err
 	}
 
@@ -199,7 +198,7 @@ func (c *gRPCClient) RenewUser(ctx context.Context, statements Statements, usern
 	defer close(quitCh)
 	defer cancel()
 
-	_, err = c.client.RenewUser(ctx, &RenewUserRequest{
+	_, err := c.client.RenewUser(ctx, &RenewUserRequest{
 		Statements: &statements,
 		Username:   username,
 		Expiration: t,

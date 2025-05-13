@@ -16,12 +16,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/openbao/openbao/sdk/v2/plugin/pb"
 	"github.com/rboyer/safeio"
 	bolt "go.etcd.io/bbolt"
 	"go.uber.org/atomic"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/hashicorp/raft"
 )

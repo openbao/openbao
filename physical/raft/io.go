@@ -31,7 +31,7 @@ package raft
 import (
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type Writer interface {

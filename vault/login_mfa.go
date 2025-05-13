@@ -20,7 +20,6 @@ import (
 	duoapi "github.com/duosecurity/duo_api_golang"
 	"github.com/duosecurity/duo_api_golang/authapi"
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-memdb"
@@ -41,6 +40,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	otplib "github.com/pquerna/otp"
 	totplib "github.com/pquerna/otp/totp"
+	"google.golang.org/protobuf/proto"
 )
 
 const (

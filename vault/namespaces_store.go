@@ -149,9 +149,9 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	return nil
 }
 
-// loadNamespacesRecursive reads all child namespaces from a given namespace store storage view
-// from disk, recursing into the namespace storage of any discovered namespaces to load an entire
-// namespace tree.
+// loadNamespacesRecursive reads all namespaces from a given namespace store view,
+// recursing into the respective namespace store views of any discovered namespaces
+// to load an entire namespace tree.
 func (ns *NamespaceStore) loadNamespacesRecursive(
 	ctx context.Context, barrier, view logical.Storage,
 	callback func(*namespace.Namespace) error,

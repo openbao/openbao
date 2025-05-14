@@ -325,12 +325,13 @@ func TestNamespaceTree(t *testing.T) {
 	namespaces1 := []*namespace.Namespace{
 		{Path: "ns1/", ID: "00001", UUID: "00001"},
 		{Path: "ns1/ns2/", ID: "00002", UUID: "00002"},
-		{Path: "ns3/ns4/", ID: "00004", UUID: "00004"},
 		{Path: "ns3/", ID: "00003", UUID: "00003"},
+		{Path: "ns3/ns4/", ID: "00004", UUID: "00004"},
 	}
 
 	for _, entry := range namespaces1 {
-		tree.unsafeInsert(entry)
+		err := tree.Insert(entry)
+		require.NoError(t, err)
 	}
 	err := tree.validate()
 	require.NoError(t, err)
@@ -341,10 +342,9 @@ func TestNamespaceTree(t *testing.T) {
 	}
 
 	for _, entry := range namespaces2 {
-		tree.unsafeInsert(entry)
+		err := tree.Insert(entry)
+		require.Error(t, err)
 	}
-	err = tree.validate()
-	require.Error(t, err)
 
 	namespaces3 := []*namespace.Namespace{
 		{Path: "ns3/ns6/", ID: "00006", UUID: "00006"},

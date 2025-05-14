@@ -204,29 +204,3 @@ func (nt *namespaceTree) validate() error {
 
 	return errors.Join(errs...)
 }
-
-// unsafeInsert performs an unsafe insert of the namespace entry. It will create
-// any intermediate tree entries as necessary and will not perform validation of
-// the tree. You MUST call validate yourself when done inserting.
-func (nt *namespaceTree) unsafeInsert(entry *namespace.Namespace) {
-	segments := strings.SplitAfter(entry.Path, "/")
-	segments = segments[:len(segments)-1]
-	node := nt.root
-
-	for _, segment := range segments {
-		n, ok := node.children[segment]
-		if !ok {
-			child := &namespaceNode{
-				parent:   node,
-				children: make(map[string]*namespaceNode),
-			}
-			node.children[segment] = child
-			nt.size += 1
-			node = child
-			continue
-		}
-
-		node = n
-	}
-	node.entry = entry
-}

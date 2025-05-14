@@ -1,0 +1,5 @@
+```release-note:feature
+**Namespaces**: Support for tenant isolation using namespaces, application API compatible with upstream's implementation.
+  - Accepts the X-Vault-Namespace header or namespaces-in-paths and routes requests accordingly.
+  - Tenant isolation ensures no cross-namespace escape, except to child namespaces.
+```

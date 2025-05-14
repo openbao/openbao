@@ -42,6 +42,10 @@ type Request struct {
 
 // SetJSONBody is used to set a request body that is a JSON-encoded value.
 func (r *Request) SetJSONBody(val interface{}) error {
+	if val == nil {
+		return nil
+	}
+
 	buf, err := json.Marshal(val)
 	if err != nil {
 		return err

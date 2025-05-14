@@ -329,7 +329,7 @@ func (c *Logical) WriteWithContext(ctx context.Context, path string, data map[st
 		return nil, err
 	}
 
-	return c.write(ctx, path, r)
+	return c.write(ctx, r)
 }
 
 func (c *Logical) JSONMergePatch(ctx context.Context, path string, data map[string]interface{}) (*Secret, error) {
@@ -339,7 +339,7 @@ func (c *Logical) JSONMergePatch(ctx context.Context, path string, data map[stri
 		return nil, err
 	}
 
-	return c.write(ctx, path, r)
+	return c.write(ctx, r)
 }
 
 func (c *Logical) WriteBytes(path string, data []byte) (*Secret, error) {
@@ -350,10 +350,10 @@ func (c *Logical) WriteBytesWithContext(ctx context.Context, path string, data [
 	r := c.c.NewRequest(http.MethodPut, "/v1/"+path)
 	r.BodyBytes = data
 
-	return c.write(ctx, path, r)
+	return c.write(ctx, r)
 }
 
-func (c *Logical) write(ctx context.Context, path string, request *Request) (*Secret, error) {
+func (c *Logical) write(ctx context.Context, request *Request) (*Secret, error) {
 	ctx, cancelFunc := c.c.withConfiguredTimeout(ctx)
 	defer cancelFunc()
 

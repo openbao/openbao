@@ -1,0 +1,8 @@
+```release-note:feature
+**Namespaces**: Support for tenant isolation using namespaces, application API compatible with upstream's implementation.
+  - Create, read, update, delete a hierarchical directory of namespaces
+  - Manage isolated per-namespace secrets engines, auth methods, tokens, policies and more
+  - Migrate (remount) secrets engines and auth methods between namespaces
+  - Route requests to namespaces via path (`/my-namespace/secrets`) or `X-Vault-Namespace` header (or both!)
+  - CLI support via the `bao namespace` family of commands and the `-namespace` flag.
+```

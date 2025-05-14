@@ -118,19 +118,21 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 	namespacesByUUID[namespace.RootNamespaceUUID] = namespace.RootNamespace
 	namespacesByAccessor[namespace.RootNamespaceID] = namespace.RootNamespace
 
+	loadingCallback := func(namespace *namespace.Namespace) error {
+		if _, ok := namespacesByUUID[namespace.UUID]; ok {
+			return fmt.Errorf("namespace with UUID %q is not unique in storage", namespace.UUID)
+		}
+		if err := namespacesByPath.Insert(namespace); err != nil {
+			return err
+		}
+		namespacesByUUID[namespace.UUID] = namespace
+		namespacesByAccessor[namespace.ID] = namespace
+		return nil
+	}
+
 	if err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
-		return ns.loadNamespacesRecursive(ctx, s, NewBarrierView(s, namespaceStoreSubPath),
-			func(namespace *namespace.Namespace) error {
-				if _, ok := namespacesByUUID[namespace.UUID]; ok {
-					return fmt.Errorf("namespace with UUID %q is not unique in storage", namespace.UUID)
-				}
-				if err := namespacesByPath.Insert(namespace); err != nil {
-					return err
-				}
-				namespacesByUUID[namespace.UUID] = namespace
-				namespacesByAccessor[namespace.ID] = namespace
-				return nil
-			})
+		rootStoreView := NewBarrierView(s, namespaceStoreSubPath)
+		return ns.loadNamespacesRecursive(ctx, s, rootStoreView, loadingCallback)
 	}); err != nil {
 		return err
 	}
@@ -150,7 +152,10 @@ func (ns *NamespaceStore) loadNamespacesLocked(ctx context.Context) error {
 // loadNamespacesRecursive reads all child namespaces from a given namespace store storage view
 // from disk, recursing into the namespace storage of any discovered namespaces to load an entire
 // namespace tree.
-func (ns *NamespaceStore) loadNamespacesRecursive(ctx context.Context, barrier, view logical.Storage, callback func(*namespace.Namespace) error) error {
+func (ns *NamespaceStore) loadNamespacesRecursive(
+	ctx context.Context, barrier, view logical.Storage,
+	callback func(*namespace.Namespace) error,
+) error {
 	return logical.HandleListPage(view, "", 100, func(page int, index int, entry string) (bool, error) {
 		item, err := view.Get(ctx, entry)
 		if err != nil {
@@ -166,13 +171,12 @@ func (ns *NamespaceStore) loadNamespacesRecursive(ctx context.Context, barrier, 
 			return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", entry, page, index, err)
 		}
 
-		err = callback(&namespace)
-		if err != nil {
+		if err := callback(&namespace); err != nil {
 			return false, err
 		}
 
-		err = ns.loadNamespacesRecursive(ctx, barrier, NamespaceView(barrier, &namespace).SubView(namespaceStoreSubPath), callback)
-		if err != nil {
+		childView := NamespaceView(barrier, &namespace).SubView(namespaceStoreSubPath)
+		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}
 

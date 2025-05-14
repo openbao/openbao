@@ -954,11 +954,10 @@ func TestHandler_MaxRequestSize_Memory(t *testing.T) {
 func TestHandler_RestrictedEndpointCalls(t *testing.T) {
 	core, _, token := vault.TestCoreUnsealed(t)
 	// add namespaces for tests
-	err := vault.TestCoreCreateNamespaces(core,
+	vault.TestCoreCreateNamespaces(t, core,
 		&namespace.Namespace{Path: "test"},
 		&namespace.Namespace{Path: "test/test2"},
 	)
-	require.NoError(t, err)
 
 	tests := []struct {
 		name            string

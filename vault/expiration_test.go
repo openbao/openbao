@@ -91,7 +91,7 @@ func TestExpiration_Metrics(t *testing.T) {
 		ID:   "nsid",
 		Path: "foo/bar",
 	}
-	TestCoreCreateNamespaces(testCore, ns)
+	TestCoreCreateNamespaces(t, testCore, ns)
 
 	for i := range 50 {
 		le := &leaseEntry{
@@ -249,7 +249,7 @@ func TestExpiration_TotalLeaseCount(t *testing.T) {
 		ID:   "nsid",
 		Path: "foo/bar",
 	}
-	TestCoreCreateNamespaces(c, ns)
+	TestCoreCreateNamespaces(t, c, ns)
 
 	for i := range 50 {
 		le := &leaseEntry{
@@ -345,7 +345,7 @@ func TestExpiration_TotalLeaseCount_WithRoles(t *testing.T) {
 		ID:   "nsid",
 		Path: "foo/bar",
 	}
-	TestCoreCreateNamespaces(c, ns)
+	TestCoreCreateNamespaces(t, c, ns)
 
 	for i := 0; i < 50; i++ {
 		le := &leaseEntry{

@@ -733,6 +733,141 @@ func TestCore_Remount_Protected(t *testing.T) {
 	}
 }
 
+type RemountStruct struct {
+	Title        string
+	SrcParentCtx context.Context
+	DstParentCtx context.Context
+	SrcNS        namespace.MountPathDetails
+	DstNs        namespace.MountPathDetails
+	TestSecret   *logical.Request
+}
+
+func TestCore_Remount_Namespaces(t *testing.T) {
+	c, keys, token := TestCoreUnsealed(t)
+	rootCtx := namespace.RootContext(nil)
+	ns1 := testCreateNamespace(t, rootCtx, c.systemBackend, "ns1", nil)
+	ns1Ctx := namespace.ContextWithNamespace(rootCtx, ns1)
+	ns2 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns2", nil)
+	// ns2Ctx := namespace.ContextWithNamespace(rootCtx, ns2)
+	ns3 := testCreateNamespace(t, ns1Ctx, c.systemBackend, "ns3", nil)
+	// ns3Ctx := namespace.ContextWithNamespace(rootCtx, ns3)
+
+	table := []RemountStruct{
+		{
+			Title:        "Remount Namespace ns1/ns2 to Namespace ns1/ns3",
+			SrcParentCtx: ns1Ctx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: ns2,
+				MountPath: "secret/",
+			},
+			DstParentCtx: ns1Ctx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: ns3,
+				MountPath: "secret1/",
+			},
+		},
+		{
+			Title:        "Remount Namespace ns1 to Root",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: ns1,
+				MountPath: "secret/",
+			},
+			DstParentCtx: rootCtx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secret2/",
+			},
+		},
+		{
+			Title:        "Remount Root to Root",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secret/",
+			},
+			DstParentCtx: rootCtx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secretFoo/",
+			},
+		},
+		{
+			Title:        "Remount Root to Namespace ns1/ns2",
+			SrcParentCtx: rootCtx,
+			SrcNS: namespace.MountPathDetails{
+				Namespace: namespace.RootNamespace,
+				MountPath: "secretFoo/", // Note that this is depending on pervious test case
+			},
+			DstParentCtx: ns1Ctx,
+			DstNs: namespace.MountPathDetails{
+				Namespace: ns2,
+				MountPath: "secret3/",
+			},
+		},
+	}
+
+	for _, test := range table {
+		t.Run(test.Title, func(t *testing.T) {
+			src := test.SrcNS
+			dst := test.DstNs
+
+			srcNSCtx := namespace.ContextWithNamespace(test.SrcParentCtx, src.Namespace)
+			dstNSCtx := namespace.ContextWithNamespace(test.DstParentCtx, dst.Namespace)
+
+			srcMountPath := src.MountPath
+			dstMountPath := dst.MountPath
+
+			// Create a secret in the source namespace
+			// Already present in root
+			if src.Namespace != namespace.RootNamespace {
+				testCoreAddSecretMountContext(srcNSCtx, t, c, srcMountPath, token)
+			}
+
+			match := c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != src.Namespace.Path+srcMountPath {
+				t.Fatalf("missing mount, match %q", match)
+			}
+
+			err := c.remountSecretsEngine(test.SrcParentCtx, src, dst, true)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+
+			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != "" {
+				t.Fatalf("secret still at old location, match %q", match)
+			}
+
+			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
+			if match != dst.Namespace.Path+dstMountPath {
+				t.Fatalf("secret not at new location, match %q", match)
+			}
+
+			c.sealInternal()
+			for i, key := range keys {
+				unseal, err := TestCoreUnseal(c, key)
+				if err != nil {
+					t.Fatalf("err: %v", err)
+				}
+				if i+1 == len(keys) && !unseal {
+					t.Fatal("should be unsealed")
+				}
+			}
+
+			match = c.router.MatchingMount(srcNSCtx, srcMountPath+"bar")
+			if match != "" {
+				t.Fatalf("secret still at old location after unseal, match %q", match)
+			}
+
+			match = c.router.MatchingMount(dstNSCtx, dstMountPath+"bar")
+			if match != dst.Namespace.Path+dstMountPath {
+				t.Fatalf("secret not at new location after unseal, match %q", match)
+			}
+		})
+	}
+}
+
 func TestDefaultMountTable(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	table := c.defaultMountTable(context.Background())

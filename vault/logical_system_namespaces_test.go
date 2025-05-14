@@ -28,6 +28,7 @@ func testCreateNamespace(t *testing.T, ctx context.Context, b logical.Backend, n
 
 	return &namespace.Namespace{
 		ID:             res.Data["id"].(string),
+		UUID:           res.Data["uuid"].(string),
 		Path:           res.Data["path"].(string),
 		Tainted:        res.Data["tainted"].(bool),
 		CustomMetadata: res.Data["custom_metadata"].(map[string]string),

@@ -379,13 +379,18 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	dstRelativePath := dst.GetRelativePath(ns)
 
 	// Verify exact match of the route
-	srcMatch := c.router.MatchingMountEntry(ctx, srcRelativePath)
-	if srcMatch == nil {
+	mountEntry := c.router.MatchingMountEntry(ctx, srcRelativePath)
+	if mountEntry == nil {
 		return fmt.Errorf("no matching mount at %q", src.Namespace.Path+src.MountPath)
 	}
 
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		return fmt.Errorf("path in use at %q", match)
+	}
+
+	srcBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
 	}
 
 	// Mark the entry as tainted
@@ -407,28 +412,47 @@ func (c *Core) remountCredential(ctx context.Context, src, dst namespace.MountPa
 	}
 
 	c.authLock.Lock()
-	if match := c.router.MountConflict(ctx, dstRelativePath); match != "" {
+	if match := c.router.MountConflict(ctx, dstRelativePath); match != dst.Namespace.Path && match != "" {
 		c.authLock.Unlock()
 		return fmt.Errorf("path in use at %q", match)
 	}
 
-	srcMatch.Tainted = false
-	srcMatch.NamespaceID = dst.Namespace.ID
-	srcMatch.namespace = dst.Namespace
-	srcPath := srcMatch.Path
-	srcMatch.Path = strings.TrimPrefix(dst.MountPath, credentialRoutePrefix)
+	mountEntry.Tainted = false
+	mountEntry.NamespaceID = dst.Namespace.ID
+	mountEntry.namespace = dst.Namespace
+	srcPath := mountEntry.Path
+	mountEntry.Path = strings.TrimPrefix(dst.MountPath, credentialRoutePrefix)
+
+	dstBarrierView, err := c.mountEntryView(mountEntry)
+	if err != nil {
+		return err
+	}
 
 	// Update the mount table
-	if err := c.persistAuth(ctx, nil, c.auth, &srcMatch.Local, srcMatch.UUID); err != nil {
-		srcMatch.Path = srcPath
-		srcMatch.Tainted = true
+	if err := c.persistAuth(ctx, nil, c.auth, &mountEntry.Local, mountEntry.UUID); err != nil {
+		mountEntry.namespace = src.Namespace
+		mountEntry.NamespaceID = src.Namespace.ID
+		mountEntry.Path = srcPath
+		mountEntry.Tainted = true
 		c.authLock.Unlock()
 		return fmt.Errorf("failed to update auth table with error %w", err)
 	}
 
-	// Remount the backend, setting the existing route entry
-	// against the new path
-	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath); err != nil {
+	if src.Namespace.ID != dst.Namespace.ID {
+		// Handle storage entries
+		if err := c.moveAuthStorage(ctx, src, mountEntry, srcBarrierView, dstBarrierView); err != nil {
+			c.authLock.Unlock()
+			return err
+		}
+	}
+
+	// Remount the backend
+	if err := c.router.Remount(ctx, srcRelativePath, dstRelativePath, func(re *routeEntry) error {
+		re.storageView = dstBarrierView
+		re.storagePrefix = dstBarrierView.Prefix()
+
+		return nil
+	}); err != nil {
 		c.authLock.Unlock()
 		return err
 	}

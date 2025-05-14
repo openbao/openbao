@@ -435,27 +435,32 @@ func TestInitUnsealCore(t testing.T, core *Core) (string, [][]byte) {
 	return token, keys
 }
 
-func testCoreAddSecretMount(t testing.T, core *Core, token string) {
+func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core, path, token string) {
 	kvReq := &logical.Request{
 		Operation:   logical.UpdateOperation,
 		ClientToken: token,
 		Path:        "sys/mounts/secret",
 		Data: map[string]interface{}{
 			"type":        "kv",
-			"path":        "secret/",
+			"path":        path,
 			"description": "key/value secret storage",
 			"options": map[string]string{
 				"version": "1",
 			},
 		},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), kvReq)
+	resp, err := core.HandleRequest(ctx, kvReq)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resp.IsError() {
 		t.Fatal(err)
 	}
+}
+
+func testCoreAddSecretMount(t testing.T, core *Core, token string) {
+	rootCtx := namespace.RootContext(nil)
+	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
 }
 
 func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]byte, string) {

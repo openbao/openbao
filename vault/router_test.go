@@ -255,12 +255,12 @@ func TestRouter_Remount(t *testing.T) {
 	}
 
 	me.Path = "stage/aws/"
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/")
+	err = r.Remount(namespace.RootContext(nil), "prod/aws/", "stage/aws/", nil)
 	if !strings.Contains(err.Error(), "no mount at") {
 		t.Fatalf("err: %v", err)
 	}

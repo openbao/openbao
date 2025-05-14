@@ -56,6 +56,7 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/net/http2"
 )
@@ -358,16 +359,17 @@ func TestCoreSeal(core *Core) error {
 	return core.sealInternal()
 }
 
-func TestCoreCreateNamespaces(core *Core, namespaces ...*namespace.Namespace) error {
-	// Use root context to ensure parent namespace is available
+func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) {
+	t.Helper()
 	ctx := namespace.RootContext(context.Background())
 	for _, ns := range namespaces {
-		err := core.namespaceStore.SetNamespace(ctx, ns)
-		if err != nil {
-			return err
-		}
+		parentPath, _ := ns.ParentPath()
+		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+		require.NoError(t, err)
+		parentCtx := namespace.ContextWithNamespace(ctx, parent)
+		err = core.namespaceStore.SetNamespace(parentCtx, ns)
+		require.NoError(t, err)
 	}
-	return nil
 }
 
 // TestCoreUnsealed returns a pure in-memory core that is already

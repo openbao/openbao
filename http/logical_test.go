@@ -1089,8 +1089,7 @@ func TestLogical_NamespaceRestrictedAPIs(t *testing.T) {
 		ID:   "testns-id",
 		Path: "testns/",
 	}
-	err := vault.TestCoreCreateNamespaces(core, ns)
-	require.NoError(t, err, "Failed to create test namespace")
+	vault.TestCoreCreateNamespaces(t, core, ns)
 
 	// Create a policy in the namespace that grants access to sys/mounts and sys/policy
 	nsClient, err := rootClient.Clone()

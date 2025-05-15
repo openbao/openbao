@@ -320,7 +320,7 @@ func connectionURL(conf map[string]string) string {
 func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB, error) {
 	db, err := sql.Open("pgx", connURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
+		return nil, err
 	}
 
 	var b backoff.BackOff = backoff.NewExponentialBackOff(

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -1271,6 +1272,15 @@ func TestValidateStrict(t *testing.T) {
 			}
 			if err != nil && tc.ExpectError == false {
 				t.Fatalf("unexpected error: %v", err)
+			}
+			if err != nil {
+				for _, valueRaw := range tc.Raw {
+					if value, ok := valueRaw.(string); ok {
+						if strings.Contains(err.Error(), value) {
+							t.Fatalf("error contained value: value=%v / err=%v", value, err)
+						}
+					}
+				}
 			}
 		})
 	}

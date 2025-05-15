@@ -570,7 +570,7 @@ func (c *Core) waitForLeadership(newLeaderCh chan func(), manualStepDownCh, stop
 		// everything is sane. If we have no sanity in the barrier, we actually
 		// seal, as there's little we can do.
 		{
-			c.seal.SetBarrierConfig(activeCtx, nil)
+			c.seal.SetBarrierConfig(activeCtx, nil, namespace.RootNamespace)
 			if c.seal.RecoveryKeySupported() {
 				c.seal.SetRecoveryConfig(activeCtx, nil)
 			}
@@ -956,8 +956,8 @@ func (c *Core) reloadRootKey(ctx context.Context) error {
 }
 
 func (c *Core) reloadShamirKey(ctx context.Context) error {
-	_ = c.seal.SetBarrierConfig(ctx, nil)
-	if cfg, _ := c.seal.BarrierConfig(ctx); cfg == nil {
+	_ = c.seal.SetBarrierConfig(ctx, nil, namespace.RootNamespace)
+	if cfg, _ := c.seal.BarrierConfig(ctx, namespace.RootNamespace); cfg == nil {
 		return nil
 	}
 	var shamirKey []byte

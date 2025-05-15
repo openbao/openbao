@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-hclog"
+	"github.com/stretchr/testify/require"
 )
 
 var keyList = []string{
@@ -84,6 +86,51 @@ func TestCollectKeysPrefix(t *testing.T) {
 	if diff := deep.Equal(keys, exp); diff != nil {
 		t.Fatal(diff)
 	}
+}
+
+func TestClearView(t *testing.T) {
+	s := prepKeyStorage(t)
+
+	keys, err := CollectKeys(context.Background(), s)
+	require.NoError(t, err)
+	require.Equal(t, keys, keyList)
+
+	err = ClearView(context.Background(), s)
+	require.NoError(t, err)
+
+	keys, err = CollectKeys(context.Background(), s)
+	require.Nil(t, err)
+	require.Empty(t, keys)
+}
+
+func TestClearPaginatedView(t *testing.T) {
+	s := prepKeyStorage(t)
+
+	keys, err := CollectKeys(context.Background(), s)
+	require.NoError(t, err)
+	require.Equal(t, keys, keyList)
+
+	err = ClearViewWithPagination(context.Background(), s, hclog.NewNullLogger())
+	require.NoError(t, err)
+
+	keys, err = CollectKeys(context.Background(), s)
+	require.Nil(t, err)
+	require.Empty(t, keys)
+}
+
+func TestClearUnpaginatedView(t *testing.T) {
+	s := prepKeyStorage(t)
+
+	keys, err := CollectKeys(context.Background(), s)
+	require.NoError(t, err)
+	require.Equal(t, keys, keyList)
+
+	err = ClearViewWithoutPagination(context.Background(), s, hclog.NewNullLogger())
+	require.NoError(t, err)
+
+	keys, err = CollectKeys(context.Background(), s)
+	require.Nil(t, err)
+	require.Empty(t, keys)
 }
 
 func prepKeyStorage(t *testing.T) Storage {

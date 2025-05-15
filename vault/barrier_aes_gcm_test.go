@@ -122,6 +122,45 @@ func TestAESGCMBarrier_Upgrade_Rekey(t *testing.T) {
 		t.Fatalf("err: %v", err)
 	}
 	testBarrier_Upgrade_Rekey(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
+
+	// Test migration from legacy to new root key path. Move the existing
+	// root key over to the legacy path.
+	entry, err := b1.Get(context.Background(), rootKeyPath)
+	require.NoError(t, err)
+	require.NotNil(t, entry)
+	require.Equal(t, entry.Key, rootKeyPath)
+
+	entry.Key = legacyRootKeyPath
+	err = b1.Put(context.Background(), entry)
+	require.NoError(t, err)
+	err = b1.Delete(context.Background(), rootKeyPath)
+	require.NoError(t, err)
+
+	// Now reload b1; this should succeed but not migrate the key.
+	err = b1.ReloadRootKey(context.Background())
+	require.NoError(t, err)
+
+	oldEntry, err := b1.Get(context.Background(), legacyRootKeyPath)
+	require.NoError(t, err)
+	require.NotNil(t, oldEntry)
+	require.Equal(t, entry.Value, oldEntry.Value)
+
+	newEntry, err := b1.Get(context.Background(), rootKeyPath)
+	require.NoError(t, err)
+	require.Nil(t, newEntry)
+
+	// Now persist b1; this should remove the legacy key path.
+	err = b1.(*TransactionalAESGCMBarrier).persistKeyring(context.Background(), b1.(*TransactionalAESGCMBarrier).keyring)
+	require.NoError(t, err)
+
+	oldEntry, err = b1.Get(context.Background(), legacyRootKeyPath)
+	require.NoError(t, err)
+	require.Nil(t, oldEntry)
+
+	newEntry, err = b1.Get(context.Background(), rootKeyPath)
+	require.NoError(t, err)
+	require.NotNil(t, newEntry)
+	require.Equal(t, entry.Value, newEntry.Value)
 }
 
 func TestAESGCMBarrier_Rekey(t *testing.T) {

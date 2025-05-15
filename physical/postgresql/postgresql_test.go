@@ -542,7 +542,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 
 	b := bRaw.(physical.TransactionalBackend)
 
-	// Put should succeed with an error even with massively parallel
+	// Put should succeed without an error even with massively parallel
 	// requests.
 	errors := make([]error, 100)
 	var wg sync.WaitGroup

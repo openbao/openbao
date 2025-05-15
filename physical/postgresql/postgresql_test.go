@@ -551,7 +551,7 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			entry := &physical.Entry{Key: fmt.Sprintf("foo-%v", i), Value: []byte("data")}
-			err = b.Put(context.Background(), entry)
+			err := b.Put(context.Background(), entry)
 			if err != nil {
 				errors[i] = err
 			}

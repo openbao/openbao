@@ -620,12 +620,13 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 			defer count.Add(-1)
 		}(j)
 
-		wg.Wait()
+	}
 
-		for j := range errors {
-			if errors[j] != nil {
-				t.Fatalf("process %v: %v", j, errors[j])
-			}
+	wg.Wait()
+
+	for j := range errors {
+		if errors[j] != nil {
+			t.Fatalf("process %v: %v", j, errors[j])
 		}
 	}
 }

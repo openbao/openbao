@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/stretchr/testify/require"
 )
 
 // TestDefaultSeal_Config exercises Shamir SetBarrierConfig and BarrierConfig.
@@ -84,4 +85,26 @@ func TestDefaultSeal_Config(t *testing.T) {
 	if !reflect.DeepEqual(*nsSealConfig, *newNSSealConfig) {
 		t.Fatal("config mismatch")
 	}
+}
+
+func TestDefaultSeal_IsNSSealed(t *testing.T) {
+	sealConfig := &SealConfig{
+		Type:            "shamir",
+		SecretShares:    4,
+		SecretThreshold: 2,
+	}
+	c, _, _ := TestCoreUnsealed(t)
+	sm := c.sealManager
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	ns := &namespace.Namespace{Path: "test/"}
+	TestCoreCreateNamespaces(t, c, ns)
+	require.False(t, c.IsNSSealed(ns))
+
+	err := sm.SetSeal(ctx, sealConfig, ns)
+	require.NoError(t, err)
+
+	err = sm.SealNamespace(ns)
+	require.NoError(t, err)
+	require.True(t, c.IsNSSealed(ns))
 }

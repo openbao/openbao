@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -928,7 +929,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		// false.
 		if c.seal.BarrierType() == wrapping.WrapperTypeShamir && !c.isRaftHAOnly() {
 			c.raftInfo.Store(raftInfo)
-			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig); err != nil {
+			if err := c.seal.SetBarrierConfig(ctx, raftInfo.leaderBarrierConfig, namespace.RootNamespace); err != nil {
 				return err
 			}
 

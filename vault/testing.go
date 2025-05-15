@@ -299,9 +299,8 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 	barrierConfig := &SealConfig{
 		SecretShares:    3,
 		SecretThreshold: 3,
+		StoredShares:    1,
 	}
-
-	barrierConfig.StoredShares = 1
 
 	recoveryConfig := &SealConfig{
 		SecretShares:    3,
@@ -312,7 +311,7 @@ func TestCoreInitClusterWrapperSetup(t testing.T, core *Core, handler http.Handl
 		BarrierConfig:  barrierConfig,
 		RecoveryConfig: recoveryConfig,
 	}
-	result, err := core.Initialize(context.Background(), initParams)
+	result, err := core.Initialize(namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace), initParams)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -2111,7 +2110,7 @@ func (tc *TestCluster) initCores(t testing.T, opts *TestClusterOptions, addAudit
 		t.Fatal(err)
 	}
 
-	cfg, err := leader.seal.BarrierConfig(ctx)
+	cfg, err := leader.seal.BarrierConfig(ctx, namespace.RootNamespace)
 	if err != nil {
 		t.Fatal(err)
 	}

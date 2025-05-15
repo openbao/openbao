@@ -1017,7 +1017,7 @@ func (ns *NamespaceStore) clearNamespaceResources(nsCtx context.Context, namespa
 }
 
 // SealNamespace seals namespace with provided path, failing to do so if the namespace
-// doesn't exist, is a root namespace, is tainted or is actively deleting.
+// doesn't exist, is a root namespace or is tainted.
 func (ns *NamespaceStore) SealNamespace(ctx context.Context, path string) error {
 	defer metrics.MeasureSince([]string{"namespace", "seal_namespace"}, time.Now())
 

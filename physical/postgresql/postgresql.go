@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/armon/go-metrics"
+	"github.com/cenkalti/backoff/v4"
 	log "github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 	"github.com/hashicorp/go-uuid"
@@ -155,8 +156,23 @@ func NewPostgreSQLBackend(conf map[string]string, logger log.Logger) (physical.B
 		}
 	}
 
+	// Set maximum retries for DB connection liveness check on startup.
+	maxRetriesStr, ok := conf["max_connect_retries"]
+	var maxRetriesInt int
+	if ok {
+		maxRetriesInt, err = strconv.Atoi(maxRetriesStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing max_connect_retries parameter: %w", err)
+		}
+		if logger.IsDebug() {
+			logger.Debug("max_connect_retries set", "max_connect_retries", maxRetriesInt)
+		}
+	} else {
+		maxRetriesInt = 1
+	}
+
 	// Create PostgreSQL handle for the database.
-	db, err := sql.Open("pgx", connURL)
+	db, err := doRetryConnect(logger, connURL, uint64(maxRetriesInt))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
@@ -299,6 +315,38 @@ func connectionURL(conf map[string]string) string {
 	}
 
 	return connURL
+}
+
+func doRetryConnect(logger log.Logger, connURL string, retries uint64) (*sql.DB, error) {
+	db, err := sql.Open("pgx", connURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var b backoff.BackOff = backoff.NewExponentialBackOff(
+		backoff.WithMaxInterval(5*time.Second),
+		backoff.WithInitialInterval(15*time.Millisecond),
+	)
+	if retries > 0 {
+		b = backoff.WithMaxRetries(b, retries)
+	}
+
+	b.Reset()
+
+	if err := backoff.Retry(func() error {
+		err := db.Ping()
+		if err != nil {
+			logger.Debug("database not ready", "err", err)
+			return err
+		}
+
+		return nil
+	}, b); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("unable to verify connection: %w", err)
+	}
+
+	return db, nil
 }
 
 // splitKey is a helper to split a full path key into individual

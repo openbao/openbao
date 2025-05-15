@@ -27,7 +27,7 @@ func mockBarrier(t testing.TB) (physical.Backend, SecurityBarrier, []byte) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b, err := NewAESGCMBarrier(inm)
+	b, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestAESGCMBarrier_Basic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b, err := NewAESGCMBarrier(inm)
+	b, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestAESGCMBarrier_Rotate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b, err := NewAESGCMBarrier(inm)
+	b, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestAESGCMBarrier_MissingRotateConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -97,11 +97,11 @@ func TestAESGCMBarrier_Upgrade(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b1, err := NewAESGCMBarrier(inm)
+	b1, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b2, err := NewAESGCMBarrier(inm)
+	b2, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -113,11 +113,11 @@ func TestAESGCMBarrier_Upgrade_Rekey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b1, err := NewAESGCMBarrier(inm)
+	b1, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b2, err := NewAESGCMBarrier(inm)
+	b2, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestAESGCMBarrier_Rekey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	b, err := NewAESGCMBarrier(inm)
+	b, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestAESGCMBarrier_Confidential(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestAESGCMBarrier_Integrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -261,7 +261,7 @@ func TestAESGCMBarrier_MoveIntegrityV1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestAESGCMBarrier_MoveIntegrityV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestAESGCMBarrier_UpgradeV1toV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -383,7 +383,7 @@ func TestAESGCMBarrier_UpgradeV1toV2(t *testing.T) {
 	}
 
 	// Open again as version 2
-	sb, err = NewAESGCMBarrier(inm)
+	sb, err = NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -408,7 +408,7 @@ func TestEncrypt_Unique(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -445,7 +445,7 @@ func TestInitialize_KeyLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -479,7 +479,7 @@ func TestEncrypt_BarrierEncryptor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -516,7 +516,7 @@ func TestDecrypt_InvalidCipherLength(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -550,7 +550,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb, err := NewAESGCMBarrier(inm)
+	sb, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -574,7 +574,7 @@ func TestAESGCMBarrier_ReloadKeyring(t *testing.T) {
 
 	{
 		// Create a second barrier and rotate the keyring
-		sb2, err := NewAESGCMBarrier(inm)
+		sb2, err := NewAESGCMBarrier(inm, "")
 		if err != nil {
 			t.Fatalf("err: %v", err)
 		}
@@ -630,7 +630,7 @@ func TestBarrier_LegacyRotate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	sb1, err := NewAESGCMBarrier(inm)
+	sb1, err := NewAESGCMBarrier(inm, "")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	} // Initialize the barrier
@@ -697,7 +697,7 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 			// Set up barrier
 			backend, err := inmem.NewInmem(nil, corehelpers.NewTestLogger(t))
 			require.NoError(t, err)
-			security_barrier, err := NewAESGCMBarrier(backend)
+			security_barrier, err := NewAESGCMBarrier(backend, "")
 			require.NoError(t, err)
 			barrier := security_barrier.(*TransactionalAESGCMBarrier)
 			key, err := barrier.GenerateKey(rand.Reader)
@@ -734,4 +734,101 @@ func TestBarrier_persistKeyring_Context(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAESGCMBarrier_Prefix_Basic(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	testBarrier(t, b.(*TransactionalAESGCMBarrier))
+}
+
+func TestAESGCMBarrier_Prefix_Rotate(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	testBarrier_Rotate(t, b.(*TransactionalAESGCMBarrier))
+}
+
+func TestAESGCMBarrier_Prefix_MissingRotateConfig(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	sb, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b := sb.(*TransactionalAESGCMBarrier)
+
+	// Initialize and unseal
+	key, _ := b.GenerateKey(rand.Reader)
+	b.Initialize(context.Background(), key, nil, rand.Reader)
+	b.Unseal(context.Background(), key)
+
+	// Write a keyring which lacks rotation config settings
+	oldKeyring := b.keyring.Clone()
+	oldKeyring.rotationConfig = KeyRotationConfig{}
+	b.persistKeyring(context.Background(), oldKeyring)
+
+	b.ReloadKeyring(context.Background())
+
+	// At this point, the rotation config should match the default
+	if !defaultRotationConfig.Equals(b.keyring.rotationConfig) {
+		t.Fatal("expected empty rotation config to recover as default config")
+	}
+}
+
+func TestAESGCMBarrier_Prefix_Upgrade(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b1, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b2, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	testBarrier_Upgrade(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
+}
+
+func TestAESGCMBarrier_Prefix_Upgrade_Rekey(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b1, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b2, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	testBarrier_Upgrade_Rekey(t, b1.(*TransactionalAESGCMBarrier), b2.(*TransactionalAESGCMBarrier))
+}
+
+func TestAESGCMBarrier_Prefix_Rekey(t *testing.T) {
+	inm, err := inmem.NewInmem(nil, logger)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	b, err := NewAESGCMBarrier(inm, "prefix/")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	testBarrier_Rekey(t, b.(*TransactionalAESGCMBarrier))
 }

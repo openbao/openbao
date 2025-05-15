@@ -10,6 +10,10 @@ var (
 	// No operation is expected to succeed before unsealing
 	ErrSealed = errors.New("Vault is sealed")
 
+	// ErrNamespaceSealed is returned if an operation is performed on a sealed namesapce barrier.
+	// No operation is expected to succeed before unsealing
+	ErrNamespaceSealed = errors.New("Namespace is sealed")
+
 	// ErrAPILocked is returned if an operation is performed when the API is
 	// locked for the request namespace.
 	ErrAPILocked = errors.New("API access to this namespace has been locked by an administrator")

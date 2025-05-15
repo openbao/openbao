@@ -107,6 +107,10 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 					Value: true,
 				},
 			},
+			"skip_jwks_validation": {
+				Type:        framework.TypeBool,
+				Description: "When true and oidc_discovery_url or jwks_url are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint.",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -296,6 +300,15 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 		},
 	}
 
+	// Check if the config is currently valid and warn otherwise.
+	_, err = b.jwtValidator(config)
+	if err != nil {
+		resp.AddWarning(fmt.Sprintf("failed to construct JWK validator: %v", err))
+		resp.Data["status"] = "invalid"
+	} else {
+		resp.Data["status"] = "valid"
+	}
+
 	return resp, nil
 }
 
@@ -315,6 +328,8 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		BoundIssuer:          d.Get("bound_issuer").(string),
 		ProviderConfig:       d.Get("provider_config").(map[string]interface{}),
 	}
+
+	skipJwksValidation := d.Get("skip_jwks_validation").(bool)
 
 	txRollback, err := logical.StartTxStorage(ctx, req)
 	if err != nil {
@@ -351,6 +366,7 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		methodCount++
 	}
 
+	resp := &logical.Response{}
 	switch {
 	case methodCount != 1:
 		return logical.ErrorResponse("exactly one of 'jwt_validation_pubkeys', 'jwks_url' or 'oidc_discovery_url' must be set"), nil
@@ -367,8 +383,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 			_, err = jwt.NewOIDCDiscoveryKeySet(ctx, config.OIDCDiscoveryURL, config.OIDCDiscoveryCAPEM)
 		}
 		if err != nil {
-			b.Logger().Error("error checking oidc discovery URL", "error", err)
-			return logical.ErrorResponse("error checking oidc discovery URL"), nil
+			if !skipJwksValidation {
+				b.Logger().Error("error checking oidc discovery URL", "error", err)
+				return logical.ErrorResponse("error checking oidc discovery URL"), nil
+			}
+
+			resp.AddWarning("error checking oidc discovery URL")
 		}
 
 	case config.OIDCClientID != "" && config.OIDCDiscoveryURL == "":
@@ -390,8 +410,12 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 		}
 
 		if !strings.Contains(err.Error(), "failed to verify id token signature") {
-			b.Logger().Error("error checking jwks URL", "error", err)
-			return logical.ErrorResponse("error checking jwks URL"), nil
+			if !skipJwksValidation {
+				b.Logger().Error("error checking jwks URL", "error", err)
+				return logical.ErrorResponse("error checking jwks URL"), nil
+			}
+
+			resp.AddWarning("error checking jwks URL")
 		}
 
 	case len(config.JWTValidationPubKeys) != 0:
@@ -445,6 +469,10 @@ func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Reque
 
 	if err := logical.EndTxStorage(ctx, req); err != nil {
 		return nil, err
+	}
+
+	if len(resp.Warnings) > 0 {
+		return resp, nil
 	}
 
 	return nil, nil

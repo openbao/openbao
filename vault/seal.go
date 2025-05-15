@@ -16,6 +16,7 @@ import (
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
 	"github.com/openbao/openbao/sdk/v2/physical"
 
@@ -59,9 +60,9 @@ type Seal interface {
 	SealWrapable() bool
 	SetStoredKeys(context.Context, [][]byte) error
 	GetStoredKeys(context.Context) ([][]byte, error)
-	BarrierType() wrapping.WrapperType                  // SealAccess
-	BarrierConfig(context.Context) (*SealConfig, error) // SealAccess
-	SetBarrierConfig(context.Context, *SealConfig) error
+	BarrierType() wrapping.WrapperType                                        // SealAccess
+	BarrierConfig(context.Context, *namespace.Namespace) (*SealConfig, error) // SealAccess
+	SetBarrierConfig(context.Context, *SealConfig, *namespace.Namespace) error
 	SetCachedBarrierConfig(*SealConfig)
 	RecoveryKeySupported() bool // SealAccess
 	RecoveryType() string
@@ -143,7 +144,7 @@ func (d *defaultSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
 	return keys, err
 }
 
-func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *defaultSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
 	cfg := d.config.Load().(*SealConfig)
 	if cfg != nil {
 		return cfg.Clone(), nil
@@ -153,8 +154,10 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 		return nil, err
 	}
 
+	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+
 	// Fetch the core configuration
-	pe, err := d.core.physical.Get(ctx, barrierSealConfigPath)
+	pe, err := d.core.physical.Get(ctx, view.Prefix())
 	if err != nil {
 		d.core.logger.Error("failed to read seal configuration", "error", err)
 		return nil, fmt.Errorf("failed to check seal configuration: %w", err)
@@ -194,7 +197,7 @@ func (d *defaultSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) error {
+func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig, ns *namespace.Namespace) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -221,9 +224,11 @@ func (d *defaultSeal) SetBarrierConfig(ctx context.Context, config *SealConfig) 
 		return fmt.Errorf("failed to encode seal configuration: %w", err)
 	}
 
+	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+
 	// Store the seal configuration
 	pe := &physical.Entry{
-		Key:   barrierSealConfigPath,
+		Key:   view.Prefix(),
 		Value: buf,
 	}
 

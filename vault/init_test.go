@@ -9,6 +9,7 @@ import (
 
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/logging"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical/inmem"
@@ -58,7 +59,7 @@ func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *Seal
 	require.False(t, init)
 
 	// Check the seal configuration
-	outConf, err := c.seal.BarrierConfig(context.Background())
+	outConf, err := c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	require.NoError(t, err)
 	require.Empty(t, outConf)
 
@@ -99,7 +100,7 @@ func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *Seal
 	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c.seal.BarrierConfig(context.Background())
+	outConf, err = c.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	require.NoError(t, err)
 	require.Equal(t, barrierConf, outConf)
 
@@ -124,7 +125,7 @@ func testCoreInitCommon(t *testing.T, seal Seal, barrierConf, recoveryConf *Seal
 	require.True(t, init)
 
 	// Check the seal configuration
-	outConf, err = c2.seal.BarrierConfig(context.Background())
+	outConf, err = c2.seal.BarrierConfig(context.Background(), namespace.RootNamespace)
 	require.NoError(t, err)
 	require.Equal(t, barrierConf, outConf)
 

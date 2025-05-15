@@ -107,7 +107,7 @@ func (c *Core) InitializedLocally(ctx context.Context) (bool, error) {
 	}
 
 	// Verify the seal configuration
-	sealConf, err := c.seal.BarrierConfig(ctx)
+	sealConf, err := c.seal.BarrierConfig(ctx, namespace.RootNamespace)
 	if err != nil {
 		return false, err
 	}
@@ -318,7 +318,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrierKey, barrierKeyShares, err := c.generateShares(barrierConfig)
+	barrierKey, deprecatedBarrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)
 		return nil, err
@@ -360,7 +360,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		}
 	}()
 
-	err = c.seal.SetBarrierConfig(ctx, barrierConfig)
+	err = c.seal.SetBarrierConfig(ctx, barrierConfig, namespace.RootNamespace)
 	if err != nil {
 		c.logger.Error("failed to save barrier configuration", "error", err)
 		return nil, fmt.Errorf("barrier configuration saving failed: %w", err)
@@ -397,7 +397,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 	default:
 		// We don't support initializing an old-style Shamir seal anymore, so
 		// this case is only reachable by tests.
-		results.SecretShares = barrierKeyShares
+		results.SecretShares = deprecatedBarrierKeyShares
 	}
 
 	// Perform initial setup

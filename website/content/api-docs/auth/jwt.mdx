@@ -52,6 +52,7 @@ set.
 - `default_role` `(string: <optional>)` - The default role to use if none is provided during login.
 - `provider_config` `(map: <optional>)` - Configuration options for provider-specific handling. Providers with specific handling include: Azure, Google, SecureAuth, IBM ISAM. The options are described in each provider's section in [OIDC Provider Setup](/docs/auth/jwt/oidc-providers).
 - `namespace_in_state` `(bool: true)` - Pass namespace in the OIDC state parameter instead of as a separate query parameter. With this setting, the allowed redirect URL(s) in OpenBao and on the provider side should not contain a namespace query parameter. This means only one redirect URL entry needs to be maintained on the provider side for all vault namespaces that will be authenticating against it. Defaults to true for new configs.
+- `skip_jwks_validation` `(bool: false)` - When `true` and `oidc_discovery_url` or `jwks_url` are specified, if the connection fails to load, a warning will be issued and status can be checked later by reading the config endpoint. When `false`, configuration save will fail if issuer validation cannot complete successfully.
 
 ### Sample payload
 

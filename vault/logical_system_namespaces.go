@@ -186,6 +186,10 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
 				},
+				"seals": {
+					Type:        framework.TypeSlice,
+					Description: "User provided seal configs.",
+				},
 			},
 
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -339,12 +343,41 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
+		var sealConfigs []*SealConfig
+		seals, ok := data.GetOk("seals")
+		if ok {
+			sealsArray, ok := seals.([]interface{})
+			if ok {
+				for _, seal := range sealsArray {
+					sealMap := seal.(map[string]interface{})
+					byteSeal, err := json.Marshal(sealMap)
+					if err != nil {
+						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
+					}
+
+					var sealConfig SealConfig
+					err = json.Unmarshal(byteSeal, &sealConfig)
+					if err != nil {
+						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
+					}
+					sealConfigs = append(sealConfigs, &sealConfig)
+				}
+			}
+		}
+
 		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
+		}
+
+		// TODO(wslabosz): write all the provided configs
+		if len(sealConfigs) > 0 {
+			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry.Clone(false)); err != nil {
+				return nil, err
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil

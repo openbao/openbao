@@ -376,6 +376,9 @@ type Core struct {
 	// token store is used to manage authentication tokens
 	tokenStore *TokenStore
 
+	// namespace Store is used to manage namespaces
+	namespaceStore *NamespaceStore
+
 	// identityStore is used to manage client entities
 	identityStore *IdentityStore
 
@@ -1216,6 +1219,12 @@ func (c *Core) configureCredentialsBackends(backends map[string]logical.Factory,
 
 		return NewTokenStore(ctx, tsLogger, c, config)
 	}
+	credentialBackends[mountTypeNSToken] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.tokenStore != nil {
+			return c.tokenStore, nil
+		}
+		return nil, errors.New("token store does not exist")
+	}
 
 	c.credentialBackends = credentialBackends
 }
@@ -1237,6 +1246,12 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 
 	// Cubbyhole
 	logicalBackends[mountTypeCubbyhole] = CubbyholeBackendFactory
+	logicalBackends[mountTypeNSCubbyhole] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.cubbyholeBackend != nil {
+			return c.cubbyholeBackend, nil
+		}
+		return nil, errors.New("cubbyhole backend does not exist")
+	}
 
 	// System
 	logicalBackends[mountTypeSystem] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
@@ -1248,12 +1263,19 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 		}
 		return b, nil
 	}
+	logicalBackends[mountTypeNSSystem] = logicalBackends[mountTypeSystem]
 
 	// Identity
 	logicalBackends[mountTypeIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		identityLogger := logger.Named("identity")
 		c.AddLogger(identityLogger)
 		return NewIdentityStore(ctx, c, config, identityLogger)
+	}
+	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
+		if c.identityStore != nil {
+			return c.identityStore, nil
+		}
+		return nil, errors.New("identity store does not exist")
 	}
 
 	c.logicalBackends = logicalBackends
@@ -2244,6 +2266,9 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupPluginCatalog(ctx); err != nil {
 		return err
 	}
+	if err := c.setupNamespaceStore(ctx); err != nil {
+		return err
+	}
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2471,6 +2496,9 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
+	}
+	if err := c.teardownNamespaceStore(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
 	}
 
 	if c.autoRotateCancel != nil {
@@ -3084,6 +3112,20 @@ func (c *Core) MatchingMount(ctx context.Context, reqPath string) string {
 	return c.router.MatchingMount(ctx, reqPath)
 }
 
+// ResolveNamespaceFromRequest resolves a namespace from the 'X-Vault-Namespace'
+// header combined with the request path, returning the namespace and the
+// "trimmed" request path devoid of any namespace components.
+func (c *Core) ResolveNamespaceFromRequest(nsHeader, reqPath string) (*namespace.Namespace, string) {
+	c.stateLock.RLock()
+	defer c.stateLock.RUnlock()
+
+	if c.Sealed() || c.standby || c.namespaceStore == nil {
+		return nil, ""
+	}
+
+	return c.namespaceStore.ResolveNamespaceFromRequest(nsHeader, reqPath)
+}
+
 func (c *Core) setupQuotas(ctx context.Context) error {
 	if c.quotaManager == nil {
 		return nil
@@ -3646,7 +3688,7 @@ func (c *Core) doResolveRoleLocked(ctx context.Context, mountPoint string, match
 
 // ResolveRoleForQuotas looks for any quotas requiring a role for early
 // computation in the RateLimitQuotaWrapping handler.
-func (c *Core) ResolveRoleForQuotas(ctx context.Context, req *quotas.Request) (bool, error) {
+func (c *Core) ResolveRoleForQuotas(req *quotas.Request) (bool, error) {
 	if c.quotaManager == nil {
 		return false, nil
 	}

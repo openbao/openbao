@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-uuid"
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
@@ -46,11 +45,7 @@ func (b *bufferedReader) Close() error {
 const MergePatchContentTypeHeader = "application/merge-patch+json"
 
 func buildLogicalRequestNoAuth(w http.ResponseWriter, r *http.Request) (*logical.Request, io.ReadCloser, int, error) {
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		return nil, nil, http.StatusBadRequest, nil
-	}
-	path := ns.TrimmedPath(r.URL.Path[len("/v1/"):])
+	path := r.URL.Path[len("/v1/"):]
 
 	var data map[string]interface{}
 	var origBody io.ReadCloser
@@ -252,12 +247,7 @@ func isOcspRequest(contentType string) bool {
 }
 
 func buildLogicalPath(r *http.Request) (string, int, error) {
-	ns, err := namespace.FromContext(r.Context())
-	if err != nil {
-		return "", http.StatusBadRequest, nil
-	}
-
-	path := ns.TrimmedPath(strings.TrimPrefix(r.URL.Path, "/v1/"))
+	path := r.URL.Path[len("/v1/"):]
 
 	switch r.Method {
 	case "GET":

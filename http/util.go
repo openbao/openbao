@@ -13,18 +13,14 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
 
-	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/vault"
 	"github.com/openbao/openbao/vault/quotas"
 )
 
 var (
-	adjustRequest = func(c *vault.Core, r *http.Request) (*http.Request, int) {
-		return r, 0
-	}
-
 	genericWrapping = func(core *vault.Core, in http.Handler, props *vault.HandlerProperties) http.Handler {
 		// Wrap the help wrapped handler with another layer with a generic
 		// handler
@@ -61,9 +57,8 @@ func wrapMaxRequestSizeHandler(handler http.Handler, props *vault.HandlerPropert
 
 func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ns, err := namespace.FromContext(r.Context())
-		if err != nil {
-			respondError(w, http.StatusInternalServerError, err)
+		if !strings.HasPrefix(r.URL.Path, "/v1/") {
+			handler.ServeHTTP(w, r)
 			return
 		}
 
@@ -75,7 +70,22 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 			respondError(w, status, err)
 			return
 		}
-		mountPath := strings.TrimPrefix(core.MatchingMount(r.Context(), path), ns.Path)
+
+		// NOTE: The namespace and mount resolved here may differ from the ones
+		// later resolved in core and used for the remainder of request handling.
+		// For example, this can happen if there is a seal->unseal transition
+		// between this point in request handling and once we read-lock core's state.
+		// The worst-case outcome is that we don't know of a potential quota
+		// configuration at this point (because core is sealed) and let the request
+		// bypass rate limiting right into core if it has queued up right before the
+		// unseal process begins.
+		nsHeader := namespace.HeaderFromContext(r.Context())
+		ns, trimmedPath := core.ResolveNamespaceFromRequest(nsHeader, path)
+		if ns == nil {
+			ns = namespace.RootNamespace
+		}
+		ctx := namespace.ContextWithNamespace(r.Context(), ns)
+		mountPath := strings.TrimPrefix(core.MatchingMount(ctx, trimmedPath), ns.Path)
 
 		quotaReq := &quotas.Request{
 			Type:          quotas.TypeRateLimit,
@@ -86,7 +96,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		}
 
 		// This checks if any role based quota is required (LCQ or RLQ).
-		requiresResolveRole, err := core.ResolveRoleForQuotas(r.Context(), quotaReq)
+		requiresResolveRole, err := core.ResolveRoleForQuotas(quotaReq)
 		if err != nil {
 			core.Logger().Error("failed to lookup quotas", "path", path, "error", err)
 			respondError(w, http.StatusInternalServerError, err)
@@ -98,7 +108,7 @@ func rateLimitQuotaWrapping(handler http.Handler, core *vault.Core) http.Handler
 		if requiresResolveRole {
 			buf := bytes.Buffer{}
 			teeReader := io.TeeReader(r.Body, &buf)
-			role := core.DetermineRoleFromLoginRequestFromReader(r.Context(), mountPath, teeReader)
+			role := core.DetermineRoleFromLoginRequestFromReader(ctx, mountPath, teeReader)
 
 			// Reset the body if it was read
 			if buf.Len() > 0 {

@@ -56,6 +56,7 @@ import (
 	physInmem "github.com/openbao/openbao/sdk/v2/physical/inmem"
 	backendplugin "github.com/openbao/openbao/sdk/v2/plugin"
 	"github.com/openbao/openbao/vault/cluster"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/net/http2"
 )
@@ -358,6 +359,19 @@ func TestCoreSeal(core *Core) error {
 	return core.sealInternal()
 }
 
+func TestCoreCreateNamespaces(t testing.T, core *Core, namespaces ...*namespace.Namespace) {
+	t.Helper()
+	ctx := namespace.RootContext(context.Background())
+	for _, ns := range namespaces {
+		parentPath, _ := ns.ParentPath()
+		parent, err := core.namespaceStore.GetNamespaceByPath(ctx, parentPath)
+		require.NoError(t, err)
+		parentCtx := namespace.ContextWithNamespace(ctx, parent)
+		err = core.namespaceStore.SetNamespace(parentCtx, ns)
+		require.NoError(t, err)
+	}
+}
+
 // TestCoreUnsealed returns a pure in-memory core that is already
 // initialized and unsealed.
 func TestCoreUnsealed(t testing.T) (*Core, [][]byte, string) {
@@ -421,27 +435,32 @@ func TestInitUnsealCore(t testing.T, core *Core) (string, [][]byte) {
 	return token, keys
 }
 
-func testCoreAddSecretMount(t testing.T, core *Core, token string) {
+func testCoreAddSecretMountContext(ctx context.Context, t testing.T, core *Core, path, token string) {
 	kvReq := &logical.Request{
 		Operation:   logical.UpdateOperation,
 		ClientToken: token,
 		Path:        "sys/mounts/secret",
 		Data: map[string]interface{}{
 			"type":        "kv",
-			"path":        "secret/",
+			"path":        path,
 			"description": "key/value secret storage",
 			"options": map[string]string{
 				"version": "1",
 			},
 		},
 	}
-	resp, err := core.HandleRequest(namespace.RootContext(nil), kvReq)
+	resp, err := core.HandleRequest(ctx, kvReq)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if resp.IsError() {
 		t.Fatal(err)
 	}
+}
+
+func testCoreAddSecretMount(t testing.T, core *Core, token string) {
+	rootCtx := namespace.RootContext(nil)
+	testCoreAddSecretMountContext(rootCtx, t, core, "secret/", token)
 }
 
 func TestCoreUnsealedBackend(t testing.T, backend physical.Backend) (*Core, [][]byte, string) {

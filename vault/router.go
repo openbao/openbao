@@ -255,7 +255,7 @@ func (r *Router) Unmount(ctx context.Context, prefix string) error {
 }
 
 // Remount is used to change the mount location of a logical backend
-func (r *Router) Remount(ctx context.Context, src, dst string) error {
+func (r *Router) Remount(ctx context.Context, src, dst string, callback func(*routeEntry) error) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -270,6 +270,13 @@ func (r *Router) Remount(ctx context.Context, src, dst string) error {
 	raw, ok := r.root.Get(src)
 	if !ok {
 		return fmt.Errorf("no mount at %q", src)
+	}
+
+	if callback != nil {
+		err = callback(raw.(*routeEntry))
+		if err != nil {
+			return fmt.Errorf("unable to update route entry: %w", err)
+		}
 	}
 
 	// Update the mount point
@@ -390,6 +397,39 @@ func (r *Router) matchingPrefixInternal(ctx context.Context, path string) string
 	return existing
 }
 
+// matchingNamespaceInternal returns a namespace prefix that a path may be a part of
+func (r *Router) matchingNamespaceInternal(ctx context.Context, path string) string {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return ""
+	}
+
+	// Every namespace has a sys/ mount. We can use that as a sentinel that
+	// our given path conflicts. Walk the parent namespace of path and check
+	// if there's a common prefix between a child namespace's sys/ entry and
+	// path.
+	//
+	// This allows us to avoid calling into the namespace store, which may be
+	// locked as we're trying to mount required mounts for a new namespace.
+	var existing string
+	fn := func(existingPath string, v interface{}) bool {
+		if !strings.HasSuffix(existingPath, "sys/") {
+			return false
+		}
+
+		nsPath := strings.TrimSuffix(existingPath, "sys/")
+		if strings.HasPrefix(path, nsPath) {
+			existing = nsPath
+			return true
+		}
+
+		return false
+	}
+
+	r.root.WalkPrefix(ns.Path, fn)
+	return existing
+}
+
 // MountConflict determines if there are potential path conflicts
 func (r *Router) MountConflict(ctx context.Context, path string) string {
 	r.l.RLock()
@@ -399,6 +439,9 @@ func (r *Router) MountConflict(ctx context.Context, path string) string {
 	}
 	if prefixMatch := r.matchingPrefixInternal(ctx, path); prefixMatch != "" {
 		return prefixMatch
+	}
+	if nsMatch := r.matchingNamespaceInternal(ctx, path); nsMatch != "" {
+		return nsMatch
 	}
 	return ""
 }
@@ -604,13 +647,13 @@ func (r *Router) routeCommon(ctx context.Context, req *logical.Request, existenc
 		return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry found, but backend is nil.", req.Path)), false, false, logical.ErrUnsupportedPath
 	}
 
-	// If the path is tainted, we reject any operation except for
-	// Rollback and Revoke
-	if re.tainted {
+	// If the path or namespace is tainted, we reject any operation
+	// except for Rollback and Revoke
+	if re.tainted || ns.Tainted {
 		switch req.Operation {
 		case logical.RevokeOperation, logical.RollbackOperation:
 		default:
-			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q. route entry is tainted.", req.Path)), false, false, logical.ErrUnsupportedPath
+			return logical.ErrorResponse(fmt.Sprintf("no handler for route %q on namespace %q. route entry or namespace is tainted.", req.Path, ns.Path)), false, false, logical.ErrUnsupportedPath
 		}
 	}
 

@@ -146,6 +146,7 @@ func NewSystemBackend(core *Core, logger log.Logger) *SystemBackend {
 	b.Backend.Paths = append(b.Backend.Paths, b.lockedUserPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.leasePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.policyPaths()...)
+	b.Backend.Paths = append(b.Backend.Paths, b.namespacePaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.wrappingPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.toolsPaths()...)
 	b.Backend.Paths = append(b.Backend.Paths, b.capabilitiesPaths()...)
@@ -1300,6 +1301,10 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 	fromPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, fromPath)
 	toPathDetails := b.Core.splitNamespaceAndMountFromPath(ns.Path, toPath)
 
+	if toPathDetails.MountPath == "" {
+		return handleError(fmt.Errorf("invalid destination mount path %q", toPath))
+	}
+
 	if err = validateMountPath(toPathDetails.MountPath); err != nil {
 		return handleError(fmt.Errorf("invalid destination mount: %v", err))
 	}
@@ -1340,7 +1345,7 @@ func (b *SystemBackend) handleRemount(ctx context.Context, req *logical.Request,
 		return handleError(fmt.Errorf("no matching mount at %q", sanitizePath(fromPath)))
 	}
 
-	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != "" {
+	if match := b.Core.router.MountConflict(ctx, sanitizePath(toPath)); match != toPathDetails.Namespace.Path && match != "" {
 		return handleError(fmt.Errorf("path already in use at %q", match))
 	}
 
@@ -2202,8 +2207,7 @@ func (b *SystemBackend) handleLeaseLookupList(ctx context.Context, req *logical.
 	if err != nil {
 		return nil, err
 	}
-	view := b.Core.expiration.leaseView(ns)
-	keys, err := view.List(ctx, prefix)
+	keys, err := b.Core.expiration.leaseView(ns).List(ctx, prefix)
 	if err != nil {
 		b.Backend.Logger().Error("error listing leases", "prefix", prefix, "error", err)
 		return handleErrorNoReadOnlyForward(err)
@@ -2669,7 +2673,7 @@ func (b *SystemBackend) handlePoliciesList(policyType PolicyType) framework.Oper
 		if err != nil {
 			return nil, err
 		}
-		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix)
+		policies, err := b.Core.policyStore.ListPoliciesWithPrefix(ctx, policyType, prefix, true)
 		if err != nil {
 			return nil, err
 		}
@@ -3089,7 +3093,7 @@ func (b *SystemBackend) handleDisableAudit(ctx context.Context, req *logical.Req
 
 	b.Core.auditLock.RLock()
 	table := b.Core.audit.shallowClone()
-	entry, err := table.find(ctx, path)
+	entry, err := table.findByPath(ctx, path)
 	b.Core.auditLock.RUnlock()
 
 	if err != nil {
@@ -3347,7 +3351,7 @@ func (b *SystemBackend) handleWrappingUnwrap(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	unwrapNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	unwrapNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3681,7 +3685,7 @@ func (b *SystemBackend) handleWrappingLookup(ctx context.Context, req *logical.R
 		return nil, errors.New("token is not a valid unwrap token")
 	}
 
-	lookupNS, err := NamespaceByID(ctx, te.NamespaceID, b.Core)
+	lookupNS, err := b.Core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -5785,6 +5789,37 @@ This path responds to the following HTTP methods.
 
     LIST /
         Returns a list historical version changes sorted by installation time in ascending order.
+		`,
+	},
+
+	"list-namespaces": {
+		"List namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	LIST /
+		List namespaces.
+
+	SCAN /
+		Scan (recursively list) namespaces.
+		`,
+	},
+	"namespaces": {
+		"Create, read, update and delete namespaces.",
+		`
+This path responds to the following HTTP methods.
+
+	GET /<path>
+		Retrieve a namespace.
+
+	PUT /<path>
+		Create or update a namespace.
+
+	PATCH /<path>
+		Update a namespace's custom metadata.
+
+	DELETE /<path>
+		Delete a namespace.
 		`,
 	},
 }

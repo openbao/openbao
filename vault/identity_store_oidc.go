@@ -2006,7 +2006,11 @@ func (i *IdentityStore) oidcPeriodicFunc(ctx context.Context) {
 		nextRun = now.Add(24 * time.Hour)
 		minJwksClientCacheDuration := time.Duration(math.MaxInt64)
 
-		for _, ns := range i.namespacer.ListNamespaces(true) {
+		allNs, err := i.namespacer.ListNamespaces(ctx)
+		if err != nil {
+			i.Logger().Error("error listing namespaces", "err", err)
+		}
+		for _, ns := range allNs {
 			nsPath := ns.Path
 
 			s := i.router.MatchingStorageByAPIPath(ctx, nsPath+"identity/oidc")

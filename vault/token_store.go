@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/armon/go-metrics"
@@ -748,12 +747,6 @@ type TokenStore struct {
 
 	batchTokenEncryptor BarrierEncryptor
 
-	baseBarrierView     BarrierView
-	idBarrierView       BarrierView
-	accessorBarrierView BarrierView
-	parentBarrierView   BarrierView
-	rolesBarrierView    BarrierView
-
 	expiration *ExpirationManager
 
 	cubbyholeBackend *CubbyholeBackend
@@ -773,7 +766,7 @@ type TokenStore struct {
 	saltLock sync.RWMutex
 	salts    map[string]*salt.Salt
 
-	tidyLock *uint32
+	tidyLock sync.Mutex
 
 	identityPoliciesDeriverFunc func(string) (*identity.Entity, []string, error)
 
@@ -788,25 +781,17 @@ type TokenStore struct {
 // NewTokenStore is used to construct a token store that is
 // backed by the given barrier view.
 func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *logical.BackendConfig) (*TokenStore, error) {
-	// Create a sub-view
-	view := core.systemBarrierView.SubView(tokenSubPath)
-
 	// Initialize the store
 	t := &TokenStore{
 		activeContext:         ctx,
 		core:                  core,
 		batchTokenEncryptor:   core.barrier,
-		baseBarrierView:       view,
-		idBarrierView:         view.SubView(idPrefix),
-		accessorBarrierView:   view.SubView(accessorPrefix),
-		parentBarrierView:     view.SubView(parentPrefix),
-		rolesBarrierView:      view.SubView(rolesPrefix),
 		cubbyholeDestroyer:    destroyCubbyhole,
 		logger:                logger,
 		tokenLocks:            locksutil.CreateLocks(),
 		tokensPendingDeletion: &sync.Map{},
 		saltLock:              sync.RWMutex{},
-		tidyLock:              new(uint32),
+		tidyLock:              sync.Mutex{},
 		quitContext:           core.activeContext,
 		salts:                 make(map[string]*salt.Salt),
 	}
@@ -844,6 +829,33 @@ func NewTokenStore(ctx context.Context, logger log.Logger, core *Core, config *l
 	return t, nil
 }
 
+func (ts *TokenStore) teardown() {
+	// Ensure that:
+	// - The current tidy operation (if any) has finished
+	// - No further tidy operations can be queued
+	ts.tidyLock.Lock()
+}
+
+func (ts *TokenStore) baseView(ns *namespace.Namespace) BarrierView {
+	return ts.core.namespaceMountEntryView(ns, systemBarrierPrefix+tokenSubPath)
+}
+
+func (ts *TokenStore) idView(ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ns).SubView(idPrefix)
+}
+
+func (ts *TokenStore) accessorView(ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ns).SubView(accessorPrefix)
+}
+
+func (ts *TokenStore) parentView(ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ns).SubView(parentPrefix)
+}
+
+func (ts *TokenStore) rolesView(ns *namespace.Namespace) BarrierView {
+	return ts.baseView(ns).SubView(rolesPrefix)
+}
+
 func (ts *TokenStore) Invalidate(ctx context.Context, key string) {
 	switch key {
 	case tokenSubPath + salt.DefaultLocation:
@@ -871,7 +883,9 @@ func (ts *TokenStore) Salt(ctx context.Context) (*salt.Salt, error) {
 		return salt, nil
 	}
 
-	salt, err := salt.NewSalt(ctx, ts.baseView(ns), &salt.Config{
+	view := ts.baseView(ns)
+
+	salt, err := salt.NewSalt(ctx, view, &salt.Config{
 		HashFunc: salt.SHA1Hash,
 		Location: salt.DefaultLocation,
 	})
@@ -1034,7 +1048,7 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 		return err
 	}
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1076,7 +1090,7 @@ func (ts *TokenStore) createAccessor(ctx context.Context, entry *logical.TokenEn
 func (ts *TokenStore) create(ctx context.Context, entry *logical.TokenEntry) error {
 	defer metrics.MeasureSince([]string{"token", "create"}, time.Now())
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1311,7 +1325,7 @@ func (ts *TokenStore) store(ctx context.Context, entry *logical.TokenEntry) erro
 // storeCommon handles the actual storage of an entry, possibly generating
 // secondary indexes
 func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry, writeSecondary bool) error {
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1346,7 +1360,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 				return errors.New("parent token not found")
 			}
 
-			parentNS, err := NamespaceByID(ctx, parent.NamespaceID, ts.core)
+			parentNS, err := ts.core.NamespaceByID(ctx, parent.NamespaceID)
 			if err != nil {
 				return err
 			}
@@ -1379,6 +1393,7 @@ func (ts *TokenStore) storeCommon(ctx context.Context, entry *logical.TokenEntry
 	if len(entry.Policies) == 1 && entry.Policies[0] == "root" {
 		le.SealWrap = true
 	}
+
 	if err := ts.idView(tokenNS).Put(ctx, le); err != nil {
 		return fmt.Errorf("failed to persist entry: %w", err)
 	}
@@ -1583,7 +1598,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 		// the request namespace, ensure the request namespace is a child
 		_, nsID := namespace.SplitIDFromString(id)
 		if nsID != "" {
-			tokenNS, err := NamespaceByID(ctx, nsID, ts.core)
+			tokenNS, err := ts.core.NamespaceByID(ctx, nsID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to look up namespace from the token: %w", err)
 			}
@@ -1704,7 +1719,7 @@ func (ts *TokenStore) lookupInternal(ctx context.Context, id string, salted, tai
 	switch {
 	// It's any kind of expiring token with no lease, immediately delete it
 	case le == nil:
-		tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+		tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 		if err != nil {
 			return nil, err
 		}
@@ -1795,7 +1810,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 		}
 	}
 
-	tokenNS, err := NamespaceByID(ctx, entry.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, entry.NamespaceID)
 	if err != nil {
 		return err
 	}
@@ -1845,7 +1860,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			case parentNSID == "":
 				parentNS = namespace.RootNamespace
 			default:
-				parentNS, err = NamespaceByID(ctx, parentNSID, ts.core)
+				parentNS, err = ts.core.NamespaceByID(ctx, parentNSID)
 				if err != nil {
 					return fmt.Errorf("failed to get parent namespace: %w", err)
 				}
@@ -1901,7 +1916,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 			childCtx := revokeCtx
 			child, childNSID = namespace.SplitIDFromString(child)
 			if childNSID != "" {
-				childNS, err := NamespaceByID(ctx, childNSID, ts.core)
+				childNS, err := ts.core.NamespaceByID(ctx, childNSID)
 				if err != nil {
 					return fmt.Errorf("failed to get child token: %w", err)
 				}
@@ -1938,7 +1953,7 @@ func (ts *TokenStore) revokeInternal(ctx context.Context, saltedID string, skipO
 
 			// Delete the the child storage entry after we update the token entry Since
 			// paths are not deeply nested (i.e. they are simply
-			// parenPrefix/<parentID>/<childID>), we can simply call view.Delete instead
+			// parentPrefix/<parentID>/<childID>), we can simply call view.Delete instead
 			// of logical.ClearView
 			err = ts.parentView(tokenNS).Delete(ctx, child)
 			if err != nil {
@@ -1994,7 +2009,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 			return err
 		}
 	} else {
-		ns, err = NamespaceByID(ctx, te.NamespaceID, ts.core)
+		ns, err = ts.core.NamespaceByID(ctx, te.NamespaceID)
 		if err != nil {
 			return err
 		}
@@ -2011,7 +2026,7 @@ func (ts *TokenStore) revokeTreeInternal(ctx context.Context, id string) error {
 		saltedNS := ns
 		saltedID, saltedNSID := namespace.SplitIDFromString(id)
 		if saltedNSID != "" {
-			saltedNS, err = NamespaceByID(ctx, saltedNSID, ts.core)
+			saltedNS, err = ts.core.NamespaceByID(ctx, saltedNSID)
 			if err != nil {
 				return fmt.Errorf("failed to find namespace for token revocation: %w", err)
 			}
@@ -2094,7 +2109,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 	if !salted {
 		_, nsID := namespace.SplitIDFromString(id)
 		if nsID != "" {
-			accessorNS, err := NamespaceByID(ctx, nsID, ts.core)
+			accessorNS, err := ts.core.NamespaceByID(ctx, nsID)
 			if err != nil {
 				return nil, err
 			}
@@ -2155,7 +2170,7 @@ func (ts *TokenStore) lookupByAccessor(ctx context.Context, id string, salted, t
 // handleTidy handles the cleaning up of leaked accessor storage entries and
 // cleaning up of leases that are associated to tokens that are expired.
 func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	if !atomic.CompareAndSwapUint32(ts.tidyLock, 0, 1) {
+	if !ts.tidyLock.TryLock() {
 		resp := &logical.Response{}
 		resp.AddWarning("Tidy operation already in progress.")
 		return resp, nil
@@ -2167,8 +2182,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 	}
 
 	go func() {
-		defer atomic.StoreUint32(ts.tidyLock, 0)
-
+		defer ts.tidyLock.Unlock()
 		logger := ts.logger.Named("tidy")
 
 		var tidyErrors *multierror.Error
@@ -2179,14 +2193,16 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 
 			quitCtx := namespace.ContextWithNamespace(ts.quitContext, ns)
 
+			accessorView := ts.accessorView(ns)
 			// List out all the accessors
-			saltedAccessorList, err := ts.accessorView(ns).List(quitCtx, "")
+			saltedAccessorList, err := accessorView.List(quitCtx, "")
 			if err != nil {
 				return fmt.Errorf("failed to fetch accessor index entries: %w", err)
 			}
 
+			parentView := ts.parentView(ns)
 			// First, clean up secondary index entries that are no longer valid
-			parentList, err := ts.parentView(ns).List(quitCtx, "")
+			parentList, err := parentView.List(quitCtx, "")
 			if err != nil {
 				return fmt.Errorf("failed to fetch secondary index entries: %w", err)
 			}
@@ -2211,7 +2227,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 				countParentEntries++
 
 				// Get the children
-				children, err := ts.parentView(ns).List(quitCtx, parent)
+				children, err := parentView.List(quitCtx, parent)
 				if err != nil {
 					tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to read secondary index: %w", err))
 					continue
@@ -2258,7 +2274,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 					if te == nil || exists == nil {
 						index := parent + child
 						ts.logger.Debug("deleting invalid secondary index", "index", index)
-						err = ts.parentView(ns).Delete(quitCtx, index)
+						err = parentView.Delete(quitCtx, index)
 						if err != nil {
 							tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to delete secondary index: %w", err))
 							continue
@@ -2311,7 +2327,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 				if accessorEntry.TokenID == "" {
 					// If deletion of accessor fails, move on to the next
 					// item since this is just a best-effort operation
-					err = ts.accessorView(ns).Delete(quitCtx, saltedAccessor)
+					err = accessorView.Delete(quitCtx, saltedAccessor)
 					if err != nil {
 						tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to delete the accessor index: %w", err))
 						continue
@@ -2362,7 +2378,7 @@ func (ts *TokenStore) handleTidy(ctx context.Context, req *logical.Request, data
 					// this is just a best-effort operation. We do this last so that on
 					// next run if something above failed we still have the accessor
 					// entry to try again.
-					err = ts.accessorView(ns).Delete(quitCtx, saltedAccessor)
+					err = accessorView.Delete(quitCtx, saltedAccessor)
 					if err != nil {
 						tidyErrors = multierror.Append(tidyErrors, fmt.Errorf("failed to delete accessor entry: %w", err))
 						continue
@@ -2555,7 +2571,7 @@ func (ts *TokenStore) handleUpdateRevokeAccessor(ctx context.Context, req *logic
 		return logical.ErrorResponse("token not found"), logical.ErrInvalidRequest
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -2623,7 +2639,7 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		return nil, err
 	}
 	if ns.ID != parent.NamespaceID {
-		parentNS, err := NamespaceByID(ctx, parent.NamespaceID, ts.core)
+		parentNS, err := ts.core.NamespaceByID(ctx, parent.NamespaceID)
 		if err != nil {
 			ts.logger.Error("error looking up parent namespace", "error", err, "parent_namespace", parent.NamespaceID)
 			return nil, ErrInternalError
@@ -3234,7 +3250,7 @@ func (ts *TokenStore) revokeCommon(ctx context.Context, req *logical.Request, da
 		return logical.ErrorResponse("batch tokens cannot be revoked"), nil
 	}
 
-	tokenNS, err := NamespaceByID(ctx, te.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, te.NamespaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -3363,7 +3379,7 @@ func (ts *TokenStore) handleLookup(ctx context.Context, req *logical.Request, da
 		resp.Data["bound_cidrs"] = out.BoundCIDRs
 	}
 
-	tokenNS, err := NamespaceByID(ctx, out.NamespaceID, ts.core)
+	tokenNS, err := ts.core.NamespaceByID(ctx, out.NamespaceID)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
@@ -3844,6 +3860,7 @@ func (ts *TokenStore) tokenStoreRoleCreateUpdate(ctx context.Context, req *logic
 	if err != nil {
 		return nil, err
 	}
+
 	if err := ts.rolesView(ns).Put(ctx, jsonEntry); err != nil {
 		return nil, err
 	}
@@ -4058,7 +4075,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	prefixTree := radix.New()
 
 	pathToPrefix := func(nsID string, path string) string {
-		ns, err := NamespaceByID(rootContext, nsID, ts.core)
+		ns, err := ts.core.NamespaceByID(rootContext, nsID)
 		if ns == nil || err != nil {
 			return "unknown"
 		}

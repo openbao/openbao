@@ -181,3 +181,39 @@ func TestPathManager_HasPath(t *testing.T) {
 		t.Fatal("should have path 'a/b/c'")
 	}
 }
+
+func TestPathManager_HasPathSegments(t *testing.T) {
+	m := New()
+
+	paths := []string{"foo/bar", "foo/baz/", "bar"}
+	m.AddPaths(paths)
+
+	tcases := []struct {
+		path   string
+		expect bool
+	}{
+		{"", false},
+		{"fo", false},
+		{"foo", false},
+		{"foo/", false},
+		{"foo/ba", false},
+		{"foo/ba/", false},
+		{"foo/bar", true},
+		{"foo/bar/", true},
+		{"foo/bar/baz", true},
+		{"foo/bar/baz/", true},
+		{"foo/baz", false},
+		{"foo/baz/", true},
+		{"foo/baz/bar", true},
+		{"ba", false},
+		{"bar", true},
+		{"bar/", true},
+		{"bar/foo", true},
+	}
+
+	for _, tc := range tcases {
+		if match := m.HasPathSegments(tc.path); match != tc.expect {
+			t.Fatalf("incorrect match: key %q", tc.path)
+		}
+	}
+}

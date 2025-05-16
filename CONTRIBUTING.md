@@ -65,8 +65,7 @@ that lacks a sign-off to this agreement will not be accepted by the OpenBao proj
 |-------------------|-------------------------------------|--------------------------------------------|-----------------------------------------|---------------------------|--------------------|
 | Nathan Phelps     | naphelps@us.ibm.com                 | [@naphelps](https://github.com/naphelps)   |                                         | IBM                       | Member             |
 | James Butcher     | james@iotechsys.com                 |                                            | Brad Corrion (brad@iotechsys.com)       | IOTech Systems            | Member             |
-| Alain Nochimowski | alain.Nochimowski@viaccess-orca.com |                                            | Dan Ghita (dan.ghita@viaccess-orca.com) | Viaccess-Orca             | Member             |
-| Julian Cassignol  | jcassignol@wallix.com               |                                            | Cristian Popi (cpopi@wallix.com)        | Wallix                    | Member             |
+| Julian Cassignol  | jcassignol@wallix.com               |                                            | Dan Ghita (dghita@wallix.com)           | Wallix                    | Member             |
 | Alexander Scheel  | ascheel@gitlab.com                  | [@cipherboy](https://github.com/cipherboy) | Jocelyn Eillis (jeillis@gitlab.com)     | GitLab                    | Chair              |
 
 To view the process for joining the TSC, see [GOVERNANCE.md](GOVERNANCE.md) in

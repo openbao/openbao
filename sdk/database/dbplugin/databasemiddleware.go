@@ -6,6 +6,7 @@ package dbplugin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	metrics "github.com/armon/go-metrics"
 	"github.com/hashicorp/errwrap"
 	log "github.com/hashicorp/go-hclog"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/status"
 )
 
@@ -315,6 +317,14 @@ func (mw *DatabaseErrorSanitizerMiddleware) sanitize(err error) error {
 	}
 	if errwrap.ContainsType(err, new(url.Error)) {
 		return errors.New("unable to parse connection url")
+	}
+	if errwrap.ContainsType(err, new(pgconn.ParseConfigError)) {
+		// PGX attempts a best-effort redaction, but may throw other unrelated
+		// errors. ParseConfigError also contains the full connection string,
+		// so unwrap it and re-wrap it.
+		var pErr *pgconn.ParseConfigError
+		errors.As(err, &pErr)
+		err = fmt.Errorf("cannot parse connection url: %w", pErr.Unwrap())
 	}
 	if mw.secretsFn != nil {
 		for k, v := range mw.secretsFn() {

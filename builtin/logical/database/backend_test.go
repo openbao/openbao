@@ -17,7 +17,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-hclog"
-	_ "github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"

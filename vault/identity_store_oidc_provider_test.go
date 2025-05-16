@@ -1169,6 +1169,418 @@ func TestOIDC_Path_OIDC_Authorize(t *testing.T) {
 	}
 }
 
+func TestOIDC_Path_OIDC_IntrospectIDToken(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
+	s := new(logical.InmemStorage)
+
+	entityID, groupID, _, clientID, clientSecret := setupOIDCCommon(t, c, s)
+
+	type args struct {
+		withOidcRole  bool
+		clientReq     *logical.Request
+		providerReq   *logical.Request
+		assignmentReq *logical.Request
+		authorizeReq  *logical.Request
+		tokenReq      *logical.Request
+		introspectReq *logical.Request
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr string
+	}{
+		{
+			name: "valid introspect request with client_id in secret_basic",
+			args: args{
+				withOidcRole:  true,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", clientID, clientSecret, false),
+			},
+		},
+		{
+			name: "valid introspect request with client_id in secret_post",
+			args: args{
+				withOidcRole:  true,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", clientID, clientSecret, true),
+			},
+		},
+		{
+			name: "valid introspect request with missing client_id",
+			args: args{
+				withOidcRole:  true,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", "", "", false),
+			},
+		},
+		{
+			name: "invalid introspect request with incorrect client_id",
+			args: args{
+				withOidcRole:  true,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", "1234-dummy", clientSecret, false),
+			},
+			wantErr: "invalid client-id",
+		},
+		{
+			// invalid client_secrets are not an issue, because we only do a client_id lookup
+			name: "valid introspect request with incorrect client_secret",
+			args: args{
+				withOidcRole:  true,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", clientID, "1234-dummy", true),
+			},
+		},
+		{
+			name: "invalid introspect request without optional client_id without required role",
+			args: args{
+				withOidcRole:  false,
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				introspectReq: testIntrospectIDTokenReq(s, "", "", "", false),
+			},
+			wantErr: "unable to validate the token signature",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// ensure we run the test with/without an oidc-role
+			resp, err := c.identityStore.HandleRequest(ctx, testRoleDeleteReq(s, "test-role"))
+			expectSuccess(t, resp, err)
+			if tt.args.withOidcRole {
+				resp, err = c.identityStore.HandleRequest(ctx, testRoleCreateReq(s, "test-role", "test-key", clientID))
+				expectSuccess(t, resp, err)
+			}
+
+			// Create a token entry to associate with the authorize request
+			creationTime := time.Now()
+			te := &logical.TokenEntry{
+				Path:         "test",
+				Policies:     []string{"default"},
+				TTL:          time.Hour * 24,
+				CreationTime: creationTime.Unix(),
+			}
+			testMakeTokenDirectly(t, c.tokenStore, te)
+			require.NotEmpty(t, te.ID)
+
+			// Reset any configuration modifications
+			resetCommonOIDCConfig(t, s, c, entityID, groupID, clientID)
+
+			// Send the request to the OIDC authorize endpoint
+			tt.args.authorizeReq.EntityID = entityID
+			tt.args.authorizeReq.ClientToken = te.ID
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.authorizeReq)
+			expectSuccess(t, resp, err)
+
+			// Parse the authorize response
+			var authRes struct {
+				Code  string `json:"code"`
+				State string `json:"state"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &authRes))
+			require.Regexp(t, authCodeRegex, authRes.Code)
+			require.Equal(t, tt.args.authorizeReq.Data["state"], authRes.State)
+
+			// Update the assignment
+			tt.args.assignmentReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.assignmentReq)
+			expectSuccess(t, resp, err)
+
+			// Update the client
+			tt.args.clientReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.clientReq)
+			expectSuccess(t, resp, err)
+
+			// Update the provider
+			tt.args.providerReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.providerReq)
+			expectSuccess(t, resp, err)
+
+			// Send the request to the OIDC token endpoint
+			tt.args.tokenReq.Data["code"] = authRes.Code
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.tokenReq)
+			expectSuccess(t, resp, err)
+
+			// Parse the token response
+			var tokenRes struct {
+				TokenType        string `json:"token_type"`
+				AccessToken      string `json:"access_token"`
+				IDToken          string `json:"id_token"`
+				ExpiresIn        int64  `json:"expires_in"`
+				Error            string `json:"error"`
+				ErrorDescription string `json:"error_description"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &tokenRes))
+
+			// Assert that we receive the expected token response
+			expectSuccess(t, resp, err)
+			require.NotEmpty(t, tokenRes.AccessToken)
+			require.NotEmpty(t, tokenRes.IDToken)
+
+			// Send the request to the OIDC introspect endpoint
+			tt.args.introspectReq.Data["token"] = tokenRes.IDToken
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.introspectReq)
+			if err == nil {
+				c.logger.Debug("introspect-id-token", "body", string(resp.Data["http_raw_body"].([]uint8)))
+			} else {
+				c.logger.Debug("introspect-id-token", "error", err.Error())
+			}
+			expectSuccess(t, resp, err)
+
+			// Parse the introspect response
+			var introspectRes struct {
+				Active bool   `json:"active"`
+				Error  string `json:"error"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &introspectRes))
+
+			if tt.wantErr != "" {
+				require.Equal(t, tt.wantErr, introspectRes.Error)
+				return
+			}
+
+			// Assert we have a proper response
+			require.Equal(t, true, introspectRes.Active)
+		})
+	}
+}
+
+func TestOIDC_Path_OIDC_IntrospectAccessToken(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
+	s := new(logical.InmemStorage)
+
+	entityID, groupID, _, clientID, clientSecret := setupOIDCCommon(t, c, s)
+
+	type args struct {
+		clientReq     *logical.Request
+		providerReq   *logical.Request
+		assignmentReq *logical.Request
+		authorizeReq  *logical.Request
+		tokenReq      *logical.Request
+		overrideToken string
+		introspectReq *logical.Request
+	}
+	tests := []struct {
+		name         string
+		args         args
+		wantErr      string
+		wantInactive bool
+	}{
+		{
+			name: "valid introspect request with client_secret_basic client authentication method",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "",
+				introspectReq: testIntrospectAccessTokenReq(s, "", clientID, clientSecret, true),
+			},
+		},
+		{
+			name: "valid introspect request with client_secret_post client authentication method",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "",
+				introspectReq: testIntrospectAccessTokenReq(s, "", clientID, clientSecret, false),
+			},
+		},
+		{
+			name: "invalid introspect request with without credentials",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "",
+				introspectReq: testIntrospectAccessTokenReq(s, "", "", "", false),
+			},
+			wantErr: "invalid_client",
+		},
+		{
+			name: "invalid introspect request with incorrect client_id",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "",
+				introspectReq: testIntrospectAccessTokenReq(s, "", "dummy-1234", clientSecret, false),
+			},
+			wantErr: "invalid_client",
+		},
+		{
+			name: "invalid introspect request with incorrect client_secret",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "",
+				introspectReq: testIntrospectAccessTokenReq(s, "", clientID, "dummy-1234", false),
+			},
+			wantErr: "invalid_client",
+		},
+		{
+			name: "invalid introspect request with incorrect access-token",
+			args: args{
+				clientReq:     testClientReq(s),
+				providerReq:   testProviderReq(s, clientID),
+				assignmentReq: testAssignmentReq(s, entityID, groupID),
+				authorizeReq:  testAuthorizeReq(s, clientID),
+				tokenReq:      testTokenReq(s, "", clientID, clientSecret),
+				overrideToken: "dummy-token-value",
+				introspectReq: testIntrospectAccessTokenReq(s, "", clientID, clientSecret, false),
+			},
+			wantInactive: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a token entry to associate with the authorize request
+			creationTime := time.Now()
+			te := &logical.TokenEntry{
+				Path:         "test",
+				Policies:     []string{"default"},
+				TTL:          time.Hour * 24,
+				CreationTime: creationTime.Unix(),
+			}
+			testMakeTokenDirectly(t, c.tokenStore, te)
+			require.NotEmpty(t, te.ID)
+
+			// Reset any configuration modifications
+			resetCommonOIDCConfig(t, s, c, entityID, groupID, clientID)
+
+			// Send the request to the OIDC authorize endpoint
+			tt.args.authorizeReq.EntityID = entityID
+			tt.args.authorizeReq.ClientToken = te.ID
+			resp, err := c.identityStore.HandleRequest(ctx, tt.args.authorizeReq)
+			expectSuccess(t, resp, err)
+
+			// Parse the authorize response
+			var authRes struct {
+				Code  string `json:"code"`
+				State string `json:"state"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &authRes))
+			require.Regexp(t, authCodeRegex, authRes.Code)
+			require.Equal(t, tt.args.authorizeReq.Data["state"], authRes.State)
+
+			// Update the assignment
+			tt.args.assignmentReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.assignmentReq)
+			expectSuccess(t, resp, err)
+
+			// Update the client
+			tt.args.clientReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.clientReq)
+			expectSuccess(t, resp, err)
+
+			// Update the provider
+			tt.args.providerReq.Operation = logical.UpdateOperation
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.providerReq)
+			expectSuccess(t, resp, err)
+
+			// Send the request to the OIDC token endpoint
+			tt.args.tokenReq.Data["code"] = authRes.Code
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.tokenReq)
+			expectSuccess(t, resp, err)
+
+			// Parse the token response
+			var tokenRes struct {
+				TokenType        string `json:"token_type"`
+				AccessToken      string `json:"access_token"`
+				IDToken          string `json:"id_token"`
+				ExpiresIn        int64  `json:"expires_in"`
+				Error            string `json:"error"`
+				ErrorDescription string `json:"error_description"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &tokenRes))
+
+			// Assert that we receive the expected token response
+			expectSuccess(t, resp, err)
+			require.NotEmpty(t, tokenRes.AccessToken)
+			require.NotEmpty(t, tokenRes.IDToken)
+
+			// Send the request to the OIDC introspect endpoint
+			tt.args.introspectReq.Data["token"] = tokenRes.AccessToken
+			if tt.args.overrideToken != "" {
+				tt.args.introspectReq.Data["token"] = tt.args.overrideToken
+			}
+			resp, err = c.identityStore.HandleRequest(ctx, tt.args.introspectReq)
+			if err == nil {
+				c.logger.Debug("introspect-access-token", "body", string(resp.Data["http_raw_body"].([]uint8)))
+			} else {
+				c.logger.Debug("introspect-access-token", "error", err.Error())
+			}
+			expectSuccess(t, resp, err)
+
+			// Parse the introspect response
+			var introspectRes struct {
+				Active bool   `json:"active"`
+				Aud    string `json:"aud"`
+				Iat    int64  `json:"iat"`
+				Exp    int64  `json:"exp"`
+				Error  string `json:"error"`
+			}
+			require.NoError(t, json.Unmarshal(resp.Data["http_raw_body"].([]byte), &introspectRes))
+
+			if tt.wantErr != "" {
+				require.Equal(t, tt.wantErr, introspectRes.Error)
+				return
+			}
+
+			if tt.wantInactive {
+				require.Equal(t, false, introspectRes.Active)
+				require.Empty(t, introspectRes.Aud)
+				require.Empty(t, introspectRes.Iat)
+				require.Empty(t, introspectRes.Exp)
+			} else {
+				// Assert we have a proper response (the `iat` field is optional - in this test we know it is defined)
+				require.Equal(t, true, introspectRes.Active)
+				require.NotEmpty(t, introspectRes.Aud)
+				require.NotEmpty(t, introspectRes.Iat)
+				require.NotEmpty(t, introspectRes.Exp)
+			}
+		})
+	}
+}
+
 // setupOIDCCommon creates all of the resources needed to test a Vault OIDC provider.
 // Returns the entity ID, group ID, client ID, client secret to be used in tests.
 func setupOIDCCommon(t *testing.T, c *Core, s logical.Storage) (string, string, string, string, string) {
@@ -1176,7 +1588,7 @@ func setupOIDCCommon(t *testing.T, c *Core, s logical.Storage) (string, string, 
 	ctx := namespace.RootContext(nil)
 
 	// Create a key
-	resp, err := c.identityStore.HandleRequest(ctx, testKeyReq(s, []string{"*"}, "RS256"))
+	resp, err := c.identityStore.HandleRequest(ctx, testKeyReq(s, "test-key", []string{"*"}, "RS256"))
 	expectSuccess(t, resp, err)
 
 	// Create an entity
@@ -1305,6 +1717,62 @@ func testAuthorizeReq(s logical.Storage, clientID string) *logical.Request {
 	}
 }
 
+func testIntrospectIDTokenReq(s logical.Storage, accessToken string, clientID string, clientSecret string, authInHeader bool) *logical.Request {
+	if authInHeader {
+		return &logical.Request{
+			Storage:   s,
+			Path:      "oidc/introspect",
+			Operation: logical.UpdateOperation,
+			Headers: map[string][]string{
+				"Authorization": {basicAuthHeader(clientID, clientSecret)},
+			},
+			Data: map[string]interface{}{
+				"token": accessToken,
+			},
+		}
+	}
+
+	return &logical.Request{
+		Storage:   s,
+		Path:      "oidc/introspect",
+		Operation: logical.UpdateOperation,
+		Headers:   map[string][]string{},
+		Data: map[string]interface{}{
+			"client_id":     clientID,
+			"client_secret": clientSecret,
+			"token":         accessToken,
+		},
+	}
+}
+
+func testIntrospectAccessTokenReq(s logical.Storage, accessToken string, clientID string, clientSecret string, authInHeader bool) *logical.Request {
+	if authInHeader {
+		return &logical.Request{
+			Storage:   s,
+			Path:      "oidc/introspect-access-token",
+			Operation: logical.UpdateOperation,
+			Headers: map[string][]string{
+				"Authorization": {basicAuthHeader(clientID, clientSecret)},
+			},
+			Data: map[string]interface{}{
+				"token": accessToken,
+			},
+		}
+	}
+
+	return &logical.Request{
+		Storage:   s,
+		Path:      "oidc/introspect-access-token",
+		Operation: logical.UpdateOperation,
+		Headers:   map[string][]string{},
+		Data: map[string]interface{}{
+			"client_id":     clientID,
+			"client_secret": clientSecret,
+			"token":         accessToken,
+		},
+	}
+}
+
 func testAssignmentReq(s logical.Storage, entityID, groupID string) *logical.Request {
 	return &logical.Request{
 		Storage:   s,
@@ -1332,6 +1800,12 @@ func testClientReq(s logical.Storage) *logical.Request {
 	}
 }
 
+func testPublicClientReq(s logical.Storage) *logical.Request {
+	req := testClientReq(s)
+	req.Data["client_type"] = "public"
+	return req
+}
+
 func testProviderReq(s logical.Storage, clientID string) *logical.Request {
 	return &logical.Request{
 		Storage:   s,
@@ -1340,6 +1814,27 @@ func testProviderReq(s logical.Storage, clientID string) *logical.Request {
 		Data: map[string]interface{}{
 			"allowed_client_ids": []string{clientID},
 			"scopes_supported":   []string{"test-scope", "conflict"},
+		},
+	}
+}
+
+func testRoleDeleteReq(s logical.Storage, roleName string) *logical.Request {
+	return &logical.Request{
+		Storage:   s,
+		Path:      "oidc/role/" + roleName,
+		Operation: logical.DeleteOperation,
+		Data:      map[string]interface{}{},
+	}
+}
+
+func testRoleCreateReq(s logical.Storage, roleName string, keyName string, clientID string) *logical.Request {
+	return &logical.Request{
+		Storage:   s,
+		Path:      "oidc/role/" + roleName,
+		Operation: logical.CreateOperation,
+		Data: map[string]interface{}{
+			"key":       keyName,
+			"client_id": clientID,
 		},
 	}
 }
@@ -1359,10 +1854,10 @@ func testEntityReq(s logical.Storage) *logical.Request {
 	}
 }
 
-func testKeyReq(s logical.Storage, allowedClientIDs []string, alg string) *logical.Request {
+func testKeyReq(s logical.Storage, keyName string, allowedClientIDs []string, alg string) *logical.Request {
 	return &logical.Request{
 		Storage:   s,
-		Path:      "oidc/key/test-key",
+		Path:      "oidc/key/" + keyName,
 		Operation: logical.CreateOperation,
 		Data: map[string]interface{}{
 			"allowed_client_ids": allowedClientIDs,
@@ -3633,6 +4128,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 		AuthorizationEndpoint: "/ui/vault/identity/oidc/provider/test-provider/authorize",
 		TokenEndpoint:         basePath + "/token",
 		UserinfoEndpoint:      basePath + "/userinfo",
+		IntrospectEndpoint:    "/v1/identity/oidc/introspect-access-token",
 		GrantTypes:            []string{"authorization_code"},
 		AuthMethods:           []string{"none", "client_secret_basic", "client_secret_post"},
 		RequestParameter:      false,
@@ -3689,6 +4185,7 @@ func TestOIDC_Path_OpenIDProviderConfig(t *testing.T) {
 		AuthorizationEndpoint: testIssuer + "/ui/vault/identity/oidc/provider/test-provider/authorize",
 		TokenEndpoint:         basePath + "/token",
 		UserinfoEndpoint:      basePath + "/userinfo",
+		IntrospectEndpoint:    "/v1/identity/oidc/introspect-access-token",
 		GrantTypes:            []string{"authorization_code"},
 		AuthMethods:           []string{"none", "client_secret_basic", "client_secret_post"},
 		RequestParameter:      false,

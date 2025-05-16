@@ -8,7 +8,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"fmt"
-	"math/big"
 	"net"
 	"net/url"
 )
@@ -27,21 +26,6 @@ func protoOIDToASN1(oid *ObjectIdentifier) asn1.ObjectIdentifier {
 	return arcInt
 }
 
-func ProtoToX509Alg(alg PublicKeyAlgorithm) x509.PublicKeyAlgorithm {
-	switch alg {
-	case PublicKeyAlgorithm_RSA:
-		return x509.RSA
-	case PublicKeyAlgorithm_DSA:
-		return x509.DSA
-	case PublicKeyAlgorithm_ECDSA:
-		return x509.ECDSA
-	case PublicKeyAlgorithm_Ed25519:
-		return x509.Ed25519
-	default:
-		return x509.UnknownPublicKeyAlgorithm
-	}
-}
-
 func ProtoNameToPKIX(n *PKIX_Name) pkix.Name {
 	if n == nil {
 		return pkix.Name{}
@@ -57,45 +41,6 @@ func ProtoNameToPKIX(n *PKIX_Name) pkix.Name {
 		Province:           n.GetProvince(),
 		StreetAddress:      n.GetStreetAddress(),
 		PostalCode:         n.GetPostalCode(),
-	}
-}
-
-func protoSigToX509(alg SignatureAlgorithm) x509.SignatureAlgorithm {
-	switch alg {
-	case SignatureAlgorithm_MD2WithRSA:
-		return x509.MD2WithRSA
-	case SignatureAlgorithm_MD5WithRSA:
-		return x509.MD5WithRSA
-	case SignatureAlgorithm_SHA1WithRSA:
-		return x509.SHA1WithRSA
-	case SignatureAlgorithm_SHA256WithRSA:
-		return x509.SHA256WithRSA
-	case SignatureAlgorithm_SHA384WithRSA:
-		return x509.SHA384WithRSA
-	case SignatureAlgorithm_SHA512WithRSA:
-		return x509.SHA512WithRSA
-	case SignatureAlgorithm_DSAWithSHA1:
-		return x509.DSAWithSHA1
-	case SignatureAlgorithm_DSAWithSHA256:
-		return x509.DSAWithSHA256
-	case SignatureAlgorithm_ECDSAWithSHA1:
-		return x509.ECDSAWithSHA1
-	case SignatureAlgorithm_ECDSAWithSHA256:
-		return x509.ECDSAWithSHA256
-	case SignatureAlgorithm_ECDSAWithSHA384:
-		return x509.ECDSAWithSHA384
-	case SignatureAlgorithm_ECDSAWithSHA512:
-		return x509.ECDSAWithSHA512
-	case SignatureAlgorithm_SHA256WithRSAPSS:
-		return x509.SHA256WithRSAPSS
-	case SignatureAlgorithm_SHA384WithRSAPSS:
-		return x509.SHA384WithRSAPSS
-	case SignatureAlgorithm_SHA512WithRSAPSS:
-		return x509.SHA512WithRSAPSS
-	case SignatureAlgorithm_PureEd25519:
-		return x509.PureEd25519
-	default:
-		return x509.UnknownSignatureAlgorithm
 	}
 }
 
@@ -224,11 +169,6 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		return nil, fmt.Errorf("template is nil")
 	}
 
-	// Raw DER supplied
-	if len(tpl.GetRaw()) != 0 {
-		return x509.ParseCertificate(tpl.GetRaw())
-	}
-
 	// Otherwise build the struct
 	var policyIdentifiers []asn1.ObjectIdentifier
 	for _, o := range tpl.GetPolicyIdentifiers() {
@@ -269,11 +209,6 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		exts = append(exts, protoToPKIXExt(e))
 	}
 
-	var serial *big.Int
-	if sn := tpl.GetSerialNumber(); len(sn) != 0 {
-		serial = new(big.Int).SetBytes(sn) // []byte -> *big.Int
-	}
-
 	ips, err := protoIPSliceToNet(tpl.GetIPAddresses())
 	if err != nil {
 		return nil, fmt.Errorf("bad IP address: %w", err)
@@ -300,18 +235,7 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 	}
 
 	cert := &x509.Certificate{
-		Raw:                         tpl.GetRaw(),
-		RawTBSCertificate:           tpl.GetRawTBSCertificate(),
-		RawSubjectPublicKeyInfo:     tpl.GetRawSubjectPublicKeyInfo(),
-		RawSubject:                  tpl.GetRawSubject(),
-		RawIssuer:                   tpl.GetRawIssuer(),
-		Signature:                   tpl.GetSignature(),
-		SignatureAlgorithm:          protoSigToX509(tpl.GetSignatureAlgorithm()),
-		PublicKeyAlgorithm:          ProtoToX509Alg(tpl.GetPublicKeyAlgorithm()),
-		PublicKey:                   tpl.GetPublicKey(),
 		Version:                     int(tpl.GetVersion()),
-		SerialNumber:                serial,
-		Issuer:                      ProtoNameToPKIX(tpl.GetIssuer()),
 		Subject:                     ProtoNameToPKIX(tpl.GetSubject()),
 		NotBefore:                   tpl.GetNotBefore().AsTime(),
 		NotAfter:                    tpl.GetNotAfter().AsTime(),
@@ -326,9 +250,6 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		MaxPathLen:                  int(tpl.GetMaxPathLen()),
 		MaxPathLenZero:              tpl.GetMaxPathLenZero(),
 		SubjectKeyId:                tpl.GetSubjectKeyId(),
-		AuthorityKeyId:              tpl.GetAuthorityKeyId(),
-		OCSPServer:                  tpl.GetOCSPServer(),
-		IssuingCertificateURL:       tpl.GetIssuingCertificateURL(),
 		DNSNames:                    tpl.GetDNSNames(),
 		EmailAddresses:              tpl.GetEmailAddresses(),
 		IPAddresses:                 ips,
@@ -342,7 +263,6 @@ func CertProtoToX509(tpl *CertTemplate) (*x509.Certificate, error) {
 		ExcludedEmailAddresses:      tpl.GetExcludedEmailAddresses(),
 		PermittedURIDomains:         tpl.GetPermittedURIDomains(),
 		ExcludedURIDomains:          tpl.GetExcludedURIDomains(),
-		CRLDistributionPoints:       tpl.GetCRLDistributionPoints(),
 		PolicyIdentifiers:           policyIdentifiers,
 		Policies:                    policies,
 		InhibitAnyPolicy:            int(tpl.GetInhibitAnyPolicy()),

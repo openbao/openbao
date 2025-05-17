@@ -1163,7 +1163,7 @@ func (i *IdentityStore) CreateEntity(ctx context.Context) (*identity.Entity, err
 	ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
 	var nsLabel metrics.Label
 	if err != nil {
-		nsLabel = metrics.Label{"namespace", "unknown"}
+		nsLabel = metrics.Label{Name: "namespace", Value: "unknown"}
 	} else {
 		nsLabel = metricsutil.NamespaceLabel(ns)
 	}
@@ -1271,7 +1271,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 		ns, err := i.namespacer.NamespaceByID(ctx, entity.NamespaceID)
 		var nsLabel metrics.Label
 		if err != nil {
-			nsLabel = metrics.Label{"namespace", "unknown"}
+			nsLabel = metrics.Label{Name: "namespace", Value: "unknown"}
 		} else {
 			nsLabel = metricsutil.NamespaceLabel(ns)
 		}
@@ -1280,8 +1280,8 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 			1,
 			[]metrics.Label{
 				nsLabel,
-				{"auth_method", newAlias.MountType},
-				{"mount_point", newAlias.MountPath},
+				{Name: "auth_method", Value: newAlias.MountType},
+				{Name: "mount_point", Value: newAlias.MountPath},
 			})
 		entityCreated = true
 	}

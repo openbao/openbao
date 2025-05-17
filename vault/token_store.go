@@ -3158,10 +3158,10 @@ func (ts *TokenStore) handleCreateCommon(ctx context.Context, req *logical.Reque
 		1,
 		[]metrics.Label{
 			metricsutil.NamespaceLabel(ns),
-			{"auth_method", "token"},
-			{"mount_point", mountPointWithoutNs}, // path, not accessor
-			{"creation_ttl", ttl_label},
-			{"token_type", tokenType.String()},
+			{Name: "auth_method", Value: "token"},
+			{Name: "mount_point", Value: mountPointWithoutNs}, // path, not accessor
+			{Name: "creation_ttl", Value: ttl_label},
+			{Name: "token_type", Value: tokenType.String()},
 		},
 	)
 
@@ -3968,7 +3968,7 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 				metricsutil.GaugeLabelValues{
 					Labels: []metrics.Label{
 						metricsutil.NamespaceLabel(ns),
-						{"policy", policy},
+						{Name: "policy", Value: policy},
 					},
 					Value: float32(count),
 				})
@@ -4035,7 +4035,7 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 				metricsutil.GaugeLabelValues{
 					Labels: []metrics.Label{
 						metricsutil.NamespaceLabel(ns),
-						{"creation_ttl", bucket},
+						{Name: "creation_ttl", Value: bucket},
 					},
 					Value: float32(count),
 				})
@@ -4134,7 +4134,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 				metricsutil.GaugeLabelValues{
 					Labels: []metrics.Label{
 						metricsutil.NamespaceLabel(ns),
-						{"auth_method", method},
+						{Name: "auth_method", Value: method},
 					},
 					Value: float32(count),
 				})

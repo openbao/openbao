@@ -940,7 +940,8 @@ func (m *ExpirationManager) attemptIrrevocableLeasesRevoke() {
 			}
 
 			ctxWithNS := namespace.ContextWithNamespace(m.core.activeContext, leaseNS)
-			ctxWithNSAndTimeout, _ := context.WithTimeout(ctxWithNS, time.Minute)
+			ctxWithNSAndTimeout, cancel := context.WithTimeout(ctxWithNS, time.Minute)
+			defer cancel()
 			if err := m.revokeCommon(ctxWithNSAndTimeout, leaseID, false, false); err != nil {
 				// on failure, force some delay to mitigate resource spike while
 				// this is running. if revocations succeed, we are okay with
@@ -2380,13 +2381,13 @@ func (m *ExpirationManager) leaseAggregationMetrics(ctx context.Context, consts 
 		if nsLabel {
 			flattenedResults = append(flattenedResults,
 				metricsutil.GaugeLabelValues{
-					Labels: []metrics.Label{{"expiring", bucket.LabelName}, {"namespace", bucket.LabelNS}},
+					Labels: []metrics.Label{{Name: "expiring", Value: bucket.LabelName}, {Name: "namespace", Value: bucket.LabelNS}},
 					Value:  float32(count),
 				})
 		} else {
 			flattenedResults = append(flattenedResults,
 				metricsutil.GaugeLabelValues{
-					Labels: []metrics.Label{{"expiring", bucket.LabelName}},
+					Labels: []metrics.Label{{Name: "expiring", Value: bucket.LabelName}},
 					Value:  float32(count),
 				})
 		}

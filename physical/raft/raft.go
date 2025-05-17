@@ -661,7 +661,7 @@ func (b *RaftBackend) CollectMetrics(sink *metricsutil.ClusterMetricSink) {
 
 func (b *RaftBackend) collectMetricsWithStats(stats bolt.Stats, sink *metricsutil.ClusterMetricSink, database string) {
 	txstats := stats.TxStats
-	labels := []metricsutil.Label{{"database", database}}
+	labels := []metricsutil.Label{{Name: "database", Value: database}}
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "free_pages"}, float32(stats.FreePageN), labels)
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "pending_pages"}, float32(stats.PendingPageN), labels)
 	sink.SetGaugeWithLabels([]string{"raft_storage", "bolt", "freelist", "allocated_bytes"}, float32(stats.FreeAlloc), labels)

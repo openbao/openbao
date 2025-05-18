@@ -26,6 +26,8 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/physical/raft"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	"github.com/openbao/openbao/sdk/v2/joinplugin"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault/seal"
 	"golang.org/x/net/http2"
@@ -917,6 +919,11 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		return false, fmt.Errorf("failed to create auto-join discovery: %w", err)
 	}
 
+	joinPlugins, err := raftBackend.JoinPlugins()
+	if err != nil {
+		return false, fmt.Errorf("failed to create join plugins: %w", err)
+	}
+
 	retryFailures := leaderInfos[0].Retry
 	// answerChallenge performs the second part of a raft join: after we've issued
 	// the sys/storage/raft/bootstrap/challenge call to initiate the join, this
@@ -990,7 +997,7 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 		challengeCh := make(chan *raftInformation)
 		var expandedJoinInfos []*raft.LeaderJoinInfo
 		for _, leaderInfo := range leaderInfos {
-			joinInfos, err := c.raftLeaderInfo(leaderInfo, disco)
+			joinInfos, err := c.raftLeaderInfo(ctx, leaderInfo, disco, joinPlugins)
 			if err != nil {
 				c.logger.Error("error in retry_join stanza, will not use it for raft join", "error", err,
 					"leader_api_addr", leaderInfo.LeaderAPIAddr, "auto_join", leaderInfo.AutoJoin != "")
@@ -1065,12 +1072,13 @@ func (c *Core) JoinRaftCluster(ctx context.Context, leaderInfos []*raft.LeaderJo
 }
 
 // raftLeaderInfo uses go-discover to expand leaderInfo to include any auto-join results
-func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover) ([]*raft.LeaderJoinInfo, error) {
+func (c *Core) raftLeaderInfo(ctx context.Context, leaderInfo *raft.LeaderJoinInfo, disco *discover.Discover, plugins map[string]pluginutil.PluginRunner) ([]*raft.LeaderJoinInfo, error) {
+	if err := leaderInfo.ValidateJoinMethods(); err != nil {
+		return nil, err
+	}
+
 	var ret []*raft.LeaderJoinInfo
 	switch {
-	case leaderInfo.LeaderAPIAddr != "" && leaderInfo.AutoJoin != "":
-		return nil, errors.New("cannot provide both leader address and auto-join metadata")
-
 	case leaderInfo.LeaderAPIAddr != "":
 		ret = append(ret, leaderInfo)
 
@@ -1100,7 +1108,27 @@ func (c *Core) raftLeaderInfo(leaderInfo *raft.LeaderJoinInfo, disco *discover.D
 			info.LeaderAPIAddr = u
 			ret = append(ret, &info)
 		}
+	case leaderInfo.AutoJoinPlugin != nil:
+		join, err := joinplugin.NewJoin(ctx, leaderInfo.AutoJoinPlugin.Plugin, plugins, c.logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start join plugin: %w", err)
+		}
+		defer func() {
+			if err := join.Cleanup(ctx); err != nil {
+				c.logger.Error("error cleaning up join plugin: %w", err)
+			}
+		}()
 
+		addrs, err := join.Candidates(ctx, leaderInfo.AutoJoinPlugin.Config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run join plugin: %w", err)
+		}
+
+		for _, addr := range addrs {
+			info := *leaderInfo
+			info.LeaderAPIAddr = fmt.Sprintf("%s://%s:%d", addr.Scheme, addr.Host, addr.Port)
+			ret = append(ret, &info)
+		}
 	default:
 		return nil, errors.New("must provide leader address or auto-join metadata")
 	}

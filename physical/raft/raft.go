@@ -34,8 +34,11 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/metricsutil"
 	"github.com/openbao/openbao/helper/tlsdebug"
+	"github.com/openbao/openbao/plugins/join/discover"
+	"github.com/openbao/openbao/plugins/join/static"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
+	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
 	"github.com/openbao/openbao/sdk/v2/helper/pointerutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/sdk/v2/physical"
@@ -213,6 +216,19 @@ func (r *RaftBackend) HookInvalidate(hook physical.InvalidateFunc) {
 	r.fsm.hookInvalidate(hook)
 }
 
+type JoinPlugin struct {
+	Name    string   `json:"name"`
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
+	Env     []string `json:"env"`
+	Sha256  []byte   `json:"sha256"`
+}
+
+type AutoJoinPlugin struct {
+	Plugin string            `json:"plugin"`
+	Config map[string]string `json:"config"`
+}
+
 // LeaderJoinInfo contains information required by a node to join itself as a
 // follower to an existing raft cluster
 type LeaderJoinInfo struct {
@@ -228,6 +244,12 @@ type LeaderJoinInfo struct {
 	// AutoJoinPort defines the optional port used for addressed discovered via
 	// auto-join.
 	AutoJoinPort uint `json:"auto_join_port"`
+
+	// AutoJoinScript defines an executable and arguments that outputs peer API
+	// addresses (e.g. `https://vault.example.com:8200`) to standard output. If
+	// supplied, Vault will attempt to automatically discover peers in addition
+	// to what can be provided via 'leader_api_addr'.
+	AutoJoinPlugin *AutoJoinPlugin `json:"auto_join_plugin"`
 
 	// LeaderAPIAddr is the address of the leader node to connect to
 	LeaderAPIAddr string `json:"leader_api_addr"`
@@ -268,6 +290,19 @@ type LeaderJoinInfo struct {
 	TLSConfig *tls.Config `json:"-"`
 }
 
+func (info *LeaderJoinInfo) ValidateJoinMethods() error {
+	// TODO: At config loading, convert all join methods (legacy discover and
+	// static addresses) to plugins. Then, this can be removed.
+	haveJoinMethod := false
+	for _, joinMethodEnabled := range []bool{len(info.AutoJoin) != 0, len(info.LeaderAPIAddr) != 0, info.AutoJoinPlugin != nil} {
+		if haveJoinMethod && joinMethodEnabled {
+			return errors.New("only one of leader_api_addr, auto_join, and auto_join_script may be enabled")
+		}
+		haveJoinMethod = haveJoinMethod || joinMethodEnabled
+	}
+	return nil
+}
+
 // JoinConfig returns a list of information about possible leader nodes that
 // this node can join as a follower
 func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
@@ -287,8 +322,8 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	for i, info := range leaderInfos {
-		if len(info.AutoJoin) != 0 && len(info.LeaderAPIAddr) != 0 {
-			return nil, errors.New("cannot provide both a leader_api_addr and auto_join")
+		if err := info.ValidateJoinMethods(); err != nil {
+			return nil, err
 		}
 
 		if info.AutoJoinScheme != "" && (info.AutoJoinScheme != "http" && info.AutoJoinScheme != "https") {
@@ -303,6 +338,50 @@ func (b *RaftBackend) JoinConfig() ([]*LeaderJoinInfo, error) {
 	}
 
 	return leaderInfos, nil
+}
+
+func (b *RaftBackend) JoinPlugins() (map[string]pluginutil.PluginRunner, error) {
+	joinPlugins := map[string]pluginutil.PluginRunner{
+		"discover": {
+			Name:    "discover",
+			Type:    consts.PluginTypeJoin,
+			Builtin: true,
+			BuiltinFactory: func() (interface{}, error) {
+				return discover.Factory()
+			},
+		},
+		"static": {
+			Name:    "static",
+			Type:    consts.PluginTypeJoin,
+			Builtin: true,
+			BuiltinFactory: func() (interface{}, error) {
+				return static.Factory()
+			},
+		},
+	}
+
+	config := b.conf["join_plugin"]
+	if config == "" {
+		return joinPlugins, nil
+	}
+
+	var pluginConfigs []*JoinPlugin
+	err := jsonutil.DecodeJSON([]byte(config), &pluginConfigs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode join_plugin config: %w", err)
+	}
+	for _, pluginConfig := range pluginConfigs {
+		joinPlugins[pluginConfig.Name] = pluginutil.PluginRunner{
+			Name:    pluginConfig.Name,
+			Type:    consts.PluginTypeJoin,
+			Command: pluginConfig.Command,
+			Args:    pluginConfig.Args,
+			Env:     pluginConfig.Env,
+			Sha256:  pluginConfig.Sha256,
+		}
+	}
+
+	return joinPlugins, nil
 }
 
 // parseTLSInfo is a helper for parses the TLS information, preferring file

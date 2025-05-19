@@ -257,7 +257,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		childView := NamespaceView(barrier, &namespace).SubView(namespaceStoreSubPath)
+		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}

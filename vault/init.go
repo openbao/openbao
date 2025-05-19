@@ -318,6 +318,7 @@ func (c *Core) initializeInternal(ctx context.Context, initParams *InitParams) (
 		return nil, fmt.Errorf("error initializing seal: %w", err)
 	}
 
+	// TODO: we are here
 	barrierKey, deprecatedBarrierKeyShares, err := c.generateShares(barrierConfig)
 	if err != nil {
 		c.logger.Error("error generating shares", "error", err)

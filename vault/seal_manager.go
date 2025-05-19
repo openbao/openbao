@@ -2,25 +2,26 @@ package vault
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/armon/go-radix"
 	"github.com/hashicorp/go-hclog"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
-	"github.com/openbao/openbao/sdk/v2/logical"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
 
 // SealManager is used to provide storage for the seals.
 // It's a singleton that associates seals (configs) to the namespaces.
 type SealManager struct {
-	core    *Core
-	storage logical.Storage
+	core *Core
 
 	// lock        sync.RWMutex
 	// invalidated atomic.Bool
 
-	sealsByNamespace map[string][]*Seal
+	sealsByNamespace   map[string][]*Seal
+	barrierByNamespace *radix.Tree
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
@@ -29,10 +30,10 @@ type SealManager struct {
 // NewSealManager creates a new seal manager with core reference and logger.
 func NewSealManager(ctx context.Context, core *Core, logger hclog.Logger) (*SealManager, error) {
 	return &SealManager{
-		core:             core,
-		storage:          core.barrier,
-		sealsByNamespace: make(map[string][]*Seal),
-		logger:           logger,
+		core:               core,
+		sealsByNamespace:   make(map[string][]*Seal),
+		barrierByNamespace: radix.New(),
+		logger:             logger,
 	}, nil
 }
 
@@ -43,12 +44,16 @@ func (c *Core) setupSealManager(ctx context.Context) error {
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
 	c.sealManager, err = NewSealManager(ctx, c, sealLogger)
+	c.sealManager.barrierByNamespace.Insert("", c.barrier)
 	return err
 }
 
 // teardownSealManager is used to remove seal manager
 // when the vault is being sealed.
 func (c *Core) teardownSealManager() error {
+	// seal all namespaces
+	// TODO: this probably does not work out of the box
+	// c.sealManager.SealNamespace(namespace.RootNamespace)
 	c.sealManager = nil
 	return nil
 }
@@ -67,11 +72,54 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
+	barrier, err := NewAESGCMBarrier(sm.core.physical, namespaceBarrierPrefix+ns.UUID+"/")
+	if err != nil {
+		return fmt.Errorf("failed to construct namespace barrier: %w", err)
+	}
+	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
+	sm.barrierByNamespace.Insert(ns.Path, barrier)
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
-	err := defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
+	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
 	if err != nil {
 		return fmt.Errorf("failed to set barrier config: %w", err)
 	}
 
+	return nil
+}
+
+// SealNamespace seals the barriers of the given namespace and all of its children.
+func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
+	var errs error
+	sm.barrierByNamespace.WalkPrefix(ns.Path, func(p string, v any) bool {
+		s := v.(SecurityBarrier)
+		err := s.Seal()
+		if err != nil {
+			errs = errors.Join(errs, err)
+		}
+
+		return false
+	})
+
+	return errs
+}
+
+// NamespaceView finds the correct barrier to use for the namespace and returns
+// the a BarrierView restricted to the data of the given namespace.
+func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
+	// TODO: NamespaceView is called somewhere before sealManager is
+	// initialized. Figure out if we can fix the init sequence to make this go
+	// away
+	if c.sealManager == nil {
+		return NamespaceView(c.barrier, ns)
+	}
+	_, v, _ := c.sealManager.barrierByNamespace.LongestPrefix(ns.Path)
+	barrier := v.(SecurityBarrier)
+	return NamespaceView(barrier, ns)
+}
+
+// RemoveNamespace removes the given namespace and all of its children from the
+// SealManager's internal state.
+func (sm *SealManager) RemoveNamespace(ns *namespace.Namespace) error {
+	sm.barrierByNamespace.DeletePrefix(ns.Path)
 	return nil
 }

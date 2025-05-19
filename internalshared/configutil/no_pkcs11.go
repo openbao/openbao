@@ -1,4 +1,4 @@
-//go:build !hsm || !linux
+//go:build !hsm || !(linux || darwin)
 
 package configutil
 

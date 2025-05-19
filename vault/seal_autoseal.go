@@ -199,7 +199,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (
 	}
 
 	sealType := "barrier"
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
 
 	entry, err := d.core.physical.Get(ctx, view.Prefix())
 	if err != nil {
@@ -255,7 +255,7 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *n
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
-	view := NamespaceView(d.core.barrier, ns).SubView(barrierSealConfigPath)
+	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
 
 	// Store the seal configuration
 	pe := &physical.Entry{

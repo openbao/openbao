@@ -236,7 +236,7 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, err
 		}
 
-		childView := NamespaceView(barrier, &namespace).SubView(namespaceStoreSubPath)
+		childView := ns.core.NamespaceView(&namespace).SubView(namespaceStoreSubPath)
 		if err := ns.loadNamespacesRecursive(ctx, barrier, childView, callback); err != nil {
 			return false, err
 		}
@@ -399,7 +399,7 @@ func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *namespace.N
 		return err
 	}
 
-	view := NamespaceView(ns.storage, parent).SubView(namespaceStoreSubPath)
+	view := ns.core.NamespaceView(parent).SubView(namespaceStoreSubPath)
 	if err := logical.WithTransaction(ctx, view, func(s logical.Storage) error {
 		item, err := logical.StorageEntryJSON(entry.UUID, &entry)
 		if err != nil {

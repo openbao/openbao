@@ -1297,7 +1297,7 @@ func (c *Core) moveStorage(ctx context.Context, src namespace.MountPathDetails, 
 		}
 	}
 
-	srcEntryView := NamespaceView(barrier, src.Namespace)
+	srcEntryView := c.NamespaceView(src.Namespace)
 	var coreLocalPath, corePath string
 
 	switch me.Table {
@@ -1414,7 +1414,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 	globalEntries := make(map[string][]string, len(allNamespaces))
 	localEntries := make(map[string][]string, len(allNamespaces))
 	for index, ns := range allNamespaces {
-		view := NamespaceView(barrier, ns)
+		view := c.NamespaceView(ns)
 		nsGlobal, nsLocal, err := listTransactionalMountsForNamespace(ctx, view)
 		if err != nil {
 			c.logger.Error("failed to list transactional mounts for namespace", "error", err, "ns_index", index, "namespace", ns.ID)
@@ -1442,7 +1442,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 		}
 
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := c.NamespaceView(ns)
 			for index, uuid := range globalEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreMountConfigPath, uuid)
 				if err != nil {
@@ -1458,7 +1458,7 @@ func (c *Core) loadTransactionalMounts(ctx context.Context, barrier logical.Stor
 
 	if len(localEntries) > 0 {
 		for nsIndex, ns := range allNamespaces {
-			view := NamespaceView(barrier, ns)
+			view := c.NamespaceView(ns)
 			for index, uuid := range localEntries[ns.ID] {
 				entry, err := c.fetchAndDecodeMountTableEntry(ctx, view, coreLocalMountConfigPath, uuid)
 				if err != nil {
@@ -1768,7 +1768,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 					continue
 				}
 
-				view := NamespaceView(barrier, mtEntry.Namespace())
+				view := c.NamespaceView(mtEntry.Namespace())
 
 				found = true
 				currentEntries[mtEntry.UUID] = struct{}{}
@@ -1807,7 +1807,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
+					view := c.NamespaceView(ns)
 					path := path.Join(prefix, mount)
 					if err := view.Delete(ctx, path); err != nil {
 						return -1, fmt.Errorf("requested removal of auth mount from namespace %v (%v) but failed: %w", ns.ID, nsIndex, err)
@@ -1822,7 +1822,7 @@ func (c *Core) persistMounts(ctx context.Context, barrier logical.Storage, table
 				}
 
 				for nsIndex, ns := range allNamespaces {
-					view := NamespaceView(barrier, ns)
+					view := c.NamespaceView(ns)
 
 					// List all entries and remove any deleted ones.
 					presentEntries, err := view.List(ctx, prefix+"/")
@@ -2341,10 +2341,6 @@ func (c *Core) readMigrationStatus(migrationID string) *MountMigrationInfo {
 	return &migrationInfo
 }
 
-func (c *Core) namespaceMountEntryView(namespace *namespace.Namespace, prefix string) BarrierView {
-	return NamespaceView(c.barrier, namespace).SubView(prefix)
-}
-
 // mountEntryView returns the barrier view object with prefix depending on the mount entry type, table and namespace
 func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 	if me.Namespace() != nil && me.Namespace().ID != me.NamespaceID {
@@ -2353,8 +2349,8 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 
 	switch me.Type {
 	case mountTypeSystem, mountTypeNSSystem:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), systemBarrierPrefix), nil
+		if me.Namespace() != nil {
+			return c.NamespaceView(me.Namespace()).SubView(systemBarrierPrefix), nil
 		}
 		return NewBarrierView(c.barrier, systemBarrierPrefix), nil
 	case mountTypeToken:
@@ -2363,13 +2359,13 @@ func (c *Core) mountEntryView(me *MountEntry) (BarrierView, error) {
 
 	switch me.Table {
 	case mountTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), backendBarrierPrefix+me.UUID+"/"), nil
+		if me.Namespace() != nil {
+			return c.NamespaceView(me.Namespace()).SubView(backendBarrierPrefix + me.UUID + "/"), nil
 		}
 		return NewBarrierView(c.barrier, backendBarrierPrefix+me.UUID+"/"), nil
 	case credentialTableType:
-		if me.Namespace() != nil && me.NamespaceID != namespace.RootNamespaceID {
-			return c.namespaceMountEntryView(me.Namespace(), credentialBarrierPrefix+me.UUID+"/"), nil
+		if me.Namespace() != nil {
+			return c.NamespaceView(me.Namespace()).SubView(credentialBarrierPrefix + me.UUID + "/"), nil
 		}
 		return NewBarrierView(c.barrier, credentialBarrierPrefix+me.UUID+"/"), nil
 	case auditTableType, configAuditTableType:

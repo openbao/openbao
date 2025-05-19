@@ -270,8 +270,7 @@ export default class PkiRoleModel extends Model {
 
   @attr({
     label: 'Organization Units (OU)',
-    subText:
-      'A list of allowed serial numbers to be requested during certificate issuance. Shell-style globbing is supported. If empty, custom-specified serial numbers will be forbidden.',
+    subText: 'List of organizational units (parts of an organization) that must appear on the certificate.',
     editType: 'stringArray',
   })
   ou;

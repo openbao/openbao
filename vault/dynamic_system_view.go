@@ -425,7 +425,7 @@ func (d dynamicSystemView) retrievePasswordPolicy(ctx context.Context, policyNam
 		return nil, err
 	}
 
-	storage := d.core.namespaceMountEntryView(ns, passwordPolicySubPath)
+	storage := d.core.NamespaceView(ns).SubView(passwordPolicySubPath)
 	entry, err := storage.Get(ctx, policyName)
 	if err != nil {
 		return nil, err

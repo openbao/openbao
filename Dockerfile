@@ -73,7 +73,7 @@ CMD ["server", "-dev", "-dev-no-store-token"]
 
 
 #### UBI DOCKERFILE ####
-FROM registry.access.redhat.com/ubi9-minimal:9.5 as ubi
+FROM registry.access.redhat.com/ubi9-minimal:9.6 as ubi
 
 ARG BIN_NAME
 # PRODUCT_VERSION is the version built dist/$TARGETOS/$TARGETARCH/$BIN_NAME,

@@ -2,6 +2,8 @@
 sidebar_label: Overview
 description: OpenBao server configuration reference.
 ---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # OpenBao configuration
 
@@ -11,6 +13,43 @@ The format of this file is [HCL](https://github.com/hashicorp/hcl) or JSON.
 @include 'plugin-file-permissions-check.mdx'
 
 An example configuration is shown below:
+
+<Tabs groupId="config">
+<TabItem value="JSON">
+
+```json
+{
+  "ui": true,
+
+  "cluster_addr": "https://127.0.0.1:8201",
+  "api_addr":     "https://127.0.0.1:8200",
+
+  "storage": {
+    "raft": {
+      "path": "data",
+      "node_id": "raft_node_1"
+    }
+  },
+
+  "listener": [
+    {
+      "tcp": {
+        "address":       "127.0.0.1:8200",
+        "tls_cert_file": "full-chain.pem",
+        "tls_key_file":  "private-key.pem"
+      }
+    }
+  ],
+
+  "telemetry": {
+    "statsite_address": "127.0.0.1:8125",
+    "disable_hostname": true
+  }
+}
+```
+
+</TabItem>
+<TabItem value="HCL">
 
 ```hcl
 ui            = true
@@ -33,6 +72,9 @@ telemetry {
   disable_hostname = true
 }
 ```
+
+</TabItem>
+</Tabs>
 
 After the configuration is written, use the `-config` flag with `bao server`
 to specify where the configuration is.

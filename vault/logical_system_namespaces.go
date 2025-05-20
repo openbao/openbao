@@ -378,6 +378,15 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry.Clone()); err != nil {
 				return nil, err
 			}
+			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+			if err != nil {
+				return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+			}
+
+			// TODO Remove
+			for i, keyShare := range nsSealKeyShares {
+				fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+			}
 		}
 
 		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil

@@ -27,7 +27,7 @@ var protectedPaths = []string{
 
 type RawBackend struct {
 	*framework.Backend
-	barrier      SecurityBarrier
+	core         *Core
 	logger       log.Logger
 	checkRaw     func(path string) error
 	recoveryMode bool
@@ -35,8 +35,8 @@ type RawBackend struct {
 
 func NewRawBackend(core *Core) *RawBackend {
 	r := &RawBackend{
-		barrier: core.barrier,
-		logger:  core.logger.Named("raw"),
+		core:   core,
+		logger: core.logger.Named("raw"),
 		checkRaw: func(path string) error {
 			return nil
 		},
@@ -75,28 +75,28 @@ func (b *RawBackend) handleRawRead(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	entry, err := b.barrier.Get(ctx, path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+	valueBytes, err := barrier.Get(ctx, path)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
-	if entry == nil {
+	if valueBytes == nil {
 		return nil, nil
 	}
 
-	valueBytes := entry.Value
 	if compressed {
 		// Run this through the decompression helper to see if it's been compressed.
 		// If the input contained the compression canary, `valueBytes` will hold
 		// the decompressed data. If the input was not compressed, then `valueBytes`
 		// will be nil.
-		valueBytes, _, err = compressutil.Decompress(entry.Value)
+		decompData, _, err := compressutil.Decompress(valueBytes)
 		if err != nil {
 			return handleErrorNoReadOnlyForward(err)
 		}
 
 		// `valueBytes` is nil if the input is uncompressed. In that case set it to the original input.
-		if valueBytes == nil {
-			valueBytes = entry.Value
+		if decompData != nil {
+			valueBytes = decompData
 		}
 	}
 
@@ -150,19 +150,21 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+
 	if req.Operation == logical.UpdateOperation {
 		// Check if this is an existing value with compression applied, if so, use the same compression (or no compression)
-		entry, err := b.barrier.Get(ctx, path)
+		valueBytes, err := barrier.Get(ctx, path)
 		if err != nil {
 			return handleErrorNoReadOnlyForward(err)
 		}
-		if entry == nil {
+		if valueBytes == nil {
 			err := "cannot figure out compression type because entry does not exist"
 			return logical.ErrorResponse(err), logical.ErrInvalidRequest
 		}
 
 		// For cases where DecompressWithCanary errored, treat entry as non-compressed data.
-		_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(entry.Value)
+		_, existingCompressionType, _, _ := compressutil.DecompressWithCanary(valueBytes)
 
 		// Ensure compression_type matches existing entries' compression
 		// except allow writing non-compressed data over compressed data
@@ -208,12 +210,7 @@ func (b *RawBackend) handleRawWrite(ctx context.Context, req *logical.Request, d
 		}
 	}
 
-	entry := &logical.StorageEntry{
-		Key:   path,
-		Value: value,
-	}
-
-	if err := b.barrier.Put(ctx, entry); err != nil {
+	if err := barrier.Put(ctx, path, value); err != nil {
 		return logical.ErrorResponse(err.Error()), logical.ErrInvalidRequest
 	}
 	return nil, nil
@@ -235,7 +232,8 @@ func (b *RawBackend) handleRawDelete(ctx context.Context, req *logical.Request, 
 		}
 	}
 
-	if err := b.barrier.Delete(ctx, path); err != nil {
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+	if err := barrier.Delete(ctx, path); err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
 	return nil, nil
@@ -266,7 +264,8 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 		}
 	}
 
-	keys, err := b.barrier.ListPage(ctx, path, after, limit)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+	keys, err := barrier.ListPage(ctx, path, after, limit)
 	if err != nil {
 		return handleErrorNoReadOnlyForward(err)
 	}
@@ -276,7 +275,8 @@ func (b *RawBackend) handleRawList(ctx context.Context, req *logical.Request, da
 // existenceCheck checks if entry exists, used in handleRawWrite for update or create operations
 func (b *RawBackend) existenceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	path := data.Get("path").(string)
-	entry, err := b.barrier.Get(ctx, path)
+	barrier := b.core.sealManager.StorageAccessForPath(path)
+	entry, err := barrier.Get(ctx, path)
 	if err != nil {
 		return false, err
 	}

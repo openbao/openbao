@@ -10,6 +10,8 @@ import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	aeadwrapper "github.com/openbao/go-kms-wrapping/wrappers/aead/v2"
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 	vaultseal "github.com/openbao/openbao/vault/seal"
 )
@@ -22,31 +24,35 @@ type SealManager struct {
 	// lock        sync.RWMutex
 	// invalidated atomic.Bool
 
-	sealsByNamespace   map[string][]*Seal
-	barrierByNamespace *radix.Tree
+	sealsByNamespace     map[string][]*Seal
+	barrierByNamespace   *radix.Tree
+	barrierByStoragePath *radix.Tree
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
 }
 
 // NewSealManager creates a new seal manager with core reference and logger.
-func NewSealManager(ctx context.Context, core *Core, logger hclog.Logger) (*SealManager, error) {
+func NewSealManager(core *Core, logger hclog.Logger) (*SealManager, error) {
 	return &SealManager{
-		core:               core,
-		sealsByNamespace:   make(map[string][]*Seal),
-		barrierByNamespace: radix.New(),
-		logger:             logger,
+		core:                 core,
+		sealsByNamespace:     make(map[string][]*Seal),
+		barrierByNamespace:   radix.New(),
+		barrierByStoragePath: radix.New(),
+		logger:               logger,
 	}, nil
 }
 
 // setupSealManager is used to initialize the seal manager
 // when the vault is being unsealed.
-func (c *Core) setupSealManager(ctx context.Context) error {
+func (c *Core) setupSealManager() error {
 	var err error
 	sealLogger := c.baseLogger.Named("seal")
 	c.AddLogger(sealLogger)
-	c.sealManager, err = NewSealManager(ctx, c, sealLogger)
+	c.sealManager, err = NewSealManager(c, sealLogger)
 	c.sealManager.barrierByNamespace.Insert("", c.barrier)
+	c.sealManager.barrierByStoragePath.Insert("", c.barrier)
+	c.sealManager.barrierByStoragePath.Insert("core/seal-config", nil)
 	return err
 }
 
@@ -67,20 +73,28 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 		return fmt.Errorf("invalid seal configuration: %w", err)
 	}
 
+	metaPrefix := namespaceBarrierPrefix + ns.UUID + "/"
+
 	// Seal type would depend on the provided arguments
 	defaultSeal := NewDefaultSeal(vaultseal.NewAccess(aeadwrapper.NewShamirWrapper()))
 	defaultSeal.SetCore(sm.core)
+	defaultSeal.SetMetaPrefix(metaPrefix)
 
 	if err := defaultSeal.Init(ctx); err != nil {
 		return fmt.Errorf("error initializing seal: %w", err)
 	}
 
-	barrier, err := NewAESGCMBarrier(sm.core.physical, namespaceBarrierPrefix+ns.UUID+"/")
+	barrier, err := NewAESGCMBarrier(sm.core.physical, metaPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to construct namespace barrier: %w", err)
 	}
 	// barrier.Initialize(ctx context.Context, rootKey []byte, sealKey []byte, random io.Reader)
 	sm.barrierByNamespace.Insert(ns.Path, barrier)
+	sm.barrierByStoragePath.Insert(metaPrefix, barrier)
+	parentBarrier := sm.ParentNamespaceBarrier(ns)
+	if parentBarrier != nil {
+		sm.barrierByStoragePath.Insert(metaPrefix+barrierSealConfigPath, parentBarrier)
+	}
 	sm.sealsByNamespace[ns.UUID] = []*Seal{&defaultSeal}
 	err = defaultSeal.SetBarrierConfig(ctx, sealConfig, ns)
 	if err != nil {
@@ -88,6 +102,15 @@ func (sm *SealManager) SetSeal(ctx context.Context, sealConfig *SealConfig, ns *
 	}
 
 	return nil
+}
+
+func (sm *SealManager) StorageAccessForPath(path string) StorageAccess {
+	_, v, _ := sm.barrierByStoragePath.LongestPrefix(path)
+	if v == nil {
+		return &directStorageAccess{physical: sm.core.physical}
+	}
+	barrier := v.(SecurityBarrier)
+	return &secureStorageAccess{barrier: barrier}
 }
 
 // SealNamespace seals the barriers of the given namespace and all of its children.
@@ -106,17 +129,28 @@ func (sm *SealManager) SealNamespace(ns *namespace.Namespace) error {
 	return errs
 }
 
+func (sm *SealManager) ParentNamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	parentPath, ok := ns.ParentPath()
+	if !ok {
+		return nil
+	}
+
+	_, v, _ := sm.barrierByNamespace.LongestPrefix(parentPath)
+	barrier := v.(SecurityBarrier)
+	return barrier
+}
+
+func (sm *SealManager) NamespaceBarrier(ns *namespace.Namespace) SecurityBarrier {
+	_, v, _ := sm.barrierByNamespace.LongestPrefix(ns.Path)
+	barrier := v.(SecurityBarrier)
+
+	return barrier
+}
+
 // NamespaceView finds the correct barrier to use for the namespace and returns
 // the a BarrierView restricted to the data of the given namespace.
 func (c *Core) NamespaceView(ns *namespace.Namespace) BarrierView {
-	// TODO: NamespaceView is called somewhere before sealManager is
-	// initialized. Figure out if we can fix the init sequence to make this go
-	// away
-	if c.sealManager == nil {
-		return NamespaceView(c.barrier, ns)
-	}
-	_, v, _ := c.sealManager.barrierByNamespace.LongestPrefix(ns.Path)
-	barrier := v.(SecurityBarrier)
+	barrier := c.sealManager.NamespaceBarrier(ns)
 	return NamespaceView(barrier, ns)
 }
 
@@ -199,4 +233,78 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return nsSealKeyShares, nil
+}
+
+type StorageAccess interface {
+	Put(context.Context, string, []byte) error
+	Get(context.Context, string) ([]byte, error)
+	Delete(context.Context, string) error
+	ListPage(context.Context, string, string, int) ([]string, error)
+}
+
+var (
+	_ StorageAccess = (*directStorageAccess)(nil)
+	_ StorageAccess = (*secureStorageAccess)(nil)
+)
+
+type directStorageAccess struct {
+	physical physical.Backend
+}
+
+func (p *directStorageAccess) Put(ctx context.Context, path string, value []byte) error {
+	pe := &physical.Entry{
+		Key:   path,
+		Value: value,
+	}
+	return p.physical.Put(ctx, pe)
+}
+
+func (p *directStorageAccess) Get(ctx context.Context, path string) ([]byte, error) {
+	pe, err := p.physical.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if pe == nil {
+		return nil, nil
+	}
+	return pe.Value, nil
+}
+
+func (p *directStorageAccess) Delete(ctx context.Context, key string) error {
+	return p.physical.Delete(ctx, key)
+}
+
+func (p *directStorageAccess) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return p.physical.ListPage(ctx, prefix, after, limit)
+}
+
+type secureStorageAccess struct {
+	barrier SecurityBarrier
+}
+
+func (b *secureStorageAccess) Put(ctx context.Context, path string, value []byte) error {
+	se := &logical.StorageEntry{
+		Key:   path,
+		Value: value,
+	}
+	return b.barrier.Put(ctx, se)
+}
+
+func (b *secureStorageAccess) Get(ctx context.Context, path string) ([]byte, error) {
+	se, err := b.barrier.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	if se == nil {
+		return nil, nil
+	}
+	return se.Value, nil
+}
+
+func (b *secureStorageAccess) Delete(ctx context.Context, key string) error {
+	return b.barrier.Delete(ctx, key)
+}
+
+func (b *secureStorageAccess) ListPage(ctx context.Context, prefix string, after string, limit int) ([]string, error) {
+	return b.barrier.ListPage(ctx, prefix, after, limit)
 }

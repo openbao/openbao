@@ -365,27 +365,33 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
 		}
+		if new {
+			// TODO(wslabosz): write all the provided configs
+			if len(sealConfigs) > 0 {
+				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+					return handleError(err)
+				}
 
-		// TODO(wslabosz): write all the provided configs
-		if len(sealConfigs) > 0 {
-			if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry.Clone()); err != nil {
-				return nil, err
-			}
-			nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
-			if err != nil {
-				return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+				nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+				if err != nil {
+					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+				}
+
+				// TODO Remove
+				for i, keyShare := range nsSealKeyShares {
+					fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+				}
 			}
 
-			// TODO Remove
-			for i, keyShare := range nsSealKeyShares {
-				fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+				return handleError(err)
 			}
 		}
 
@@ -418,7 +424,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}

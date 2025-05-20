@@ -1090,6 +1090,10 @@ func NewCore(conf *CoreConfig) (*Core, error) {
 		return nil, fmt.Errorf("barrier setup failed: %w", err)
 	}
 
+	if err := c.setupSealManager(); err != nil {
+		return nil, fmt.Errorf("seal manager setup failed: %w", err)
+	}
+
 	// We create the funcs here, then populate the given config with it so that
 	// the caller can share state
 	conf.ReloadFuncsLock = &c.reloadFuncsLock
@@ -2303,9 +2307,6 @@ func (s standardUnsealStrategy) unseal(ctx context.Context, logger log.Logger, c
 	if err := c.setupNamespaceStore(ctx); err != nil {
 		return err
 	}
-	if err := c.setupSealManager(ctx); err != nil {
-		return err
-	}
 	if err := c.loadMounts(ctx); err != nil {
 		return err
 	}
@@ -2536,9 +2537,6 @@ func (c *Core) preSeal() error {
 	}
 	if err := c.teardownLoginMFA(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
-	}
-	if err := c.teardownSealManager(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down seal manager: %w", err))
 	}
 	if err := c.teardownNamespaceStore(); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))

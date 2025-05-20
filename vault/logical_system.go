@@ -2717,8 +2717,18 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 		resp := &logical.Response{
 			Data: map[string]interface{}{
 				"name":             policy.Name,
+				"version":          policy.DataVersion,
+				"cas_required":     policy.CASRequired,
 				respDataPolicyName: policy.Raw,
 			},
+		}
+
+		if !policy.Expiration.IsZero() {
+			resp.Data["expiration"] = policy.Expiration
+		}
+
+		if !policy.Modified.IsZero() {
+			resp.Data["modified"] = policy.Modified
 		}
 
 		return resp, nil
@@ -2765,6 +2775,20 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			policy.Raw = string(polBytes)
 		}
 
+		expirationRaw, expirationOk := data.GetOk("expiration")
+		ttlRaw, ttlOk := data.GetOk("ttl")
+		if expirationOk && ttlOk {
+			return logical.ErrorResponse("cannot supply both 'expiration' and 'ttl' for policies"), nil
+		} else if expirationOk {
+			policy.Expiration = expirationRaw.(time.Time)
+		} else if ttlOk {
+			policy.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+		}
+
+		if !policy.Expiration.IsZero() && !time.Now().Before(policy.Expiration) {
+			return logical.ErrorResponse("refusing to update policy as expiration time has already elapsed"), nil
+		}
+
 		switch policyType {
 		case PolicyTypeACL:
 			p, err := ParseACLPolicy(ns, policy.Raw)
@@ -2778,8 +2802,18 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 			return logical.ErrorResponse("unknown policy type"), nil
 		}
 
+		var cas *int
+		casRaw, casOk := data.GetOk("cas")
+		if casOk {
+			cas = new(int)
+			*cas = casRaw.(int)
+		}
+
+		casRequired := data.Get("cas_required").(bool)
+		policy.CASRequired = casRequired
+
 		// Update the policy
-		if err := b.Core.policyStore.SetPolicy(ctx, policy); err != nil {
+		if err := b.Core.policyStore.SetPolicy(ctx, policy, cas); err != nil {
 			return handleError(err)
 		}
 

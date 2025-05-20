@@ -312,7 +312,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	nsEntry.ID = entry.ID
 	nsEntry.Path = entry.Path
 
-	return true, nil
+	return !exists, nil
 }
 
 func (ns *NamespaceStore) writeNamespace(ctx context.Context, entry *namespace.Namespace) error {

@@ -45,6 +45,7 @@ type autoSeal struct {
 	recoveryConfig atomic.Value
 	core           *Core
 	logger         log.Logger
+	metaPrefix     string
 
 	hcLock          sync.Mutex
 	healthCheckStop chan struct{}
@@ -98,6 +99,10 @@ func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
 }
 
+func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
+}
+
 func (d *autoSeal) Finalize(ctx context.Context) error {
 	return d.Access.Finalize(ctx)
 }
@@ -121,13 +126,13 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys. The stored entry
 // does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.Access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key using the
 // autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.Access)
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {

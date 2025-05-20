@@ -8,7 +8,12 @@ import TabItem from '@theme/TabItem';
 # OpenBao configuration
 
 Outside of development mode, OpenBao servers are configured using a file.
-The format of this file is [HCL](https://github.com/hashicorp/hcl) or JSON.
+The format of this file is [HCL](https://github.com/hashicorp/hcl) or JSON;
+it may also be a directory of configuration files; all files which end in
+`.hcl` or `.json` are loaded in alphabetical order; if duplicate content is
+present across multiple configuration files and the type of the top-level entry
+is not a list, the last present option wins. Otherwise, list types like
+listeners, of which multiple may be present, are appended to the config.
 
 @include 'plugin-file-permissions-check.mdx'
 

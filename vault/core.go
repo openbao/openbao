@@ -2497,8 +2497,11 @@ func (c *Core) preSeal() error {
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
 	}
+	if err := c.teardownLoginMFA(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA, error: %w", err))
+	}
 	if err := c.teardownNamespaceStore(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
 	}
 
 	if c.autoRotateCancel != nil {
@@ -2513,10 +2516,6 @@ func (c *Core) preSeal() error {
 
 	if seal, ok := c.seal.(*autoSeal); ok {
 		seal.StopHealthCheck()
-	}
-
-	if err := c.teardownLoginMFA(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA, error: %w", err))
 	}
 
 	preSealPhysical(c)
@@ -3232,16 +3231,20 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces := c.collectNamespaces()
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return err
+	}
+
 	for _, ns := range allNamespaces {
 		err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA method Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA enforcement Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		eConfigs = append(eConfigs, loadedConfigs...)
@@ -3336,16 +3339,18 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 		return nil
 	}
 
-	// get the list of namespaces of locked users from locked users path in storage
-	nsIDs, err := c.barrier.List(ctx, coreLockedUsersPath)
+	// get all namespaces
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true)
 	if err != nil {
 		return err
 	}
 
 	totalLockedUsersCount := 0
-	for _, nsID := range nsIDs {
+	for _, ns := range nsList {
+
 		// get the list of mount accessors of locked users for each namespace
-		mountAccessors, err := c.barrier.List(ctx, coreLockedUsersPath+nsID)
+		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath)
+		mountAccessors, err := view.List(ctx, "")
 		if err != nil {
 			return err
 		}
@@ -3357,7 +3362,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 		// if incorrect, update the entry in userFailedLoginInfo map
 		for _, mountAccessorPath := range mountAccessors {
 			mountAccessor := strings.TrimSuffix(mountAccessorPath, "/")
-			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, mountAccessor, coreLockedUsersPath+nsID+mountAccessorPath)
+			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, mountAccessor, view.Prefix()+mountAccessorPath)
 			if err != nil {
 				return err
 			}

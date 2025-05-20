@@ -441,7 +441,7 @@ func (i *IdentityStore) handleMFAMethodDeleteCommon(ctx context.Context, req *lo
 	if methodID == "" {
 		return logical.ErrorResponse("missing method ID"), nil
 	}
-	return nil, i.mfaBackend.deleteMFAConfigByMethodID(ctx, methodID, methodType, memDBLoginMFAConfigsTable, loginMFAConfigPrefix)
+	return nil, i.mfaBackend.deleteMFAConfigByMethodID(ctx, methodID, methodType, memDBLoginMFAConfigsTable)
 }
 
 func (i *IdentityStore) handleLoginMFAGenerateUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
@@ -589,7 +589,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 // loadMFAMethodConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
-	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	existing, err := barrierView.List(ctx, loginMFAConfigPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to list MFA configurations for namespace %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
@@ -600,7 +600,7 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 		b.mfaLogger.Trace("loading method", "method", key)
 
 		// Read the config from storage
-		mConfig, err := b.getMFAConfig(ctx, loginMFAConfigPrefix+key, barrierView)
+		mConfig, err := b.getMFAConfig(ctx, key, barrierView)
 		if err != nil {
 			return err
 		}
@@ -625,8 +625,8 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 // loadMFAEnforcementConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *namespace.Namespace) ([]*mfa.MFAEnforcementConfig, error) {
 	b.mfaLogger.Trace("loading login MFA enforcement configurations")
-	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
-	existing, err := barrierView.List(ctx, mfaLoginEnforcementPrefix)
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list MFA enforcement configurations for namespace %s with prefix %s: %w", ns.Path, mfaLoginEnforcementPrefix, err)
 	}
@@ -637,7 +637,7 @@ func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *nam
 		b.mfaLogger.Trace("loading enforcement", "config", key)
 
 		// Read the config from storage
-		mConfig, err := b.getMFALoginEnforcementConfig(ctx, mfaLoginEnforcementPrefix+key, barrierView)
+		mConfig, err := b.getMFALoginEnforcementConfig(ctx, key, barrierView)
 		if err != nil {
 			return nil, err
 		}
@@ -1052,17 +1052,28 @@ func (c *Core) PersistTOTPKey(ctx context.Context, methodID, entityID, key strin
 	if err != nil {
 		return err
 	}
-	if c.barrier.Put(ctx, &logical.StorageEntry{
-		Key:   fmt.Sprintf("%s%s/%s", mfaTOTPKeysPrefix, methodID, entityID),
-		Value: val,
-	}); err != nil {
+
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	view := NamespaceView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
+	err = view.Put(ctx, &logical.StorageEntry{
+		Key:   entityID,
+		Value: val,
+	})
+	return err
 }
 
 func (c *Core) fetchTOTPKey(ctx context.Context, methodID, entityID string) (string, error) {
-	entry, err := c.barrier.Get(ctx, fmt.Sprintf("%s%s/%s", mfaTOTPKeysPrefix, methodID, entityID))
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	view := NamespaceView(c.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(methodID + "/")
+	entry, err := view.Get(ctx, entityID)
 	if err != nil {
 		return "", err
 	}
@@ -1100,7 +1111,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	// Read the entity after acquiring the lock
 	entity, err := b.Core.identityStore.MemDBEntityByID(entityID, true)
 	if err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("failed to find entity with ID %q: {{err}}", entityID), err)
+		return nil, fmt.Errorf("failed to find entity with ID %q: %w", entityID, err)
 	}
 
 	if entity == nil {
@@ -1128,7 +1139,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 		Rand:        b.Core.secureRandomReader,
 	})
 	if err != nil {
-		return nil, errwrap.Wrapf(fmt.Sprintf("failed to generate TOTP key for method name %q: {{err}}", mConfig.Name), err)
+		return nil, fmt.Errorf("failed to generate TOTP key for method name %q: %w", mConfig.Name, err)
 	}
 	if keyObject == nil {
 		return nil, fmt.Errorf("failed to generate TOTP key for method name %q", mConfig.Name)
@@ -1140,7 +1151,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	if totpConfig.QRSize != 0 {
 		barcode, err := keyObject.Image(int(totpConfig.QRSize), int(totpConfig.QRSize))
 		if err != nil {
-			return nil, errwrap.Wrapf("failed to generate QR code image: {{err}}", err)
+			return nil, fmt.Errorf("failed to generate QR code image: %w", err)
 		}
 
 		var buff bytes.Buffer
@@ -1149,7 +1160,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	}
 
 	if err := b.Core.PersistTOTPKey(ctx, mConfig.ID, entity.ID, keyObject.Secret()); err != nil {
-		return nil, errwrap.Wrapf("failed to persist totp key: {{err}}", err)
+		return nil, fmt.Errorf("failed to persist totp key: %w", err)
 	}
 
 	entity.MFASecrets[mConfig.ID] = &mfa.Secret{
@@ -1169,7 +1180,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 
 	err = b.Core.identityStore.upsertEntity(ctx, entity, nil, true)
 	if err != nil {
-		return nil, errwrap.Wrapf("failed to persist MFA secret in entity: {{err}}", err)
+		return nil, fmt.Errorf("failed to persist MFA secret in entity: %w", err)
 	}
 
 	return &logical.Response{
@@ -2688,14 +2699,13 @@ func (b *LoginMFABackend) deleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 		return nil
 	}
 
-	entryIndex := mfaLoginEnforcementPrefix + eConfig.ID
 	ns, err := b.namespacer.NamespaceByID(ctx, eConfig.NamespaceID)
 	if err != nil {
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
-	err = barrierView.Delete(ctx, entryIndex)
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+	err = barrierView.Delete(ctx, eConfig.ID)
 	if err != nil {
 		return err
 	}
@@ -2738,7 +2748,7 @@ func (b *LoginMFABackend) MemDBDeleteMFALoginEnforcementConfigByNameAndNamespace
 	return nil
 }
 
-func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configID, methodType, tableName, prefix string) error {
+func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configID, methodType, tableName string) error {
 	var err error
 
 	if configID == "" {
@@ -2761,8 +2771,13 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 	}
 
 	// Delete the config from storage
-	entryIndex := prefix + configID
-	err = b.Core.systemBarrierView.Delete(ctx, entryIndex)
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	err = barrierView.Delete(ctx, configID)
 	if err != nil {
 		return err
 	}
@@ -2789,11 +2804,6 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 		return err
 	}
 
-	ns, err := namespace.FromContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	// this logic assumes that the config namespace and the current
 	// namespace should be the same. Note an ancestor of mfaNs is not allowed
 	// to delete methodID
@@ -2803,7 +2813,8 @@ func (b *LoginMFABackend) deleteMFAConfigByMethodID(ctx context.Context, configI
 
 	if mConfig.Type == "totp" && mConfig.ID != "" {
 		// This is best effort; if they end up hanging around it's okay, they're encrypted anyways
-		if err := logical.ClearView(ctx, NewBarrierView(b.Core.barrier, fmt.Sprintf("%s%s", mfaTOTPKeysPrefix, mConfig.ID))); err != nil {
+		viewToClear := NamespaceView(b.Core.barrier, ns).SubView(mfaTOTPKeysPrefix).SubView(mConfig.ID + "/")
+		if err := logical.ClearView(ctx, viewToClear); err != nil {
 			b.mfaLogger.Warn("unable to clear TOTP keys", "method", mConfig.Name, "error", err)
 		}
 	}
@@ -2857,7 +2868,7 @@ func (b *LoginMFABackend) MemDBDeleteMFAConfigByIDInTxn(txn *memdb.Txn, configID
 
 	err = txn.Delete(b.methodTable, mConfig)
 	if err != nil {
-		return errwrap.Wrapf("failed to delete MFA config from memdb: {{err}}", err)
+		return fmt.Errorf("failed to delete MFA config from memdb: %w", err)
 	}
 
 	return nil
@@ -2869,22 +2880,14 @@ func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Con
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
-	if err != nil {
-		return err
-	}
-	return b.putMFAConfigCommon(ctx, mConfig, loginMFAConfigPrefix, mConfig.ID, barrierView)
-}
-
-func (b *MFABackend) putMFAConfigCommon(ctx context.Context, mConfig *mfa.Config, prefix, suffix string, barrierView BarrierView) error {
-	entryIndex := prefix + suffix
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
 	marshaledEntry, err := proto.Marshal(mConfig)
 	if err != nil {
 		return err
 	}
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
-		Key:   entryIndex,
+		Key:   mConfig.ID,
 		Value: marshaledEntry,
 	})
 }
@@ -2928,7 +2931,6 @@ func (b *LoginMFABackend) getMFALoginEnforcementConfig(ctx context.Context, path
 }
 
 func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eConfig *mfa.MFAEnforcementConfig) error {
-	entryIndex := mfaLoginEnforcementPrefix + eConfig.ID
 	marshaledEntry, err := proto.Marshal(eConfig)
 	if err != nil {
 		return err
@@ -2939,10 +2941,10 @@ func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eCon
 		return err
 	}
 
-	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
+	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
-		Key:   entryIndex,
+		Key:   eConfig.ID,
 		Value: marshaledEntry,
 	})
 }

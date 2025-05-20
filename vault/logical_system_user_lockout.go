@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type LockedUsersResponse struct {
@@ -141,7 +142,7 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 // getMountAccessorsLockedUsers returns the locked users for all the mountAccessors
 // of locked users for a namespace. Result is sorted in the desc order of locked users.
-func (b *SystemBackend) getMountAccessorsLockedUsers(ctx context.Context, view BarrierView, mountAccessors ...string) (int, []*ResponseMountAccessors, error) {
+func (b *SystemBackend) getMountAccessorsLockedUsers(ctx context.Context, view logical.Storage, mountAccessors ...string) (int, []*ResponseMountAccessors, error) {
 	byMountAccessorsResponse := make([]*ResponseMountAccessors, 0)
 	totalCountForMountAccessors := 0
 

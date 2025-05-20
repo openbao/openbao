@@ -45,7 +45,8 @@ import (
 const (
 	replTimeout                           = 1 * time.Second
 	EnvVaultDisableLocalAuthMountEntities = "BAO_DISABLE_LOCAL_AUTH_MOUNT_ENTITIES"
-	// base path to store locked users
+
+	// coreLockedUsersPath is a base path to store locked users
 	coreLockedUsersPath = "core/login/lockedUsers/"
 )
 
@@ -1816,7 +1817,7 @@ func (c *Core) isUserLockoutDisabled(mountEntry *MountEntry) (bool, error) {
 	return false, nil
 }
 
-// isUserLocked determines if the login user is locked
+// isUserLocked determines if the login request user is locked
 func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *logical.Request) (locked bool, err error) {
 	// get userFailedLoginInfo map key for login user
 	loginUserInfoKey, err := c.getLoginUserInfoKey(ctx, mountEntry, req)
@@ -1834,13 +1835,15 @@ func (c *Core) isUserLocked(ctx context.Context, mountEntry *MountEntry, req *lo
 		// entry not found in userFailedLoginInfo map, check storage to re-verify
 		ns, err := namespace.FromContext(ctx)
 		if err != nil {
-			return false, fmt.Errorf("could not parse namespace from http context: %w", err)
+			return false, fmt.Errorf("could not retrieve namespace from context: %w", err)
 		}
-		storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath+"%s/%s/%s", ns.ID, loginUserInfoKey.mountAccessor, loginUserInfoKey.aliasName)
-		existingEntry, err := c.barrier.Get(ctx, storageUserLockoutPath)
+
+		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath).SubView(loginUserInfoKey.mountAccessor + "/")
+		existingEntry, err := view.Get(ctx, loginUserInfoKey.aliasName)
 		if err != nil {
 			return false, err
 		}
+
 		var lastLoginTime int
 		if existingEntry == nil {
 			// no storage entry found, user is not locked
@@ -2078,49 +2081,48 @@ func (c *Core) LocalGetUserFailedLoginInfo(ctx context.Context, userKey FailedLo
 // LocalUpdateUserFailedLoginInfo updates the failed login information for a user based on alias name and mountAccessor
 func (c *Core) LocalUpdateUserFailedLoginInfo(ctx context.Context, userKey FailedLoginUser, failedLoginInfo *FailedLoginInfo, deleteEntry bool) error {
 	c.userFailedLoginInfoLock.Lock()
-	switch deleteEntry {
-	case false:
-		// update entry in the map
-		c.userFailedLoginInfo[userKey] = failedLoginInfo
+	defer c.userFailedLoginInfoLock.Unlock()
 
-		// get the user lockout configuration for the user
-		mountEntry := c.router.MatchingMountByAccessor(userKey.mountAccessor)
-		if mountEntry == nil {
-			mountEntry = &MountEntry{}
-			mountEntry.NamespaceID = namespace.RootNamespaceID
-		}
-		userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
-
-		// if failed login count has reached threshold, create a storage entry as the user got locked
-		if failedLoginInfo.count >= uint(userLockoutConfiguration.LockoutThreshold) {
-			// user locked
-			storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath+"%s/%s/%s", mountEntry.NamespaceID, userKey.mountAccessor, userKey.aliasName)
-
-			compressedBytes, err := jsonutil.EncodeJSONAndCompress(failedLoginInfo.lastFailedLoginTime, nil)
-			if err != nil {
-				c.logger.Error("failed to encode or compress failed login user entry", "error", err)
-				return err
-			}
-
-			// Create an entry
-			entry := &logical.StorageEntry{
-				Key:   storageUserLockoutPath,
-				Value: compressedBytes,
-			}
-
-			// Write to the physical backend
-			if err := c.barrier.Put(ctx, entry); err != nil {
-				c.logger.Error("failed to persist failed login user entry", "error", err)
-				return err
-			}
-
-		}
-
-	default:
+	if deleteEntry {
 		// delete the entry from the map, if no key exists it is no-op
 		delete(c.userFailedLoginInfo, userKey)
+		return nil
 	}
-	c.userFailedLoginInfoLock.Unlock()
+
+	// update entry in the map
+	c.userFailedLoginInfo[userKey] = failedLoginInfo
+
+	// get the user lockout configuration for the user
+	mountEntry := c.router.MatchingMountByAccessor(userKey.mountAccessor)
+	if mountEntry == nil {
+		mountEntry = &MountEntry{namespace: namespace.RootNamespace}
+	}
+	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
+
+	// if failed login count has reached threshold, create a storage entry as the user got locked
+	if failedLoginInfo.count >= uint(userLockoutConfiguration.LockoutThreshold) {
+		// user locked
+		compressedBytes, err := jsonutil.EncodeJSONAndCompress(failedLoginInfo.lastFailedLoginTime, nil)
+		if err != nil {
+			c.logger.Error("failed to encode or compress failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			return err
+		}
+
+		// Create an entry
+		entry := &logical.StorageEntry{
+			Key:   userKey.aliasName,
+			Value: compressedBytes,
+		}
+
+		// Write to the physical backend
+		view := NamespaceView(c.barrier, mountEntry.namespace).SubView(userKey.mountAccessor + "/")
+		if err := view.Put(ctx, entry); err != nil {
+			c.logger.Error("failed to persist failed login user entry", "namespace", mountEntry.namespace.Path, "error", err)
+			return err
+		}
+
+	}
+
 	return nil
 }
 

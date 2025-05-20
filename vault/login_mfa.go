@@ -589,13 +589,10 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 // loadMFAMethodConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
-	barrierView, err := b.Core.barrierViewForNamespace(ns.ID)
-	if err != nil {
-		return fmt.Errorf("error getting namespace view, namespaceid %s, error %w", ns.ID, err)
-	}
+	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
 	existing, err := barrierView.List(ctx, loginMFAConfigPrefix)
 	if err != nil {
-		return fmt.Errorf("failed to list MFA configurations for namespace path %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
+		return fmt.Errorf("failed to list MFA configurations for namespace %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
 	}
 	b.mfaLogger.Trace("methods collected", "num_existing", len(existing))
 
@@ -628,10 +625,7 @@ func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespac
 // loadMFAEnforcementConfigs loads MFA method configs for login MFA
 func (b *LoginMFABackend) loadMFAEnforcementConfigs(ctx context.Context, ns *namespace.Namespace) ([]*mfa.MFAEnforcementConfig, error) {
 	b.mfaLogger.Trace("loading login MFA enforcement configurations")
-	barrierView, err := b.Core.barrierViewForNamespace(ns.ID)
-	if err != nil {
-		return nil, fmt.Errorf("error getting namespace view, namespaceid %s, error %w", ns.ID, err)
-	}
+	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
 	existing, err := barrierView.List(ctx, mfaLoginEnforcementPrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list MFA enforcement configurations for namespace %s with prefix %s: %w", ns.Path, mfaLoginEnforcementPrefix, err)
@@ -2695,11 +2689,12 @@ func (b *LoginMFABackend) deleteMFALoginEnforcementConfigByNameAndNamespace(ctx 
 	}
 
 	entryIndex := mfaLoginEnforcementPrefix + eConfig.ID
-	barrierView, err := b.Core.barrierViewForNamespace(eConfig.NamespaceID)
+	ns, err := b.namespacer.NamespaceByID(ctx, eConfig.NamespaceID)
 	if err != nil {
 		return err
 	}
 
+	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
 	err = barrierView.Delete(ctx, entryIndex)
 	if err != nil {
 		return err
@@ -2869,7 +2864,12 @@ func (b *LoginMFABackend) MemDBDeleteMFAConfigByIDInTxn(txn *memdb.Txn, configID
 }
 
 func (b *LoginMFABackend) putMFAConfigByID(ctx context.Context, mConfig *mfa.Config) error {
-	barrierView, err := b.Core.barrierViewForNamespace(mConfig.NamespaceID)
+	ns, err := b.namespacer.NamespaceByID(ctx, mConfig.NamespaceID)
+	if err != nil {
+		return err
+	}
+
+	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
 	if err != nil {
 		return err
 	}
@@ -2934,10 +2934,12 @@ func (b *LoginMFABackend) putMFALoginEnforcementConfig(ctx context.Context, eCon
 		return err
 	}
 
-	barrierView, err := b.Core.barrierViewForNamespace(eConfig.NamespaceID)
+	ns, err := b.namespacer.NamespaceByID(ctx, eConfig.NamespaceID)
 	if err != nil {
 		return err
 	}
+
+	barrierView := NamespaceView(b.Core.systemBarrierView, ns)
 
 	return barrierView.Put(ctx, &logical.StorageEntry{
 		Key:   entryIndex,

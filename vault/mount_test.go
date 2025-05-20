@@ -1459,16 +1459,18 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err := c.mount(namespace.RootContext(nil), me)
 	require.NoError(t, err)
 
-	ns, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	ns, new, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
 	// In openbao#1198, the first creation erred but left a ghost namespace
 	// object lying around. This meant that list and subsequent create
 	// namespace operations returned this ghost structure and did not error
 	// properly. Retrying the create ensures no ghost object exists.
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "foo/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
 	// Creating a deeply nested mount should also cause failures.
@@ -1481,18 +1483,23 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(namespace.RootContext(nil), me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "fud/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
 	// Creating a new namespace should succeed.
-	nsBar, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
+	nsBar, new, err := c.namespaceStore.ModifyNamespaceByPath(namespace.RootContext(nil), "bar/", nil)
 	require.NoError(t, err)
+	require.True(t, new)
 	require.NotNil(t, nsBar)
+	err = c.namespaceStore.initializeNamespace(namespace.RootContext(nil), nsBar)
+	require.NoError(t, err)
 
 	barCtx := namespace.ContextWithNamespace(context.Background(), nsBar)
 
@@ -1506,12 +1513,14 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "foo/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
 	me = &MountEntry{
@@ -1523,12 +1532,14 @@ func TestNamespaceMount_Exclusion(t *testing.T) {
 	err = c.mount(barCtx, me)
 	require.NoError(t, err)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
-	ns, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
+	ns, new, err = c.namespaceStore.ModifyNamespaceByPath(barCtx, "fud/", nil)
 	require.Error(t, err)
+	require.False(t, new)
 	require.Nil(t, ns)
 
 	// Creating a mount at the root level that conflicts with bar/ should fail.

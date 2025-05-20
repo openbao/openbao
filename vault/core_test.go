@@ -670,14 +670,18 @@ func TestCore_SealUnseal(t *testing.T) {
 	}
 }
 
-// TestCore_RunLockedUserUpdatesForStaleEntry tests that stale locked user entries
-// get deleted upon unseal
+// TestCore_RunLockedUserUpdatesForStaleEntry tests that
+// stale locked user entries get deleted upon unseal.
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
-	storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath + "ns1/mountAccessor1/aliasName1")
 
+	ctx := namespace.RootContext(context.Background())
+	testNamespace := &namespace.Namespace{Path: "test"}
+	TestCoreCreateNamespaces(t, core, testNamespace)
+
+	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
-	defer core.barrier.Delete(context.Background(), storageUserLockoutPath)
+	defer barrier.Delete(ctx, "aliasName1")
 
 	// create invalid entry in storage to test stale entries get deleted on unseal
 	// last failed login time for this path is 1970-01-01 00:00:00 +0000 UTC
@@ -690,12 +694,12 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 
 	// Create an entry
 	entry := &logical.StorageEntry{
-		Key:   storageUserLockoutPath,
+		Key:   "aliasName1",
 		Value: compressedBytes,
 	}
 
 	// Write to the physical backend
-	err = core.barrier.Put(context.Background(), entry)
+	err = barrier.Put(ctx, entry)
 	if err != nil {
 		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
 	}
@@ -715,7 +719,7 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	}
 
 	// locked user entry must be deleted upon unseal as it is stale
-	lastFailedLoginRaw, err := core.barrier.Get(context.Background(), storageUserLockoutPath)
+	lastFailedLoginRaw, err := barrier.Get(ctx, "aliasName1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,15 +728,19 @@ func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
 	}
 }
 
-// TestCore_RunLockedUserUpdatesForValidEntry tests that valid locked user entries
-// do not get removed on unseal
-// Also tests that the userFailedLoginInfo map gets updated with correct information
+// TestCore_RunLockedUserUpdatesForValidEntry tests that
+// valid locked user entries do not get removed on unseal.
+// Also verifies userFailedLoginInfo map getting updated.
 func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	core, keys, root := TestCoreUnsealed(t)
-	storageUserLockoutPath := fmt.Sprintf(coreLockedUsersPath + "ns1/mountAccessor1/aliasName1")
 
+	ctx := namespace.RootContext(context.Background())
+	testNamespace := &namespace.Namespace{Path: "test"}
+	TestCoreCreateNamespaces(t, core, testNamespace)
+
+	barrier := NamespaceView(core.barrier, testNamespace).SubView(coreLockedUsersPath).SubView("mountAccessor1/")
 	// cleanup
-	defer core.barrier.Delete(context.Background(), storageUserLockoutPath)
+	defer barrier.Delete(ctx, "aliasName1")
 
 	// create valid storage entry for locked user
 	lastFailedLoginTime := int(time.Now().Unix())
@@ -744,12 +752,12 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 
 	// Create an entry
 	entry := &logical.StorageEntry{
-		Key:   storageUserLockoutPath,
+		Key:   "aliasName1",
 		Value: compressedBytes,
 	}
 
 	// Write to the physical backend
-	err = core.barrier.Put(context.Background(), entry)
+	err = barrier.Put(ctx, entry)
 	if err != nil {
 		t.Fatalf("failed to write invalid locked user entry, err: %v", err)
 	}
@@ -769,7 +777,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 	}
 
 	// locked user entry must exist as it is still valid
-	existingEntry, err := core.barrier.Get(context.Background(), storageUserLockoutPath)
+	existingEntry, err := barrier.Get(ctx, "aliasName1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,7 +791,7 @@ func TestCore_RunLockedUserUpdatesForValidEntry(t *testing.T) {
 		mountAccessor: "mountAccessor1",
 	}
 
-	failedLoginInfoFromMap := core.LocalGetUserFailedLoginInfo(context.Background(), loginUserInfoKey)
+	failedLoginInfoFromMap := core.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 	if failedLoginInfoFromMap == nil {
 		t.Fatal("err: entry must exist for locked user in userFailedLoginInfo map")
 	}
@@ -811,13 +819,18 @@ func TestCore_ShutdownDone(t *testing.T) {
 	c := TestCoreWithSealAndUINoCleanup(t, &CoreConfig{})
 	testCoreUnsealed(t, c)
 	doneCh := c.ShutdownDone()
+	errs := make(chan error, 1)
 	go func() {
 		time.Sleep(100 * time.Millisecond)
 		err := c.Shutdown()
-		if err != nil {
-			t.Fatal(err)
-		}
+		errs <- err
 	}()
+
+	// wait for it
+	err := <-errs
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case <-doneCh:

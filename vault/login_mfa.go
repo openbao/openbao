@@ -511,6 +511,7 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 	}
 }
 
+// handleLoginMFAAdminDestroyUpdate does not remove the totp secret key from the storage
 func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	var entity *identity.Entity
 	var err error
@@ -590,7 +591,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 func (b *LoginMFABackend) loadMFAMethodConfigs(ctx context.Context, ns *namespace.Namespace) error {
 	b.mfaLogger.Trace("loading login MFA configurations")
 	barrierView := NamespaceView(b.Core.barrier, ns).SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
-	existing, err := barrierView.List(ctx, loginMFAConfigPrefix)
+	existing, err := barrierView.List(ctx, "")
 	if err != nil {
 		return fmt.Errorf("failed to list MFA configurations for namespace %s and prefix %s: %w", ns.Path, loginMFAConfigPrefix, err)
 	}

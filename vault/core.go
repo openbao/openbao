@@ -3361,9 +3361,7 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 		// else check if the userFailedLoginInfo map has correct failed login information
 		// if incorrect, update the entry in userFailedLoginInfo map
 		for _, mountAccessorPath := range mountAccessors {
-			// lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, mountAccessor, view.Prefix()+mountAccessorPath)
-			view = view.SubView(mountAccessorPath)
-			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view, mountAccessorPath)
+			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath)
 			if err != nil {
 				return err
 			}

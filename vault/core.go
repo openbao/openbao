@@ -3347,26 +3347,11 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 
 	totalLockedUsersCount := 0
 	for _, ns := range nsList {
-
-		// get the list of mount accessors of locked users for each namespace
-		view := NamespaceView(c.barrier, ns).SubView(coreLockedUsersPath)
-		mountAccessors, err := view.List(ctx, "")
+		nsLockedUsers, err := c.runLockedUserEntryUpdatesForNamespace(ctx, ns)
 		if err != nil {
 			return err
 		}
-
-		// update the entries for locked users for each mount accessor
-		// if storage entry is stale i.e; the lockout duration has passed
-		// remove this entry from storage and userFailedLoginInfo map
-		// else check if the userFailedLoginInfo map has correct failed login information
-		// if incorrect, update the entry in userFailedLoginInfo map
-		for _, mountAccessorPath := range mountAccessors {
-			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath)
-			if err != nil {
-				return err
-			}
-			totalLockedUsersCount = totalLockedUsersCount + lockedAliasesCount
-		}
+		totalLockedUsersCount += nsLockedUsers
 	}
 
 	// emit locked user count metrics
@@ -3374,10 +3359,45 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	return nil
 }
 
-// runLockedUserEntryUpdatesForMountAccessor updates the storage entry for each locked user (alias name)
-// if the entry is stale, it removes it from storage and userFailedLoginInfo map if present
-// if the entry is not stale, it updates the userFailedLoginInfo map with correct values for entry if incorrect
-func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, view logical.Storage, mountAccessor string) (int, error) {
+// runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
+// for a single namespace if the specified namespace was deleted, all login entries are also deleted.
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace) (int, error) {
+	// get the list of mount accessors of locked users of a namespace
+	view := NamespaceView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	mountAccessors, err := view.List(ctx, "")
+	if err != nil {
+		return 0, err
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, namespace.UUID)
+	if err != nil {
+		return 0, err
+	}
+
+	namespaceLockedUsers := 0
+	// update the entries for locked users for each mount accessor
+	// if storage entry is stale i.e; the lockout duration has
+	// passed or namespace was deleted then remove this entry
+	// from storage and userFailedLoginInfo map else check if
+	// the userFailedLoginInfo map has correct failed login information
+	// if incorrect, update the entry in userFailedLoginInfo map
+	for _, mountAccessorPath := range mountAccessors {
+		lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath, ns == nil)
+		if err != nil {
+			return namespaceLockedUsers, err
+		}
+		namespaceLockedUsers += lockedAliasesCount
+	}
+
+	return namespaceLockedUsers, nil
+}
+
+// runLockedUserEntryUpdatesForMountAccessor updates the storage entry
+// for each locked user (alias name). Removes stale entries or entries
+// belonging to deleted namespace from storage and userFailedLoginInfo map.
+// For valid entries userFailedLoginInfo map gets updated with correct
+// values for entry if they were incorrect before.
+func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, view logical.Storage, mountAccessor string, forceDelete bool) (int, error) {
 	// get mount entry for mountAccessor
 	mountAccessor = strings.TrimSuffix(mountAccessor, "/")
 	mountEntry := c.router.MatchingMountByAccessor(mountAccessor)
@@ -3424,7 +3444,8 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, vi
 		failedLoginInfoFromMap := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 
 		// check if the storage entry for locked user is stale
-		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) {
+		// or force delete if the namespace is being deleted
+		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) || forceDelete {
 			// stale entry, remove from storage
 			// leaving this as it is as this happens on the active node
 			// also handles case where namespace is deleted

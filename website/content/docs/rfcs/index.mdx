@@ -44,3 +44,7 @@ Steering Committee.
    into OpenBao.
  - [Using CEL Roles For JWT/OIDC Auth](/docs/rfcs/cel-jwt), adds support for CEL roles in JWT Auth
    Landed in [769](https://github.com/openbao/openbao/pull/769)
+ - [Declarative Self-Initialization](/docs/rfcs/self-init), to allow operators
+   to define initial mounts, auth, policies, and audit logs from a static
+   configuration applied once on early startup, preventing the need to call
+   manual `sys/init` except with manual unseal mechanisms.

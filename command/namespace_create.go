@@ -117,7 +117,10 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 
 	data := map[string]interface{}{
 		"custom_metadata": c.flagCustomMetadata,
-		"seals":           seals,
+	}
+
+	if seals != nil {
+		data["seals"] = seals
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)

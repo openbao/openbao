@@ -5838,6 +5838,12 @@ This path responds to the following HTTP methods.
 
 	DELETE /<path>
 		Delete a namespace.
+
+	POST /<name>/seal
+		Seal a namespace.
+
+	POST /<name/unseal
+		Unseal a namespace.
 		`,
 	},
 	"namespaces-lock": {

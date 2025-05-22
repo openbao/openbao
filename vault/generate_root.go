@@ -154,10 +154,7 @@ func (c *Core) GenerateRootInit(otp, pgpKey string, strategy GenerateRootStrateg
 	if c.Sealed() && !c.recoveryMode {
 		return consts.ErrSealed
 	}
-	barrierSealed, err := c.barrier.Sealed()
-	if err != nil {
-		return errors.New("unable to check barrier seal status")
-	}
+	barrierSealed := c.barrier.Sealed()
 	if !barrierSealed && c.recoveryMode {
 		return errors.New("attempt to generate recovery operation token when already unsealed")
 	}
@@ -240,10 +237,7 @@ func (c *Core) GenerateRootUpdate(ctx context.Context, key []byte, nonce string,
 		return nil, consts.ErrSealed
 	}
 
-	barrierSealed, err := c.barrier.Sealed()
-	if err != nil {
-		return nil, errors.New("unable to check barrier seal status")
-	}
+	barrierSealed := c.barrier.Sealed()
 	if !barrierSealed && c.recoveryMode {
 		return nil, errors.New("attempt to generate recovery operation token when already unsealed")
 	}

@@ -3011,7 +3011,7 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
 	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 		// Get policies list
-		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL)
+		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL, true)
 		if err != nil {
 			return nil, err
 		}

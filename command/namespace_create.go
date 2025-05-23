@@ -5,6 +5,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -20,6 +21,7 @@ type NamespaceCreateCommand struct {
 	*BaseCommand
 
 	flagCustomMetadata map[string]string
+	flagSealConfigPath string
 }
 
 func (c *NamespaceCreateCommand) Synopsis() string {
@@ -59,6 +61,13 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f.StringVar(&StringVar{
+		Name:       "seal",
+		Target:     &c.flagSealConfigPath,
+		Completion: complete.PredictFilesSet([]string{"*.hcl", "*.json"}),
+		Usage:      "Path to a HCL file with exactly one seal stanza.",
+	})
+
 	return set
 }
 
@@ -96,8 +105,18 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
+	sealConfig, err := c.readSealConfig()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while parsing seal configs: %s", err))
+		return 2
+	}
+
 	data := map[string]interface{}{
 		"custom_metadata": c.flagCustomMetadata,
+	}
+
+	if sealConfig != nil {
+		data["seal"] = string(sealConfig)
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
@@ -112,4 +131,13 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	}
 
 	return OutputSecret(c.UI, secret)
+}
+
+func (c *NamespaceCreateCommand) readSealConfig() ([]byte, error) {
+	path := c.flagSealConfigPath
+	if path == "" {
+		return nil, nil
+	}
+
+	return os.ReadFile(path)
 }

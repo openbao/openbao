@@ -12,9 +12,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-viper/mapstructure/v2"
+	"github.com/hashicorp/hcl"
+	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/hclutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
@@ -188,7 +190,7 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 					Description: "User provided key-value pairs.",
 				},
 				"seal": {
-					Type:        framework.TypeMap,
+					Type:        framework.TypeString,
 					Description: "User provided seal config.",
 				},
 			},
@@ -347,11 +349,16 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		sealRaw, ok := data.GetOk("seal")
 		var sealConfig *SealConfig
 		if ok {
-			sealConfig = &SealConfig{}
-			if err := mapstructure.Decode(sealRaw, &sealConfig); err != nil {
-				return logical.ErrorResponse("invalid seal config data"), logical.ErrInvalidRequest
+			var err error
+			sealString, ok := sealRaw.(string)
+			if !ok {
+				err := errors.New("seal config must be sent as HCL or JSON string")
+				return logical.ErrorResponse("invalid seal config: %v", err), err
 			}
-
+			sealConfig, err = parseNamespaceSealConfig(sealString)
+			if err != nil {
+				return logical.ErrorResponse("invalid seal config: %v", err), err
+			}
 			if err := sealConfig.Validate(); err != nil {
 				return logical.ErrorResponse("invalid seal config: %v", err), err
 			}
@@ -377,6 +384,36 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 
 		return resp, nil
 	}
+}
+
+func parseNamespaceSealConfig(raw string) (*SealConfig, error) {
+	root, err := hclutil.ParseConfig([]byte(raw))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse seal config: %w", err)
+	}
+
+	// Top-level item should be the object list
+	list, ok := root.Node.(*ast.ObjectList)
+	if !ok {
+		return nil, errors.New("failed to parse seal config: does not contain a root object")
+	}
+
+	if len(list.Items) != 1 {
+		return nil, errors.New("seal config must contain exactly one seal stanza")
+	}
+
+	// Check for invalid top-level keys
+	valid := []string{"seal"}
+	if err := hclutil.CheckHCLKeys(list, valid); err != nil {
+		return nil, fmt.Errorf("failed to parse seal config: %w", err)
+	}
+
+	var sealConfig SealConfig
+	if err := hcl.DecodeObject(&sealConfig, list.Items[0]); err != nil {
+		return nil, fmt.Errorf("failed to parse seal config: %w", err)
+	}
+
+	return &sealConfig, nil
 }
 
 // customMetadataPatchPreprocessor is passed to framework.HandlePatchOperation within the handleNamespacesPatch handler.

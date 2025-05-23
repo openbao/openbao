@@ -346,22 +346,10 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		var sealConfigs []*SealConfig
 		seals, ok := data.GetOk("seals")
 		if ok {
-			sealsArray, ok := seals.([]interface{})
-			if ok {
-				for _, seal := range sealsArray {
-					sealMap := seal.(map[string]interface{})
-					byteSeal, err := json.Marshal(sealMap)
-					if err != nil {
-						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
-					}
-
-					var sealConfig SealConfig
-					err = json.Unmarshal(byteSeal, &sealConfig)
-					if err != nil {
-						return logical.ErrorResponse("invalid seal configuration provided"), logical.ErrInvalidRequest
-					}
-					sealConfigs = append(sealConfigs, &sealConfig)
-				}
+			var err error
+			sealConfigs, err = b.Core.sealManager.ExtractSealConfigs(seals)
+			if err != nil {
+				return logical.ErrorResponse("error while extracting seal configs"), err
 			}
 		}
 

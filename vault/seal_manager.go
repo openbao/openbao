@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -233,6 +234,35 @@ func (sm *SealManager) InitializeBarrier(ctx context.Context, ns *namespace.Name
 	}
 
 	return nsSealKeyShares, nil
+}
+
+func (sm *SealManager) ExtractSealConfigs(seals interface{}) ([]*SealConfig, error) {
+	sealsArray, ok := seals.([]interface{})
+	var sealConfigs []*SealConfig
+	if !ok {
+		return nil, fmt.Errorf("seals is not an array")
+	}
+
+	for _, seal := range sealsArray {
+		sealMap, ok := seal.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("seal is not a map")
+		}
+
+		byteSeal, err := json.Marshal(sealMap)
+		if err != nil {
+			return nil, err
+		}
+
+		var sealConfig SealConfig
+		err = json.Unmarshal(byteSeal, &sealConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		sealConfigs = append(sealConfigs, &sealConfig)
+	}
+	return sealConfigs, nil
 }
 
 type StorageAccess interface {

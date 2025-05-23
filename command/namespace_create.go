@@ -4,7 +4,11 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/cli"
@@ -19,7 +23,8 @@ var (
 type NamespaceCreateCommand struct {
 	*BaseCommand
 
-	flagCustomMetadata map[string]string
+	flagCustomMetadata  map[string]string
+	flagSealsConfigPath string
 }
 
 func (c *NamespaceCreateCommand) Synopsis() string {
@@ -59,6 +64,14 @@ func (c *NamespaceCreateCommand) Flags() *FlagSets {
 			"This can be specified multiple times to add multiple pieces of metadata.",
 	})
 
+	f.StringVar(&StringVar{
+		Name:       "seals",
+		Target:     &c.flagSealsConfigPath,
+		Completion: complete.PredictFiles("*.json"),
+		Usage: "Path to a JSON file with at least one or several SealConfigs." +
+			"MUST be an JSON array.",
+	})
+
 	return set
 }
 
@@ -96,8 +109,18 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return 2
 	}
 
+	seals, err := c.parseSeals()
+	if err != nil {
+		c.UI.Error(fmt.Sprintf("Error while parsing seal configs: %s", err))
+		return 2
+	}
+
 	data := map[string]interface{}{
 		"custom_metadata": c.flagCustomMetadata,
+	}
+
+	if seals != nil {
+		data["seals"] = seals
 	}
 
 	secret, err := client.Logical().Write("sys/namespaces/"+namespacePath, data)
@@ -112,4 +135,31 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 	}
 
 	return OutputSecret(c.UI, secret)
+}
+
+func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) {
+	path := c.flagSealsConfigPath
+	var rawSeals []map[string]interface{}
+
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Open(absolutePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(data, &rawSeals); err != nil {
+		return nil, err
+	}
+
+	return rawSeals, nil
 }

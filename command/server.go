@@ -1115,7 +1115,7 @@ func (c *ServerCommand) Run(args []string) int {
 	info[key] = strings.Join(envVarKeys, ", ")
 	infoKeys = append(infoKeys, key)
 
-	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, infoKeys, info)
+	barrierSeal, barrierWrapper, unwrapSeal, seals, sealConfigError, err := setSeal(c, config, &infoKeys, info)
 	// Check error here
 	if err != nil {
 		c.UI.Error(err.Error())
@@ -2282,7 +2282,7 @@ func CheckStorageMigration(b physical.Backend) (*StorageMigrationStatus, error) 
 
 // setSeal return barrierSeal, barrierWrapper, unwrapSeal, and all the created seals from the configs so we can close them in Run
 // The two errors are the sealConfigError and the regular error
-func setSeal(c *ServerCommand, config *server.Config, infoKeys []string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
+func setSeal(c *ServerCommand, config *server.Config, infoKeys *[]string, info map[string]string) (vault.Seal, wrapping.Wrapper, vault.Seal, []vault.Seal, error, error) {
 	var barrierSeal vault.Seal
 	var unwrapSeal vault.Seal
 
@@ -2351,7 +2351,7 @@ func setSeal(c *ServerCommand, config *server.Config, infoKeys []string, info ma
 			barrierWrapper = wrapper
 		}
 		for _, k := range sealInfoKeys {
-			infoKeys = append(infoKeys, infoPrefix+k)
+			*infoKeys = append(*infoKeys, infoPrefix+k)
 			info[infoPrefix+k] = sealInfoMap[k]
 		}
 		createdSeals = append(createdSeals, seal)

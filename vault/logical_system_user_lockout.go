@@ -26,7 +26,7 @@ type ResponseMountAccessors struct {
 }
 
 // unlockUser deletes the entry for locked user from storage and userFailedLoginInfo map
-func unlockUser(ctx context.Context, core *Core, mountAccessor, aliasName string) error {
+func (b *SystemBackend) unlockUser(ctx context.Context, mountAccessor, aliasName string) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func unlockUser(ctx context.Context, core *Core, mountAccessor, aliasName string
 	// remove entry for locked user from storage
 	// if read only error, the error is handled by handleError in logical_system.go
 	// this will be forwarded to the active node
-	view := NamespaceView(core.barrier, ns).SubView(coreLockedUsersPath).SubView(mountAccessor + "/")
+	view := NamespaceView(b.Core.barrier, ns).SubView(coreLockedUsersPath).SubView(mountAccessor + "/")
 	if err := view.Delete(ctx, aliasName); err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func unlockUser(ctx context.Context, core *Core, mountAccessor, aliasName string
 	}
 
 	// remove entry for locked user from userFailedLoginInfo map and storage
-	if err := core.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
+	if err := b.Core.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
 		return err
 	}
 

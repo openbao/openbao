@@ -339,11 +339,11 @@ func (b *AESGCMBarrier) KeyLength() (int, int) {
 
 // Sealed checks if the barrier has been unlocked yet. The Barrier
 // is not expected to be able to perform any CRUD until it is unsealed.
-func (b *AESGCMBarrier) Sealed() (bool, error) {
+func (b *AESGCMBarrier) Sealed() bool {
 	b.l.RLock()
 	sealed := b.sealed
 	b.l.RUnlock()
-	return sealed, nil
+	return sealed
 }
 
 // VerifyRoot is used to check if the given key matches the root key

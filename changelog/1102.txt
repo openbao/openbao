@@ -1,0 +1,3 @@
+```release-note:improvement
+core: Support pagination and transactions in ClearView, CollectKeys, and ScanView, improving secret disable memory consumption and request consistency.
+```

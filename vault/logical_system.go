@@ -3007,6 +3007,45 @@ func (*SystemBackend) handlePoliciesPasswordGenerate(ctx context.Context, req *l
 	return resp, nil
 }
 
+// handlePoliciesDetailedAclList handles the listing of ACL policies with detailed information
+func (b *SystemBackend) handlePoliciesDetailedAclList() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		// Get policies list
+		policies, err := b.Core.policyStore.ListPolicies(ctx, PolicyTypeACL, true)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add root policy if in root namespace
+		ns, err := namespace.FromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if ns.ID == namespace.RootNamespaceID {
+			policies = append(policies, "root")
+		}
+
+		// Get detailed information for each policy
+		policyInfos := make(map[string]interface{})
+		for _, policyName := range policies {
+			policy, err := b.Core.policyStore.GetPolicy(ctx, policyName, PolicyTypeACL)
+			if err != nil {
+				continue
+			}
+			if policy == nil {
+				continue
+			}
+
+			policyInfos[policyName] = map[string]interface{}{
+				"name":   policy.Name,
+				"policy": policy.Raw,
+			}
+		}
+
+		return logical.ListResponseWithInfo(policies, policyInfos), nil
+	}
+}
+
 // handleAuditTable handles the "audit" endpoint to provide the audit table
 func (b *SystemBackend) handleAuditTable(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	b.Core.auditLock.RLock()

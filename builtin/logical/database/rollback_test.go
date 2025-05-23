@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
 	"github.com/openbao/openbao/sdk/v2/framework"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 )
 

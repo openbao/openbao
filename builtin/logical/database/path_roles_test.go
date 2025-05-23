@@ -13,8 +13,8 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	v5 "github.com/openbao/openbao/sdk/v2/database/dbplugin/v5"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

@@ -22,7 +22,6 @@ import (
 	"github.com/openbao/openbao/api/v2"
 	"github.com/openbao/openbao/helper/builtinplugins"
 	"github.com/openbao/openbao/helper/namespace"
-	postgreshelper "github.com/openbao/openbao/helper/testhelpers/postgresql"
 	vaulthttp "github.com/openbao/openbao/http"
 	"github.com/openbao/openbao/plugins/database/postgresql"
 	v4 "github.com/openbao/openbao/sdk/v2/database/dbplugin"
@@ -31,6 +30,7 @@ import (
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/pluginutil"
+	postgreshelper "github.com/openbao/openbao/sdk/v2/helper/testhelpers/postgresql"
 	"github.com/openbao/openbao/sdk/v2/logical"
 	"github.com/openbao/openbao/vault"
 )

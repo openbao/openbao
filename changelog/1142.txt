@@ -1,0 +1,3 @@
+```release-note:improvement
+core/policies: Allow setting expiration on policies and component paths, removing policies or preventing usage of path rules after expiration.
+```

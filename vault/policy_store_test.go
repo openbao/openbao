@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/logical"
@@ -888,4 +889,33 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	rootPolicyAfterDelete, err := ps.GetPolicy(ctx, "test-nested-policy", PolicyTypeToken)
 	require.NoError(t, err)
 	assert.NotNil(t, rootPolicyAfterDelete, "root policy should still exist")
+}
+
+// TestPolicyStore_Expiration validates that expiration works as expected.
+func TestPolicyStore_Expiration(t *testing.T) {
+	t.Parallel()
+	_, ps := mockPolicyWithCore(t, false)
+
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
+
+	p, err := ParseACLPolicy(namespace.RootNamespace, `path "*" { capabilities = ["read"] }`)
+	require.NoError(t, err)
+	require.NotNil(t, p)
+
+	p.Name = "testing"
+	p.Expiration = time.Now().Add(15 * time.Second)
+
+	err = ps.SetPolicy(ctx, p)
+	require.NoError(t, err)
+
+	p1, err := ps.GetPolicy(ctx, p.Name, p.Type)
+	require.NoError(t, err)
+	require.NotNil(t, p1)
+	require.Equal(t, p, p1)
+
+	time.Sleep(time.Until(p.Expiration) + 10*time.Millisecond)
+
+	p2, err := ps.GetPolicy(ctx, p.Name, p.Type)
+	require.NoError(t, err)
+	require.Nil(t, p2)
 }

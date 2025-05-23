@@ -2725,6 +2725,14 @@ func (b *SystemBackend) handlePoliciesRead(policyType PolicyType) framework.Oper
 			},
 		}
 
+		if !policy.Expiration.IsZero() {
+			resp.Data["expiration"] = policy.Expiration
+		}
+
+		if !policy.Modified.IsZero() {
+			resp.Data["modified"] = policy.Modified
+		}
+
 		return resp, nil
 	}
 }
@@ -2767,6 +2775,20 @@ func (b *SystemBackend) handlePoliciesSet(policyType PolicyType) framework.Opera
 
 		if polBytes, err := base64.StdEncoding.DecodeString(policy.Raw); err == nil {
 			policy.Raw = string(polBytes)
+		}
+
+		expirationRaw, expirationOk := data.GetOk("expiration")
+		ttlRaw, ttlOk := data.GetOk("ttl")
+		if expirationOk && ttlOk {
+			return logical.ErrorResponse("cannot supply both 'expiration' and 'ttl' for policies"), nil
+		} else if expirationOk {
+			policy.Expiration = expirationRaw.(time.Time)
+		} else if ttlOk {
+			policy.Expiration = time.Now().Add(time.Duration(ttlRaw.(int)) * time.Second)
+		}
+
+		if !policy.Expiration.IsZero() && !time.Now().Before(policy.Expiration) {
+			return logical.ErrorResponse("refusing to update policy as expiration time has already elapsed"), nil
 		}
 
 		switch policyType {

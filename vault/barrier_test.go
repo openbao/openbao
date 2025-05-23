@@ -123,8 +123,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	require.False(t, init, "should not be initialized")
 
 	// Should start sealed
-	sealed, err := b.Sealed()
-	require.NoError(t, err)
+	sealed := b.Sealed()
 	require.True(t, sealed, "should be sealed")
 
 	// Sealing should be a no-op
@@ -169,8 +168,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	require.True(t, init, "should be initialized")
 
 	// Should still be sealed
-	sealed, err = b.Sealed()
-	require.NoError(t, err)
+	sealed = b.Sealed()
 	require.True(t, sealed, "should be sealed")
 
 	// Unseal should work
@@ -182,8 +180,7 @@ func testInitAndUnseal(t *testing.T, b SecurityBarrier) (error, *logical.Storage
 	require.NoError(t, err)
 
 	// Should no longer be sealed
-	sealed, err = b.Sealed()
-	require.NoError(t, err)
+	sealed = b.Sealed()
 	require.False(t, sealed, "should be unsealed")
 
 	// Verify the root key

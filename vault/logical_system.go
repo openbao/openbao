@@ -2150,7 +2150,7 @@ func (b *SystemBackend) handleUnlockUser(ctx context.Context, req *logical.Reque
 			logical.ErrInvalidRequest
 	}
 
-	if err := unlockUser(ctx, b.Core, mountAccessor, aliasName); err != nil {
+	if err := b.unlockUser(ctx, mountAccessor, aliasName); err != nil {
 		b.Backend.Logger().Error("unlock user failed", "mount accessor", mountAccessor, "alias identifier", aliasName, "error", err)
 		return handleError(err)
 	}

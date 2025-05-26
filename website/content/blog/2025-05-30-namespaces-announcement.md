@@ -7,27 +7,27 @@ tags: [announcement, community, collaboration]
 image: https://www.edgexfoundry.org/cmsfiles/image/company-logo-lg.png
 ---
 
-We are excited to introduce **Namespaces** to the OpenBao Secret Manager – a powerful new feature designed to bring robust multi-tenancy and fine-grained isolation to your secrets management workflows.
+We are excited to introduce **Namespaces** to the OpenBao Secret Manager – a powerful feature designed to bring robust multi-tenancy and fine-grained isolation to your secrets management workflows.
 
 ## What Are Namespaces?
 
-Namespaces in OpenBao are logical partitions within a single OpenBao instance, functioning as isolated environments where teams, organizations, or applications can operate independently. 
+Namespaces in OpenBao are logical partitions within a single OpenBao instance, functioning as isolated environments where teams, organizations, or applications can operate independently.
 
 Each namespace acts like a mini-OpenBao, with its own policies, authentication methods, secret engines, tokens, and identity groups. This architecture enables organizations to implement a true _OpenBao-as-a-Service_ model, empowering internal customers to self-manage their environments securely and efficiently.
 
 ## Why Namespaces?
 
-As organizations scale, the need for strong isolation between teams, business units or tenants becomes critical, especially when handling sensitive data.
+Strong isolation between teams, business units, or tenants becomes critical as organizations scale, especially when handling sensitive data.
 
 Namespaces enable secure multi-tenancy. Each tenant (e.g., team, organisation, or application) operates within its namespace, isolated from others. Permissions are strictly scoped, preventing users from accessing or interfering with resources outside their assigned namespace.
 
-Furthermore, namespaces enable the delegation of administration and promote self-service. Namespace admins can manage their own policies, secret engines, auth modes or even quotas, reducing the burden on cluster-level operators.
+Furthermore, namespaces enable the delegation of administration and promote self-service. Namespace admins can manage their own policies, secret engines, auth modes, or even quotas, without impacting other tenants, reducing the burden on cluster-level operators.
 
-Finally, namespaces are one of a few planned stepping stones towards OpenBaos [horizontal scalability](https://openbao.org/blog/vision-for-namespaces/) journey. OpenBao aims to allow support for large, complex deployments with many infrequently accessed mounts, without overloading cluster nodes.
+Finally, namespaces are one of a few planned stepping stones towards OpenBao's [horizontal scalability](https://openbao.org/blog/vision-for-namespaces/) journey. OpenBao aims to allow support for large deployments with many infrequently accessed mounts, without overloading cluster nodes, while keeping a simpler cluster topology.
 
 ## How to use Namespaces
 
-There are plenty of use cases or multi-tenancy scenarios that namespaces will enable. As an example, let's consider a possible namespace setup for a SaaS Company. The platform team retains a top-level namespace for shared infrastructure. On the other hand, each tenant receives a fully isolated namespace to, e.g., model a staging system.
+Namespaces will enable plenty of use cases and multi-tenancy scenarios. Let's consider a possible namespace setup for a SaaS Company. The platform team retains a top-level namespace for shared infrastructure. On the other hand, each tenant receives a fully isolated namespace to, e.g., model a staging system.
 
 <figure>
 ```mermaid 
@@ -76,16 +76,16 @@ Note how we use the `-ns` (short form for `-namespace`) flag to create a child-n
 
 ```bash
 $ bao namespace lookup -ns tenants/tenant-c prod
-Key                Value
----                -----
-custom_metadata    map[]
-id                 8QujqL
-path               tenants/tenant-c/prod/
-tainted            false
-uuid               f06d10c7-1300-6c4d-8616-c203b5fdf705
+Key                Value
+---                -----
+custom_metadata    map[]
+id                 8QujqL
+path               tenants/tenant-c/prod/
+tainted            false
+uuid               f06d10c7-1300-6c4d-8616-c203b5fdf705
 ```
 
-Furthermore, we can easily enumerate our hierarchy of namespaces by using the `scan` subcommand. Note that only those namespaces are listed for which the current user token is authorized.
+Furthermore, we can easily enumerate our hierarchy of namespaces by using the `scan` subcommand.
 
 ```bash
 $ bao namespace scan
@@ -98,7 +98,7 @@ tenants/tenant-c/prod/
 
 2. **Create Resources within Namespaces**
 
-Since the introduction of Namespaces, a lot of OpenBao commands became namespace-aware. Similar to our example before, we can add `-namespace` or in short `-ns` to the command.
+Since the introduction of Namespaces, many OpenBao commands have become namespace-aware. Similar to our example before, we can add `-namespace` or in short `-ns` to the command.
 
 For demonstration purposes, let's create a KV secrets engine and populate it with a secret.
 
@@ -136,20 +136,24 @@ foo    bar
 
 3. **Lifecycle Operations**
 
-Over time, tenants will inevitably require various changes and customizations to their namespaces. Moving the administration away from the OpenBao operators means that those changes can be performed on demand and individually by the tenant operator. Consequently, we implemented the associated (and probably expected) lifecycle features such as
+Over time, tenants will inevitably require various changes and customizations to their namespaces. Moving the administration away from the OpenBao operators means that the tenant operator can perform those changes on demand and individually. Consequently, we implemented the associated (and probably expected) lifecycle features such as:
 
 * Namespace-aware policies and quotas
 * Moving or renaming secret or auth engines across namespaces
 * Locking and unlocking of namespaces
 
-While we have a lot of plans on how to extend namespace capabilities in the future to make them even more helpful, we still maintain API compatibility with Vault Enterprise to enable a smooth migration path.
+While we have many plans on extending namespace capabilities in the future to make them even more helpful, we still maintain API compatibility with Vault Enterprise to enable a smooth migration path.
 
 ## Looking Ahead: Horizontal Scalability
 
 Namespaces will give organisations the possibility to better structure and isolate secret information. However, the introduction of namespaces is just the first step. Our vision includes supporting _lazy loading_ of namespaces and mounts, allowing OpenBao clusters to efficiently serve workloads with many infrequently accessed resources. This will enable even greater scalability and resilience, as nodes will no longer need to load the entire system state at once. 
 
-[Here](https://openbao.org/blog/vision-for-namespaces/) is another article if you want to read more about OpenBaos' scalability efforts. Sounds interesting? Join the [WG-Horizontal-Scalability](https://lists.lfedge.org/g/openbao-dev-wg-scalability) if you want to help building! 
+[Here](https://openbao.org/blog/vision-for-namespaces/) is another article that you can read more about OpenBaos' scalability efforts. Sounds interesting? Reach out to the project via [Github](https://github.com/orgs/openbao/discussions), [Matrix](https://github.com/openbao#contact), or [Mailinglist](https://lists.lfedge.org/g/openbao) if you want to support our work in the areas of namespaces or scalability.
 
 ## Get Started
 
-We are planning to release OpenBao 2.3 Beta in the upcoming days. We invite you to explore the documentation, try out the new features, and share your feedback as we continue to evolve OpenBao for secure, scalable, and self-service secrets management.
+We are planning to release OpenBao 2.3 Beta in the upcoming days. We encourage you to explore the new features and share your feedback as we continue to improve OpenBao as a secure, scalable, and self-service secrets management solution.
+
+Looking ahead, the namespaces working group is actively exploring improvements such as namespace sealing, non-hierarchical namespaces, per-namespace storage backends, and plugin isolation. These efforts aim to make namespace usage more flexible, efficient, and secure in future releases.
+
+We welcome contributions from individuals and organizations, whether helping to improve documentation, clarifying existing content, or contributing to upcoming features. Your input plays a vital role in shaping the future of OpenBao.

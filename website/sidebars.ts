@@ -532,6 +532,7 @@ const sidebars: SidebarsConfig = {
                 {
                   "UI/UX": ["rfcs/web-ui-modernization"],
                 },
+                "rfcs/namespace-sealing",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

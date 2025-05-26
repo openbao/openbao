@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,6 +59,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Type:        framework.TypeMap,
 			Required:    true,
 			Description: "User provided key-value pairs.",
+		},
+		"key_shares": {
+			Type:        framework.TypeMap,
+			Required:    false,
+			Description: "Generated key shares per seal for the namespace.",
 		},
 	}
 
@@ -303,7 +309,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 // createNamespaceDataResponse is the standard response object
 // for any operations concerning a namespace
-func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
+func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap ...map[string][]string) map[string]any {
+	var keySharesPerSeal map[string][]string
+	if len(keySharesMap) > 0 {
+		keySharesPerSeal = keySharesMap[0]
+	}
 	return map[string]any{
 		"uuid":            ns.UUID,
 		"path":            ns.Path,
@@ -311,6 +321,7 @@ func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
 		"tainted":         ns.Tainted,
 		"locked":          ns.Locked,
 		"custom_metadata": ns.CustomMetadata,
+		"key_shares":      keySharesPerSeal,
 	}
 }
 
@@ -421,6 +432,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 		if err != nil {
 			return handleError(err)
 		}
+		keySharesMap := make(map[string][]string)
 		if new {
 			// TODO(wslabosz): write all the provided configs
 			if len(sealConfigs) > 0 {
@@ -432,10 +444,12 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 				if err != nil {
 					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
 				}
-
-				// TODO Remove
-				for i, keyShare := range nsSealKeyShares {
-					fmt.Println("Key Share", i, ":", fmt.Sprintf("%x", keyShare))
+				var keyShares []string
+				for _, keyShare := range nsSealKeyShares {
+					keyShares = append(keyShares, hex.EncodeToString(keyShare))
+				}
+				if len(keyShares) > 0 {
+					keySharesMap["default"] = keyShares
 				}
 			}
 
@@ -444,7 +458,7 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
+		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
 	}
 }
 

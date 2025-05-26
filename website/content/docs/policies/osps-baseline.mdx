@@ -30,7 +30,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | [OSPS-QA-01.02](#osps-qa-01-02) | ✅     |
 | [OSPS-QA-02.01](#osps-qa-02-01) | ✅     |
 | [OSPS-QA-04.01](#osps-qa-04-01) |        |
-| [OSPS-QA-05.01](#osps-qa-05-01) |        |
+| [OSPS-QA-05.01](#osps-qa-05-01) | ✅     |
 | [OSPS-VM-02.01](#osps-vm-02-01) | ✅     |
 
 ## OSPS-AC-01.01 {#osps-ac-01-01}
@@ -106,9 +106,13 @@ Dependencies are tracked in language-specific files such as `go.mod` whenever po
 While active, the project documentation MUST contain a list of any codebases that are considered subprojects or additional repositories.
 
 ## OSPS-QA-05.01 {#osps-qa-05-01}
-While active, the version control system MUST NOT contain generated executable artifacts.
+
+> **Requirement:** *While active, the [version control system](https://baseline.openssf.org/versions/2025-02-25#version-control-system) MUST NOT contain generated executable artifacts.*
+
+Artifacts, such as executables, binaries, or similar blobs, belong in designated artifact stores, such as [GitHub Packages](https://docs.github.com/en/packages).
 
 ## OSPS-VM-02.01 {#osps-vm-02-01}
+
 > **Requirement:** *While active, the project documentation MUST contain security contacts.*
 
 Security issues can be reported via the [private mailing list](https://lists.lfedge.org/g/openbao-security), which is referenced in [`SECURITY.md`](https://github.com/openbao/.github/blob/main/SECURITY.md).

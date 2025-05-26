@@ -5,6 +5,7 @@ package logical
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -20,6 +21,9 @@ var keyList = []string{
 	"foo42",
 	"foo/a/b/c",
 	"c/d/e/f/g",
+	"bar/bar/bar",
+	"bar/bar/bar/bar",
+	"bar/bar/bar/bar/",
 }
 
 func TestScanView(t *testing.T) {
@@ -53,6 +57,45 @@ func TestScanView_CancelContext(t *testing.T) {
 	}
 	if i != 1 {
 		t.Errorf("Want i==1, got %d", i)
+	}
+}
+
+func TestScanViewPaginated(t *testing.T) {
+	s := prepKeyStorage(t)
+
+	keys := make([]string, 0)
+	err := ScanViewWithLogger(context.Background(), s, nil, func(path string) {
+		keys = append(keys, path)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if diff := deep.Equal(keys, keyList); diff != nil {
+		t.Fatal(diff)
+	}
+
+	// Validate that recursing into a folder which only has references to
+	// itself and/or files which bear the same name works.
+	v := NewStorageView(s, "bar/")
+	logger := hclog.NewNullLogger()
+	for pageSize := 1; pageSize < 10; pageSize++ {
+		keys = make([]string, 0)
+		err = ScanViewPaginated(context.Background(), v, logger, pageSize, func(_ int, _ int, path string) (bool, error) {
+			keys = append(keys, path)
+			return true, nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		trimmedExpected := make([]string, 0)
+		for _, path := range keyList[len(keyList)-3:] {
+			trimmedExpected = append(trimmedExpected, strings.TrimPrefix(path, "bar/"))
+		}
+		if diff := deep.Equal(keys, trimmedExpected); diff != nil {
+			t.Fatalf("page size: %v\ndiff: %v\n\tkeys: %v\n\texpected: %v", pageSize, diff, keys, trimmedExpected)
+		}
 	}
 }
 

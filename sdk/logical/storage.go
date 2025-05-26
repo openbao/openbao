@@ -158,7 +158,7 @@ func scanViewPaginated(ctx context.Context, view ClearableView, logger hclog.Log
 				// is hit in some incorrect path joining operations and so
 				// must still be able to function correctly. Setting after=""
 				// is the default value and must include "" in the listing, so
-				// if we have an adequately large page size and the empty empty
+				// if we have an adequately large page size and the empty
 				// string is what we got, we know there's nothing else there
 				// and thus we can break.
 				break

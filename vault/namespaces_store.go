@@ -738,7 +738,13 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 
 	// Now grab write lock so that we can write to storage.
 	ns.lock.Lock()
-	defer ns.lock.Unlock()
+	unlocked := false
+	defer func() {
+		if !unlocked {
+			ns.lock.Unlock()
+			unlocked = true
+		}
+	}()
 
 	err = ns.namespacesByPath.Delete(namespaceToDelete.Path)
 	if err != nil {
@@ -760,6 +766,15 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 	})
 	if err != nil {
 		ns.logger.Error("failed to delete namespace storage", "namespace", namespaceToDelete.Path, "error", err.Error())
+	}
+
+	ns.lock.Unlock()
+	unlocked = true
+
+	// clear locked users entries
+	_, err = ns.core.runLockedUserEntryUpdatesForNamespace(ctx, namespaceToDelete)
+	if err != nil {
+		ns.logger.Error("failed to clean up locked user entries", "namespace", namespaceToDelete.Path, "error", err.Error())
 	}
 
 	return

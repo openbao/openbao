@@ -2497,8 +2497,11 @@ func (c *Core) preSeal() error {
 	if err := c.unloadMounts(context.Background()); err != nil {
 		result = multierror.Append(result, fmt.Errorf("error unloading mounts: %w", err))
 	}
+	if err := c.teardownLoginMFA(); err != nil {
+		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA: %w", err))
+	}
 	if err := c.teardownNamespaceStore(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down namespaces store: %w", err))
+		result = multierror.Append(result, fmt.Errorf("error tearing down namespace store: %w", err))
 	}
 
 	if c.autoRotateCancel != nil {
@@ -2513,10 +2516,6 @@ func (c *Core) preSeal() error {
 
 	if seal, ok := c.seal.(*autoSeal); ok {
 		seal.StopHealthCheck()
-	}
-
-	if err := c.teardownLoginMFA(); err != nil {
-		result = multierror.Append(result, fmt.Errorf("error tearing down login MFA, error: %w", err))
 	}
 
 	preSealPhysical(c)
@@ -3232,16 +3231,20 @@ func (c *Core) isPrimary() bool {
 
 func (c *Core) loadLoginMFAConfigs(ctx context.Context) error {
 	eConfigs := make([]*mfa.MFAEnforcementConfig, 0)
-	allNamespaces := c.collectNamespaces()
+	allNamespaces, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return err
+	}
+
 	for _, ns := range allNamespaces {
 		err := c.loginMFABackend.loadMFAMethodConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA method Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA method Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		loadedConfigs, err := c.loginMFABackend.loadMFAEnforcementConfigs(ctx, ns)
 		if err != nil {
-			return fmt.Errorf("error loading MFA enforcement Config, namespaceid %s, error: %w", ns.ID, err)
+			return fmt.Errorf("error loading MFA enforcement Config, namespace %s, error: %w", ns.Path, err)
 		}
 
 		eConfigs = append(eConfigs, loadedConfigs...)
@@ -3336,33 +3339,19 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 		return nil
 	}
 
-	// get the list of namespaces of locked users from locked users path in storage
-	nsIDs, err := c.barrier.List(ctx, coreLockedUsersPath)
+	// get all namespaces
+	nsList, err := c.namespaceStore.ListAllNamespaces(ctx, true)
 	if err != nil {
 		return err
 	}
 
 	totalLockedUsersCount := 0
-	for _, nsID := range nsIDs {
-		// get the list of mount accessors of locked users for each namespace
-		mountAccessors, err := c.barrier.List(ctx, coreLockedUsersPath+nsID)
+	for _, ns := range nsList {
+		nsLockedUsers, err := c.runLockedUserEntryUpdatesForNamespace(ctx, ns)
 		if err != nil {
 			return err
 		}
-
-		// update the entries for locked users for each mount accessor
-		// if storage entry is stale i.e; the lockout duration has passed
-		// remove this entry from storage and userFailedLoginInfo map
-		// else check if the userFailedLoginInfo map has correct failed login information
-		// if incorrect, update the entry in userFailedLoginInfo map
-		for _, mountAccessorPath := range mountAccessors {
-			mountAccessor := strings.TrimSuffix(mountAccessorPath, "/")
-			lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, mountAccessor, coreLockedUsersPath+nsID+mountAccessorPath)
-			if err != nil {
-				return err
-			}
-			totalLockedUsersCount = totalLockedUsersCount + lockedAliasesCount
-		}
+		totalLockedUsersCount += nsLockedUsers
 	}
 
 	// emit locked user count metrics
@@ -3370,11 +3359,47 @@ func (c *Core) runLockedUserEntryUpdates(ctx context.Context) error {
 	return nil
 }
 
-// runLockedUserEntryUpdatesForMountAccessor updates the storage entry for each locked user (alias name)
-// if the entry is stale, it removes it from storage and userFailedLoginInfo map if present
-// if the entry is not stale, it updates the userFailedLoginInfo map with correct values for entry if incorrect
-func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mountAccessor string, path string) (int, error) {
+// runLockedUserEntryUpdatesForNamespace runs updates for locked users storage entries
+// for a single namespace if the specified namespace was deleted, all login entries are also deleted.
+func (c *Core) runLockedUserEntryUpdatesForNamespace(ctx context.Context, namespace *namespace.Namespace) (int, error) {
+	// get the list of mount accessors of locked users of a namespace
+	view := NamespaceView(c.barrier, namespace).SubView(coreLockedUsersPath)
+	mountAccessors, err := view.List(ctx, "")
+	if err != nil {
+		return 0, err
+	}
+
+	ns, err := c.namespaceStore.GetNamespace(ctx, namespace.UUID)
+	if err != nil {
+		return 0, err
+	}
+
+	namespaceLockedUsers := 0
+	// update the entries for locked users for each mount accessor
+	// if storage entry is stale i.e; the lockout duration has
+	// passed or namespace was deleted then remove this entry
+	// from storage and userFailedLoginInfo map else check if
+	// the userFailedLoginInfo map has correct failed login information
+	// if incorrect, update the entry in userFailedLoginInfo map
+	for _, mountAccessorPath := range mountAccessors {
+		lockedAliasesCount, err := c.runLockedUserEntryUpdatesForMountAccessor(ctx, view.SubView(mountAccessorPath), mountAccessorPath, ns == nil)
+		if err != nil {
+			return namespaceLockedUsers, err
+		}
+		namespaceLockedUsers += lockedAliasesCount
+	}
+
+	return namespaceLockedUsers, nil
+}
+
+// runLockedUserEntryUpdatesForMountAccessor updates the storage entry
+// for each locked user (alias name). Removes stale entries or entries
+// belonging to deleted namespace from storage and userFailedLoginInfo map.
+// For valid entries userFailedLoginInfo map gets updated with correct
+// values for entry if they were incorrect before.
+func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, view logical.Storage, mountAccessor string, forceDelete bool) (int, error) {
 	// get mount entry for mountAccessor
+	mountAccessor = strings.TrimSuffix(mountAccessor, "/")
 	mountEntry := c.router.MatchingMountByAccessor(mountAccessor)
 	if mountEntry == nil {
 		mountEntry = &MountEntry{}
@@ -3383,7 +3408,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 	userLockoutConfiguration := c.getUserLockoutConfiguration(mountEntry)
 
 	// get the list of aliases for mount accessor
-	aliases, err := c.barrier.List(ctx, path)
+	aliases, err := view.List(ctx, "")
 	if err != nil {
 		return 0, err
 	}
@@ -3397,7 +3422,7 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 			mountAccessor: mountAccessor,
 		}
 
-		existingEntry, err := c.barrier.Get(ctx, path+alias)
+		existingEntry, err := view.Get(ctx, alias)
 		if err != nil {
 			return 0, err
 		}
@@ -3419,11 +3444,12 @@ func (c *Core) runLockedUserEntryUpdatesForMountAccessor(ctx context.Context, mo
 		failedLoginInfoFromMap := c.LocalGetUserFailedLoginInfo(ctx, loginUserInfoKey)
 
 		// check if the storage entry for locked user is stale
-		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) {
+		// or force delete if the namespace is being deleted
+		if time.Now().After(lastFailedLoginTimeFromStorageEntry.Add(lockoutDurationFromConfiguration)) || forceDelete {
 			// stale entry, remove from storage
 			// leaving this as it is as this happens on the active node
 			// also handles case where namespace is deleted
-			if err := c.barrier.Delete(ctx, path+alias); err != nil {
+			if err := view.Delete(ctx, alias); err != nil {
 				return 0, err
 			}
 			// remove entry for this user from userFailedLoginInfo map if present as the user is not locked

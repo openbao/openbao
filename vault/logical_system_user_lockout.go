@@ -5,11 +5,11 @@ package vault
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/openbao/openbao/helper/namespace"
+	"github.com/openbao/openbao/sdk/v2/logical"
 )
 
 type LockedUsersResponse struct {
@@ -26,18 +26,17 @@ type ResponseMountAccessors struct {
 }
 
 // unlockUser deletes the entry for locked user from storage and userFailedLoginInfo map
-func unlockUser(ctx context.Context, core *Core, mountAccessor string, aliasName string) error {
+func (b *SystemBackend) unlockUser(ctx context.Context, mountAccessor, aliasName string) error {
 	ns, err := namespace.FromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	lockedUserStoragePath := coreLockedUsersPath + ns.ID + "/" + mountAccessor + "/" + aliasName
-
 	// remove entry for locked user from storage
 	// if read only error, the error is handled by handleError in logical_system.go
 	// this will be forwarded to the active node
-	if err := core.barrier.Delete(ctx, lockedUserStoragePath); err != nil {
+	view := NamespaceView(b.Core.barrier, ns).SubView(coreLockedUsersPath).SubView(mountAccessor + "/")
+	if err := view.Delete(ctx, aliasName); err != nil {
 		return err
 	}
 
@@ -47,15 +46,15 @@ func unlockUser(ctx context.Context, core *Core, mountAccessor string, aliasName
 	}
 
 	// remove entry for locked user from userFailedLoginInfo map and storage
-	if err := core.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
+	if err := b.Core.LocalUpdateUserFailedLoginInfo(ctx, loginUserInfoKey, nil, true); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// handleLockedUsersQuery reports the locked user metrics by namespace in the decreasing order
-// of locked users
+// handleLockedUsersQuery returns the locked user metrics
+// by namespace in the decreasing order of locked users
 func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccessor string) (map[string]interface{}, error) {
 	// Calculate the namespace response breakdowns of locked users for query namespace and child namespaces (if needed)
 	totalCount, byNamespaceResponse, err := b.getLockedUsersResponses(ctx, mountAccessor)
@@ -70,10 +69,9 @@ func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccesso
 	return responseData, nil
 }
 
-// getLockedUsersResponses returns the locked users
-// for a particular mount_accessor if provided in request
-// else returns it for the current namespace and all the child namespaces that has locked users
-// they are sorted in the decreasing order of locked users count
+// getLockedUsersResponses returns the locked users for a particular mount_accessor
+// if provided in request otherwise returns locked users for the current namespace
+// and all the child namespaces, entries are sorted in the decreasing count order
 func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccessor string) (int, []*LockedUsersResponse, error) {
 	lockedUsersResponse := make([]*LockedUsersResponse, 0)
 	totalCounts := 0
@@ -84,18 +82,19 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 	}
 
 	if mountAccessor != "" {
-		// get the locked user response for mount_accessor, here for mount_accessor in request
-		totalCountForNSID, mountAccessorsResponse, err := b.getMountAccessorsLockedUsers(ctx, []string{mountAccessor + "/"},
-			coreLockedUsersPath+queryNS.ID+"/")
+		// get the locked user response for mount_accessor provided with request
+		view := NamespaceView(b.Core.barrier, queryNS).SubView(coreLockedUsersPath)
+		totalCountForNS, mountAccessorsResponse, err := b.getMountAccessorsLockedUsers(ctx,
+			view, mountAccessor+"/")
 		if err != nil {
 			return 0, nil, err
 		}
 
-		totalCounts += totalCountForNSID
+		totalCounts += totalCountForNS
 		lockedUsersResponse = append(lockedUsersResponse, &LockedUsersResponse{
 			NamespaceID:    queryNS.ID,
 			NamespacePath:  queryNS.Path,
-			Counts:         totalCountForNSID,
+			Counts:         totalCountForNS,
 			MountAccessors: mountAccessorsResponse,
 		})
 		return totalCounts, lockedUsersResponse, nil
@@ -103,50 +102,34 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 
 	// no mount_accessor is provided in request, get information for current namespace and its child namespaces
 
-	// get all the namespaces of locked users
-	nsIDs, err := b.Core.barrier.List(ctx, coreLockedUsersPath)
+	// get all the namespaces
+	nsList, err := b.Core.namespaceStore.ListNamespaces(ctx, true, true)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	// identify if the namespaces must be included in response and get counts
-	for _, nsID := range nsIDs {
-		nsID = strings.TrimSuffix(nsID, "/")
-		ns, err := b.Core.NamespaceByID(ctx, nsID)
+	for _, ns := range nsList {
+		// get mount accessors of locked users for this namespace
+		view := NamespaceView(b.Core.barrier, ns).SubView(coreLockedUsersPath)
+		mountAccessors, err := view.List(ctx, "")
 		if err != nil {
 			return 0, nil, err
 		}
 
-		if b.includeNSInLockedUsersResponse(queryNS, ns) {
-			var displayPath string
-			if ns == nil {
-				// deleted namespace
-				displayPath = fmt.Sprintf("deleted namespace %q", nsID)
-			} else {
-				displayPath = ns.Path
-			}
-
-			// get mount accessors of locked users for this namespace
-			mountAccessors, err := b.Core.barrier.List(ctx, coreLockedUsersPath+nsID+"/")
-			if err != nil {
-				return 0, nil, err
-			}
-
-			// get the locked user response for mount_accessor list
-			totalCountForNSID, mountAccessorsResponse, err := b.getMountAccessorsLockedUsers(ctx, mountAccessors, coreLockedUsersPath+nsID+"/")
-			if err != nil {
-				return 0, nil, err
-			}
-
-			totalCounts += totalCountForNSID
-			lockedUsersResponse = append(lockedUsersResponse, &LockedUsersResponse{
-				NamespaceID:    strings.TrimSuffix(nsID, "/"),
-				NamespacePath:  displayPath,
-				Counts:         totalCountForNSID,
-				MountAccessors: mountAccessorsResponse,
-			})
-
+		// get the locked user response for mount_accessor list
+		totalCountForNS, mountAccessorsResponse, err := b.getMountAccessorsLockedUsers(ctx, view, mountAccessors...)
+		if err != nil {
+			return 0, nil, err
 		}
+
+		totalCounts += totalCountForNS
+		lockedUsersResponse = append(lockedUsersResponse, &LockedUsersResponse{
+			NamespaceID:    ns.ID,
+			NamespacePath:  ns.Path,
+			Counts:         totalCountForNS,
+			MountAccessors: mountAccessorsResponse,
+		})
+
 	}
 
 	// sort namespaces in response by decreasing order of counts
@@ -157,16 +140,15 @@ func (b *SystemBackend) getLockedUsersResponses(ctx context.Context, mountAccess
 	return totalCounts, lockedUsersResponse, nil
 }
 
-// getMountAccessorsLockedUsers returns the locked users for all the mount_accessors of locked users for a namespace
-// they are sorted in the decreasing order of locked users
-// returns the total locked users for the namespace and  locked users response for every mount_accessor for a namespace that has locked users
-func (b *SystemBackend) getMountAccessorsLockedUsers(ctx context.Context, mountAccessors []string, lockedUsersPath string) (int, []*ResponseMountAccessors, error) {
+// getMountAccessorsLockedUsers returns the locked users for all the mountAccessors
+// of locked users for a namespace. Result is sorted in the desc order of locked users.
+func (b *SystemBackend) getMountAccessorsLockedUsers(ctx context.Context, view logical.Storage, mountAccessors ...string) (int, []*ResponseMountAccessors, error) {
 	byMountAccessorsResponse := make([]*ResponseMountAccessors, 0)
 	totalCountForMountAccessors := 0
 
 	for _, mountAccessor := range mountAccessors {
 		// get the list of aliases of locked users for a mount accessor
-		aliasIdentifiers, err := b.Core.barrier.List(ctx, lockedUsersPath+mountAccessor)
+		aliasIdentifiers, err := view.List(ctx, mountAccessor)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -186,15 +168,4 @@ func (b *SystemBackend) getMountAccessorsLockedUsers(ctx context.Context, mountA
 	})
 
 	return totalCountForMountAccessors, byMountAccessorsResponse, nil
-}
-
-// includeNSInLockedUsersResponse checks if the namespace is the child namespace of namespace in query
-// if child namespace, it can be included in response
-// locked users from deleted namespaces are listed under root namespace
-func (b *SystemBackend) includeNSInLockedUsersResponse(query *namespace.Namespace, record *namespace.Namespace) bool {
-	if record == nil {
-		// Deleted namespace, only include in root queries
-		return query.ID == namespace.RootNamespaceID
-	}
-	return record.HasParent(query)
 }

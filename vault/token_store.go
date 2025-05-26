@@ -3886,7 +3886,11 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces := ts.core.collectNamespaces()
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return []metricsutil.GaugeLabelValues{}, err
+	}
+
 	values := make([]metricsutil.GaugeLabelValues, len(allNamespaces))
 	namespacePosition := make(map[string]int)
 
@@ -3899,7 +3903,7 @@ func (ts *TokenStore) gaugeCollector(ctx context.Context) ([]metricsutil.GaugeLa
 		namespacePosition[ns.ID] = i
 	}
 
-	err := ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
+	err = ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
 		select {
 		// Abort and return empty collection if it's taking too much time, nonblocking check.
 		case <-ctx.Done():
@@ -3941,10 +3945,14 @@ func (ts *TokenStore) gaugeCollectorByPolicy(ctx context.Context) ([]metricsutil
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces := ts.core.collectNamespaces()
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return []metricsutil.GaugeLabelValues{}, err
+	}
+
 	byNsAndPolicy := make(map[string]map[string]int)
 
-	err := ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
+	err = ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
 		select {
 		// Abort and return empty collection if it's taking too much time, nonblocking check.
 		case <-ctx.Done():
@@ -3999,10 +4007,14 @@ func (ts *TokenStore) gaugeCollectorByTtl(ctx context.Context) ([]metricsutil.Ga
 		return []metricsutil.GaugeLabelValues{}, errors.New("expiration manager is nil")
 	}
 
-	allNamespaces := ts.core.collectNamespaces()
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return []metricsutil.GaugeLabelValues{}, err
+	}
+
 	byNsAndBucket := make(map[string]map[string]int)
 
-	err := ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
+	err = ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
 		select {
 		// Abort and return empty collection if it's taking too much time, nonblocking check.
 		case <-ctx.Done():
@@ -4067,7 +4079,11 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 	}
 
 	rootContext := namespace.RootContext(ctx)
-	allNamespaces := ts.core.collectNamespaces()
+	allNamespaces, err := ts.core.namespaceStore.ListAllNamespaces(ctx, true)
+	if err != nil {
+		return []metricsutil.GaugeLabelValues{}, err
+	}
+
 	byNsAndMethod := make(map[string]map[string]int)
 
 	// Cache the prefixes that we find locally rather than
@@ -4111,7 +4127,7 @@ func (ts *TokenStore) gaugeCollectorByMethod(ctx context.Context) ([]metricsutil
 		return mountEntry.Type
 	}
 
-	err := ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
+	err = ts.expiration.WalkTokens(func(leaseID string, auth *logical.Auth, path string) bool {
 		select {
 		// Abort and return empty collection if it's taking too much time, nonblocking check.
 		case <-ctx.Done():

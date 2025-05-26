@@ -505,6 +505,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/acl-paginated-lists",
                 "rfcs/ssh-ca-multi-issuer",
                 "rfcs/cel-best-practices",
+                "rfcs/namespace-sealing",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

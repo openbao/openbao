@@ -10,28 +10,28 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 
 ## Level 1
 
-| Control | Status |
-| ---- | ----------- |
-| [OSPS-AC-01.01](#osps-ac-01-01) | |
-| [OSPS-AC-02.01](#osps-ac-02-01) | |
-| [OSPS-AC-03.01](#osps-ac-03-01) | |
-| [OSPS-AC-03.02](#osps-ac-03-02) | |
-| [OSPS-BR-01.01](#osps-br-01-01) | |
-| [OSPS-BR-03.01](#osps-br-03-01) | |
-| [OSPS-DO-01.01](#osps-do-01-01) | ✅ |
-| [OSPS-DO-02.01](#osps-do-02-01) | |
-| [OSPS-GV-02.01](#osps-gv-02-01) | |
-| [OSPS-GV-03.01](#osps-gv-03-01) | ✅ |
-| [OSPS-LE-02.01](#osps-le-02-01) | ✅ |
-| [OSPS-LE-02.02](#osps-le-02-02) | |
-| [OSPS-LE-03.01](#osps-le-03-01) | |
-| [OSPS-LE-03.02](#osps-le-03-02) | |
-| [OSPS-QA-01.01](#osps-qa-01-01) | ✅ |
-| [OSPS-QA-01.02](#osps-qa-01-02) | ✅ |
-| [OSPS-QA-02.01](#osps-qa-02-01) | |
-| [OSPS-QA-04.01](#osps-qa-04-01) | |
-| [OSPS-QA-05.01](#osps-qa-05-01) | |
-| [OSPS-VM-02.01](#osps-vm-02-01) | ✅ |
+| Control                         | Status |
+| ------------------------------- | ------ |
+| [OSPS-AC-01.01](#osps-ac-01-01) |        |
+| [OSPS-AC-02.01](#osps-ac-02-01) |        |
+| [OSPS-AC-03.01](#osps-ac-03-01) |        |
+| [OSPS-AC-03.02](#osps-ac-03-02) |        |
+| [OSPS-BR-01.01](#osps-br-01-01) |        |
+| [OSPS-BR-03.01](#osps-br-03-01) |        |
+| [OSPS-DO-01.01](#osps-do-01-01) | ✅     |
+| [OSPS-DO-02.01](#osps-do-02-01) |        |
+| [OSPS-GV-02.01](#osps-gv-02-01) |        |
+| [OSPS-GV-03.01](#osps-gv-03-01) | ✅     |
+| [OSPS-LE-02.01](#osps-le-02-01) | ✅     |
+| [OSPS-LE-02.02](#osps-le-02-02) |        |
+| [OSPS-LE-03.01](#osps-le-03-01) |        |
+| [OSPS-LE-03.02](#osps-le-03-02) |        |
+| [OSPS-QA-01.01](#osps-qa-01-01) | ✅     |
+| [OSPS-QA-01.02](#osps-qa-01-02) | ✅     |
+| [OSPS-QA-02.01](#osps-qa-02-01) | ✅     |
+| [OSPS-QA-04.01](#osps-qa-04-01) |        |
+| [OSPS-QA-05.01](#osps-qa-05-01) |        |
+| [OSPS-VM-02.01](#osps-vm-02-01) | ✅     |
 
 ## OSPS-AC-01.01 {#osps-ac-01-01}
 When a user attempts to access a sensitive resource in the project's version control system, the system MUST require the user to complete a multi-factor authentication process.
@@ -97,7 +97,10 @@ OpenBao's source code repositories are hosted in the public [OpenBao GitHub orga
 All changes are tracked in Git repositories hosted in the public [OpenBao GitHub organization](https://github.com/openbao). While pull requests can be squashed, authorship is retained and all commits must be signed off with an appropriate [DCO](https://developercertificate.org/) as outlined on the [Contributing](/docs/contributing) page.
 
 ## OSPS-QA-02.01 {#osps-qa-02-01}
-When the package management system supports it, the source code repository MUST contain a dependency list that accounts for the direct language dependencies.
+
+> **Requirement:** *When the package management system supports it, the source code [repository](https://baseline.openssf.org/versions/2025-02-25#repository) MUST contain a dependency list that accounts for the direct language dependencies.*
+
+Dependencies are tracked in language-specific files such as `go.mod` whenever possible.
 
 ## OSPS-QA-04.01 {#osps-qa-04-01}
 While active, the project documentation MUST contain a list of any codebases that are considered subprojects or additional repositories.

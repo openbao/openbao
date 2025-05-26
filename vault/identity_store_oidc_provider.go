@@ -2634,7 +2634,7 @@ func (i *IdentityStore) lazyGenerateDefaultKey(ctx context.Context, storage logi
 func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 	i.logger.Debug("identity loading OIDC clients")
 
-	clients, err := i.view.List(ctx, clientPath)
+	clients, err := i.view(ctx).List(ctx, clientPath)
 	if err != nil {
 		return err
 	}
@@ -2642,7 +2642,7 @@ func (i *IdentityStore) loadOIDCClients(ctx context.Context) error {
 	txn := i.db.Txn(true)
 	defer txn.Abort()
 	for _, name := range clients {
-		entry, err := i.view.Get(ctx, clientPath+name)
+		entry, err := i.view(ctx).Get(ctx, clientPath+name)
 		if err != nil {
 			return err
 		}

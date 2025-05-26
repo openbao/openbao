@@ -1273,6 +1273,14 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 	}
 	logicalBackends[mountTypeNSIdentity] = func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 		if c.identityStore != nil {
+			ns, err := namespace.FromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := c.identityStore.AddNamespaceView(c, ns.UUID, config.StorageView); err != nil {
+				return nil, fmt.Errorf("failed to register namespace to identity store: %w", err)
+			}
 			return c.identityStore, nil
 		}
 		return nil, errors.New("identity store does not exist")

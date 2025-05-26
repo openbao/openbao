@@ -536,7 +536,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
 	txn := is.db.Txn(true)
 	defer txn.Abort()
@@ -828,7 +828,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
 	txn := is.db.Txn(true)
 	defer txn.Abort()

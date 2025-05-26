@@ -87,14 +87,14 @@ func (i *IdentityStore) sanitizeName(name string) string {
 
 func (i *IdentityStore) loadGroups(ctx context.Context) error {
 	i.logger.Debug("identity loading groups")
-	existing, err := i.groupPacker.View().List(ctx, groupBucketsPrefix)
+	existing, err := i.groupPacker(ctx).View().List(ctx, groupBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for groups: %w", err)
 	}
 	i.logger.Debug("groups collected", "num_existing", len(existing))
 
 	for _, key := range existing {
-		bucket, err := i.groupPacker.GetBucket(ctx, groupBucketsPrefix+key)
+		bucket, err := i.groupPacker(ctx).GetBucket(ctx, groupBucketsPrefix+key)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 				// Group's namespace doesn't exist anymore but the group
 				// from the namespace still exists.
 				i.logger.Warn("deleting group and its any existing aliases", "name", group.Name, "namespace_id", group.NamespaceID)
-				err = i.groupPacker.DeleteItem(ctx, group.ID)
+				err = i.groupPacker(ctx).DeleteItem(ctx, group.ID)
 				if err != nil {
 					return err
 				}
@@ -184,7 +184,7 @@ func (i *IdentityStore) loadGroups(ctx context.Context) error {
 func (i *IdentityStore) loadEntities(ctx context.Context) error {
 	// Accumulate existing entities
 	i.logger.Debug("loading entities")
-	existing, err := i.entityPacker.View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
+	existing, err := i.entityPacker(ctx).View().List(ctx, storagepacker.StoragePackerBucketsPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to scan for entities: %w", err)
 	}
@@ -216,7 +216,7 @@ func (i *IdentityStore) loadEntities(ctx context.Context) error {
 						return
 					}
 
-					bucket, err := i.entityPacker.GetBucket(ctx, storagepacker.StoragePackerBucketsPrefix+key)
+					bucket, err := i.entityPacker(ctx).GetBucket(ctx, storagepacker.StoragePackerBucketsPrefix+key)
 					if err != nil {
 						errs <- err
 						continue
@@ -288,7 +288,7 @@ LOOP:
 					// Entity's namespace doesn't exist anymore but the
 					// entity from the namespace still exists.
 					i.logger.Warn("deleting entity and its any existing aliases", "name", entity.Name, "namespace_id", entity.NamespaceID)
-					err = i.entityPacker.DeleteItem(ctx, entity.ID)
+					err = i.entityPacker(ctx).DeleteItem(ctx, entity.ID)
 					if err != nil {
 						return err
 					}
@@ -316,7 +316,7 @@ LOOP:
 					}
 				}
 
-				localAliases, err := i.parseLocalAliases(entity.ID)
+				localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 				if err != nil {
 					return fmt.Errorf("failed to load local aliases from storage: %v", err)
 				}
@@ -554,7 +554,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 
 	entity.UpsertAlias(alias)
 
-	localAliases, err := i.parseLocalAliases(entity.ID)
+	localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -579,7 +579,7 @@ func (i *IdentityStore) processLocalAlias(ctx context.Context, lAlias *logical.A
 	if err != nil {
 		return nil, err
 	}
-	if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
+	if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledAliases,
 	}); err != nil {
@@ -630,7 +630,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 	if err != nil {
 		return err
 	}
-	if err := i.entityPacker.PutItem(ctx, &storagepacker.Item{
+	if err := i.entityPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledEntity,
 	}); err != nil {
@@ -650,7 +650,7 @@ func (i *IdentityStore) persistEntity(ctx context.Context, entity *identity.Enti
 	if err != nil {
 		return err
 	}
-	if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
+	if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 		ID:      entity.ID,
 		Message: marshaledAliases,
 	}); err != nil {
@@ -1184,7 +1184,7 @@ func (i *IdentityStore) sanitizeAlias(ctx context.Context, alias *identity.Alias
 			return errors.New("failed to generate alias ID")
 		}
 
-		alias.LocalBucketKey = i.localAliasPacker.BucketKey(alias.CanonicalID)
+		alias.LocalBucketKey = i.localAliasPacker(ctx).BucketKey(alias.CanonicalID)
 	}
 
 	if alias.NamespaceID == "" {
@@ -1229,7 +1229,7 @@ func (i *IdentityStore) sanitizeEntity(ctx context.Context, entity *identity.Ent
 		}
 
 		// Set the storage bucket key in entity
-		entity.BucketKey = i.entityPacker.BucketKey(entity.ID)
+		entity.BucketKey = i.entityPacker(ctx).BucketKey(entity.ID)
 	}
 
 	ns, err := namespace.FromContext(ctx)
@@ -1289,7 +1289,7 @@ func (i *IdentityStore) sanitizeAndUpsertGroup(ctx context.Context, group *ident
 		}
 
 		// Set the hash value of the storage bucket key in group
-		group.BucketKey = i.groupPacker.BucketKey(group.ID)
+		group.BucketKey = i.groupPacker(ctx).BucketKey(group.ID)
 	}
 
 	if group.NamespaceID == "" {
@@ -1682,7 +1682,7 @@ func (i *IdentityStore) UpsertGroupInTxn(ctx context.Context, txn *memdb.Txn, gr
 			return err
 		}
 		if !sent {
-			if err := i.groupPacker.PutItem(ctx, item); err != nil {
+			if err := i.groupPacker(ctx).PutItem(ctx, item); err != nil {
 				return err
 			}
 		}

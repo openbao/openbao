@@ -621,7 +621,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 		// Sort the ids by the bucket they will be deleted from
 		byBucket := make(map[string]map[string]struct{})
 		for _, id := range entityIDs {
-			bucketKey := i.entityPacker.BucketKey(id)
+			bucketKey := i.entityPacker(ctx).BucketKey(id)
 
 			bucket, ok := byBucket[bucketKey]
 			if !ok {
@@ -659,7 +659,7 @@ func (i *IdentityStore) handleEntityBatchDelete() framework.OperationFunc {
 			}
 
 			// Write all updates for this bucket.
-			err := i.entityPacker.DeleteMultipleItems(ctx, i.logger, entityIDs)
+			err := i.entityPacker(ctx).DeleteMultipleItems(ctx, i.logger, entityIDs)
 			if err != nil {
 				return err
 			}
@@ -726,7 +726,7 @@ func (i *IdentityStore) handleEntityDeleteCommon(ctx context.Context, txn *memdb
 
 	if update {
 		// Delete the entity from storage
-		err = i.entityPacker.DeleteItem(ctx, entity.ID)
+		err = i.entityPacker(ctx).DeleteItem(ctx, entity.ID)
 		if err != nil {
 			return err
 		}
@@ -1097,7 +1097,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 
 		if persist {
 			// Delete the entity which we are merging from in storage
-			err = i.entityPacker.DeleteItem(ctx, fromEntity.ID)
+			err = i.entityPacker(ctx).DeleteItem(ctx, fromEntity.ID)
 			if err != nil {
 				return nil, err, nil
 			}
@@ -1129,7 +1129,7 @@ func (i *IdentityStore) mergeEntity(ctx context.Context, txn *memdb.Txn, toEntit
 			Message: toEntityAsAny,
 		}
 
-		err = i.entityPacker.PutItem(ctx, item)
+		err = i.entityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
 			return nil, err, nil
 		}

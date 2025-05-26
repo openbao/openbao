@@ -624,7 +624,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 
 		switch alias.Local {
 		case true:
-			localAliases, err := i.parseLocalAliases(entity.ID)
+			localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -645,7 +645,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 				return nil, err
 			}
 
-			if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
+			if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 				ID:      entity.ID,
 				Message: marshaledAliases,
 			}); err != nil {

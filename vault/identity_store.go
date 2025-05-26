@@ -53,8 +53,8 @@ func (i *IdentityStore) resetDB(ctx context.Context) error {
 
 func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendConfig, logger log.Logger) (*IdentityStore, error) {
 	iStore := &IdentityStore{
-		view:          config.StorageView,
 		logger:        logger,
+		views:         make(map[string]*identityStoreNamespaceView, 1),
 		router:        core.router,
 		redirectAddr:  core.redirectAddr,
 		localNode:     core,
@@ -74,26 +74,8 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		return nil, err
 	}
 
-	entitiesPackerLogger := iStore.logger.Named("storagepacker").Named("entities")
-	core.AddLogger(entitiesPackerLogger)
-	localAliasesPackerLogger := iStore.logger.Named("storagepacker").Named("local-aliases")
-	core.AddLogger(localAliasesPackerLogger)
-	groupsPackerLogger := iStore.logger.Named("storagepacker").Named("groups")
-	core.AddLogger(groupsPackerLogger)
-
-	iStore.entityPacker, err = storagepacker.NewStoragePacker(iStore.view, entitiesPackerLogger, "")
-	if err != nil {
-		return nil, fmt.Errorf("failed to create entity packer: %w", err)
-	}
-
-	iStore.localAliasPacker, err = storagepacker.NewStoragePacker(iStore.view, localAliasesPackerLogger, localAliasesBucketsPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create local alias packer: %w", err)
-	}
-
-	iStore.groupPacker, err = storagepacker.NewStoragePacker(iStore.view, groupsPackerLogger, groupBucketsPrefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create group packer: %w", err)
+	if err := iStore.AddNamespaceView(core, namespace.RootNamespaceUUID, config.StorageView); err != nil {
+		return nil, err
 	}
 
 	iStore.Backend = &framework.Backend{
@@ -128,6 +110,107 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 	}
 
 	return iStore, nil
+}
+
+func (i *IdentityStore) AddNamespaceView(core *Core, uuid string, view logical.Storage) error {
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	nsView := &identityStoreNamespaceView{
+		view: view,
+	}
+
+	// Create loggers for packers
+	entitiesPackerLogger := i.logger.Named("storagepacker").Named("entities")
+	core.AddLogger(entitiesPackerLogger)
+
+	localAliasesPackerLogger := i.logger.Named("storagepacker").Named("local-aliases")
+	core.AddLogger(localAliasesPackerLogger)
+
+	groupsPackerLogger := i.logger.Named("storagepacker").Named("groups")
+	core.AddLogger(groupsPackerLogger)
+
+	// Create packers for namespace.
+	var err error
+	nsView.entityPacker, err = storagepacker.NewStoragePacker(nsView.view, entitiesPackerLogger, "")
+	if err != nil {
+		return fmt.Errorf("failed to create entity packer: %w", err)
+	}
+
+	nsView.localAliasPacker, err = storagepacker.NewStoragePacker(nsView.view, localAliasesPackerLogger, localAliasesBucketsPrefix)
+	if err != nil {
+		return fmt.Errorf("failed to create local alias packer: %w", err)
+	}
+
+	nsView.groupPacker, err = storagepacker.NewStoragePacker(nsView.view, groupsPackerLogger, groupBucketsPrefix)
+	if err != nil {
+		return fmt.Errorf("failed to create group packer: %w", err)
+	}
+
+	i.views[uuid] = nsView
+
+	return nil
+}
+
+func (i *IdentityStore) RemoveNamespaceView(uuid string) {
+	i.lock.Lock()
+	defer i.lock.Unlock()
+
+	delete(i.views, uuid)
+}
+
+func (i *IdentityStore) getNSView(ctx context.Context) (*identityStoreNamespaceView, error) {
+	ns, err := namespace.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	view, ok := i.views[ns.UUID]
+	if !ok {
+		return nil, fmt.Errorf("namespace %v missing from identity store table", ns.UUID)
+	}
+
+	return view, nil
+}
+
+func (i *IdentityStore) view(ctx context.Context) logical.Storage {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get view", "err", err)
+		return nil
+	}
+
+	return view.view
+}
+
+func (i *IdentityStore) entityPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get entityPacker", "err", err)
+		return nil
+	}
+
+	return view.entityPacker
+}
+
+func (i *IdentityStore) localAliasPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get localAliasPacker", "err", err)
+		return nil
+	}
+
+	return view.localAliasPacker
+}
+
+func (i *IdentityStore) groupPacker(ctx context.Context) *storagepacker.StoragePacker {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get groupPacker", "err", err)
+		return nil
+	}
+
+	return view.groupPacker
 }
 
 func (i *IdentityStore) paths() []*framework.Path {
@@ -643,7 +726,7 @@ func (i *IdentityStore) initialize(ctx context.Context, req *logical.Initializat
 	}
 
 	// if the storage entry for caseSensitivityKey exists, remove it
-	storageEntry, err := i.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err := i.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		i.logger.Error("could not get storage entry for case sensitivity key", "error", err)
 		return nil
@@ -659,7 +742,7 @@ func (i *IdentityStore) initialize(ctx context.Context, req *logical.Initializat
 			i.logger.Error("failed to decode case sensitivity key, removing its storage entry anyway", "error", err)
 		}
 
-		err = i.view.Delete(ctx, caseSensitivityKey)
+		err = i.view(ctx).Delete(ctx, caseSensitivityKey)
 		if err != nil {
 			i.logger.Error("could not delete storage entry for case sensitivity key", "error", err)
 			return nil
@@ -714,7 +797,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Get the storage bucket entry
-		bucket, err := i.entityPacker.GetBucket(ctx, key)
+		bucket, err := i.entityPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh entities", "key", key, "error", err)
 			return
@@ -737,7 +820,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 					return
 				}
 
-				localAliases, err := i.parseLocalAliases(entity.ID)
+				localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 				if err != nil {
 					i.logger.Error("failed to load local aliases from storage", "error", err)
 					return
@@ -793,7 +876,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Get the storage bucket entry
-		bucket, err := i.groupPacker.GetBucket(ctx, key)
+		bucket, err := i.groupPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh group", "key", key, "error", err)
 			return
@@ -901,7 +984,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		}
 
 		// Now read the invalidated storage key
-		bucket, err := i.localAliasPacker.GetBucket(ctx, key)
+		bucket, err := i.localAliasPacker(ctx).GetBucket(ctx, key)
 		if err != nil {
 			i.logger.Error("failed to refresh local aliases", "key", key, "error", err)
 			return
@@ -932,7 +1015,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 						return
 					}
 					if entity == nil {
-						cachedEntityItem, err := i.localAliasPacker.GetItem(alias.CanonicalID + tmpSuffix)
+						cachedEntityItem, err := i.localAliasPacker(ctx).GetItem(alias.CanonicalID + tmpSuffix)
 						if err != nil {
 							i.logger.Error("failed to fetch cached entity", "key", key, "error", err)
 							return
@@ -964,8 +1047,8 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	}
 }
 
-func (i *IdentityStore) parseLocalAliases(entityID string) (*identity.LocalAliases, error) {
-	item, err := i.localAliasPacker.GetItem(entityID)
+func (i *IdentityStore) parseLocalAliases(ctx context.Context, entityID string) (*identity.LocalAliases, error) {
+	item, err := i.localAliasPacker(ctx).GetItem(entityID)
 	if err != nil {
 		return nil, err
 	}
@@ -1054,7 +1137,7 @@ func (i *IdentityStore) parseEntityFromBucketItem(ctx context.Context, item *sto
 		}
 
 		// Store the entity with new format
-		err = i.entityPacker.PutItem(ctx, item)
+		err = i.entityPacker(ctx).PutItem(ctx, item)
 		if err != nil {
 			return nil, err
 		}

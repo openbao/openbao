@@ -28,6 +28,7 @@ import (
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 	txn := c.identityStore.db.Txn(true)
 	defer txn.Abort()
 
@@ -37,7 +38,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor",
 		Name:           "testAliasName",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	alias2 := &identity.Alias{
 		ID:             "testAliasID2",
@@ -45,7 +46,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor2",
 		Name:           "testAliasName2",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	entity := &identity.Entity{
 		ID:       "testEntityID",
@@ -56,7 +57,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("testEntityID"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("testEntityID"),
 	}
 
 	err := c.identityStore.upsertEntityInTxn(context.Background(), txn, entity, nil, false)
@@ -89,6 +90,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	defer ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
@@ -108,7 +110,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -118,7 +120,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity1"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
 	}
 
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
@@ -132,7 +134,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "APPROLEUSER",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -142,7 +144,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity2"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
 	}
 
 	// Persist the second entity directly without the regular flow. This will skip
@@ -156,8 +158,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Message: entity2Any,
 	}
 
-	ctx := namespace.RootContext(nil)
-	if err = c.identityStore.entityPacker.PutItem(ctx, item); err != nil {
+	if err = c.identityStore.entityPacker(ctx).PutItem(ctx, item); err != nil {
 		t.Fatal(err)
 	}
 
@@ -550,6 +551,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	defer ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
@@ -569,7 +571,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -579,7 +581,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity1"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
 	}
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
 	if err != nil {
@@ -592,7 +594,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -602,7 +604,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity2"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
 	}
 
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity2, nil, true)
@@ -877,7 +879,7 @@ func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 // initializing identity store.
 func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	c, unsealKey, root := TestCoreUnsealed(t)
-	ctx := context.Background()
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
 	// add caseSensitivityKey to storage
 	entry, err := logical.StorageEntryJSON(caseSensitivityKey, &casesensitivity{
@@ -886,13 +888,13 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c.identityStore.view.Put(ctx, entry)
+	err = c.identityStore.view(ctx).Put(ctx, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// check if the value is stored in storage
-	storageEntry, err := c.identityStore.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err := c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -918,7 +920,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	// check if caseSensitivityKey exists after initialize
-	storageEntry, err = c.identityStore.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err = c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}

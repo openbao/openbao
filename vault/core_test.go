@@ -671,6 +671,53 @@ func TestCore_SealUnseal(t *testing.T) {
 	}
 }
 
+// TestCore_LoadLoginMFAConfigs verifies proper storage of the MFA and MFA Enforcement configs
+// looking at the storage before and after saving the configs
+func TestCore_LoadLoginMFAConfigs(t *testing.T) {
+	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(context.Background())
+	ns1 := &namespace.Namespace{Path: "ns1/"}
+	TestCoreCreateNamespaces(t, c, ns1)
+
+	// prepare views
+	nsView := NamespaceView(c.barrier, ns1)
+	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
+	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
+
+	// verify empty storage
+	mfaConfigKeys, err := mfaConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Empty(t, mfaConfigKeys)
+
+	mfaEnforcementConfigKeys, err := mfaEnforcementConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Empty(t, mfaConfigKeys)
+
+	// store configs
+	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
+	err = c.loginMFABackend.putMFAConfigByID(namespace.ContextWithNamespace(ctx, ns1), mConfig)
+	require.NoError(t, err)
+
+	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
+	err = c.loginMFABackend.putMFALoginEnforcementConfig(ctx, eConfig)
+	require.NoError(t, err)
+
+	// check for errors when loading
+	err = c.loadLoginMFAConfigs(ctx)
+	require.NoError(t, err)
+
+	// verify storage keys after
+	mfaConfigKeys, err = mfaConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, mfaConfigKeys, 1)
+	require.Equal(t, "mConfigID", mfaConfigKeys[0])
+
+	mfaEnforcementConfigKeys, err = mfaEnforcementConfigBarrierView.List(ctx, "")
+	require.NoError(t, err)
+	require.Len(t, mfaEnforcementConfigKeys, 1)
+	require.Equal(t, "eConfigID", mfaEnforcementConfigKeys[0])
+}
+
 // TestCore_RunLockedUserUpdatesForStaleEntry tests that
 // stale locked user entries get deleted upon unseal.
 func TestCore_RunLockedUserUpdatesForStaleEntry(t *testing.T) {
@@ -3271,49 +3318,4 @@ func TestStatelock_DeadlockDetection(t *testing.T) {
 	if !testCore.DetectStateLockDeadlocks() {
 		t.Fatal("statelock doesn't have deadlock detection enabled, it should")
 	}
-}
-
-func TestMFA_LoadLoginConfig(t *testing.T) {
-	c, _, _ := TestCoreUnsealed(t)
-	ctx := namespace.RootContext(context.Background())
-	ns1 := &namespace.Namespace{Path: "ns1/"}
-	TestCoreCreateNamespaces(t, c, ns1)
-
-	// prepare views
-	nsView := NamespaceView(c.barrier, ns1)
-	mfaConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(loginMFAConfigPrefix)
-	mfaEnforcementConfigBarrierView := nsView.SubView(systemBarrierPrefix).SubView(mfaLoginEnforcementPrefix)
-
-	// verify empty storage
-	mfaConfigKeys, err := mfaConfigBarrierView.List(ctx, "")
-	require.NoError(t, err)
-	require.Empty(t, mfaConfigKeys)
-
-	mfaEnforcementConfigKeys, err := mfaEnforcementConfigBarrierView.List(ctx, "")
-	require.NoError(t, err)
-	require.Empty(t, mfaConfigKeys)
-
-	// store configs
-	mConfig := &mfa.Config{Name: "mConfig", NamespaceID: ns1.ID, ID: "mConfigID", Type: mfaMethodTypeTOTP}
-	err = c.loginMFABackend.putMFAConfigByID(namespace.ContextWithNamespace(ctx, ns1), mConfig)
-	require.NoError(t, err)
-
-	eConfig := &mfa.MFAEnforcementConfig{Name: "eConfig", NamespaceID: ns1.ID, ID: "eConfigID"}
-	err = c.loginMFABackend.putMFALoginEnforcementConfig(ctx, eConfig)
-	require.NoError(t, err)
-
-	// check for errors when loading
-	err = c.loadLoginMFAConfigs(ctx)
-	require.NoError(t, err)
-
-	// verify storage keys after
-	mfaConfigKeys, err = mfaConfigBarrierView.List(ctx, "")
-	require.NoError(t, err)
-	require.Len(t, mfaConfigKeys, 1)
-	require.Equal(t, "mConfigID", mfaConfigKeys[0])
-
-	mfaEnforcementConfigKeys, err = mfaEnforcementConfigBarrierView.List(ctx, "")
-	require.NoError(t, err)
-	require.Len(t, mfaEnforcementConfigKeys, 1)
-	require.Equal(t, "eConfigID", mfaEnforcementConfigKeys[0])
 }

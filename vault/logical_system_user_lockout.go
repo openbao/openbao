@@ -53,7 +53,7 @@ func (b *SystemBackend) unlockUser(ctx context.Context, mountAccessor, aliasName
 	return nil
 }
 
-// handleLockedUsersQuery reports the locked user metrics
+// handleLockedUsersQuery returns the locked user metrics
 // by namespace in the decreasing order of locked users
 func (b *SystemBackend) handleLockedUsersQuery(ctx context.Context, mountAccessor string) (map[string]interface{}, error) {
 	// Calculate the namespace response breakdowns of locked users for query namespace and child namespaces (if needed)

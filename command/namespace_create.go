@@ -134,11 +134,38 @@ func (c *NamespaceCreateCommand) Run(args []string) int {
 		return PrintRawField(c.UI, secret, c.flagField)
 	}
 
+	if len(seals) > 0 {
+		// TODO Handle Output for multiple seals
+		keySharesMap := secret.Data["key_shares"].(map[string]interface{})
+		if keySharesMap != nil {
+			defaultKeyShares := keySharesMap["default"].([]interface{})
+			for i, key := range defaultKeyShares {
+				c.UI.Output(fmt.Sprintf("Unseal Key %d: %s", i+1, key))
+			}
+		}
+		secretShares := int(seals[0]["secret_shares"].(float64))
+		secretThreshold := int(seals[0]["secret_threshold"].(float64))
+
+		c.UI.Output("")
+		c.UI.Output(wrapAtLength(fmt.Sprintf(
+			"Namespace initialized with %d key shares and a key threshold of %d. Please "+
+				"securely distribute the key shares printed above. When the Namespace is "+
+				"re-sealed you must supply at least %d of "+
+				"these keys to unseal it before it can start servicing requests.",
+			secretShares,
+			secretThreshold,
+			secretThreshold)))
+		c.UI.Output("")
+	}
+
 	return OutputSecret(c.UI, secret)
 }
 
 func (c *NamespaceCreateCommand) parseSeals() ([]map[string]interface{}, error) {
 	path := c.flagSealsConfigPath
+	if path == "" {
+		return nil, nil
+	}
 	var rawSeals []map[string]interface{}
 
 	absolutePath, err := filepath.Abs(path)

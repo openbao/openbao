@@ -66,7 +66,7 @@ type EntityCounter struct {
 
 // countActiveEntities returns the number of active entities
 func (c *Core) countActiveEntities(ctx context.Context) (*ActiveEntities, error) {
-	count, err := c.identityStore.countEntities()
+	count, err := c.identityStore.countEntities(ctx)
 	if err != nil {
 		return nil, err
 	}

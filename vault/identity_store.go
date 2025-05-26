@@ -43,9 +43,11 @@ func (c *Core) IdentityStore() *IdentityStore {
 func (i *IdentityStore) resetDB(ctx context.Context) error {
 	var err error
 
-	i.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
-	if err != nil {
-		return err
+	for uuid, views := range i.views {
+		views.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+		if err != nil {
+			return fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+		}
 	}
 
 	return nil
@@ -67,14 +69,7 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 		mfaBackend:    core.loginMFABackend,
 	}
 
-	// Create a memdb instance, which by default, operates on lower cased
-	// identity names
-	err := iStore.resetDB(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := iStore.AddNamespaceView(core, namespace.RootNamespaceUUID, config.StorageView); err != nil {
+	if err := iStore.AddNamespaceView(core, namespace.RootNamespace, config.StorageView); err != nil {
 		return nil, err
 	}
 
@@ -104,17 +99,20 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 	iStore.oidcCache = newOIDCCache(cache.NoExpiration, cache.NoExpiration)
 	iStore.oidcAuthCodeCache = newOIDCCache(5*time.Minute, 5*time.Minute)
 
-	err = iStore.Setup(ctx, config)
-	if err != nil {
+	if err := iStore.Setup(ctx, config); err != nil {
 		return nil, err
 	}
 
 	return iStore, nil
 }
 
-func (i *IdentityStore) AddNamespaceView(core *Core, uuid string, view logical.Storage) error {
+func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, view logical.Storage) error {
 	i.lock.Lock()
 	defer i.lock.Unlock()
+
+	if _, present := i.views[ns.UUID]; present {
+		return fmt.Errorf("refusing to overwrite existing namespace: %v", ns.UUID)
+	}
 
 	nsView := &identityStoreNamespaceView{
 		view: view,
@@ -147,7 +145,12 @@ func (i *IdentityStore) AddNamespaceView(core *Core, uuid string, view logical.S
 		return fmt.Errorf("failed to create group packer: %w", err)
 	}
 
-	i.views[uuid] = nsView
+	nsView.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
+	if err != nil {
+		return err
+	}
+
+	i.views[ns.UUID] = nsView
 
 	return nil
 }
@@ -157,6 +160,11 @@ func (i *IdentityStore) RemoveNamespaceView(uuid string) {
 	defer i.lock.Unlock()
 
 	delete(i.views, uuid)
+}
+
+func (i *IdentityStore) validateCtx(ctx context.Context) error {
+	_, err := i.getNSView(ctx)
+	return err
 }
 
 func (i *IdentityStore) getNSView(ctx context.Context) (*identityStoreNamespaceView, error) {
@@ -211,6 +219,16 @@ func (i *IdentityStore) groupPacker(ctx context.Context) *storagepacker.StorageP
 	}
 
 	return view.groupPacker
+}
+
+func (i *IdentityStore) db(ctx context.Context) *memdb.MemDB {
+	view, err := i.getNSView(ctx)
+	if err != nil {
+		i.logger.Error("failed to get db", "err", err)
+		return nil
+	}
+
+	return view.db
 }
 
 func (i *IdentityStore) paths() []*framework.Path {
@@ -762,11 +780,16 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	i.lock.Lock()
 	defer i.lock.Unlock()
 
+	if err := i.validateCtx(ctx); err != nil {
+		i.logger.Error("got invalidation for unknown namespace", "err", err)
+		return
+	}
+
 	switch {
 	// Check if the key is a storage entry key for an entity bucket
 	case strings.HasPrefix(key, storagepacker.StoragePackerBucketsPrefix):
 		// Create a MemDB transaction
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Each entity object in MemDB holds the MD5 hash of the storage
@@ -849,7 +872,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 	// For those entities that are deleted, clear up the local alias entries
 	case strings.HasPrefix(key, groupBucketsPrefix):
 		// Create a MemDB transaction
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		groupsFetched, err := i.MemDBGroupsByBucketKeyInTxn(txn, key)
@@ -945,7 +968,7 @@ func (i *IdentityStore) Invalidate(ctx context.Context, key string) {
 		// This invalidation only happens on perf standbys
 		//
 
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Find all the local aliases belonging to this bucket and remove it
@@ -1199,7 +1222,11 @@ func (i *IdentityStore) entityByAliasFactors(ctx context.Context, mountAccessor,
 		return nil, errors.New("missing alias name")
 	}
 
-	txn := i.db.Txn(false)
+	if err := i.validateCtx(ctx); err != nil {
+		return nil, err
+	}
+
+	txn := i.db(ctx).Txn(false)
 
 	return i.entityByAliasFactorsInTxn(ctx, txn, mountAccessor, aliasName, clone)
 }
@@ -1219,7 +1246,7 @@ func (i *IdentityStore) entityByAliasFactorsInTxn(ctx context.Context, txn *memd
 		return nil, errors.New("missing alias name")
 	}
 
-	alias, err := i.MemDBAliasByFactorsInTxnWithContext(ctx, txn, mountAccessor, aliasName, false, false)
+	alias, err := i.MemDBAliasByFactorsInTxn(txn, mountAccessor, aliasName, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1310,7 +1337,7 @@ func (i *IdentityStore) CreateOrFetchEntity(ctx context.Context, alias *logical.
 	defer i.lock.Unlock()
 
 	// Create a MemDB transaction to update both alias and entity
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	// Check if an entity was created before acquiring the lock

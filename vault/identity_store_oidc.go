@@ -959,7 +959,7 @@ func (i *IdentityStore) pathOIDCGenerateToken(ctx context.Context, req *logical.
 		IssuedAt:  now.Unix(),
 	}
 
-	e, err := i.MemDBEntityByID(req.EntityID, true)
+	e, err := i.MemDBEntityByID(ctx, req.EntityID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -967,7 +967,7 @@ func (i *IdentityStore) pathOIDCGenerateToken(ctx context.Context, req *logical.
 		return nil, fmt.Errorf("error loading entity ID %q", req.EntityID)
 	}
 
-	groups, inheritedGroups, err := i.groupsByEntityID(e.ID)
+	groups, inheritedGroups, err := i.groupsByEntityID(ctx, e.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -1582,7 +1582,7 @@ func (i *IdentityStore) pathOIDCIntrospect(ctx context.Context, req *logical.Req
 	}
 
 	// validate entity exists and is active
-	entity, err := i.MemDBEntityByID(claims.Subject, true)
+	entity, err := i.MemDBEntityByID(ctx, claims.Subject, true)
 	if err != nil {
 		return nil, err
 	}

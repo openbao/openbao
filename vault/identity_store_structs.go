@@ -59,6 +59,10 @@ type identityStoreNamespaceView struct {
 	// groupPacker is used to pack multiple group storage entries into 256
 	// buckets
 	groupPacker *storagepacker.StoragePacker
+
+	// db is the in-memory database where the storage artifacts gets replicated
+	// to enable richer queries based on multiple indexes.
+	db *memdb.MemDB
 }
 
 // IdentityStore is composed of its own storage view and a MemDB which
@@ -71,10 +75,6 @@ type IdentityStore struct {
 	// views is a mapping of namespace UUID -> storage view and packer
 	// instances.
 	views map[string]*identityStoreNamespaceView
-
-	// db is the in-memory database where the storage artifacts gets replicated
-	// to enable richer queries based on multiple indexes.
-	db *memdb.MemDB
 
 	// locks to make sure things are consistent
 	lock     sync.RWMutex

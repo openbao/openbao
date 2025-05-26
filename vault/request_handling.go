@@ -136,7 +136,8 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 	// c.logger.Debug("entity set on the token", "entity_id", te.EntityID)
 
 	// Fetch the entity
-	entity, err := c.identityStore.MemDBEntityByID(entityID, false)
+	nsCtx := namespace.ContextWithNamespace(ctx, tokenNS)
+	entity, err := c.identityStore.MemDBEntityByID(nsCtx, entityID, false)
 	if err != nil {
 		c.logger.Error("failed to lookup entity using its ID", "error", err)
 		return nil, nil, err
@@ -146,7 +147,7 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 		// If there was no corresponding entity object found, it is
 		// possible that the entity got merged into another entity. Try
 		// finding entity based on the merged entity index.
-		entity, err = c.identityStore.MemDBEntityByMergedEntityID(entityID, false)
+		entity, err = c.identityStore.MemDBEntityByMergedEntityID(nsCtx, entityID, false)
 		if err != nil {
 			c.logger.Error("failed to lookup entity in merged entity ID index", "error", err)
 			return nil, nil, err
@@ -162,7 +163,7 @@ func (c *Core) fetchEntityAndDerivedPolicies(ctx context.Context, tokenNS *names
 			policies[entity.NamespaceID] = append(policies[entity.NamespaceID], entity.Policies...)
 		}
 
-		groupPolicies, err := c.identityStore.groupPoliciesByEntityID(entity.ID)
+		groupPolicies, err := c.identityStore.groupPoliciesByEntityID(nsCtx, entity.ID)
 		if err != nil {
 			c.logger.Error("failed to fetch group policies", "error", err)
 			return nil, nil, err

@@ -225,7 +225,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 
 	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -246,7 +246,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias, false)
 	if err != nil {
@@ -254,7 +254,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err := is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err := is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		t.Fatalf("bad: mismatched aliases; expected: %#v\n actual: %#v\n", alias, aliasFetched)
 	}
 
-	aliasFetched, err = is.MemDBAliasByFactors(validateMountResp.MountAccessor, "testaliasname", false, false)
+	aliasFetched, err = is.MemDBAliasByFactors(ctx, validateMountResp.MountAccessor, "testaliasname", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +285,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 		LocalBucketKey: is.localAliasPacker(ctx).BucketKey(entity.ID),
 	}
 
-	txn = is.db.Txn(true)
+	txn = is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertAliasInTxn(txn, alias2, false)
 	if err != nil {
@@ -297,7 +297,7 @@ func TestIdentityStore_MemDBAliasIndexes(t *testing.T) {
 	}
 	txn.Commit()
 
-	aliasFetched, err = is.MemDBAliasByID("testaliasid", false, false)
+	aliasFetched, err = is.MemDBAliasByID(ctx, "testaliasid", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}

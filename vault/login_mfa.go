@@ -472,7 +472,7 @@ func (i *IdentityStore) handleLoginMFAGenerateCommon(ctx context.Context, req *l
 		return nil, fmt.Errorf("configuration for method ID %q does not contain an identifier", methodID)
 	}
 
-	entity, err := i.MemDBEntityByID(entityID, true)
+	entity, err := i.MemDBEntityByID(ctx, entityID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find entity with ID %q: error: %w", entityID, err)
 	}
@@ -526,7 +526,7 @@ func (i *IdentityStore) handleLoginMFAAdminDestroyUpdate(ctx context.Context, re
 		return logical.ErrorResponse("missing entity ID"), nil
 	}
 
-	entity, err = i.MemDBEntityByID(entityID, true)
+	entity, err = i.MemDBEntityByID(ctx, entityID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find entity with ID %q: error: %w", entityID, err)
 	}
@@ -977,7 +977,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 	identityGroupIds, ok := d.GetOk("identity_group_ids")
 	if ok {
 		for _, groupId := range identityGroupIds.([]string) {
-			group, err := i.MemDBGroupByID(groupId, true)
+			group, err := i.MemDBGroupByID(ctx, groupId, true)
 			if err != nil {
 				return nil, err
 			}
@@ -992,7 +992,7 @@ func (i *IdentityStore) handleMFALoginEnforcementUpdate(ctx context.Context, req
 	identityEntityIds, ok := d.GetOk("identity_entity_ids")
 	if ok {
 		for _, entityId := range identityEntityIds.([]string) {
-			entity, err := i.MemDBEntityByID(entityId, true)
+			entity, err := i.MemDBEntityByID(ctx, entityId, true)
 			if err != nil {
 				return nil, err
 			}
@@ -1110,7 +1110,7 @@ func (b *MFABackend) handleMFAGenerateTOTP(ctx context.Context, mConfig *mfa.Con
 	defer b.Core.identityStore.lock.Unlock()
 
 	// Read the entity after acquiring the lock
-	entity, err := b.Core.identityStore.MemDBEntityByID(entityID, true)
+	entity, err := b.Core.identityStore.MemDBEntityByID(ctx, entityID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find entity with ID %q: %w", entityID, err)
 	}
@@ -1677,7 +1677,7 @@ func (c *Core) validateLoginMFAInternal(ctx context.Context, methodID string, en
 		if mConfig.UsernameFormat == "" {
 			finalUsername = entity.Name
 		} else {
-			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(entity.ID)
+			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(ctx, entity.ID)
 			if err != nil {
 				return fmt.Errorf("failed to fetch group memberships: %w", err)
 			}
@@ -1775,7 +1775,7 @@ ECONFIG_LOOP:
 			}
 
 			// Retrieve entity groups
-			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(entity.ID)
+			directGroups, inheritedGroups, err := c.identityStore.groupsByEntityID(ctx, entity.ID)
 			if err != nil {
 				return nil, errors.New("error on retrieving groups by entityID in MFA")
 			}

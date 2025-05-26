@@ -158,7 +158,7 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 
 		switch {
 		case id != "":
-			entity, err = i.MemDBEntityByID(id, false)
+			entity, err = i.MemDBEntityByID(ctx, id, false)
 			if err != nil {
 				return nil, err
 			}
@@ -170,7 +170,7 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 			}
 
 		case aliasID != "":
-			alias, err := i.MemDBAliasByID(aliasID, false, false)
+			alias, err := i.MemDBAliasByID(ctx, aliasID, false, false)
 			if err != nil {
 				return nil, err
 			}
@@ -179,13 +179,13 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 				break
 			}
 
-			entity, err = i.MemDBEntityByAliasID(alias.ID, false)
+			entity, err = i.MemDBEntityByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
 
 		case aliasName != "" && aliasMountAccessor != "":
-			alias, err := i.MemDBAliasByFactors(aliasMountAccessor, aliasName, false, false)
+			alias, err := i.MemDBAliasByFactors(ctx, aliasMountAccessor, aliasName, false, false)
 			if err != nil {
 				return nil, err
 			}
@@ -194,7 +194,7 @@ func (i *IdentityStore) pathLookupEntityUpdate() framework.OperationFunc {
 				break
 			}
 
-			entity, err = i.MemDBEntityByAliasID(alias.ID, false)
+			entity, err = i.MemDBEntityByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
@@ -270,7 +270,7 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 
 		switch {
 		case id != "":
-			group, err = i.MemDBGroupByID(id, false)
+			group, err = i.MemDBGroupByID(ctx, id, false)
 			if err != nil {
 				return nil, err
 			}
@@ -280,7 +280,7 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				return nil, err
 			}
 		case aliasID != "":
-			alias, err := i.MemDBAliasByID(aliasID, false, true)
+			alias, err := i.MemDBAliasByID(ctx, aliasID, false, true)
 			if err != nil {
 				return nil, err
 			}
@@ -289,13 +289,13 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				break
 			}
 
-			group, err = i.MemDBGroupByAliasID(alias.ID, false)
+			group, err = i.MemDBGroupByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}
 
 		case aliasName != "" && aliasMountAccessor != "":
-			alias, err := i.MemDBAliasByFactors(aliasMountAccessor, aliasName, false, true)
+			alias, err := i.MemDBAliasByFactors(ctx, aliasMountAccessor, aliasName, false, true)
 			if err != nil {
 				return nil, err
 			}
@@ -304,7 +304,7 @@ func (i *IdentityStore) pathLookupGroupUpdate() framework.OperationFunc {
 				break
 			}
 
-			group, err = i.MemDBGroupByAliasID(alias.ID, false)
+			group, err = i.MemDBGroupByAliasID(ctx, alias.ID, false)
 			if err != nil {
 				return nil, err
 			}

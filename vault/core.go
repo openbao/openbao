@@ -1278,7 +1278,7 @@ func (c *Core) configureLogicalBackends(backends map[string]logical.Factory, log
 				return nil, err
 			}
 
-			if err := c.identityStore.AddNamespaceView(c, ns.UUID, config.StorageView); err != nil {
+			if err := c.identityStore.AddNamespaceView(c, ns, config.StorageView); err != nil {
 				return nil, fmt.Errorf("failed to register namespace to identity store: %w", err)
 			}
 			return c.identityStore, nil

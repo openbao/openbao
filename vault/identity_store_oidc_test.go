@@ -831,7 +831,7 @@ func TestOIDC_SignIDToken(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
@@ -962,7 +962,7 @@ func TestOIDC_SignIDToken_NilSigningKey(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err := c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {
@@ -1417,7 +1417,7 @@ func TestOIDC_Path_Introspect(t *testing.T) {
 		BucketKey: "test-entity-bucket-key",
 	}
 
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = c.identityStore.upsertEntityInTxn(ctx, txn, testEntity, nil, true)
 	if err != nil {

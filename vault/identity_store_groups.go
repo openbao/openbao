@@ -213,7 +213,7 @@ func (i *IdentityStore) pathGroupIDUpdate() framework.OperationFunc {
 		i.groupLock.Lock()
 		defer i.groupLock.Unlock()
 
-		group, err := i.MemDBGroupByID(groupID, true)
+		group, err := i.MemDBGroupByID(ctx, groupID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -354,7 +354,7 @@ func (i *IdentityStore) pathGroupIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("empty group id"), nil
 		}
 
-		group, err := i.MemDBGroupByID(groupID, false)
+		group, err := i.MemDBGroupByID(ctx, groupID, false)
 		if err != nil {
 			return nil, err
 		}
@@ -431,7 +431,7 @@ func (i *IdentityStore) handleGroupReadCommon(ctx context.Context, group *identi
 	respData["alias"] = aliasMap
 
 	var memberGroupIDs []string
-	memberGroups, err := i.MemDBGroupsByParentGroupID(group.ID, false)
+	memberGroups, err := i.MemDBGroupsByParentGroupID(ctx, group.ID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +474,7 @@ func (i *IdentityStore) handleGroupDeleteCommon(ctx context.Context, key string,
 	defer i.groupLock.Unlock()
 
 	// Create a MemDB transaction to delete group
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	var group *identity.Group
@@ -549,7 +549,7 @@ func (i *IdentityStore) handleGroupListCommon(ctx context.Context, byID bool) (*
 		return nil, err
 	}
 
-	txn := i.db.Txn(false)
+	txn := i.db(ctx).Txn(false)
 
 	iter, err := txn.Get(groupsTable, "namespace_id", ns.ID)
 	if err != nil {

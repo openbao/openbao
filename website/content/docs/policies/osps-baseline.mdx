@@ -13,7 +13,7 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 | Control                         | Status |
 | ------------------------------- | ------ |
 | [OSPS-AC-01.01](#osps-ac-01-01) |        |
-| [OSPS-AC-02.01](#osps-ac-02-01) |        |
+| [OSPS-AC-02.01](#osps-ac-02-01) | ✅     |
 | [OSPS-AC-03.01](#osps-ac-03-01) |        |
 | [OSPS-AC-03.02](#osps-ac-03-02) |        |
 | [OSPS-BR-01.01](#osps-br-01-01) |        |
@@ -37,7 +37,14 @@ This pages tracks the implementation status of [Open Source Project Security Bas
 When a user attempts to access a sensitive resource in the project's version control system, the system MUST require the user to complete a multi-factor authentication process.
 
 ## OSPS-AC-02.01 {#osps-ac-02-01}
-When a new collaborator is added, the version control system MUST require manual permission assignment, or restrict the collaborator permissions to the lowest available privileges by default.
+
+> **Requirement:** *When a new [collaborator](https://baseline.openssf.org/versions/2025-02-25#collaborator) is added, the [version control system](https://baseline.openssf.org/versions/2025-02-25#version-control-system) MUST require manual permission assignment, or restrict the [collaborator](https://baseline.openssf.org/versions/2025-02-25#collaborator) permissions to the lowest available privileges by default.*
+
+The [MAINTAINERS.md](https://github.com/openbao/openbao/blob/main/MAINTAINERS.md) guideline outlines contributor roles for the [OpenBao GitHub organization](https://github.com/openbao) and its repositories. Existing members onboard new contributors through a voting process if candidates meet the described requirements, or if the Technical Steering Committee (TSC) grants an exception to these requirements.
+
+Once approved, organization owners invite and assign these contributors to one or more GitHub teams. The [CODEOWNERS](https://github.com/openbao/openbao/blob/main/CODEOWNERS) file then specifies fine-grained permissions and responsibilities at the repository level.
+
+Organization owners are managed through their GitHub Enterprise identities, and the responsible Linux Foundation bodies govern them.
 
 ## OSPS-AC-03.01 {#osps-ac-03-01}
 When a direct commit is attempted on the project's primary branch, an enforcement mechanism MUST prevent the change from being applied.

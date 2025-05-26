@@ -151,9 +151,16 @@ func scanViewPaginated(ctx context.Context, view ClearableView, logger hclog.Log
 			}
 
 			if after == "" && len(contents) == 1 && pageSize > 1 {
-				// In this case, we likely had a mostly-empty "directory" with
-				// only a single entry, with the same name as this "directory".
-				// Exit out of it to avoid an infinite loop.
+				// In this case, contents[0] == after == "". We hit this when
+				// a key is written to storage with a trailing slash (baz/);
+				// this is still a valid entry, so by semantics of list,
+				// list(baz/) = "", if nothing else resides under baz/. This
+				// is hit in some incorrect path joining operations and so
+				// must still be able to function correctly. Setting after=""
+				// is the default value and must include "" in the listing, so
+				// if we have an adequately large page size and the empty empty
+				// string is what we got, we know there's nothing else there
+				// and thus we can break.
 				break
 			}
 		}

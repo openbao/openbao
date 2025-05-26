@@ -20,13 +20,13 @@ import (
 	"math/big"
 	"net"
 	"net/url"
+	reflect "reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	celgo "github.com/google/cel-go/cel"
-	"github.com/google/cel-go/common/types/ref"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -828,39 +828,70 @@ func generateCert(sc *storageContext,
 
 // Generate a certificate evaluating params against CEL role
 func generateCELCert(
-	b *backend,
 	env *celgo.Env,
-	template CertificateTemplate,
 	evaluationData map[string]interface{},
 	caSign *certutil.CAInfoBundle,
+	protoCert string,
 	randomSource io.Reader,
 ) (*certutil.ParsedCertBundle, error) {
-	// Generate creation bundle against CEL role rules
-	data, err := generateCELCreationBundle(b, env, template, evaluationData, caSign, nil)
+	cert, err := generateCertTemplate(env, evaluationData, protoCert)
 	if err != nil {
 		return nil, err
 	}
-	if data.Params == nil {
-		return nil, errutil.InternalError{Err: "nil parameters received from parameter bundle generation"}
-	}
 
 	// Generate the certificate using the evaluated params
-	parsedBundle, err := certutil.CreateCertificateWithRandomSource(data, randomSource)
+	parsedBundle, err := certutil.CreateCertificateWithTemplate(caSign, evaluationData, *cert, randomSource)
 	if err != nil {
 		return nil, err
 	}
 	return parsedBundle, nil
 }
 
+func generateCertTemplate(env *celgo.Env, evaluationData map[string]interface{}, protoCert string) (*x509.Certificate, error) {
+	compileAndEvalCertTemplate := func(expr string) (*CertTemplate, error) {
+		if expr == "" {
+			return nil, nil
+		}
+
+		prog, err := compileExpression(env, expr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compile CEL protoCert expression: %w", err)
+		}
+
+		out, _, err := prog.Eval(evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("certTemplate eval: %w", err)
+		}
+
+		val, err := out.ConvertToNative(reflect.TypeOf(&CertTemplate{}))
+		if err != nil {
+			return nil, fmt.Errorf("certTemplate unwrap: %w", err)
+		}
+		return val.(*CertTemplate), nil
+	}
+
+	certTemp, err := compileAndEvalCertTemplate(protoCert)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := CertProtoToX509(certTemp)
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
 // Generate a certificate evaluating params against CEL role
 func signCELCert(
-	b *backend,
 	env *celgo.Env,
-	template CertificateTemplate,
+	CSR string,
 	evaluationData map[string]interface{},
 	caSign *certutil.CAInfoBundle,
+	protoCert string,
 ) (*certutil.ParsedCertBundle, error) {
-	csrExpression := template.CSR
+	csrExpression := CSR
 	if csrExpression == "" {
 		return nil, errutil.UserError{Err: "\"csr\" is empty"}
 	}
@@ -888,17 +919,13 @@ func signCELCert(
 		return nil, errutil.UserError{Err: fmt.Sprintf("certificate request could not be parsed: %v", err)}
 	}
 
-	// Generate creation bundle against CEL role rules
-	data, err := generateCELCreationBundle(b, env, template, evaluationData, caSign, csr)
+	cert, err := generateCertTemplate(env, evaluationData, protoCert)
 	if err != nil {
 		return nil, err
 	}
-	if data.Params == nil {
-		return nil, errutil.InternalError{Err: "nil parameters received from parameter bundle generation"}
-	}
 
 	// Sign the certificate using the evaluated params
-	parsedBundle, err := certutil.SignCertificate(data)
+	parsedBundle, err := certutil.SignCertificateWithTemplate(caSign, csr, evaluationData, *cert)
 	if err != nil {
 		return nil, err
 	}
@@ -1654,324 +1681,6 @@ func generateCreationBundle(b *backend, data *inputBundle, caSign *certutil.CAIn
 	}
 
 	return creation, warnings, nil
-}
-
-func evaluateCELStringToInt(expression string, evaluateField func(string) (any, error), fieldName string) (int, error) {
-	val, err := evaluateField(expression)
-	if err != nil {
-		return 0, fmt.Errorf("error evaluating %s: %w", fieldName, err)
-	}
-
-	switch v := val.(type) {
-	case int64:
-		return int(v), nil
-	case string:
-		if v == "" {
-			return 0, nil
-		}
-		parsed, err := strconv.Atoi(v)
-		if err != nil {
-			return 0, fmt.Errorf("cannot convert string to int: %w", err)
-		}
-		return parsed, nil
-	default:
-		return 0, fmt.Errorf("unsupported type for int conversion: %T", val)
-	}
-}
-
-func evaluateCELStringToList(expression string, evaluateField func(string) (any, error), fieldName string) ([]string, error) {
-	val, err := evaluateField(expression)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating %s: %w", fieldName, err)
-	}
-
-	// If it's an empty string, return an empty slice
-	if str, ok := val.(string); ok && str == "" {
-		return []string{}, nil
-	}
-
-	vals, ok := val.([]ref.Val)
-	if !ok {
-		return nil, fmt.Errorf("expected []ref.Val, got %T", val)
-	}
-
-	result := make([]string, 0, len(vals))
-	for _, val := range vals {
-		strVal, ok := val.Value().(string)
-		if !ok {
-			return nil, fmt.Errorf("element is not string: %v", val.Value())
-		}
-		result = append(result, strVal)
-	}
-
-	return result, nil
-}
-
-// generateCELCreationBundle evaluates each field in the certificate template defined by
-// the CEL Role Author using the provided CEL environment and evaluation context. It returns a
-// CreationBundle containing all parameters necessary to issue or sign a certificate.
-func generateCELCreationBundle(b *backend, env *celgo.Env, template CertificateTemplate, evaluationData map[string]interface{}, caSign *certutil.CAInfoBundle, csr *x509.CertificateRequest) (*certutil.CreationBundle, error) {
-	// Helper function to evaluate CEL expression in the CertificateTemplate's fields
-	evaluateField := func(expression string) (any, error) {
-		if expression == "" {
-			return "", nil // No expression provided, return empty string
-		}
-
-		prog, err := compileExpression(env, expression)
-		if err != nil {
-			return "", fmt.Errorf("failed to compile CEL expression: %w", err)
-		}
-
-		evalResult, _, err := prog.Eval(evaluationData)
-		if err != nil {
-			return "", fmt.Errorf("failed to evaluate CEL expression: %w", err)
-		}
-
-		return evalResult.Value(), nil
-	}
-
-	// Evaluate each field in the template
-	cn, err := evaluateField(template.CommonName)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating CommonName: %w", err)
-	}
-	ridSerialNumber, err := evaluateField(template.SerialNumber)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating SerialNumber: %w", err)
-	}
-	country, err := evaluateCELStringToList(template.Country, evaluateField, "Country")
-	if err != nil {
-		return nil, err
-	}
-	organization, err := evaluateCELStringToList(template.Organization, evaluateField, "Organization")
-	if err != nil {
-		return nil, err
-	}
-	organizationalUnit, err := evaluateCELStringToList(template.OrganizationalUnit, evaluateField, "OrganizationalUnit")
-	if err != nil {
-		return nil, err
-	}
-	locality, err := evaluateCELStringToList(template.Locality, evaluateField, "Locality")
-	if err != nil {
-		return nil, err
-	}
-	province, err := evaluateCELStringToList(template.Province, evaluateField, "Province")
-	if err != nil {
-		return nil, err
-	}
-	streetAddress, err := evaluateCELStringToList(template.StreetAddress, evaluateField, "StreetAddress")
-	if err != nil {
-		return nil, err
-	}
-	postalCode, err := evaluateCELStringToList(template.PostalCode, evaluateField, "PostalCode")
-	if err != nil {
-		return nil, err
-	}
-	dnsNames, err := evaluateCELStringToList(template.DNSNames, evaluateField, "DNSNames")
-	if err != nil {
-		return nil, err
-	}
-	emailAddresses, err := evaluateCELStringToList(template.EmailAddresses, evaluateField, "EmailAddresses")
-	if err != nil {
-		return nil, err
-	}
-
-	// Get and verify any IP SANs
-	ipAddresses := []net.IP{}
-	ipAddressesSlice, err := evaluateCELStringToList(template.IPAddresses, evaluateField, "IPAddresses")
-	if err != nil {
-		return nil, err
-	}
-	for _, v := range ipAddressesSlice {
-		parsedIP := net.ParseIP(v)
-		if parsedIP == nil {
-			return nil, errutil.UserError{Err: fmt.Sprintf(
-				"the value %q is not a valid IP address", v)}
-		}
-		ipAddresses = append(ipAddresses, parsedIP)
-	}
-
-	isCA, err := evaluateField(template.IsCA)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating IsCA: %w", err)
-	}
-	if isCA == "" {
-		isCA = false
-	}
-
-	keyUsage, err := evaluateCELStringToList(template.KeyUsage, evaluateField, "KeyUsage")
-	if err != nil {
-		return nil, err
-	}
-	extKeyUsage, err := evaluateCELStringToList(template.ExtKeyUsage, evaluateField, "ExtKeyUsage")
-	if err != nil {
-		return nil, err
-	}
-
-	URIs := []*url.URL{}
-	urisList, err := evaluateCELStringToList(template.URIs, evaluateField, "URIs")
-	if err != nil {
-		return nil, err
-	}
-	for _, uri := range urisList {
-		parsedURI, err := url.Parse(uri)
-		if err == nil {
-			URIs = append(URIs, parsedURI)
-		}
-	}
-
-	otherSANsList, err := evaluateCELStringToList(template.OtherSANs, evaluateField, "OtherSANs")
-	if err != nil {
-		return nil, err
-	}
-	otherSANs, err := parseOtherSANs(otherSANsList)
-	if err != nil {
-		return nil, errutil.UserError{Err: fmt.Errorf("could not parse requested other SAN: %w", err).Error()}
-	}
-
-	keyType, err := evaluateField(template.KeyType)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating KeyType: %w", err)
-	}
-	keyBits, err := evaluateCELStringToInt(template.KeyBits, evaluateField, "keyBits")
-	if err != nil {
-		return nil, fmt.Errorf("error converting KeyBits to int: %w", err)
-	}
-
-	if keyType == "" || keyBits == 0 {
-		if keyType == "" {
-			keyType = "rsa"
-		}
-		switch keyType {
-		case "rsa":
-			if keyBits == 0 {
-				keyBits = 2048
-			}
-		case "ec":
-			if keyBits == 0 {
-				keyBits = 256
-			}
-		case "ed25519":
-			// Ed25519 doesn't require setting keyBits
-		default:
-			return nil, fmt.Errorf("key type not recognized: %v", keyType)
-		}
-	}
-
-	err = certutil.ValidateKeyTypeLength(keyType.(string), keyBits)
-	if err != nil {
-		return nil, fmt.Errorf("%w", err)
-	}
-
-	signatureBits, err := evaluateCELStringToInt(template.SignatureBits, evaluateField, "SignatureBits")
-	if err != nil {
-		return nil, fmt.Errorf("error converting SignatureBits to int: %w", err)
-	}
-
-	usePss, err := evaluateField(template.UsePSS)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating UsePSS: %w", err)
-	}
-	if usePss == "" {
-		usePss = false
-	}
-
-	notBefore, err := evaluateField(template.NotBefore)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating NotBefore: %w", err)
-	}
-	// Default notBefore to current time if not provided
-	if str, ok := notBefore.(string); ok && str == "" {
-		notBefore = time.Now()
-	}
-
-	notAfter, err := evaluateField(template.NotAfter)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating NotAfter: %w", err)
-	}
-
-	ttlValue, err := evaluateField(template.TTL)
-	if err != nil {
-		return nil, fmt.Errorf("error evaluating TTL: %w", err)
-	}
-
-	// If the TTL is not specified or is zero, default to System value
-	ttlStr, ok := ttlValue.(string)
-	ttlTime, ok2 := ttlValue.(time.Duration)
-	if (ok && ttlStr == "") || (ok2 && ttlTime == 0) {
-		ttlValue = b.System().DefaultLeaseTTL()
-	}
-
-	// If notAfter not specified, use TTL
-	if str, ok := notAfter.(string); ok && str == "" {
-		notAfter = time.Now().Add(ttlValue.(time.Duration))
-	}
-
-	// Verify that notBefore is older than notAfter.
-	if notBefore.(time.Time).After(notAfter.(time.Time)) {
-		return nil, errutil.UserError{
-			Err: fmt.Sprintf("The certificate's Not Before (%v) is later than the certificate's Not After (%v)", notBefore.(time.Time).String(), notAfter),
-		}
-	}
-
-	// Disallow zero duration certificate.
-	if notBefore.(time.Time).Equal(notAfter.(time.Time)) {
-		return nil, errutil.UserError{
-			Err: fmt.Sprintf("The certificate's Not Before (%v) is equal to the certificate's Not After (%v)", notBefore, notAfter),
-		}
-	}
-
-	notBeforeDuration := int64(30) // Default to 30 seconds
-	if val, err := evaluateField(template.NotBeforeDuration); err == nil {
-		if v, ok := val.(int64); ok {
-			notBeforeDuration = v
-		}
-	}
-
-	policyIdentifiers, err := evaluateCELStringToList(template.PolicyIdentifiers, evaluateField, "PolicyIdentifiers")
-	if err != nil {
-		return nil, err
-	}
-
-	subject := pkix.Name{
-		CommonName:         cn.(string),
-		SerialNumber:       ridSerialNumber.(string),
-		Country:            strutil.RemoveDuplicatesStable(country, false),
-		Organization:       strutil.RemoveDuplicatesStable(organization, false),
-		OrganizationalUnit: strutil.RemoveDuplicatesStable(organizationalUnit, false),
-		Locality:           strutil.RemoveDuplicatesStable(locality, false),
-		Province:           strutil.RemoveDuplicatesStable(province, false),
-		StreetAddress:      strutil.RemoveDuplicatesStable(streetAddress, false),
-		PostalCode:         strutil.RemoveDuplicatesStable(postalCode, false),
-	}
-
-	creation := &certutil.CreationBundle{
-		Params: &certutil.CreationParameters{
-			Subject:           subject,
-			DNSNames:          strutil.RemoveDuplicatesStable(dnsNames, false),
-			EmailAddresses:    strutil.RemoveDuplicates(emailAddresses, false),
-			IPAddresses:       ipAddresses,
-			URIs:              URIs,
-			OtherSANs:         otherSANs,
-			IsCA:              isCA.(bool),
-			KeyType:           keyType.(string),
-			KeyBits:           keyBits,
-			NotBefore:         notBefore.(time.Time),
-			NotAfter:          notAfter.(time.Time),
-			KeyUsage:          x509.KeyUsage(parseKeyUsages(keyUsage)),
-			ExtKeyUsage:       parseExtKeyUsagesValue(0, (extKeyUsage)),
-			PolicyIdentifiers: policyIdentifiers,
-			SignatureBits:     signatureBits,
-			UsePSS:            usePss.(bool),
-			NotBeforeDuration: time.Duration(notBeforeDuration) * time.Second,
-		},
-		SigningBundle: caSign,
-		CSR:           csr,
-	}
-
-	creation.Params.URLs = caSign.URLs
-
-	return creation, nil
 }
 
 // compute a certificate's Not Before based on the role and input api data sent. Returns notBefore Time and an error.

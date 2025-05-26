@@ -801,9 +801,13 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	// Declare a map variable named "request" to represent the incoming data.
 	envOptions := []celgo.EnvOption{
+		celgo.Container("openbao.pki"),
 		celgo.Declarations(
 			decls.NewVar("request", decls.NewMapType(decls.String, decls.Dyn)),
 			decls.NewVar("now", decls.Timestamp),
+		),
+		celgo.Types(
+			&CertTemplate{},
 		),
 	}
 
@@ -921,6 +925,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
 
+	// Protobuf representation of x509.
+	certTemplate := celRole.ValidationProgram.Expressions.CertTemplate
+
 	var parsedBundle *certutil.ParsedCertBundle
 	if !useCSR {
 		_, ok := data.GetOk("key_type")
@@ -934,9 +941,9 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			data.Raw["key_bits"] = 2048
 		}
 
-		parsedBundle, err = generateCELCert(b, env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle, rand.Reader)
+		parsedBundle, err = generateCELCert(env, evaluationData, signingBundle, certTemplate, rand.Reader)
 	} else {
-		parsedBundle, err = signCELCert(b, env, celRole.ValidationProgram.Expressions.Certificate, evaluationData, signingBundle)
+		parsedBundle, err = signCELCert(env, celRole.ValidationProgram.Expressions.CSR, evaluationData, signingBundle, certTemplate)
 	}
 	if err != nil {
 		switch err.(type) {

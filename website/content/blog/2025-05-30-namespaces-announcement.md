@@ -29,23 +29,33 @@ Finally, namespaces are one of a few planned stepping stones towards OpenBaos [h
 
 There are plenty of use cases or multi-tenancy scenarios that namespaces will enable. As an example, let's consider a possible namespace setup for a SaaS Company. The platform team retains a top-level namespace for shared infrastructure. On the other hand, each tenant receives a fully isolated namespace to, e.g., model a staging system.
 
+<figure>
+```mermaid 
+graph LR
+
+root["/"]
+
+root --> platform[platform]
+platform --> infra[infra]
+platform --> monitoring[monitoring]
+platform --> devtools[devtools]
+
+root --> tenants[tenants]
+
+tenants --> tenantA[tenant-a]
+tenantA --> devA[dev]
+tenantA --> stagingA[staging]
+tenantA --> prodA[prod]
+
+tenants --> tenantB[tenant-b]
+tenantB --> devB[dev]
+tenantB --> prodB[prod]
+
+tenants --> tenantC[tenant-c]
+tenantC --> prodC[prod]
 ```
-/  
-├── platform  
-│   ├── infra  
-│   ├── monitoring  
-│   └── devtools  
-└── tenants  
-    ├── tenant-a  
-    │   ├── dev  
-    │   ├── staging  
-    │   └── prod  
-    ├── tenant-b  
-    │   ├── dev  
-    │   └── prod  
-    └── tenant-c  
-        └── prod
-```
+<figcaption>An example namespace structure to separate tenants and the platform team.</figcaption>
+</figure>
 
 To use this new feature, no extra setup or configuration is required. The OpenBao CLI now features a special `namespace` sub-command, which can be used to administrate Namespaces.
 

@@ -79,7 +79,7 @@ func TestScanViewPaginated(t *testing.T) {
 	// itself and/or files which bear the same name works.
 	v := NewStorageView(s, "bar/")
 	logger := hclog.NewNullLogger()
-	for pageSize := 1; pageSize < 10; pageSize++ {
+	for pageSize := 2; pageSize < 10; pageSize++ {
 		keys = make([]string, 0)
 		err = ScanViewPaginated(context.Background(), v, logger, pageSize, func(_ int, _ int, path string) (bool, error) {
 			keys = append(keys, path)

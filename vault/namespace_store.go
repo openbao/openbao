@@ -730,6 +730,11 @@ func (ns *NamespaceStore) clearNamespaceResources(ctx context.Context, namespace
 		}
 	}
 
+	if err := ns.core.identityStore.RemoveNamespaceView(namespaceToDelete); err != nil {
+		ns.logger.Error("failed to clean identity store", "namespace", namespaceToDelete.Path, "error", err.Error())
+		return
+	}
+
 	err = ns.core.quotaManager.HandleNamespaceDeletion(nsCtx, namespaceToDelete.Path)
 	if err != nil {
 		ns.logger.Error("failed to update quotas after deleting namespace", "namespace", namespaceToDelete.Path, "error", err.Error())

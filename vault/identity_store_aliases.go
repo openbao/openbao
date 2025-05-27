@@ -201,7 +201,7 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 			// If they provide an ID it must be an update. Find the alias, perform
 			// due diligence, call the update function.
 			if id != "" {
-				alias, err := i.MemDBAliasByID(id, true, false)
+				alias, err := i.MemDBAliasByID(ctx, id, true, false)
 				if err != nil {
 					return nil, err
 				}
@@ -250,7 +250,7 @@ func (i *IdentityStore) handleAliasCreateUpdate() framework.OperationFunc {
 		if mountEntry.NamespaceID != ns.ID {
 			return logical.ErrorResponse("matching mount is in a different namespace than request"), logical.ErrPermissionDenied
 		}
-		alias, err := i.MemDBAliasByFactors(mountAccessor, name, false, false)
+		alias, err := i.MemDBAliasByFactors(ctx, mountAccessor, name, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -273,7 +273,7 @@ func (i *IdentityStore) handleAliasCreate(ctx context.Context, canonicalID, name
 
 	var entity *identity.Entity
 	if canonicalID != "" {
-		entity, err = i.MemDBEntityByID(canonicalID, true)
+		entity, err = i.MemDBEntityByID(ctx, canonicalID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -365,7 +365,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 
 	// Get our current entity, which may be the same as the new one if the
 	// canonical ID hasn't changed
-	currentEntity, err := i.MemDBEntityByAliasID(alias.ID, true)
+	currentEntity, err := i.MemDBEntityByAliasID(ctx, alias.ID, true)
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 			return logical.ErrorResponse("given mount accessor is not in the same namespace as the existing alias"), logical.ErrPermissionDenied
 		}
 
-		existingAlias, err := i.MemDBAliasByFactors(mountAccessor, name, false, false)
+		existingAlias, err := i.MemDBAliasByFactors(ctx, mountAccessor, name, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -427,7 +427,7 @@ func (i *IdentityStore) handleAliasUpdate(ctx context.Context, canonicalID, name
 			return logical.ErrorResponse("local aliases can't be moved between entities"), nil
 		}
 
-		newEntity, err = i.MemDBEntityByID(canonicalID, true)
+		newEntity, err = i.MemDBEntityByID(ctx, canonicalID, true)
 		if err != nil {
 			return nil, err
 		}
@@ -514,7 +514,7 @@ func (i *IdentityStore) pathAliasIDRead() framework.OperationFunc {
 			return logical.ErrorResponse("missing alias id"), nil
 		}
 
-		alias, err := i.MemDBAliasByID(aliasID, false, false)
+		alias, err := i.MemDBAliasByID(ctx, aliasID, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -573,7 +573,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 		defer i.lock.Unlock()
 
 		// Create a MemDB transaction to delete entity
-		txn := i.db.Txn(true)
+		txn := i.db(ctx).Txn(true)
 		defer txn.Abort()
 
 		// Fetch the alias
@@ -624,7 +624,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 
 		switch alias.Local {
 		case true:
-			localAliases, err := i.parseLocalAliases(entity.ID)
+			localAliases, err := i.parseLocalAliases(ctx, entity.ID)
 			if err != nil {
 				return nil, err
 			}
@@ -645,7 +645,7 @@ func (i *IdentityStore) pathAliasIDDelete() framework.OperationFunc {
 				return nil, err
 			}
 
-			if err := i.localAliasPacker.PutItem(ctx, &storagepacker.Item{
+			if err := i.localAliasPacker(ctx).PutItem(ctx, &storagepacker.Item{
 				ID:      entity.ID,
 				Message: marshaledAliases,
 			}); err != nil {

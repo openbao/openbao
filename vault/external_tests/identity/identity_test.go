@@ -342,31 +342,9 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 	assertMember(t, client, entityID, "engineer", devopsGroupID, true)
 
 	identityStore := cores[0].IdentityStore()
-
-	group, err := identityStore.MemDBGroupByID(shipCrewGroupID, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Remove its member entities
-	group.MemberEntityIDs = nil
-
 	ctx := namespace.RootContext(nil)
 
-	err = identityStore.UpsertGroup(ctx, group, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	group, err = identityStore.MemDBGroupByID(shipCrewGroupID, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if group.MemberEntityIDs != nil {
-		t.Fatal("failed to remove entity ID from the group")
-	}
-
-	group, err = identityStore.MemDBGroupByID(adminStaffGroupID, true)
+	group, err := identityStore.MemDBGroupByID(ctx, shipCrewGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +357,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(adminStaffGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, shipCrewGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -387,7 +365,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal("failed to remove entity ID from the group")
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, adminStaffGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +378,28 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, adminStaffGroupID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if group.MemberEntityIDs != nil {
+		t.Fatal("failed to remove entity ID from the group")
+	}
+
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Remove its member entities
+	group.MemberEntityIDs = nil
+
+	err = identityStore.UpsertGroup(ctx, group, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,7 +433,7 @@ func TestIdentityStore_Integ_GroupAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	group, err = identityStore.MemDBGroupByID(devopsGroupID, true)
+	group, err = identityStore.MemDBGroupByID(ctx, devopsGroupID, true)
 	if err != nil {
 		t.Fatal(err)
 	}

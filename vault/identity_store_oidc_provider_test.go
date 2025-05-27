@@ -1672,13 +1672,13 @@ func TestOIDC_Path_OIDC_Client_Type(t *testing.T) {
 func TestOIDC_Path_OIDC_ProviderClient_DefaultKey(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
-	require.NoError(t, c.identityStore.storeOIDCDefaultResources(ctx, c.identityStore.view))
+	require.NoError(t, c.identityStore.storeOIDCDefaultResources(ctx, c.identityStore.view(ctx)))
 
 	// Create a test client "test-client" without a key param
 	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.CreateOperation,
-		Storage:   c.identityStore.view,
+		Storage:   c.identityStore.view(ctx),
 	})
 	expectSuccess(t, resp, err)
 
@@ -1686,7 +1686,7 @@ func TestOIDC_Path_OIDC_ProviderClient_DefaultKey(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/client/test-client",
 		Operation: logical.ReadOperation,
-		Storage:   c.identityStore.view,
+		Storage:   c.identityStore.view(ctx),
 	})
 	expectSuccess(t, resp, err)
 
@@ -2145,7 +2145,7 @@ func TestOIDC_Path_OIDC_ProviderClient_Update(t *testing.T) {
 func TestOIDC_Path_OIDC_ProviderClient_List(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
 	ctx := namespace.RootContext(nil)
-	storage := c.identityStore.view
+	storage := c.identityStore.view(ctx)
 
 	// Prepare two clients, test-client1 and test-client2
 	c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -2226,7 +2226,7 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/client/" + name,
 			Operation: logical.CreateOperation,
-			Storage:   c.identityStore.view,
+			Storage:   c.identityStore.view(ctx),
 			Data:      input,
 		})
 		expectSuccess(t, resp, err)
@@ -2236,7 +2236,7 @@ func TestOIDC_Path_OIDC_Client_List_KeyInfo(t *testing.T) {
 	req := &logical.Request{
 		Path:      "oidc/client",
 		Operation: logical.ListOperation,
-		Storage:   c.identityStore.view,
+		Storage:   c.identityStore.view(ctx),
 		Data:      make(map[string]interface{}),
 	}
 	resp, err := c.identityStore.HandleRequest(ctx, req)
@@ -3381,7 +3381,7 @@ func TestOIDC_Path_OIDC_Provider_List(t *testing.T) {
 	ctx := namespace.RootContext(nil)
 	// Use the identity store's storage view so that the default provider will
 	// show up in the test
-	storage := c.identityStore.view
+	storage := c.identityStore.view(ctx)
 
 	// Prepare two providers, test-provider1 and test-provider2
 	c.identityStore.HandleRequest(ctx, &logical.Request{
@@ -3436,7 +3436,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 	template := `{
 		"groups": {{identity.entity.groups.names}}
 	}`
-	resp, err := c.identityStore.HandleRequest(ctx, testScopeReq(c.identityStore.view,
+	resp, err := c.identityStore.HandleRequest(ctx, testScopeReq(c.identityStore.view(ctx),
 		"groups", template))
 	expectSuccess(t, resp, err)
 
@@ -3463,7 +3463,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/provider/" + name,
 			Operation: logical.CreateOperation,
-			Storage:   c.identityStore.view,
+			Storage:   c.identityStore.view(ctx),
 			Data:      input,
 		})
 		expectSuccess(t, resp, err)
@@ -3473,7 +3473,7 @@ func TestOIDC_Path_OIDC_Provider_List_KeyInfo(t *testing.T) {
 	resp, err = c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "oidc/provider",
 		Operation: logical.ListOperation,
-		Storage:   c.identityStore.view,
+		Storage:   c.identityStore.view(ctx),
 		Data:      make(map[string]interface{}),
 	})
 	expectSuccess(t, resp, err)
@@ -3518,7 +3518,7 @@ func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 		resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 			Path:      "oidc/provider/" + p.name,
 			Operation: logical.CreateOperation,
-			Storage:   c.identityStore.view,
+			Storage:   c.identityStore.view(ctx),
 			Data: map[string]interface{}{
 				"allowed_client_ids": p.allowedClientIDs,
 			},
@@ -3568,7 +3568,7 @@ func TestOIDC_Path_OIDC_Provider_List_Filter(t *testing.T) {
 			resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 				Path:      "oidc/provider",
 				Operation: logical.ListOperation,
-				Storage:   c.identityStore.view,
+				Storage:   c.identityStore.view(ctx),
 				Data: map[string]interface{}{
 					"allowed_client_id": tc.clientIDFilter,
 				},

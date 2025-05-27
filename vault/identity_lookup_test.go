@@ -43,7 +43,7 @@ func TestIdentityStore_Lookup_Entity(t *testing.T) {
 	}
 	aliasID := resp.Data["id"].(string)
 
-	entity, err := i.MemDBEntityByID(entityID, false)
+	entity, err := i.MemDBEntityByID(ctx, entityID, false)
 	if err != nil {
 		t.Fatal(err)
 	}

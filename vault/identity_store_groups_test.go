@@ -137,9 +137,10 @@ func TestIdentityStore_FixOverwrittenMemberGroupIDs(t *testing.T) {
 
 func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	c, keys, rootToken := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
 	// Create a group
-	resp, err := c.identityStore.HandleRequest(namespace.RootContext(nil), &logical.Request{
+	resp, err := c.identityStore.HandleRequest(ctx, &logical.Request{
 		Path:      "group",
 		Operation: logical.UpdateOperation,
 		Data: map[string]interface{}{
@@ -151,19 +152,17 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	}
 
 	// Create a memdb transaction
-	txn := c.identityStore.db.Txn(true)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	// Fetch the above created group
-	group, err := c.identityStore.MemDBGroupByNameInTxn(namespace.RootContext(nil), txn, "testgroup", true)
+	group, err := c.identityStore.MemDBGroupByNameInTxn(ctx, txn, "testgroup", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Manually add an invalid entity as the group's member
 	group.MemberEntityIDs = []string{"invalidentityid"}
-
-	ctx := namespace.RootContext(nil)
 
 	// Persist the group
 	err = c.identityStore.UpsertGroupInTxn(ctx, txn, group, true)
@@ -189,7 +188,7 @@ func TestIdentityStore_GroupEntityMembershipUpgrade(t *testing.T) {
 	}
 
 	// Read the group and ensure that invalid entity id is cleaned up
-	group, err = c.identityStore.MemDBGroupByName(namespace.RootContext(nil), "testgroup", false)
+	group, err = c.identityStore.MemDBGroupByName(ctx, "testgroup", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -561,11 +560,11 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid1", "testparentgroupid2"},
 		MemberEntityIDs: []string{"testentityid1", "testentityid2"},
 		Policies:        []string{"testpolicy1", "testpolicy2"},
-		BucketKey:       i.groupPacker.BucketKey("testgroupid"),
+		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid"),
 	}
 
 	// Insert it into memdb
-	txn := i.db.Txn(true)
+	txn := i.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
 	if err != nil {
@@ -584,12 +583,12 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		ParentGroupIDs:  []string{"testparentgroupid2", "testparentgroupid3"},
 		MemberEntityIDs: []string{"testentityid2", "testentityid3"},
 		Policies:        []string{"testpolicy2", "testpolicy3"},
-		BucketKey:       i.groupPacker.BucketKey("testgroupid2"),
+		BucketKey:       i.groupPacker(ctx).BucketKey("testgroupid2"),
 	}
 
 	// Insert it into memdb
 
-	txn = i.db.Txn(true)
+	txn = i.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = i.MemDBUpsertGroupInTxn(txn, group)
 	if err != nil {
@@ -600,7 +599,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	var fetchedGroup *identity.Group
 
 	// Fetch group given the name
-	fetchedGroup, err = i.MemDBGroupByName(namespace.RootContext(nil), "testgroupname", false)
+	fetchedGroup, err = i.MemDBGroupByName(ctx, "testgroupname", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +608,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	}
 
 	// Fetch group given the ID
-	fetchedGroup, err = i.MemDBGroupByID("testgroupid", false)
+	fetchedGroup, err = i.MemDBGroupByID(ctx, "testgroupid", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -619,7 +618,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 
 	var fetchedGroups []*identity.Group
 	// Fetch the subgroups of a given group ID
-	fetchedGroups, err = i.MemDBGroupsByParentGroupID("testparentgroupid1", false)
+	fetchedGroups, err = i.MemDBGroupsByParentGroupID(ctx, "testparentgroupid1", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -627,7 +626,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal("failed to fetch an indexed group")
 	}
 
-	fetchedGroups, err = i.MemDBGroupsByParentGroupID("testparentgroupid2", false)
+	fetchedGroups, err = i.MemDBGroupsByParentGroupID(ctx, "testparentgroupid2", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -636,7 +635,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 	}
 
 	// Fetch groups based on member entity ID
-	fetchedGroups, err = i.MemDBGroupsByMemberEntityID("testentityid1", false, false)
+	fetchedGroups, err = i.MemDBGroupsByMemberEntityID(ctx, "testentityid1", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -644,7 +643,7 @@ func TestIdentityStore_MemDBGroupIndexes(t *testing.T) {
 		t.Fatal("failed to fetch an indexed group")
 	}
 
-	fetchedGroups, err = i.MemDBGroupsByMemberEntityID("testentityid2", false, false)
+	fetchedGroups, err = i.MemDBGroupsByMemberEntityID(ctx, "testentityid2", false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1067,7 +1066,7 @@ func TestIdentityStore_GroupMultiCase(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	policiesResult, err := is.groupPoliciesByEntityID(entityID1)
+	policiesResult, err := is.groupPoliciesByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1206,11 +1205,11 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 
 	var memberGroupIDs []string
 	// Fetch 'eng' group
-	engGroup, err := is.MemDBGroupByID(engGroupID, false)
+	engGroup, err := is.MemDBGroupByID(ctx, engGroupID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(engGroup.ID)
+	memberGroupIDs, err = is.memberGroupIDsByID(ctx, engGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1220,11 +1219,11 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: group membership IDs; expected: %#v\n actual: %#v\n", engMemberGroupIDs, memberGroupIDs)
 	}
 
-	vaultGroup, err := is.MemDBGroupByID(vaultGroupID, false)
+	vaultGroup, err := is.MemDBGroupByID(ctx, vaultGroupID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(vaultGroup.ID)
+	memberGroupIDs, err = is.memberGroupIDsByID(ctx, vaultGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1234,11 +1233,11 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: group membership IDs; expected: %#v\n actual: %#v\n", vaultMemberGroupIDs, memberGroupIDs)
 	}
 
-	opsGroup, err := is.MemDBGroupByID(opsGroupID, false)
+	opsGroup, err := is.MemDBGroupByID(ctx, opsGroupID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	memberGroupIDs, err = is.memberGroupIDsByID(opsGroup.ID)
+	memberGroupIDs, err = is.memberGroupIDsByID(ctx, opsGroup.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1320,7 +1319,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: resp: %#v, err: %v", resp, err)
 	}
 
-	policiesResult, err := is.groupPoliciesByEntityID(entityID1)
+	policiesResult, err := is.groupPoliciesByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1335,7 +1334,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: %#v\nactual:%#v", expected, policies)
 	}
 
-	policiesResult, err = is.groupPoliciesByEntityID(entityID2)
+	policiesResult, err = is.groupPoliciesByEntityID(ctx, entityID2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1350,7 +1349,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: %#v\nactual:%#v", expected, policies)
 	}
 
-	policiesResult, err = is.groupPoliciesByEntityID(entityID3)
+	policiesResult, err = is.groupPoliciesByEntityID(ctx, entityID3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1363,7 +1362,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: policies; expected: 'engpolicy'\nactual:%#v", policies)
 	}
 
-	groups, inheritedGroups, err := is.groupsByEntityID(entityID1)
+	groups, inheritedGroups, err := is.groupsByEntityID(ctx, entityID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1374,7 +1373,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: length of inheritedGroups; expected: 2, actual: %d", len(inheritedGroups))
 	}
 
-	groups, inheritedGroups, err = is.groupsByEntityID(entityID2)
+	groups, inheritedGroups, err = is.groupsByEntityID(ctx, entityID2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1385,7 +1384,7 @@ func TestIdentityStore_GroupHierarchyCases(t *testing.T) {
 		t.Fatalf("bad: length of inheritedGroups; expected: 1, actual: %d", len(inheritedGroups))
 	}
 
-	groups, inheritedGroups, err = is.groupsByEntityID(entityID3)
+	groups, inheritedGroups, err = is.groupsByEntityID(ctx, entityID3)
 	if err != nil {
 		t.Fatal(err)
 	}

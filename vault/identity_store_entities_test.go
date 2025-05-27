@@ -536,9 +536,9 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
@@ -548,7 +548,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 
 	txn.Commit()
 
-	entityFetched, err := is.MemDBEntityByID(entity.ID, true)
+	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -556,7 +556,7 @@ func TestIdentityStore_MemDBImmutability(t *testing.T) {
 	// Modify the fetched entity outside of a transaction
 	entityFetched.Aliases[0].ID = "invalidaliasid"
 
-	entityFetched, err = is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -828,9 +828,9 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		},
 	}
 
-	entity.BucketKey = is.entityPacker.BucketKey(entity.ID)
+	entity.BucketKey = is.entityPacker(ctx).BucketKey(entity.ID)
 
-	txn := is.db.Txn(true)
+	txn := is.db(ctx).Txn(true)
 	defer txn.Abort()
 	err = is.MemDBUpsertEntityInTxn(txn, entity)
 	if err != nil {
@@ -839,7 +839,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	txn.Commit()
 
 	// Fetch the entity using its ID
-	entityFetched, err := is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err := is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -849,7 +849,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 	}
 
 	// Fetch the entity using its name
-	entityFetched, err = is.MemDBEntityByName(namespace.RootContext(nil), entity.Name, false)
+	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -858,7 +858,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("entity mismatched entities; expected: %#v\n actual: %#v\n", entity, entityFetched)
 	}
 
-	txn = is.db.Txn(false)
+	txn = is.db(ctx).Txn(false)
 	entitiesFetched, err := is.MemDBEntitiesByBucketKeyInTxn(txn, entity.BucketKey)
 	if err != nil {
 		t.Fatal(err)
@@ -868,12 +868,12 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("bad: length of entities; expected: 1, actual: %d", len(entitiesFetched))
 	}
 
-	err = is.MemDBDeleteEntityByID(entity.ID)
+	err = is.MemDBDeleteEntityByID(ctx, entity.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	entityFetched, err = is.MemDBEntityByID(entity.ID, false)
+	entityFetched, err = is.MemDBEntityByID(ctx, entity.ID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -882,7 +882,7 @@ func TestIdentityStore_MemDBEntityIndexes(t *testing.T) {
 		t.Fatalf("bad: entity; expected: nil, actual: %#v\n", entityFetched)
 	}
 
-	entityFetched, err = is.MemDBEntityByName(namespace.RootContext(nil), entity.Name, false)
+	entityFetched, err = is.MemDBEntityByName(ctx, entity.Name, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1047,7 +1047,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity1, err := is.MemDBEntityByID(entityID1, false)
+	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1089,7 +1089,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
-	entity2, err := is.MemDBEntityByID(entityID2, false)
+	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1155,7 +1155,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 	approleAliases := 0
 	for _, aliasRaw := range entity1Aliases {
 		alias := aliasRaw.(map[string]interface{})
-		aliasLookedUp, err := is.MemDBAliasByID(alias["id"].(string), false, false)
+		aliasLookedUp, err := is.MemDBAliasByID(ctx, alias["id"].(string), false, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1183,7 +1183,7 @@ func TestIdentityStore_MergeEntitiesByID(t *testing.T) {
 			t.Fatalf("group id %q not found in merged entity direct groups %q", group, entity1Groups)
 		}
 
-		groupLookedUp, err := is.MemDBGroupByID(group, false)
+		groupLookedUp, err := is.MemDBGroupByID(ctx, group, false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1217,7 +1217,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 	entityID1 := resp.Data["id"].(string)
-	entity1, err := is.MemDBEntityByID(entityID1, false)
+	entity1, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1255,7 +1255,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity2, err := is.MemDBEntityByID(entityID2, false)
+	entity2, err := is.MemDBEntityByID(ctx, entityID2, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1298,7 +1298,7 @@ func TestIdentityStore_MergeEntitiesByID_DuplicateFromEntityIDs(t *testing.T) {
 		t.Fatalf("err:%v resp:%#v", err, resp)
 	}
 
-	entity1Lookup, err := is.MemDBEntityByID(entityID1, false)
+	entity1Lookup, err := is.MemDBEntityByID(ctx, entityID1, false)
 	if err != nil {
 		t.Fatal(err)
 	}

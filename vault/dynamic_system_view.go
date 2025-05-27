@@ -294,8 +294,10 @@ func (d dynamicSystemView) EntityInfo(entityID string) (*logical.Entity, error) 
 		return nil, errors.New("system view identity store is nil")
 	}
 
-	// Retrieve the entity from MemDB
-	entity, err := d.core.identityStore.MemDBEntityByID(entityID, false)
+	// Retrieve the entity from MemDB. Provision the namespace onto the
+	// context so that we can resolve the correct identity instance to use.
+	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.namespace)
+	entity, err := d.core.identityStore.MemDBEntityByID(ctx, entityID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +355,8 @@ func (d dynamicSystemView) GroupsForEntity(entityID string) ([]*logical.Group, e
 		return nil, errors.New("system view identity store is nil")
 	}
 
-	groups, inheritedGroups, err := d.core.identityStore.groupsByEntityID(entityID)
+	ctx := namespace.ContextWithNamespace(context.Background(), d.mountEntry.namespace)
+	groups, inheritedGroups, err := d.core.identityStore.groupsByEntityID(ctx, entityID)
 	if err != nil {
 		return nil, err
 	}

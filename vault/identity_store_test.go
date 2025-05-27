@@ -28,7 +28,8 @@ import (
 
 func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 	c, _, _ := TestCoreUnsealed(t)
-	txn := c.identityStore.db.Txn(true)
+	ctx := namespace.RootContext(nil)
+	txn := c.identityStore.db(ctx).Txn(true)
 	defer txn.Abort()
 
 	alias := &identity.Alias{
@@ -37,7 +38,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor",
 		Name:           "testAliasName",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	alias2 := &identity.Alias{
 		ID:             "testAliasID2",
@@ -45,7 +46,7 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 		MountType:      "testMountType",
 		MountAccessor:  "testMountAccessor2",
 		Name:           "testAliasName2",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("testEntityID"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("testEntityID"),
 	}
 	entity := &identity.Entity{
 		ID:       "testEntityID",
@@ -56,10 +57,10 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("testEntityID"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("testEntityID"),
 	}
 
-	err := c.identityStore.upsertEntityInTxn(context.Background(), txn, entity, nil, false)
+	err := c.identityStore.upsertEntityInTxn(ctx, txn, entity, nil, false)
 	require.NoError(t, err)
 
 	err = c.identityStore.deleteAliasesInEntityInTxn(txn, entity, []*identity.Alias{alias, alias2})
@@ -67,15 +68,15 @@ func TestIdentityStore_DeleteEntityAlias(t *testing.T) {
 
 	txn.Commit()
 
-	alias, err = c.identityStore.MemDBAliasByID("testAliasID1", false, false)
+	alias, err = c.identityStore.MemDBAliasByID(ctx, "testAliasID1", false, false)
 	require.NoError(t, err)
 	require.Nil(t, alias)
 
-	alias, err = c.identityStore.MemDBAliasByID("testAliasID2", false, false)
+	alias, err = c.identityStore.MemDBAliasByID(ctx, "testAliasID2", false, false)
 	require.NoError(t, err)
 	require.Nil(t, alias)
 
-	entity, err = c.identityStore.MemDBEntityByID("testEntityID", false)
+	entity, err = c.identityStore.MemDBEntityByID(ctx, "testEntityID", false)
 	require.NoError(t, err)
 
 	require.Len(t, entity.Aliases, 0)
@@ -89,6 +90,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 	defer ClearTestCredentialBackends()
 
 	c, unsealKey, root := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
@@ -108,7 +110,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -118,7 +120,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity1"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
 	}
 
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
@@ -132,7 +134,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "APPROLEUSER",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -142,7 +144,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity2"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
 	}
 
 	// Persist the second entity directly without the regular flow. This will skip
@@ -156,8 +158,7 @@ func TestIdentityStore_UnsealingWhenConflictingAliasNames(t *testing.T) {
 		Message: entity2Any,
 	}
 
-	ctx := namespace.RootContext(nil)
-	if err = c.identityStore.entityPacker.PutItem(ctx, item); err != nil {
+	if err = c.identityStore.entityPacker(ctx).PutItem(ctx, item); err != nil {
 		t.Fatal(err)
 	}
 
@@ -550,6 +551,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 	defer ClearTestCredentialBackends()
 
 	c, _, _ := TestCoreUnsealed(t)
+	ctx := namespace.RootContext(nil)
 
 	meGH := &MountEntry{
 		Table:       credentialTableType,
@@ -569,7 +571,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity1"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity1"),
 	}
 	entity := &identity.Entity{
 		ID:       "entity1",
@@ -579,7 +581,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity1"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity1"),
 	}
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity, nil, true)
 	if err != nil {
@@ -592,7 +594,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		MountType:      "approle",
 		MountAccessor:  meGH.Accessor,
 		Name:           "approleuser",
-		LocalBucketKey: c.identityStore.localAliasPacker.BucketKey("entity2"),
+		LocalBucketKey: c.identityStore.localAliasPacker(ctx).BucketKey("entity2"),
 	}
 	entity2 := &identity.Entity{
 		ID:       "entity2",
@@ -602,7 +604,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 			alias2,
 		},
 		NamespaceID: namespace.RootNamespaceID,
-		BucketKey:   c.identityStore.entityPacker.BucketKey("entity2"),
+		BucketKey:   c.identityStore.entityPacker(ctx).BucketKey("entity2"),
 	}
 
 	err = c.identityStore.upsertEntity(namespace.RootContext(nil), entity2, nil, true)
@@ -633,7 +635,7 @@ func TestIdentityStore_MergeConflictingAliases(t *testing.T) {
 		t.Fatal(diff)
 	}
 
-	newEntity, err = c.identityStore.MemDBEntityByID(entityToUse, false)
+	newEntity, err = c.identityStore.MemDBEntityByID(ctx, entityToUse, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -877,7 +879,7 @@ func TestIdentityStore_UpdateAliasMetadataPerAccessor(t *testing.T) {
 // initializing identity store.
 func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	c, unsealKey, root := TestCoreUnsealed(t)
-	ctx := context.Background()
+	ctx := namespace.ContextWithNamespace(context.Background(), namespace.RootNamespace)
 
 	// add caseSensitivityKey to storage
 	entry, err := logical.StorageEntryJSON(caseSensitivityKey, &casesensitivity{
@@ -886,13 +888,13 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = c.identityStore.view.Put(ctx, entry)
+	err = c.identityStore.view(ctx).Put(ctx, entry)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// check if the value is stored in storage
-	storageEntry, err := c.identityStore.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err := c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -918,7 +920,7 @@ func TestIdentityStore_DeleteCaseSensitivityKey(t *testing.T) {
 	}
 
 	// check if caseSensitivityKey exists after initialize
-	storageEntry, err = c.identityStore.view.Get(ctx, caseSensitivityKey)
+	storageEntry, err = c.identityStore.view(ctx).Get(ctx, caseSensitivityKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1126,11 +1128,11 @@ func TestIdentityStore_NamespaceIsolation(t *testing.T) {
 		require.Nil(t, crossEntity, "Should not find root entity from NS1 context")
 
 		// Test looking up by ID directly - this should be namespace-aware
-		fetchedRootEntity, err := is.MemDBEntityByID(rootEntity.ID, false)
+		fetchedRootEntity, err := is.MemDBEntityByID(rootCtx, rootEntity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedRootEntity, "Should be able to fetch root entity by ID")
 
-		fetchedNS1Entity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		fetchedNS1Entity, err := is.MemDBEntityByID(ns1Ctx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, fetchedNS1Entity, "Should be able to fetch NS1 entity by ID")
 	})
@@ -1349,11 +1351,10 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 			t.Fatal("Expected error when creating alias with mismatched namespace accessor")
 		}
 
-		// Verify entity doesn't have the alias from the wrong namespace
-		updatedEntity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		// Verify entity is not accessible from the wrong namespace.
+		updatedEntity, err := is.MemDBEntityByID(rootCtx, ns1Entity.ID, false)
 		require.NoError(t, err)
-		require.Len(t, updatedEntity.Aliases, 1, "Entity should still have only one alias")
-		require.Equal(t, ns1Accessor, updatedEntity.Aliases[0].MountAccessor, "Entity should only have alias from its own namespace")
+		require.Nil(t, updatedEntity)
 	})
 
 	t.Run("orphaned_alias_handling", func(t *testing.T) {
@@ -1389,7 +1390,7 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify entity is gone
-		deletedEntity, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		deletedEntity, err := is.MemDBEntityByID(ns1Ctx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.Nil(t, deletedEntity, "Entity should be deleted")
 
@@ -1442,11 +1443,11 @@ func TestIdentityStore_NamespaceEdgeCases(t *testing.T) {
 		}
 
 		// Verify both entities still exist separately
-		rootCheck, err := is.MemDBEntityByID(rootEntity.ID, false)
+		rootCheck, err := is.MemDBEntityByID(rootCtx, rootEntity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, rootCheck, "Root entity should still exist")
 
-		ns1Check, err := is.MemDBEntityByID(ns1Entity.ID, false)
+		ns1Check, err := is.MemDBEntityByID(ns1Ctx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, ns1Check, "NS1 entity should still exist")
 	})
@@ -1695,17 +1696,26 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 	// Test direct entity lookup by ID (should succeed regardless of namespace)
 	t.Run("direct_entity_lookup", func(t *testing.T) {
-		// Root entity should be retrievable from any context by ID
-		entity, err := is.MemDBEntityByID(rootEntity.ID, false)
+		// Root entity should be retrievable from root context by ID
+		entity, err := is.MemDBEntityByID(rootCtx, rootEntity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, entity)
 		require.Equal(t, rootEntity.ID, entity.ID)
 
-		// NS1 entity should be retrievable from any context by ID
-		entity, err = is.MemDBEntityByID(ns1Entity.ID, false)
+		// NS1 entity should be retrievable from NS1 context by id
+		entity, err = is.MemDBEntityByID(ns1Ctx, ns1Entity.ID, false)
 		require.NoError(t, err)
 		require.NotNil(t, entity)
 		require.Equal(t, ns1Entity.ID, entity.ID)
+
+		// But not visa-versa
+		entity, err = is.MemDBEntityByID(ns1Ctx, rootEntity.ID, false)
+		require.NoError(t, err)
+		require.Nil(t, entity)
+
+		entity, err = is.MemDBEntityByID(rootCtx, ns1Entity.ID, false)
+		require.NoError(t, err)
+		require.Nil(t, entity)
 	})
 
 	// Test lookup by name (should respect namespace boundaries)
@@ -1872,7 +1882,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 		// === Verify groups have their aliases and correct namespace IDs ===
 		// -------------------------------------------------------------------
 		for name, group := range groups {
-			updatedGroup, err := is.MemDBGroupByID(group.id, true)
+			updatedGroup, err := is.MemDBGroupByID(group.ctx, group.id, true)
 			require.NoError(t, err)
 			require.NotNil(t, updatedGroup)
 			require.NotNil(t, updatedGroup.Alias, "%s group alias should not be nil", name)
@@ -1897,9 +1907,8 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 		for _, test := range validLookups {
 			t.Run(test.name, func(t *testing.T) {
-				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
-					test.ctx,
-					is.db.Txn(false),
+				aliasLookup, err := is.MemDBAliasByFactorsInTxn(
+					is.db(test.ctx).Txn(false),
 					test.accessor,
 					commonAliasName,
 					false,
@@ -1911,7 +1920,7 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 					"%s should have correct namespace ID", test.name)
 
 				// Verify group lookup by alias ID works
-				groupByAlias, err := is.MemDBGroupByAliasID(aliasLookup.ID, true)
+				groupByAlias, err := is.MemDBGroupByAliasID(test.ctx, aliasLookup.ID, true)
 				require.NoError(t, err)
 				require.NotNil(t, groupByAlias)
 				require.Equal(t, test.expectedNS, groupByAlias.NamespaceID,
@@ -1936,9 +1945,8 @@ func TestIdentityStore_CrossNamespaceIsolation(t *testing.T) {
 
 		for _, test := range crossLookups {
 			t.Run(test.name, func(t *testing.T) {
-				aliasLookup, err := is.MemDBAliasByFactorsInTxnWithContext(
-					test.ctx,
-					is.db.Txn(false),
+				aliasLookup, err := is.MemDBAliasByFactorsInTxn(
+					is.db(test.ctx).Txn(false),
 					test.accessor,
 					commonAliasName,
 					false,

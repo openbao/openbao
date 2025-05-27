@@ -74,7 +74,7 @@ type IdentityStore struct {
 
 	// views is a mapping of namespace UUID -> storage view and packer
 	// instances.
-	views map[string]*identityStoreNamespaceView
+	views sync.Map
 
 	// locks to make sure things are consistent
 	lock     sync.RWMutex

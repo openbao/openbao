@@ -2425,86 +2425,91 @@ func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
 func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[string]int, error) {
 	byNamespace := make(map[string]int)
 
-	for uuid, views := range i.views {
-		if err := func() error {
-			txn := views.db.Txn(false)
-			defer txn.Abort()
+	var err error
+	i.views.Range(func(uuidRaw, viewsRaw any) bool {
+		uuid := uuidRaw.(string)
+		views := viewsRaw.(*identityStoreNamespaceView)
 
-			iter, err := txn.Get(entitiesTable, "id")
-			if err != nil {
-				return err
-			}
+		txn := views.db.Txn(false)
+		defer txn.Abort()
 
-			val := iter.Next()
-			for val != nil {
-				// Check if runtime exceeded.
-				select {
-				case <-ctx.Done():
-					return fmt.Errorf("context cancelled during namespace %v", uuid)
-				default:
-					break
-				}
-
-				// Count in the namespace attached to the entity.
-				entity := val.(*identity.Entity)
-				byNamespace[entity.NamespaceID] = byNamespace[entity.NamespaceID] + 1
-				val = iter.Next()
-			}
-
-			return nil
-		}(); err != nil {
-			if strings.Contains(err.Error(), "context cancelled") {
-				return byNamespace, err
-			}
-
-			return nil, err
+		var iter memdb.ResultIterator
+		iter, err = txn.Get(entitiesTable, "id")
+		if err != nil {
+			return false
 		}
+
+		val := iter.Next()
+		for val != nil {
+			// Check if runtime exceeded.
+			select {
+			case <-ctx.Done():
+				err = fmt.Errorf("context cancelled during namespace %v", uuid)
+				return false
+			default:
+				break
+			}
+
+			// Count in the namespace attached to the entity.
+			entity := val.(*identity.Entity)
+			byNamespace[entity.NamespaceID] = byNamespace[entity.NamespaceID] + 1
+			val = iter.Next()
+		}
+
+		return true
+	})
+
+	if err == nil || strings.Contains(err.Error(), "context cancelled") {
+		return byNamespace, err
 	}
 
-	return byNamespace, nil
+	return nil, err
 }
 
 // Sum up the number of entities belonging to each mount point (keyed by accessor)
 func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[string]int, error) {
 	byMountAccessor := make(map[string]int)
-	for uuid, views := range i.views {
-		if err := func() error {
-			txn := views.db.Txn(false)
-			defer txn.Abort()
 
-			iter, err := txn.Get(entitiesTable, "id")
-			if err != nil {
-				return err
-			}
+	var err error
+	i.views.Range(func(uuidRaw, viewsRaw any) bool {
+		uuid := uuidRaw.(string)
+		views := viewsRaw.(*identityStoreNamespaceView)
 
-			val := iter.Next()
-			for val != nil {
-				// Check if runtime exceeded.
-				select {
-				case <-ctx.Done():
-					return fmt.Errorf("context cancelled during namespace %v", uuid)
-				default:
-					break
-				}
+		txn := views.db.Txn(false)
+		defer txn.Abort()
 
-				// Count each alias separately; will translate to mount point and type
-				// in the caller.
-				entity := val.(*identity.Entity)
-				for _, alias := range entity.Aliases {
-					byMountAccessor[alias.MountAccessor] = byMountAccessor[alias.MountAccessor] + 1
-				}
-				val = iter.Next()
-			}
-
-			return nil
-		}(); err != nil {
-			if strings.Contains(err.Error(), "context cancelled") {
-				return byMountAccessor, err
-			}
-
-			return nil, err
+		var iter memdb.ResultIterator
+		iter, err = txn.Get(entitiesTable, "id")
+		if err != nil {
+			return false
 		}
+
+		val := iter.Next()
+		for val != nil {
+			// Check if runtime exceeded.
+			select {
+			case <-ctx.Done():
+				err = fmt.Errorf("context cancelled during namespace %v", uuid)
+				return false
+			default:
+				break
+			}
+
+			// Count each alias separately; will translate to mount point and type
+			// in the caller.
+			entity := val.(*identity.Entity)
+			for _, alias := range entity.Aliases {
+				byMountAccessor[alias.MountAccessor] = byMountAccessor[alias.MountAccessor] + 1
+			}
+			val = iter.Next()
+		}
+
+		return true
+	})
+
+	if err == nil || strings.Contains(err.Error(), "context cancelled") {
+		return byMountAccessor, err
 	}
 
-	return byMountAccessor, nil
+	return nil, err
 }

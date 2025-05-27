@@ -43,20 +43,25 @@ func (c *Core) IdentityStore() *IdentityStore {
 func (i *IdentityStore) resetDB(ctx context.Context) error {
 	var err error
 
-	for uuid, views := range i.views {
+	i.views.Range(func(uuidRaw, viewsRaw any) bool {
+		uuid := uuidRaw.(string)
+		views := viewsRaw.(*identityStoreNamespaceView)
+
 		views.db, err = memdb.NewMemDB(identityStoreSchema(!i.disableLowerCasedNames))
 		if err != nil {
-			return fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+			err = fmt.Errorf("error resetting database for namespace %v: %w", uuid, err)
+			return false
 		}
-	}
 
-	return nil
+		return true
+	})
+
+	return err
 }
 
 func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendConfig, logger log.Logger) (*IdentityStore, error) {
 	iStore := &IdentityStore{
 		logger:        logger,
-		views:         make(map[string]*identityStoreNamespaceView, 1),
 		router:        core.router,
 		redirectAddr:  core.redirectAddr,
 		localNode:     core,
@@ -107,13 +112,6 @@ func NewIdentityStore(ctx context.Context, core *Core, config *logical.BackendCo
 }
 
 func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, view logical.Storage) error {
-	i.lock.Lock()
-	defer i.lock.Unlock()
-
-	if _, present := i.views[ns.UUID]; present {
-		return fmt.Errorf("refusing to overwrite existing namespace: %v", ns.UUID)
-	}
-
 	nsView := &identityStoreNamespaceView{
 		view: view,
 	}
@@ -150,16 +148,23 @@ func (i *IdentityStore) AddNamespaceView(core *Core, ns *namespace.Namespace, vi
 		return err
 	}
 
-	i.views[ns.UUID] = nsView
+	i.views.Store(ns.UUID, nsView)
 
 	return nil
 }
 
-func (i *IdentityStore) RemoveNamespaceView(uuid string) {
-	i.lock.Lock()
-	defer i.lock.Unlock()
+func (i *IdentityStore) RemoveNamespaceView(ns *namespace.Namespace) error {
+	i.views.Delete(ns.UUID)
 
-	delete(i.views, uuid)
+	if err := i.oidcCache.Flush(ns); err != nil {
+		return fmt.Errorf("failed to flush oidcCache: %w", err)
+	}
+
+	if err := i.oidcAuthCodeCache.Flush(ns); err != nil {
+		return fmt.Errorf("failed to flush oidcAuthCodeCache: %w", err)
+	}
+
+	return nil
 }
 
 func (i *IdentityStore) validateCtx(ctx context.Context) error {
@@ -173,12 +178,12 @@ func (i *IdentityStore) getNSView(ctx context.Context) (*identityStoreNamespaceV
 		return nil, err
 	}
 
-	view, ok := i.views[ns.UUID]
+	view, ok := i.views.Load(ns.UUID)
 	if !ok {
 		return nil, fmt.Errorf("namespace %v missing from identity store table", ns.UUID)
 	}
 
-	return view, nil
+	return view.(*identityStoreNamespaceView), nil
 }
 
 func (i *IdentityStore) view(ctx context.Context) logical.Storage {

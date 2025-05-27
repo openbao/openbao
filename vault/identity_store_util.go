@@ -2399,23 +2399,33 @@ func (i *IdentityStore) handleAliasListCommon(ctx context.Context, groupAlias bo
 	return logical.ListResponseWithInfo(aliasIDs, aliasInfo), nil
 }
 
+// countEntities returns the sum of all entities across all namespaces.
 func (i *IdentityStore) countEntities(ctx context.Context) (int, error) {
-	if err := i.validateCtx(ctx); err != nil {
-		return -1, err
-	}
+	var count int
+	var err error
+	i.views.Range(func(uuidRaw, viewsRaw any) bool {
+		uuid := uuidRaw.(string)
+		views := viewsRaw.(*identityStoreNamespaceView)
 
-	txn := i.db(ctx).Txn(false)
+		txn := views.db.Txn(false)
 
-	iter, err := txn.Get(entitiesTable, "id")
+		iter, err := txn.Get(entitiesTable, "id")
+		if err != nil {
+			err = fmt.Errorf("failed to get entities table for namespace %v: %w", uuid, err)
+			return false
+		}
+
+		val := iter.Next()
+		for val != nil {
+			count++
+			val = iter.Next()
+		}
+
+		return true
+	})
+
 	if err != nil {
 		return -1, err
-	}
-
-	count := 0
-	val := iter.Next()
-	for val != nil {
-		count++
-		val = iter.Next()
 	}
 
 	return count, nil
@@ -2431,7 +2441,6 @@ func (i *IdentityStore) countEntitiesByNamespace(ctx context.Context) (map[strin
 		views := viewsRaw.(*identityStoreNamespaceView)
 
 		txn := views.db.Txn(false)
-		defer txn.Abort()
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")
@@ -2476,7 +2485,6 @@ func (i *IdentityStore) countEntitiesByMountAccessor(ctx context.Context) (map[s
 		views := viewsRaw.(*identityStoreNamespaceView)
 
 		txn := views.db.Txn(false)
-		defer txn.Abort()
 
 		var iter memdb.ResultIterator
 		iter, err = txn.Get(entitiesTable, "id")

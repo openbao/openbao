@@ -64,7 +64,8 @@ type EntityCounter struct {
 	Total int `json:"total"`
 }
 
-// countActiveEntities returns the number of active entities
+// countActiveEntities returns the number of active entities across all
+// namespaces.
 func (c *Core) countActiveEntities(ctx context.Context) (*ActiveEntities, error) {
 	count, err := c.identityStore.countEntities(ctx)
 	if err != nil {

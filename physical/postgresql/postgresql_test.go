@@ -611,13 +611,13 @@ func TestPostgreSQLBackend_Parallel(t *testing.T) {
 				errors[i] = fmt.Errorf("value for job %v exceeded max_parallel: %v", i, value)
 			}
 
+			count.Add(-1)
+
 			err = tx.Commit(context.Background())
 			if err != nil {
 				errors[i] = err
 				return
 			}
-
-			defer count.Add(-1)
 		}(j)
 
 	}

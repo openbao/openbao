@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 // Test creating, reading, updating and deleting CEL roles
@@ -26,13 +27,28 @@ func TestCRUDCelRoles(t *testing.T) {
 					"name":       "require_ip_sans",
 					"expression": "size(request.ip_sans) > 0",
 				},
+				{
+					"name":       "success",
+					"expression": "request.common_name == 'example.com' && require_ip_sans",
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: request.common_name,
+							Country:    ["ZW", "US"],     
+						},						
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have atleast 1 IP SAN.'",
+				},
 			},
 			"expressions": map[string]interface{}{
-				"success": "request.common_name == 'example.com' && require_ip_sans",
-				"error":   "error!",
+				"mainProgram": "success ? cert : err",
 			},
 		},
-		"message": "Error",
 	}
 
 	roleReq := &logical.Request{
@@ -56,10 +72,17 @@ func TestCRUDCelRoles(t *testing.T) {
 	}
 
 	// Patch (update) the CEL role
-	newMessage := "Common name must be 'example.com'."
-	patchData := map[string]interface{}{
-		"message": newMessage,
+	patchData := map[string]any{
+		"validation_program": map[string]any{
+			"variables": []map[string]any{
+				{
+					"name":       "require_ip_sans",
+					"expression": "size(request.ip_sans) >= 2", // new rule
+				},
+			},
+		},
 	}
+
 	patchReq := &logical.Request{
 		Operation: logical.PatchOperation,
 		Path:      "cel/roles/testrole",
@@ -83,20 +106,46 @@ func TestCRUDCelRoles(t *testing.T) {
 		t.Fatalf("Failed to read role after patch: err: %v resp: %#v", err, resp)
 	}
 
-	// Assert the patched message is correct
-	updatedMessage := resp.Data["message"].(string)
-	if updatedMessage != newMessage {
-		t.Fatalf("Expected message to be '%s', but got '%s'", newMessage, updatedMessage)
+	// Assert the patch is correct
+	vp := resp.Data["validation_program"].(map[string]any)
+	vars := vp["variables"].([]Variable)
+	require.Equal(t, 4, len(vars))
+
+	found := false
+	for _, v := range vars {
+		if v.Name == "require_ip_sans" {
+			found = true
+			require.Equal(t,
+				"size(request.ip_sans) >= 2",
+				v.Expression,
+				"`require_ip_sans` expression not updated",
+			)
+			break
+		}
 	}
+	require.True(t, found, "`require_ip_sans` variable not present after patch")
 
 	// Create a second CEL role
 	roleData2 := map[string]interface{}{
 		"validation_program": map[string]interface{}{
+			"variables": []map[string]any{
+				{
+					"name":       "require_cn",
+					"expression": "has(request.common_name)",
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: request.common_name,
+						},						
+					}`,
+				},
+			},
 			"expressions": map[string]interface{}{
-				"success": "request.common_name == 'example2.com'",
+				"mainProgram": "require_cn ? cert : 'Role requires CN.'",
 			},
 		},
-		"message": "Common name must be 'example2.com'.",
 	}
 
 	roleReq2 := &logical.Request{

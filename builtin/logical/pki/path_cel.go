@@ -14,10 +14,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/logical"
-
-	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
-	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
-	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 type CELRoleEntry struct {
@@ -25,8 +21,6 @@ type CELRoleEntry struct {
 	Name string `json:"name"`
 	// Required, defines validation logic
 	ValidationProgram ValidationProgram `json:"validation_program"`
-	// Optional, error message on validation failure
-	Message string `json:"message,omitempty"`
 }
 
 type ValidationProgram struct {
@@ -112,10 +106,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			Type:        framework.TypeMap,
 			Description: "CEL rules defining the validation program for the role",
 		},
-		"message": {
-			Type:        framework.TypeString,
-			Description: "Static error message if validation fails",
-		},
 	}
 
 	return &framework.Path{
@@ -134,10 +124,6 @@ func pathCelRoles(b *backend) *framework.Path {
 			"validation_program": {
 				Type:        framework.TypeMap,
 				Description: "CEL rules defining the validation program for the role",
-			},
-			"message": {
-				Type:        framework.TypeString,
-				Description: "Static error message if validation fails",
 			},
 		},
 
@@ -217,7 +203,6 @@ func (b *backend) pathCelRoleCreate(ctx context.Context, req *logical.Request, d
 	entry := &CELRoleEntry{
 		Name:              name,
 		ValidationProgram: validationProgram,
-		Message:           data.Get("message").(string),
 	}
 
 	resp, err := validateCelRoleCreation(entry)
@@ -289,7 +274,6 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 	entry := &CELRoleEntry{
 		Name:              oldEntry.Name,
 		ValidationProgram: oldEntry.ValidationProgram,
-		Message:           oldEntry.Message,
 	}
 
 	// Update the fields only if provided
@@ -301,10 +285,6 @@ func (b *backend) pathCelRolePatch(ctx context.Context, req *logical.Request, da
 		if err := mapstructure.Decode(validationProgramMap, &entry.ValidationProgram); err != nil {
 			return logical.ErrorResponse("failed to decode 'validation_program': %v", err), nil
 		}
-	}
-
-	if messageRaw, ok := data.GetOk("message"); ok {
-		entry.Message = messageRaw.(string)
 	}
 
 	// Validate the patched entry
@@ -382,7 +362,6 @@ func (r *CELRoleEntry) ToResponseData() map[string]interface{} {
 			"variables":   r.ValidationProgram.Variables,
 			"expressions": r.ValidationProgram.Expressions,
 		},
-		"message": r.Message,
 	}
 }
 
@@ -429,28 +408,16 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 		return false, fmt.Errorf("failed to create CEL program for main expression: %w", err)
 	}
 
+	checked, issues := env.Check(ast) // semantic analysis
+
+	if issues != nil && issues.Err() != nil {
+		return false, fmt.Errorf("error type-checking CEL MainProgram: %v", issues.Err())
+	}
+	if checked == nil {
+		return false, fmt.Errorf("failed to type-check CEL MainProgram")
+	}
+
 	return true, nil
-}
-
-func validateWithK8sValidator(ctx context.Context, schema *schema.Structural) error {
-	// Replace `config.DefaultPerCallLimit` with an actual limit, e.g., 1000
-	const perCallLimit = 1000
-
-	validator := cel.NewValidator(schema, true, perCallLimit)
-	if validator == nil {
-		return fmt.Errorf("failed to create CEL validator")
-	}
-
-	// Object to validate - replace with actual data
-	obj := map[string]interface{}{}
-
-	// Validate the object
-	errs, _ := validator.Validate(ctx, field.NewPath("root"), schema, obj, nil, perCallLimit)
-	if len(errs) > 0 {
-		return fmt.Errorf("validation errors: %v", errs)
-	}
-
-	return nil
 }
 
 func createEnvWithVariables(variables map[string]string) (*celgo.Env, error) {

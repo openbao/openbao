@@ -37,11 +37,12 @@ type (
 )
 
 type Namespace struct {
-	ID      string `json:"id" mapstructure:"id"`
-	UUID    string `json:"uuid" mapstructure:"uuid"`
-	Path    string `json:"path" mapstructure:"path"`
-	Tainted bool   `json:"tainted" mapstructure:"tainted"`
-	Locked  bool   `json:"-"`
+	ID        string `json:"id" mapstructure:"id"`
+	UUID      string `json:"uuid" mapstructure:"uuid"`
+	Path      string `json:"path" mapstructure:"path"`
+	Tainted   bool   `json:"tainted" mapstructure:"tainted"`
+	Locked    bool   `json:"-"`
+	UnlockKey string `json:"unlock_key" mapstructure:"unlock_key"`
 	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
 	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
 	IsDeleting     bool              `json:"-"`
@@ -155,6 +156,7 @@ func (n *Namespace) Clone() *Namespace {
 		Path:           n.Path,
 		Tainted:        n.Tainted,
 		Locked:         n.Locked,
+		UnlockKey:      n.UnlockKey,
 		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}

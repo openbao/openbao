@@ -81,6 +81,14 @@ updated, it takes effect immediately to all associated users.
 - `policy` `(string: <required>)` - Specifies the policy document. This can be
   base64-encoded to avoid string escaping.
 
+- `expiration` `(time: <optional>)` - Specifies an expiration time after which
+  the policy will no longer be valid and will be removed on next load. Cannot
+  be set in conjunction with `ttl` and cannot be in the past.
+
+- `ttl` `(duration: <optional>)` - Specifies a time for which the policy will
+  be valid and will be removed on next load. Cannot be set in conjunction with
+  `expiration`.
+
 ### Sample payload
 
 ```json

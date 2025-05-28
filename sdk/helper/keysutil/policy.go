@@ -36,7 +36,6 @@ import (
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/hkdf"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-uuid"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
@@ -1754,7 +1753,7 @@ func (p *Policy) RotateInMemory(randReader io.Reader) (retErr error) {
 		entry.EC_Y = privKey.Y
 		derBytes, err := x509.MarshalPKIXPublicKey(privKey.Public())
 		if err != nil {
-			return errwrap.Wrapf("error marshaling public key: {{err}}", err)
+			return fmt.Errorf("error marshaling public key: %w", err)
 		}
 		pemBlock := &pem.Block{
 			Type:  "PUBLIC KEY",
@@ -1862,7 +1861,7 @@ func (p *Policy) Backup(ctx context.Context, storage logical.Storage) (out strin
 	}
 	err := p.Persist(ctx, storage)
 	if err != nil {
-		return "", errwrap.Wrapf("failed to persist policy with backup info: {{err}}", err)
+		return "", fmt.Errorf("failed to persist policy with backup info: %w", err)
 	}
 
 	// Load the archive only after persisting the policy as the archive can get
@@ -2333,7 +2332,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 
 			derBytes, err = x509.MarshalPKIXPublicKey(ecdsaKey.Public())
 			if err != nil {
-				return errwrap.Wrapf("error marshaling public key: {{err}}", err)
+				return fmt.Errorf("error marshaling public key: %w", err)
 			}
 		} else {
 			ecdsaKey := parsedKey.(*ecdsa.PublicKey)
@@ -2347,7 +2346,7 @@ func (ke *KeyEntry) parseFromKey(PolKeyType KeyType, parsedKey any) error {
 
 			derBytes, err = x509.MarshalPKIXPublicKey(ecdsaKey)
 			if err != nil {
-				return errwrap.Wrapf("error marshaling public key: {{err}}", err)
+				return fmt.Errorf("error marshaling public key: %w", err)
 			}
 		}
 

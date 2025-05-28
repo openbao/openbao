@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
@@ -327,7 +326,7 @@ func ToCertificate(t testing.TB, cert string) *x509.Certificate {
 	return ret
 }
 
-func ToCRL(t testing.TB, crl string, issuer *x509.Certificate) *pkix.CertificateList {
+func ToCRL(t testing.TB, crl string, issuer *x509.Certificate) *x509.RevocationList {
 	t.Helper()
 
 	block, _ := pem.Decode([]byte(crl))
@@ -335,13 +334,13 @@ func ToCRL(t testing.TB, crl string, issuer *x509.Certificate) *pkix.Certificate
 		t.Fatalf("Unable to parse CRL: nil PEM block\n[%v]\n", crl)
 	}
 
-	ret, err := x509.ParseCRL(block.Bytes)
+	ret, err := x509.ParseRevocationList(block.Bytes)
 	if err != nil {
 		t.Fatalf("Unable to parse CRL: %v\n[%v]\n", err, crl)
 	}
 
 	if issuer != nil {
-		if err := issuer.CheckCRLSignature(ret); err != nil {
+		if err := ret.CheckSignatureFrom(issuer); err != nil {
 			t.Fatalf("Unable to check CRL signature: %v\n[%v]\n[%v]\n", err, crl, issuer)
 		}
 	}
@@ -564,7 +563,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 	raw_crl := resp.Data["crl"].(string)
 	crl := ToCRL(t, raw_crl, issuer)
 
-	foundCert := requireSerialNumberInCRL(nil, crl.TBSCertList, api_serial)
+	foundCert := requireSerialNumberInCRL(nil, crl, api_serial)
 	if !foundCert {
 		if !hasCRL && !isDefault {
 			// Update the issuer we expect to find this on.
@@ -593,7 +592,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 		raw_crl = resp.Data["crl"].(string)
 		crl = ToCRL(t, raw_crl, issuer)
 
-		foundCert = requireSerialNumberInCRL(nil, crl.TBSCertList, api_serial)
+		foundCert = requireSerialNumberInCRL(nil, crl, api_serial)
 	}
 
 	if !foundCert {
@@ -612,7 +611,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 			raw_crl := resp.Data["crl"].(string)
 			crl := ToCRL(t, raw_crl, nil)
 
-			for index, revoked := range crl.TBSCertList.RevokedCertificates {
+			for index, revoked := range crl.RevokedCertificateEntries {
 				// t.Logf("[%v] revoked serial number: %v -- vs -- %v", index, revoked.SerialNumber, cert.SerialNumber)
 				if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
 					t.Logf("found revoked cert at index: %v for unexpected issuer: %v", index, issuerName)
@@ -621,7 +620,7 @@ func (c CBIssueLeaf) RevokeLeaf(t testing.TB, b *backend, s logical.Storage, kno
 			}
 		}
 
-		t.Fatalf("expected to find certificate with serial [%v] on issuer %v's CRL but was missing: %v revoked certs\n\nCRL:\n[%v]\n\nLeaf:\n[%v]\n\nIssuer (hasCRL: %v):\n[%v]\n", api_serial, c.Issuer, len(crl.TBSCertList.RevokedCertificates), raw_crl, raw_cert, hasCRL, raw_issuer)
+		t.Fatalf("expected to find certificate with serial [%v] on issuer %v's CRL but was missing: %v revoked certs\n\nCRL:\n[%v]\n\nLeaf:\n[%v]\n\nIssuer (hasCRL: %v):\n[%v]\n", api_serial, c.Issuer, len(crl.RevokedCertificateEntries), raw_crl, raw_cert, hasCRL, raw_issuer)
 	}
 }
 

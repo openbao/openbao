@@ -9,7 +9,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
@@ -122,28 +121,33 @@ func getSelfSigned(t *testing.T, subject, issuer *x509.Certificate, key *rsa.Pri
 }
 
 // CRL related helpers
-func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) pkix.TBSCertificateList {
+func getCrlCertificateList(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
 	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
-	return getParsedCrlAtPath(t, client, path).TBSCertList
+	return getParsedCrlAtPath(t, client, path)
 }
 
-func parseCrlPemBytes(t *testing.T, crlPem []byte) pkix.TBSCertificateList {
+func parseCrlPemBytes(t *testing.T, crlPem []byte) *x509.RevocationList {
 	t.Helper()
 
-	certList, err := x509.ParseCRL(crlPem)
+	block, _ := pem.Decode(crlPem)
+	if block == nil {
+		t.Fatalf("Unable to parse CRL: nil PEM block\n[%v]\n", crlPem)
+	}
+
+	certList, err := x509.ParseRevocationList(block.Bytes)
 	require.NoError(t, err)
-	return certList.TBSCertList
+	return certList
 }
 
-func requireSerialNumberInCRL(t *testing.T, revokeList pkix.TBSCertificateList, serialNum string) bool {
+func requireSerialNumberInCRL(t *testing.T, revokeList *x509.RevocationList, serialNum string) bool {
 	if t != nil {
 		t.Helper()
 	}
 
-	serialsInList := make([]string, 0, len(revokeList.RevokedCertificates))
-	for _, revokeEntry := range revokeList.RevokedCertificates {
+	serialsInList := make([]string, 0, len(revokeList.RevokedCertificateEntries))
+	for _, revokeEntry := range revokeList.RevokedCertificateEntries {
 		formattedSerial := certutil.GetHexFormatted(revokeEntry.SerialNumber.Bytes(), ":")
 		serialsInList = append(serialsInList, formattedSerial)
 		if formattedSerial == serialNum {
@@ -158,14 +162,14 @@ func requireSerialNumberInCRL(t *testing.T, revokeList pkix.TBSCertificateList, 
 	return false
 }
 
-func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *pkix.CertificateList {
+func getParsedCrl(t *testing.T, client *api.Client, mountPoint string) *x509.RevocationList {
 	t.Helper()
 
 	path := fmt.Sprintf("/v1/%s/crl", mountPoint)
 	return getParsedCrlAtPath(t, client, path)
 }
 
-func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *pkix.CertificateList {
+func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *x509.RevocationList {
 	t.Helper()
 
 	req := client.NewRequest("GET", path)
@@ -183,14 +187,14 @@ func getParsedCrlAtPath(t *testing.T, client *api.Client, path string) *pkix.Cer
 		t.Fatal("expected CRL in response body")
 	}
 
-	crl, err := x509.ParseDERCRL(crlBytes)
+	crl, err := x509.ParseRevocationList(crlBytes)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return crl
 }
 
-func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path string) *pkix.CertificateList {
+func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path string) *x509.RevocationList {
 	t.Helper()
 
 	resp, err := CBRead(b, s, path)
@@ -198,7 +202,7 @@ func getParsedCrlFromBackend(t *testing.T, b *backend, s logical.Storage, path s
 		t.Fatal(err)
 	}
 
-	crl, err := x509.ParseDERCRL(resp.Data[logical.HTTPRawBody].([]byte))
+	crl, err := x509.ParseRevocationList(resp.Data[logical.HTTPRawBody].([]byte))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +302,7 @@ func requireSuccessNilResponse(t *testing.T, resp *logical.Response, err error, 
 	}
 }
 
-func getCRLNumber(t *testing.T, crl pkix.TBSCertificateList) int {
+func getCRLNumber(t *testing.T, crl *x509.RevocationList) int {
 	t.Helper()
 
 	for _, extension := range crl.Extensions {
@@ -317,7 +321,7 @@ func getCRLNumber(t *testing.T, crl pkix.TBSCertificateList) int {
 	return 0
 }
 
-func getCrlReferenceFromDelta(t *testing.T, crl pkix.TBSCertificateList) int {
+func getCrlReferenceFromDelta(t *testing.T, crl *x509.RevocationList) int {
 	t.Helper()
 
 	for _, extension := range crl.Extensions {
@@ -340,29 +344,29 @@ func getCrlReferenceFromDelta(t *testing.T, crl pkix.TBSCertificateList) int {
 // up for a maxWait duration and gives up if the timeout has been reached. If a negative
 // value for lastSeenCRLNumber is provided, the method will load the current CRL and wait
 // for a newer CRL be generated.
-func waitForUpdatedCrl(t *testing.T, client *api.Client, crlPath string, lastSeenCRLNumber int, maxWait time.Duration) pkix.TBSCertificateList {
+func waitForUpdatedCrl(t *testing.T, client *api.Client, crlPath string, lastSeenCRLNumber int, maxWait time.Duration) *x509.RevocationList {
 	t.Helper()
 
 	newCrl, didTimeOut := waitForUpdatedCrlUntil(t, client, crlPath, lastSeenCRLNumber, maxWait)
 	if didTimeOut {
 		t.Fatalf("Timed out waiting for new CRL rebuild on path %s", crlPath)
 	}
-	return newCrl.TBSCertList
+	return newCrl
 }
 
 // waitForUpdatedCrlUntil is a helper method that will wait for a CRL to be updated up until maxWait duration
 // or give up and return the last CRL it loaded. It will not fail, if it does not see a new CRL within the
 // max duration unlike waitForUpdatedCrl. Returns the last loaded CRL at the provided path and a boolean
 // indicating if we hit maxWait duration or not.
-func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, lastSeenCrlNumber int, maxWait time.Duration) (*pkix.CertificateList, bool) {
+func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, lastSeenCrlNumber int, maxWait time.Duration) (*x509.RevocationList, bool) {
 	t.Helper()
 
 	crl := getParsedCrlAtPath(t, client, crlPath)
-	initialCrlRevision := getCRLNumber(t, crl.TBSCertList)
+	initialCrlRevision := getCRLNumber(t, crl)
 	newCrlRevision := initialCrlRevision
 
 	// Short circuit the fetches if we have a version of the CRL we want
-	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl.TBSCertList) > lastSeenCrlNumber {
+	if lastSeenCrlNumber > 0 && getCRLNumber(t, crl) > lastSeenCrlNumber {
 		return crl, false
 	}
 
@@ -378,7 +382,7 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 		}
 
 		crl = getParsedCrlAtPath(t, client, crlPath)
-		newCrlRevision = getCRLNumber(t, crl.TBSCertList)
+		newCrlRevision = getCRLNumber(t, crl)
 		if newCrlRevision > initialCrlRevision {
 			t.Logf("Got new revision of CRL %s from %d to %d after iteration %d, delay %v",
 				crlPath, initialCrlRevision, newCrlRevision, iteration, time.Now().Sub(start))
@@ -390,10 +394,10 @@ func waitForUpdatedCrlUntil(t *testing.T, client *api.Client, crlPath string, la
 }
 
 // A quick CRL to string to provide better test error messages
-func summarizeCrl(t *testing.T, crl pkix.TBSCertificateList) string {
+func summarizeCrl(t *testing.T, crl *x509.RevocationList) string {
 	version := getCRLNumber(t, crl)
 	serials := []string{}
-	for _, cert := range crl.RevokedCertificates {
+	for _, cert := range crl.RevokedCertificateEntries {
 		serials = append(serials, normalizeSerialFromBigInt(cert.SerialNumber))
 	}
 	return fmt.Sprintf("CRL Version: %d\n"+

@@ -3693,7 +3693,7 @@ func TestBackend_AllowedDomainsTemplate(t *testing.T) {
 
 	// Write test policy for userpass auth method.
 	err := client.Sys().PutPolicy("test", `
-   path "pki/*" {  
+   path "pki/*" {
      capabilities = ["update"]
    }`)
 	if err != nil {
@@ -4205,7 +4205,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 	// operation since it's not past the NotAfter (ttl) value yet.
 	crl := getParsedCrl(t, client, "pki")
 
-	revokedCerts := crl.TBSCertList.RevokedCertificates
+	revokedCerts := crl.RevokedCertificateEntries
 	if len(revokedCerts) == 0 {
 		t.Fatal("expected CRL to be non-empty")
 	}
@@ -4348,7 +4348,7 @@ func TestBackend_RevokePlusTidy_Intermediate(t *testing.T) {
 
 	crl = getParsedCrl(t, client, "pki")
 
-	revokedCerts = crl.TBSCertList.RevokedCertificates
+	revokedCerts = crl.RevokedCertificateEntries
 	if len(revokedCerts) != 0 {
 		t.Fatal("expected CRL to be empty")
 	}
@@ -4542,7 +4542,7 @@ func TestBackend_RevokePlusTidy_MultipleCerts(t *testing.T) {
 	found := false
 	for i := 1; i < maxAttempts; i++ {
 		crl := getParsedCrl(t, client, "pki")
-		revokedCerts := crl.TBSCertList.RevokedCertificates
+		revokedCerts := crl.RevokedCertificateEntries
 		for _, revoked := range revokedCerts {
 			serial := certutil.GetHexFormatted(revoked.SerialNumber.Bytes(), ":")
 			if serial == certSerial1 && i == maxAttempts {
@@ -4710,7 +4710,7 @@ func runFullCAChainTest(t *testing.T, keyType string) {
 
 	// Verify we have a proper CRL now
 	crl := getParsedCrlFromBackend(t, b_int, s_int, "crl")
-	require.Equal(t, 0, len(crl.TBSCertList.RevokedCertificates))
+	require.Equal(t, 0, len(crl.RevokedCertificateEntries))
 
 	fullChain = resp.Data["ca_chain"].(string)
 	requireCertInCaChainString(t, fullChain, intermediateCert, "expected full chain to contain intermediate certificate from pki-intermediate/cert/ca_chain")
@@ -5316,7 +5316,7 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoked anything
 	parsedCrl := getParsedCrlFromBackend(t, b, s, "issuer/my-issuer1/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 
 	// Fail if the specified issuer name is re-used.
 	_, err = CBWrite(b, s, "issuers/generate/root/internal", map[string]interface{}{
@@ -5342,7 +5342,7 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoked anything
 	parsedCrl = getParsedCrlFromBackend(t, b, s, "issuer/my-issuer2/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 
 	// Fail if the specified key name is re-used.
 	_, err = CBWrite(b, s, "issuers/generate/root/internal", map[string]interface{}{
@@ -5368,11 +5368,11 @@ func TestRootWithExistingKey(t *testing.T) {
 
 	// Fetch the parsed CRL; it should be empty as we've not revoking anything.
 	parsedCrl = getParsedCrlFromBackend(t, b, s, "issuer/my-issuer3/crl/der")
-	require.Equal(t, len(parsedCrl.TBSCertList.RevokedCertificates), 0, "should have no revoked certificates")
+	require.Equal(t, len(parsedCrl.RevokedCertificateEntries), 0, "should have no revoked certificates")
 	// Signatures should be the same since this is just a reissued cert. We
 	// use signature as a proxy for "these two CRLs are equal".
 	firstCrl := getParsedCrlFromBackend(t, b, s, "issuer/my-issuer1/crl/der")
-	require.Equal(t, parsedCrl.SignatureValue, firstCrl.SignatureValue)
+	require.Equal(t, parsedCrl.Signature, firstCrl.Signature)
 
 	require.NotEqual(t, myIssuerId1, myIssuerId2)
 	require.NotEqual(t, myIssuerId1, myIssuerId3)

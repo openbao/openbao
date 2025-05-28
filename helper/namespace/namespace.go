@@ -37,11 +37,12 @@ type (
 )
 
 type Namespace struct {
-	ID      string `json:"id" mapstructure:"id"`
-	UUID    string `json:"uuid" mapstructure:"uuid"`
-	Path    string `json:"path" mapstructure:"path"`
-	Tainted bool   `json:"tainted" mapstructure:"tainted"`
-	Locked  bool   `json:"-"`
+	ID        string `json:"id" mapstructure:"id"`
+	UUID      string `json:"uuid" mapstructure:"uuid"`
+	Path      string `json:"path" mapstructure:"path"`
+	Tainted   bool   `json:"tainted" mapstructure:"tainted"`
+	Locked    bool   `json:"-"`
+	UnlockKey string `json:"unlock_key" mapstructure:"unlock_key"`
 	// IsDeleting tracks whether there's an ongoing deletion process of the specified namespace
 	// If tainted is true, but IsDeleting not, then namespace deletion operation has to be retried.
 	IsDeleting     bool              `json:"-"`
@@ -145,11 +146,11 @@ func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
 }
 
-func (n *Namespace) Clone() *Namespace {
+func (n *Namespace) Clone(withUnlock bool) *Namespace {
 	meta := make(map[string]string, len(n.CustomMetadata))
 	maps.Copy(meta, n.CustomMetadata)
 
-	return &Namespace{
+	data := &Namespace{
 		ID:             n.ID,
 		UUID:           n.UUID,
 		Path:           n.Path,
@@ -158,6 +159,12 @@ func (n *Namespace) Clone() *Namespace {
 		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}
+
+	if withUnlock {
+		data.UnlockKey = n.UnlockKey
+	}
+
+	return data
 }
 
 // ContextWithNamespace adds the given namespace to the given context

@@ -134,7 +134,7 @@ func (nt *namespaceTree) List(path string, includeParent bool, recursive bool) (
 	for idx := 0; idx < len(nodes); idx++ {
 		node = nodes[idx]
 		for _, child := range node.children {
-			entries = append(entries, child.entry.Clone())
+			entries = append(entries, child.entry.Clone(false))
 			if recursive {
 				nodes = append(nodes, child)
 			}

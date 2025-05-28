@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/openbao/openbao/vault"
 )
 
@@ -59,17 +60,21 @@ func TestSysReadPolicy(t *testing.T) {
 		"warnings":       nil,
 		"auth":           nil,
 		"data": map[string]interface{}{
-			"name":  "root",
-			"rules": "",
+			"name":         "root",
+			"rules":        "",
+			"cas_required": false,
+			"version":      json.Number("0"),
 		},
-		"name":  "root",
-		"rules": "",
+		"name":         "root",
+		"rules":        "",
+		"cas_required": false,
+		"version":      json.Number("0"),
 	}
 	testResponseStatus(t, resp, 200)
 	testResponseBody(t, resp, &actual)
 	expected["request_id"] = actual["request_id"]
-	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("bad: got\n%#v\nexpected\n%#v\n", actual, expected)
+	if diff := deep.Equal(actual, expected); diff != nil {
+		t.Fatalf("bad: got\n%#v\nexpected\n%#v\ndiff: %v\n", actual, expected, diff)
 	}
 }
 

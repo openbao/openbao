@@ -169,12 +169,14 @@ type PolicyStore struct {
 
 // PolicyEntry is used to store a policy by name
 type PolicyEntry struct {
-	Version    int
-	Raw        string
-	Templated  bool
-	Type       PolicyType
-	Expiration time.Time
-	Modified   time.Time
+	Version     int
+	DataVersion int
+	CASRequired bool
+	Raw         string
+	Templated   bool
+	Type        PolicyType
+	Expiration  time.Time
+	Modified    time.Time
 }
 
 // NewPolicyStore creates a new PolicyStore that is backed
@@ -280,7 +282,7 @@ func (ps *PolicyStore) invalidate(ctx context.Context, name string, policyType P
 }
 
 // SetPolicy is used to create or update the given policy
-func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy) error {
+func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy, casVersion *int) error {
 	defer metrics.MeasureSince([]string{"policy", "set_policy"}, time.Now())
 	if p == nil {
 		return errors.New("nil policy passed in for storage")
@@ -294,10 +296,10 @@ func (ps *PolicyStore) SetPolicy(ctx context.Context, p *Policy) error {
 		return fmt.Errorf("cannot update %q policy", p.Name)
 	}
 
-	return ps.setPolicyInternal(ctx, p)
+	return ps.setPolicyInternal(ctx, p, casVersion)
 }
 
-func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
+func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVersion *int) error {
 	ps.modifyLock.Lock()
 	defer ps.modifyLock.Unlock()
 
@@ -306,14 +308,43 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy) error {
 
 	p.Modified = time.Now()
 
+	existingEntry, err := view.Get(ctx, p.Name)
+	if err != nil {
+		return fmt.Errorf("unable to get existing policy for check-and-set: %w", err)
+	}
+
+	var existing PolicyEntry
+	if existingEntry != nil {
+		if err := existingEntry.DecodeJSON(&existing); err != nil {
+			return fmt.Errorf("failed to decode existing policy: %w", err)
+		}
+	}
+
+	casRequired := existing.CASRequired || p.CASRequired
+	if casVersion == nil && casRequired {
+		return fmt.Errorf("check-and-set parameter required for this call")
+	}
+	if casVersion != nil {
+		if *casVersion == -1 && existingEntry != nil {
+			return fmt.Errorf("check-and-set parameter set to -1 on existing entry")
+		}
+
+		if *casVersion != -1 && *casVersion != existing.DataVersion {
+			return fmt.Errorf("check-and-set parameter did not match the current version")
+		}
+	}
+
 	// Create the entry
+	p.DataVersion = existing.DataVersion + 1
 	entry, err := logical.StorageEntryJSON(p.Name, &PolicyEntry{
-		Version:    2,
-		Raw:        p.Raw,
-		Type:       p.Type,
-		Templated:  p.Templated,
-		Expiration: p.Expiration,
-		Modified:   p.Modified,
+		Version:     2,
+		DataVersion: p.DataVersion,
+		CASRequired: p.CASRequired,
+		Raw:         p.Raw,
+		Type:        p.Type,
+		Templated:   p.Templated,
+		Expiration:  p.Expiration,
+		Modified:    p.Modified,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create entry: %w", err)
@@ -508,6 +539,8 @@ func (ps *PolicyStore) switchedGetPolicy(ctx context.Context, name string, polic
 	// Set these up here so that they're available for loading into
 	// Sentinel
 	policy.Name = name
+	policy.DataVersion = policyEntry.DataVersion
+	policy.CASRequired = policyEntry.CASRequired
 	policy.Raw = policyEntry.Raw
 	policy.Type = policyEntry.Type
 	policy.Templated = policyEntry.Templated
@@ -732,9 +765,10 @@ func (ps *PolicyStore) loadACLPolicy(ctx context.Context, policyName, policyText
 		return fmt.Errorf("parsing %q policy resulted in nil policy", policyName)
 	}
 
+	cas := &policy.DataVersion
 	policy.Name = policyName
 	policy.Type = PolicyTypeACL
-	return ps.setPolicyInternal(ctx, policy)
+	return ps.setPolicyInternal(ctx, policy, cas)
 }
 
 func (ps *PolicyStore) sanitizeName(name string) string {

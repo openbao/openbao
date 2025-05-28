@@ -1497,9 +1497,6 @@ func signCertificateWithTemplate(caSign *CAInfoBundle, CSR *x509.CertificateRequ
 	}
 	certTemplate.SerialNumber = serialNumber
 
-	fmt.Printf("\n\n certTemplate: %v", certTemplate)
-	fmt.Printf("\n\n certTemplate.EmailAddresses: %v", certTemplate.EmailAddresses)
-
 	if req, ok := evaluationData["request"].(map[string]any); ok {
 		if v, ok := req["use_pss"].(bool); ok {
 			usePSS = v

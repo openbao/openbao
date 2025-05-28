@@ -384,3 +384,25 @@ bump-critical:
 	go get github.com/golang-jwt/jwt/v4@latest
 	go get github.com/golang-jwt/jwt/v5@latest
 	make sync-deps
+
+.PHONY: tag-api
+tag-api:
+	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for API tagging))
+	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
+	git tag api/$(THIS_RELEASE)
+	git tag api/auth/approle/$(THIS_RELEASE)
+	git tag api/auth/kubernetes/$(THIS_RELEASE)
+	git tag api/auth/ldap/$(THIS_RELEASE)
+	git tag api/auth/userpass/$(THIS_RELEASE)
+	git push $(ORIGIN) api/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/approle/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/kubernetes/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/ldap/$(THIS_RELEASE)
+	git push $(ORIGIN) api/auth/userpass/$(THIS_RELEASE)
+
+.PHONY: tag-sdk
+tag-sdk:
+	@:$(if $(THIS_RELEASE),,$(error please set the THIS_RELEASE environment variable for API tagging))
+	@:$(if $(ORIGIN),,$(error please set the ORIGIN environment variable for pushing API tags))
+	git tag sdk/$(THIS_RELEASE)
+	git push $(ORIGIN) sdk/$(THIS_RELEASE)

@@ -1,3 +1,0 @@
-```release-note:feature
-core/namespaces: added support for namespace locking and unlocking operations
-```

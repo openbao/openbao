@@ -1,0 +1,59 @@
+---
+sidebar_label: 2.3.x
+description: Release notes for OpenBao 2.3.x
+---
+
+# OpenBao 2.3.0 release notes
+
+## v2.3.0-beta20250528
+
+### SECURITY
+
+* sdk/framework: prevent information disclosure on invalid request. HCSEC-2025-09 / CVE-2025-4166. [[GH-1323](https://github.com/openbao/openbao/pull/1323)]
+
+### CHANGES
+
+* openbao: update modules and checksums to address vulnerabilities [[GH-1126](https://github.com/openbao/openbao/pull/1126)]
+* packaging/systemd: Do not set LimitNOFILE, allowing Go to automatically manage this value on behalf of the server. See also https://github.com/golang/go/issues/46279. [[GH-1179](https://github.com/openbao/openbao/pull/1179)]
+* storage/postgresql: Support empty connection URLs to use standard component-wise variables [[GH-1297](https://github.com/openbao/openbao/pull/1297)]
+
+### FEATURES
+
+* **KMIP Auto-Unseal**: Add support for automatic unsealing of OpenBao using a KMIP protocol. [[GH-1144](https://github.com/openbao/openbao/pull/1144)]
+* **Namespaces**: Support for tenant isolation using namespaces, application API compatible with upstream's implementation.
+  - Create, read, update, delete a hierarchical directory of namespaces
+  - Manage isolated per-namespace secrets engines, auth methods, tokens, policies and more
+  - Migrate (remount) secrets engines and auth methods between namespaces
+  - Lock and unlock namespaces
+  - Route requests to namespaces via path (`/my-namespace/secrets`) or `X-Vault-Namespace` header (or both!)
+  - CLI support via the `bao namespace` family of commands and the `-namespace` flag. [[GH-1165](https://github.com/openbao/openbao/pull/1165)]
+* ssh: Support multiple certificate issuers in SSH secret engine mounts, enabling safer rotation of SSH CA key material [[GH-880](https://github.com/openbao/openbao/pull/880)]
+
+### IMPROVEMENTS
+
+* When using auto-unseal via KMS, KMS-specific configuration information (non-sensitive) is now logged at server startup. [[GH-1346](https://github.com/openbao/openbao/pull/1346)]
+* approle: Use transactions for read + write operations [[GH-992](https://github.com/openbao/openbao/pull/992)]
+* auth/jwt: Support lazy resolution of oidc_discovery_url or jwks_url when skip_jwks_validation=true is specified on auth/jwt/config; OIDC status is now reported on reading the configuration. [[GH-1306](https://github.com/openbao/openbao/pull/1306)]
+* core/policies: Add check-and-set support for modifying policies, allowing for protection against concurrent modifications. [[GH-1162](https://github.com/openbao/openbao/pull/1162)]
+* core/policies: Add endpoint to allow detailed listing of policies [[GH-1224](https://github.com/openbao/openbao/pull/1224)]
+* core/policies: Allow setting expiration on policies and component paths, removing policies or preventing usage of path rules after expiration. [[GH-1142](https://github.com/openbao/openbao/pull/1142)]
+* core: Support pagination and transactions in ClearView, CollectKeys, and ScanView, improving secret disable memory consumption and request consistency. [[GH-1102](https://github.com/openbao/openbao/pull/1102)]
+* database/valkey: Revive Redis plugin as Valkey, the OSI-licensed fork of Redis [[GH-1019](https://github.com/openbao/openbao/pull/1019)]
+* database: Use transactions for read-then-write methods in the database package [[GH-995](https://github.com/openbao/openbao/pull/995)]
+* pki: add not_after_bound and not_before_bound role parameters to safely limit issuance duration [[GH-1172](https://github.com/openbao/openbao/pull/1172)]
+* ssh: Use transactions for read-then-write or multiple write methods in the ssh package [[GH-989](https://github.com/openbao/openbao/pull/989)]
+* storage/postgresql: support retrying database connection on startup to gracefully handle service ordering issues [[GH-1280](https://github.com/openbao/openbao/pull/1280)]
+
+### BUG FIXES
+
+* api: Stop marshaling nil interface data and adding it as a request body on an api.Request [[GH-1315](https://github.com/openbao/openbao/pull/1315)]
+* cli: Return a quoted string URL when -output-curl-string flag is passed in [[GH-1038](https://github.com/openbao/openbao/pull/1038)]
+* oidc: add some buffer time after calling oidcPeriodicFunc in test, to prevent flakiness [[GH-1178](https://github.com/openbao/openbao/pull/1178)]
+* pki: addresses a timing issue revealed in pki Backend_RevokePlusTidy test [[GH-1139](https://github.com/openbao/openbao/pull/1139)]
+* sealing/pkcs11: OpenBao now correctly finalizes the PKCS#11 library on shutdown (https://github.com/openbao/go-kms-wrapping/pull/32).
+  This is unlikely to have caused many real-world issues so far. [[GH-1349](https://github.com/openbao/openbao/pull/1349)]
+* secrets/pki: Remove null value for subproblems encoding, fixing compatibility with certain ACME clients like certbot. [[GH-1236](https://github.com/openbao/openbao/pull/1236)]
+* storage/postgresql: Remove redundant PermitPool enforced by db.SetMaxOpenConns(...). [[GH-1299](https://github.com/openbao/openbao/pull/1299)]
+* ui: Fix description of Organizational Unit (OU) field in PKI. [[GH-1333](https://github.com/openbao/openbao/pull/1333)]
+* vault: addresses a timing issue revealed in OIDC_PeriodicFunc test [[GH-1129](https://github.com/openbao/openbao/pull/1129)]
+* vault: fixes a timing issue in OIDC_PeriodicFunc test [[GH-1100](https://github.com/openbao/openbao/pull/1100)]

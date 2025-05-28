@@ -470,6 +470,7 @@ const sidebars: SidebarsConfig = {
             ],
             "Release Notes": [
                 "release-notes/index",
+                "release-notes/2-3-0",
                 "release-notes/2-2-0",
                 "release-notes/2-1-0",
                 "release-notes/2-0-0",

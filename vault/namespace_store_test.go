@@ -307,6 +307,19 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	require.Equal(t, true, ret.Locked)
 	require.Contains(t, ret.CustomMetadata, "testing")
 	require.Empty(t, ret.UnlockKey)
+
+	// Verify that listing does not return locks.
+	all, err := c.namespaceStore.ListAllNamespaces(ctx, true)
+	require.NoError(t, err)
+	for index, ns := range all {
+		require.Empty(t, ns.UnlockKey, "namespace: %v / index: %v", ns, index)
+	}
+
+	all, err = c.namespaceStore.ListNamespaces(ctx, true, true)
+	require.NoError(t, err)
+	for index, ns := range all {
+		require.Empty(t, ns.UnlockKey, "namespace: %v / index: %v", ns, index)
+	}
 }
 
 // TestNamespaceStore_UnlockNamespace tests the unlock namespace method of the namespace store

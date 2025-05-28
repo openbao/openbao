@@ -250,7 +250,7 @@ func (ns *NamespaceStore) setNamespaceLocked(ctx context.Context, nsEntry *names
 	}()
 
 	// Copy the entry before validating and potentially mutating it.
-	entry := nsEntry.Clone()
+	entry := nsEntry.Clone(true /* preserve unlock */)
 	if err := entry.Validate(); err != nil {
 		return logical.CodedError(http.StatusBadRequest, err.Error())
 	}
@@ -387,7 +387,7 @@ func (ns *NamespaceStore) assignIdentifier(path string) (string, error) {
 func (ns *NamespaceStore) initializeNamespace(ctx context.Context, entry *namespace.Namespace) error {
 	// ctx may have a namespace of the parent of our newly created namespace,
 	// so create a new context with the newly created child namespace.
-	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone())
+	nsCtx := namespace.ContextWithNamespace(ctx, entry.Clone(false))
 
 	if err := ns.initializeNamespacePolicies(nsCtx); err != nil {
 		return err
@@ -452,10 +452,7 @@ func (ns *NamespaceStore) GetNamespace(ctx context.Context, uuid string) (*names
 		return nil, nil
 	}
 
-	clone := item.Clone()
-	clone.UnlockKey = ""
-
-	return clone, nil
+	return item.Clone(false), nil
 }
 
 // GetNamespaceByAccessor is used to fetch the namespace with the given accessor.
@@ -474,10 +471,7 @@ func (ns *NamespaceStore) GetNamespaceByAccessor(ctx context.Context, id string)
 		return nil, nil
 	}
 
-	clone := item.Clone()
-	clone.UnlockKey = ""
-
-	return clone, nil
+	return item.Clone(false), nil
 }
 
 func (ns *NamespaceStore) GetNamespaceByLongestPrefix(ctx context.Context, path string) (*namespace.Namespace, string) {
@@ -518,10 +512,7 @@ func (ns *NamespaceStore) getNamespaceByPathLocked(ctx context.Context, path str
 		return nil, nil
 	}
 
-	clone := item.Clone()
-	clone.UnlockKey = ""
-
-	return clone, nil
+	return item.Clone(false), nil
 }
 
 // ModifyNamespace is used to perform modifications to a namespace while
@@ -552,7 +543,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 			ns.lock.Unlock()
 			return nil, errors.New("namespace with that name exists and is currently tainted")
 		}
-		entry = entry.Clone()
+		entry = entry.Clone(true /* preserve unlock key so we can copy it */)
 	} else {
 		entry = &namespace.Namespace{
 			Path:           path,
@@ -571,7 +562,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		}
 
 		// ModifyNamespaceByPath can never modify lock status.
-		entry.UnlockKey = UnlockKey
+		entry.UnlockKey = unlockKey
 	}
 
 	// setNamespaceLocked will unlock ns.lock
@@ -579,10 +570,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		return nil, err
 	}
 
-	cloned := entry.Clone()
-	cloned.UnlockKey = ""
-
-	return cloned, nil
+	return entry.Clone(false), nil
 }
 
 // ListAllNamespaces lists all available namespaces, optionally including the
@@ -598,7 +586,7 @@ func (ns *NamespaceStore) ListAllNamespaces(ctx context.Context, includeRoot boo
 		if !includeRoot && entry.ID == namespace.RootNamespaceID {
 			continue
 		}
-		namespaces = append(namespaces, entry.Clone())
+		namespaces = append(namespaces, entry.Clone(false))
 	}
 
 	return namespaces, nil
@@ -643,7 +631,7 @@ func (ns *NamespaceStore) taintNamespace(ctx context.Context, namespaceToTaint *
 		return fmt.Errorf("failed to modify namespace tree: %w", err)
 	}
 
-	nsCopy := namespaceToTaint.Clone()
+	nsCopy := namespaceToTaint.Clone(true /* preserve unlock */)
 	if err := ns.writeNamespace(ctx, nsCopy); err != nil {
 		return fmt.Errorf("failed to persist namespace taint: %w", err)
 	}
@@ -840,7 +828,7 @@ func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace
 		return false
 	})
 	if lockedNS != nil {
-		return lockedNS.Clone()
+		return lockedNS.Clone(false)
 	}
 
 	return nil

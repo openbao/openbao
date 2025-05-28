@@ -146,20 +146,25 @@ func (n *Namespace) TrimmedPath(path string) string {
 	return strings.TrimPrefix(path, n.Path)
 }
 
-func (n *Namespace) Clone() *Namespace {
+func (n *Namespace) Clone(withUnlock bool) *Namespace {
 	meta := make(map[string]string, len(n.CustomMetadata))
 	maps.Copy(meta, n.CustomMetadata)
 
-	return &Namespace{
+	data := &Namespace{
 		ID:             n.ID,
 		UUID:           n.UUID,
 		Path:           n.Path,
 		Tainted:        n.Tainted,
 		Locked:         n.Locked,
-		UnlockKey:      n.UnlockKey,
 		IsDeleting:     n.IsDeleting,
 		CustomMetadata: meta,
 	}
+
+	if withUnlock {
+		data.UnlockKey = n.UnlockKey
+	}
+
+	return data
 }
 
 // ContextWithNamespace adds the given namespace to the given context

@@ -526,6 +526,7 @@ const sidebars: SidebarsConfig = {
                 "rfcs/authenticated-rekey",
                 "rfcs/self-init",
                 "rfcs/external-keys",
+                "rfcs/web-ui-modernization",
             ],
             FAQ: ["faq/index", "deprecation/faq", "auth/login-mfa/faq"],
         },

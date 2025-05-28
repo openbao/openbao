@@ -20,6 +20,7 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	log "github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/helper/namespace"
 	"github.com/openbao/openbao/sdk/v2/physical"
 	"github.com/openbao/openbao/vault/seal"
 )
@@ -44,6 +45,7 @@ type autoSeal struct {
 	recoveryConfig atomic.Value
 	core           *Core
 	logger         log.Logger
+	metaPrefix     string
 
 	hcLock          sync.Mutex
 	healthCheckStop chan struct{}
@@ -97,6 +99,10 @@ func (d *autoSeal) Init(ctx context.Context) error {
 	return d.Access.Init(ctx)
 }
 
+func (d *autoSeal) SetMetaPrefix(metaPrefix string) {
+	d.metaPrefix = metaPrefix
+}
+
 func (d *autoSeal) Finalize(ctx context.Context) error {
 	return d.Access.Finalize(ctx)
 }
@@ -120,13 +126,13 @@ func (d *autoSeal) RecoveryKeySupported() bool {
 // SetStoredKeys uses the autoSeal.Access.Encrypts method to wrap the keys. The stored entry
 // does not need to be seal wrapped in this case.
 func (d *autoSeal) SetStoredKeys(ctx context.Context, keys [][]byte) error {
-	return writeStoredKeys(ctx, d.core.physical, d.Access, keys)
+	return writeStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access, keys)
 }
 
 // GetStoredKeys retrieves the key shares by unwrapping the encrypted key using the
 // autoseal.
 func (d *autoSeal) GetStoredKeys(ctx context.Context) ([][]byte, error) {
-	return readStoredKeys(ctx, d.core.physical, d.Access)
+	return readStoredKeys(ctx, d.core.physical, d.metaPrefix, d.Access)
 }
 
 func (d *autoSeal) upgradeStoredKeys(ctx context.Context) error {
@@ -188,7 +194,7 @@ func (d *autoSeal) UpgradeKeys(ctx context.Context) error {
 	return nil
 }
 
-func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
+func (d *autoSeal) BarrierConfig(ctx context.Context, ns *namespace.Namespace) (*SealConfig, error) {
 	if d.barrierConfig.Load().(*SealConfig) != nil {
 		return d.barrierConfig.Load().(*SealConfig).Clone(), nil
 	}
@@ -198,8 +204,9 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	}
 
 	sealType := "barrier"
+	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
 
-	entry, err := d.core.physical.Get(ctx, barrierSealConfigPath)
+	entry, err := d.core.physical.Get(ctx, view.Prefix())
 	if err != nil {
 		d.logger.Error("failed to read seal configuration", "seal_type", sealType, "error", err)
 		return nil, fmt.Errorf("failed to read %q seal configuration: %w", sealType, err)
@@ -235,7 +242,7 @@ func (d *autoSeal) BarrierConfig(ctx context.Context) (*SealConfig, error) {
 	return conf.Clone(), nil
 }
 
-func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error {
+func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig, ns *namespace.Namespace) error {
 	if err := d.checkCore(); err != nil {
 		return err
 	}
@@ -253,9 +260,11 @@ func (d *autoSeal) SetBarrierConfig(ctx context.Context, conf *SealConfig) error
 		return fmt.Errorf("failed to encode barrier seal configuration: %w", err)
 	}
 
+	view := d.core.NamespaceView(ns).SubView(barrierSealConfigPath)
+
 	// Store the seal configuration
 	pe := &physical.Entry{
-		Key:   barrierSealConfigPath,
+		Key:   view.Prefix(),
 		Value: buf,
 	}
 

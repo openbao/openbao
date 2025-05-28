@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -49,6 +50,11 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 			Required:    true,
 			Description: "User provided key-value pairs.",
 		},
+		"key_shares": {
+			Type:        framework.TypeMap,
+			Required:    false,
+			Description: "Generated key shares per seal for the namespace.",
+		},
 	}
 
 	return []*framework.Path{
@@ -81,6 +87,67 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 		},
 
 		{
+			Pattern: "namespaces/(?P<name>.+)/seal",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Name of the namespace.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Seal a namespace.",
+					Callback: b.handleNamespacesSeal(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+		{
+			Pattern: "namespaces/(?P<name>.+)/unseal",
+
+			DisplayAttrs: &framework.DisplayAttributes{
+				OperationPrefix: "namespaces",
+			},
+
+			Fields: map[string]*framework.FieldSchema{
+				"name": {
+					Type:        framework.TypeString,
+					Required:    true,
+					Description: "Name of the namespace.",
+				},
+				"key": {
+					Type:        framework.TypeNameString,
+					Description: "Specifies a single namespace unseal key share.",
+				},
+			},
+
+			Operations: map[logical.Operation]framework.OperationHandler{
+				logical.UpdateOperation: &framework.PathOperation{
+					Summary:  "Unseal a namespace.",
+					Callback: b.handleNamespacesUnseal(),
+					Responses: map[int][]framework.Response{
+						http.StatusNoContent: {{Description: http.StatusText(http.StatusNoContent)}},
+					},
+				},
+			},
+
+			HelpSynopsis:    strings.TrimSpace(sysHelp["namespaces"][0]),
+			HelpDescription: strings.TrimSpace(sysHelp["namespaces"][1]),
+		},
+
+		{
 			Pattern: "namespaces/(?P<path>.+)",
 
 			DisplayAttrs: &framework.DisplayAttributes{
@@ -96,6 +163,10 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 				"custom_metadata": {
 					Type:        framework.TypeMap,
 					Description: "User provided key-value pairs.",
+				},
+				"seals": {
+					Type:        framework.TypeSlice,
+					Description: "User provided seal configs.",
 				},
 			},
 
@@ -149,13 +220,18 @@ func (b *SystemBackend) namespacePaths() []*framework.Path {
 
 // createNamespaceDataResponse is the standard response object
 // for any operations concerning a namespace
-func createNamespaceDataResponse(ns *namespace.Namespace) map[string]any {
+func createNamespaceDataResponse(ns *namespace.Namespace, keySharesMap ...map[string][]string) map[string]any {
+	var keySharesPerSeal map[string][]string
+	if len(keySharesMap) > 0 {
+		keySharesPerSeal = keySharesMap[0]
+	}
 	return map[string]any{
 		"uuid":            ns.UUID,
 		"path":            ns.Path,
 		"id":              ns.ID,
 		"tainted":         ns.Tainted,
 		"custom_metadata": ns.CustomMetadata,
+		"key_shares":      keySharesPerSeal,
 	}
 }
 
@@ -249,15 +325,50 @@ func (b *SystemBackend) handleNamespacesSet() framework.OperationFunc {
 			}
 		}
 
-		entry, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		var sealConfigs []*SealConfig
+		seals, ok := data.GetOk("seals")
+		if ok {
+			var err error
+			sealConfigs, err = b.Core.sealManager.ExtractSealConfigs(seals)
+			if err != nil {
+				return logical.ErrorResponse("error while extracting seal configs"), err
+			}
+		}
+
+		entry, new, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			ns.CustomMetadata = metadata
 			return ns, nil
 		})
 		if err != nil {
 			return handleError(err)
 		}
+		keySharesMap := make(map[string][]string)
+		if new {
+			// TODO(wslabosz): write all the provided configs
+			if len(sealConfigs) > 0 {
+				if err := b.Core.sealManager.SetSeal(ctx, sealConfigs[0], entry); err != nil {
+					return handleError(err)
+				}
 
-		return &logical.Response{Data: createNamespaceDataResponse(entry)}, nil
+				nsSealKeyShares, err := b.Core.sealManager.InitializeBarrier(ctx, entry)
+				if err != nil {
+					return logical.ErrorResponse(fmt.Sprintf("%s", err.Error())), err
+				}
+				var keyShares []string
+				for _, keyShare := range nsSealKeyShares {
+					keyShares = append(keyShares, hex.EncodeToString(keyShare))
+				}
+				if len(keyShares) > 0 {
+					keySharesMap["default"] = keyShares
+				}
+			}
+
+			if err := b.Core.namespaceStore.initializeNamespace(ctx, entry); err != nil {
+				return handleError(err)
+			}
+		}
+
+		return &logical.Response{Data: createNamespaceDataResponse(entry, keySharesMap)}, nil
 	}
 }
 
@@ -286,7 +397,7 @@ func (b *SystemBackend) handleNamespacesPatch() framework.OperationFunc {
 			return nil, errors.New("path must not contain /")
 		}
 
-		ns, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
+		ns, _, err := b.Core.namespaceStore.ModifyNamespaceByPath(ctx, path, func(ctx context.Context, ns *namespace.Namespace) (*namespace.Namespace, error) {
 			if ns.UUID == "" {
 				return nil, fmt.Errorf("requested namespace does not exist")
 			}
@@ -342,5 +453,42 @@ func (b *SystemBackend) handleNamespacesDelete() framework.OperationFunc {
 				"status": status,
 			},
 		}, nil
+	}
+}
+
+// handleNamespacesSeal handles the "/sys/namespaces/<name>/seal" endpoint to seal the namespace.
+func (b *SystemBackend) handleNamespacesSeal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		err := b.Core.namespaceStore.SealNamespace(ctx, name)
+		if err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
+	}
+}
+
+// handleNamespacesUnseal handles the "/sys/namespaces/<name>/unseal" endpoint to unseal the namespace.
+func (b *SystemBackend) handleNamespacesUnseal() framework.OperationFunc {
+	return func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+		name := namespace.Canonicalize(data.Get("name").(string))
+		key := data.Get("key").(string)
+
+		if len(name) > 0 && strings.Contains(name[:len(name)-1], "/") {
+			return nil, errors.New("name must not contain /")
+		}
+
+		err := b.Core.namespaceStore.UnsealNamespace(ctx, name, []byte(key))
+		if err != nil {
+			return handleError(err)
+		}
+
+		return nil, nil
 	}
 }

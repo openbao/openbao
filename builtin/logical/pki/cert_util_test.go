@@ -5,13 +5,17 @@ package pki
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/openbao/openbao/sdk/v2/framework"
+	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPki_FetchCertBySerial(t *testing.T) {
@@ -254,4 +258,66 @@ func TestPki_getCertificateNotBefore(t *testing.T) {
 	if expectedNotBefore != notBefore.String() {
 		t.Fatalf("Expected Not Before %v, got %v", expectedNotBefore, notBefore)
 	}
+}
+
+func TestPki_getCertificateNotAfter_PastDate(t *testing.T) {
+	t.Parallel()
+
+	// Create a system view with default TTLs
+	sysView := logical.TestSystemView()
+	sysView.DefaultLeaseTTLVal = 24 * time.Hour
+	sysView.MaxLeaseTTLVal = 24 * time.Hour
+
+	// Create backend with the system view
+	config := &logical.BackendConfig{
+		StorageView: &logical.InmemStorage{},
+		System:      sysView,
+	}
+
+	b := Backend(config)
+	require.NotNil(t, b, "failed to create backend")
+
+	err := b.Setup(context.Background(), config)
+	require.NoError(t, err, "failed to setup backend")
+
+	// Create a CA certificate with NotAfter in the future
+	now := time.Now()
+	caCert := &x509.Certificate{
+		NotBefore: now.Add(-48 * time.Hour),
+		NotAfter:  now.Add(-24 * time.Hour),
+	}
+
+	// Test case for past NotAfter date
+	data := &inputBundle{
+		role: &roleEntry{
+			MaxTTL:        24 * time.Hour,
+			TTL:           0,
+			NotAfterBound: "permit",
+		},
+		apiData: &framework.FieldData{
+			Raw: map[string]any{
+				"not_after": now.Add(-1 * time.Hour).Format(time.RFC3339),
+				"ttl":       0,
+			},
+			Schema: map[string]*framework.FieldSchema{
+				"not_after": {Type: framework.TypeString},
+				"ttl":       {Type: framework.TypeDurationSecond},
+				"format":    {Type: framework.TypeString},
+			},
+		},
+	}
+
+	caBundle := &certutil.CAInfoBundle{
+		ParsedCertBundle: certutil.ParsedCertBundle{
+			Certificate: caCert,
+		},
+		LeafNotAfterBehavior: certutil.TruncateNotAfterBehavior,
+	}
+
+	// Test that we get an error when NotAfter is in the past
+	result, warnings, err := getCertificateNotAfter(b, data, caBundle)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot satisfy request, as NotAfter date")
+	require.True(t, time.Time{}.Equal(result))
+	require.Empty(t, warnings)
 }

@@ -1739,6 +1739,11 @@ func getCertificateNotAfter(b *backend, data *inputBundle, caSign *certutil.CAIn
 		case certutil.PermitNotAfterBehavior:
 			// Explicitly do nothing.
 		case certutil.TruncateNotAfterBehavior:
+			// Error out if notAfter is in the past
+			if notAfter.Before(time.Now()) {
+				return time.Time{}, warnings, errutil.UserError{Err: fmt.Sprintf(
+					"cannot satisfy request, as NotAfter date %s is in the past", notAfter)}
+			}
 			notAfter = caSign.Certificate.NotAfter
 		case certutil.ErrNotAfterBehavior:
 			fallthrough

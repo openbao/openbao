@@ -103,6 +103,7 @@ jobs:
         {
           "VAULT_CI_GO_TEST_RACE": 1
         }
+      raceonly: true
       extra-flags: "-race"
       go-arch: amd64
       go-tags: ${{ needs.setup.outputs.go-tags }}

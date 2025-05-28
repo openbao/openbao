@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
@@ -244,7 +243,7 @@ func (s *Secret) TokenIsRenewable() (bool, error) {
 
 	renewable, err := parseutil.ParseBool(s.Data["renewable"])
 	if err != nil {
-		return false, errwrap.Wrapf("could not convert renewable value to a boolean: {{err}}", err)
+		return false, fmt.Errorf("could not convert renewable value to a boolean: %w", err)
 	}
 
 	return renewable, nil

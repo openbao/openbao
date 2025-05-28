@@ -27,7 +27,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/errwrap"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/helper/jsonutil"
@@ -936,7 +935,7 @@ func createCertificate(data *CreationBundle, randReader io.Reader, privateKeyGen
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	// Add this before calling addKeyUsages
@@ -1274,7 +1273,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 	}
 
 	if err := HandleOtherCSRSANs(csrTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	if addBasicConstraints {
@@ -1284,7 +1283,7 @@ func createCSR(data *CreationBundle, addBasicConstraints bool, randReader io.Rea
 		}
 		val, err := asn1.Marshal(basicConstraints{IsCA: true, MaxPathLen: -1})
 		if err != nil {
-			return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling basic constraints: {{err}}", err).Error()}
+			return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling basic constraints: %w", err).Error()}
 		}
 		ext := pkix.Extension{
 			Id:       ExtensionBasicConstraintsOID,
@@ -1417,7 +1416,7 @@ func signCertificate(data *CreationBundle, randReader io.Reader) (*ParsedCertBun
 	}
 
 	if err := HandleOtherSANs(certTemplate, data.Params.OtherSANs); err != nil {
-		return nil, errutil.InternalError{Err: errwrap.Wrapf("error marshaling other SANs: {{err}}", err).Error()}
+		return nil, errutil.InternalError{Err: fmt.Errorf("error marshaling other SANs: %w", err).Error()}
 	}
 
 	AddPolicyIdentifiers(data, certTemplate)

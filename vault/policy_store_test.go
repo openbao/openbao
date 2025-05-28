@@ -443,7 +443,7 @@ path "secret/*" {
 	// Create a new policy in the namespace
 	policy, _ := ParseACLPolicy(ns, modifiedPolicy)
 	policy.Name = "test-load-policy"
-	err = ps.SetPolicy(nsCtx, policy)
+	err = ps.SetPolicy(nsCtx, policy, nil)
 	require.NoError(t, err)
 
 	// Verify the policies are now different
@@ -478,7 +478,7 @@ func TestPolicyStore_NamespaceStorage(t *testing.T) {
 	nsCtx := namespace.ContextWithNamespace(ctx, ns)
 	policy, _ := ParseACLPolicy(ns, aclPolicy)
 	policy.Name = "test-policy"
-	require.NoError(t, ps.SetPolicy(nsCtx, policy))
+	require.NoError(t, ps.SetPolicy(nsCtx, policy, nil))
 
 	// Verify the policy exists in the namespace
 	p, err := ps.GetPolicy(nsCtx, "test-policy", PolicyTypeToken)
@@ -671,7 +671,7 @@ func TestPolicyStore_ListPoliciesByNamespace(t *testing.T) {
 	for _, tmpl := range policyTemplates {
 		policy, _ := ParseACLPolicy(tmpl.ns, tmpl.content)
 		policy.Name = tmpl.name
-		require.NoError(t, ps.SetPolicy(tmpl.ctx, policy))
+		require.NoError(t, ps.SetPolicy(tmpl.ctx, policy, nil))
 	}
 
 	// Verify policy listings in each namespace context
@@ -793,17 +793,17 @@ func TestPolicyStore_NestedNamespaces(t *testing.T) {
 	// Create in root namespace
 	policy, _ := ParseACLPolicy(namespace.RootNamespace, rootPolicy)
 	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(ctx, policy))
+	require.NoError(t, ps.SetPolicy(ctx, policy, nil))
 
 	// Create in parent namespace
 	policy, _ = ParseACLPolicy(parentNS, parentPolicy)
 	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(parentCtx, policy))
+	require.NoError(t, ps.SetPolicy(parentCtx, policy, nil))
 
 	// Create in child namespace
 	policy, _ = ParseACLPolicy(childNS, childPolicy)
 	policy.Name = "test-nested-policy"
-	require.NoError(t, ps.SetPolicy(childCtx, policy))
+	require.NoError(t, ps.SetPolicy(childCtx, policy, nil))
 
 	// Verify policies were stored in correct locations
 	rootP, err := ps.GetPolicy(ctx, "test-nested-policy", PolicyTypeToken)

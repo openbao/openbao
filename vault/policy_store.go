@@ -321,14 +321,17 @@ func (ps *PolicyStore) setPolicyInternal(ctx context.Context, p *Policy, casVers
 	}
 
 	casRequired := existing.CASRequired || p.CASRequired
-	if casVersion != nil && *casVersion == -1 {
-		if existingEntry != nil {
+	if casVersion == nil && casRequired {
+		return fmt.Errorf("check-and-set parameter required for this call")
+	}
+	if casVersion != nil {
+		if *casVersion == -1 && existingEntry != nil {
 			return fmt.Errorf("check-and-set parameter set to -1 on existing entry")
 		}
-	} else if casVersion != nil && *casVersion != existing.DataVersion {
-		return fmt.Errorf("check-and-set parameter did not match the current version")
-	} else if casVersion == nil && casRequired {
-		return fmt.Errorf("check-and-set parameter required for this call")
+
+		if *casVersion != -1 && *casVersion != existing.DataVersion {
+			return fmt.Errorf("check-and-set parameter did not match the current version")
+		}
 	}
 
 	// Create the entry

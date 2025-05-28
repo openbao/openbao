@@ -5,9 +5,11 @@ package vault
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -33,6 +35,9 @@ const namespaceIdLength = 6
 const (
 	// Namespace storage location.
 	namespaceStoreSubPath = "core/namespaces/"
+
+	// Namespaces lock location.
+	namespaceLockPrefix = "core/namespace-lock"
 
 	// namespaceBarrierPrefix is the prefix to the UUID of a namespaces
 	// used in the barrier view for the namespace-owned backends.
@@ -61,6 +66,12 @@ type NamespaceStore struct {
 
 	// logger is the server logger copied over from core
 	logger hclog.Logger
+}
+
+// namespaceLock marks a locked namespace in storage.
+// It holds the unlock key for the locked namespace.
+type namespaceLock struct {
+	Key []byte `json:"key" mapstructure:"key"`
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -166,9 +177,19 @@ func (ns *NamespaceStore) loadNamespacesRecursive(
 			return false, fmt.Errorf("%v has an empty namespace definition (page %v / index %v)", entry, page, index)
 		}
 
+		nsLockPath := path.Join(namespaceBarrierPrefix, entry, namespaceLockPrefix)
+		nsLock, err := barrier.Get(ctx, nsLockPath)
+		if err != nil {
+			return false, fmt.Errorf("failed to fetch namespace lock %v (page %v / index %v): %w", nsLockPath, page, index, err)
+		}
+
 		var namespace namespace.Namespace
 		if err := item.DecodeJSON(&namespace); err != nil {
 			return false, fmt.Errorf("failed to decode namespace %v (page %v / index %v): %w", entry, page, index, err)
+		}
+
+		if nsLock != nil {
+			namespace.Locked = true
 		}
 
 		if err := callback(&namespace); err != nil {
@@ -804,4 +825,182 @@ func (ns *NamespaceStore) ResolveNamespaceFromRequest(nsHeader, reqPath string) 
 	}
 
 	return resolvedNs, trimmedPath
+}
+
+// GetLockingNamespace walks the namespace tree structure looking for
+// a locked namespace, starting from one of the root children,
+// ending at the namespace provided as a argument to the function.
+func (ns *NamespaceStore) GetLockingNamespace(n *namespace.Namespace) *namespace.Namespace {
+	var lockedNS *namespace.Namespace
+	ns.namespacesByPath.WalkPath(n.Path, func(curNS *namespace.Namespace) bool {
+		if curNS.Locked {
+			lockedNS = curNS
+			return true
+		}
+		return false
+	})
+	if lockedNS != nil {
+		return lockedNS.Clone()
+	}
+
+	return nil
+}
+
+// UnlockNamespace attempts to unlock the namespace with provided namespace path.
+func (ns *NamespaceStore) UnlockNamespace(ctx context.Context, unlockKey, path string) error {
+	defer metrics.MeasureSince([]string{"namespace", "unlock_namespace"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return err
+	}
+
+	namespaceToUnlock, err := ns.GetNamespaceByPath(ctx, path)
+	if err != nil {
+		return err
+	}
+
+	if namespaceToUnlock == nil {
+		return errors.New("requested namespace does not exist")
+	}
+
+	if namespaceToUnlock.ID == namespace.RootNamespaceID {
+		return errors.New("root namespace cannot be locked/unlocked")
+	}
+
+	if !namespaceToUnlock.Locked {
+		return fmt.Errorf("namespace %q is not locked", namespaceToUnlock.Path)
+	}
+
+	lockingNamespace := ns.GetLockingNamespace(namespaceToUnlock)
+	if lockingNamespace.ID != namespaceToUnlock.ID {
+		return fmt.Errorf("cannot unlock %q with namespace %q being locked", namespaceToUnlock.Path, lockingNamespace.Path)
+	}
+
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+	return ns.unlockNamespaceLocked(ctx, namespaceToUnlock, unlockKey)
+}
+
+// unlockNamespaceLocked reads namespace lock from the storage, compares it to the
+// provided unlock key, with match deletes the storage entry, modifies namespace
+// tree structure and namespace maps changing the 'Locked' field to false.
+func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace, unlockKey string) error {
+	lockView := NamespaceView(ns.storage, namespace).SubView(namespaceLockPrefix)
+
+	// read lock from storage
+	var nsLock namespaceLock
+	err := logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		item, err := lockView.Get(ctx, "")
+		if err != nil {
+			return err
+		}
+
+		if item == nil {
+			return errors.New("couldn't find namespace lock in storage")
+		}
+
+		return item.DecodeJSON(&nsLock)
+	})
+	if err != nil {
+		return fmt.Errorf("error retrieving namespace lock: %w", err)
+	}
+
+	// verify lock or skip when provided unlock key is empty
+	// (meaning namespace is unlocked using root capability)
+	if unlockKey != "" && subtle.ConstantTimeCompare(nsLock.Key, []byte(unlockKey)) != 1 {
+		return errors.New("incorrect unlock key")
+	}
+
+	// delete lock from storage
+	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		return lockView.Delete(ctx, "")
+	})
+	if err != nil {
+		return fmt.Errorf("error deleting namespace lock: %w", err)
+	}
+
+	ns.namespacesByAccessor[namespace.ID].Locked = false
+	ns.namespacesByUUID[namespace.UUID].Locked = false
+	namespace.Locked = false
+	err = ns.namespacesByPath.Insert(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	return nil
+}
+
+// LockNamespace attempts to lock the namespace with provided path.
+func (ns *NamespaceStore) LockNamespace(ctx context.Context, path string) (string, error) {
+	defer metrics.MeasureSince([]string{"namespace", "lock_namespace"}, time.Now())
+
+	if err := ns.checkInvalidation(ctx); err != nil {
+		return "", err
+	}
+
+	namespaceToLock, err := ns.GetNamespaceByPath(ctx, path)
+	if err != nil {
+		return "", err
+	}
+
+	if namespaceToLock == nil {
+		return "", errors.New("requested namespace does not exist")
+	}
+
+	if namespaceToLock.ID == namespace.RootNamespaceID {
+		return "", errors.New("root namespace cannot be locked/unlocked")
+	}
+
+	lockedNamespace := ns.GetLockingNamespace(namespaceToLock)
+	if lockedNamespace != nil && lockedNamespace.ID == namespaceToLock.ID {
+		return "", fmt.Errorf("cannot lock namespace %q: is already locked", namespaceToLock.Path)
+	} else if lockedNamespace != nil {
+		return "", fmt.Errorf("cannot lock namespace %q: ancestor namespace %q is already locked", namespaceToLock.Path, lockedNamespace.Path)
+	}
+
+	ns.lock.Lock()
+	defer ns.lock.Unlock()
+	return ns.lockNamespaceLocked(ctx, namespaceToLock)
+}
+
+// lockNamespaceLocked creates a namespace lock in storage
+// and sets the Locked field of the namespace in memory to true.
+func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, namespace *namespace.Namespace) (string, error) {
+	// create lock
+	lockKey, err := base62.Random(24)
+	if err != nil {
+		return "", fmt.Errorf("unable to generate namespace lock key: %w", err)
+	}
+
+	lock := &namespaceLock{
+		Key: []byte(lockKey),
+	}
+
+	// write lock to storage
+	err = logical.WithTransaction(ctx, ns.storage, func(s logical.Storage) error {
+		lockView := NamespaceView(ns.storage, namespace).SubView(namespaceLockPrefix)
+		item, err := logical.StorageEntryJSON(lockView.Prefix(), &lock)
+		if err != nil {
+			return fmt.Errorf("error marshalling storage entry: %w", err)
+		}
+
+		if err := s.Put(ctx, item); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("error writing namespace lock: %w", err)
+	}
+
+	ns.namespacesByAccessor[namespace.ID].Locked = true
+	ns.namespacesByUUID[namespace.UUID].Locked = true
+	namespace.Locked = true
+	err = ns.namespacesByPath.Insert(namespace)
+	if err != nil {
+		return "", fmt.Errorf("failed to modify namespace tree: %w", err)
+	}
+
+	return lockKey, nil
 }

@@ -2,6 +2,7 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"strconv"
 	"testing"
@@ -227,6 +228,164 @@ func TestNamespaceStore_DeleteNamespace(t *testing.T) {
 	keys, err = s.storage.List(ctx, path.Join(namespaceBarrierPrefix, parentNamespace.UUID, namespaceStoreSubPath)+"/")
 	require.NoError(t, err)
 	require.Empty(t, keys, "Expected empty namespace store on storage level")
+}
+
+// TestNamespaceStore_LockNamespace tests the lock namespace method of the namespace store
+func TestNamespaceStore_LockNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, keys, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	testNamespace := &namespace.Namespace{Path: "test"}
+	err := s.SetNamespace(ctx, testNamespace)
+	require.NoError(t, err)
+	testNamespaceCtx := namespace.ContextWithNamespace(ctx, testNamespace)
+
+	childNamespace := &namespace.Namespace{Path: "test/child"}
+	err = s.SetNamespace(testNamespaceCtx, childNamespace)
+	require.NoError(t, err)
+
+	// nonexistent path will return err and empty unlock key
+	unlockKey, err := s.LockNamespace(ctx, "nonexistent")
+	require.ErrorContains(t, err, "requested namespace does not exist")
+	require.Empty(t, unlockKey)
+
+	// root path will return err and empty unlock key
+	unlockKey, err = s.LockNamespace(ctx, "")
+	require.ErrorContains(t, err, "root namespace cannot be locked/unlocked")
+	require.Empty(t, unlockKey)
+
+	// lock parent namespace
+	unlockKey, err = s.LockNamespace(ctx, testNamespace.Path)
+	require.NoError(t, err)
+	require.NotEmpty(t, unlockKey)
+
+	// verify the 'locked' flag
+	require.Equal(t, true, s.namespacesByAccessor[testNamespace.ID].Locked)
+	require.Equal(t, true, s.namespacesByUUID[testNamespace.UUID].Locked)
+	require.Equal(t, true, s.namespacesByPath.Get(testNamespace.Path).Locked)
+
+	// verify storage
+	nsLockPath := path.Join(namespaceBarrierPrefix, testNamespace.UUID, namespaceLockPrefix)
+	nsLock, err := s.storage.Get(ctx, nsLockPath)
+	require.NoError(t, err)
+
+	var lockItem namespaceLock
+	err = nsLock.DecodeJSON(&lockItem)
+	require.NoError(t, err)
+	require.Equal(t, []byte(unlockKey), lockItem.Key)
+
+	// verify that you cannot lock already locked namespace
+	unlockKey, err = s.LockNamespace(ctx, testNamespace.Path)
+	require.ErrorContains(t, err, fmt.Sprintf("cannot lock namespace %q: is already locked", testNamespace.Path))
+	require.Empty(t, unlockKey)
+
+	// verify that you cannot lock children of a locked namespace
+	unlockKey, err = s.LockNamespace(ctx, childNamespace.Path)
+	require.ErrorContains(t, err, fmt.Sprintf("cannot lock namespace %q: ancestor namespace %q is already locked", childNamespace.Path, testNamespace.Path))
+	require.Empty(t, unlockKey)
+
+	err = TestCoreSeal(c)
+	require.NoError(t, err)
+
+	for _, key := range keys {
+		if _, err := TestCoreUnseal(c, TestKeyCopy(key)); err != nil {
+			t.Fatalf("unseal err: %s", err)
+		}
+	}
+
+	// verify the persistence of the lock
+	namespace, err := c.namespaceStore.GetNamespace(ctx, testNamespace.UUID)
+	require.NoError(t, err)
+	require.Equal(t, true, namespace.Locked)
+}
+
+// TestNamespaceStore_UnlockNamespace tests the unlock namespace method of the namespace store
+func TestNamespaceStore_UnlockNamespace(t *testing.T) {
+	t.Parallel()
+
+	c, _, _ := TestCoreUnsealed(t)
+	s := c.namespaceStore
+	ctx := namespace.RootContext(context.Background())
+
+	testNamespace := &namespace.Namespace{Path: "test"}
+	err := s.SetNamespace(ctx, testNamespace)
+	require.NoError(t, err)
+	testNamespaceCtx := namespace.ContextWithNamespace(ctx, testNamespace)
+
+	childNamespace := &namespace.Namespace{Path: "test/child"}
+	err = s.SetNamespace(testNamespaceCtx, childNamespace)
+	require.NoError(t, err)
+
+	anotherNamespace := &namespace.Namespace{Path: "another"}
+	err = s.SetNamespace(ctx, anotherNamespace)
+	require.NoError(t, err)
+
+	// lock namespace
+	unlockKeyChild, err := s.LockNamespace(ctx, childNamespace.Path)
+	require.NoError(t, err)
+	require.NotEmpty(t, unlockKeyChild)
+
+	unlockKeyParent, err := s.LockNamespace(ctx, testNamespace.Path)
+	require.NoError(t, err)
+	require.NotEmpty(t, unlockKeyParent)
+
+	// verify locked status
+	require.Equal(t, true, s.namespacesByAccessor[testNamespace.ID].Locked)
+	require.Equal(t, true, s.namespacesByUUID[testNamespace.UUID].Locked)
+	require.Equal(t, true, s.namespacesByPath.Get(testNamespace.Path).Locked)
+
+	// nonexistent path will return err
+	err = s.UnlockNamespace(ctx, "key", "nonexistent")
+	require.ErrorContains(t, err, "requested namespace does not exist")
+
+	// cannot unlock root as it cannot be locked
+	err = s.UnlockNamespace(ctx, "key", "")
+	require.ErrorContains(t, err, "root namespace cannot be locked/unlocked")
+
+	// unlocking not locked namespace will return err
+	err = s.UnlockNamespace(ctx, "key", anotherNamespace.Path)
+	require.ErrorContains(t, err, fmt.Sprintf("namespace %q is not locked", anotherNamespace.Path))
+
+	// cannot unlock child namespace of a locked namespace
+	err = s.UnlockNamespace(ctx, unlockKeyChild, childNamespace.Path)
+	require.ErrorContains(t, err, fmt.Sprintf("cannot unlock %q with namespace %q being locked", childNamespace.Path, testNamespace.Path))
+
+	// try to unlock with wrong key
+	err = s.UnlockNamespace(ctx, "key", testNamespace.Path)
+	require.ErrorContains(t, err, "e")
+
+	// unlock with correct key
+	err = s.UnlockNamespace(ctx, unlockKeyParent, testNamespace.Path)
+	require.NoError(t, err)
+
+	// verify empty storage
+	nsLockPath := path.Join(namespaceBarrierPrefix, testNamespace.UUID, namespaceLockPrefix)
+	nsLock, err := s.storage.Get(ctx, nsLockPath)
+	require.NoError(t, err)
+	require.Nil(t, nsLock)
+
+	// verify the locked status
+	require.Equal(t, false, s.namespacesByAccessor[testNamespace.ID].Locked)
+	require.Equal(t, false, s.namespacesByUUID[testNamespace.UUID].Locked)
+	require.Equal(t, false, s.namespacesByPath.Get(testNamespace.Path).Locked)
+
+	// force unlock of child namespace using empty key (parent is already unlocked)
+	err = s.UnlockNamespace(ctx, "", childNamespace.Path)
+	require.NoError(t, err)
+
+	// verify empty storage
+	nsLockPath = path.Join(namespaceBarrierPrefix, childNamespace.UUID, namespaceLockPrefix)
+	nsLock, err = s.storage.Get(ctx, nsLockPath)
+	require.NoError(t, err)
+	require.Nil(t, nsLock)
+
+	// verify the locked status
+	require.Equal(t, false, s.namespacesByAccessor[childNamespace.ID].Locked)
+	require.Equal(t, false, s.namespacesByUUID[childNamespace.UUID].Locked)
+	require.Equal(t, false, s.namespacesByPath.Get(childNamespace.Path).Locked)
 }
 
 func TestNamespaceHierarchy(t *testing.T) {

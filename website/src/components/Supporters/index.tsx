@@ -38,6 +38,10 @@ const SupportList: SupportItem[] = [
         title: "GitLab",
         description: "Development; open-source community efforts",
     },
+    {
+        title: "NeoNephos",
+        description: "Development; open-source community efforts",
+    },
 ];
 
 function Supporter({ title, description }: SupportItem) {

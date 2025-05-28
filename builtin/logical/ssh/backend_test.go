@@ -803,7 +803,7 @@ func TestSSHBackend_CA(t *testing.T) {
 			dockerImageTagSupportsRSA1,
 			testCAPublicKey,
 			testCAPrivateKey,
-			ssh.SigAlgoRSA,
+			ssh.KeyAlgoRSA,
 			false,
 		},
 		{
@@ -811,7 +811,7 @@ func TestSSHBackend_CA(t *testing.T) {
 			dockerImageTagSupportsNoRSA1,
 			testCAPublicKey,
 			testCAPrivateKey,
-			ssh.SigAlgoRSA,
+			ssh.KeyAlgoRSA,
 			true,
 		},
 		{
@@ -819,7 +819,7 @@ func TestSSHBackend_CA(t *testing.T) {
 			dockerImageTagSupportsRSA1,
 			testCAPublicKey,
 			testCAPrivateKey,
-			ssh.SigAlgoRSASHA2256,
+			ssh.KeyAlgoRSASHA256,
 			false,
 		},
 		{
@@ -827,7 +827,7 @@ func TestSSHBackend_CA(t *testing.T) {
 			dockerImageTagSupportsNoRSA1,
 			testCAPublicKey,
 			testCAPrivateKey,
-			ssh.SigAlgoRSASHA2256,
+			ssh.KeyAlgoRSASHA256,
 			false,
 		},
 		{
@@ -851,7 +851,7 @@ func TestSSHBackend_CA(t *testing.T) {
 			dockerImageTagSupportsRSA1,
 			testCAPublicKeyEd25519,
 			testCAPrivateKeyEd25519,
-			ssh.SigAlgoRSA,
+			ssh.KeyAlgoRSA,
 			true,
 		},
 	}
@@ -957,7 +957,7 @@ func TestSSHBackend_CAUpgradeAlgorithmSigner(t *testing.T) {
 		"key_type":         "ca",
 		"default_user":     testUserName,
 		"ttl":              "30m0s",
-		"algorithm_signer": ssh.SigAlgoRSA,
+		"algorithm_signer": ssh.KeyAlgoRSA,
 	}
 
 	// Upgrade entry by overwriting algorithm_signer with an empty value

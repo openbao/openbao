@@ -544,7 +544,7 @@ func (b *creationBundle) sign() (retCert *ssh.Certificate, retErr error) {
 
 	// Handle the new default algorithm selection process correctly.
 	if algo == DefaultAlgorithmSigner && sshAlgorithmSigner.PublicKey().Type() == ssh.KeyAlgoRSA {
-		algo = ssh.SigAlgoRSASHA2256
+		algo = ssh.KeyAlgoRSASHA256
 	} else if algo == DefaultAlgorithmSigner {
 		algo = ""
 	}

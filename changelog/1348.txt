@@ -1,5 +1,0 @@
-```release-note:bug
-vault/login_mfa: config storage storage change
-vault/core: locked users storage structure change
-vault/namespaces: deleting namespace removes namespace locked users entries
-```

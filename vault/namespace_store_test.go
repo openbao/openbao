@@ -275,7 +275,7 @@ func TestNamespaceStore_LockNamespace(t *testing.T) {
 	var lockItem namespaceLock
 	err = nsLock.DecodeJSON(&lockItem)
 	require.NoError(t, err)
-	require.Equal(t, unlockKey, lockItem.Key)
+	require.Equal(t, []byte(unlockKey), lockItem.Key)
 
 	// verify that you cannot lock already locked namespace
 	unlockKey, err = s.LockNamespace(ctx, testNamespace.Path)

@@ -5,6 +5,7 @@ package vault
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"net/http"
@@ -70,7 +71,7 @@ type NamespaceStore struct {
 // namespaceLock marks a locked namespace in storage.
 // It holds the unlock key for the locked namespace.
 type namespaceLock struct {
-	Key string `json:"key" mapstructure:"key"`
+	Key []byte `json:"key" mapstructure:"key"`
 }
 
 // NewNamespaceStore creates a new NamespaceStore that is backed
@@ -906,7 +907,7 @@ func (ns *NamespaceStore) unlockNamespaceLocked(ctx context.Context, namespace *
 
 	// verify lock or skip when provided unlock key is empty
 	// (meaning namespace is unlocked using root capability)
-	if unlockKey != "" && nsLock.Key != unlockKey {
+	if unlockKey != "" && subtle.ConstantTimeCompare(nsLock.Key, []byte(unlockKey)) != 1 {
 		return errors.New("incorrect unlock key")
 	}
 
@@ -972,7 +973,7 @@ func (ns *NamespaceStore) lockNamespaceLocked(ctx context.Context, namespace *na
 	}
 
 	lock := &namespaceLock{
-		Key: lockKey,
+		Key: []byte(lockKey),
 	}
 
 	// write lock to storage

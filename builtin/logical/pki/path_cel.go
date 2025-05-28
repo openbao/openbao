@@ -43,56 +43,20 @@ type Variable struct {
 	Expression string
 }
 
-type CertificateTemplate struct {
-	CommonName         string `json:"common_name"`
-	SerialNumber       string `json:"serial_number,omitempty"`
-	Country            string `json:"country,omitempty"`
-	Organization       string `json:"organization,omitempty"`
-	OrganizationalUnit string `json:"organizational_unit,omitempty"`
-	Locality           string `json:"locality,omitempty"`
-	Province           string `json:"province,omitempty"`
-	StreetAddress      string `json:"street_address,omitempty"`
-	PostalCode         string `json:"postal_code,omitempty"`
-	AltNames           string `json:"alt_names,omitempty"`
-	DNSNames           string `json:"dns_names,omitempty"`
-	EmailAddresses     string `json:"email_addresses,omitempty"`
-	IPAddresses        string `json:"ip_addresses,omitempty"`
-	URIs               string `json:"uris,omitempty"`
-	OtherSANs          string `json:"other_sans,omitempty"`
-	IsCA               string `json:"is_ca"`
-	KeyType            string `json:"key_type,omitempty"`
-	KeyBits            string `json:"key_bits,omitempty"`
-	NotBefore          string `json:"not_before,omitempty"`
-	NotAfter           string `json:"not_after,omitempty"`
-	KeyUsage           string `json:"key_usage,omitempty"`
-	ExtKeyUsage        string `json:"ext_key_usage,omitempty"`
-	PolicyIdentifiers  string `json:"policy_identifiers,omitempty"`
-	SignatureBits      string `json:"signature_bits,omitempty"`
-	NotBeforeDuration  string `json:"not_before_duration,omitempty"`
-	SKID               string `json:"skid,omitempty"`
-	UsePSS             string `json:"use_pss,omitempty"`
-	CSR                string `json:"csr,omitempty"`
-	TTL                string `json:"ttl,omitempty"`
-}
-
 type Expressions struct {
-	// The unique identifier from the request. Used for tracking purposes.
-	RequestID string
-	// Status of the request. True if the request was validated else false if it was rejected due to validation errors .
-	Success string
-	// The Certificate template defined by the CEL Author. Only included if status is success.
-	Certificate CertificateTemplate
+	// Main expression which returns the CertTemplate or an Error message.
+	MainProgram string
 	// Specifies if certificates issued/signed against this role will have OpenBao leases attached to them.
 	GenerateLease string
 	// If set, certificates issued/signed against this role will not be stored in the storage backend.
 	NoStore string
 	// The issuer used to sign the certificate.
 	Issuer string
+	// CSR ignored if certificate is being issued.
+	CSR string
 	// Warnings about the request or adjustments made by the CEL policy engine.
 	// E.g., "common_name was empty so added example.com"
 	Warnings string
-	// Detailed error message if status is failure.
-	Error string
 }
 
 func pathListCelRoles(b *backend) *framework.Path {
@@ -449,7 +413,7 @@ func validateCelExpressions(validationProgram ValidationProgram) (bool, error) {
 	}
 
 	// Validate the main CEL expression
-	ast, issues := env.Parse(validationProgram.Expressions.Success)
+	ast, issues := env.Parse(validationProgram.Expressions.MainProgram)
 	if issues != nil && issues.Err() != nil {
 		return false, fmt.Errorf("invalid CEL syntax for main expression: %v", issues.Err())
 	}

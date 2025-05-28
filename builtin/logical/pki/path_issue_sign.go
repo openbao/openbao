@@ -17,12 +17,15 @@ import (
 
 	celgo "github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
+	"github.com/google/cel-go/common/types/ref"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/cel"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
 	"github.com/openbao/openbao/sdk/v2/helper/consts"
 	"github.com/openbao/openbao/sdk/v2/helper/errutil"
 	"github.com/openbao/openbao/sdk/v2/logical"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/dynamicpb"
 )
 
 func pathIssue(b *backend) *framework.Path {
@@ -869,34 +872,45 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		evaluationData[variable.Name] = result.Value()
 	}
 
-	// Evaluate the CEL Role success expression
-	success, err := evaluateCelBooleanExpression(env, celRole.ValidationProgram.Expressions.Success, evaluationData)
+	// Evaluate MainProgram
+	result, err := evaluateCelExpression(env,
+		celRole.ValidationProgram.Expressions.MainProgram,
+		evaluationData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to process generate_lease: %w", err)
+		return nil, fmt.Errorf("error evaluating mainProgram: %w", err)
 	}
 
-	// If CEL validation against the request is not successful, evaluate and return Error message
-	if !success {
-		error := celRole.ValidationProgram.Expressions.Error
-		if error != "" {
-			errorExpression, err := compileExpression(env, error)
-			if err != nil {
-				return nil, fmt.Errorf("failed to compile CEL Error expression: %w", err)
-			}
-			evalResult, _, err := errorExpression.Eval(evaluationData)
-			if err != nil {
-				return nil, fmt.Errorf("failed to evaluate CEL Error expression: %w", err)
-			}
+	var cert *x509.Certificate
+	switch v := result.Value().(type) {
 
-			// Ensure result is a string
-			if evalResult.Type() != celgo.StringType {
-				return nil, fmt.Errorf("CEL Error expression did not evaluate to a String")
-			}
+	case *dynamicpb.Message:
+		// The CEL program succeeded and produced a protobuf CertTemplate (as a dynamic message).
+		certTemp := new(CertTemplate)
 
-			return nil, fmt.Errorf("%s", evalResult.Value().(string))
-		} else {
-			return nil, fmt.Errorf("CEL program evaluated 'success' expression to false")
+		// Marshal the dynamic message to wire-format bytes.
+		bytes, err := proto.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("marshal dynamic message: %w", err)
 		}
+
+		// Unmarshal into CertTemplate struct.
+		if err := proto.Unmarshal(bytes, certTemp); err != nil {
+			return nil, fmt.Errorf("unmarshal into CertTemplate: %w", err)
+		}
+
+		// Translate to *x509.Certificate struct.
+		cert, err = CertProtoToX509(certTemp)
+		if err != nil {
+			return nil, err
+		}
+
+	case string:
+		// The CEL program decided the request is invalid and returned a human-readable error string.
+		return nil, fmt.Errorf("%s", v)
+
+	default:
+		// Any other type is unexpected and indicates an error in MainProgram's policy.
+		return nil, fmt.Errorf("unexpected mainProgram result type %T", v)
 	}
 
 	// Evaluate generate_lease
@@ -925,10 +939,10 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 		return nil, errutil.UserError{Err: "Either ttl or not_after should be provided. Both should not be provided in the same request."}
 	}
 
-	// Protobuf representation of x509.
-	certTemplate := celRole.ValidationProgram.Expressions.CertTemplate
-
-	var parsedBundle *certutil.ParsedCertBundle
+	var (
+		parsedBundle *certutil.ParsedCertBundle
+		parseErr     error
+	)
 	if !useCSR {
 		_, ok := data.GetOk("key_type")
 		if !ok {
@@ -941,11 +955,31 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 			data.Raw["key_bits"] = 2048
 		}
 
-		parsedBundle, err = generateCELCert(env, evaluationData, signingBundle, certTemplate, rand.Reader)
+		parsedBundle, parseErr = generateCELCert(evaluationData, signingBundle, cert, rand.Reader)
 	} else {
-		parsedBundle, err = signCELCert(env, celRole.ValidationProgram.Expressions.CSR, evaluationData, signingBundle, certTemplate)
+		csrString, err := evaluateCelExpression(env, celRole.ValidationProgram.Expressions.CSR, evaluationData)
+		if err != nil {
+			return nil, fmt.Errorf("CSR %w", err)
+		}
+
+		csrBytes, ok := csrString.Value().([]byte)
+		if !ok {
+			return nil, fmt.Errorf("expected CSR as []byte, got %T", csrString.Value())
+		}
+
+		pemBlock, _ := pem.Decode(csrBytes)
+		if pemBlock == nil {
+			return nil, errutil.UserError{Err: "csr contains no data"}
+		}
+
+		csr, err := x509.ParseCertificateRequest(pemBlock.Bytes)
+		if err != nil {
+			return nil, errutil.UserError{Err: fmt.Sprintf("certificate request could not be parsed: %v", err)}
+		}
+
+		parsedBundle, parseErr = signCELCert(evaluationData, signingBundle, cert, csr)
 	}
-	if err != nil {
+	if parseErr != nil {
 		switch err.(type) {
 		case errutil.UserError:
 			return logical.ErrorResponse(err.Error()), nil
@@ -1137,24 +1171,36 @@ func evaluateCelBooleanExpression(env *celgo.Env, expression string, evaluationD
 	if expression == "" {
 		return false, nil // Default to false if expression is empty
 	}
-
-	prog, err := compileExpression(env, expression)
+	evalResult, err := evaluateCelExpression(env, expression, evaluationData)
 	if err != nil {
-		return false, fmt.Errorf("failed to compile CEL expression: %w", err)
+		return false, fmt.Errorf("%w", err)
 	}
-
-	// Evaluate the expression
-	evalResult, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return false, fmt.Errorf("failed to evaluate CEL expression: %w", err)
-	}
-
 	// Ensure result is a boolean
 	if evalResult.Type() != celgo.BoolType {
 		return false, fmt.Errorf("CEL expression did not return a boolean value")
 	}
 
 	return evalResult.Value().(bool), nil
+}
+
+// Helper function to evaluate a CEL expression
+func evaluateCelExpression(env *celgo.Env, expression string, evaluationData map[string]interface{}) (ref.Val, error) {
+	if expression == "" {
+		return nil, fmt.Errorf("CEL expression is empty")
+	}
+
+	prog, err := compileExpression(env, expression)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile CEL expression: %w", err)
+	}
+
+	// Evaluate the expression
+	evalResult, _, err := prog.Eval(evaluationData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+	}
+
+	return evalResult, nil
 }
 
 // csrToMap parses the CSR and returns it as a map of its attributes

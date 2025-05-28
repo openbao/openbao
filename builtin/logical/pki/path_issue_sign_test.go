@@ -85,26 +85,39 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 					"name":       "not_after",
 					"expression": "now + duration(request.ttl)",
 				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: cn_value,
+							Country:    ["ZW", "US"],     
+						},
+						NotBefore: now,
+						NotAfter: not_after,
+						IsCA: true,
+						MaxPathLen: 10,	
+						PolicyIdentifiers: [
+							ObjectIdentifier{ arc: [1u, 2u, 3u] },
+							ObjectIdentifier{ arc: [2u, 59u, 1u] },
+						],
+						IPAddresses: [
+							net.IP{
+								IP: b"\x0A\x00\x00\x00"
+							}
+						],
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have Common name: ' + cn_value",
+				},
 			},
 			"expressions": map[string]any{
-				"requestId": "123",
-				"success":   "validate_cn",
-				"certificate": map[string]any{
-					"CommonName":        "cn_value",
-					"Country":           "['Zimbabwe', 'America']",
-					"NotBefore":         "now",
-					"NotAfter":          "not_after",
-					"IPAddresses":       "['10.0.0.0']",
-					"NotBeforeDuration": "76",
-					"PolicyIdentifiers": `["1.3.6.1.4.1.1.1"]`,
-					"KeyType":           "'rsa'",
-					"KeyBits":           "2048",
-				},
+				"mainProgram":   "validate_cn ? cert : err",
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
 				"issuer":        "default",
 				"warnings":      "small_ttl ? 'generate_lease is true' : 'no_store is true'",
-				"error":         "'Request should have Common name: ' + cn_value",
 			},
 		},
 	}
@@ -129,6 +142,8 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 		"ip_sans":             "192.168.1.1,10.0.0.1",
 		"policy_identifiers":  "1.3.6.1.4.1.1.1",
 		"not_before_duration": 60,
+		"key_type":            "ec",
+		"key_bits":            256,
 	}
 
 	issueReq := &logical.Request{
@@ -166,10 +181,25 @@ func TestCelRoleIssueWithGenerateLeaseAndNoStore(t *testing.T) {
 		t.Fatalf("Expected TTL: %v ± 1m, but got: %v", expectedTTL, actualTTL)
 	}
 
+	// Validate the OCSP Server
+	expectedOCSPServer := "http://localhost/c"
+	if len(cert.OCSPServer) != 1 && expectedOCSPServer != cert.OCSPServer[0] {
+		t.Fatalf("Expected OCSPServer %v, but got: %v", expectedOCSPServer, cert.OCSPServer)
+	}
+
 	// Validate that only the IP Address specified in the template is in the final certificate      g
 	expectedIP := net.ParseIP("10.0.0.0")
 	if len(cert.IPAddresses) != 1 || !cert.IPAddresses[0].Equal(expectedIP) {
 		t.Fatalf("Expected IP address %v, but got: %v", expectedIP, cert.IPAddresses)
+	}
+
+	pk, ok := cert.PublicKey.(*ecdsa.PublicKey)
+	if !ok {
+		t.Fatalf("expected an EC public key, got %T", cert.PublicKey)
+	}
+	if pk.Curve != elliptic.P256() || pk.Params().BitSize != 256 {
+		t.Fatalf("expected P-256 (256-bit) key, got curve %s with %d bits",
+			pk.Params().Name, pk.Params().BitSize)
 	}
 
 	// check generate_lease works
@@ -225,23 +255,54 @@ func TestCelRoleSign(t *testing.T) {
 					"name":       "validate_cn",
 					"expression": `has(request.common_name) && request.common_name == "example2.com"`,
 				},
+				{
+					"name":       "cn_value",
+					"expression": "request.common_name",
+				},
+				{
+					"name":       "not_after",
+					"expression": "now + duration(request.ttl)",
+				},
+				{
+					"name":       "emails",
+					"expression": `parsed_csr.EmailAddresses`,
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: cn_value,
+							Country:    ["ZW", "US"],     
+						},
+						NotBefore: now,
+						NotAfter: not_after,
+						IsCA: true,
+						MaxPathLen: 10,	
+						PolicyIdentifiers: [
+							ObjectIdentifier{ arc: [1u, 2u, 3u] },
+							ObjectIdentifier{ arc: [2u, 59u, 1u] },
+						],
+						IPAddresses: [
+							net.IP{
+								IP: b"\x0A\x00\x00\x00"
+							}
+						],
+						EmailAddresses: emails,		
+						KeyUsage: 32,
+						ExtKeyUsage: [2],
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have Common name: ' + request.common_name",
+				},
 			},
 			"expressions": map[string]interface{}{
-				"success": "validate_cn",
-				"certificate": map[string]any{
-					"CommonName":        "request.common_name",
-					"NotBefore":         "now",
-					"NotAfter":          "now + duration('3h')",
-					"IPAddresses":       "['10.0.0.0']",
-					"NotBeforeDuration": "120",
-					"KeyUsage":          "['certsign']",
-					"ExtKeyUsage":       "['ClientAuth']",
-					"CSR":               "request.csr",
-				},
+				"mainProgram":   "validate_cn ? cert : err",
+				"CSR":           "request.csr",
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
-				"error":         "'Request should have Common name: ' + request.common_name",
 				"Warnings":      "''",
 			},
 		},
@@ -261,7 +322,10 @@ func TestCelRoleSign(t *testing.T) {
 
 	// Generate a CSR (Certificate Signing Request)
 	identifiers := []string{"example.com"}
-	goodCr := &x509.CertificateRequest{DNSNames: []string{identifiers[0]}}
+	goodCr := &x509.CertificateRequest{
+		DNSNames:       []string{identifiers[0]},
+		EmailAddresses: []string{"admin@example.com"},
+	}
 	csrKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	require.NoError(t, err, "failed generating ecdsa key")
 	csr, err := x509.CreateCertificateRequest(rand.Reader, goodCr, csrKey)
@@ -278,6 +342,7 @@ func TestCelRoleSign(t *testing.T) {
 		"common_name":   "example2.com",
 		"key_usage":     "certsign",
 		"ext_key_usage": "ClientAuth",
+		"ttl":           "1h",
 	}
 
 	signReq := &logical.Request{
@@ -289,7 +354,7 @@ func TestCelRoleSign(t *testing.T) {
 
 	resp, err = b.HandleRequest(context.Background(), signReq)
 	if err != nil || (resp != nil && resp.IsError()) {
-		t.Fatalf("Failed to sign certificate with CSR: err: %v, \nresp: %v", err, resp)
+		t.Fatalf("Failed to sign certificate with CSR: %v, \nresp: %v", err, resp)
 	}
 
 	// Validate the response
@@ -416,19 +481,32 @@ func TestCelRoleIssueWithMultipleRootsPresent(t *testing.T) {
 					"name":       "cn_value",
 					"expression": "request.common_name",
 				},
+				{
+					"name":       "not_after",
+					"expression": "now + duration('3h')",
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: cn_value,
+							Country:    ["ZW", "US"],     
+						},
+						NotBefore: now,
+						NotAfter: not_after,
+						IsCA: false,						
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have Common name: ' +  cn_value",
+				},
 			},
 			"expressions": map[string]interface{}{
-				"requestId": "123",
-				"success":   "validate_cn",
-				"certificate": map[string]any{
-					"CommonName": "request.common_name",
-					"NotBefore":  "now",
-					"NotAfter":   "now + duration('3h')",
-				},
+				"mainProgram":   "validate_cn ? cert : err",
 				"generateLease": "small_ttl",
 				"noStore":       "!small_ttl",
 				"issuer":        "second_root",
-				"error":         "'Request should have Common name: ' + request.common_name",
 				"Warnings":      "''",
 			},
 		},
@@ -541,19 +619,27 @@ func TestCelParsedCsr(t *testing.T) {
 					"name":       "validate_cn",
 					"expression": `parsed_csr.Subject.CommonName == "example.com"`,
 				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: parsed_csr.Subject.CommonName,
+						},
+						NotBefore: now,
+						NotAfter: now + duration('3h'),						
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'Request should have Common name: ' +  parsed_csr.Subject.CommonName",
+				},
 			},
 			"expressions": map[string]interface{}{
-				"success": "validate_cn",
-				"certificate": map[string]any{
-					"CommonName": "parsed_csr.Subject.CommonName",
-					"CSR":        "request.csr",
-					"NotBefore":  "now",
-					"NotAfter":   "now + duration('3h')",
-				},
+				"mainProgram":   "validate_cn ? cert : err",
+				"CSR":           "request.csr",
 				"generateLease": "true",
 				"noStore":       "false",
 				"issuer":        "default",
-				"error":         "'CSR should have Common name: ' + parsed_csr.Subject.CommonName",
 				"Warnings":      "''",
 			},
 		},
@@ -676,18 +762,31 @@ func TestCelCustomFunction(t *testing.T) {
 					"name":       "valid_emails",
 					"expression": `check_valid_email(request.alt_names)`,
 				},
+				{
+					"name":       "ttl",
+					"expression": `duration(request.ttl) < duration('5h') ? duration('5h') : duration(request.ttl)`,
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						Subject: PKIX.Name{                   
+							CommonName: request.common_name,
+						},
+						NotBefore: now,
+						NotAfter: now + duration(ttl),
+						EmailAddresses: [request.alt_names],		
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'common_name should be a valid email.'",
+				},
 			},
 			"expressions": map[string]interface{}{
-				"requestId": "123",
-				"success":   "valid_emails",
-				"certificate": map[string]interface{}{
-					"CommonName":     "request.common_name",
-					"EmailAddresses": "[request.alt_names]",
-					"TTL":            "duration('5h')",
-				},
-				"issuer":   "default",
-				"warnings": "has(request.ttl) ? '' : 'ttl of 5h has been added.'",
-				"error":    "'common_name should be a valid email.'",
+				"mainProgram": "valid_emails ? cert : err",
+				"success":     "valid_emails",
+				"issuer":      "default",
+				"warnings":    "duration(request.ttl) < duration('5h') ? 'ttl has been modified to 5h.' : ''",
 			},
 		},
 	}
@@ -708,6 +807,7 @@ func TestCelCustomFunction(t *testing.T) {
 	issueData := map[string]interface{}{
 		"common_name": "example.com",
 		"alt_names":   "example@gmail.com",
+		"ttl":         "4h",
 	}
 
 	issueReq := &logical.Request{
@@ -720,6 +820,12 @@ func TestCelCustomFunction(t *testing.T) {
 	resp, err = b.HandleRequest(context.Background(), issueReq)
 	if err != nil || (resp != nil && resp.IsError()) {
 		t.Fatalf("Failed to issue certificate: err: %v, \nresp: %v", err, resp)
+	}
+
+	// Check warning is returned correctly
+	const expectedWarn = "ttl has been modified to 5h."
+	if resp == nil || len(resp.Warnings) == 0 || resp.Warnings[0] != expectedWarn {
+		t.Fatalf("expected warning %q, got %v", expectedWarn, resp.Warnings)
 	}
 
 	// Validate the response
@@ -801,13 +907,24 @@ func TestNotAfter(t *testing.T) {
 					"name":       "validate_after",
 					"expression": "after < now + duration('3h')",
 				},
+				{
+					"name":       "ttl",
+					"expression": "(timestamp(request.not_after) - now)",
+				},
+				{
+					"name": "cert",
+					"expression": `CertTemplate{
+						NotBefore: now,
+						NotAfter: after,
+					}`,
+				},
+				{
+					"name":       "err",
+					"expression": "'TTL should be > 3h, received ' + string(ttl)",
+				},
 			},
 			"expressions": map[string]any{
-				"requestId": "123",
-				"success":   "validate_after",
-				"certificate": map[string]any{
-					"NotAfter": "after",
-				},
+				"mainProgram": "validate_after ? cert : err",
 			},
 		},
 	}

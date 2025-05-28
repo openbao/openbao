@@ -20,13 +20,11 @@ import (
 	"math/big"
 	"net"
 	"net/url"
-	reflect "reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	celgo "github.com/google/cel-go/cel"
 	"github.com/hashicorp/go-secure-stdlib/strutil"
 	"github.com/openbao/openbao/sdk/v2/framework"
 	"github.com/openbao/openbao/sdk/v2/helper/certutil"
@@ -828,18 +826,11 @@ func generateCert(sc *storageContext,
 
 // Generate a certificate evaluating params against CEL role
 func generateCELCert(
-	env *celgo.Env,
 	evaluationData map[string]interface{},
 	caSign *certutil.CAInfoBundle,
-	protoCert string,
+	cert *x509.Certificate,
 	randomSource io.Reader,
 ) (*certutil.ParsedCertBundle, error) {
-	cert, err := generateCertTemplate(env, evaluationData, protoCert)
-	if err != nil {
-		return nil, err
-	}
-
-	// Generate the certificate using the evaluated params
 	parsedBundle, err := certutil.CreateCertificateWithTemplate(caSign, evaluationData, *cert, randomSource)
 	if err != nil {
 		return nil, err
@@ -847,84 +838,13 @@ func generateCELCert(
 	return parsedBundle, nil
 }
 
-func generateCertTemplate(env *celgo.Env, evaluationData map[string]interface{}, protoCert string) (*x509.Certificate, error) {
-	compileAndEvalCertTemplate := func(expr string) (*CertTemplate, error) {
-		if expr == "" {
-			return nil, nil
-		}
-
-		prog, err := compileExpression(env, expr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to compile CEL protoCert expression: %w", err)
-		}
-
-		out, _, err := prog.Eval(evaluationData)
-		if err != nil {
-			return nil, fmt.Errorf("certTemplate eval: %w", err)
-		}
-
-		val, err := out.ConvertToNative(reflect.TypeOf(&CertTemplate{}))
-		if err != nil {
-			return nil, fmt.Errorf("certTemplate unwrap: %w", err)
-		}
-		return val.(*CertTemplate), nil
-	}
-
-	certTemp, err := compileAndEvalCertTemplate(protoCert)
-	if err != nil {
-		return nil, err
-	}
-
-	cert, err := CertProtoToX509(certTemp)
-	if err != nil {
-		return nil, err
-	}
-
-	return cert, nil
-}
-
 // Generate a certificate evaluating params against CEL role
 func signCELCert(
-	env *celgo.Env,
-	CSR string,
 	evaluationData map[string]interface{},
 	caSign *certutil.CAInfoBundle,
-	protoCert string,
+	cert *x509.Certificate,
+	csr *x509.CertificateRequest,
 ) (*certutil.ParsedCertBundle, error) {
-	csrExpression := CSR
-	if csrExpression == "" {
-		return nil, errutil.UserError{Err: "\"csr\" is empty"}
-	}
-	prog, err := compileExpression(env, csrExpression)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile CSR: %w", err)
-	}
-	csrString, _, err := prog.Eval(evaluationData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to evaluate CSR: %w", err)
-	}
-
-	csrBytes, ok := csrString.Value().([]byte)
-	if !ok {
-		return nil, fmt.Errorf("expected CSR as []byte, got %T", csrString.Value())
-	}
-
-	pemBlock, _ := pem.Decode(csrBytes)
-	if pemBlock == nil {
-		return nil, errutil.UserError{Err: "csr contains no data"}
-	}
-
-	csr, err := x509.ParseCertificateRequest(pemBlock.Bytes)
-	if err != nil {
-		return nil, errutil.UserError{Err: fmt.Sprintf("certificate request could not be parsed: %v", err)}
-	}
-
-	cert, err := generateCertTemplate(env, evaluationData, protoCert)
-	if err != nil {
-		return nil, err
-	}
-
-	// Sign the certificate using the evaluated params
 	parsedBundle, err := certutil.SignCertificateWithTemplate(caSign, csr, evaluationData, *cert)
 	if err != nil {
 		return nil, err

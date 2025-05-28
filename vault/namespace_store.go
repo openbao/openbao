@@ -560,7 +560,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		}
 	}
 
-	originalEntry := entry.Clone()
+	unlockKey := entry.UnlockKey
 
 	if callback != nil {
 		entry.UnlockKey = ""
@@ -571,7 +571,7 @@ func (ns *NamespaceStore) ModifyNamespaceByPath(ctx context.Context, path string
 		}
 
 		// ModifyNamespaceByPath can never modify lock status.
-		entry.UnlockKey = originalEntry.UnlockKey
+		entry.UnlockKey = UnlockKey
 	}
 
 	// setNamespaceLocked will unlock ns.lock

@@ -35,6 +35,11 @@ const config: Config = {
   },
   staticDirectories: ["public"],
 
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
+
   presets: [
     [
       "classic",

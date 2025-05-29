@@ -20,3 +20,11 @@ JamesButcher:
   socials:
     linkedin: https://www.linkedin.com/in/james-butcher-15698115
 
+ChristophVoigt:
+  name: Christoph Voigt
+  url: https://www.christophvoigt.com
+  image_url: https://christophvoigt.com/img/author.jpg
+  socials:
+    github: https://github.com/voigt
+    linkedin: https://www.linkedin.com/in/chris-cloud-native/
+    mastodon: https://hachyderm.io/@cv

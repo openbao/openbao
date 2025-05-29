@@ -1,3 +1,14 @@
+## 2.2.2
+## May 29, 2025
+
+SECURITY:
+
+* sdk/framework: prevent information disclosure on invalid request. HCSEC-2025-09 / CVE-2025-4166. [[GH-1323](https://github.com/openbao/openbao/pull/1323)]
+
+BUG FIXES:
+
+* ui: Fix description of Organizational Unit (OU) field in PKI. [[GH-1333](https://github.com/openbao/openbao/pull/1333)]
+
 ## 2.2.1
 ## April 22, 2025
 

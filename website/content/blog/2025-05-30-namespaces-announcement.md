@@ -152,7 +152,7 @@ Namespaces will give organisations the possibility to better structure and isola
 
 ## Get Started
 
-We are planning to release OpenBao 2.3 Beta in the upcoming days. We encourage you to explore the new features and share your feedback as we continue to improve OpenBao as a secure, scalable, and self-service secrets management solution.
+We just carved a beta release of [OpenBao 2.3](https://github.com/openbao/openbao/releases/tag/v2.3.0-beta20250528). We encourage you to explore the new features and share your feedback as we continue to improve OpenBao as a secure, scalable, and self-service secrets management solution.
 
 Looking ahead, the namespaces working group is actively exploring improvements such as namespace sealing, non-hierarchical namespaces, per-namespace storage backends, and plugin isolation. These efforts aim to make namespace usage more flexible, efficient, and secure in future releases.
 

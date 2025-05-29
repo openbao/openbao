@@ -105,6 +105,22 @@ enum ExtKeyUsage {
 	ExtKeyUsageMicrosoftKernelCodeSigning = 13;
 }
 
+message ValidationOutput {
+  CertTemplate template = 1;
+  string issuer_ref = 2;
+  bool use_pss = 3;
+  uint32 signature_bits = 4;
+  bool generate_lease = 5;
+  bool no_store = 6;
+  
+  // For CSR:
+  bytes subject_key_id = 7; // This value is auto-computed by certutil for generated keys.
+
+  // For key generation/"issue"
+  string key_type = 8;
+  uint64 key_bits = 9;
+}
+
 // Mirrors x509.Certificate
 message CertTemplate {
 	int64 Version = 1;

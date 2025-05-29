@@ -42,7 +42,7 @@ func pathIssue(b *backend) *framework.Path {
 }
 
 func pathCelIssue(b *backend) *framework.Path {
-	fields := getCsrSignVerbatimSchemaFields()
+	fields := getCELIssueSignFields()
 
 	// Add key_bits and key_type fields
 	fields["key_bits"] = &framework.FieldSchema{
@@ -276,17 +276,14 @@ func pathSign(b *backend) *framework.Path {
 }
 
 func pathCelSign(b *backend) *framework.Path {
-	fields := getCsrSignVerbatimSchemaFields()
+	fields := getCELIssueSignFields()
 
-	fields["policy_identifiers"] = &framework.FieldSchema{
-		Type:    framework.TypeCommaStringSlice,
-		Default: []string{},
-		Description: `A comma-separated string or list of policy OIDs, or a JSON list of qualified policy
-		information, which must include an oid, and may include a notice and/or cps url, using the form 
-		[{"oid"="1.3.6.1.4.1.7.8","notice"="I am a user Notice"}, {"oid"="1.3.6.1.4.1.44947.1.2.4 ","cps"="https://example.com"}].`,
-		DisplayAttrs: &framework.DisplayAttributes{
-			Value: "Policy Identifiers",
-		},
+	fields["csr"] = &framework.FieldSchema{
+		Type:    framework.TypeString,
+		Default: "",
+		Description: `PEM-format CSR to be signed. Values will be
+taken verbatim from the CSR, except for
+basic constraints.`,
 	}
 
 	fields["not_before_duration"] = &framework.FieldSchema{
@@ -907,7 +904,11 @@ func (b *backend) pathCelIssueSignCert(ctx context.Context, req *logical.Request
 
 	case string:
 		// The CEL program decided the request is invalid and returned a human-readable error string.
-		return nil, fmt.Errorf("%s", v)
+		return nil, errors.New(v)
+
+	case bool:
+		// The CEL program decided the request is invalid and returned a human-readable error string.
+		return nil, errors.New("Request denied.")
 
 	default:
 		// Any other type is unexpected and indicates an error in MainProgram's policy.

@@ -1,2 +1,2 @@
 ```release-note:feature
-pki: Add support for Common Expression Language (CEL) roles. CEL allows role authors to create flexible, dynamic policies with complex, custom claim validation support and arbitrary templating of issue/sign data.
+Support **Common Expression Language (CEL) in PKI**. CEL allows role authors to create flexible, dynamic certificate policies with complex, custom validation support and arbitrary control over the final certificate object.
